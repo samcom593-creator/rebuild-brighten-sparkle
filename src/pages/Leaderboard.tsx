@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Crown, Loader2, Medal, TrendingUp, Calendar, Clock3, Target, Users, Activity, CalendarDays } from "lucide-react";
+import { Crown, Loader2, Medal, TrendingUp, Calendar, Clock3, Target, Users, Activity, CalendarDays, Trophy } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 import { formatDistanceToNowStrict } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -225,23 +226,19 @@ export default function Leaderboard() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 p-4 md:p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/30 to-yellow-500/20">
-          <PrimaryIcon className="h-6 w-6 text-amber-300" />
-        </div>
-        <div className="flex-1">
-          <h1 className="apex-headline text-3xl font-bold">Leaderboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Production, recruiting, referral, and activity rankings from live platform tables.
-          </p>
-        </div>
-        {lastUpdatedAt && (
-          <Badge variant="outline" className="w-fit gap-1.5">
+      <PageHeader
+        accent="amber"
+        eyebrow="Production · Rankings"
+        eyebrowIcon={<Trophy className="h-3 w-3" />}
+        title="Leaderboard"
+        subtitle="Production, recruiting, referral, and activity rankings from live platform tables."
+        actions={lastUpdatedAt && (
+          <Badge variant="outline" className="gap-1.5">
             <Calendar className="h-3 w-3" />
             {formatDistanceToNowStrict(new Date(lastUpdatedAt), { addSuffix: true })}
           </Badge>
         )}
-      </div>
+      />
 
       <p className="text-xs text-muted-foreground">{sourceHint}</p>
 

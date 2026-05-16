@@ -4,6 +4,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   Shield,
   RefreshCw,
@@ -131,14 +132,21 @@ export default function SystemHealth() {
   if (loading) return <SkeletonLoader variant="page" />;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Shield className="h-7 w-7 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold">System Health</h1>
-          <p className="text-xs text-muted-foreground">Self-healing monitoring & diagnostics</p>
-        </div>
-      </div>
+    <div className="max-w-5xl mx-auto space-y-6 p-4 md:p-6">
+      <PageHeader
+        accent="cyan"
+        eyebrow="Admin · Operations"
+        eyebrowIcon={<Shield className="h-3 w-3" />}
+        title="System Health"
+        subtitle="Self-healing monitoring & diagnostics across every sync, cron, and integration."
+        actions={
+          <>
+            <Badge variant={criticalCount > 0 ? "destructive" : warningCount > 0 ? "default" : "outline"} className="text-xs">
+              {criticalCount} critical · {warningCount} warning
+            </Badge>
+          </>
+        }
+      />
 
       {/* Status Banner */}
       <div className={`p-4 rounded-xl flex items-center gap-3 border ${

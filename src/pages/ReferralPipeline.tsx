@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { PageHeader } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -165,19 +166,18 @@ export default function ReferralPipeline() {
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <div className="flex items-end justify-between gap-3 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 text-primary">
-            <Users className="h-5 w-5" />
-            <span className="text-xs uppercase tracking-wider">Pipeline</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Referrals</h1>
-          <p className="text-sm text-muted-foreground">{data.length} active</p>
-        </div>
-        <Link to="/dashboard/referrals/new">
-          <Button size="sm">Submit a referral</Button>
-        </Link>
-      </div>
+      <PageHeader
+        accent="blue"
+        eyebrow="Referrals · Pipeline"
+        eyebrowIcon={<Users className="h-3 w-3" />}
+        title="Referrals"
+        subtitle={`${data.length} active referral${data.length === 1 ? "" : "s"} across your team's pipeline.`}
+        actions={
+          <Link to="/dashboard/referrals/new">
+            <Button size="sm">Submit a referral</Button>
+          </Link>
+        }
+      />
 
       {grouped.map(([bucket, rows]) => (
         <Card key={bucket}>

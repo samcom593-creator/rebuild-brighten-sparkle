@@ -3,6 +3,7 @@ import { Zap, Play, RefreshCw, Clock, CheckCircle2, XCircle, ToggleLeft, ToggleR
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -91,17 +92,19 @@ export default function AutomationHub() {
   };
 
   return (
-    <div className="space-y-6 page-enter">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-xs text-muted-foreground uppercase tracking-widest mb-1" style={{ fontFamily: "Syne" }}>APEX Financial</div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Syne" }}>Automation Hub</h1>
-          <p className="text-sm text-muted-foreground mt-1">Self-running workflows that keep your team on track</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={fetchAutomations} disabled={loading}>
-          <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} /> Refresh
-        </Button>
-      </div>
+    <div className="space-y-6 page-enter p-4 md:p-6">
+      <PageHeader
+        accent="purple"
+        eyebrow="Admin · Automation"
+        eyebrowIcon={<Zap className="h-3 w-3" />}
+        title="Automation Hub"
+        subtitle="Self-running workflows that keep your team on track — leads routing, follow-up nudges, daily reports."
+        actions={
+          <Button variant="outline" size="sm" onClick={fetchAutomations} disabled={loading}>
+            <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} /> Refresh
+          </Button>
+        }
+      />
 
       {isAdmin && (
         <Collapsible open={outboxOpen} onOpenChange={setOutboxOpen}>

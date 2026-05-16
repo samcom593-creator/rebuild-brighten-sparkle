@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Zap, CheckCircle2, AlertTriangle, XCircle, Clock, Play, RefreshCw, Search, Activity,
@@ -168,23 +169,21 @@ export default function AutomationHealth() {
 
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30">
-            <Zap className="h-6 w-6 text-amber-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold" style={{ fontFamily: "Syne" }}>Automation Health</h1>
-            <p className="text-sm text-muted-foreground">Every cron-scheduled job. Green = running. Red = needs attention.</p>
-          </div>
-        </div>
-        <Button size="sm" variant="outline" onClick={() => {
-          queryClient.invalidateQueries({ queryKey: ["automation-health"] });
-          queryClient.invalidateQueries({ queryKey: ["automation-runs"] });
-        }}>
-          <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
-        </Button>
-      </div>
+      <PageHeader
+        accent="amber"
+        eyebrow="Admin · Health"
+        eyebrowIcon={<Zap className="h-3 w-3" />}
+        title="Automation Health"
+        subtitle="Every cron-scheduled job. Green = running. Red = needs attention. Same truth source the External Cron uses."
+        actions={
+          <Button size="sm" variant="outline" onClick={() => {
+            queryClient.invalidateQueries({ queryKey: ["automation-health"] });
+            queryClient.invalidateQueries({ queryKey: ["automation-runs"] });
+          }}>
+            <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(["healthy", "flaky", "broken", "stale"] as const).map(s => {

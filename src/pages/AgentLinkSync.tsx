@@ -6,6 +6,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { toast } from "sonner";
 
 type SyncLog = {
@@ -101,22 +102,18 @@ export default function AgentLinkSync() {
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500/30 to-blue-500/20 flex items-center justify-center">
-          <Link2 className="h-6 w-6 text-indigo-300" />
-        </div>
-        <div>
-          <h1 className="apex-headline text-3xl font-bold">Agent Link Live Sync</h1>
-          <p className="text-sm text-muted-foreground">
-            Paste your Agent Link cookie once. The Edge sync pulls and routes your book automatically.
-          </p>
-        </div>
-        <div className="ml-auto">
-          {cookieSet
+      <PageHeader
+        accent="blue"
+        eyebrow="Admin · Sync"
+        eyebrowIcon={<Link2 className="h-3 w-3" />}
+        title="AgentLink Live Sync"
+        subtitle="Paste your AgentLink cookie once. The Edge sync pulls and routes your full book automatically every minute."
+        actions={
+          cookieSet
             ? <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40"><Zap className="h-3 w-3 mr-1" /> Live</Badge>
-            : <Badge variant="outline" className="border-rose-500/40 text-rose-300">Not configured</Badge>}
-        </div>
-      </div>
+            : <Badge variant="outline" className="border-rose-500/40 text-rose-300">Not configured</Badge>
+        }
+      />
 
       <GlassCard className={`p-4 ${isStale ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/5"}`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

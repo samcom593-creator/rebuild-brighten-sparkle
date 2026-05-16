@@ -87,30 +87,58 @@ function OverviewPanel() {
   });
 
   if (isLoading || !data) return <PageLoadingSkeleton />;
-  const cards = [
-    { label: "Deals (all statuses)", value: data.deals_total.toLocaleString(), icon: FileText },
-    { label: "Visible deals (submitted+active)", value: data.deals_visible.toLocaleString(), icon: FileText },
-    { label: "Total ALP", value: fmtMoney(data.total_alp), icon: Briefcase },
-    { label: "Clients mirrored", value: data.clients.toLocaleString(), icon: Users },
-    { label: "Contracts (writing numbers)", value: `${data.contracts.toLocaleString()} (${data.contracts_active.toLocaleString()} active)`, icon: ScrollText },
-    { label: "Downline agents", value: `${data.agents.toLocaleString()} (${data.agents_active.toLocaleString()} active)`, icon: Users },
-    { label: "Carriers", value: data.carriers.toLocaleString(), icon: Database },
-    { label: "Last vault capture", value: fmtAge(data.last_vault_capture), icon: RefreshCw },
+  // Group cards by domain for visual hierarchy. Each domain gets its own
+  // color spectrum so admin can scan in seconds: financial → emerald,
+  // people → blue, agreements → amber, ops → slate.
+  const cards: Array<{ label: string; value: string; icon: any; gradient: string; iconColor: string }> = [
+    { label: "Deals (all statuses)", value: data.deals_total.toLocaleString(), icon: FileText,
+      gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30",
+      iconColor: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30" },
+    { label: "Visible deals · submitted + active", value: data.deals_visible.toLocaleString(), icon: FileText,
+      gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30",
+      iconColor: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30" },
+    { label: "Total ALP", value: fmtMoney(data.total_alp), icon: Briefcase,
+      gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30",
+      iconColor: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30" },
+    { label: "Clients mirrored", value: data.clients.toLocaleString(), icon: Users,
+      gradient: "from-blue-500/15 via-blue-500/5 to-transparent border-blue-500/30",
+      iconColor: "bg-blue-500/15 text-blue-400 ring-blue-500/30" },
+    { label: "Contracts · writing numbers", value: `${data.contracts.toLocaleString()} (${data.contracts_active.toLocaleString()} active)`, icon: ScrollText,
+      gradient: "from-amber-500/15 via-amber-500/5 to-transparent border-amber-500/30",
+      iconColor: "bg-amber-500/15 text-amber-400 ring-amber-500/30" },
+    { label: "Downline agents", value: `${data.agents.toLocaleString()} (${data.agents_active.toLocaleString()} active)`, icon: Users,
+      gradient: "from-blue-500/15 via-blue-500/5 to-transparent border-blue-500/30",
+      iconColor: "bg-blue-500/15 text-blue-400 ring-blue-500/30" },
+    { label: "Carriers", value: data.carriers.toLocaleString(), icon: Database,
+      gradient: "from-purple-500/15 via-purple-500/5 to-transparent border-purple-500/30",
+      iconColor: "bg-purple-500/15 text-purple-400 ring-purple-500/30" },
+    { label: "Last vault capture", value: fmtAge(data.last_vault_capture), icon: RefreshCw,
+      gradient: "from-slate-500/15 via-slate-500/5 to-transparent border-slate-500/30",
+      iconColor: "bg-slate-500/15 text-slate-400 ring-slate-500/30" },
   ];
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          Source: AgentLink cookie pull (every minute) + raw vault snapshots. All numbers update without page refresh.
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="text-xs text-muted-foreground max-w-2xl">
+          Source: AgentLink cookie pull (every minute) + raw vault snapshots. All numbers update without page refresh — refetch on a 60-second tick.
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()}><RefreshCw className="h-3 w-3 mr-1" /> Refresh</Button>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="h-3 w-3 mr-1.5" /> Refresh
+        </Button>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {cards.map((c) => (
-          <Card key={c.label}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground"><c.icon className="h-3 w-3" /> {c.label}</div>
-              <div className="text-2xl font-bold mt-1">{c.value}</div>
+          <Card key={c.label} className={`rounded-xl overflow-hidden bg-gradient-to-br border ${c.gradient}`}>
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{c.label}</p>
+                  <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums">{c.value}</p>
+                </div>
+                <div className={`rounded-lg p-2 ring-1 shrink-0 ${c.iconColor}`}>
+                  <c.icon className="h-3.5 w-3.5" />
+                </div>
+              </div>
             </CardContent>
           </Card>
         ))}

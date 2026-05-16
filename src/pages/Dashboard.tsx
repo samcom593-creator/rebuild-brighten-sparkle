@@ -478,22 +478,32 @@ function StatTile({
   detail: string;
   tone?: "default" | "success" | "warning";
 }) {
+  // 2026-grade hero tiles: subtle gradient background, soft border, larger
+  // typography, icon in a glassmorphic pill. Tone changes the gradient
+  // color and icon accent.
+  const gradient =
+    tone === "success"
+      ? "from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30"
+      : tone === "warning"
+        ? "from-amber-500/15 via-amber-500/5 to-transparent border-amber-500/30"
+        : "from-primary/15 via-primary/5 to-transparent border-primary/25";
+  const iconBg =
+    tone === "success"
+      ? "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30"
+      : tone === "warning"
+        ? "bg-amber-500/15 text-amber-400 ring-amber-500/30"
+        : "bg-primary/15 text-primary ring-primary/30";
   return (
-    <Card className="rounded-lg">
-      <CardContent className="p-4">
+    <Card className={cn("rounded-xl overflow-hidden bg-gradient-to-br border", gradient)}>
+      <CardContent className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-            <p className="mt-2 text-2xl font-bold tracking-tight">{value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+            <p className="mt-2 text-3xl font-bold tracking-tight tabular-nums">{value}</p>
+            <p className="mt-1.5 text-xs text-muted-foreground leading-snug">{detail}</p>
           </div>
-          <div
-            className={cn(
-              "rounded-lg p-2",
-              tone === "success" ? "bg-emerald-500/10 text-emerald-600" : tone === "warning" ? "bg-amber-500/10 text-amber-600" : "bg-primary/10 text-primary",
-            )}
-          >
-            <Icon className="h-5 w-5" />
+          <div className={cn("rounded-lg p-2.5 ring-1", iconBg)}>
+            <Icon className="h-4 w-4" />
           </div>
         </div>
       </CardContent>

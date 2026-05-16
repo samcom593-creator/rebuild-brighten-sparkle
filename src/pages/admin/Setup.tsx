@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
 
 type CheckStatus = "ok" | "warn" | "fail" | "unknown";
@@ -163,23 +164,19 @@ export default function Setup() {
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4">
-      <div className="flex items-center gap-3">
-        <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center",
-          overall === "ok" ? "bg-emerald-500/20" : overall === "warn" ? "bg-amber-500/20" : "bg-rose-500/20")}>
-          <Wrench className={cn("h-6 w-6",
-            overall === "ok" ? "text-emerald-400" : overall === "warn" ? "text-amber-400" : "text-rose-400")} />
-        </div>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold">System Setup</h1>
-          <p className="text-sm text-muted-foreground">
-            Runs every health check required by the master prompt. Green = healthy, amber = degraded, red = blocker.
-          </p>
-        </div>
-        <Button onClick={run} variant="outline" size="sm" disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-          Re-run
-        </Button>
-      </div>
+      <PageHeader
+        accent={overall === "ok" ? "emerald" : overall === "warn" ? "amber" : "rose"}
+        eyebrow="Admin · Setup"
+        eyebrowIcon={<Wrench className="h-3 w-3" />}
+        title="System Setup"
+        subtitle="Runs every health check required by the master prompt. Green = healthy, amber = degraded, red = blocker."
+        actions={
+          <Button onClick={run} variant="outline" size="sm" disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Re-run
+          </Button>
+        }
+      />
 
       <div className="flex gap-2">
         <Badge variant="outline" className="border-emerald-500/40 text-emerald-400">{okCount} ok</Badge>

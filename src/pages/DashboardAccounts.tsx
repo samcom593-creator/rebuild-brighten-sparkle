@@ -26,6 +26,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import {
@@ -370,33 +371,24 @@ export default function DashboardAccounts() {
 
   return (
     <>
-      {/* Header */}
-      <div
-        className="mb-8"
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <Users className="h-6 w-6 text-primary" />
-          <h1 className="text-3xl font-bold">Accounts</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <p className="text-muted-foreground">
-            Manage all manager and agent accounts.
-          </p>
+      <PageHeader
+        accent="blue"
+        eyebrow="Admin · Accounts"
+        eyebrowIcon={<Users className="h-3 w-3" />}
+        title="Accounts"
+        subtitle="Manage every manager and agent account — roles, contact info, presenter flags, and license state."
+        actions={
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              playSound("whoosh");
-              fetchAccounts();
-            }}
+            onClick={() => { playSound("whoosh"); fetchAccounts(); }}
             disabled={isLoading}
-            className="ml-auto"
           >
             <RefreshCw className={cn("h-4 w-4 mr-1", isLoading && "animate-spin")} />
             Refresh
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Animated Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

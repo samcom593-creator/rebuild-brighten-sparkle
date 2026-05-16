@@ -17,6 +17,7 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -487,29 +488,31 @@ export default function AdminCalendar() {
 
   return (
     <>
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className={cn("flex items-center justify-between mb-6", isMobile && "flex-col items-start gap-3")}>
-          <div>
-            <h1 className="text-2xl font-bold">Day Planner</h1>
-            <p className="text-muted-foreground text-sm">Block your day for maximum productivity</p>
-          </div>
-          <div className={cn("flex items-center gap-2", isMobile && "w-full flex-wrap")}>
-            <Button variant="outline" size="sm" onClick={() => setShowRecurring(true)}>
-              <Repeat className="h-4 w-4 mr-1" /> Recurring
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => { setShowScan(true); }} disabled={scanning}>
-              {scanning ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Camera className="h-4 w-4 mr-1" />}
-              {scanning ? "Scanning…" : "AI Scan"}
-            </Button>
-            <Button variant="outline" size="sm" onClick={exportICS} disabled={blocks.length === 0}>
-              <Download className="h-4 w-4 mr-1" /> Export
-            </Button>
-            <Button size="sm" onClick={() => openAddDialog()}>
-              <Plus className="h-4 w-4 mr-1" /> Add Block
-            </Button>
-          </div>
-        </div>
+      <div className="max-w-4xl mx-auto p-4 md:p-6">
+        <PageHeader
+          accent="cyan"
+          eyebrow="Admin · Planning"
+          eyebrowIcon={<Calendar className="h-3 w-3" />}
+          title="Day Planner"
+          subtitle="Block your day for maximum productivity. Drag to reorder, AI-scan a paper calendar, export to ICS."
+          actions={
+            <div className={cn("flex items-center gap-2 flex-wrap")}>
+              <Button variant="outline" size="sm" onClick={() => setShowRecurring(true)}>
+                <Repeat className="h-4 w-4 mr-1" /> Recurring
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => { setShowScan(true); }} disabled={scanning}>
+                {scanning ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Camera className="h-4 w-4 mr-1" />}
+                {scanning ? "Scanning…" : "AI Scan"}
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportICS} disabled={blocks.length === 0}>
+                <Download className="h-4 w-4 mr-1" /> Export
+              </Button>
+              <Button size="sm" onClick={() => openAddDialog()}>
+                <Plus className="h-4 w-4 mr-1" /> Add Block
+              </Button>
+            </div>
+          }
+        />
 
         {/* Date Navigator */}
         <div className="flex items-center justify-center gap-4 mb-6">

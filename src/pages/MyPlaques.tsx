@@ -14,6 +14,7 @@ import { Award, Loader2, Crown, Medal, Trophy, Copy } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { Plaque } from "@/components/plaque/Plaque";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -115,23 +116,21 @@ export default function MyPlaques() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-500/30 to-yellow-500/20 flex items-center justify-center">
-          <Award className="h-6 w-6 text-amber-300" />
-        </div>
-        <div className="flex-1">
-          <h1 className="apex-headline text-3xl font-bold">My Plaques</h1>
-          <p className="text-sm text-muted-foreground">
-            Every auto-issued leaderboard reward + every manually generated plaque — one grid. Share any card.
-          </p>
-        </div>
-        {(isAdmin || isManager) && (
-          <div className="flex gap-1 bg-muted/20 rounded-lg p-1">
-            <Button size="sm" variant={scope === "mine" ? "default" : "ghost"} onClick={() => setScope("mine")}>Mine</Button>
-            <Button size="sm" variant={scope === "all"  ? "default" : "ghost"} onClick={() => setScope("all")}>All agents</Button>
-          </div>
-        )}
-      </div>
+      <PageHeader
+        accent="amber"
+        eyebrow="Production · Recognition"
+        eyebrowIcon={<Award className="h-3 w-3" />}
+        title="My Plaques"
+        subtitle="Every auto-issued leaderboard reward plus every manually generated plaque, in one grid. Share any card."
+        actions={
+          (isAdmin || isManager) && (
+            <div className="flex gap-1 bg-muted/20 rounded-lg p-1">
+              <Button size="sm" variant={scope === "mine" ? "default" : "ghost"} onClick={() => setScope("mine")}>Mine</Button>
+              <Button size="sm" variant={scope === "all"  ? "default" : "ghost"} onClick={() => setScope("all")}>All agents</Button>
+            </div>
+          )
+        }
+      />
 
       {loading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">

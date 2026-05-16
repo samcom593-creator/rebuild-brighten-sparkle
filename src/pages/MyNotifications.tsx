@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
@@ -62,18 +63,17 @@ export default function MyNotifications() {
 
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 text-primary">
-            <Bell className="h-5 w-5" />
-            <span className="text-xs uppercase tracking-wider">Notifications</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold">
-            {data?.length ?? 0} total
-            {unreadCount > 0 && <span className="text-base font-normal text-muted-foreground"> · {unreadCount} unread</span>}
-          </h1>
-        </div>
-      </div>
+      <PageHeader
+        accent="primary"
+        eyebrow="Notifications"
+        eyebrowIcon={<Bell className="h-3 w-3" />}
+        title="My Notifications"
+        subtitle={
+          unreadCount > 0
+            ? `${data?.length ?? 0} total · ${unreadCount} unread`
+            : `${data?.length ?? 0} total · all caught up`
+        }
+      />
 
       {(!data || data.length === 0) && (
         <Card>

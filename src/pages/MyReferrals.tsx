@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { format } from "date-fns";
@@ -66,18 +67,18 @@ export default function MyReferrals() {
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5">
-      <div className="flex items-end justify-between gap-3 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 text-primary">
-            <Users className="h-5 w-5" />
-            <span className="text-xs uppercase tracking-wider">My referrals</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold">{data?.length ?? 0} sent</h1>
-        </div>
-        <Link to="/dashboard/referrals/new">
-          <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Submit referral</Button>
-        </Link>
-      </div>
+      <PageHeader
+        accent="blue"
+        eyebrow="Referrals"
+        eyebrowIcon={<Users className="h-3 w-3" />}
+        title="My Referrals"
+        subtitle={`${data?.length ?? 0} referral${(data?.length ?? 0) === 1 ? "" : "s"} sent across your career.`}
+        actions={
+          <Link to="/dashboard/referrals/new">
+            <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Submit referral</Button>
+          </Link>
+        }
+      />
 
       {(["open", "closed_won", "closed_dead"] as const).map((bucket) => {
         const rows = (data ?? []).filter((r) => r.lifecycle === bucket);

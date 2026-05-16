@@ -44,6 +44,7 @@ import {
   MessageSquare,
   Sunrise,
   GraduationCap,
+  Database,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -278,6 +279,7 @@ export function GlobalSidebar({
       adminItems.push({ icon: DollarSign, label: "Comp Tiers", href: "/dashboard/comp-tiers" });
       adminItems.push({ icon: Plug, label: "Integrations", href: "/dashboard/integrations" });
       adminItems.push({ icon: Zap, label: "AgentLink Sync", href: "/dashboard/agentlink-sync", special: true });
+      adminItems.push({ icon: Database, label: "AgentLink Vault", href: "/dashboard/agentlink-vault", special: true });
       adminItems.push({ icon: Shield, label: "Setup", href: "/dashboard/setup" });
     }
     adminItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });

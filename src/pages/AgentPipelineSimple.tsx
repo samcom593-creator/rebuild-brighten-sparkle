@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GlassCard } from "@/components/ui/glass-card";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -214,24 +215,25 @@ export default function AgentPipelineSimple() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-muted-foreground font-medium tracking-wider uppercase">APEX Financial</p>
-          <h1 className="text-2xl font-bold text-foreground">Agent Pipeline</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          {switchRequests.length > 0 && (isAdmin || isManager) && (
-            <Button variant="outline" size="sm" onClick={() => setShowRequests(!showRequests)} className="gap-2">
-              <ArrowRightLeft className="h-4 w-4" />
-              {switchRequests.length} Switch Request{switchRequests.length > 1 ? "s" : ""}
+      <PageHeader
+        accent="rose"
+        eyebrow="Pipeline · Simple"
+        title="Agent Pipeline (Simple)"
+        subtitle="Lightweight pipeline view — use /dashboard/agent-pipeline for the full client servicing experience."
+        actions={
+          <>
+            {switchRequests.length > 0 && (isAdmin || isManager) && (
+              <Button variant="outline" size="sm" onClick={() => setShowRequests(!showRequests)} className="gap-2">
+                <ArrowRightLeft className="h-4 w-4" />
+                {switchRequests.length} Switch Request{switchRequests.length > 1 ? "s" : ""}
+              </Button>
+            )}
+            <Button variant="outline" size="icon" onClick={fetchAll}>
+              <RefreshCw className="h-4 w-4" />
             </Button>
-          )}
-          <Button variant="outline" size="icon" onClick={fetchAll}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Switch Requests Panel */}
       <AnimatePresence>

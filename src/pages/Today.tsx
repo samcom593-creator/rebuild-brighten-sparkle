@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { DataFreshnessBanner } from "@/components/dashboard/DataFreshnessBanner";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   countDistinctAgents,
   countDistinctBusinessDays,
@@ -209,15 +210,13 @@ export default function Today() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 p-4 md:p-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/30 to-violet-500/20">
-          <Sparkles className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="apex-headline text-3xl font-bold md:text-4xl">Today</h1>
-          <p className="text-sm text-muted-foreground">{format(new Date(), "EEEE · MMMM d, yyyy")}</p>
-        </div>
-      </div>
+      <PageHeader
+        accent="primary"
+        eyebrow="Daily Pulse"
+        eyebrowIcon={<Sparkles className="h-3 w-3" />}
+        title="Today"
+        subtitle={format(new Date(), "EEEE · MMMM d, yyyy")}
+      />
 
       <DataFreshnessBanner autoRepair />
 

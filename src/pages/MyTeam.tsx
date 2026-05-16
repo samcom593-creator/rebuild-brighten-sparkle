@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { PageHeader } from "@/components/ui/page-header";
 import { Users, DollarSign, TrendingUp, Target } from "lucide-react";
 import { getBusinessMonthBounds } from "@/lib/dateUtils";
 
@@ -85,10 +86,13 @@ export default function MyTeam() {
 
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter">
-      <div>
-        <h1 className="text-2xl font-bold">My Team</h1>
-        <p className="text-sm text-muted-foreground">Your hierarchy only</p>
-      </div>
+      <PageHeader
+        accent="blue"
+        eyebrow="Manager · Team"
+        eyebrowIcon={<Users className="h-3 w-3" />}
+        title="My Team"
+        subtitle="Your hierarchy at a glance — team size, monthly ALP, who's active, who needs help."
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard title="Team Size" value={teamStats.teamSize} icon={Users} />

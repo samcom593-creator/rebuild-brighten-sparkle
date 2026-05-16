@@ -138,10 +138,11 @@ jobs:
           }
           # SQL watchdog
           fire "public.agentlink_watchdog()" "agentlink-watchdog" no 30 || true
-          # agentlink_live_pull uses a browser session cookie that expires —
-          # tolerate timeout so the rest of the run still goes. Visibility
-          # is preserved via the FAILED[] array.
-          fire "public.agentlink_live_pull()" "agentlink-live-pull" no 25 || true
+          # AgentLink cookie pull — fetch through Edge Runtime, not pg_net.
+          # The Postgres pg_net path can hang on AgentLink's large /api/deals
+          # response; the edge function logs to agentlink_sync_log and routes
+          # policy-by-policy via upstream userId -> agents.insuracloud_user_id.
+          call_edge "agentlink-cookie-sync" '{}' no || true
           # InsuraCloud sync — primary upstream pull. Bearer-token auth, no
           # cookie rotation required. CRITICAL — a failure means dashboards
           # show stale numbers, so we fail the workflow if this 500s.

@@ -73,7 +73,7 @@ export default function AgentLinkSync() {
         { key: "agent_link_live_agent_id", value: agent.id }, { onConflict: "key" });
       if (e1 || e2) { toast.error((e1 ?? e2)!.message); return; }
 
-      toast.success("Cookie saved — live pull will use this every 30 min");
+      toast.success("Cookie saved — live pull will use this on the next sync");
       setCookieSet(true);
       setCookie("");
       loadStatus();
@@ -83,13 +83,12 @@ export default function AgentLinkSync() {
   const runNow = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("agentlink_live_pull" as any);
+      const { data, error } = await supabase.functions.invoke("agentlink-cookie-sync", { body: {} });
       if (error) { toast.error(error.message); return; }
-      const row = data as unknown as SyncLog;
-      if (row?.status === "ok") toast.success(`Pulled ${row.policies_seen} policies · inserted ${row.deals_inserted} · updated ${row.deals_updated}`);
-      else if (row?.status === "empty") toast.info("Empty book from Agent Link (nothing to import)");
-      else if (row?.status === "no_cookie") toast.error("No cookie saved — paste one above and click Save");
-      else toast.error(row?.error_message ?? "Sync failed");
+      const row = data as any;
+      if (row?.ok) toast.success(`Pulled ${row.policies_seen} policies · inserted ${row.deals_inserted} · updated ${row.deals_updated}`);
+      else if (row?.policies_seen === 0) toast.info("Empty book from Agent Link (nothing to import)");
+      else toast.error(row?.error ?? "Sync failed");
       loadStatus();
     } finally { setLoading(false); }
   };
@@ -109,7 +108,7 @@ export default function AgentLinkSync() {
         <div>
           <h1 className="apex-headline text-3xl font-bold">Agent Link Live Sync</h1>
           <p className="text-sm text-muted-foreground">
-            Paste your Agent Link cookie once. Postgres pulls your book every 30 min via pg_net.
+            Paste your Agent Link cookie once. The Edge sync pulls and routes your book automatically.
           </p>
         </div>
         <div className="ml-auto">
@@ -179,7 +178,7 @@ export default function AgentLinkSync() {
         </div>
         <div className="text-[10px] text-muted-foreground">
           Cookie is stored in your project's <span className="font-mono">system_settings</span> (service-role only).
-          Live pull runs every 30 min via pg_cron + pg_net — no edge function needed, no external deploy.
+          Live pull runs through the secure Edge sync and writes one audit row per run.
         </div>
       </GlassCard>
 

@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { differenceInDays, format } from "date-fns";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/ui/page-header";
 
 /**
  * Hiring Pipeline — drag-drop kanban + row actions on every card.
@@ -337,14 +338,14 @@ export default function HiringPipeline() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-[1600px] mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Hiring Pipeline</h1>
-          <p className="text-sm text-muted-foreground">
-            Drag candidates between stages · click any card to call/text/email
-          </p>
-        </div>
+      <PageHeader
+        accent="cyan"
+        eyebrow="Recruiting · Hiring"
+        eyebrowIcon={<Target className="h-3 w-3" />}
+        title="Hiring Pipeline"
+        subtitle="Drag candidates between stages · click any card to call, text, or email"
+      />
+      <div className="flex items-center justify-end flex-wrap gap-3">
         <div className="flex gap-2">
           <div className="flex items-center bg-muted rounded-md p-0.5 text-xs">
             <button

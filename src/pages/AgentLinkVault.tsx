@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { PageHeader } from "@/components/ui/page-header";
 
 type AnyRow = Record<string, unknown>;
 
@@ -462,18 +463,13 @@ export default function AgentLinkVault() {
   if (authLoading) return <PageLoadingSkeleton />;
   return (
     <div className="p-4 sm:p-6 space-y-4">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 text-primary">
-            <Database className="h-5 w-5" />
-            <span className="text-xs uppercase tracking-wider">Admin · Data Recovery</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold">AgentLink Vault</h1>
-          <p className="text-sm text-muted-foreground">
-            Full agency book mirrored from AgentLink/InsuraCloud. If upstream goes silent, every record lives here.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        accent="purple"
+        eyebrow="Admin · Data Recovery"
+        eyebrowIcon={<Database className="h-3 w-3" />}
+        title="AgentLink Vault"
+        subtitle="Full agency book mirrored from AgentLink / InsuraCloud. If upstream goes silent, every record still lives here. Admin only."
+      />
 
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid grid-cols-3 md:grid-cols-6 gap-1 mb-3">

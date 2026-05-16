@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DollarSign, Plus, CheckCircle2, AlertTriangle, Clock, ExternalLink, Zap } from "lucide-react";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { AGENTLINK_LINKS, AGENTLINK_TAGLINE } from "@/lib/agentlink";
+import { PageHeader } from "@/components/ui/page-header";
 
 function SyncStatus({ deal }: { deal: any }) {
   if (deal.synced_to_insuracloud_at) {
@@ -80,25 +81,25 @@ export default function MyDeals() {
 
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter max-w-5xl">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500/20 to-primary/10 border border-emerald-500/30">
-            <DollarSign className="h-6 w-6 text-emerald-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">My Deals</h1>
-            <p className="text-sm text-muted-foreground">
-              Source: <span className="font-medium text-foreground">AgentLink</span> · syncs in under a minute
-              {latestSync && <> · last sync {formatDistanceToNowStrict(new Date(latestSync), { addSuffix: true })}</>}
-            </p>
-          </div>
-        </div>
-        <Button asChild>
-          <a href={AGENTLINK_LINKS.newDeal} target="_blank" rel="noopener noreferrer">
-            <Zap className="h-4 w-4 mr-2" /> Submit in AgentLink <ExternalLink className="h-3 w-3 ml-1.5 opacity-70" />
-          </a>
-        </Button>
-      </div>
+      <PageHeader
+        accent="emerald"
+        eyebrow="Production · My Deals"
+        eyebrowIcon={<DollarSign className="h-3 w-3" />}
+        title="My Deals"
+        subtitle={
+          <>
+            Source: <span className="font-medium text-foreground">AgentLink</span>, syncs in under a minute
+            {latestSync && <> · last sync {formatDistanceToNowStrict(new Date(latestSync), { addSuffix: true })}</>}
+          </>
+        }
+        actions={
+          <Button asChild>
+            <a href={AGENTLINK_LINKS.newDeal} target="_blank" rel="noopener noreferrer">
+              <Zap className="h-4 w-4 mr-2" /> Submit in AgentLink <ExternalLink className="h-3 w-3 ml-1.5 opacity-70" />
+            </a>
+          </Button>
+        }
+      />
 
       {/* Canonical-source banner — explains where deals actually live and
           why ApexLink is a viewer/operating-system over AgentLink. */}

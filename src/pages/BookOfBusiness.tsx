@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/ui/page-header";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -241,28 +242,31 @@ export default function BookOfBusiness() {
 
   return (
     <div className="space-y-4 p-4 md:p-6 max-w-[1400px] mx-auto">
-      {/* Header */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Book className="h-6 w-6 text-primary" />
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Book of Business</h1>
-          <p className="text-xs text-muted-foreground">
-            {isAdmin ? "Admin view: all visible policy records." : isManager ? "Manager view: your downline policy records." : "Agent view: your policy records."}
-            {" · Source: AgentLink, auto-synced every minute."}
-          </p>
-        </div>
-        <div className="ml-auto flex gap-2">
-          <Button variant="outline" size="sm" onClick={load}>
-            <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} />
-            Refresh
-          </Button>
-          <Button variant="default" size="sm" asChild>
-            <a href="https://agentlink.insuracloud.ai/book-of-business" target="_blank" rel="noopener noreferrer">
-              Open AgentLink
-            </a>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        accent="emerald"
+        eyebrow="Production · Book of Business"
+        eyebrowIcon={<Book className="h-3 w-3" />}
+        title="Book of Business"
+        subtitle={
+          (isAdmin ? "Admin view: every policy record across the agency." :
+            isManager ? "Manager view: your downline's policy records." :
+            "Agent view: your policy records.") +
+          " · Synced from AgentLink every minute. Click any row for the full client profile."
+        }
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={load}>
+              <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} />
+              Refresh
+            </Button>
+            <Button variant="default" size="sm" asChild>
+              <a href="https://agentlink.insuracloud.ai/book-of-business" target="_blank" rel="noopener noreferrer">
+                Open AgentLink
+              </a>
+            </Button>
+          </>
+        }
+      />
 
       {/* Totals strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

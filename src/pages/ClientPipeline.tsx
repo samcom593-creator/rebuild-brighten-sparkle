@@ -40,6 +40,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { PageHeader } from "@/components/ui/page-header";
 
 type AnyRow = Record<string, unknown>;
 
@@ -305,18 +306,14 @@ export default function ClientPipeline() {
 
   return (
     <div className="p-4 sm:p-6 space-y-5">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 text-primary">
-            <Flame className="h-5 w-5" />
-            <span className="text-xs uppercase tracking-wider">Pipeline · Clients & policies</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Agent Pipeline</h1>
-          <p className="text-sm text-muted-foreground">
-            Every client you sold, are selling, or need to follow up with. Synced from AgentLink every minute.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        accent="rose"
+        eyebrow="Pipeline · Clients & policies"
+        eyebrowIcon={<Flame className="h-3 w-3" />}
+        title="Agent Pipeline"
+        subtitle="Every client you sold, are selling, or need to follow up with. Synced from AgentLink every minute."
+        actions={<Badge variant="outline" className="text-xs">{data?.length ?? 0} in scope</Badge>}
+      />
 
       <StatRow rows={data ?? []} />
 

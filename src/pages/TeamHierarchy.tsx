@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -263,19 +264,14 @@ export default function TeamHierarchy() {
 
   return (
     <div className="p-4 md:p-6 space-y-5 page-enter">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-emerald-500/10 border border-primary/30">
-            <Users className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Team Hierarchy</h1>
-            <p className="text-sm text-muted-foreground">
-              {isAdmin ? "Full agency structure" : "Your downline"}
-            </p>
-          </div>
-        </div>
-
+      <PageHeader
+        accent="primary"
+        eyebrow="Admin · Structure"
+        eyebrowIcon={<Users className="h-3 w-3" />}
+        title="Team Hierarchy"
+        subtitle={isAdmin ? "Full agency structure — every manager, every downline, every direct." : "Your downline — recruits and the agents they brought in."}
+      />
+      <div className="flex items-center justify-end flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
             <Button

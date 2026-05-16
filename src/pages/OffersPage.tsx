@@ -1,4 +1,6 @@
+import { ShoppingCart } from "lucide-react";
 import { OffersTiles } from "@/components/dashboard/OffersTiles";
+import { PageHeader } from "@/components/ui/page-header";
 
 /** Admin-facing Offers page — moved off the main Dashboard so the dashboard
  *  itself is intel-dense rather than commerce-dense. Linked from the
@@ -6,12 +8,13 @@ import { OffersTiles } from "@/components/dashboard/OffersTiles";
 export default function OffersPage() {
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Offers</h1>
-        <p className="text-sm text-muted-foreground">
-          All 7 live SKUs · click any tile to open a Stripe Checkout in a new tab.
-        </p>
-      </div>
+      <PageHeader
+        accent="emerald"
+        eyebrow="Admin · Storefront"
+        eyebrowIcon={<ShoppingCart className="h-3 w-3" />}
+        title="Offers"
+        subtitle="All 7 live SKUs · click any tile to open a Stripe Checkout in a new tab."
+      />
       <OffersTiles />
     </div>
   );

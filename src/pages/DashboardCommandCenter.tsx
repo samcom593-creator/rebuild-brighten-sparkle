@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -582,41 +583,38 @@ export default function DashboardCommandCenter() {
 
   return (
     <>
-      <div className="space-y-6 page-enter">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <Crown className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Command Center</h1>
-              <p className="text-muted-foreground text-sm">Full agency control. Zero spreadsheets.</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <HiddenCardsManager catalog={HIDEABLE_CARDS} />
-            <LeadImporter />
-            <LeadExporter />
-            <AddAgentModal onAgentAdded={() => refetch()} />
-            <Button 
-              variant="default" 
-              onClick={() => setShowInviteModal(true)}
-              className="gap-2"
-            >
-              <UserPlus className="h-4 w-4" />
-              Invite Team
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowDuplicateTool(true)}
-              className="gap-2"
-            >
-              <Users className="h-4 w-4" />
-              Find Duplicates
-            </Button>
-          </div>
-        </div>
+      <div className="space-y-6 page-enter p-4 md:p-6">
+        <PageHeader
+          accent="primary"
+          eyebrow="Admin · Command"
+          eyebrowIcon={<Crown className="h-3 w-3" />}
+          title="Command Center"
+          subtitle="Full agency control. Every metric live, every agent within reach, zero spreadsheets."
+          actions={
+            <>
+              <HiddenCardsManager catalog={HIDEABLE_CARDS} />
+              <LeadImporter />
+              <LeadExporter />
+              <AddAgentModal onAgentAdded={() => refetch()} />
+              <Button
+                variant="default"
+                onClick={() => setShowInviteModal(true)}
+                className="gap-2"
+              >
+                <UserPlus className="h-4 w-4" />
+                Invite Team
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowDuplicateTool(true)}
+                className="gap-2"
+              >
+                <Users className="h-4 w-4" />
+                Find Duplicates
+              </Button>
+            </>
+          }
+        />
 
         <ControlTerminal />
 

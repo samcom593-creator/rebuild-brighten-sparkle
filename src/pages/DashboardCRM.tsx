@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
@@ -1306,34 +1307,38 @@ export default function DashboardCRM() {
     <>
       <div className="space-y-4 page-enter relative">
         <BackgroundGlow accent="teal" intensity="subtle" />
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
-          <div>
-            <h1 className="text-2xl font-bold gradient-text">Agent CRM</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {filteredAgents.length} agents · {staleCount > 0 && <span className="text-red-500 font-medium">{staleCount} need follow-up</span>}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {(isAdmin || isManager) && (
-              <Button variant={bulkMode ? "secondary" : "outline"} size="sm" className="gap-1.5" onClick={() => { setBulkMode(!bulkMode); setSelectedAgents(new Set()); }}>
-                <CheckSquare className="h-3.5 w-3.5" /> {bulkMode ? "Exit Bulk" : "Bulk Actions"}
+        <PageHeader
+          accent="cyan"
+          eyebrow="CRM · Agents"
+          title="Agent CRM"
+          subtitle={
+            staleCount > 0
+              ? `${filteredAgents.length} agents · ${staleCount} need follow-up`
+              : `${filteredAgents.length} agents · all up to date`
+          }
+          actions={
+            <>
+              {(isAdmin || isManager) && (
+                <Button variant={bulkMode ? "secondary" : "outline"} size="sm" className="gap-1.5" onClick={() => { setBulkMode(!bulkMode); setSelectedAgents(new Set()); }}>
+                  <CheckSquare className="h-3.5 w-3.5" /> {bulkMode ? "Exit Bulk" : "Bulk Actions"}
+                </Button>
+              )}
+              {isAdmin && (
+                <Button onClick={handleBulkSendPortalLogins} variant="outline" size="sm" className="gap-1.5" disabled={sendingBulkLogins}>
+                  <Mail className="h-3.5 w-3.5" /> {sendingBulkLogins ? "Sending..." : "Email All Logins"}
+                </Button>
+              )}
+              <AddAgentModal onAgentAdded={fetchAgents} />
+              <Button variant="outline" size="sm" className="gap-1.5"
+                onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into WhatsApp 📋"); }}>
+                <Link2 className="h-3.5 w-3.5" /> Check-In Link
               </Button>
-            )}
-            {isAdmin && (
-              <Button onClick={handleBulkSendPortalLogins} variant="outline" size="sm" className="gap-1.5" disabled={sendingBulkLogins}>
-                <Mail className="h-3.5 w-3.5" /> {sendingBulkLogins ? "Sending..." : "Email All Logins"}
+              <Button onClick={fetchAgents} variant="outline" size="sm" className="gap-1.5">
+                <RefreshCw className="h-3.5 w-3.5" /> Refresh
               </Button>
-            )}
-            <AddAgentModal onAgentAdded={fetchAgents} />
-            <Button variant="outline" size="sm" className="gap-1.5"
-              onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into WhatsApp 📋"); }}>
-              <Link2 className="h-3.5 w-3.5" /> Check-In Link
-            </Button>
-            <Button onClick={fetchAgents} variant="outline" size="sm" className="gap-1.5">
-              <RefreshCw className="h-3.5 w-3.5" /> Refresh
-            </Button>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         {bulkMode && (
           <div className="space-y-2">

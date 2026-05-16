@@ -3,6 +3,7 @@ import { Crown, Trophy, Users, Target, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -126,14 +127,13 @@ export default function HallOfFame() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center gap-3 mb-6">
-        <Crown className="h-7 w-7 text-amber-400" />
-        <h1 className="text-3xl font-bold tracking-tight">Hall of Fame</h1>
-      </div>
-      <p className="text-muted-foreground mb-6 max-w-2xl">
-        Every plaque earned at APEX, displayed for the world. Personal closers, team builders, and
-        the recruiters who built producing teams — all three are part of the empire.
-      </p>
+      <PageHeader
+        accent="amber"
+        eyebrow="Production · Hall of Fame"
+        eyebrowIcon={<Crown className="h-3 w-3" />}
+        title="Hall of Fame"
+        subtitle="Every plaque earned at APEX, displayed for the world. Personal closers, team builders, and the recruiters who built producing teams — all part of the empire."
+      />
 
       <Tabs defaultValue="personal" className="w-full">
         <TabsList className="grid w-full max-w-2xl grid-cols-3 mb-8">

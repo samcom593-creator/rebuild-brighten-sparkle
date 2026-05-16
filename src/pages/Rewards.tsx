@@ -3,6 +3,7 @@ import { Award, Crown, Medal, Sparkles, Loader2, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -76,17 +77,13 @@ export default function Rewards() {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-violet-500/30 to-fuchsia-500/20 flex items-center justify-center">
-          <Sparkles className="h-6 w-6 text-violet-300" />
-        </div>
-        <div>
-          <h1 className="apex-headline text-3xl font-bold">Awards & Rewards</h1>
-          <p className="text-sm text-muted-foreground">
-            Auto-issued to top producers every night at 3:05 UTC from live Agent Link data.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        accent="purple"
+        eyebrow="Production · Rewards"
+        eyebrowIcon={<Sparkles className="h-3 w-3" />}
+        title="Awards & Rewards"
+        subtitle="Auto-issued to top producers every night at 3:05 UTC from live AgentLink data."
+      />
 
       {loading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">

@@ -1,613 +1,732 @@
-// AgentCommandDashboard — the new agent landing experience.
+// AgentCommandDashboard v4 — real data depth, no animation theater.
 //
-// Replaces the legacy AgentPortal that piled 12+ hideable cards together
-// and felt unchanged. This page reads from the central truth layer
-// (dealTruthWindowOr, getLiveAgentCutoffIso, DEAL_TRUTH_STATUS_FILTER) and
-// presents an "agency operating system" view per Sam's launch spec:
-//   - Today / Week / Month / Live production
-//   - Personal + team ranking
-//   - Recruiting funnel for the agent (applicants → seminar → licensed → contracted → first sale)
-//   - Referral activity
-//   - Activity + missing-number warnings
-//   - Personal pipeline links
-//   - Next-action checklist
-//   - Training links
+// Single high-density agent operating-system view. Pulls from:
+//   - v_agent_command_center (40 cols of derived stats per agent)
+//   - daily_production (30-day trend)
+//   - agent_lifetime_production (lifetime ALP + deal count)
+//   - agent_revenue_estimate (commission projection from contract %)
+//   - agent_goals (current month income goal)
+//   - deals (recent 8 closed)
 //
-// All numbers come from posted_at-canonical data. No mock numbers. Empty
-// states explain WHY they're empty (no deals yet, sync stale, missing data)
-// so the page never silently renders zero.
+// No mock numbers, no fallback placeholders, no fluff. If a row is
+// missing the page shows the empty state with the reason and a CTA.
 
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowRight,
-  ArrowUpRight,
-  Award,
-  BarChart3,
-  Calendar,
-  CheckCircle2,
-  Circle,
-  Crown,
-  DollarSign,
-  Flame,
-  GraduationCap,
-  HelpCircle,
-  Phone,
-  TrendingDown,
-  TrendingUp,
-  Trophy,
-  UserPlus,
-  Users,
+  Activity, ArrowRight, BarChart3, Briefcase, Calendar, ChevronRight,
+  CircleDollarSign, Crown, DollarSign, Flame, ShieldCheck, Sparkles,
+  Target, TrendingDown, TrendingUp, Trophy, Users, Wallet,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
+import {
+  ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
+  CartesianGrid,
+} from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
-import { AgentReferralLinkCard } from "@/components/agent/AgentReferralLinkCard";
-import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
-import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
-import { getCloseRate, getLiveAgentCutoffIso, sumAnnualPremium } from "@/lib/metricTruth";
 
-function fmt$(n: number): string {
+// ─── Formatters ─────────────────────────────────────────────────────────────
+function fmtUsd(n: number, compact = false): string {
   if (!Number.isFinite(n)) return "$0";
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
-  return `$${Math.round(n).toLocaleString()}`;
-}
-
-interface AgentSnapshot {
-  agentId: string;
-  agentRow: {
-    display_name: string | null;
-    agent_code: string | null;
-    onboarding_stage: string | null;
-    license_status: string | null;
-    is_presenting: boolean | null;
-    manager_id: string | null;
-  } | null;
-  deals: {
-    today: { count: number; alp: number };
-    week: { count: number; alp: number };
-    month: { count: number; alp: number };
-    last10d: { count: number; alp: number };
-    last30d: { count: number; alp: number };
-    previous30d: { count: number; alp: number };
-  };
-  activity: {
-    presentationsToday: number;
-    presentationsWeek: number;
-    hoursCalledWeek: number;
-    lastProductionDate: string | null;
-  };
-  rank: {
-    agency: number | null;
-    team: number | null;
-    totalAgents: number;
-    liveAgents: number;
-  };
-  applicants: {
-    assigned: number;
-    needingContact: number;
-    seminarRegistered: number;
-    seminarAttended: number;
-    licensed: number;
-    contracted: number;
-    activated: number;
-  };
-  referrals: {
-    submitted: number;
-    open: number;
-    won: number;
-  };
-  trend: {
-    apTrendPct: number | null;
-  };
-  syncStale: boolean;
-}
-
-async function loadSnapshot(userId: string, agentId: string, isAdmin: boolean): Promise<AgentSnapshot> {
-  const day = getBusinessDayBounds();
-  const week = getBusinessWeekBounds();
-  const month = getBusinessMonthBounds();
-  const tenAgo = getLiveAgentCutoffIso();
-  const thirtyAgoIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const sixtyAgoIso = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
-
-  // Split the 16 queries into smaller Promise.all batches to dodge TS2589
-  // "type instantiation excessively deep" on Supabase builder type unions.
-  const q: any = supabase; // narrow to any once, makes the tuple type tractable
-  // Scope deal queries to a single agent for normal users; for admin, drop
-  // the agent filter so the deal counters show the whole agency. Per-agent
-  // cards (applications, referrals, agent profile row) stay agent-scoped
-  // either way — they describe Sam's own pipeline, not the agency's.
-  const scopeAgent = (b: any) => (isAdmin ? b : b.eq("agent_id", agentId));
-  const dealsBatch = await Promise.all([
-    q.from("agents").select("display_name, agent_code, onboarding_stage, license_status, is_presenting, manager_id, profile_id").eq("id", agentId).maybeSingle(),
-    scopeAgent(q.from("deals").select("annual_premium, posted_at, created_at")).or(dealTruthWindowOr(day.startIso, day.endIso)).in("status", DEAL_TRUTH_STATUS_FILTER),
-    scopeAgent(q.from("deals").select("annual_premium, posted_at, created_at")).or(dealTruthWindowOr(week.startIso, week.endIso)).in("status", DEAL_TRUTH_STATUS_FILTER),
-    scopeAgent(q.from("deals").select("annual_premium, posted_at, created_at")).or(dealTruthWindowOr(month.startIso, month.endIso)).in("status", DEAL_TRUTH_STATUS_FILTER),
-    scopeAgent(q.from("deals").select("annual_premium, posted_at, created_at")).or(liveDealWindowOr(tenAgo)).in("status", DEAL_TRUTH_STATUS_FILTER),
-    scopeAgent(q.from("deals").select("annual_premium")).gte("posted_at", thirtyAgoIso).in("status", DEAL_TRUTH_STATUS_FILTER),
-    scopeAgent(q.from("deals").select("annual_premium")).gte("posted_at", sixtyAgoIso).lt("posted_at", thirtyAgoIso).in("status", DEAL_TRUTH_STATUS_FILTER),
-  ]);
-  const [agentRow, todayDeals, weekDeals, monthDeals, last10dDeals, last30dDeals, prev30dDeals] = dealsBatch;
-
-  const rankBatch = await Promise.all([
-    q.from("daily_production").select("presentations, hours_called, production_date").eq("agent_id", agentId).gte("production_date", week.startIso.slice(0, 10)).lt("production_date", week.endIso.slice(0, 10)),
-    q.from("deals").select("agent_id").or(liveDealWindowOr(tenAgo)).in("status", DEAL_TRUTH_STATUS_FILTER),
-    q.from("deals").select("agent_id, annual_premium").or(dealTruthWindowOr(month.startIso, month.endIso)).in("status", DEAL_TRUTH_STATUS_FILTER),
-    q.from("agents").select("id").eq("manager_id", agentId).eq("is_deactivated", false),
-    q.from("deals").select("agent_id, annual_premium").or(dealTruthWindowOr(month.startIso, month.endIso)).in("status", DEAL_TRUTH_STATUS_FILTER),
-  ]);
-  const [weekProduction, last10dAllAgents, monthAllAgents, teammates, teamMonthDeals] = rankBatch;
-
-  const pipelineBatch = await Promise.all([
-    q.from("applications").select("id, status, license_progress, license_status, contracted_at, first_deal_at, last_contacted_at").or(`assigned_agent_id.eq.${agentId},referral_manager_id.eq.${agentId},recruiter_id.eq.${agentId}`),
-    q.from("seminar_registrations").select("id, attended, application_id"),
-    q.from("referrals").select("status").eq("referrer_agent_id", agentId),
-    // Read freshness from the canonical sync_health_summary() RPC rather
-    // than agentlink_sync_log directly. v_sync_health coalesces transports
-    // (cookie + API) and exposes `is_partial` + `action_required` so the
-    // banner shows the truth, not just one transport's status.
-    q.rpc("sync_health_summary"),
-  ]);
-  const [applicants, seminarRegs, refs, syncRow] = pipelineBatch;
-
-  // Stats
-  const todayRows = (todayDeals.data ?? []) as Array<{ annual_premium?: number | null }>;
-  const weekRows = (weekDeals.data ?? []) as Array<{ annual_premium?: number | null }>;
-  const monthRows = (monthDeals.data ?? []) as Array<{ annual_premium?: number | null }>;
-  const last10dRows = (last10dDeals.data ?? []) as Array<{ annual_premium?: number | null }>;
-  const last30dRows = (last30dDeals.data ?? []) as Array<{ annual_premium?: number | null }>;
-  const prev30dRows = (prev30dDeals.data ?? []) as Array<{ annual_premium?: number | null }>;
-  const weekProd = (weekProduction.data ?? []) as Array<{ presentations?: number | null; hours_called?: number | null; production_date?: string | null }>;
-  const presentationsToday = weekProd
-    .filter((r) => r.production_date === day.startIso.slice(0, 10))
-    .reduce((s, r) => s + Number(r.presentations ?? 0), 0);
-  const presentationsWeek = weekProd.reduce((s, r) => s + Number(r.presentations ?? 0), 0);
-  const hoursCalledWeek = weekProd.reduce((s, r) => s + Number(r.hours_called ?? 0), 0);
-  const lastProductionDate = weekProd.length > 0
-    ? weekProd.reduce<string | null>((latest, r) => {
-        if (!r.production_date) return latest;
-        return !latest || r.production_date > latest ? r.production_date : latest;
-      }, null)
-    : null;
-
-  // Ranks
-  const liveSet = new Set<string>();
-  for (const r of (last10dAllAgents.data ?? []) as Array<{ agent_id?: string | null }>) {
-    if (r.agent_id) liveSet.add(r.agent_id);
+  if (compact) {
+    if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+    if (Math.abs(n) >= 10_000) return `$${(n / 1_000).toFixed(1)}k`;
   }
-  const monthByAgent = new Map<string, number>();
-  for (const r of (monthAllAgents.data ?? []) as Array<{ agent_id?: string | null; annual_premium?: number | null }>) {
-    if (!r.agent_id) continue;
-    monthByAgent.set(r.agent_id, (monthByAgent.get(r.agent_id) || 0) + Number(r.annual_premium ?? 0));
-  }
-  const sortedAgency = Array.from(monthByAgent.entries()).sort((a, b) => b[1] - a[1]);
-  const agencyRank = (() => {
-    const idx = sortedAgency.findIndex(([id]) => id === agentId);
-    return idx >= 0 ? idx + 1 : null;
-  })();
-
-  const teamIds = new Set<string>([agentId, ...((teammates.data ?? []) as Array<{ id: string }>).map((r) => r.id)]);
-  const teamByAgent = new Map<string, number>();
-  for (const r of (teamMonthDeals.data ?? []) as Array<{ agent_id?: string | null; annual_premium?: number | null }>) {
-    if (!r.agent_id || !teamIds.has(r.agent_id)) continue;
-    teamByAgent.set(r.agent_id, (teamByAgent.get(r.agent_id) || 0) + Number(r.annual_premium ?? 0));
-  }
-  const sortedTeam = Array.from(teamByAgent.entries()).sort((a, b) => b[1] - a[1]);
-  const teamRank = (() => {
-    const idx = sortedTeam.findIndex(([id]) => id === agentId);
-    return idx >= 0 && teamIds.size > 1 ? idx + 1 : null;
-  })();
-
-  // Recruiting funnel for this agent's applicants
-  const apps = (applicants.data ?? []) as Array<{
-    id: string;
-    status?: string | null;
-    license_progress?: string | null;
-    license_status?: string | null;
-    contracted_at?: string | null;
-    first_deal_at?: string | null;
-    last_contacted_at?: string | null;
-  }>;
-  const appIds = new Set(apps.map((a) => a.id));
-  const semRegs = (seminarRegs.data ?? []) as Array<{ application_id?: string | null; attended?: boolean | null }>;
-  const myRegs = semRegs.filter((s) => s.application_id && appIds.has(s.application_id));
-  const recruiting = {
-    assigned: apps.length,
-    needingContact: apps.filter((a) => !a.last_contacted_at).length,
-    seminarRegistered: myRegs.length,
-    seminarAttended: myRegs.filter((s) => s.attended === true).length,
-    licensed: apps.filter((a) => a.license_status === "licensed" || a.license_progress === "licensed").length,
-    contracted: apps.filter((a) => !!a.contracted_at).length,
-    activated: apps.filter((a) => !!a.first_deal_at).length,
-  };
-
-  const refRows = (refs.data ?? []) as Array<{ status?: string | null }>;
-  const referrals = {
-    submitted: refRows.length,
-    open: refRows.filter((r) => !["contracted", "producing", "rejected", "lost", "duplicate"].includes(r.status ?? "")).length,
-    won: refRows.filter((r) => r.status === "contracted" || r.status === "producing").length,
-  };
-
-  const ap30 = sumAnnualPremium(last30dRows);
-  const apPrev30 = sumAnnualPremium(prev30dRows);
-  const apTrendPct = apPrev30 > 0 ? ((ap30 - apPrev30) / apPrev30) * 100 : ap30 > 0 ? 100 : null;
-
-  const syncTs = (syncRow.data as { started_at?: string | null; finished_at?: string | null } | null)?.finished_at
-    || (syncRow.data as { started_at?: string | null } | null)?.started_at
-    || null;
-  const syncStale = !syncTs || Date.now() - new Date(syncTs).getTime() > 24 * 60 * 60 * 1000;
-
-  return {
-    agentId,
-    agentRow: (agentRow.data as AgentSnapshot["agentRow"]) ?? null,
-    deals: {
-      today: { count: todayRows.length, alp: sumAnnualPremium(todayRows) },
-      week: { count: weekRows.length, alp: sumAnnualPremium(weekRows) },
-      month: { count: monthRows.length, alp: sumAnnualPremium(monthRows) },
-      last10d: { count: last10dRows.length, alp: sumAnnualPremium(last10dRows) },
-      last30d: { count: last30dRows.length, alp: ap30 },
-      previous30d: { count: prev30dRows.length, alp: apPrev30 },
-    },
-    activity: { presentationsToday, presentationsWeek, hoursCalledWeek, lastProductionDate },
-    rank: { agency: agencyRank, team: teamRank, totalAgents: sortedAgency.length, liveAgents: liveSet.size },
-    applicants: recruiting,
-    referrals,
-    trend: { apTrendPct },
-    syncStale,
-  };
+  return new Intl.NumberFormat("en-US", {
+    style: "currency", currency: "USD", maximumFractionDigits: 0,
+  }).format(n);
+}
+function fmtNum(n: number): string {
+  return new Intl.NumberFormat("en-US").format(Math.round(n || 0));
+}
+function fmtPct(n: number | null | undefined, digits = 0): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return `${n.toFixed(digits)}%`;
 }
 
-function NextActionChecklist({ s }: { s: AgentSnapshot }) {
-  const items: Array<{ done: boolean; label: string; href?: string }> = [
-    {
-      done: s.activity.presentationsToday > 0,
-      label: "Log today's calls / pages dialed",
-      href: "/apex-daily-numbers",
-    },
-    {
-      done: s.applicants.needingContact === 0,
-      label: s.applicants.needingContact > 0 ? `Contact ${s.applicants.needingContact} applicants` : "Applicants all contacted",
-      href: "/dashboard/applicants",
-    },
-    {
-      done: s.deals.today.count > 0,
-      label: s.deals.today.count > 0 ? "Deal logged today" : "Submit today's first deal",
-      href: "/dashboard/my-deals",
-    },
-    {
-      done: s.referrals.submitted > 0,
-      label: s.referrals.submitted > 0 ? "Referral submitted" : "Submit a referral this week",
-      href: "/dashboard/referrals/new",
-    },
-  ];
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-primary" /> Next actions
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2 p-4 pt-0">
-        {items.map((it) => (
-          <Link
-            key={it.label}
-            to={it.href ?? "#"}
-            className="flex items-center gap-2 rounded-md border bg-card/50 px-3 py-2 text-sm hover:bg-accent/40 transition"
-          >
-            {it.done ? (
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            ) : (
-              <Circle className="h-4 w-4 text-muted-foreground" />
-            )}
-            <span className={it.done ? "text-muted-foreground line-through" : "font-medium"}>{it.label}</span>
-            {it.href && <ArrowRight className="ml-auto h-3 w-3 text-muted-foreground" />}
-          </Link>
-        ))}
-      </CardContent>
-    </Card>
-  );
+// ─── Types ──────────────────────────────────────────────────────────────────
+interface CC {
+  agent_id: string; user_id: string;
+  agent_code: string | null; display_name: string | null; full_name: string | null;
+  email: string; agent_status: string | null; onboarding_stage: string | null;
+  license_status: string | null; manager_id: string | null; manager_name: string | null;
+  is_presenting: boolean | null;
+  deals_today: number; deals_wtd: number; deals_mtd: number; deals_30d: number;
+  ap_wtd: number | string; ap_mtd: number | string; ap_30d: number | string;
+  commission_lifetime_cents: number;
+  chargebacks: number; lapses: number;
+  presentations_today: number; presentations_wtd: number; presentations_mtd: number;
+  hours_called_today: number | string; hours_called_wtd: number | string; hours_called_mtd: number | string;
+  last_production_date: string | null;
+  apps_assigned: number; apps_open: number; apps_new_7d: number; apps_needing_contact: number;
+  close_rate_mtd_pct: number | null;
+  ap_trend_pct: number | null;
+  rank_agency_mtd: number | null; rank_agency_wtd: number | null; rank_team_mtd: number | null;
+  activity_state: string | null; next_action: string | null;
 }
 
-function Stat({
-  label,
-  value,
-  hint,
-  icon: Icon,
-  trend,
-  href,
-}: {
-  label: string;
-  value: string | number;
-  hint?: string;
-  icon?: typeof TrendingUp;
-  trend?: number | null;
-  href?: string;
-}) {
-  const card = (
-    <Card className="hover:bg-accent/20 transition cursor-pointer">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-              {Icon && <Icon className="h-3 w-3" />}
-              {label}
-            </div>
-            <div className="text-2xl font-bold tabular-nums mt-1">{value}</div>
-            {hint && <div className="text-[11px] text-muted-foreground mt-1">{hint}</div>}
-          </div>
-          {trend !== undefined && trend !== null && (
-            <div className={`flex items-center gap-1 text-xs font-semibold ${trend >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
-              {trend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              {Math.abs(trend).toFixed(0)}%
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-  return href ? <Link to={href}>{card}</Link> : card;
+interface Daily {
+  production_date: string;
+  presentations: number;
+  deals_closed: number;
+  aop: number | string;
+  hours_called: number | string;
 }
 
+interface Lifetime {
+  agent_id: string;
+  lifetime_alp: number | string;
+  lifetime_deals: number;
+  last_production_date: string | null;
+}
+
+interface Revenue {
+  agent_id: string;
+  contract_pct: number | string;
+  override_rate: number | string;
+  personal_monthly_alp: number | string;
+  downline_monthly_alp: number | string;
+  personal_monthly_estimate: number | string;
+  override_monthly_estimate: number | string;
+  insuracloud_mtd: number | string;
+  insuracloud_direct: number | string;
+  insuracloud_override: number | string;
+  insuracloud_last_sync: string | null;
+}
+
+interface Goal {
+  id: string; agent_id: string;
+  month_year: string;
+  income_goal: number | string;
+  comp_percentage: number | string;
+}
+
+interface Deal {
+  id: string; client_first_name: string | null; client_last_name: string | null;
+  product_sold: string | null; annual_premium: number | string;
+  posted_at: string | null; status: string | null; pipeline_stage: string | null;
+}
+
+// ─── Main ───────────────────────────────────────────────────────────────────
 export default function AgentCommandDashboard() {
-  usePageTitle("Command Dashboard · APEX Agent");
-  const { user, isAdmin, isLoading: authLoading } = useAuth();
+  usePageTitle("Command Center · APEX");
+  const { user } = useAuth();
 
-  const myAgentId = useQuery({
-    queryKey: ["am-i-agent", user?.id],
+  // ── Resolve current agent id ────────────────────────────────────────────
+  const { data: meAgent } = useQuery({
+    queryKey: ["me-agent-row", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("agents")
         .select("id")
         .eq("user_id", user!.id)
         .maybeSingle();
-      return data?.id as string | undefined;
+      if (error) throw error;
+      return data as { id: string } | null;
     },
   });
 
-  const snap = useQuery<AgentSnapshot>({
-    queryKey: ["agent-command-snapshot", myAgentId.data, isAdmin],
-    enabled: !!user?.id && !!myAgentId.data,
+  const agentId = meAgent?.id ?? null;
+
+  // ── Command center row ──────────────────────────────────────────────────
+  const cc = useQuery({
+    queryKey: ["cc-self", agentId],
+    enabled: !!agentId,
     refetchInterval: 60_000,
-    queryFn: () => loadSnapshot(user!.id, myAgentId.data!, isAdmin),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_agent_command_center" as any)
+        .select("*")
+        .eq("agent_id", agentId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as CC | null;
+    },
   });
 
-  const closeRate = useMemo(() => {
-    if (!snap.data) return null;
-    return getCloseRate(snap.data.deals.week.count, snap.data.activity.presentationsWeek);
-  }, [snap.data]);
+  const daily = useQuery({
+    queryKey: ["daily-self", agentId],
+    enabled: !!agentId,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const { data, error } = await supabase
+        .from("daily_production")
+        .select("production_date, presentations, deals_closed, aop, hours_called")
+        .eq("agent_id", agentId!)
+        .gte("production_date", since)
+        .order("production_date", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as Daily[];
+    },
+  });
 
-  if (authLoading || myAgentId.isLoading || snap.isLoading) return <PageLoadingSkeleton />;
+  const lifetime = useQuery({
+    queryKey: ["lifetime-self", agentId],
+    enabled: !!agentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agent_lifetime_production" as any)
+        .select("*")
+        .eq("agent_id", agentId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as Lifetime | null;
+    },
+  });
 
-  if (!user) {
+  const revenue = useQuery({
+    queryKey: ["revenue-self", agentId],
+    enabled: !!agentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agent_revenue_estimate" as any)
+        .select("*")
+        .eq("agent_id", agentId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as Revenue | null;
+    },
+  });
+
+  const monthYear = format(new Date(), "yyyy-MM");
+  const goal = useQuery({
+    queryKey: ["goal-self", agentId, monthYear],
+    enabled: !!agentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agent_goals")
+        .select("*")
+        .eq("agent_id", agentId!)
+        .eq("month_year", monthYear)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as Goal | null;
+    },
+  });
+
+  const deals = useQuery({
+    queryKey: ["deals-self", agentId],
+    enabled: !!agentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deals")
+        .select("id, client_first_name, client_last_name, product_sold, annual_premium, posted_at, status, pipeline_stage")
+        .eq("agent_id", agentId!)
+        .order("posted_at", { ascending: false, nullsFirst: false })
+        .limit(8);
+      if (error) throw error;
+      return (data ?? []) as unknown as Deal[];
+    },
+  });
+
+  // ── Derived ─────────────────────────────────────────────────────────────
+  const stats = cc.data;
+  const apMtd = Number(stats?.ap_mtd ?? 0);
+  const apWtd = Number(stats?.ap_wtd ?? 0);
+  const ap30 = Number(stats?.ap_30d ?? 0);
+  const commissionLifetimeUsd = (stats?.commission_lifetime_cents ?? 0) / 100;
+  const closeRate = stats?.close_rate_mtd_pct ?? null;
+  const trend = stats?.ap_trend_pct ?? null;
+  const hoursMtd = Number(stats?.hours_called_mtd ?? 0);
+  const hoursWtd = Number(stats?.hours_called_wtd ?? 0);
+
+  // 30-day daily sparkline data (fill missing days as zero)
+  const sparkline = useMemo(() => {
+    const map = new Map<string, Daily>();
+    for (const d of daily.data ?? []) map.set(d.production_date, d);
+    const out: { day: string; ap: number; deals: number; hours: number }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(Date.now() - i * 86400000);
+      const key = date.toISOString().slice(0, 10);
+      const row = map.get(key);
+      out.push({
+        day: key,
+        ap: Number(row?.aop ?? 0),
+        deals: Number(row?.deals_closed ?? 0),
+        hours: Number(row?.hours_called ?? 0),
+      });
+    }
+    return out;
+  }, [daily.data]);
+
+  // Goal pacing — projection to month end
+  const today = new Date();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const dayOfMonth = today.getDate();
+  const monthProgressPct = (dayOfMonth / daysInMonth) * 100;
+  const incomeGoal = Number(goal.data?.income_goal ?? 0);
+  const compPct = Number(goal.data?.comp_percentage ?? revenue.data?.contract_pct ?? 100) / 100;
+  const monthApProjected = dayOfMonth > 0 ? (apMtd / dayOfMonth) * daysInMonth : 0;
+  const monthCommissionProjected = monthApProjected * compPct;
+  const goalProgressPct = incomeGoal > 0
+    ? Math.min(100, (monthCommissionProjected / incomeGoal) * 100)
+    : 0;
+
+  // ── Render ──────────────────────────────────────────────────────────────
+  if (!user) return null;
+
+  if (!meAgent && !cc.isLoading) {
     return (
-      <div className="p-6 max-w-xl mx-auto">
-        <Card><CardContent className="p-8 text-center text-sm">Sign in to see your dashboard.</CardContent></Card>
+      <div className="page-enter px-4 sm:px-6 pb-24">
+        <PageHeader
+          eyebrow="Command Center" eyebrowIcon={<Crown className="h-3 w-3" />}
+          title="Agent profile not linked yet"
+          subtitle="We couldn't find an agent record for your account. Ask Sam to wire your auth user to an agents row, then refresh."
+          accent="amber"
+        />
+        <EmptyState
+          icon={<Users className="h-7 w-7" />}
+          title="No agent record"
+          description="Your user ID isn't linked to an agents.user_id. Contact ops to fix."
+          actions={
+            <Button asChild variant="outline">
+              <a href="mailto:sam.com593@gmail.com?subject=Agent%20profile%20not%20linked">Email Sam</a>
+            </Button>
+          }
+        />
       </div>
     );
   }
 
-  if (!myAgentId.data) {
-    return (
-      <div className="p-6 max-w-xl mx-auto">
-        <Card><CardContent className="p-8 text-center space-y-3">
-          <h2 className="text-lg font-bold">No agent profile linked yet</h2>
-          <p className="text-sm text-muted-foreground">
-            Your login doesn't have an agent record attached. Ask Sam or your manager to connect your account, then refresh.
-          </p>
-        </CardContent></Card>
-      </div>
-    );
-  }
-
-  const s = snap.data!;
-  const agent = s.agentRow;
-  // Greet by first name only — "Hey Sam James" reads stiff vs "Hey Sam".
-  const fullName = agent?.display_name || user.email?.split("@")[0] || "Agent";
-  const displayName = fullName.trim().split(/\s+/)[0] || fullName;
-  const stage = agent?.onboarding_stage ?? "—";
-  const license = agent?.license_status ?? "—";
-  const presenting = agent?.is_presenting === true;
+  const displayName = stats?.display_name ?? stats?.full_name ?? user.email ?? "Agent";
+  const isStrong = (stats?.rank_agency_mtd ?? 999) <= 10;
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      {/* Header */}
-      <section className="rounded-xl border border-primary/30 bg-[linear-gradient(135deg,hsl(222_47%_5%),hsl(222_40%_8%)_55%,hsl(168_70%_13%))] p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Crown className="h-4 w-4 text-primary" />
-              <span className="text-[10px] uppercase tracking-wider text-primary/80">Agent · Command Dashboard</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">Hey {displayName}</h1>
-            <p className="text-sm text-slate-300 mt-1">
-              {agent?.agent_code ? <Badge variant="outline" className="mr-2 text-[10px]">{agent.agent_code}</Badge> : null}
-              <Badge variant="outline" className="mr-2 text-[10px]">{license}</Badge>
-              <Badge variant="outline" className="mr-2 text-[10px]">{stage}</Badge>
-              {presenting && <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px]">Seminar presenter</Badge>}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild size="sm" variant="secondary">
-              <Link to="/apex-daily-numbers"><Phone className="h-4 w-4 mr-1" /> Log numbers</Link>
-            </Button>
-            {/* Deals canonical-surface: AgentLink. ApexLink reads via
-                insuracloud-sync every 1 min (pg_cron + GH cron). */}
-            <Button asChild size="sm" variant="secondary">
-              <a
-                href="https://agentlink.insuracloud.ai/deals/new"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <DollarSign className="h-4 w-4 mr-1" /> Submit deal in AgentLink
-              </a>
+    <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+      {/* ── HERO ─────────────────────────────────────────────── */}
+      <PageHeader
+        eyebrow={`${stats?.agent_code ?? "—"} · ${stats?.license_status ?? "unlicensed"}`}
+        eyebrowIcon={<ShieldCheck className="h-3 w-3" />}
+        title={`Welcome back, ${displayName.split(" ")[0]}`}
+        subtitle={
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>
+              {stats?.manager_name ? <>Reporting to <span className="text-foreground font-medium">{stats.manager_name}</span> · </> : null}
+              <span className="text-foreground font-medium">{stats?.onboarding_stage?.replaceAll("_", " ") ?? "—"}</span>
+            </span>
+            {stats?.activity_state && stats.activity_state !== "active" && (
+              <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40">
+                {stats.activity_state.replaceAll("_", " ")}
+              </Badge>
+            )}
+            {isStrong && (
+              <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">
+                <Trophy className="h-3 w-3 mr-1" /> Top 10 agency
+              </Badge>
+            )}
+          </span>
+        }
+        accent={isStrong ? "emerald" : "primary"}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/numbers"><Activity className="h-4 w-4 mr-1.5" /> Log numbers</Link>
             </Button>
             <Button asChild size="sm">
-              <Link to="/dashboard/referrals/new"><UserPlus className="h-4 w-4 mr-1" /> Refer someone</Link>
+              <Link to="/dashboard/crm">Open CRM <ArrowRight className="h-4 w-4 ml-1.5" /></Link>
             </Button>
           </div>
-        </div>
-        {s.syncStale && (
-          <div className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
-            AgentLink sync looks stale (last successful sync &gt; 24h). Numbers may be behind reality —
-            check <Link to="/dashboard/agentlink-sync" className="underline">AgentLink Sync</Link>.
+        }
+      />
+
+      {/* ── 4 KPI TILES ───────────────────────────────────────── */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiTile
+          icon={DollarSign}
+          label="MTD Annual Premium"
+          value={fmtUsd(apMtd)}
+          subValue={`${fmtUsd(apWtd, true)} this week`}
+          trendPct={trend}
+          color="text-emerald-500 dark:text-emerald-400"
+          loading={cc.isLoading}
+        />
+        <KpiTile
+          icon={Trophy}
+          label="MTD Deals"
+          value={fmtNum(stats?.deals_mtd ?? 0)}
+          subValue={`${fmtNum(stats?.deals_wtd ?? 0)} this week`}
+          color="text-amber-500 dark:text-amber-400"
+          loading={cc.isLoading}
+        />
+        <KpiTile
+          icon={CircleDollarSign}
+          label="Commission projected"
+          value={fmtUsd(monthCommissionProjected, true)}
+          subValue={incomeGoal > 0 ? `${fmtPct(goalProgressPct)} of $${fmtNum(incomeGoal)} goal` : "Set a monthly goal →"}
+          color="text-primary"
+          loading={cc.isLoading || revenue.isLoading}
+        />
+        <KpiTile
+          icon={Crown}
+          label="Agency rank · MTD"
+          value={stats?.rank_agency_mtd ? `#${stats.rank_agency_mtd}` : "—"}
+          subValue={`Team: ${stats?.rank_team_mtd ? `#${stats.rank_team_mtd}` : "—"} · Close: ${fmtPct(closeRate, 0)}`}
+          color="text-violet-500 dark:text-violet-400"
+          loading={cc.isLoading}
+        />
+      </div>
+
+      {/* ── PRODUCTION TREND + PIPELINE ───────────────────────── */}
+      <div className="grid gap-3 lg:grid-cols-3">
+        {/* 30-day AP area */}
+        <GlassCard className="p-4 lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">30-day production</p>
+              <h3 className="text-lg font-bold">Annual premium by day</h3>
+            </div>
+            <Badge variant="outline" className="text-xs">{fmtUsd(ap30, true)} · last 30d</Badge>
           </div>
-        )}
-      </section>
+          {daily.isLoading ? (
+            <Skeleton className="h-[220px] w-full" />
+          ) : sparkline.every((d) => d.ap === 0) ? (
+            <EmptyState
+              icon={<BarChart3 className="h-6 w-6" />}
+              title="No production logged in the last 30 days"
+              description="Log your daily numbers — calls, presentations, and deals — and they'll show up here."
+              actions={<Button asChild size="sm"><Link to="/numbers">Log today's numbers</Link></Button>}
+            />
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={sparkline}>
+                <defs>
+                  <linearGradient id="apGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%"  stopColor="hsl(168 70% 45%)" stopOpacity={0.6} />
+                    <stop offset="100%" stopColor="hsl(168 70% 45%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.4)" />
+                <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={10} stroke="hsl(var(--muted-foreground))" />
+                <YAxis fontSize={10} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                <Tooltip
+                  contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                  labelFormatter={(d) => format(new Date(d), "PPP")}
+                  formatter={(v: number) => fmtUsd(v)}
+                />
+                <Area type="monotone" dataKey="ap" stroke="hsl(168 70% 45%)" fill="url(#apGrad)" name="AP" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </GlassCard>
 
-      {/* Production */}
-      <section className="space-y-2">
-        <h2 className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Production</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Stat label="Today ALP" value={fmt$(s.deals.today.alp)} hint={`${s.deals.today.count} deals`} icon={DollarSign} />
-          <Stat label="Week ALP" value={fmt$(s.deals.week.alp)} hint={`${s.deals.week.count} deals · close ${closeRate?.toFixed(0) ?? "—"}%`} icon={TrendingUp} />
-          <Stat label="Month ALP" value={fmt$(s.deals.month.alp)} hint={`${s.deals.month.count} deals`} icon={BarChart3} />
-          <Stat label="30d trend" value={fmt$(s.deals.last30d.alp)} hint={`vs prior 30d ${fmt$(s.deals.previous30d.alp)}`} icon={Flame} trend={s.trend.apTrendPct} />
-        </div>
-      </section>
-
-      {/* Ranking */}
-      <section className="space-y-2">
-        <h2 className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Ranking</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Stat label="Agency rank (MTD)" value={s.rank.agency ? `#${s.rank.agency}` : "—"} hint={s.rank.agency ? `of ${s.rank.totalAgents} producing agents` : "No producing rank yet"} icon={Trophy} href="/dashboard/leaderboard" />
-          <Stat label="Team rank (MTD)" value={s.rank.team ? `#${s.rank.team}` : "—"} hint={s.rank.team ? "vs your team" : "No team configured"} icon={Award} />
-          <Stat label="Live agents" value={s.rank.liveAgents} hint="10d submitted/active deal" icon={Users} />
-          <Stat label="My last sale" value={s.activity.lastProductionDate ? format(new Date(s.activity.lastProductionDate), "MMM d") : "—"} hint={s.activity.lastProductionDate ? "Days since last sale shown above" : "No sale logged this week"} icon={Calendar} />
-        </div>
-      </section>
-
-      {/* Activity & Recruiting funnel */}
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-2">
-          <h2 className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Activity (this week)</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <Stat label="Presentations" value={s.activity.presentationsWeek} hint={`${s.activity.presentationsToday} today`} icon={Phone} />
-            <Stat label="Hours called" value={s.activity.hoursCalledWeek.toFixed(1)} hint="this week" icon={Phone} />
+        {/* Pipeline funnel */}
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Your pipeline</p>
+              <h3 className="text-lg font-bold">Applicants</h3>
+            </div>
+            <Briefcase className="h-5 w-5 text-muted-foreground" />
           </div>
-          {s.activity.presentationsToday === 0 && (
-            <p className="text-xs text-amber-500 mt-1">
-              ⚠ No numbers logged today.{" "}
-              <Link to="/apex-daily-numbers" className="underline">Log now</Link>.
-            </p>
+          <FunnelStrip
+            steps={[
+              { label: "Assigned", value: stats?.apps_assigned ?? 0, color: "bg-primary" },
+              { label: "Open", value: stats?.apps_open ?? 0, color: "bg-emerald-500" },
+              { label: "Need contact", value: stats?.apps_needing_contact ?? 0, color: "bg-rose-500" },
+              { label: "New (7d)", value: stats?.apps_new_7d ?? 0, color: "bg-amber-500" },
+            ]}
+          />
+          <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              {stats?.apps_needing_contact ? `${stats.apps_needing_contact} need contact now` : "Pipeline clean"}
+            </span>
+            <Button asChild size="sm" variant="ghost">
+              <Link to="/dashboard/applicants">Open <ChevronRight className="h-3 w-3 ml-0.5" /></Link>
+            </Button>
+          </div>
+        </GlassCard>
+      </div>
+
+      {/* ── ACTIVITY + GOAL PACE + STANDING (3-up) ─────────────── */}
+      <div className="grid gap-3 lg:grid-cols-3">
+        {/* Activity */}
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Activity</p>
+            <Activity className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="space-y-3">
+            <StatRow label="Hours dialed · MTD" value={`${hoursMtd.toFixed(1)}h`} />
+            <StatRow label="Hours dialed · WTD" value={`${hoursWtd.toFixed(1)}h`} />
+            <StatRow label="Presentations · MTD" value={fmtNum(stats?.presentations_mtd ?? 0)} />
+            <StatRow label="Presentations · WTD" value={fmtNum(stats?.presentations_wtd ?? 0)} />
+            <StatRow label="Last production day" value={
+              stats?.last_production_date
+                ? formatDistanceToNow(new Date(stats.last_production_date), { addSuffix: true })
+                : "—"
+            } muted={!stats?.last_production_date} />
+          </div>
+          {stats?.next_action && (
+            <div className="mt-4 pt-3 border-t border-border/40">
+              <p className="text-xs text-muted-foreground mb-1">Next best action</p>
+              <p className="text-sm font-semibold flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" /> {stats.next_action}
+              </p>
+            </div>
+          )}
+        </GlassCard>
+
+        {/* Goal Pace */}
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Income goal · {format(today, "MMMM")}</p>
+            <Target className="h-5 w-5 text-muted-foreground" />
+          </div>
+          {incomeGoal > 0 ? (
+            <>
+              <div className="flex items-baseline justify-between mb-2">
+                <span className="text-3xl font-bold tabular-nums">{fmtUsd(monthCommissionProjected, true)}</span>
+                <span className="text-sm text-muted-foreground">of {fmtUsd(incomeGoal, true)}</span>
+              </div>
+              <Progress value={goalProgressPct} className="h-2.5" />
+              <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                <div className="rounded-md border border-border/40 p-2">
+                  <p className="text-muted-foreground">Month progress</p>
+                  <p className="font-bold text-base">{Math.round(monthProgressPct)}%</p>
+                </div>
+                <div className="rounded-md border border-border/40 p-2">
+                  <p className="text-muted-foreground">Pace status</p>
+                  <p className={`font-bold text-base ${goalProgressPct >= monthProgressPct ? "text-emerald-500 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"}`}>
+                    {goalProgressPct >= monthProgressPct ? "Ahead" : "Behind"}
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <EmptyState
+              icon={<Target className="h-6 w-6" />}
+              title="No monthly goal set"
+              description="Add an income target so your pace and projection show here."
+              actions={<Button asChild size="sm" variant="outline"><Link to="/dashboard/settings">Set goal</Link></Button>}
+              variant="default"
+            />
+          )}
+        </GlassCard>
+
+        {/* Standing */}
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Team standing</p>
+            <Trophy className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <RankCell label="Agency MTD" rank={stats?.rank_agency_mtd ?? null} />
+            <RankCell label="Agency WTD" rank={stats?.rank_agency_wtd ?? null} />
+            <RankCell label="Team MTD" rank={stats?.rank_team_mtd ?? null} />
+          </div>
+          <div className="mt-4 pt-3 border-t border-border/40 space-y-2">
+            <StatRow label="Lifetime AP" value={fmtUsd(Number(lifetime.data?.lifetime_alp ?? 0))} />
+            <StatRow label="Lifetime deals" value={fmtNum(lifetime.data?.lifetime_deals ?? 0)} />
+            <StatRow label="Commission · lifetime" value={fmtUsd(commissionLifetimeUsd, true)} />
+            <StatRow label="Chargebacks · lapses" value={`${stats?.chargebacks ?? 0} · ${stats?.lapses ?? 0}`} muted />
+          </div>
+          <Button asChild variant="ghost" size="sm" className="w-full mt-3">
+            <Link to="/dashboard/leaderboard">View leaderboard <ArrowRight className="h-3 w-3 ml-1" /></Link>
+          </Button>
+        </GlassCard>
+      </div>
+
+      {/* ── RECENT DEALS + DAILY DEAL BAR ──────────────────────── */}
+      <div className="grid gap-3 lg:grid-cols-3">
+        {/* Recent deals */}
+        <GlassCard className="p-4 lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Recent deals</p>
+              <h3 className="text-lg font-bold">Last 8 closed</h3>
+            </div>
+            <Button asChild size="sm" variant="ghost">
+              <Link to="/dashboard/my-deals">All deals <ArrowRight className="h-3 w-3 ml-1" /></Link>
+            </Button>
+          </div>
+          {deals.isLoading ? (
+            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+          ) : (deals.data ?? []).length === 0 ? (
+            <EmptyState
+              icon={<Trophy className="h-6 w-6" />}
+              title="No deals yet"
+              description="First deal coming up? Log it the moment the policy submits — it shows here within seconds."
+              actions={<Button asChild size="sm"><Link to="/dashboard/agent-pipeline">Open pipeline</Link></Button>}
+            />
+          ) : (
+            <ul className="divide-y divide-border/40">
+              {(deals.data ?? []).map((d) => (
+                <li key={d.id} className="py-2.5 flex items-center justify-between gap-3 hover:bg-primary/[0.04] rounded px-2 -mx-2 transition-colors">
+                  <div className="min-w-0">
+                    <p className="font-semibold truncate">
+                      {[d.client_first_name, d.client_last_name].filter(Boolean).join(" ") || "Unknown client"}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {d.product_sold ?? "—"} · {d.pipeline_stage ?? d.status ?? "—"}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-bold tabular-nums text-emerald-500 dark:text-emerald-400">
+                      {fmtUsd(Number(d.annual_premium ?? 0), true)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {d.posted_at ? formatDistanceToNow(new Date(d.posted_at), { addSuffix: true }) : "—"}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </GlassCard>
+
+        {/* Daily deals bar */}
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Daily deals · 30d</p>
+              <h3 className="text-lg font-bold">{fmtNum(stats?.deals_30d ?? 0)} total</h3>
+            </div>
+            <Flame className="h-5 w-5 text-rose-500 dark:text-rose-400" />
+          </div>
+          {daily.isLoading ? (
+            <Skeleton className="h-[180px] w-full" />
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={sparkline}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.4)" />
+                <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "M/d")} fontSize={9} stroke="hsl(var(--muted-foreground))" />
+                <YAxis allowDecimals={false} fontSize={10} stroke="hsl(var(--muted-foreground))" />
+                <Tooltip
+                  contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                  labelFormatter={(d) => format(new Date(d), "PPP")}
+                />
+                <Bar dataKey="deals" fill="hsl(168 70% 45%)" name="Deals" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </GlassCard>
+      </div>
+
+      {/* ── QUICK ACTIONS ──────────────────────────────────────── */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <QuickAction icon={Activity}  to="/numbers"                 label="Log production" desc="Calls, presentations, deals" />
+        <QuickAction icon={Briefcase} to="/dashboard/agent-pipeline" label="Client pipeline" desc="Active book of business" />
+        <QuickAction icon={Users}     to="/dashboard/recruit-pipeline" label="Recruit pipeline" desc="Applicants in progress" />
+        <QuickAction icon={Calendar}  to="/dashboard/calendar"      label="Calendar" desc="Today + upcoming" />
+        <QuickAction icon={Wallet}    to="/dashboard/my-commissions" label="Commissions" desc="Earnings + projections" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Sub-components ─────────────────────────────────────────────────────────
+
+interface KpiTileProps {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  subValue: string;
+  trendPct?: number | null;
+  color: string;
+  loading: boolean;
+}
+function KpiTile({ icon: Icon, label, value, subValue, trendPct, color, loading }: KpiTileProps) {
+  return (
+    <GlassCard className="p-4">
+      <div className="flex items-start justify-between">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
+          {loading ? <Skeleton className="h-9 w-32 mt-1" /> : (
+            <p className={`text-3xl font-bold tabular-nums mt-1 ${color}`}>{value}</p>
+          )}
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">{subValue}</p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <Icon className={`h-7 w-7 ${color} opacity-70`} />
+          {trendPct != null && Number.isFinite(trendPct) && (
+            <Badge variant="outline" className={`text-[10px] gap-0.5 ${
+              trendPct >= 0
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40"
+                : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/40"
+            }`}>
+              {trendPct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+              {Math.abs(trendPct).toFixed(0)}%
+            </Badge>
           )}
         </div>
+      </div>
+    </GlassCard>
+  );
+}
 
-        <div className="space-y-2">
-          <h2 className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">My recruits</h2>
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <RecruitRow label="Assigned applicants" n={s.applicants.assigned} />
-              <RecruitRow label="Needing contact" n={s.applicants.needingContact} tone={s.applicants.needingContact > 0 ? "warn" : "ok"} />
-              <RecruitRow label="Seminar registered" n={s.applicants.seminarRegistered} />
-              <RecruitRow label="Attended seminar" n={s.applicants.seminarAttended} />
-              <RecruitRow label="Licensed" n={s.applicants.licensed} />
-              <RecruitRow label="Contracted" n={s.applicants.contracted} />
-              <RecruitRow label="Activated (first sale)" n={s.applicants.activated} tone="win" />
-            </CardContent>
-          </Card>
+interface FunnelStep { label: string; value: number; color: string; }
+function FunnelStrip({ steps }: { steps: FunnelStep[] }) {
+  const max = Math.max(1, ...steps.map((s) => s.value));
+  return (
+    <div className="space-y-2">
+      {steps.map((s) => (
+        <div key={s.label} className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">{s.label}</span>
+            <span className="font-semibold tabular-nums">{fmtNum(s.value)}</span>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className={`h-full ${s.color} rounded-full transition-all duration-500`}
+              style={{ width: `${(s.value / max) * 100}%` }}
+            />
+          </div>
         </div>
-      </section>
+      ))}
+    </div>
+  );
+}
 
-      {/* Referrals + next actions */}
-      <section className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <UserPlus className="h-4 w-4 text-primary" /> Referrals
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0 space-y-3">
-            <div className="grid grid-cols-3 gap-3">
-              <Stat label="Submitted" value={s.referrals.submitted} />
-              <Stat label="Open" value={s.referrals.open} />
-              <Stat label="Won" value={s.referrals.won} icon={Trophy} />
-            </div>
-            <div className="flex gap-2">
-              <Button asChild size="sm" className="flex-1">
-                <Link to="/dashboard/referrals/new">Submit a referral</Link>
-              </Button>
-              <Button asChild size="sm" variant="outline" className="flex-1">
-                <Link to="/dashboard/referrals/mine">My referrals <ArrowUpRight className="h-3 w-3 ml-1" /></Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <NextActionChecklist s={s} />
-      </section>
-
-      {/* Personal referral link — every agent gets a sharable apex-financial.org/apply?ref=… URL */}
-      <section>
-        <AgentReferralLinkCard agentId={myAgentId.data ?? null} />
-      </section>
-
-      {/* Training links */}
-      <section>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <GraduationCap className="h-4 w-4 text-primary" /> Training & Onboarding
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0 grid grid-cols-2 md:grid-cols-3 gap-2">
-            <Button asChild variant="outline" size="sm"><Link to="/course-catalog">Course catalog</Link></Button>
-            <Button asChild variant="outline" size="sm"><Link to="/course-progress">Course progress</Link></Button>
-            <Button asChild variant="outline" size="sm"><Link to="/dashboard/leaderboard">Leaderboard</Link></Button>
-            <Button asChild variant="outline" size="sm"><Link to="/dashboard/book-of-business">Book of business</Link></Button>
-            <Button asChild variant="outline" size="sm"><Link to="/dashboard/notifications/mine">Notifications</Link></Button>
-            <Button asChild variant="outline" size="sm"><Link to="/agent-portal/legacy">Legacy view <HelpCircle className="h-3 w-3 ml-1" /></Link></Button>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* License-progress for self */}
-      {license && license !== "licensed" && (
-        <section>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <GraduationCap className="h-4 w-4 text-amber-500" /> Get licensed
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0 space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Your status: <Badge variant="outline">{license}</Badge>. Finish your pre-license course
-                and book your exam to unlock contracting and the full deal pipeline.
-              </p>
-              <Progress value={license === "pending" ? 60 : 20} className="h-2" />
-              <Button asChild size="sm"><Link to="/get-licensed">Next step <ArrowRight className="h-3 w-3 ml-1" /></Link></Button>
-            </CardContent>
-          </Card>
-        </section>
-      )}
-
-      <p className="text-[11px] text-muted-foreground text-center">
-        Numbers refresh every 60s · Source: deals.posted_at (America/Chicago)
+interface RankCellProps { label: string; rank: number | null; }
+function RankCell({ label, rank }: RankCellProps) {
+  const isTop = rank != null && rank <= 10;
+  return (
+    <div className="rounded-md border border-border/40 p-2 text-center">
+      <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
+      <p className={`text-xl font-bold tabular-nums mt-0.5 ${isTop ? "text-amber-500 dark:text-amber-400" : ""}`}>
+        {rank != null ? `#${rank}` : "—"}
       </p>
     </div>
   );
 }
 
-function RecruitRow({ label, n, tone }: { label: string; n: number; tone?: "ok" | "warn" | "win" }) {
-  const cls =
-    tone === "warn" ? "text-amber-500"
-    : tone === "win" ? "text-emerald-500"
-    : "";
+interface StatRowProps { label: string; value: string; muted?: boolean; }
+function StatRow({ label, value, muted }: StatRowProps) {
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className={`font-bold tabular-nums ${cls}`}>{n}</span>
+      <span className={`font-semibold tabular-nums ${muted ? "text-muted-foreground" : ""}`}>{value}</span>
     </div>
+  );
+}
+
+interface QuickActionProps { icon: React.ElementType; to: string; label: string; desc: string; }
+function QuickAction({ icon: Icon, to, label, desc }: QuickActionProps) {
+  return (
+    <Link to={to} className="group">
+      <GlassCard className="p-4 h-full group-hover:border-primary/40 transition-colors">
+        <div className="flex items-start gap-3">
+          <span className="h-10 w-10 rounded-lg flex items-center justify-center bg-primary/10 border border-primary/30 text-primary">
+            <Icon className="h-5 w-5" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">{label}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{desc}</p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+        </div>
+      </GlassCard>
+    </Link>
   );
 }

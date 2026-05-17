@@ -29,6 +29,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { XcelIngestDialog } from "@/components/admin/XcelIngestDialog";
 
 interface Report {
   id: string;
@@ -183,6 +184,7 @@ export default function PreLicensing() {
             <Button onClick={() => { reportQ.refetch(); studentsQ.refetch(); }} variant="outline" size="sm">
               <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
             </Button>
+            <XcelIngestDialog />
           </div>
         }
       />

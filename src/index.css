@@ -1529,6 +1529,130 @@ aside[style*="emerald"] {
   filter: drop-shadow(0 0 8px hsl(168 80% 50% / 0.6));
 }
 
+/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══  APEX v3.2 — PAGE HEADERS + GRADIENT TYPE + 3D TILT (final)  ═══ */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/* ── EVERY PageHeader h1 globally gets the brand gradient ──────── */
+.dark header[class*="bg-gradient-to-br"] h1 {
+  background: linear-gradient(135deg,
+    hsl(168 90% 70%) 0%,
+    hsl(180 95% 80%) 35%,
+    hsl(265 90% 78%) 70%,
+    hsl(38 95% 70%) 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-size: 200% auto !important;
+  animation: gradient-shift 8s ease infinite !important;
+  letter-spacing: -0.03em !important;
+}
+
+/* ── EVERY PageHeader gets a subtle perspective tilt on hover ───── */
+header[class*="bg-gradient-to-br"] {
+  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── 3D tilt on KPI stat tiles (any GlassCard inside a 4-col grid) ── */
+@media (min-width: 1024px) {
+  .grid.lg\:grid-cols-4 > div [class*="GlassCard"] {
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1);
+    transform-style: preserve-3d;
+  }
+  .grid.lg\:grid-cols-4 > div [class*="GlassCard"]:hover {
+    transform: perspective(900px) rotateX(2deg) rotateY(-3deg) translateY(-3px);
+  }
+}
+
+/* ── KPI numbers get a stronger glow + counter feel ──────────────── */
+.dark [class*="GlassCard"] .text-3xl,
+.dark [class*="GlassCard"] .text-2xl,
+.dark [class*="GlassCard"] .text-4xl {
+  text-shadow: 0 0 20px currentColor, 0 0 40px hsl(0 0% 0% / 0.4);
+}
+
+/* ── Sidebar logo: floating bob ──────────────────────────────────── */
+@keyframes logo-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1px); }
+}
+aside a[href="/dashboard"] {
+  animation: logo-bob 4s ease-in-out infinite;
+}
+
+/* ── Nav-item hover: gradient sweep ──────────────────────────────── */
+@keyframes nav-sweep-anim {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  50%  { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+aside a:not(.nav-item-active)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    hsl(168 80% 50% / 0.10) 50%,
+    transparent 100%);
+  transform: translateX(-100%);
+  pointer-events: none;
+  border-radius: inherit;
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+aside a:hover::before {
+  transform: translateX(100%);
+}
+
+/* ── Make sure aside z-index works with new ::before ────────────── */
+aside a {
+  overflow: hidden;
+}
+
+/* ── Page background safety: ensure body never covers aurora ─────── */
+.dark body,
+.dark #root {
+  background-color: transparent !important;
+}
+
+/* ── Premium select / button gradient ring on hover ──────────────── */
+button[class*="border-rose"]:hover {
+  box-shadow: 0 0 24px hsl(0 80% 60% / 0.25);
+}
+button[class*="border-amber"]:hover {
+  box-shadow: 0 0 24px hsl(38 95% 55% / 0.25);
+}
+button[class*="border-emerald"]:hover {
+  box-shadow: 0 0 24px hsl(168 80% 55% / 0.25);
+}
+
+/* ── Toast: bigger, glassier ─────────────────────────────────────── */
+[data-sonner-toast] {
+  border-radius: 14px !important;
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.2),
+    0 16px 48px hsl(222 60% 0% / 0.45) !important;
+}
+
+/* ── Badge live-indicator wrap: emit ring ────────────────────────── */
+.live-indicator + span,
+.live-indicator ~ span {
+  animation: gradient-shift 4s ease infinite;
+  background-size: 200% auto;
+}
+
+/* ── Mobile: drop particles to keep perf ─────────────────────────── */
+@media (max-width: 640px) {
+  canvas[aria-hidden="true"] { display: none; }
+}
+
+/* ── Active sidebar item: glow shadow ────────────────────────────── */
+.nav-item-active {
+  box-shadow:
+    inset 3px 0 0 hsl(168 80% 55%),
+    inset 0 0 40px hsl(168 80% 55% / 0.06);
+}
+
 /* ── Mobile: drop heavy backdrop-filter to keep scroll smooth ─────── */
 @media (max-width: 640px) {
   .glass-card,

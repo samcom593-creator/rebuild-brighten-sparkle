@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { SidebarLayout } from "./SidebarLayout";
 import { AuroraBackground } from "./AuroraBackground";
+import { ParticleField } from "./ParticleField";
 import { PushNotificationPrompt } from "./PushNotificationPrompt";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ComponentErrorBoundary } from "@/components/ComponentErrorBoundary";
@@ -34,6 +35,7 @@ export function AuthenticatedShell() {
   return (
     <ProtectedRoute>
       <AuroraBackground />
+      <ParticleField />
       <SidebarLayout showPhoneBanner={true}>
         <CelebrationProvider />
         <CommandPalette />

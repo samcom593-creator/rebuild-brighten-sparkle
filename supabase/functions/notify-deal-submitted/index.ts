@@ -109,18 +109,31 @@ Deno.serve(async (req) => {
     }
 
     // ── 3. Broadcast list: every licensed active agent ──
-    const { data: audience } = await sb
+    // Check the system kill-switch first. Sam: "Can we turn off the email
+    // notifications when someone legit just closes a deal" — when
+    // `system_settings.key = 'notify_deal_emails'` is "off", we skip the
+    // email + SMS blast but still post to Discord (so the team feed
+    // doesn't go dark). Toggle from /dashboard/setup.
+    const { data: settingRow } = await sb
+      .from("system_settings")
+      .select("value")
+      .eq("key", "notify_deal_emails")
+      .maybeSingle();
+    const emailsEnabled = (settingRow as any)?.value !== "off";
+
+    const { data: audience } = emailsEnabled ? await sb
       .from("agents")
       .select("id, user_id, profile:profiles(full_name, email, phone, carrier)")
       .eq("is_deactivated", false)
       .eq("is_inactive", false)
       .eq("license_status", "licensed")
-      .limit(500);
+      .limit(500) : { data: [] as any[] };
 
     const resendKey = Deno.env.get("RESEND_API_KEY");
     const resend    = resendKey ? new Resend(resendKey) : null;
 
     let emailsSent = 0, smsSent = 0, failed = 0;
+    if (!emailsEnabled) console.log("📭 notify_deal_emails=off — skipping per-agent blast");
 
     // Resend free plan = 10 req/s. Sleep 150ms between sends (≈6.6 req/s)
     // to stay well under the limit when fanning out to 60+ agents.

@@ -108,11 +108,15 @@ export default function Leaderboard() {
 
       if (board === "production") {
         const [{ data: dealRows }, { data: syncRow }] = await Promise.all([
+          // RLS-bypass leaderboard view — regular agents only see their own
+          // deals from the base table (deals_own_read policy), which broke
+          // leaderboard visibility. v_deals_leaderboard exposes only the
+          // 5 non-PII cols needed for ranking and grants SELECT to everyone.
           supabase
-            .from("deals")
-            .select("agent_id, annual_premium, posted_at, created_at")
-            .or(dealTruthWindowOr(bounds.startIso, bounds.endIso))
-            .in("status", DEAL_TRUTH_STATUS_FILTER),
+            .from("v_deals_leaderboard" as any)
+            .select("agent_id, annual_premium, posted_at")
+            .gte("posted_at", bounds.startIso)
+            .lt("posted_at", bounds.endIso),
           supabase
             .from("agentlink_sync_log" as any)
             .select("finished_at, started_at")

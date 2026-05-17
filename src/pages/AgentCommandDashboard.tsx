@@ -893,6 +893,35 @@ function AgencyCommandView() {
     },
   });
 
+  // ── Tighter active-agent + licensed-hire counts (Sam: only count
+  // agents with activity in last 30 days; show licensed hires MTD) ─────
+  const tight = useQuery({
+    queryKey: ["agency-tight-counts"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const since30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const [dealAgents, prodAgents, licensedMtdRes, contractedMtdRes] = await Promise.all([
+        supabase.from("deals").select("agent_id").gte("posted_at", since30).in("status", ["submitted", "active"]),
+        supabase.from("daily_production").select("agent_id").gte("production_date", since30.slice(0, 10)),
+        supabase.from("applications").select("id", { count: "exact", head: true }).gte("licensed_at", monthStart).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true }).gte("contracted_at", monthStart).is("terminated_at", null),
+      ]);
+      const ids = new Set<string>();
+      for (const r of (dealAgents.data ?? []) as Array<{ agent_id: string | null }>) {
+        if (r.agent_id) ids.add(r.agent_id);
+      }
+      for (const r of (prodAgents.data ?? []) as Array<{ agent_id: string | null }>) {
+        if (r.agent_id) ids.add(r.agent_id);
+      }
+      return {
+        active30d: ids.size,
+        licensedMtd: licensedMtdRes.count ?? 0,
+        contractedMtd: contractedMtdRes.count ?? 0,
+      };
+    },
+  });
+
   const c = ceo.data;
   const apMtd = Number(c?.ap_mtd ?? 0);
   const ap30 = Number(c?.ap_30d ?? 0);
@@ -946,19 +975,19 @@ function AgencyCommandView() {
         />
         <KpiTile
           icon={Users}
-          label="Producing agents"
-          value={`${fmtNum(c?.producing_agents_30d ?? 0)} / ${fmtNum(c?.active_agents ?? 0)}`}
-          subValue={`${fmtNum(c?.licensed_agents ?? 0)} licensed · ${fmtNum(c?.onboarding_agents ?? 0)} onboarding`}
+          label="Producing agents · 30d"
+          value={`${fmtNum(c?.producing_agents_30d ?? 0)} / ${fmtNum(tight.data?.active30d ?? 0)}`}
+          subValue={`Active = any deal or production logged in last 30d`}
           color="text-primary"
-          loading={ceo.isLoading}
+          loading={ceo.isLoading || tight.isLoading}
         />
         <KpiTile
-          icon={Briefcase}
-          label="Pipeline"
-          value={fmtNum(c?.total_applications ?? 0)}
-          subValue={`${fmtNum(c?.uncontacted_24h ?? 0)} uncontacted >24h · ${fmtNum(c?.stale_new_3d ?? 0)} stale 3d+`}
+          icon={ShieldCheck}
+          label="Licensed hires · MTD"
+          value={fmtNum(tight.data?.licensedMtd ?? 0)}
+          subValue={`${fmtNum(tight.data?.contractedMtd ?? 0)} contracted MTD · ${fmtNum(c?.paid_mtd ?? 0)} ICAs paid MTD`}
           color="text-violet-500 dark:text-violet-400"
-          loading={ceo.isLoading}
+          loading={ceo.isLoading || tight.isLoading}
         />
       </div>
 
@@ -1117,7 +1146,7 @@ function AgencyCommandView() {
                       {fmtUsd(Number(d.annual_premium ?? 0), true)}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
-                      {d.posted_at ? formatDistanceToNow(new Date(d.posted_at), { addSuffix: true }) : "—"}
+                      {d.posted_at ? format(new Date(d.posted_at), "MMM d · h:mm a") : "—"}
                     </p>
                   </div>
                 </li>

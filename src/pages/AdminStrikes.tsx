@@ -1,13 +1,18 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
+} from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -15,8 +20,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
+import {
   AlertTriangle, Shield, CheckCircle2, XCircle, Plus, Search, Flame,
   Calendar as CalendarIcon, User as UserIcon, ShieldAlert, Skull, Filter,
+  Sparkles, Link as LinkIcon, X, BarChart3, Eye,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -41,14 +50,6 @@ const REASON_OPTIONS = [
   { value: "other", label: "Other" },
 ];
 
-const STANDING_LABEL: Record<string, { label: string; color: string }> = {
-  clear:           { label: "Clear",           color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/40" },
-  flagged:         { label: "Flagged",         color: "bg-amber-500/15 text-amber-400 border-amber-500/40" },
-  on_notice:       { label: "On notice",       color: "bg-orange-500/15 text-orange-400 border-orange-500/40" },
-  review_required: { label: "Review required", color: "bg-rose-500/15 text-rose-400 border-rose-500/40" },
-  terminal:        { label: "Terminal",        color: "bg-red-600/20 text-red-300 border-red-600/50" },
-};
-
 interface StrikeRow {
   id: string;
   agent_id: string;
@@ -57,6 +58,7 @@ interface StrikeRow {
   reason_code: string;
   severity: keyof typeof SEVERITY_LABEL;
   description: string;
+  evidence_urls: string[] | null;
   status: "active" | "expired" | "resolved" | "voided";
   issued_at: string;
   expires_at: string | null;
@@ -78,8 +80,10 @@ interface SummaryRow {
   resolved_count: number;
   total_count: number;
   most_recent_active_at: string | null;
-  standing: keyof typeof STANDING_LABEL;
+  standing: "clear" | "flagged" | "on_notice" | "review_required" | "terminal";
 }
+
+interface TrendRow { day: string; warnings: number; minor: number; major: number; terminal: number; total: number; }
 
 export default function AdminStrikes() {
   const qc = useQueryClient();
@@ -89,11 +93,19 @@ export default function AdminStrikes() {
   const [issueOpen, setIssueOpen] = useState(false);
   const [resolveStrikeId, setResolveStrikeId] = useState<string | null>(null);
   const [resolveNote, setResolveNote] = useState("");
+  const [drillAgentId, setDrillAgentId] = useState<string | null>(null);
+
+  // Real-time bumps invalidate everything
+  useRealtimeTable({ table: "agent_strikes", channelSuffix: "admin" }, () => {
+    qc.invalidateQueries({ queryKey: ["admin-strikes"] });
+    qc.invalidateQueries({ queryKey: ["strike-summary"] });
+    qc.invalidateQueries({ queryKey: ["strike-trend"] });
+  });
 
   const { data: strikes = [], isLoading } = useQuery({
     queryKey: ["admin-strikes", statusFilter, severityFilter],
     queryFn: async () => {
-      let q = supabase
+      let q: any = supabase
         .from("v_agent_strikes" as any)
         .select("*")
         .order("issued_at", { ascending: false })
@@ -114,7 +126,19 @@ export default function AdminStrikes() {
         .select("*")
         .order("active_count", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as SummaryRow[];
+      return (data ?? []) as unknown as SummaryRow[];
+    },
+  });
+
+  const { data: trend = [] } = useQuery({
+    queryKey: ["strike-trend"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_strike_trend" as any)
+        .select("*")
+        .order("day", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as TrendRow[];
     },
   });
 
@@ -156,8 +180,6 @@ export default function AdminStrikes() {
     toast.success("Strike resolved");
     setResolveStrikeId(null);
     setResolveNote("");
-    qc.invalidateQueries({ queryKey: ["admin-strikes"] });
-    qc.invalidateQueries({ queryKey: ["strike-summary"] });
   }
 
   async function handleVoid(id: string) {
@@ -166,8 +188,6 @@ export default function AdminStrikes() {
     const { error } = await supabase.rpc("void_strike" as any, { p_strike_id: id, p_void_reason: reason.trim() });
     if (error) { toast.error(`Void failed: ${error.message}`); return; }
     toast.success("Strike voided");
-    qc.invalidateQueries({ queryKey: ["admin-strikes"] });
-    qc.invalidateQueries({ queryKey: ["strike-summary"] });
   }
 
   return (
@@ -176,22 +196,23 @@ export default function AdminStrikes() {
         eyebrow="Conduct"
         eyebrowIcon={<Shield className="h-3 w-3" />}
         title="Agent Strikes"
-        subtitle="Issue, track, and resolve conduct or quality strikes across the team. Strikes are visible to the agent — keep descriptions specific and evidence linked."
+        subtitle="Issue, track, and resolve conduct strikes. Templates pre-fill the most common scenarios. Strikes are visible to the agent — keep descriptions specific and evidence linked."
         accent="rose"
         actions={
-          <IssueStrikeDialog
-            open={issueOpen}
-            onOpenChange={setIssueOpen}
-            onIssued={() => {
-              qc.invalidateQueries({ queryKey: ["admin-strikes"] });
-              qc.invalidateQueries({ queryKey: ["strike-summary"] });
-            }}
-          />
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/40">
+              <span className="live-indicator h-2 w-2 mr-1.5" /> Live
+            </Badge>
+            <IssueStrikeDialog
+              open={issueOpen}
+              onOpenChange={setIssueOpen}
+            />
+          </div>
         }
       />
 
       {/* Stat tiles */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-5">
         {[
           { label: "Active strikes", value: stats.active, color: "text-rose-400", icon: AlertTriangle },
           { label: "Major / terminal", value: stats.major, color: "text-red-400", icon: Flame },
@@ -213,6 +234,68 @@ export default function AdminStrikes() {
             </GlassCard>
           </motion.div>
         ))}
+      </div>
+
+      {/* Two-up: trend chart + top-flagged agents */}
+      <div className="grid gap-3 lg:grid-cols-3 mb-5">
+        <GlassCard variant="subtle" className="p-4 lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">30-day trend</p>
+              <h3 className="text-lg font-bold">Strikes by severity</h3>
+            </div>
+            <BarChart3 className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={trend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.3)" />
+              <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={10} stroke="hsl(var(--muted-foreground))" />
+              <YAxis allowDecimals={false} fontSize={10} stroke="hsl(var(--muted-foreground))" />
+              <Tooltip
+                contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                labelFormatter={(d) => format(new Date(d), "MMM d, yyyy")}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="warnings" stackId="a" fill="hsl(38 95% 55%)" name="Warning" />
+              <Bar dataKey="minor"    stackId="a" fill="hsl(25 95% 53%)" name="Minor" />
+              <Bar dataKey="major"    stackId="a" fill="hsl(0 70% 55%)"  name="Major" />
+              <Bar dataKey="terminal" stackId="a" fill="hsl(0 80% 35%)" name="Terminal" />
+            </BarChart>
+          </ResponsiveContainer>
+        </GlassCard>
+
+        <GlassCard variant="subtle" className="p-4 lg:col-span-1">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Reverse leaderboard</p>
+              <h3 className="text-lg font-bold">Most active strikes</h3>
+            </div>
+            <Flame className="h-5 w-5 text-rose-400 opacity-70" />
+          </div>
+          {summary.filter((s) => s.active_count > 0).length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">Nobody on the wrong side. 🟢</p>
+          ) : (
+            <ul className="space-y-2 max-h-[200px] overflow-y-auto scrollbar-custom pr-1">
+              {summary.filter((s) => s.active_count > 0).slice(0, 6).map((s, i) => (
+                <li key={s.agent_id}>
+                  <button
+                    type="button"
+                    onClick={() => setDrillAgentId(s.agent_id)}
+                    className="w-full text-left flex items-center justify-between gap-2 rounded-lg border border-border/30 px-3 py-2 hover:border-rose-500/40 hover:bg-rose-500/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="h-6 w-6 rounded-md bg-rose-500/15 text-rose-400 text-xs font-bold flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                      <span className="text-sm font-medium truncate">{s.agent_name}</span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">{s.active_count} active</Badge>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </GlassCard>
       </div>
 
       {/* Filters */}
@@ -261,13 +344,12 @@ export default function AdminStrikes() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <GlassCard variant="subtle" className="p-12 text-center">
-          <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-3 opacity-70" />
-          <p className="text-lg font-semibold">No strikes match these filters</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            A clear board is the goal — keep it this way.
-          </p>
-        </GlassCard>
+        <EmptyState
+          icon={<CheckCircle2 className="h-7 w-7" />}
+          title="Clear board"
+          description="No strikes match these filters. A clear board is the goal — keep it this way."
+          variant="success"
+        />
       ) : (
         <div className="space-y-3">
           <AnimatePresence initial={false}>
@@ -285,7 +367,11 @@ export default function AdminStrikes() {
                 >
                   <GlassCard variant="subtle" className="p-4">
                     <div className="flex flex-col gap-3 md:flex-row md:items-start">
-                      <div className="flex items-center gap-3 md:w-[260px]">
+                      <button
+                        type="button"
+                        onClick={() => setDrillAgentId(s.agent_id)}
+                        className="flex items-center gap-3 md:w-[260px] text-left hover:opacity-80 transition-opacity"
+                      >
                         <span className={`h-10 w-10 rounded-lg flex items-center justify-center border ${sev.color}`}>
                           <SevIcon className="h-5 w-5" />
                         </span>
@@ -295,7 +381,7 @@ export default function AdminStrikes() {
                             {s.agent_code ?? "—"} · {formatDistanceToNow(new Date(s.issued_at))} ago
                           </p>
                         </div>
-                      </div>
+                      </button>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -310,8 +396,29 @@ export default function AdminStrikes() {
                               Expires {format(new Date(s.expires_at), "MMM d")}
                             </Badge>
                           )}
+                          {s.evidence_urls && s.evidence_urls.length > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              <LinkIcon className="h-3 w-3 mr-1" />
+                              {s.evidence_urls.length} link{s.evidence_urls.length > 1 ? "s" : ""}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm leading-relaxed">{s.description}</p>
+                        {s.evidence_urls && s.evidence_urls.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {s.evidence_urls.map((url, idx) => (
+                              <a
+                                key={idx}
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[11px] text-primary hover:underline truncate max-w-[260px] inline-flex items-center gap-1"
+                              >
+                                <LinkIcon className="h-3 w-3" /> {new URL(url).hostname}
+                              </a>
+                            ))}
+                          </div>
+                        )}
                         {s.resolution_note && (
                           <p className="text-xs text-muted-foreground mt-2 border-l-2 border-emerald-500/40 pl-2 italic">
                             {s.resolution_note}
@@ -371,6 +478,13 @@ export default function AdminStrikes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Per-agent drill-in sheet */}
+      <AgentDrillSheet
+        agentId={drillAgentId}
+        summary={summary.find((s) => s.agent_id === drillAgentId) ?? null}
+        onClose={() => setDrillAgentId(null)}
+      />
     </div>
   );
 }
@@ -379,23 +493,50 @@ function labelReason(code: string): string {
   return REASON_OPTIONS.find((r) => r.value === code)?.label ?? code;
 }
 
+// ─── Issue dialog with templates + evidence URLs ─────────────────────────────
 interface IssueDialogProps {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  onIssued: () => void;
+}
+interface Template {
+  id: string;
+  slug: string;
+  reason_code: string;
+  severity: "warning" | "minor" | "major" | "terminal";
+  title: string;
+  description: string;
+  default_expires_days: number | null;
 }
 
-function IssueStrikeDialog({ open, onOpenChange, onIssued }: IssueDialogProps) {
+function IssueStrikeDialog({ open, onOpenChange }: IssueDialogProps) {
+  const qc = useQueryClient();
   const [agentId, setAgentId] = useState("");
   const [reasonCode, setReasonCode] = useState("no_show");
   const [severity, setSeverity] = useState<"warning" | "minor" | "major" | "terminal">("warning");
   const [description, setDescription] = useState("");
   const [expiresAt, setExpiresAt] = useState<string>("");
   const [agentSearch, setAgentSearch] = useState("");
+  const [evidenceInput, setEvidenceInput] = useState("");
+  const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
+  const [templateSlug, setTemplateSlug] = useState<string>("__custom__");
   const [submitting, setSubmitting] = useState(false);
 
+  const { data: templates = [] } = useQuery({
+    queryKey: ["strike-templates"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("strike_templates" as any)
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as Template[];
+    },
+  });
+
   const { data: agents = [] } = useQuery({
-    queryKey: ["agents-search", agentSearch],
+    queryKey: ["agents-search-strike", agentSearch],
     enabled: open,
     queryFn: async () => {
       let q: any = supabase
@@ -412,6 +553,36 @@ function IssueStrikeDialog({ open, onOpenChange, onIssued }: IssueDialogProps) {
     },
   });
 
+  function applyTemplate(slug: string) {
+    setTemplateSlug(slug);
+    if (slug === "__custom__") return;
+    const t = templates.find((x) => x.slug === slug);
+    if (!t) return;
+    setReasonCode(t.reason_code);
+    setSeverity(t.severity);
+    setDescription(t.description);
+    if (t.default_expires_days) {
+      const d = new Date();
+      d.setDate(d.getDate() + t.default_expires_days);
+      setExpiresAt(d.toISOString().slice(0, 10));
+    } else {
+      setExpiresAt("");
+    }
+  }
+
+  function addEvidence() {
+    const url = evidenceInput.trim();
+    if (!url) return;
+    try {
+      new URL(url);
+    } catch {
+      toast.error("Not a valid URL");
+      return;
+    }
+    setEvidenceUrls((prev) => Array.from(new Set([...prev, url])));
+    setEvidenceInput("");
+  }
+
   async function submit() {
     if (!agentId) { toast.error("Pick an agent"); return; }
     if (description.trim().length < 5) { toast.error("Description must be 5+ chars"); return; }
@@ -422,13 +593,17 @@ function IssueStrikeDialog({ open, onOpenChange, onIssued }: IssueDialogProps) {
       p_severity: severity,
       p_description: description.trim(),
       p_expires_at: expiresAt || null,
+      p_evidence_urls: evidenceUrls,
     });
     setSubmitting(false);
     if (error) { toast.error(`Failed: ${error.message}`); return; }
     toast.success("Strike issued");
-    setAgentId(""); setDescription(""); setExpiresAt(""); setReasonCode("no_show"); setSeverity("warning");
+    setAgentId(""); setDescription(""); setExpiresAt("");
+    setReasonCode("no_show"); setSeverity("warning");
+    setEvidenceUrls([]); setTemplateSlug("__custom__");
     onOpenChange(false);
-    onIssued();
+    qc.invalidateQueries({ queryKey: ["admin-strikes"] });
+    qc.invalidateQueries({ queryKey: ["strike-summary"] });
   }
 
   return (
@@ -438,11 +613,28 @@ function IssueStrikeDialog({ open, onOpenChange, onIssued }: IssueDialogProps) {
           <Plus className="h-4 w-4 mr-1.5" /> Issue strike
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Issue a strike</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          {/* Template picker */}
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+              <Sparkles className="h-3 w-3" /> Template
+            </label>
+            <Select value={templateSlug} onValueChange={applyTemplate}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__custom__">Start from scratch</SelectItem>
+                {templates.map((t) => (
+                  <SelectItem key={t.slug} value={t.slug}>{t.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Agent */}
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Agent</label>
             <Input
@@ -451,7 +643,7 @@ function IssueStrikeDialog({ open, onOpenChange, onIssued }: IssueDialogProps) {
               placeholder="Search by name or code"
               className="mt-1"
             />
-            <div className="max-h-40 overflow-y-auto mt-2 rounded-md border border-border/60">
+            <div className="max-h-32 overflow-y-auto mt-2 rounded-md border border-border/60">
               {agents.length === 0 && <p className="p-2 text-xs text-muted-foreground">No matches.</p>}
               {agents.map((a: any) => (
                 <button
@@ -476,6 +668,7 @@ function IssueStrikeDialog({ open, onOpenChange, onIssued }: IssueDialogProps) {
             </div>
           </div>
 
+          {/* Reason + severity */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reason</label>
@@ -513,6 +706,38 @@ function IssueStrikeDialog({ open, onOpenChange, onIssued }: IssueDialogProps) {
             />
           </div>
 
+          {/* Evidence URLs */}
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Evidence (URLs)</label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                value={evidenceInput}
+                onChange={(e) => setEvidenceInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addEvidence(); } }}
+                placeholder="https://drive.google.com/… or call recording link"
+              />
+              <Button type="button" variant="outline" onClick={addEvidence}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {evidenceUrls.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {evidenceUrls.map((u) => (
+                  <Badge key={u} variant="outline" className="text-[11px] gap-1 pr-1">
+                    <span className="truncate max-w-[180px]">{new URL(u).hostname}</span>
+                    <button
+                      type="button"
+                      onClick={() => setEvidenceUrls((prev) => prev.filter((x) => x !== u))}
+                      className="h-4 w-4 rounded-sm hover:bg-rose-500/20 flex items-center justify-center"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Expires (optional)</label>
             <Input
@@ -531,5 +756,90 @@ function IssueStrikeDialog({ open, onOpenChange, onIssued }: IssueDialogProps) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Per-agent drilldown sheet ──────────────────────────────────────────────
+interface DrillProps {
+  agentId: string | null;
+  summary: SummaryRow | null;
+  onClose: () => void;
+}
+function AgentDrillSheet({ agentId, summary, onClose }: DrillProps) {
+  const { data: agentStrikes = [], isLoading } = useQuery({
+    queryKey: ["agent-strikes-drill", agentId],
+    enabled: !!agentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_agent_strikes" as any)
+        .select("*")
+        .eq("agent_id", agentId!)
+        .order("issued_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as StrikeRow[];
+    },
+  });
+
+  return (
+    <Sheet open={!!agentId} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>
+            {summary?.agent_name ?? "Agent"}
+            {summary?.agent_code && <span className="text-sm text-muted-foreground ml-2 font-normal">{summary.agent_code}</span>}
+          </SheetTitle>
+        </SheetHeader>
+        {summary && (
+          <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+            <div className="rounded-md border border-border/40 p-2">
+              <p className="text-[10px] uppercase text-muted-foreground">Active</p>
+              <p className="text-xl font-bold text-rose-400">{summary.active_count}</p>
+            </div>
+            <div className="rounded-md border border-border/40 p-2">
+              <p className="text-[10px] uppercase text-muted-foreground">Major+</p>
+              <p className="text-xl font-bold text-red-400">{summary.active_major + summary.active_terminal}</p>
+            </div>
+            <div className="rounded-md border border-border/40 p-2">
+              <p className="text-[10px] uppercase text-muted-foreground">Resolved</p>
+              <p className="text-xl font-bold text-emerald-400">{summary.resolved_count}</p>
+            </div>
+            <div className="rounded-md border border-border/40 p-2">
+              <p className="text-[10px] uppercase text-muted-foreground">Total</p>
+              <p className="text-xl font-bold">{summary.total_count}</p>
+            </div>
+          </div>
+        )}
+        <div className="mt-4 space-y-2">
+          {isLoading && <div className="h-16 rounded-lg skeleton-shimmer" />}
+          {!isLoading && agentStrikes.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-6">No strikes on file.</p>
+          )}
+          {agentStrikes.map((s) => {
+            const sev = SEVERITY_LABEL[s.severity];
+            const SevIcon = sev.icon;
+            return (
+              <div key={s.id} className={`p-3 rounded-lg border border-border/40 ${s.status !== "active" ? "opacity-60" : ""}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`h-7 w-7 rounded-md flex items-center justify-center border ${sev.color}`}>
+                    <SevIcon className="h-3.5 w-3.5" />
+                  </span>
+                  <Badge variant="outline" className={`${sev.color} text-[10px]`}>{sev.label}</Badge>
+                  <Badge variant="outline" className="text-[10px]">{labelReason(s.reason_code)}</Badge>
+                  <span className="ml-auto text-[11px] text-muted-foreground">
+                    {formatDistanceToNow(new Date(s.issued_at))} ago
+                  </span>
+                </div>
+                <p className="text-sm">{s.description}</p>
+                {s.resolution_note && (
+                  <p className="text-xs text-muted-foreground mt-1 border-l-2 border-emerald-500/40 pl-2 italic">
+                    {s.resolution_note}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -1208,12 +1208,12 @@ input:focus, textarea:focus, select:focus {
 .aurora-blob-b { animation: aurora-orbit-b 36s ease-in-out infinite; }
 .aurora-blob-c { animation: aurora-orbit-c 42s ease-in-out infinite; }
 
-/* ──  Body — go transparent so AuroraBackground shows through  ────── */
-/* AuthenticatedShell mounts AuroraBackground as a fixed -z-10 layer; we
-   keep public/unauth pages on a solid bg via .bg-background but let
-   the authenticated shell render onto the aurora. */
-.dark body { background-color: hsl(222 47% 3%); }
-body { background-attachment: fixed; }
+/* ──  Body — TRANSPARENT in dark mode so AuroraBackground shines  ─── */
+/* The base bg moves to <html> so that fixed AuroraBackground (-z-10)
+   can render and not be covered. */
+.dark html { background-color: hsl(222 60% 2%); }
+.dark body { background-color: transparent !important; }
+html { background-attachment: fixed; }
 
 /* ── Premium glass v3 — visibly different from prior version  ─────── */
 .glass-card,
@@ -1376,6 +1376,157 @@ hr {
 .light .aurora-blob-b,
 .light .aurora-blob-c {
   opacity: 0.15 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══  APEX v3.1 — VERY VISIBLE MOTION + DEPTH (2026-05-17 night) ═══ */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Animated noise grain — gives the bg an organic, hand-painted shimmer ── */
+@keyframes noise-shimmer {
+  0%, 100% { transform: translate(0, 0); }
+  25%      { transform: translate(-2%, 1%); }
+  50%      { transform: translate(1%, -1%); }
+  75%      { transform: translate(-1%, 2%); }
+}
+.noise-grain {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>");
+  background-size: 200px 200px;
+  animation: noise-shimmer 9s steps(8) infinite;
+  mix-blend-mode: overlay;
+}
+
+/* ── Page entry — every page (.page-enter) does a real slide+fade ─── */
+@keyframes apex-page-enter-v3 {
+  0%   { opacity: 0; transform: translateY(14px) scale(0.992); filter: blur(4px); }
+  60%  { filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+.page-enter {
+  animation: apex-page-enter-v3 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Stagger entry for any direct child of .page-enter (cards, etc.) ── */
+.page-enter > *:not(header) {
+  animation: apex-page-enter-v3 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 80ms;
+}
+.page-enter > header { animation: apex-page-enter-v3 480ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ── HUGE H1 default — gradient + size jump ─────────────────────── */
+h1, .h1 {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+}
+
+/* ── Cards: bigger lift + brand-gradient ring on hover ──────────── */
+[class*="GlassCard"]:hover,
+.glass-card:hover {
+  transform: translateY(-3px) scale(1.005);
+}
+
+/* ── Buttons: bouncier press ─────────────────────────────────────── */
+button:active, [role="button"]:active {
+  transform: scale(0.96);
+}
+
+/* ── Top loading bar — runs once on every route change ─────────── */
+@keyframes top-progress {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+main::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, hsl(168 80% 55%), hsl(265 80% 65%), transparent);
+  transform: translateX(-100%);
+  animation: top-progress 1100ms cubic-bezier(0.4, 0, 0.2, 1) 1;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ── Sidebar nav items: subtle gradient sweep on hover ──────────── */
+@keyframes nav-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+aside a:hover {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Soften gradient text appearance to ensure contrast ─────────── */
+.brand-gradient {
+  background-size: 200% auto;
+  animation: gradient-shift 6s ease infinite;
+}
+
+/* ── Live indicator: glowing ring pulse ─────────────────────────── */
+.live-indicator {
+  position: relative;
+}
+.live-indicator::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid hsl(168 80% 55%);
+  animation: live-ring 1.8s ease-out infinite;
+}
+@keyframes live-ring {
+  0%   { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* ── Premium pill — small visual hit for badges in headers ──────── */
+header[class*="bg-gradient-to-br"] > div > div > .inline-flex {
+  box-shadow: 0 0 24px hsl(var(--primary) / 0.2);
+}
+
+/* ── KPI tile gradient ring on hover ────────────────────────────── */
+.glass-card .text-3xl,
+[class*="GlassCard"] .text-3xl {
+  text-shadow: 0 0 24px currentColor;
+}
+
+/* ── Soft glow under all cards (dark mode only) ─────────────────── */
+.dark [class*="GlassCard"],
+.dark .glass-card {
+  box-shadow:
+    inset 0 1px 0 hsl(168 80% 70% / 0.05),
+    0 8px 30px hsl(222 47% 0% / 0.45),
+    0 0 0 1px hsl(168 60% 50% / 0.08);
+}
+.dark [class*="GlassCard"]:hover,
+.dark .glass-card:hover {
+  box-shadow:
+    inset 0 1px 0 hsl(168 80% 70% / 0.08),
+    0 14px 40px hsl(168 80% 50% / 0.18),
+    0 0 0 1px hsl(168 80% 50% / 0.35);
+}
+
+/* ── New: input/textarea floating focus ring (more visible) ─────── */
+input:focus, textarea:focus, select:focus {
+  box-shadow:
+    0 0 0 3px hsl(var(--primary) / 0.25),
+    0 0 30px hsl(var(--primary) / 0.18);
+}
+
+/* ── New: bold scrollbar in dark mode ───────────────────────────── */
+.dark *::-webkit-scrollbar-thumb {
+  background: hsl(168 70% 50% / 0.35);
+}
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: hsl(168 70% 50% / 0.6);
+}
+
+/* ── Sidebar pulse dot — bigger glow ────────────────────────────── */
+aside[style*="emerald"] {
+  filter: drop-shadow(0 0 8px hsl(168 80% 50% / 0.6));
 }
 
 /* ── Mobile: drop heavy backdrop-filter to keep scroll smooth ─────── */

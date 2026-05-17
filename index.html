@@ -46,16 +46,13 @@
       })();
     </script>
     <script>
+      // FORCE DARK MODE (2026-05-17). Light mode was breaking text contrast
+      // on every page Sam looked at. Locked to dark until the next overhaul.
       (function() {
-        const theme = localStorage.getItem('theme') || 'dark';
-        const root = document.documentElement;
-        root.classList.remove('light', 'dark');
-        if (theme === 'system') {
-          const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-          root.classList.add(systemTheme);
-        } else {
-          root.classList.add(theme);
-        }
+        var root = document.documentElement;
+        root.classList.remove('light');
+        root.classList.add('dark');
+        try { localStorage.setItem('theme', 'dark'); } catch (e) {}
       })();
     </script>
     <meta charset="UTF-8" />

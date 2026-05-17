@@ -133,12 +133,30 @@ export function HeroSection() {
             <span className="block text-foreground">with APEX</span>
           </motion.h1>
 
+          {/* Video — restored 2026-05-17 (Sam: "put the YouTube video back") */}
+          <motion.div
+            className="w-full max-w-2xl mx-auto mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.18 }}
+          >
+            <div className="aspect-video rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_40px_hsl(168_80%_50%/0.2)] bg-black">
+              <iframe
+                src="https://www.youtube.com/embed/v4Fp3FL9ITo"
+                title="APEX Financial"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            </div>
+          </motion.div>
+
           {/* Subheadline */}
           <motion.p
             className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            transition={{ duration: 0.5, delay: 0.22 }}
           >
             Join the fastest-growing life insurance agency in America. Leads, training,
             carriers, and a recruiting path — all in one operating system. Licensed

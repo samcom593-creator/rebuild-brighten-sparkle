@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { SidebarLayout } from "./SidebarLayout";
-import { AuroraBackground } from "./AuroraBackground";
-import { ParticleField } from "./ParticleField";
 import { PushNotificationPrompt } from "./PushNotificationPrompt";
+import { CommandHintFab } from "./CommandHintFab";
+import { WelcomeToast } from "./WelcomeToast";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ComponentErrorBoundary } from "@/components/ComponentErrorBoundary";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,11 +34,11 @@ function InnerPageLoader() {
 export function AuthenticatedShell() {
   return (
     <ProtectedRoute>
-      <AuroraBackground />
-      <ParticleField />
       <SidebarLayout showPhoneBanner={true}>
         <CelebrationProvider />
         <CommandPalette />
+        <CommandHintFab />
+        <WelcomeToast />
         <PushNotificationPrompt />
         <RequireProfilePicture />
         <ComponentErrorBoundary name="page-content">

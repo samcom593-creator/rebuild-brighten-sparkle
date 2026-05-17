@@ -1,443 +1,617 @@
-/**
- * Client Pipeline — the real Agent Pipeline.
- *
- * Where the existing /agent-pipeline page handles recruiting/applicants,
- * THIS page handles client/policy servicing: every client an agent sold,
- * is selling, or needs to follow up with. Sourced from agentlink_clients
- * (the AgentLink mirror) joined with deals for policy status.
- *
- * RLS does the visibility:
- *   admin   → every client in the agency
- *   manager → every client owned by their downline agents
- *   agent   → only their own clients
- *
- * No role logic needed in JSX — the supabase select returns what the
- * viewer is allowed to see.
- */
+// ClientPipeline v4 — book-of-business cockpit.
+//
+// Source: agentlink_clients (the 1.6k-row AgentLink mirror, 109 cols).
+// RLS handles visibility: admin sees all, manager sees downline, agent sees own.
+//
+// Sections:
+//   1. Hero — book totals + standing
+//   2. KPI strip — total clients, SOLD policies, in-flight, untouched/stale
+//   3. Stage funnel — NEW_INITIAL → WORKING → ALMOST_THERE → SOLD
+//   4. State distribution map (bar)
+//   5. Callbacks/follow-ups due (priority list)
+//   6. Recent additions
+//   7. Full client list — search, stage filter, sort
+
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
-  Users,
-  Search,
-  Phone,
-  Mail,
-  CalendarClock,
-  DollarSign,
-  Flame,
-  ShieldCheck,
-  AlertTriangle,
-  ChevronRight,
-  X,
-  TrendingUp,
-  Banknote,
-  HeartPulse,
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
+  Cell,
+} from "recharts";
+import {
+  Users, Search, Phone, Mail, CalendarClock, AlertTriangle, Flame,
+  ChevronRight, TrendingUp, MapPin, ShieldCheck, UserPlus,
+  Filter, ArrowUpDown, BookMarked, Clock,
 } from "lucide-react";
+import { format, formatDistanceToNow, isBefore, isAfter, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
-import { PageHeader } from "@/components/ui/page-header";
+import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
-type AnyRow = Record<string, unknown>;
+interface Client {
+  id: string;
+  insuracloud_pipeline_client_id: string | null;
+  agent_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  email: string | null;
+  state: string | null;
+  city: string | null;
+  date_of_birth: string | null;
+  pipeline_stage: string | null;
+  created_at: string;
+  updated_at: string | null;
+  stage_changed_at: string | null;
+  last_contact_date: string | null;
+  next_action_date: string | null;
+  callback_date: string | null;
+  callback_time: string | null;
+  do_not_call: boolean | null;
+  hostile_language_detected: boolean | null;
+  client_health_score: number | null;
+  pitch_carrier: string | null;
+  pitch_price: number | string | null;
+  product_sold: string | null;
+  face_amount: number | string | null;
+  policy_number: string | null;
+  policy_start_date: string | null;
+  imported_at: string | null;
+  external_source: string | null;
+  lead_vendor_name: string | null;
+  total_monthly_income: number | string | null;
+}
 
-const STAGES = [
-  { key: "ALL", label: "All", color: "bg-slate-500" },
-  { key: "NEW_INITIAL", label: "New", color: "bg-blue-500" },
-  { key: "WORKING", label: "Working", color: "bg-purple-500" },
-  { key: "PITCHED", label: "Pitched", color: "bg-amber-500" },
-  { key: "SOLD", label: "Sold", color: "bg-emerald-500" },
-  { key: "FOLLOW_UP", label: "Follow Up", color: "bg-rose-500" },
-  { key: "INACTIVE", label: "Inactive", color: "bg-slate-400" },
-];
+const STAGE_META: Record<string, { label: string; color: string; tint: string }> = {
+  NEW_INITIAL:   { label: "New",        color: "bg-blue-500",    tint: "from-blue-500/15 to-blue-500/0 text-blue-600 dark:text-blue-400 border-blue-500/40" },
+  WORKING:       { label: "Working",    color: "bg-violet-500",  tint: "from-violet-500/15 to-violet-500/0 text-violet-600 dark:text-violet-400 border-violet-500/40" },
+  PITCHED:       { label: "Pitched",    color: "bg-amber-500",   tint: "from-amber-500/15 to-amber-500/0 text-amber-600 dark:text-amber-400 border-amber-500/40" },
+  ALMOST_THERE:  { label: "Almost",     color: "bg-orange-500",  tint: "from-orange-500/15 to-orange-500/0 text-orange-600 dark:text-orange-400 border-orange-500/40" },
+  SOLD:          { label: "Sold",       color: "bg-emerald-500", tint: "from-emerald-500/15 to-emerald-500/0 text-emerald-600 dark:text-emerald-400 border-emerald-500/40" },
+  FOLLOW_UP:     { label: "Follow-up",  color: "bg-rose-500",    tint: "from-rose-500/15 to-rose-500/0 text-rose-600 dark:text-rose-400 border-rose-500/40" },
+  INACTIVE:      { label: "Inactive",   color: "bg-slate-500",   tint: "from-slate-500/15 to-slate-500/0 text-slate-600 dark:text-slate-400 border-slate-500/40" },
+  UNSORTED:      { label: "Unsorted",   color: "bg-zinc-500",    tint: "from-zinc-500/15 to-zinc-500/0 text-zinc-600 dark:text-zinc-400 border-zinc-500/40" },
+};
 
 function fmtMoney(n: unknown): string {
   const v = Number(n ?? 0);
   if (!v) return "—";
   return v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
-function fmtDate(s: unknown): string {
-  if (!s || typeof s !== "string") return "—";
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
-}
-function fmtAge(s: unknown): string {
-  if (!s || typeof s !== "string") return "—";
-  const ms = Date.now() - new Date(s).getTime();
-  if (!Number.isFinite(ms)) return "—";
-  const days = Math.round(ms / 86_400_000);
-  if (days < 1) return "today";
-  if (days < 7) return `${days}d ago`;
-  if (days < 60) return `${Math.round(days / 7)}w ago`;
-  return `${Math.round(days / 30)}mo ago`;
-}
-function matches(haystack: unknown, q: string): boolean {
-  return !q || String(haystack ?? "").toLowerCase().includes(q.toLowerCase());
-}
-function stageColor(stage: string | null | undefined): string {
-  const s = STAGES.find((x) => x.key === stage);
-  return s?.color ?? "bg-muted";
+function fmtPhone(p: string | null): string {
+  if (!p) return "—";
+  const d = p.replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("1")) return `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  return p;
 }
 
-// ─── Detail Drawer ────────────────────────────────────────────────────────
-function ClientDetailDrawer({ id, onClose }: { id: number; onClose: () => void }) {
-  const { isAdmin } = useAuth();
-  const { data, isLoading } = useQuery({
-    queryKey: ["client-detail", id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("agentlink_clients" as any)
-        .select("*")
-        .eq("insuracloud_pipeline_client_id", id)
-        .maybeSingle();
-      return data as AnyRow | null;
-    },
-  });
-  if (isLoading) {
-    return <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur"><PageLoadingSkeleton /></div>;
-  }
-  if (!data) return null;
-
-  const Section = ({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) => (
-    <div className="bg-card/40 rounded-lg border border-border/40 p-4">
-      <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-3">
-        <Icon className="h-3.5 w-3.5" /> {title}
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">{children}</div>
-    </div>
-  );
-  const Row = ({ label, value }: { label: string; value: unknown }) => {
-    if (value === null || value === undefined || value === "" || value === false) return null;
-    return (
-      <div>
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-        <div className="font-mono text-xs sm:text-sm break-all">{String(value)}</div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-background/60 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="w-full max-w-2xl h-full bg-background border-l shadow-2xl overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur">
-          <div>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Client #{id}</div>
-            <h2 className="text-xl font-bold">{String(data.first_name ?? "")} {String(data.last_name ?? "")}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge className={`${stageColor(String(data.pipeline_stage))} text-white border-0`}>{String(data.pipeline_stage ?? "—")}</Badge>
-              {data.do_not_call && <Badge variant="destructive" className="text-[10px]">DO NOT CALL</Badge>}
-              {data.do_not_email && <Badge variant="destructive" className="text-[10px]">DO NOT EMAIL</Badge>}
-              {data.do_not_text && <Badge variant="destructive" className="text-[10px]">DO NOT TEXT</Badge>}
-            </div>
-          </div>
-          <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>
-        </div>
-
-        <div className="p-4 space-y-4">
-          <Section icon={Phone} title="Contact">
-            <Row label="Phone" value={data.phone} />
-            <Row label="Phone Type" value={data.phone_type} />
-            <Row label="Email" value={data.email} />
-            <Row label="Preferred Contact" value={data.preferred_contact_method} />
-            <Row label="Best Time to Call" value={data.best_time_to_call} />
-            <Row label="Timezone" value={data.client_timezone} />
-            <Row label="Address" value={data.street_address} />
-            <Row label="City/State/Zip" value={`${data.city ?? ""} ${data.state ?? ""} ${data.zip_code ?? ""}`.trim() || null} />
-          </Section>
-
-          <Section icon={HeartPulse} title="Health & Personal">
-            <Row label="DOB" value={fmtDate(data.date_of_birth)} />
-            <Row label="SSN last 4" value={data.ssn_last4 ? `***-**-${data.ssn_last4}` : null} />
-            <Row label="Born In" value={data.born_location} />
-            <Row label="Smoker" value={data.is_smoker ? "Yes" : null} />
-            <Row label="Height" value={data.height} />
-            <Row label="Weight" value={data.weight} />
-            <Row label="Medical Notes" value={data.medical_notes} />
-            <Row label="Physician" value={data.physician_name} />
-            <Row label="Physician Phone" value={data.physician_phone} />
-            <Row label="Physician Address" value={data.physician_address} />
-            <Row label="Occupation" value={data.employer_occupation} />
-            <Row label="Employment Status" value={data.employment_status} />
-          </Section>
-
-          {(data.bank_name || data.bank_account_number) && isAdmin && (
-            <Section icon={Banknote} title="Banking (admin only)">
-              <Row label="Bank Name" value={data.bank_name} />
-              <Row label="Account Type" value={data.bank_account_type} />
-              <Row label="Account Number" value={data.bank_account_number} />
-              <Row label="Routing Number" value={data.bank_routing_number} />
-            </Section>
-          )}
-
-          <Section icon={TrendingUp} title="Financial Profile">
-            <Row label="Total Monthly Income" value={fmtMoney(data.total_monthly_income)} />
-            <Row label="Total Monthly Expenses" value={fmtMoney(data.total_monthly_expenses)} />
-            <Row label="Monthly Surplus" value={fmtMoney(data.monthly_surplus)} />
-            <Row label="Earned Income" value={fmtMoney(data.earned_income)} />
-            <Row label="Pension Income" value={fmtMoney(data.pension_income)} />
-            <Row label="Social Security" value={fmtMoney(data.social_security_income)} />
-            <Row label="Qualified Accounts" value={fmtMoney(data.qualified_accounts)} />
-            <Row label="Non-Qualified Accounts" value={fmtMoney(data.non_qualified_accounts)} />
-            <Row label="Total Investable" value={fmtMoney(data.total_investable)} />
-            <Row label="Retirement Age Goal" value={data.retirement_age_goal} />
-            <Row label="Legacy Estate" value={fmtMoney(data.legacy_estate)} />
-          </Section>
-
-          <Section icon={ShieldCheck} title="Policy & Pitch">
-            <Row label="Pitch Carrier" value={data.pitch_carrier} />
-            <Row label="Pitch Price" value={fmtMoney(data.pitch_price)} />
-            <Row label="Product Sold" value={data.product_sold} />
-            <Row label="Policy Number" value={data.policy_number} />
-            <Row label="Face Amount" value={fmtMoney(data.face_amount)} />
-            <Row label="Policy Start" value={fmtDate(data.policy_start_date)} />
-            <Row label="Policy Review" value={fmtDate(data.policy_review_date)} />
-          </Section>
-
-          {(data.beneficiary_first_name || data.beneficiary_count) && (
-            <Section icon={Users} title="Beneficiary">
-              <Row label="First Name" value={data.beneficiary_first_name} />
-              <Row label="Last Name" value={data.beneficiary_last_name} />
-              <Row label="Phone" value={data.beneficiary_number} />
-              <Row label="Total Beneficiaries" value={data.beneficiary_count} />
-            </Section>
-          )}
-
-          <Section icon={CalendarClock} title="Activity & Engagement">
-            <Row label="Stage Changed" value={fmtAge(data.stage_changed_at)} />
-            <Row label="Last Contact" value={fmtAge(data.last_contact_date)} />
-            <Row label="Next Action" value={fmtDate(data.next_action_date)} />
-            <Row label="Next Action Notes" value={data.next_action_notes} />
-            <Row label="Callback Date" value={fmtDate(data.callback_date)} />
-            <Row label="Callback Time" value={data.callback_time} />
-            <Row label="Client Health Score" value={data.client_health_score} />
-            <Row label="Objectives" value={data.objectives} />
-            <Row label="Communication Notes" value={data.communication_notes} />
-            <Row label="Reminder Notes" value={data.reminder_notes} />
-            <Row label="Lead Source" value={data.lead_vendor_name} />
-            <Row label="Lead Product" value={data.lead_product_name} />
-            <Row label="Imported" value={fmtAge(data.imported_at)} />
-            <Row label="Hostile Language Flag" value={data.hostile_language_detected ? "⚠ Yes" : null} />
-          </Section>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Stat row ─────────────────────────────────────────────────────────────
-function StatRow({ rows }: { rows: AnyRow[] }) {
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {};
-    rows.forEach((r) => {
-      const k = String(r.pipeline_stage ?? "—");
-      c[k] = (c[k] ?? 0) + 1;
-    });
-    return c;
-  }, [rows]);
-  const followUps = rows.filter((r) => r.callback_date || (r.next_action_date && new Date(String(r.next_action_date)) <= new Date())).length;
-  const sold = rows.filter((r) => r.policy_number).length;
-  const sumAlp = rows.reduce((s, r) => s + Number(r.face_amount ?? 0), 0);
-
-  const items = [
-    { label: "Total clients", value: rows.length.toLocaleString(), icon: Users, gradient: "from-blue-500/20 to-cyan-500/10" },
-    { label: "Sold", value: sold.toLocaleString(), icon: ShieldCheck, gradient: "from-emerald-500/20 to-teal-500/10" },
-    { label: "Follow-ups due", value: followUps.toLocaleString(), icon: AlertTriangle, gradient: "from-amber-500/20 to-orange-500/10" },
-    { label: "Total face amount", value: fmtMoney(sumAlp), icon: DollarSign, gradient: "from-purple-500/20 to-fuchsia-500/10" },
-  ];
-
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {items.map((it) => (
-        <Card key={it.label} className={`bg-gradient-to-br ${it.gradient} border-border/40`}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground"><it.icon className="h-3.5 w-3.5" />{it.label}</div>
-            <div className="text-2xl font-bold mt-1">{it.value}</div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-// ─── Main page ────────────────────────────────────────────────────────────
 export default function ClientPipeline() {
-  usePageTitle("Agent Pipeline · APEX");
-  const { user, isLoading: authLoading } = useAuth();
-  const [q, setQ] = useState("");
-  const [stage, setStage] = useState<string>("ALL");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  usePageTitle("Client Pipeline · APEX");
+  const { user, isAdmin, isManager } = useAuth();
+  const [search, setSearch] = useState("");
+  const [stageFilter, setStageFilter] = useState<string>("__all__");
+  const [stateFilter, setStateFilter] = useState<string>("__all__");
+  const [sortKey, setSortKey] = useState<"recent" | "name" | "stage_changed" | "callback">("recent");
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["client-pipeline", user?.id],
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ["client-pipeline", isAdmin],
     enabled: !!user?.id,
     queryFn: async () => {
-      // RLS does the role scoping server-side — we just SELECT
-      const { data } = await supabase
-        .from("agentlink_clients" as any)
-        .select("insuracloud_pipeline_client_id, first_name, last_name, phone, email, date_of_birth, pipeline_stage, last_contact_date, next_action_date, callback_date, policy_number, product_sold, face_amount, pitch_carrier, pitch_price, lead_vendor_name, stage_changed_at, client_health_score, do_not_call, do_not_email, do_not_text, agent_id")
-        .order("stage_changed_at", { ascending: false, nullsFirst: false })
-        .limit(5000);
-      const rows = (data as AnyRow[] | null) ?? [];
-      // Resolve owning-agent display names in one batch so each row shows
-      // who the client "belongs to" (i.e., the writing agent), not just an id.
-      const agentIds = Array.from(new Set(rows.map((r) => r.agent_id).filter(Boolean) as string[]));
-      const nameByAgentId = new Map<string, string>();
-      if (agentIds.length) {
-        const { data: agents } = await supabase
-          .from("agents")
-          .select("id, display_name, agent_code")
-          .in("id", agentIds);
-        for (const a of (agents ?? []) as Array<{ id: string; display_name: string | null; agent_code: string | null }>) {
-          nameByAgentId.set(a.id, a.display_name || a.agent_code || "—");
-        }
-      }
-      return rows.map((r) => ({
-        ...r,
-        agent_name: r.agent_id ? (nameByAgentId.get(r.agent_id as string) ?? "—") : "—",
-      })) as AnyRow[];
+      const { data, error } = await supabase
+        .from("agentlink_clients")
+        .select(
+          "id, insuracloud_pipeline_client_id, agent_id, first_name, last_name, phone, email, state, city, date_of_birth, pipeline_stage, created_at, updated_at, stage_changed_at, last_contact_date, next_action_date, callback_date, callback_time, do_not_call, hostile_language_detected, client_health_score, pitch_carrier, pitch_price, product_sold, face_amount, policy_number, policy_start_date, imported_at, external_source, lead_vendor_name, total_monthly_income"
+        )
+        .order("created_at", { ascending: false })
+        .limit(2_000);
+      if (error) throw error;
+      return (data ?? []) as unknown as Client[];
     },
-    refetchInterval: 60_000,
   });
 
-  const filtered = useMemo(() => {
-    return (data ?? []).filter((r) => {
-      if (stage !== "ALL" && r.pipeline_stage !== stage) return false;
-      return matches(r.first_name, q) || matches(r.last_name, q) || matches(r.phone, q) || matches(r.email, q) || matches(r.policy_number, q);
-    });
-  }, [data, q, stage]);
+  // ── Derived totals ─────────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const total = rows.length;
+    const sold = rows.filter((c) => c.pipeline_stage === "SOLD").length;
+    const inFlight = rows.filter((c) =>
+      c.pipeline_stage && c.pipeline_stage !== "SOLD" && c.pipeline_stage !== "INACTIVE"
+    ).length;
+    const unsorted = rows.filter((c) => !c.pipeline_stage).length;
+    const now = Date.now();
+    const new7d = rows.filter((c) => now - new Date(c.created_at).getTime() < 7 * 86_400_000).length;
+    const callbacksDue = rows.filter((c) => {
+      if (!c.callback_date) return false;
+      const cb = new Date(c.callback_date);
+      return cb.getTime() <= now + 86_400_000 && cb.getTime() > now - 7 * 86_400_000;
+    }).length;
+    const dnc = rows.filter((c) => c.do_not_call).length;
+    const hostile = rows.filter((c) => c.hostile_language_detected).length;
+    return { total, sold, inFlight, unsorted, new7d, callbacksDue, dnc, hostile };
+  }, [rows]);
 
-  if (authLoading || isLoading) return <PageLoadingSkeleton />;
-  if (!user) {
-    return (
-      <div className="p-6 max-w-xl mx-auto">
-        <Card><CardContent className="p-8 text-center text-sm">Sign in to view your pipeline.</CardContent></Card>
-      </div>
-    );
-  }
+  // Stage distribution
+  const stageData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const c of rows) {
+      const k = c.pipeline_stage ?? "UNSORTED";
+      counts[k] = (counts[k] ?? 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([key, value]) => ({
+        key,
+        label: STAGE_META[key]?.label ?? key,
+        value,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [rows]);
+
+  // Top states
+  const stateData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const c of rows) {
+      if (!c.state) continue;
+      counts[c.state] = (counts[c.state] ?? 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([state, count]) => ({ state, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }, [rows]);
+
+  // Callbacks due — next 7 days
+  const callbacks = useMemo(() => {
+    const now = Date.now();
+    const horizon = now + 7 * 86_400_000;
+    return rows
+      .filter((c) => c.callback_date && !c.do_not_call)
+      .map((c) => ({ c, t: new Date(c.callback_date!).getTime() }))
+      .filter(({ t }) => t > now - 86_400_000 && t < horizon)
+      .sort((a, b) => a.t - b.t)
+      .slice(0, 8)
+      .map(({ c }) => c);
+  }, [rows]);
+
+  // Recent additions
+  const recent = useMemo(() => rows.slice(0, 8), [rows]);
+
+  // States list for filter
+  const states = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of rows) if (c.state) s.add(c.state);
+    return Array.from(s).sort();
+  }, [rows]);
+
+  // Filtered + sorted main list
+  const list = useMemo(() => {
+    let r = rows;
+    if (stageFilter !== "__all__") {
+      r = r.filter((c) => (c.pipeline_stage ?? "UNSORTED") === stageFilter);
+    }
+    if (stateFilter !== "__all__") {
+      r = r.filter((c) => c.state === stateFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      r = r.filter(
+        (c) =>
+          (c.first_name ?? "").toLowerCase().includes(q) ||
+          (c.last_name ?? "").toLowerCase().includes(q) ||
+          (c.email ?? "").toLowerCase().includes(q) ||
+          (c.phone ?? "").toLowerCase().includes(q) ||
+          (c.city ?? "").toLowerCase().includes(q) ||
+          (c.policy_number ?? "").toLowerCase().includes(q),
+      );
+    }
+    switch (sortKey) {
+      case "name":
+        r = [...r].sort((a, b) =>
+          (a.last_name ?? "").localeCompare(b.last_name ?? ""),
+        );
+        break;
+      case "stage_changed":
+        r = [...r].sort((a, b) => {
+          const ax = a.stage_changed_at ? new Date(a.stage_changed_at).getTime() : 0;
+          const bx = b.stage_changed_at ? new Date(b.stage_changed_at).getTime() : 0;
+          return bx - ax;
+        });
+        break;
+      case "callback":
+        r = [...r].sort((a, b) => {
+          const ax = a.callback_date ? new Date(a.callback_date).getTime() : Number.MAX_SAFE_INTEGER;
+          const bx = b.callback_date ? new Date(b.callback_date).getTime() : Number.MAX_SAFE_INTEGER;
+          return ax - bx;
+        });
+        break;
+    }
+    return r.slice(0, 250); // cap for render perf
+  }, [rows, stageFilter, stateFilter, search, sortKey]);
+
+  const scopeLabel = isAdmin ? "agency-wide" : isManager ? "your team" : "your book";
 
   return (
-    <div className="p-4 sm:p-6 space-y-5">
+    <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+      {/* HERO */}
       <PageHeader
-        accent="rose"
-        eyebrow="Pipeline · Clients & policies"
-        eyebrowIcon={<Flame className="h-3 w-3" />}
-        title="Agent Pipeline"
-        subtitle="Every client you sold, are selling, or need to follow up with. Synced from AgentLink every minute."
-        actions={<Badge variant="outline" className="text-xs">{data?.length ?? 0} in scope</Badge>}
+        eyebrow="Book of Business"
+        eyebrowIcon={<BookMarked className="h-3 w-3" />}
+        title="Client Pipeline"
+        subtitle={
+          <>
+            Every client in <span className="text-foreground font-medium">{scopeLabel}</span> —
+            their pipeline stage, last contact, upcoming callbacks, and policy state.
+            Source: AgentLink mirror (1,600+ clients across the team).
+          </>
+        }
+        accent="emerald"
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> AgentLink sync live
+            </Badge>
+          </div>
+        }
       />
 
-      <StatRow rows={data ?? []} />
-
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            className="pl-8"
-            placeholder="Search by name, phone, email, policy #…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-        <div className="flex gap-1 flex-wrap">
-          {STAGES.map((s) => (
-            <Button
-              key={s.key}
-              size="sm"
-              variant={stage === s.key ? "default" : "outline"}
-              className={stage === s.key ? "" : "hover:bg-muted"}
-              onClick={() => setStage(s.key)}
-            >
-              <span className={`mr-1.5 h-2 w-2 rounded-full ${s.color}`} />
-              {s.label}
-            </Button>
-          ))}
-        </div>
-        <Badge variant="outline" className="ml-auto">{filtered.length} of {data?.length ?? 0}</Badge>
+      {/* KPI strip */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Kpi icon={Users}        label="Total clients"      value={stats.total}    sub={`+${stats.new7d} new this week`}                      color="text-foreground" loading={isLoading} />
+        <Kpi icon={ShieldCheck}  label="Sold policies"      value={stats.sold}     sub={`${stats.total ? ((stats.sold / stats.total) * 100).toFixed(0) : 0}% of book`} color="text-emerald-500 dark:text-emerald-400" loading={isLoading} />
+        <Kpi icon={Flame}        label="In flight"          value={stats.inFlight} sub="working + pitched + almost"                            color="text-amber-500 dark:text-amber-400" loading={isLoading} />
+        <Kpi icon={CalendarClock} label="Callbacks · 7d"    value={stats.callbacksDue} sub="scheduled in the next week"                       color="text-rose-500 dark:text-rose-400" loading={isLoading} />
       </div>
 
-      <div className="border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/60 text-[10px] uppercase tracking-wider">
-              <tr>
-                <th className="text-left p-3">Client</th>
-                <th className="text-left p-3">Owner</th>
-                <th className="text-left p-3">Contact</th>
-                <th className="text-left p-3">Stage</th>
-                <th className="text-left p-3">Policy</th>
-                <th className="text-right p-3">Face Amount</th>
-                <th className="text-left p-3">Next Action</th>
-                <th className="text-left p-3">Last Contact</th>
-                <th className="p-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/30">
-              {filtered.slice(0, 500).map((r) => (
-                <tr
-                  key={String(r.insuracloud_pipeline_client_id)}
-                  className="hover:bg-muted/30 cursor-pointer"
-                  onClick={() => setSelectedId(Number(r.insuracloud_pipeline_client_id))}
-                >
-                  <td className="p-3">
-                    <div className="font-medium">{String(r.first_name ?? "")} {String(r.last_name ?? "")}</div>
-                    <div className="text-[11px] text-muted-foreground">DOB {fmtDate(r.date_of_birth)}</div>
-                  </td>
-                  <td className="p-3 text-xs">
-                    <span className="font-medium">{String(r.agent_name ?? "—")}</span>
-                  </td>
-                  <td className="p-3 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <Phone className="h-3 w-3 text-muted-foreground" />{String(r.phone ?? "—")}
-                      {r.do_not_call && <span className="text-[9px] text-rose-500">DNC</span>}
+      {/* Stage funnel + state distribution */}
+      <div className="grid gap-3 lg:grid-cols-3">
+        {/* Stage funnel */}
+        <GlassCard className="p-4 lg:col-span-1">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Pipeline stages</p>
+              <h3 className="text-lg font-bold">Where your book sits</h3>
+            </div>
+            <TrendingUp className="h-5 w-5 text-muted-foreground" />
+          </div>
+          {isLoading ? (
+            <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-7 w-full" />)}</div>
+          ) : stageData.length === 0 ? (
+            <EmptyState icon={<Users className="h-6 w-6" />} title="No clients yet" />
+          ) : (
+            <FunnelStrip steps={stageData.map(s => ({
+              label: s.label,
+              value: s.value,
+              color: (STAGE_META[s.key]?.color ?? "bg-muted"),
+            }))} />
+          )}
+        </GlassCard>
+
+        {/* State bar chart */}
+        <GlassCard className="p-4 lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Geographic mix</p>
+              <h3 className="text-lg font-bold">Top 10 states</h3>
+            </div>
+            <MapPin className="h-5 w-5 text-muted-foreground" />
+          </div>
+          {isLoading ? (
+            <Skeleton className="h-[180px] w-full" />
+          ) : stateData.length === 0 ? (
+            <EmptyState icon={<MapPin className="h-6 w-6" />} title="No state data" />
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={stateData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.4)" />
+                <XAxis dataKey="state" fontSize={10} stroke="hsl(var(--muted-foreground))" />
+                <YAxis allowDecimals={false} fontSize={10} stroke="hsl(var(--muted-foreground))" />
+                <Tooltip
+                  contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                  {stateData.map((_, i) => (
+                    <Cell key={i} fill={`hsl(${168 + i * 18} 70% 50%)`} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </GlassCard>
+      </div>
+
+      {/* Callbacks due + Recent additions */}
+      <div className="grid gap-3 lg:grid-cols-2">
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Priority queue</p>
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <CalendarClock className="h-5 w-5 text-rose-500" /> Callbacks due
+              </h3>
+            </div>
+            <Badge variant="outline" className="text-xs">{stats.callbacksDue} this week</Badge>
+          </div>
+          {isLoading ? (
+            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
+          ) : callbacks.length === 0 ? (
+            <EmptyState
+              icon={<CalendarClock className="h-6 w-6" />}
+              title="No callbacks scheduled"
+              description="When a client requests a callback, set the date and they'll surface here."
+              variant="success"
+            />
+          ) : (
+            <ul className="divide-y divide-border/40">
+              {callbacks.map((c) => {
+                const isPast = c.callback_date && isBefore(new Date(c.callback_date), new Date());
+                return (
+                  <li key={c.id} className="py-2.5 flex items-center justify-between gap-3 hover:bg-primary/[0.04] rounded px-2 -mx-2 transition-colors">
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate">
+                        {[c.first_name, c.last_name].filter(Boolean).join(" ") || "(no name)"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {fmtPhone(c.phone)} · {c.state ?? "—"}
+                      </p>
                     </div>
-                    {r.email && (
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <Mail className="h-3 w-3 text-muted-foreground" />
-                        <span className="truncate max-w-[200px]">{String(r.email)}</span>
+                    <div className="text-right shrink-0">
+                      <p className={`text-sm font-semibold ${isPast ? "text-rose-500 dark:text-rose-400" : "text-foreground"}`}>
+                        {c.callback_date ? format(new Date(c.callback_date), "MMM d") : "—"}
+                        {c.callback_time ? ` · ${c.callback_time}` : ""}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {c.callback_date ? formatDistanceToNow(new Date(c.callback_date), { addSuffix: true }) : ""}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </GlassCard>
+
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Just added</p>
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-primary" /> Recent clients
+              </h3>
+            </div>
+            <Badge variant="outline" className="text-xs">{stats.new7d} this week</Badge>
+          </div>
+          {isLoading ? (
+            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
+          ) : recent.length === 0 ? (
+            <EmptyState icon={<UserPlus className="h-6 w-6" />} title="No clients on file" />
+          ) : (
+            <ul className="divide-y divide-border/40">
+              {recent.map((c) => {
+                const stage = STAGE_META[c.pipeline_stage ?? "UNSORTED"] ?? STAGE_META.UNSORTED;
+                return (
+                  <li key={c.id} className="py-2.5 flex items-center justify-between gap-3 hover:bg-primary/[0.04] rounded px-2 -mx-2 transition-colors">
+                    <div className="min-w-0 flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold shrink-0">
+                        {(c.first_name?.[0] ?? "?") + (c.last_name?.[0] ?? "")}
                       </div>
-                    )}
-                  </td>
-                  <td className="p-3">
-                    <Badge className={`${stageColor(String(r.pipeline_stage))} text-white border-0 text-[10px]`}>
-                      {String(r.pipeline_stage ?? "—")}
-                    </Badge>
-                  </td>
-                  <td className="p-3 text-xs">
-                    <div className="font-mono">{String(r.policy_number ?? "—")}</div>
-                    <div className="text-muted-foreground">{String(r.product_sold ?? r.pitch_carrier ?? "")}</div>
-                  </td>
-                  <td className="p-3 text-right text-xs">{fmtMoney(r.face_amount)}</td>
-                  <td className="p-3 text-xs">
-                    {r.callback_date ? <span className="text-amber-500">{fmtDate(r.callback_date)}</span> : fmtDate(r.next_action_date)}
-                  </td>
-                  <td className="p-3 text-xs text-muted-foreground">{fmtAge(r.last_contact_date)}</td>
-                  <td className="p-3 text-right">
-                    <ChevronRight className="h-4 w-4 text-muted-foreground inline" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filtered.length > 500 && (
-          <div className="p-3 text-xs text-muted-foreground text-center border-t">
-            Showing first 500 of {filtered.length}. Refine search to see more.
-          </div>
-        )}
-        {filtered.length === 0 && (
-          <div className="p-8 text-center text-sm text-muted-foreground">
-            No clients in this view yet. RLS shows only what you're authorized to see.
-          </div>
-        )}
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">
+                          {[c.first_name, c.last_name].filter(Boolean).join(" ") || "(no name)"}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {c.city ? `${c.city}, ${c.state}` : c.state ?? "—"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <Badge variant="outline" className={`text-[10px] bg-gradient-to-br ${stage.tint}`}>
+                        {stage.label}
+                      </Badge>
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </GlassCard>
       </div>
 
-      {selectedId !== null && <ClientDetailDrawer id={selectedId} onClose={() => setSelectedId(null)} />}
+      {/* Full client list */}
+      <GlassCard className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Full directory</p>
+            <h3 className="text-lg font-bold">All clients</h3>
+          </div>
+          <Badge variant="outline" className="text-xs">{list.length.toLocaleString()} of {stats.total.toLocaleString()}</Badge>
+        </div>
+
+        {/* Filter bar */}
+        <div className="flex flex-col gap-2 md:flex-row md:items-center mb-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, email, phone, city, policy #"
+              className="pl-9"
+            />
+          </div>
+          <Select value={stageFilter} onValueChange={setStageFilter}>
+            <SelectTrigger className="md:w-[150px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All stages</SelectItem>
+              {Object.entries(STAGE_META).map(([k, m]) => (
+                <SelectItem key={k} value={k}>{m.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={stateFilter} onValueChange={setStateFilter}>
+            <SelectTrigger className="md:w-[120px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All states</SelectItem>
+              {states.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+            </SelectContent>
+          </Select>
+          <Select value={sortKey} onValueChange={(v) => setSortKey(v as any)}>
+            <SelectTrigger className="md:w-[160px]"><ArrowUpDown className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Newest first</SelectItem>
+              <SelectItem value="name">Name A→Z</SelectItem>
+              <SelectItem value="stage_changed">Stage changed</SelectItem>
+              <SelectItem value="callback">Callback due</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* List */}
+        {isLoading ? (
+          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
+        ) : list.length === 0 ? (
+          <EmptyState
+            icon={<Filter className="h-6 w-6" />}
+            title="No clients match these filters"
+            description="Try widening the stage or state filter, or clear the search."
+            actions={<Button size="sm" variant="ghost" onClick={() => { setSearch(""); setStageFilter("__all__"); setStateFilter("__all__"); }}>Clear filters</Button>}
+          />
+        ) : (
+          <div className="space-y-1.5">
+            {list.map((c, i) => {
+              const stage = STAGE_META[c.pipeline_stage ?? "UNSORTED"] ?? STAGE_META.UNSORTED;
+              const hasCallback = !!c.callback_date;
+              const isOverdue = hasCallback && isBefore(new Date(c.callback_date!), new Date());
+              const lastContactDays = c.last_contact_date
+                ? Math.floor((Date.now() - new Date(c.last_contact_date).getTime()) / 86_400_000)
+                : null;
+              const isStale = lastContactDays != null && lastContactDays > 30;
+              return (
+                <motion.div
+                  key={c.id}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(i * 0.005, 0.15) }}
+                  className="flex items-center gap-3 rounded-lg border border-border/40 px-3 py-2.5 hover:border-primary/40 hover:bg-primary/[0.03] transition-colors"
+                >
+                  <div className="h-9 w-9 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold shrink-0">
+                    {(c.first_name?.[0] ?? "?") + (c.last_name?.[0] ?? "")}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold truncate">
+                        {[c.first_name, c.last_name].filter(Boolean).join(" ") || "(no name)"}
+                      </p>
+                      <Badge variant="outline" className={`text-[10px] bg-gradient-to-br ${stage.tint}`}>
+                        {stage.label}
+                      </Badge>
+                      {c.do_not_call && (
+                        <Badge variant="outline" className="text-[10px] bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/40">
+                          DNC
+                        </Badge>
+                      )}
+                      {c.hostile_language_detected && (
+                        <Badge variant="outline" className="text-[10px] bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/40">
+                          <AlertTriangle className="h-2.5 w-2.5 mr-0.5" /> Hostile
+                        </Badge>
+                      )}
+                      {isStale && (
+                        <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40">
+                          <Clock className="h-2.5 w-2.5 mr-0.5" /> {lastContactDays}d cold
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {fmtPhone(c.phone)}
+                      {c.email && <> · {c.email}</>}
+                      {c.city && <> · {c.city}, {c.state}</>}
+                    </p>
+                  </div>
+                  <div className="hidden md:flex flex-col items-end text-xs text-muted-foreground shrink-0 min-w-[110px]">
+                    {hasCallback && (
+                      <span className={`font-semibold ${isOverdue ? "text-rose-500 dark:text-rose-400" : "text-foreground"}`}>
+                        Callback {format(new Date(c.callback_date!), "MMM d")}
+                      </span>
+                    )}
+                    {c.product_sold && <span>{c.product_sold}</span>}
+                    {c.face_amount ? <span className="text-emerald-500 dark:text-emerald-400">{fmtMoney(c.face_amount)}</span> : null}
+                    <span>{c.stage_changed_at ? formatDistanceToNow(new Date(c.stage_changed_at), { addSuffix: true }) : `Added ${formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}`}</span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {c.phone && !c.do_not_call && (
+                      <Button asChild size="icon" variant="ghost" title="Call">
+                        <a href={`tel:${c.phone}`}><Phone className="h-4 w-4" /></a>
+                      </Button>
+                    )}
+                    {c.email && (
+                      <Button asChild size="icon" variant="ghost" title="Email">
+                        <a href={`mailto:${c.email}`}><Mail className="h-4 w-4" /></a>
+                      </Button>
+                    )}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+                  </div>
+                </motion.div>
+              );
+            })}
+            {rows.length > list.length && (
+              <p className="text-xs text-center text-muted-foreground pt-3">
+                Showing first 250 of {list.length.toLocaleString()} matches. Refine your filters to drill in.
+              </p>
+            )}
+          </div>
+        )}
+      </GlassCard>
+    </div>
+  );
+}
+
+// ── Sub-components ─────────────────────────────────────────────────────────
+
+interface KpiProps { icon: React.ElementType; label: string; value: number; sub: string; color: string; loading: boolean; }
+function Kpi({ icon: Icon, label, value, sub, color, loading }: KpiProps) {
+  return (
+    <GlassCard className="p-4">
+      <div className="flex items-start justify-between">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
+          {loading ? <Skeleton className="h-9 w-24 mt-1" /> : (
+            <p className={`text-3xl font-bold tabular-nums mt-1 ${color}`}>{value.toLocaleString()}</p>
+          )}
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>
+        </div>
+        <Icon className={`h-7 w-7 ${color} opacity-70`} />
+      </div>
+    </GlassCard>
+  );
+}
+
+interface FunnelStep { label: string; value: number; color: string; }
+function FunnelStrip({ steps }: { steps: FunnelStep[] }) {
+  const max = Math.max(1, ...steps.map((s) => s.value));
+  return (
+    <div className="space-y-2">
+      {steps.map((s) => (
+        <div key={s.label} className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">{s.label}</span>
+            <span className="font-semibold tabular-nums">{s.value.toLocaleString()}</span>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div className={`h-full ${s.color} rounded-full transition-all duration-500`} style={{ width: `${(s.value / max) * 100}%` }} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

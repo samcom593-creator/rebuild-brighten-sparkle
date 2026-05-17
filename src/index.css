@@ -1183,3 +1183,206 @@ input:focus, textarea:focus, select:focus {
     scroll-behavior: auto !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══  APEX VISUAL OVERHAUL v3 — 2026-05-17                        ═══ */
+/* ═══  Site-wide aurora background, premium glass, sharper type.   ═══ */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/* Aurora blob orbital motion — slow, gentle, hypnotic */
+@keyframes aurora-orbit-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(8vmin, 6vmin) scale(1.08); }
+  66%      { transform: translate(-4vmin, 10vmin) scale(0.95); }
+}
+@keyframes aurora-orbit-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-10vmin, 8vmin) scale(1.12); }
+}
+@keyframes aurora-orbit-c {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%      { transform: translate(10vmin, -6vmin) scale(0.9); }
+  70%      { transform: translate(-6vmin, -10vmin) scale(1.1); }
+}
+.aurora-blob-a { animation: aurora-orbit-a 28s ease-in-out infinite; }
+.aurora-blob-b { animation: aurora-orbit-b 36s ease-in-out infinite; }
+.aurora-blob-c { animation: aurora-orbit-c 42s ease-in-out infinite; }
+
+/* ──  Body — go transparent so AuroraBackground shows through  ────── */
+/* AuthenticatedShell mounts AuroraBackground as a fixed -z-10 layer; we
+   keep public/unauth pages on a solid bg via .bg-background but let
+   the authenticated shell render onto the aurora. */
+.dark body { background-color: hsl(222 47% 3%); }
+body { background-attachment: fixed; }
+
+/* ── Premium glass v3 — visibly different from prior version  ─────── */
+.glass-card,
+[class*="GlassCard"] {
+  background: linear-gradient(150deg,
+    hsl(var(--card) / 0.78) 0%,
+    hsl(var(--card) / 0.55) 100%);
+  border: 1px solid hsl(var(--border) / 0.65);
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  box-shadow:
+    inset 0 1px 0 hsl(255 100% 100% / 0.06),
+    0 6px 24px hsl(220 47% 0% / 0.18);
+}
+.dark .glass-card,
+.dark [class*="GlassCard"] {
+  background: linear-gradient(150deg,
+    hsl(222 47% 8% / 0.7) 0%,
+    hsl(222 47% 5% / 0.5) 100%);
+  border: 1px solid hsl(168 60% 50% / 0.12);
+  box-shadow:
+    inset 0 1px 0 hsl(168 80% 70% / 0.05),
+    0 8px 30px hsl(222 47% 0% / 0.45);
+}
+.glass-card:hover,
+[class*="GlassCard"]:hover {
+  border-color: hsl(var(--primary) / 0.4);
+  box-shadow:
+    inset 0 1px 0 hsl(255 100% 100% / 0.08),
+    0 0 0 1px hsl(var(--primary) / 0.25),
+    0 14px 40px hsl(var(--primary) / 0.12);
+  transform: translateY(-2px);
+}
+
+/* ── Page header — premium hero band ──────────────────────────────── */
+header[class*="bg-gradient-to-br"] {
+  position: relative;
+  isolation: isolate;
+}
+header[class*="bg-gradient-to-br"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(60% 100% at 0% 0%, hsl(var(--primary) / 0.12) 0%, transparent 60%),
+    radial-gradient(60% 100% at 100% 0%, hsl(265 80% 60% / 0.10) 0%, transparent 60%);
+}
+header[class*="bg-gradient-to-br"]::after {
+  content: "";
+  position: absolute;
+  left: 5%; right: 5%; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
+}
+header[class*="bg-gradient-to-br"] h1 {
+  font-size: clamp(1.75rem, 4vw, 2.5rem) !important;
+  line-height: 1.1 !important;
+  background: linear-gradient(135deg,
+    hsl(var(--foreground)) 0%,
+    hsl(var(--foreground) / 0.85) 70%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  letter-spacing: -0.025em;
+}
+
+/* ── Sidebar shine on active item ─────────────────────────────────── */
+.nav-item-active::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    hsl(var(--primary) / 0.15) 0%,
+    transparent 50%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ── Metric tile (used by KPI cards) — gradient ring on hover ─────── */
+.metric-tile {
+  position: relative;
+  transition: transform 200ms var(--ease-standard);
+}
+.metric-tile::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg,
+    hsl(var(--primary) / 0.4),
+    hsl(265 80% 60% / 0.3),
+    hsl(38 95% 55% / 0.3));
+  opacity: 0;
+  transition: opacity 280ms var(--ease-standard);
+  z-index: -1;
+}
+.metric-tile:hover::before { opacity: 1; }
+
+/* ── Text gradient brand — for any element with .brand-gradient ──── */
+.brand-gradient {
+  background: linear-gradient(135deg,
+    hsl(168 80% 55%) 0%,
+    hsl(265 80% 70%) 50%,
+    hsl(38 95% 60%) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Top hairline accent on every authed page (subtle) ─────────────── */
+main {
+  position: relative;
+}
+main::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    hsl(var(--primary) / 0.35) 30%,
+    hsl(265 80% 60% / 0.45) 50%,
+    hsl(38 95% 55% / 0.35) 70%,
+    transparent 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* ── Buttons — visible upgrade (gradient depth on primary) ────────── */
+button.bg-primary, [role="button"].bg-primary {
+  background: linear-gradient(135deg,
+    hsl(var(--primary)) 0%,
+    hsl(var(--primary)) 50%,
+    hsl(160 75% 38%) 100%);
+}
+
+/* ── Card click feedback ──────────────────────────────────────────── */
+a[class*="GlassCard"]:active,
+button[class*="GlassCard"]:active {
+  transform: translateY(0) scale(0.997);
+}
+
+/* ── Tabular numbers in stat tiles get smoother weight transitions ── */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* ── Section dividers — gentle gradient line ──────────────────────── */
+hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    hsl(var(--border) / 0.8),
+    transparent);
+}
+
+/* ── Light mode: dial the aurora WAY down (background is cream) ──── */
+.light .aurora-blob-a,
+.light .aurora-blob-b,
+.light .aurora-blob-c {
+  opacity: 0.15 !important;
+}
+
+/* ── Mobile: drop heavy backdrop-filter to keep scroll smooth ─────── */
+@media (max-width: 640px) {
+  .glass-card,
+  [class*="GlassCard"] {
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+  }
+}

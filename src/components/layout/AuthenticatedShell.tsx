@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { SidebarLayout } from "./SidebarLayout";
+import { AuroraBackground } from "./AuroraBackground";
 import { PushNotificationPrompt } from "./PushNotificationPrompt";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ComponentErrorBoundary } from "@/components/ComponentErrorBoundary";
@@ -32,6 +33,7 @@ function InnerPageLoader() {
 export function AuthenticatedShell() {
   return (
     <ProtectedRoute>
+      <AuroraBackground />
       <SidebarLayout showPhoneBanner={true}>
         <CelebrationProvider />
         <CommandPalette />

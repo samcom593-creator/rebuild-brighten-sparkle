@@ -289,6 +289,7 @@ export function GlobalSidebar({
       adminItems.push({ icon: Plug, label: "Integrations", href: "/dashboard/integrations" });
       adminItems.push({ icon: Zap, label: "AgentLink Sync", href: "/dashboard/agentlink-sync", special: true });
       adminItems.push({ icon: Database, label: "AgentLink Vault", href: "/dashboard/agentlink-vault", special: true });
+      adminItems.push({ icon: Sparkles, label: "Conduct Center", href: "/dashboard/conduct", special: true });
       adminItems.push({ icon: ShieldAlert, label: "Agent Strikes", href: "/dashboard/strikes", special: true });
       adminItems.push({ icon: Receipt, label: "Charges Audit", href: "/dashboard/charges-audit", special: true });
       adminItems.push({ icon: Shield, label: "Setup", href: "/dashboard/setup" });
@@ -335,10 +336,10 @@ export function GlobalSidebar({
           "flex items-center gap-3 px-3 py-2.5 transition-all duration-200 min-h-[44px] lg:min-h-[40px]",
           "touch-action-manipulation select-none group/nav",
           isActive
-            ? "text-[#22d3a5] border-l-2 border-[#22d3a5] bg-[#22d3a5]/5"
+            ? "text-[#22d3a5] bg-gradient-to-r from-[#22d3a5]/15 via-[#22d3a5]/5 to-transparent border-l-[3px] border-[#22d3a5] shadow-[inset_0_0_20px_hsl(168_80%_50%/0.08)]"
             : item.special
-              ? "bg-gradient-to-r from-[#22d3a5]/10 to-transparent text-[#22d3a5] border border-[#22d3a5]/20 hover:from-[#22d3a5]/20 hover:border-[#22d3a5]/40 shadow-sm rounded-lg mx-1"
-              : "text-[#64748b] hover:text-[#94a3b8] hover:bg-white/[0.03]",
+              ? "bg-gradient-to-r from-[#22d3a5]/10 to-transparent text-[#22d3a5] border border-[#22d3a5]/20 hover:from-[#22d3a5]/25 hover:border-[#22d3a5]/50 hover:shadow-[0_0_20px_hsl(168_80%_50%/0.15)] rounded-lg mx-1"
+              : "text-[#64748b] hover:text-[#e2e8f0] hover:bg-white/[0.04] hover:translate-x-0.5",
           isCollapsed && "justify-center px-2"
         )}
         style={{ touchAction: "manipulation" }}
@@ -385,13 +386,19 @@ export function GlobalSidebar({
     <>
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-full overflow-hidden border-r border-[#1e293b]",
+          "fixed top-0 left-0 z-40 h-full overflow-hidden",
           "transition-all duration-150 ease-in-out",
           isFullscreen && "pointer-events-none opacity-0"
         )}
         style={{
           width: sidebarWidth,
-          background: "linear-gradient(180deg, #070d1b 0%, #030712 100%)",
+          background:
+            "linear-gradient(180deg, hsl(222 47% 4% / 0.92) 0%, hsl(222 60% 2% / 0.95) 100%)",
+          backdropFilter: "blur(16px) saturate(160%)",
+          WebkitBackdropFilter: "blur(16px) saturate(160%)",
+          borderRight: "1px solid hsl(168 60% 50% / 0.12)",
+          boxShadow:
+            "inset -1px 0 0 hsl(255 100% 100% / 0.04), 4px 0 30px hsl(222 60% 0% / 0.4)",
         }}
       >
         <div className="flex flex-col h-full">
@@ -402,13 +409,24 @@ export function GlobalSidebar({
           )}>
             {!isCollapsed && (
               <Link to="/dashboard" className="flex items-center gap-3 group shrink-0" style={{ overflow: 'visible', whiteSpace: 'nowrap', minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'visible', whiteSpace: 'nowrap' }}>
+                <div className="relative" style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'visible', whiteSpace: 'nowrap' }}>
                   <span
-                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '16px', color: 'white', letterSpacing: '2px', flexShrink: 0 }}
+                    className="brand-gradient"
+                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '17px', letterSpacing: '2.5px', flexShrink: 0 }}
                   >
                     APEX
                   </span>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22d3a5', flexShrink: 0, animation: 'pulse 2s infinite' }} />
+                  <span
+                    style={{
+                      width: '7px',
+                      height: '7px',
+                      borderRadius: '50%',
+                      background: '#22d3a5',
+                      boxShadow: '0 0 12px hsl(168 80% 50% / 0.8), 0 0 24px hsl(168 80% 50% / 0.4)',
+                      flexShrink: 0,
+                      animation: 'pulse 2s infinite',
+                    }}
+                  />
                   <span
                     style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: '13px', color: '#22d3a5', flexShrink: 0, letterSpacing: '0.5px' }}
                   >
@@ -420,11 +438,15 @@ export function GlobalSidebar({
             {isCollapsed && (
               <Link to="/dashboard" className="group relative">
                 <span
-                  className="text-lg font-extrabold text-white"
-                  style={{ fontFamily: "'Syne', sans-serif" }}
+                  className="text-xl brand-gradient"
+                  style={{ fontFamily: "'Syne', sans-serif", fontWeight: 900 }}
                 >
                   A
                 </span>
+                <span
+                  className="absolute -top-1 -right-2 h-1.5 w-1.5 rounded-full bg-emerald-400"
+                  style={{ boxShadow: '0 0 8px hsl(168 80% 50% / 0.8)' }}
+                />
               </Link>
             )}
             <div className="flex items-center gap-1">

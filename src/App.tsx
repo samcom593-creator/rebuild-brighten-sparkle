@@ -127,6 +127,7 @@ const MyNotifications = lazy(() => import("./pages/MyNotifications"));
 const AdminStrikes = lazy(() => import("./pages/AdminStrikes"));
 const MyStrikes = lazy(() => import("./pages/MyStrikes"));
 const ChargesAudit = lazy(() => import("./pages/ChargesAudit"));
+const ConductCommandCenter = lazy(() => import("./pages/ConductCommandCenter"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
@@ -308,6 +309,8 @@ const App = () => (
                            <Route path="/dashboard/my-strikes" element={<ProtectedRoute><MyStrikes /></ProtectedRoute>} />
                            {/* Finance: Stripe charge anomaly inspector (Jordan/$167 incident). */}
                            <Route path="/dashboard/charges-audit" element={<ProtectedRoute requireAdmin><ChargesAudit /></ProtectedRoute>} />
+                           {/* Conduct war room: real-time view across strikes + charges + agent standing. */}
+                           <Route path="/dashboard/conduct" element={<ProtectedRoute requireAdmin><ConductCommandCenter /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

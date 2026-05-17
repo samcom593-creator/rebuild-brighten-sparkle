@@ -1219,32 +1219,28 @@ html { background-attachment: fixed; }
   background-color: hsl(var(--background));
 }
 
-/* ── Premium glass v3.1 — readable. Higher opacity so text never washes out ── */
+/* ── Glass cards — readability + PERF first. No backdrop-filter.   ── */
+/* backdrop-filter is wildly expensive when stacked dozens of times per
+ * page (dashboards, lists). Opacity-95 cards with NO blur render at 60fps
+ * even on low-end devices. */
 .glass-card,
 [class*="GlassCard"] {
-  background: hsl(var(--card) / 0.95);
+  background: hsl(var(--card) / 0.98);
   border: 1px solid hsl(var(--border) / 0.8);
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
   box-shadow:
-    inset 0 1px 0 hsl(255 100% 100% / 0.06),
-    0 4px 16px hsl(220 47% 0% / 0.10);
+    inset 0 1px 0 hsl(255 100% 100% / 0.04),
+    0 2px 8px hsl(220 47% 0% / 0.06);
 }
 .dark .glass-card,
 .dark [class*="GlassCard"] {
-  background: hsl(222 47% 7% / 0.92);
+  background: hsl(222 47% 7%);
   border: 1px solid hsl(168 60% 50% / 0.16);
   box-shadow:
-    inset 0 1px 0 hsl(168 80% 70% / 0.04),
-    0 6px 24px hsl(222 47% 0% / 0.35);
+    0 4px 14px hsl(222 47% 0% / 0.28);
 }
 .glass-card:hover,
 [class*="GlassCard"]:hover {
   border-color: hsl(var(--primary) / 0.4);
-  box-shadow:
-    inset 0 1px 0 hsl(255 100% 100% / 0.08),
-    0 0 0 1px hsl(var(--primary) / 0.25),
-    0 10px 30px hsl(var(--primary) / 0.08);
   transform: translateY(-2px);
 }
 
@@ -1395,12 +1391,9 @@ hr {
   animation: apex-page-enter-v3 480ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ── Stagger entry for any direct child of .page-enter (cards, etc.) ── */
-.page-enter > *:not(header) {
-  animation: apex-page-enter-v3 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 80ms;
-}
-.page-enter > header { animation: apex-page-enter-v3 480ms cubic-bezier(0.22, 1, 0.36, 1); }
+/* (stagger removed for perf — each child animating burned frames on
+ *   data-dense pages with 50+ cards). The parent page-enter animation
+ *   above still fires once per page. */
 
 /* H1 default — bumped, but reasonable (was clamp 2-3.25rem; revert to defaults
  *   so per-page headlines control their own size). */
@@ -1420,22 +1413,8 @@ button:active, [role="button"]:active {
   transform: scale(0.96);
 }
 
-/* ── Top loading bar — runs once on every route change ─────────── */
-@keyframes top-progress {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-main::after {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, hsl(168 80% 55%), hsl(265 80% 65%), transparent);
-  transform: translateX(-100%);
-  animation: top-progress 1100ms cubic-bezier(0.4, 0, 0.2, 1) 1;
-  pointer-events: none;
-  z-index: 2;
-}
+/* (route-change progress bar removed — ScrollProgress component handles
+ *   scroll feedback already; this was double signal) */
 
 /* ── Sidebar nav items: subtle gradient sweep on hover ──────────── */
 @keyframes nav-sweep {
@@ -1447,11 +1426,7 @@ aside a:hover {
   overflow: hidden;
 }
 
-/* ── Soften gradient text appearance to ensure contrast ─────────── */
-.brand-gradient {
-  background-size: 200% auto;
-  animation: gradient-shift 6s ease infinite;
-}
+/* brand-gradient: keep static (animation was constant repaint) */
 
 /* ── Live indicator: glowing ring pulse ─────────────────────────── */
 .live-indicator {
@@ -1540,17 +1515,7 @@ header[class*="bg-gradient-to-br"] {
   transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ── 3D tilt on KPI stat tiles (any GlassCard inside a 4-col grid) ── */
-@media (min-width: 1024px) {
-  .grid.lg\:grid-cols-4 > div [class*="GlassCard"] {
-    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
-                box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1);
-    transform-style: preserve-3d;
-  }
-  .grid.lg\:grid-cols-4 > div [class*="GlassCard"]:hover {
-    transform: perspective(900px) rotateX(2deg) rotateY(-3deg) translateY(-3px);
-  }
-}
+/* (3D tilt removed — perspective transforms forced repaints on hover) */
 
 /* KPI numbers — subtle glow only in dark; OFF in light (was painful) */
 .dark [class*="GlassCard"] .text-3xl,
@@ -1559,42 +1524,10 @@ header[class*="bg-gradient-to-br"] {
   text-shadow: 0 0 14px hsl(0 0% 0% / 0.3);
 }
 
-/* ── Sidebar logo: floating bob ──────────────────────────────────── */
-@keyframes logo-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-1px); }
-}
-aside a[href="/dashboard"] {
-  animation: logo-bob 4s ease-in-out infinite;
-}
+/* (logo bob removed — was running infinite animation in sidebar) */
 
-/* ── Nav-item hover: gradient sweep ──────────────────────────────── */
-@keyframes nav-sweep-anim {
-  0%   { transform: translateX(-100%); opacity: 0; }
-  50%  { opacity: 1; }
-  100% { transform: translateX(100%); opacity: 0; }
-}
-aside a:not(.nav-item-active)::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    hsl(168 80% 50% / 0.10) 50%,
-    transparent 100%);
-  transform: translateX(-100%);
-  pointer-events: none;
-  border-radius: inherit;
-  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-aside a:hover::before {
-  transform: translateX(100%);
-}
-
-/* ── Make sure aside z-index works with new ::before ────────────── */
-aside a {
-  overflow: hidden;
-}
+/* (nav-item sweep removed — every hover triggered a 600ms transition
+ *   on every sidebar link. Sum of all hovers per session was huge.) */
 
 /* ── Page background safety: ensure body never covers aurora ─────── */
 .dark body,
@@ -1638,6 +1571,63 @@ button[class*="border-emerald"]:hover {
   box-shadow:
     inset 3px 0 0 hsl(168 80% 55%),
     inset 0 0 40px hsl(168 80% 55% / 0.06);
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══  APEX v3.5 — CONTRAST AUTO-FIX FOR LIGHT MODE  (2026-05-17)  ═══ */
+/* ═══  Many pages use Tailwind -200/-300 pale shades that read fine ═══ */
+/* ═══  on a dark bg but disappear on the cream light bg. Bump them. ═══ */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.light .text-slate-200,  .light .text-slate-300,  .light .text-slate-400  { color: hsl(220 30% 28%) !important; }
+.light .text-zinc-200,   .light .text-zinc-300,   .light .text-zinc-400   { color: hsl(220 10% 28%) !important; }
+.light .text-gray-200,   .light .text-gray-300,   .light .text-gray-400   { color: hsl(220 10% 28%) !important; }
+.light .text-neutral-200,.light .text-neutral-300,.light .text-neutral-400{ color: hsl(0 0% 28%)    !important; }
+.light .text-stone-200,  .light .text-stone-300,  .light .text-stone-400  { color: hsl(30 6% 28%)   !important; }
+
+.light .text-rose-200,   .light .text-rose-300    { color: hsl(0 70% 40%)   !important; }
+.light .text-red-200,    .light .text-red-300     { color: hsl(0 70% 40%)   !important; }
+.light .text-pink-200,   .light .text-pink-300    { color: hsl(330 70% 40%) !important; }
+.light .text-fuchsia-200,.light .text-fuchsia-300 { color: hsl(290 70% 42%) !important; }
+.light .text-purple-200, .light .text-purple-300  { color: hsl(265 60% 45%) !important; }
+.light .text-violet-200, .light .text-violet-300  { color: hsl(255 65% 50%) !important; }
+.light .text-indigo-200, .light .text-indigo-300  { color: hsl(235 65% 50%) !important; }
+.light .text-blue-200,   .light .text-blue-300    { color: hsl(215 75% 45%) !important; }
+.light .text-sky-200,    .light .text-sky-300     { color: hsl(200 75% 38%) !important; }
+.light .text-cyan-200,   .light .text-cyan-300    { color: hsl(190 80% 32%) !important; }
+.light .text-teal-200,   .light .text-teal-300    { color: hsl(175 75% 30%) !important; }
+.light .text-emerald-200,.light .text-emerald-300 { color: hsl(160 70% 32%) !important; }
+.light .text-green-200,  .light .text-green-300   { color: hsl(140 65% 32%) !important; }
+.light .text-lime-200,   .light .text-lime-300    { color: hsl(85 70% 32%)  !important; }
+.light .text-yellow-200, .light .text-yellow-300  { color: hsl(40 90% 38%)  !important; }
+.light .text-amber-200,  .light .text-amber-300   { color: hsl(38 85% 38%)  !important; }
+.light .text-orange-200, .light .text-orange-300  { color: hsl(25 80% 42%)  !important; }
+
+/* Hardcoded slate hex codes used heavily across landing + sidebar — bump
+ *   to readable dark gray in light mode. Dark mode unchanged. */
+.light [class*="text-[#94a3b8]"],
+.light [class*="text-[#64748b]"],
+.light [class*="text-[#475569]"],
+.light [class*="text-[#334155]"] {
+  color: hsl(220 18% 30%) !important;
+}
+.light [class*="text-[#1e293b]"],
+.light [class*="text-[#0f172a]"] {
+  color: hsl(222 30% 18%) !important;
+}
+
+/* Cards with dark hardcoded backgrounds (#0f172a, #030712) — switch to
+ *   subtle cream card in light mode so anything painted on top reads. */
+.light [class*="bg-[#0f172a]"],
+.light [class*="bg-[#030712]"] {
+  background-color: hsl(var(--card)) !important;
+}
+.light [class*="bg-[#0f172a]/80"],
+.light [class*="bg-[#0f172a]/60"] {
+  background-color: hsl(var(--card) / 0.85) !important;
+}
+.light [class*="border-[#1e293b]"] {
+  border-color: hsl(var(--border)) !important;
 }
 
 /* ── Mobile: drop heavy backdrop-filter to keep scroll smooth ─────── */

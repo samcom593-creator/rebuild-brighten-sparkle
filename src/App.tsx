@@ -7,7 +7,6 @@ import { queryClient } from "@/shared/api/queryClient";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuroraBackground } from "@/components/layout/AuroraBackground";
-import { ParticleField } from "@/components/layout/ParticleField";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import { SidebarProvider } from "@/hooks/useSidebarState";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -156,7 +155,6 @@ const App = () => (
             <Sonner />
             <SupabaseHealthBanner />
             <AuroraBackground />
-            <ParticleField />
             <BrowserRouter>
               <ScrollToTop />
               <RouteTelemetry />

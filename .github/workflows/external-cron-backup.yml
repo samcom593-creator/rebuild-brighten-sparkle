@@ -153,10 +153,12 @@ jobs:
           fire "public.auto_assign_hiring_manager()" "auto-assign-hiring-manager" no 30 || true
           # Refresh canonical sync-health view used by the dashboard banner.
           fire "public.refresh_sync_health()" "refresh-sync-health" no 10 || true
-          # Auto-cancel local deals that aren't in the upstream snapshot anymore
-          # (stale duplicates that got voided in AgentLink — see Marcos incident
-          # 2026-05-16). Idempotent + guarded by snapshot freshness.
-          fire "public.agentlink_mark_stale_deals_cancelled()" "stale-deal-cleanup" no 10 || true
+          # 2026-05-16 INCIDENT: agentlink_mark_stale_deals_cancelled() was
+          # marking deals 'cancelled', which tripped trg_fn_deal_status_transition
+          # and broadcast retention alerts to Discord naming agents whose
+          # deals weren't really cancelled. The function is now a no-op
+          # pending a non-status-based stale signal. Do NOT re-enable this
+          # line until stale handling moves off the status column.
 
           # Surface the list of failures to the job summary
           {

@@ -46,6 +46,8 @@ import {
   GraduationCap,
   Database,
   Flame,
+  ShieldAlert,
+  Receipt,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -183,6 +185,7 @@ export function GlobalSidebar({
     }
     dashboardItems.push({ icon: BarChart3, label: "Agent Dashboard", href: "/agent-portal" });
     dashboardItems.push({ icon: Bell, label: "My Notifications", href: "/dashboard/notifications/mine" });
+    dashboardItems.push({ icon: ShieldAlert, label: "My Strikes", href: "/dashboard/my-strikes" });
     sections.push({ label: "DASHBOARD", items: dashboardItems });
 
     // 2. PRODUCTION — sales, deals, ALP, leaderboards, BoB
@@ -286,6 +289,8 @@ export function GlobalSidebar({
       adminItems.push({ icon: Plug, label: "Integrations", href: "/dashboard/integrations" });
       adminItems.push({ icon: Zap, label: "AgentLink Sync", href: "/dashboard/agentlink-sync", special: true });
       adminItems.push({ icon: Database, label: "AgentLink Vault", href: "/dashboard/agentlink-vault", special: true });
+      adminItems.push({ icon: ShieldAlert, label: "Agent Strikes", href: "/dashboard/strikes", special: true });
+      adminItems.push({ icon: Receipt, label: "Charges Audit", href: "/dashboard/charges-audit", special: true });
       adminItems.push({ icon: Shield, label: "Setup", href: "/dashboard/setup" });
     }
     adminItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });

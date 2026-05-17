@@ -124,6 +124,9 @@ const ReferralSubmit = lazy(() => import("./pages/ReferralSubmit"));
 const ReferralPipeline = lazy(() => import("./pages/ReferralPipeline"));
 const MyReferrals = lazy(() => import("./pages/MyReferrals"));
 const MyNotifications = lazy(() => import("./pages/MyNotifications"));
+const AdminStrikes = lazy(() => import("./pages/AdminStrikes"));
+const MyStrikes = lazy(() => import("./pages/MyStrikes"));
+const ChargesAudit = lazy(() => import("./pages/ChargesAudit"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
@@ -300,6 +303,11 @@ const App = () => (
                            <Route path="/dashboard/integrations" element={<ProtectedRoute requireAdmin><IntegrationsSettings /></ProtectedRoute>} />
                            <Route path="/dashboard/my-team" element={<ProtectedRoute><MyTeam /></ProtectedRoute>} />
                            <Route path="/dashboard/my-deals" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
+                           {/* Conduct: admin issues strikes; agents view their own record. */}
+                           <Route path="/dashboard/strikes" element={<ProtectedRoute requireAdmin><AdminStrikes /></ProtectedRoute>} />
+                           <Route path="/dashboard/my-strikes" element={<ProtectedRoute><MyStrikes /></ProtectedRoute>} />
+                           {/* Finance: Stripe charge anomaly inspector (Jordan/$167 incident). */}
+                           <Route path="/dashboard/charges-audit" element={<ProtectedRoute requireAdmin><ChargesAudit /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

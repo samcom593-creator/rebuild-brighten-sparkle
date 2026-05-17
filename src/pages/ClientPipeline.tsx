@@ -283,7 +283,24 @@ export default function ClientPipeline() {
         .select("insuracloud_pipeline_client_id, first_name, last_name, phone, email, date_of_birth, pipeline_stage, last_contact_date, next_action_date, callback_date, policy_number, product_sold, face_amount, pitch_carrier, pitch_price, lead_vendor_name, stage_changed_at, client_health_score, do_not_call, do_not_email, do_not_text, agent_id")
         .order("stage_changed_at", { ascending: false, nullsFirst: false })
         .limit(5000);
-      return (data as AnyRow[] | null) ?? [];
+      const rows = (data as AnyRow[] | null) ?? [];
+      // Resolve owning-agent display names in one batch so each row shows
+      // who the client "belongs to" (i.e., the writing agent), not just an id.
+      const agentIds = Array.from(new Set(rows.map((r) => r.agent_id).filter(Boolean) as string[]));
+      const nameByAgentId = new Map<string, string>();
+      if (agentIds.length) {
+        const { data: agents } = await supabase
+          .from("agents")
+          .select("id, display_name, agent_code")
+          .in("id", agentIds);
+        for (const a of (agents ?? []) as Array<{ id: string; display_name: string | null; agent_code: string | null }>) {
+          nameByAgentId.set(a.id, a.display_name || a.agent_code || "—");
+        }
+      }
+      return rows.map((r) => ({
+        ...r,
+        agent_name: r.agent_id ? (nameByAgentId.get(r.agent_id as string) ?? "—") : "—",
+      })) as AnyRow[];
     },
     refetchInterval: 60_000,
   });
@@ -350,6 +367,7 @@ export default function ClientPipeline() {
             <thead className="bg-muted/60 text-[10px] uppercase tracking-wider">
               <tr>
                 <th className="text-left p-3">Client</th>
+                <th className="text-left p-3">Owner</th>
                 <th className="text-left p-3">Contact</th>
                 <th className="text-left p-3">Stage</th>
                 <th className="text-left p-3">Policy</th>
@@ -369,6 +387,9 @@ export default function ClientPipeline() {
                   <td className="p-3">
                     <div className="font-medium">{String(r.first_name ?? "")} {String(r.last_name ?? "")}</div>
                     <div className="text-[11px] text-muted-foreground">DOB {fmtDate(r.date_of_birth)}</div>
+                  </td>
+                  <td className="p-3 text-xs">
+                    <span className="font-medium">{String(r.agent_name ?? "—")}</span>
                   </td>
                   <td className="p-3 text-xs">
                     <div className="flex items-center gap-1.5">

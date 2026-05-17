@@ -230,8 +230,14 @@ export function shouldAutoRepairLeaderboards(now: Date = getBusinessNow()): bool
 }
 
 export function getCloseRate(deals: number, presentations: number): number {
+  // Close rate is deals/presentations as a percentage. Cap at 100% — a rate
+  // above 100% means presentations have been undercounted (e.g., agents
+  // forgot to log them), which paints a misleading picture. The metric
+  // truth guardrail prefers "100% — needs presentation logging" over a
+  // nonsensical 560% number on the dashboard.
   if (presentations <= 0) return 0;
-  return Math.round((deals / presentations) * 1000) / 10;
+  const raw = (deals / presentations) * 100;
+  return Math.min(100, Math.round(raw * 10) / 10);
 }
 
 export function getTodayMetricSummary(lastUpdatedAt?: string | null): string {

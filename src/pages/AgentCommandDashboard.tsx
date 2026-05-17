@@ -49,6 +49,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { AgentReferralLinkCard } from "@/components/agent/AgentReferralLinkCard";
 import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
 import { getCloseRate, getLiveAgentCutoffIso, sumAnnualPremium } from "@/lib/metricTruth";
@@ -544,6 +545,11 @@ export default function AgentCommandDashboard() {
         </Card>
 
         <NextActionChecklist s={s} />
+      </section>
+
+      {/* Personal referral link — every agent gets a sharable apex-financial.org/apply?ref=… URL */}
+      <section>
+        <AgentReferralLinkCard agentId={myAgentId.data ?? null} />
       </section>
 
       {/* Training links */}

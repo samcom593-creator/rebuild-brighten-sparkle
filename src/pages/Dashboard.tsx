@@ -559,7 +559,7 @@ function RecruitingGrid({ stats }: { stats: DashboardSnapshot["recruiting"] }) {
     ["Seminar attended", stats.seminarAttended],
     ["No-show", stats.noShow],
     ["Advanced", stats.advanced],
-    ["ICA sent", stats.icaSent],
+    ["Contract sent", stats.icaSent],
     ["Licensed", stats.licensed],
     ["Contracted", stats.contracted],
     ["Activated", stats.activated],

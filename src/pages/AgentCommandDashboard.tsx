@@ -893,19 +893,22 @@ function AgencyCommandView() {
     },
   });
 
-  // ── Tighter active-agent + licensed-hire counts (Sam: only count
-  // agents with activity in last 30 days; show licensed hires MTD) ─────
+  // ── Tighter active-agent + licensed-hire counts + PLE pipeline ───────
   const tight = useQuery({
     queryKey: ["agency-tight-counts"],
     refetchInterval: 60_000,
     queryFn: async () => {
       const since30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
       const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-      const [dealAgents, prodAgents, licensedMtdRes, contractedMtdRes] = await Promise.all([
+      const [dealAgents, prodAgents, licensedMtdRes, contractedMtdRes, inCourseRes, finishedRes, examScheduledRes] = await Promise.all([
         supabase.from("deals").select("agent_id").gte("posted_at", since30).in("status", ["submitted", "active"]),
         supabase.from("daily_production").select("agent_id").gte("production_date", since30.slice(0, 10)),
         supabase.from("applications").select("id", { count: "exact", head: true }).gte("licensed_at", monthStart).is("terminated_at", null),
         supabase.from("applications").select("id", { count: "exact", head: true }).gte("contracted_at", monthStart).is("terminated_at", null),
+        // Pre-licensing education (PLE) pipeline — from license_progress
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("license_progress", "course_purchased").is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("license_progress", "finished_course").is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("license_progress", "test_scheduled").is("terminated_at", null),
       ]);
       const ids = new Set<string>();
       for (const r of (dealAgents.data ?? []) as Array<{ agent_id: string | null }>) {
@@ -918,6 +921,9 @@ function AgencyCommandView() {
         active30d: ids.size,
         licensedMtd: licensedMtdRes.count ?? 0,
         contractedMtd: contractedMtdRes.count ?? 0,
+        pleInCourse: inCourseRes.count ?? 0,
+        pleFinished: finishedRes.count ?? 0,
+        pleExamScheduled: examScheduledRes.count ?? 0,
       };
     },
   });
@@ -985,7 +991,7 @@ function AgencyCommandView() {
           icon={ShieldCheck}
           label="Licensed hires · MTD"
           value={fmtNum(tight.data?.licensedMtd ?? 0)}
-          subValue={`${fmtNum(tight.data?.contractedMtd ?? 0)} contracted MTD · ${fmtNum(c?.paid_mtd ?? 0)} ICAs paid MTD`}
+          subValue={`${fmtNum(tight.data?.pleInCourse ?? 0)} in pre-license course · ${fmtNum(tight.data?.pleFinished ?? 0)} finished · ${fmtNum(tight.data?.pleExamScheduled ?? 0)} exam scheduled`}
           color="text-violet-500 dark:text-violet-400"
           loading={ceo.isLoading || tight.isLoading}
         />
@@ -1090,7 +1096,7 @@ function AgencyCommandView() {
           <FunnelStrip
             steps={[
               { label: "Active applications", value: c?.total_applications ?? 0, color: "bg-violet-500" },
-              { label: "Paid ICA · MTD",      value: c?.paid_mtd ?? 0,           color: "bg-primary" },
+              { label: "Contracts signed · MTD", value: c?.paid_mtd ?? 0,        color: "bg-primary" },
               { label: "Apps this week",      value: c?.apps_wtd ?? 0,           color: "bg-amber-500" },
               { label: "Uncontacted >24h",    value: c?.uncontacted_24h ?? 0,    color: "bg-rose-500" },
               { label: "Stale 3 days+",       value: c?.stale_new_3d ?? 0,       color: "bg-orange-500" },

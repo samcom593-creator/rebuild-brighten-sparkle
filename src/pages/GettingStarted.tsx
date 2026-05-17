@@ -43,7 +43,7 @@ const CHECKLIST_STEPS = [
   { key: "joined_whatsapp", label: "Joined WhatsApp group", stage: "onboarding" },
   { key: "added_phone_number", label: "Added phone number", stage: "onboarding" },
   { key: "uploaded_id", label: "Uploaded ID", stage: "onboarding" },
-  { key: "signed_ica", label: "Signed ICA", stage: "onboarding" },
+  { key: "signed_ica", label: "Signed contract", stage: "onboarding" },
   { key: "scheduled_license_test", label: "Scheduled license test", stage: "licensing" },
   { key: "submitted_fingerprints", label: "Submitted fingerprints", stage: "licensing" },
   { key: "passed_license_test", label: "Passed license test", stage: "licensing" },

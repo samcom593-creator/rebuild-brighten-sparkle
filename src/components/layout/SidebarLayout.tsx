@@ -3,6 +3,8 @@ import { Menu, Crown, Plus, Search } from "lucide-react";
 import { useUIStore } from "@/shared/store/uiStore";
 import { Link, useLocation } from "react-router-dom";
 import { GlobalSidebar } from "./GlobalSidebar";
+import { TopBar } from "./TopBar";
+import { ScrollProgress } from "./ScrollProgress";
 import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -134,15 +136,17 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       </div>
 
       {/* Main Content - CSS transitions only, no framer-motion */}
+      <ScrollProgress />
       <main
         className={cn(
           "min-h-screen pt-16 lg:pt-0"
         )}
-        style={{ 
+        style={{
           marginLeft: isDesktop ? `${marginLeft}px` : 0,
           transition: isDesktop ? "margin-left 150ms ease-out" : "none"
         }}
       >
+        <TopBar />
         <RolePreviewBubbles />
         <div className="p-4 sm:p-6 lg:p-8">
           <PageContent showPhoneBanner={showPhoneBanner}>

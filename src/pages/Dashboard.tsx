@@ -769,7 +769,13 @@ function ExecutiveDashboard({
 }
 
 export default function Dashboard() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isAdmin } = useAuth();
+
+  // /dashboard for admins now renders the new AgencyCommandView (real-time
+  // agency rollup) instead of the 800-line legacy CEO panel. Per Sam:
+  // owner-mode first, not yet-another-agent-dashboard.
+  if (isAdmin) return <AgentCommandDashboard />;
+
   const { effectiveRole, actualRole, isPreviewing } = useRolePreview();
   const currentAgent = useCurrentAgent(user?.id);
   const downline = useMyDownline();

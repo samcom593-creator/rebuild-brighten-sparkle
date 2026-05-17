@@ -491,7 +491,25 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
         </div>
       `,
     });
-    console.log("Admin notification sent:", adminEmailResponse);
+    console.log("Admin notification sent:", JSON.stringify(adminEmailResponse));
+    // Log to email_delivery_log so admins can audit what fired vs. failed
+    // without digging into Resend's dashboard.
+    try {
+      await supabaseAdmin.from("email_delivery_log").insert({
+        template: "submit-application-admin",
+        recipient_email: "sam@apex-financial.org",
+        subject: adminSubject,
+        provider: "resend",
+        provider_message_id: (adminEmailResponse as { data?: { id?: string } })?.data?.id ?? null,
+        status: (adminEmailResponse as { error?: unknown })?.error ? "error" : "sent",
+        error: (adminEmailResponse as { error?: { message?: string } })?.error?.message ?? null,
+        related_record_id: applicationId,
+        related_record_type: "application",
+        sent_at: new Date().toISOString(),
+      });
+    } catch (logErr) {
+      console.error("[email-log] admin write failed:", logErr);
+    }
 
     // Determine content based on license status
     const isLicensed = sanitized.licenseStatus === 'licensed';
@@ -757,7 +775,33 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
         : `Welcome to APEX, ${sanitized.firstName} — Let's Get You Licensed`,
       html: emailHtml,
     });
-    console.log("Applicant confirmation sent:", applicantEmailResponse);
+    console.log("Applicant confirmation sent:", JSON.stringify(applicantEmailResponse));
+    // Log applicant welcome email outcome — this is the email Sam reported
+    // missing. With this row in place we can SELECT FROM email_delivery_log
+    // WHERE template = 'submit-application-applicant' to confirm whether
+    // it actually went out per application.
+    try {
+      const respErr = (applicantEmailResponse as { error?: { message?: string } })?.error;
+      await supabaseAdmin.from("email_delivery_log").insert({
+        template: "submit-application-applicant",
+        recipient_email: data.email,
+        subject:
+          sanitized.licenseStatus === "licensed"
+            ? `Welcome to APEX Financial, ${sanitized.firstName} — Licensed Agent Fast Track`
+            : sanitized.licenseStatus === "pending"
+              ? `Welcome to APEX, ${sanitized.firstName} — You're Almost Ready to Earn`
+              : `Welcome to APEX, ${sanitized.firstName} — Let's Get You Licensed`,
+        provider: "resend",
+        provider_message_id: (applicantEmailResponse as { data?: { id?: string } })?.data?.id ?? null,
+        status: respErr ? "error" : "sent",
+        error: respErr?.message ?? null,
+        related_record_id: applicationId,
+        related_record_type: "application",
+        sent_at: new Date().toISOString(),
+      });
+    } catch (logErr) {
+      console.error("[email-log] applicant write failed:", logErr);
+    }
 
     // Send notification to referring manager if selected
     if (data.selectedReferralAgentId && managerInfo) {

@@ -612,3 +612,6 @@ verify_jwt = false
 # to skip this function so it stops re-adding verify_jwt=false on every push.
 [functions.seminar-reminder-tick]
 verify_jwt = true
+
+[functions.numbers-reminder]
+verify_jwt = false

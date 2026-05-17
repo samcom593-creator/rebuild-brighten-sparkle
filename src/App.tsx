@@ -129,6 +129,7 @@ const AdminStrikes = lazy(() => import("./pages/AdminStrikes"));
 const MyStrikes = lazy(() => import("./pages/MyStrikes"));
 const ChargesAudit = lazy(() => import("./pages/ChargesAudit"));
 const ConductCommandCenter = lazy(() => import("./pages/ConductCommandCenter"));
+const PreLicensing = lazy(() => import("./pages/PreLicensing"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
@@ -313,6 +314,8 @@ const App = () => (
                            <Route path="/dashboard/charges-audit" element={<ProtectedRoute requireAdmin><ChargesAudit /></ProtectedRoute>} />
                            {/* Conduct war room: real-time view across strikes + charges + agent standing. */}
                            <Route path="/dashboard/conduct" element={<ProtectedRoute requireAdmin><ConductCommandCenter /></ProtectedRoute>} />
+                           {/* XCEL Solutions daily pre-licensing report viewer */}
+                           <Route path="/dashboard/pre-licensing" element={<ProtectedRoute requireAdmin allowManagers><PreLicensing /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

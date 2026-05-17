@@ -228,6 +228,7 @@ export function GlobalSidebar({
     if (isAdmin || isManager) {
       recruitingItems.unshift({ icon: Target, label: "Recruit Command", href: "/dashboard/recruit", special: true });
       recruitingItems.push({ icon: TrendingUp, label: "Hiring Pipeline", href: "/dashboard/hiring-pipeline" });
+      recruitingItems.push({ icon: GraduationCap, label: "Pre-Licensing", href: "/dashboard/pre-licensing", special: true });
     }
     if (isAdmin) {
       recruitingItems.push({ icon: UserX, label: "Inactive Agents", href: "/dashboard/inactive-agents" });

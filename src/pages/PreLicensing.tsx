@@ -1,0 +1,415 @@
+// PreLicensing — daily XCEL Solutions report viewer.
+//
+// Reads v_xcel_latest (last seeded report) and shows:
+//   - Pipeline summary (enrolled / active / % completed)
+//   - Health buckets (completed / almost done / in progress / just started / stalled)
+//   - Per-section student grid (Code & Ethics, Life Only, Life & Health)
+//   - Each row: name, % complete bar, last login, hours, status, jump to application
+
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import {
+  GraduationCap, Clock, Mail, Phone, CheckCircle2, Flame,
+  AlertCircle, Calendar, TrendingUp, Filter, Search, ExternalLink,
+  RefreshCw, BookOpen, FileText, Sparkles,
+} from "lucide-react";
+import { format, parseISO, differenceInDays } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { PageHeader } from "@/components/ui/page-header";
+import { GlassCard } from "@/components/ui/glass-card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+
+interface Report {
+  id: string;
+  report_date: string;
+  enrolled_last_30d: number | null;
+  enrolled_last_7d: number | null;
+  active_last_10d: number | null;
+  active_pipeline: number | null;
+  pct_completed: number | string | null;
+  received_at: string;
+}
+
+interface XcelStudent {
+  id: string;
+  course_section: string;
+  course_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  date_enrolled: string | null;
+  last_log_in: string | null;
+  time_spent_minutes: number | null;
+  pct_complete: number | string | null;
+  date_completed: string | null;
+  hiring_manager_name: string | null;
+  application_id: string | null;
+  matched_at: string | null;
+  application_status: string | null;
+  application_license_progress: string | null;
+  assigned_agent_name: string | null;
+  days_since_login: number | null;
+  health_bucket: "completed" | "almost_done" | "in_progress" | "just_started" | "stalled";
+}
+
+const SECTION_META: Record<string, { label: string; color: string }> = {
+  code_and_ethics:  { label: "Code & Ethics",          color: "bg-violet-500/15 text-violet-400 border-violet-500/40" },
+  life_only:        { label: "Life Only",              color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/40" },
+  life_and_health:  { label: "Life & Health",          color: "bg-amber-500/15 text-amber-400 border-amber-500/40" },
+};
+
+const HEALTH_META: Record<XcelStudent["health_bucket"], { label: string; color: string; icon: React.ElementType }> = {
+  completed:    { label: "Completed",   color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/40", icon: CheckCircle2 },
+  almost_done:  { label: "Almost done", color: "bg-cyan-500/15 text-cyan-400 border-cyan-500/40",         icon: TrendingUp },
+  in_progress:  { label: "In progress", color: "bg-primary/15 text-primary border-primary/40",            icon: BookOpen },
+  just_started: { label: "Just started", color: "bg-blue-500/15 text-blue-400 border-blue-500/40",        icon: Sparkles },
+  stalled:      { label: "Stalled",     color: "bg-rose-500/15 text-rose-400 border-rose-500/40",         icon: AlertCircle },
+};
+
+function fmtPhone(p: string | null): string {
+  if (!p) return "—";
+  const d = p.replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("1")) return `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  return p;
+}
+
+function fmtHours(min: number | null): string {
+  if (!min || min <= 0) return "0h";
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h >= 100) return `${h}h`;
+  if (h >= 10) return `${h}h ${m}m`;
+  return `${h}h ${m}m`;
+}
+
+export default function PreLicensing() {
+  usePageTitle("Pre-Licensing · APEX");
+
+  const [search, setSearch] = useState("");
+  const [sectionFilter, setSectionFilter] = useState<string>("__all__");
+  const [healthFilter, setHealthFilter] = useState<string>("__all__");
+
+  const reportQ = useQuery({
+    queryKey: ["xcel-report-latest"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("xcel_pre_licensing_reports" as any)
+        .select("*")
+        .order("report_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as Report | null;
+    },
+  });
+
+  const studentsQ = useQuery({
+    queryKey: ["xcel-students-latest"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_xcel_latest" as any)
+        .select("*")
+        .order("pct_complete", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as XcelStudent[];
+    },
+  });
+
+  const students = studentsQ.data ?? [];
+
+  const counts = useMemo(() => {
+    const byBucket: Record<string, number> = {};
+    for (const s of students) byBucket[s.health_bucket] = (byBucket[s.health_bucket] ?? 0) + 1;
+    const bySection: Record<string, number> = {};
+    for (const s of students) bySection[s.course_section] = (bySection[s.course_section] ?? 0) + 1;
+    return { byBucket, bySection };
+  }, [students]);
+
+  const filtered = useMemo(() => {
+    let r = students;
+    if (sectionFilter !== "__all__") r = r.filter((s) => s.course_section === sectionFilter);
+    if (healthFilter !== "__all__") r = r.filter((s) => s.health_bucket === healthFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      r = r.filter(
+        (s) =>
+          (s.first_name ?? "").toLowerCase().includes(q) ||
+          (s.last_name ?? "").toLowerCase().includes(q) ||
+          (s.email ?? "").toLowerCase().includes(q) ||
+          (s.course_name ?? "").toLowerCase().includes(q) ||
+          (s.assigned_agent_name ?? "").toLowerCase().includes(q),
+      );
+    }
+    return r;
+  }, [students, sectionFilter, healthFilter, search]);
+
+  const report = reportQ.data;
+  const pctCompleted = Number(report?.pct_completed ?? 0);
+
+  return (
+    <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+      <PageHeader
+        eyebrow="Recruiting · Pre-Licensing"
+        eyebrowIcon={<GraduationCap className="h-3 w-3" />}
+        title="Pre-Licensing Course Progress"
+        subtitle={
+          <>
+            Daily snapshot from <span className="text-foreground font-medium">XCEL Solutions</span>.
+            {report?.report_date && <> Last report: <span className="text-foreground font-medium">{format(parseISO(report.report_date), "PPP")}</span></>}
+            {report?.received_at && <> · ingested {format(parseISO(report.received_at), "h:mm a")}</>}
+          </>
+        }
+        accent="purple"
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/40">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> Live
+            </Badge>
+            <Button onClick={() => { reportQ.refetch(); studentsQ.refetch(); }} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Summary tiles */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <SummaryTile icon={GraduationCap} label="Active in pipeline" value={report?.active_pipeline ?? 0} color="text-primary" loading={reportQ.isLoading} />
+        <SummaryTile icon={Calendar}      label="Enrolled · last 30d" value={report?.enrolled_last_30d ?? 0} color="text-violet-400" loading={reportQ.isLoading} />
+        <SummaryTile icon={Sparkles}      label="Enrolled · last 7d"  value={report?.enrolled_last_7d ?? 0}  color="text-cyan-400"   loading={reportQ.isLoading} />
+        <SummaryTile icon={TrendingUp}    label="Active · last 10d"   value={report?.active_last_10d ?? 0}   color="text-amber-400"  loading={reportQ.isLoading} />
+        <SummaryTile icon={CheckCircle2}  label="% Completed"         value={`${Math.round(pctCompleted)}%`} color="text-emerald-400" loading={reportQ.isLoading} />
+      </div>
+
+      {/* Health buckets bar */}
+      <GlassCard className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Student health</p>
+            <h3 className="text-lg font-bold">Where your enrollees sit right now</h3>
+          </div>
+          <Badge variant="outline" className="text-xs">{students.length} students</Badge>
+        </div>
+        {studentsQ.isLoading ? (
+          <Skeleton className="h-10 w-full" />
+        ) : students.length === 0 ? (
+          <EmptyState
+            icon={<GraduationCap className="h-6 w-6" />}
+            title="No XCEL report ingested yet"
+            description="Once the daily XCEL email is parsed, every enrolled student lands here with their progress, last-login, and stalled-bucket flag."
+          />
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {(Object.keys(HEALTH_META) as Array<XcelStudent["health_bucket"]>).map((b) => {
+              const meta = HEALTH_META[b];
+              const Icon = meta.icon;
+              const n = counts.byBucket[b] ?? 0;
+              return (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => setHealthFilter(healthFilter === b ? "__all__" : b)}
+                  className={`rounded-lg border px-3 py-2.5 text-left transition-all ${meta.color} ${
+                    healthFilter === b ? "ring-2 ring-primary" : "hover:scale-[1.02]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <Icon className="h-4 w-4" />
+                    <span className="text-xl font-bold tabular-nums">{n}</span>
+                  </div>
+                  <p className="text-[11px] uppercase tracking-wider font-semibold mt-1">{meta.label}</p>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </GlassCard>
+
+      {/* Filter strip */}
+      <GlassCard className="p-3">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, email, course, agent"
+              className="pl-9"
+            />
+          </div>
+          <Select value={sectionFilter} onValueChange={setSectionFilter}>
+            <SelectTrigger className="md:w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All courses</SelectItem>
+              {Object.entries(SECTION_META).map(([k, m]) => (
+                <SelectItem key={k} value={k}>{m.label} {counts.bySection[k] ? `(${counts.bySection[k]})` : ""}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={healthFilter} onValueChange={setHealthFilter}>
+            <SelectTrigger className="md:w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All status</SelectItem>
+              {(Object.keys(HEALTH_META) as Array<XcelStudent["health_bucket"]>).map((b) => (
+                <SelectItem key={b} value={b}>{HEALTH_META[b].label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Badge variant="outline" className="hidden md:inline-flex">
+            <Filter className="h-3 w-3 mr-1" /> {filtered.length} shown
+          </Badge>
+        </div>
+      </GlassCard>
+
+      {/* Student list */}
+      {studentsQ.isLoading ? (
+        <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={<GraduationCap className="h-7 w-7" />}
+          title="No students match these filters"
+          actions={<Button variant="ghost" size="sm" onClick={() => { setSearch(""); setSectionFilter("__all__"); setHealthFilter("__all__"); }}>Clear filters</Button>}
+        />
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((s, i) => {
+            const section = SECTION_META[s.course_section] ?? { label: s.course_section, color: "bg-muted" };
+            const health = HEALTH_META[s.health_bucket];
+            const HealthIcon = health.icon;
+            const pct = Number(s.pct_complete ?? 0);
+            return (
+              <motion.div
+                key={s.id}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(i * 0.01, 0.2), duration: 0.25 }}
+              >
+                <GlassCard className="p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                    {/* Identity */}
+                    <div className="flex items-center gap-3 md:w-[260px] shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-primary/15 text-primary font-bold flex items-center justify-center shrink-0">
+                        {(s.first_name?.[0] ?? "?") + (s.last_name?.[0] ?? "")}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate capitalize">
+                          {[s.first_name, s.last_name].filter(Boolean).join(" ") || "(no name)"}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {fmtPhone(s.phone)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Progress + course */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                        <Badge variant="outline" className={`text-[10px] ${section.color}`}>
+                          {section.label}
+                        </Badge>
+                        <Badge variant="outline" className={`text-[10px] gap-1 ${health.color}`}>
+                          <HealthIcon className="h-2.5 w-2.5" /> {health.label}
+                        </Badge>
+                        {s.course_name && (
+                          <span className="text-[11px] text-muted-foreground truncate">{s.course_name}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Progress value={pct} className="h-2 flex-1" />
+                        <span className={`text-sm font-bold tabular-nums shrink-0 w-12 text-right ${
+                          pct >= 100 ? "text-emerald-400" : pct >= 50 ? "text-cyan-400" : "text-amber-400"
+                        }`}>
+                          {Math.round(pct)}%
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-2 flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> {fmtHours(s.time_spent_minutes)}
+                        </span>
+                        {s.date_enrolled && (
+                          <span>Enrolled {format(parseISO(s.date_enrolled), "MMM d")}</span>
+                        )}
+                        {s.last_log_in && (
+                          <span className={s.days_since_login != null && s.days_since_login > 7 ? "text-rose-400" : ""}>
+                            Last login {format(parseISO(s.last_log_in), "MMM d")}
+                            {s.days_since_login != null && s.days_since_login > 0 && <> · {s.days_since_login}d ago</>}
+                          </span>
+                        )}
+                        {s.date_completed && (
+                          <span className="text-emerald-400 font-medium">
+                            ✓ Completed {format(parseISO(s.date_completed), "MMM d")}
+                          </span>
+                        )}
+                        {s.assigned_agent_name && (
+                          <span>Hiring mgr: {s.assigned_agent_name}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {s.phone && (
+                        <Button asChild size="icon" variant="ghost" title="Call">
+                          <a href={`tel:${s.phone}`}><Phone className="h-4 w-4" /></a>
+                        </Button>
+                      )}
+                      {s.email && (
+                        <Button asChild size="icon" variant="ghost" title="Email">
+                          <a href={`mailto:${s.email}`}><Mail className="h-4 w-4" /></a>
+                        </Button>
+                      )}
+                      {s.application_id && (
+                        <Button asChild size="sm" variant="outline" title="Open application">
+                          <Link to={`/dashboard/applicants?id=${s.application_id}`}>
+                            <ExternalLink className="h-3.5 w-3.5 mr-1" /> App
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </GlassCard>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface SummaryTileProps {
+  icon: React.ElementType; label: string;
+  value: number | string; color: string; loading: boolean;
+}
+function SummaryTile({ icon: Icon, label, value, color, loading }: SummaryTileProps) {
+  return (
+    <GlassCard className="p-4">
+      <div className="flex items-start justify-between">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
+          {loading ? (
+            <Skeleton className="h-9 w-20 mt-1" />
+          ) : (
+            <p className={`text-3xl font-bold tabular-nums mt-1 ${color}`}>{value}</p>
+          )}
+        </div>
+        <Icon className={`h-7 w-7 ${color} opacity-70`} />
+      </div>
+    </GlassCard>
+  );
+}

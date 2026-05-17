@@ -1208,35 +1208,35 @@ input:focus, textarea:focus, select:focus {
 .aurora-blob-b { animation: aurora-orbit-b 36s ease-in-out infinite; }
 .aurora-blob-c { animation: aurora-orbit-c 42s ease-in-out infinite; }
 
-/* ──  Body — TRANSPARENT in dark mode so AuroraBackground shines  ─── */
-/* The base bg moves to <html> so that fixed AuroraBackground (-z-10)
-   can render and not be covered. */
+/* ──  Body — transparent in DARK ONLY so aurora shows through.       ─── */
+/* Light mode: keep body opaque cream/gray for max readability. */
 .dark html { background-color: hsl(222 60% 2%); }
 .dark body { background-color: transparent !important; }
+.dark #root { background-color: transparent !important; }
 html { background-attachment: fixed; }
+/* Light mode: NO aurora. Solid bg-background everywhere. */
+.light body, .light #root, body:not(.dark *), #root:not(.dark *) {
+  background-color: hsl(var(--background));
+}
 
-/* ── Premium glass v3 — visibly different from prior version  ─────── */
+/* ── Premium glass v3.1 — readable. Higher opacity so text never washes out ── */
 .glass-card,
 [class*="GlassCard"] {
-  background: linear-gradient(150deg,
-    hsl(var(--card) / 0.78) 0%,
-    hsl(var(--card) / 0.55) 100%);
-  border: 1px solid hsl(var(--border) / 0.65);
-  backdrop-filter: blur(22px) saturate(170%);
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  background: hsl(var(--card) / 0.95);
+  border: 1px solid hsl(var(--border) / 0.8);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
   box-shadow:
     inset 0 1px 0 hsl(255 100% 100% / 0.06),
-    0 6px 24px hsl(220 47% 0% / 0.18);
+    0 4px 16px hsl(220 47% 0% / 0.10);
 }
 .dark .glass-card,
 .dark [class*="GlassCard"] {
-  background: linear-gradient(150deg,
-    hsl(222 47% 8% / 0.7) 0%,
-    hsl(222 47% 5% / 0.5) 100%);
-  border: 1px solid hsl(168 60% 50% / 0.12);
+  background: hsl(222 47% 7% / 0.92);
+  border: 1px solid hsl(168 60% 50% / 0.16);
   box-shadow:
-    inset 0 1px 0 hsl(168 80% 70% / 0.05),
-    0 8px 30px hsl(222 47% 0% / 0.45);
+    inset 0 1px 0 hsl(168 80% 70% / 0.04),
+    0 6px 24px hsl(222 47% 0% / 0.35);
 }
 .glass-card:hover,
 [class*="GlassCard"]:hover {
@@ -1244,7 +1244,7 @@ html { background-attachment: fixed; }
   box-shadow:
     inset 0 1px 0 hsl(255 100% 100% / 0.08),
     0 0 0 1px hsl(var(--primary) / 0.25),
-    0 14px 40px hsl(var(--primary) / 0.12);
+    0 10px 30px hsl(var(--primary) / 0.08);
   transform: translateY(-2px);
 }
 
@@ -1382,19 +1382,8 @@ hr {
 /* ═══  APEX v3.1 — VERY VISIBLE MOTION + DEPTH (2026-05-17 night) ═══ */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Animated noise grain — gives the bg an organic, hand-painted shimmer ── */
-@keyframes noise-shimmer {
-  0%, 100% { transform: translate(0, 0); }
-  25%      { transform: translate(-2%, 1%); }
-  50%      { transform: translate(1%, -1%); }
-  75%      { transform: translate(-1%, 2%); }
-}
-.noise-grain {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>");
-  background-size: 200px 200px;
-  animation: noise-shimmer 9s steps(8) infinite;
-  mix-blend-mode: overlay;
-}
+/* Noise grain — disabled (was hurting readability). */
+.noise-grain { display: none !important; }
 
 /* ── Page entry — every page (.page-enter) does a real slide+fade ─── */
 @keyframes apex-page-enter-v3 {
@@ -1413,12 +1402,11 @@ hr {
 }
 .page-enter > header { animation: apex-page-enter-v3 480ms cubic-bezier(0.22, 1, 0.36, 1); }
 
-/* ── HUGE H1 default — gradient + size jump ─────────────────────── */
+/* H1 default — bumped, but reasonable (was clamp 2-3.25rem; revert to defaults
+ *   so per-page headlines control their own size). */
 h1, .h1 {
-  font-size: clamp(2rem, 5vw, 3.25rem);
-  line-height: 1.05;
-  letter-spacing: -0.025em;
   font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 /* ── Cards: bigger lift + brand-gradient ring on hover ──────────── */
@@ -1488,10 +1476,7 @@ header[class*="bg-gradient-to-br"] > div > div > .inline-flex {
 }
 
 /* ── KPI tile gradient ring on hover ────────────────────────────── */
-.glass-card .text-3xl,
-[class*="GlassCard"] .text-3xl {
-  text-shadow: 0 0 24px currentColor;
-}
+/* KPI text-shadow handled above in dark-only block; no global glow */
 
 /* ── Soft glow under all cards (dark mode only) ─────────────────── */
 .dark [class*="GlassCard"],
@@ -1533,19 +1518,21 @@ aside[style*="emerald"] {
 /* ═══  APEX v3.2 — PAGE HEADERS + GRADIENT TYPE + 3D TILT (final)  ═══ */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-/* ── EVERY PageHeader h1 globally gets the brand gradient ──────── */
+/* PageHeader h1 — keep crisp solid color in light mode; gradient only in dark */
 .dark header[class*="bg-gradient-to-br"] h1 {
   background: linear-gradient(135deg,
-    hsl(168 90% 70%) 0%,
-    hsl(180 95% 80%) 35%,
-    hsl(265 90% 78%) 70%,
-    hsl(38 95% 70%) 100%) !important;
+    hsl(168 80% 65%) 0%,
+    hsl(180 85% 75%) 35%,
+    hsl(265 70% 75%) 70%,
+    hsl(38 85% 65%) 100%) !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
-  background-size: 200% auto !important;
-  animation: gradient-shift 8s ease infinite !important;
-  letter-spacing: -0.03em !important;
+  letter-spacing: -0.025em !important;
+}
+.light header[class*="bg-gradient-to-br"] h1 {
+  color: hsl(var(--foreground)) !important;
+  letter-spacing: -0.02em !important;
 }
 
 /* ── EVERY PageHeader gets a subtle perspective tilt on hover ───── */
@@ -1565,11 +1552,11 @@ header[class*="bg-gradient-to-br"] {
   }
 }
 
-/* ── KPI numbers get a stronger glow + counter feel ──────────────── */
+/* KPI numbers — subtle glow only in dark; OFF in light (was painful) */
 .dark [class*="GlassCard"] .text-3xl,
 .dark [class*="GlassCard"] .text-2xl,
 .dark [class*="GlassCard"] .text-4xl {
-  text-shadow: 0 0 20px currentColor, 0 0 40px hsl(0 0% 0% / 0.4);
+  text-shadow: 0 0 14px hsl(0 0% 0% / 0.3);
 }
 
 /* ── Sidebar logo: floating bob ──────────────────────────────────── */

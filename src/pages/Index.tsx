@@ -24,7 +24,7 @@ const Index = () => {
   // Logged-in users land on their personalized dashboard, not the public marketing page.
   if (!isLoading && user) return <Navigate to="/dashboard" replace />;
   return (
-    <div className="min-h-screen bg-[#030712] overflow-x-hidden w-full max-w-full">
+    <div className="min-h-screen overflow-x-hidden w-full max-w-full relative">
       <DealsTicker />
       <Navbar />
       <main>

@@ -195,24 +195,39 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-background flex items-center justify-center px-4 py-8">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />
+    <div className="min-h-[100dvh] flex items-center justify-center px-4 py-8 relative">
       
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-md relative z-10"
       >
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-4 mb-6">
-            <Crown className="h-10 w-10 text-primary shrink-0" />
+          <Link to="/" className="inline-flex items-center gap-4 mb-6 group">
+            <motion.span
+              animate={{ rotate: [0, 5, -5, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="relative h-12 w-12 rounded-2xl flex items-center justify-center bg-gradient-to-br from-primary/30 via-primary/20 to-primary/5 border border-primary/40 backdrop-blur-md shadow-[0_0_30px_hsl(168_80%_50%/0.35)]"
+            >
+              <Crown className="h-6 w-6 text-primary" />
+              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
+            </motion.span>
             <div className="flex flex-col items-start leading-none">
-              <span className="text-2xl font-bold gradient-text tracking-wide">APEX</span>
+              <span className="text-2xl font-bold brand-gradient tracking-wider">APEX</span>
               <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mt-1">Financial</span>
             </div>
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
-          <p className="text-muted-foreground">Sign in to access your dashboard</p>
+          <motion.h1
+            className="font-extrabold mb-3 brand-gradient leading-tight tracking-tight"
+            style={{ fontSize: "clamp(2rem, 7vw, 3.5rem)", filter: "drop-shadow(0 0 30px hsl(168 80% 50% / 0.35))" }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+          >
+            Welcome back
+          </motion.h1>
+          <p className="text-muted-foreground">Sign in to access your operating system</p>
         </div>
 
         <GlassCard className="p-4 sm:p-8">

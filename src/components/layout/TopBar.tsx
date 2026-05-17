@@ -126,7 +126,7 @@ export function TopBar() {
       className={cn(
         "sticky top-0 z-20 hidden lg:flex items-center justify-between gap-4",
         "px-4 sm:px-6 lg:px-8 py-2.5",
-        "bg-card/40 backdrop-blur-xl border-b border-border/40",
+        "bg-background/85 backdrop-blur-xl border-b border-border/60 shadow-sm",
       )}
     >
       {/* Breadcrumb */}

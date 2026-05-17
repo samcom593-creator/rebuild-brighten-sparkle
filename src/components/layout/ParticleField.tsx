@@ -32,7 +32,13 @@ function ParticleFieldImpl() {
     let raf = 0;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const baseCount = Math.min(80, Math.max(28, Math.floor((w * h) / 24000)));
+    const isLight = document.documentElement.classList.contains("light")
+      || !document.documentElement.classList.contains("dark");
+    if (isLight) {
+      // Light mode: no particles at all (would wash out cream bg)
+      return;
+    }
+    const baseCount = Math.min(30, Math.max(12, Math.floor((w * h) / 80000)));
     const count = reduced ? Math.floor(baseCount / 2) : baseCount;
     const hues = [168, 168, 168, 265, 38, 330]; // mostly emerald, some violet/amber/pink
 
@@ -41,9 +47,9 @@ function ParticleFieldImpl() {
       y: Math.random() * h,
       vx: (Math.random() - 0.5) * 0.18,
       vy: (Math.random() - 0.5) * 0.18 - 0.05, // gentle upward drift
-      r: 0.6 + Math.random() * 1.8,
+      r: 0.5 + Math.random() * 1.2,
       hue: hues[Math.floor(Math.random() * hues.length)],
-      alpha: 0.18 + Math.random() * 0.35,
+      alpha: 0.08 + Math.random() * 0.15,
       twinklePhase: Math.random() * Math.PI * 2,
     }));
 

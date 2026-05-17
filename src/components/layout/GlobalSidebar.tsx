@@ -393,12 +393,12 @@ export function GlobalSidebar({
         style={{
           width: sidebarWidth,
           background:
-            "linear-gradient(180deg, hsl(222 47% 4% / 0.92) 0%, hsl(222 60% 2% / 0.95) 100%)",
-          backdropFilter: "blur(16px) saturate(160%)",
-          WebkitBackdropFilter: "blur(16px) saturate(160%)",
-          borderRight: "1px solid hsl(168 60% 50% / 0.12)",
+            "linear-gradient(180deg, hsl(222 47% 4% / 0.985) 0%, hsl(222 60% 2% / 0.99) 100%)",
+          backdropFilter: "blur(20px) saturate(140%)",
+          WebkitBackdropFilter: "blur(20px) saturate(140%)",
+          borderRight: "1px solid hsl(168 60% 50% / 0.15)",
           boxShadow:
-            "inset -1px 0 0 hsl(255 100% 100% / 0.04), 4px 0 30px hsl(222 60% 0% / 0.4)",
+            "inset -1px 0 0 hsl(255 100% 100% / 0.04), 4px 0 30px hsl(222 60% 0% / 0.5)",
         }}
       >
         <div className="flex flex-col h-full">

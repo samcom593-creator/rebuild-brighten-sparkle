@@ -426,9 +426,21 @@ export default function Apply() {
             availability: data.availability,
             referralSource: data.referralSource,
 
-            // Referral attribution from ?ref= URL slug
-            recruiterId: referrerId,
-            selectedReferralAgentId: referrerId,
+            // Referral attribution.
+            // 1. Prefer the ?ref= URL slug (referrerId resolved server-side).
+            // 2. Otherwise use the Step 4 in-form agent picker. "none" and
+            //    "other" are non-agent selections, so we only pass through
+            //    real agent UUIDs.
+            recruiterId:
+              referrerId ??
+              (selectedReferrer && selectedReferrer !== "none" && selectedReferrer !== "other" && selectedReferrer !== ""
+                ? selectedReferrer
+                : null),
+            selectedReferralAgentId:
+              referrerId ??
+              (selectedReferrer && selectedReferrer !== "none" && selectedReferrer !== "other" && selectedReferrer !== ""
+                ? selectedReferrer
+                : null),
 
             // Consent data for Twilio compliance
             consent: {
@@ -958,7 +970,7 @@ export default function Apply() {
                         <Label>
                           {referrerName
                             ? `Referred by ${referrerName} ✓`
-                            : "Who referred you? (optional)"}
+                            : "How did you hear about APEX? (optional)"}
                         </Label>
                         <Select value={watch("referralSource") || undefined} onValueChange={(value) => setValue("referralSource", value, { shouldValidate: true })}>
                           <SelectTrigger className="bg-input">
@@ -973,6 +985,46 @@ export default function Apply() {
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {/* Agent picker — asked BEFORE submit so the writing
+                          agent gets credited at application creation, not
+                          retroactively. Hidden when the ?ref= URL already
+                          identified the referrer. */}
+                      {!referrerId && (
+                        <div className="space-y-2">
+                          <Label>Who referred you to APEX?</Label>
+                          <Select
+                            value={selectedReferrer}
+                            onValueChange={setSelectedReferrer}
+                          >
+                            <SelectTrigger className="bg-input">
+                              <SelectValue placeholder="Choose who referred you (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">I found APEX on my own</SelectItem>
+                              {activeAgents.map((agent) => (
+                                <SelectItem key={agent.id} value={agent.id}>
+                                  <div className="flex items-center gap-2 py-0.5">
+                                    <span className="font-medium">{agent.name}</span>
+                                    {agent.instagramHandle && (
+                                      <span className="text-xs text-muted-foreground">@{agent.instagramHandle}</span>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                              <SelectItem value="other">Someone else not listed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {selectedReferrer === "other" && (
+                            <Input
+                              value={customReferrer}
+                              onChange={(e) => setCustomReferrer(e.target.value)}
+                              placeholder="Enter their name"
+                              className="bg-input mt-2"
+                            />
+                          )}
+                        </div>
+                      )}
 
                       {/* Communication Consent Section */}
                       <div className="p-6 rounded-lg border border-border bg-muted/30 space-y-5">

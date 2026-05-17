@@ -120,7 +120,11 @@ interface Deal {
 // ─── Main ───────────────────────────────────────────────────────────────────
 export default function AgentCommandDashboard() {
   usePageTitle("Command Center · APEX");
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+
+  // Admin (Sam) sees a totally different page — the agency view.
+  // We don't waste queries on the agent flow if they're admin.
+  if (isAdmin) return <AgencyCommandView />;
 
   // ── Resolve current agent id ────────────────────────────────────────────
   const { data: meAgent } = useQuery({
@@ -728,5 +732,450 @@ function QuickAction({ icon: Icon, to, label, desc }: QuickActionProps) {
         </div>
       </GlassCard>
     </Link>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// AGENCY VIEW — what Sam (admin/owner) sees instead of the per-agent panel.
+//
+// Sam's complaint was real: as the OWNER, his "rank #17" wasn't a bug — it
+// was the wrong perspective entirely. He doesn't sell deals personally any
+// more, he runs the agency. So this view is built around v_ceo_command_center
+// + live aggregations, NOT v_agent_command_center filtered to his agent_id.
+// ═════════════════════════════════════════════════════════════════════════════
+
+interface CeoRow {
+  deals_today: number; deals_wtd: number; deals_mtd: number; deals_30d: number;
+  ap_wtd: number | string; ap_mtd: number | string;
+  ap_30d: number | string; ap_prev_30d: number | string;
+  chargebacks_30d: number; lapses_30d: number;
+  total_agents: number; active_agents: number; inactive_agents: number;
+  licensed_agents: number; unlicensed_agents: number; onboarding_agents: number;
+  producing_agents_30d: number;
+  total_applications: number; apps_today: number; apps_wtd: number; apps_mtd: number;
+  paid_mtd: number; stale_new_3d: number; unassigned_open: number; uncontacted_24h: number;
+  ref_total: number; ref_open: number; ref_30d: number; ref_won: number;
+  top_producers_mtd: Array<{ agent_id: string; display_name: string | null; ap_mtd: number; deals_mtd: number; rank_agency_mtd: number }> | null;
+  ap_trend_pct: number | null;
+  as_of: string | null;
+}
+
+interface AgencyTopProducer {
+  agent_id: string;
+  display_name: string | null;
+  agent_code: string | null;
+  deals_mtd: number;
+  ap_mtd: number | string;
+  rank_agency_mtd: number | null;
+  avatar_url: string | null;
+}
+
+interface AgencyDeal {
+  id: string;
+  client_first_name: string | null;
+  client_last_name: string | null;
+  product_sold: string | null;
+  annual_premium: number | string;
+  posted_at: string | null;
+  pipeline_stage: string | null;
+  agent_name: string;
+  avatar_url: string | null;
+}
+
+interface AgencyTrendRow { day: string; deals: number; ap: number | string; }
+
+function AgencyCommandView() {
+  usePageTitle("Agency Command · APEX");
+
+  // ── CEO rollup ────────────────────────────────────────────────────────
+  const ceo = useQuery({
+    queryKey: ["agency-ceo"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_ceo_command_center" as any)
+        .select("*")
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as CeoRow | null;
+    },
+  });
+
+  // ── Top 10 producers MTD ─────────────────────────────────────────────
+  const top = useQuery({
+    queryKey: ["agency-top-producers"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      // v_agent_command_center has the per-agent rollup; we just sort.
+      // Join through agents → profiles for avatar.
+      const { data, error } = await supabase
+        .from("v_agent_command_center" as any)
+        .select("agent_id, display_name, agent_code, deals_mtd, ap_mtd, rank_agency_mtd")
+        .gt("deals_mtd", 0)
+        .order("ap_mtd", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      const rows = (data ?? []) as Array<Omit<AgencyTopProducer, "avatar_url">>;
+      // Fetch avatars in one shot
+      const ids = rows.map((r) => r.agent_id);
+      let avatarById: Record<string, string | null> = {};
+      if (ids.length) {
+        const { data: agentRows } = await supabase
+          .from("agents")
+          .select("id, profile:profiles!agents_profile_id_fkey(avatar_url)")
+          .in("id", ids);
+        for (const a of (agentRows ?? []) as any[]) {
+          avatarById[a.id] = a.profile?.avatar_url ?? null;
+        }
+      }
+      return rows.map((r) => ({ ...r, avatar_url: avatarById[r.agent_id] ?? null }));
+    },
+  });
+
+  // ── 30-day production trend (real daily AP + deals) ──────────────────
+  const trend = useQuery({
+    queryKey: ["agency-trend-30d"],
+    queryFn: async () => {
+      const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+      const { data, error } = await supabase
+        .from("deals")
+        .select("posted_at, annual_premium, status")
+        .gte("posted_at", since)
+        .in("status", ["submitted", "active"])
+        .order("posted_at", { ascending: true });
+      if (error) throw error;
+      // Bucket into 30 days
+      const map = new Map<string, { deals: number; ap: number }>();
+      for (let i = 29; i >= 0; i--) {
+        const k = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10);
+        map.set(k, { deals: 0, ap: 0 });
+      }
+      for (const d of (data ?? []) as Array<{ posted_at: string | null; annual_premium: number | string }>) {
+        if (!d.posted_at) continue;
+        const k = d.posted_at.slice(0, 10);
+        const bucket = map.get(k);
+        if (bucket) {
+          bucket.deals += 1;
+          bucket.ap += Number(d.annual_premium ?? 0);
+        }
+      }
+      return Array.from(map.entries()).map(([day, v]) => ({ day, deals: v.deals, ap: v.ap }));
+    },
+  });
+
+  // ── Recent 8 deals across the agency ─────────────────────────────────
+  const recentDeals = useQuery({
+    queryKey: ["agency-recent-deals"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deals")
+        .select(`
+          id, client_first_name, client_last_name, product_sold,
+          annual_premium, posted_at, pipeline_stage, status,
+          agent:agents!inner(display_name, profile:profiles!agents_profile_id_fkey(full_name, avatar_url))
+        `)
+        .in("status", ["submitted", "active"])
+        .order("posted_at", { ascending: false, nullsFirst: false })
+        .limit(8);
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((r) => ({
+        id: r.id,
+        client_first_name: r.client_first_name,
+        client_last_name: r.client_last_name,
+        product_sold: r.product_sold,
+        annual_premium: r.annual_premium,
+        posted_at: r.posted_at,
+        pipeline_stage: r.pipeline_stage,
+        agent_name: r.agent?.display_name ?? r.agent?.profile?.full_name ?? "Unknown",
+        avatar_url: r.agent?.profile?.avatar_url ?? null,
+      })) as AgencyDeal[];
+    },
+  });
+
+  const c = ceo.data;
+  const apMtd = Number(c?.ap_mtd ?? 0);
+  const ap30 = Number(c?.ap_30d ?? 0);
+  const apPrev30 = Number(c?.ap_prev_30d ?? 0);
+  const trendPct = c?.ap_trend_pct != null ? Number(c.ap_trend_pct) :
+    (apPrev30 > 0 ? ((ap30 - apPrev30) / apPrev30) * 100 : null);
+
+  return (
+    <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+      <PageHeader
+        eyebrow="Agency · Owner Mode"
+        eyebrowIcon={<Crown className="h-3 w-3" />}
+        title="Agency Command"
+        subtitle={
+          <>
+            Live agency-wide production, pipeline, and team activity.
+            {c?.as_of && <> · As of {format(new Date(c.as_of), "MMM d, h:mm a")}</>}
+          </>
+        }
+        accent="primary"
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> Live · 60s refresh
+            </Badge>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/dashboard/command">CEO panel <ArrowRight className="h-4 w-4 ml-1.5" /></Link>
+            </Button>
+          </div>
+        }
+      />
+
+      {/* ── 4 KPI TILES (real verified numbers) ─────────────────────── */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiTile
+          icon={DollarSign}
+          label="Agency AP · MTD"
+          value={fmtUsd(apMtd)}
+          subValue={`${fmtUsd(Number(c?.ap_wtd ?? 0), true)} WTD · ${fmtNum(c?.deals_mtd ?? 0)} deals MTD`}
+          trendPct={trendPct}
+          color="text-emerald-500 dark:text-emerald-400"
+          loading={ceo.isLoading}
+        />
+        <KpiTile
+          icon={Trophy}
+          label="Deals · MTD"
+          value={fmtNum(c?.deals_mtd ?? 0)}
+          subValue={`${fmtNum(c?.deals_wtd ?? 0)} WTD · ${fmtNum(c?.deals_30d ?? 0)} in 30d`}
+          color="text-amber-500 dark:text-amber-400"
+          loading={ceo.isLoading}
+        />
+        <KpiTile
+          icon={Users}
+          label="Producing agents"
+          value={`${fmtNum(c?.producing_agents_30d ?? 0)} / ${fmtNum(c?.active_agents ?? 0)}`}
+          subValue={`${fmtNum(c?.licensed_agents ?? 0)} licensed · ${fmtNum(c?.onboarding_agents ?? 0)} onboarding`}
+          color="text-primary"
+          loading={ceo.isLoading}
+        />
+        <KpiTile
+          icon={Briefcase}
+          label="Pipeline"
+          value={fmtNum(c?.total_applications ?? 0)}
+          subValue={`${fmtNum(c?.uncontacted_24h ?? 0)} uncontacted >24h · ${fmtNum(c?.stale_new_3d ?? 0)} stale 3d+`}
+          color="text-violet-500 dark:text-violet-400"
+          loading={ceo.isLoading}
+        />
+      </div>
+
+      {/* ── 30d trend chart (real data) + Top producers leaderboard ── */}
+      <div className="grid gap-3 lg:grid-cols-3">
+        <GlassCard className="p-4 lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">30-day agency production</p>
+              <h3 className="text-lg font-bold">Daily AP across all agents</h3>
+            </div>
+            <Badge variant="outline" className="text-xs">{fmtUsd(ap30, true)} · last 30d</Badge>
+          </div>
+          {trend.isLoading ? (
+            <Skeleton className="h-[220px] w-full" />
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={trend.data}>
+                <defs>
+                  <linearGradient id="ceoApGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(168 70% 45%)" stopOpacity={0.65} />
+                    <stop offset="100%" stopColor="hsl(168 70% 45%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.4)" />
+                <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={10} stroke="hsl(var(--muted-foreground))" />
+                <YAxis fontSize={10} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                <Tooltip
+                  contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                  labelFormatter={(d) => format(new Date(d), "PPP")}
+                  formatter={(v: number, name: string) => name === "ap" ? fmtUsd(v) : v}
+                />
+                <Area type="monotone" dataKey="ap" stroke="hsl(168 70% 45%)" fill="url(#ceoApGrad)" name="ap" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </GlassCard>
+
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Top producers · MTD</p>
+              <h3 className="text-lg font-bold">Leaderboard</h3>
+            </div>
+            <Crown className="h-5 w-5 text-amber-500 dark:text-amber-400" />
+          </div>
+          {top.isLoading ? (
+            <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+          ) : (top.data ?? []).length === 0 ? (
+            <EmptyState icon={<Trophy className="h-6 w-6" />} title="No production yet this month" />
+          ) : (
+            <ul className="space-y-1.5">
+              {(top.data ?? []).map((a, i) => (
+                <li
+                  key={a.agent_id}
+                  className="flex items-center gap-3 rounded-lg border border-border/30 px-2.5 py-2 hover:border-primary/40 hover:bg-primary/[0.04] transition-colors"
+                >
+                  <span className={`h-6 w-6 rounded-md text-[11px] font-bold flex items-center justify-center shrink-0 ${
+                    i === 0 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" :
+                    i === 1 ? "bg-slate-400/15 text-slate-600 dark:text-slate-300" :
+                    i === 2 ? "bg-orange-500/15 text-orange-600 dark:text-orange-400" :
+                    "bg-muted text-muted-foreground"
+                  }`}>
+                    {i + 1}
+                  </span>
+                  {a.avatar_url ? (
+                    <img src={a.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-border" />
+                  ) : (
+                    <div className="h-7 w-7 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center">
+                      {(a.display_name ?? "?").split(" ").map(s => s[0]).slice(0, 2).join("")}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold truncate">{a.display_name ?? "Unknown"}</p>
+                    <p className="text-[11px] text-muted-foreground">{a.agent_code ?? "—"} · {fmtNum(a.deals_mtd)} deals</p>
+                  </div>
+                  <p className="text-sm font-bold tabular-nums text-emerald-500 dark:text-emerald-400 shrink-0">
+                    {fmtUsd(Number(a.ap_mtd), true)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button asChild variant="ghost" size="sm" className="w-full mt-3">
+            <Link to="/dashboard/leaderboard">Full leaderboard <ArrowRight className="h-3 w-3 ml-1" /></Link>
+          </Button>
+        </GlassCard>
+      </div>
+
+      {/* ── Pipeline funnel + Recent deals ─────────────────────────── */}
+      <div className="grid gap-3 lg:grid-cols-3">
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Agency funnel</p>
+              <h3 className="text-lg font-bold">Pipeline state</h3>
+            </div>
+            <Briefcase className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <FunnelStrip
+            steps={[
+              { label: "Active applications", value: c?.total_applications ?? 0, color: "bg-violet-500" },
+              { label: "Paid ICA · MTD",      value: c?.paid_mtd ?? 0,           color: "bg-primary" },
+              { label: "Apps this week",      value: c?.apps_wtd ?? 0,           color: "bg-amber-500" },
+              { label: "Uncontacted >24h",    value: c?.uncontacted_24h ?? 0,    color: "bg-rose-500" },
+              { label: "Stale 3 days+",       value: c?.stale_new_3d ?? 0,       color: "bg-orange-500" },
+            ]}
+          />
+          <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              {c?.unassigned_open ? `${c.unassigned_open} unassigned` : "All assigned"}
+            </span>
+            <Button asChild size="sm" variant="ghost">
+              <Link to="/dashboard/applicants">Open <ChevronRight className="h-3 w-3 ml-0.5" /></Link>
+            </Button>
+          </div>
+        </GlassCard>
+
+        <GlassCard className="p-4 lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Recent across agency</p>
+              <h3 className="text-lg font-bold">Last 8 deals</h3>
+            </div>
+            <Button asChild size="sm" variant="ghost">
+              <Link to="/dashboard/applicants">All deals <ArrowRight className="h-3 w-3 ml-1" /></Link>
+            </Button>
+          </div>
+          {recentDeals.isLoading ? (
+            <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+          ) : (recentDeals.data ?? []).length === 0 ? (
+            <EmptyState icon={<Trophy className="h-6 w-6" />} title="No deals yet" />
+          ) : (
+            <ul className="divide-y divide-border/40">
+              {(recentDeals.data ?? []).map((d) => (
+                <li key={d.id} className="py-2 flex items-center justify-between gap-3 hover:bg-primary/[0.04] rounded px-2 -mx-2 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {d.avatar_url ? (
+                      <img src={d.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-border" />
+                    ) : (
+                      <div className="h-7 w-7 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center">
+                        {d.agent_name.split(" ").map(s => s[0]).slice(0, 2).join("")}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-semibold truncate text-sm">
+                        {[d.client_first_name, d.client_last_name].filter(Boolean).join(" ") || "Unknown client"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {d.agent_name} · {d.product_sold ?? "—"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-bold tabular-nums text-emerald-500 dark:text-emerald-400 text-sm">
+                      {fmtUsd(Number(d.annual_premium ?? 0), true)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {d.posted_at ? formatDistanceToNow(new Date(d.posted_at), { addSuffix: true }) : "—"}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </GlassCard>
+      </div>
+
+      {/* ── System health + Referrals + Underperformers ─────────────── */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatRowCard
+          icon={Activity}
+          label="Chargebacks · 30d"
+          value={fmtNum(c?.chargebacks_30d ?? 0)}
+          color={(c?.chargebacks_30d ?? 0) > 0 ? "text-rose-500 dark:text-rose-400" : "text-emerald-500 dark:text-emerald-400"}
+        />
+        <StatRowCard
+          icon={Activity}
+          label="Lapses · 30d"
+          value={fmtNum(c?.lapses_30d ?? 0)}
+          color={(c?.lapses_30d ?? 0) > 10 ? "text-rose-500 dark:text-rose-400" : "text-amber-500 dark:text-amber-400"}
+        />
+        <StatRowCard
+          icon={Users}
+          label="Referrals · 30d"
+          value={fmtNum(c?.ref_30d ?? 0)}
+          color="text-primary"
+        />
+        <StatRowCard
+          icon={Crown}
+          label="Referrals · won"
+          value={fmtNum(c?.ref_won ?? 0)}
+          color="text-emerald-500 dark:text-emerald-400"
+        />
+      </div>
+
+      {/* ── Quick admin actions ─────────────────────────────────────── */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <QuickAction icon={Users}      to="/dashboard/applicants"      label="Applicants" desc="Review + assign" />
+        <QuickAction icon={Briefcase}  to="/dashboard/recruit-pipeline" label="Recruit pipeline" desc="Kanban board" />
+        <QuickAction icon={Trophy}     to="/dashboard/leaderboard"     label="Leaderboard" desc="Top producers" />
+        <QuickAction icon={Wallet}     to="/dashboard/charges-audit"   label="Charges audit" desc="Stripe anomalies" />
+        <QuickAction icon={Sparkles}   to="/dashboard/conduct"         label="Conduct center" desc="Strikes + audit" />
+      </div>
+    </div>
+  );
+}
+
+interface StatRowCardProps { icon: React.ElementType; label: string; value: string; color: string; }
+function StatRowCard({ icon: Icon, label, value, color }: StatRowCardProps) {
+  return (
+    <GlassCard className="p-4 flex items-center justify-between">
+      <div className="min-w-0">
+        <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
+        <p className={`text-2xl font-bold tabular-nums mt-1 ${color}`}>{value}</p>
+      </div>
+      <Icon className={`h-6 w-6 ${color} opacity-70`} />
+    </GlassCard>
   );
 }

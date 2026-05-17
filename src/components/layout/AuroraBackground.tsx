@@ -14,14 +14,10 @@ function AuroraBackgroundImpl() {
       style={{
         contain: "strict",
         background: [
-          // Tame emerald glow top-left
-          "radial-gradient(ellipse 60% 40% at 15% 10%, hsl(168 70% 35% / 0.22) 0%, transparent 70%)",
-          // Tame violet glow top-right
-          "radial-gradient(ellipse 50% 35% at 85% 5%, hsl(265 60% 45% / 0.16) 0%, transparent 65%)",
-          // Tame amber glow bottom
-          "radial-gradient(ellipse 70% 45% at 50% 95%, hsl(38 60% 40% / 0.12) 0%, transparent 65%)",
-          // Vignette
-          "radial-gradient(ellipse 100% 80% at center, transparent 40%, hsl(222 60% 2% / 0.7) 100%)",
+          // Whisper-quiet emerald hint, top-left only
+          "radial-gradient(ellipse 50% 35% at 10% 5%, hsl(168 50% 30% / 0.08) 0%, transparent 65%)",
+          // Vignette toward center
+          "radial-gradient(ellipse 100% 80% at center, transparent 50%, hsl(222 60% 2% / 0.55) 100%)",
         ].join(", "),
       }}
     >

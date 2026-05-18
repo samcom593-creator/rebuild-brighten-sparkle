@@ -1,7 +1,48 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useEffect, useRef } from "react";
-import { ArrowRight, Shield, TrendingUp, Users, Sparkles, PlayCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, Shield, TrendingUp, Users, Sparkles, PlayCircle, Play } from "lucide-react";
+
+// LazyYouTube — render a static poster image as the LCP element, only
+// mount the iframe (and pull the YouTube SDK) when the user clicks.
+// Cuts ~5s off Largest Contentful Paint on the landing per Lighthouse 2026-05-18.
+function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className="relative aspect-video rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_40px_hsl(168_80%_50%/0.2)] bg-black group">
+      {loaded ? (
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
+          title={title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="absolute inset-0 w-full h-full"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setLoaded(true)}
+          aria-label={`Play ${title} video`}
+          className="absolute inset-0 w-full h-full flex items-center justify-center"
+        >
+          {/* hqdefault is the right size for above-the-fold + caches well */}
+          <img
+            src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+            alt={title}
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <span className="absolute inset-0 bg-black/30 group-hover:bg-black/45 transition-colors" />
+          <span className="relative h-20 w-20 rounded-full bg-primary/95 flex items-center justify-center shadow-[0_0_50px_hsl(168_80%_50%/0.6)] group-hover:scale-110 transition-transform">
+            <Play className="h-10 w-10 text-primary-foreground fill-primary-foreground ml-1" />
+          </span>
+        </button>
+      )}
+    </div>
+  );
+}
 
 const carriers = [
   "National Life Group", "American Amicable", "Aflac", "Ethos Life",
@@ -133,22 +174,16 @@ export function HeroSection() {
             <span className="block text-foreground">with APEX</span>
           </motion.h1>
 
-          {/* Video — restored 2026-05-17 (Sam: "put the YouTube video back") */}
+          {/* Video — click-to-load poster (was an eager iframe that
+              dragged the YouTube SDK + ~5s into LCP. Now: poster image
+              is the LCP target, iframe only mounts on user click). */}
           <motion.div
             className="w-full max-w-2xl mx-auto mb-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.18 }}
           >
-            <div className="aspect-video rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_40px_hsl(168_80%_50%/0.2)] bg-black">
-              <iframe
-                src="https://www.youtube.com/embed/v4Fp3FL9ITo"
-                title="APEX Financial"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="w-full h-full"
-              />
-            </div>
+            <LazyYouTube videoId="v4Fp3FL9ITo" title="APEX Financial" />
           </motion.div>
 
           {/* Subheadline */}

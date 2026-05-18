@@ -1,5 +1,11 @@
 import { useRef, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+
+// Hand-rolled REST call to the public Supabase RPC so this component does NOT
+// import the full supabase-js bundle (~170 kB). landing_deal_highlights is
+// a SECURITY DEFINER RPC that returns sanitized first-name + 30-day ALP and
+// is callable by anon, so we just need the anon apikey at request time.
+const SUPABASE_URL = "https://xrzweoneiieddzxogewk.supabase.co";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 // 2026-05-04: previously hardcoded fake names+amounts (Sam: "no fake"). Now
 // pulls live top-13 producers from the last 30 days via a SECURITY DEFINER
@@ -45,16 +51,27 @@ export function DealsTicker() {
   // Pull live top producers — sanitized first-name + 30d ALP, no PII.
   useEffect(() => {
     let cancelled = false;
-    supabase.rpc("landing_deal_highlights" as any).then(({ data, error }) => {
-      if (cancelled || error || !data) return;
-      const rows = (data as DealHighlight[]).map((d, i) => ({
-        type: "deal" as const,
-        agent: d.agent,
-        amount: `$${d.amount.toLocaleString()}`,
-        color: palette[i % palette.length],
-      }));
-      setTickerItems(buildTickerItems(rows));
-    });
+    fetch(`${SUPABASE_URL}/rest/v1/rpc/landing_deal_highlights`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: DealHighlight[] | null) => {
+        if (cancelled || !data) return;
+        const rows = data.map((d, i) => ({
+          type: "deal" as const,
+          agent: d.agent,
+          amount: `$${d.amount.toLocaleString()}`,
+          color: palette[i % palette.length],
+        }));
+        setTickerItems(buildTickerItems(rows));
+      })
+      .catch(() => { /* silent — carrier-only fallback already rendered */ });
     return () => { cancelled = true; };
   }, []);
 

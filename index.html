@@ -104,6 +104,13 @@
     <!-- Supabase Preconnect -->
     <link rel="preconnect" href="https://xrzweoneiieddzxogewk.supabase.co" />
     <link rel="dns-prefetch" href="https://xrzweoneiieddzxogewk.supabase.co" />
+
+    <!-- LCP preload — hero YouTube poster image is the largest above-the-fold
+         paint target on the landing. Preloading drops LCP another ~500ms
+         per Lighthouse Critical-Path. The poster is i.ytimg.com so we also
+         preconnect to that origin. -->
+    <link rel="preconnect" href="https://i.ytimg.com" crossorigin />
+    <link rel="preload" as="image" href="https://i.ytimg.com/vi/v4Fp3FL9ITo/hqdefault.jpg" fetchpriority="high" />
 </head>
 
   <body>

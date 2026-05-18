@@ -20,11 +20,13 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 initTelemetry();
 
-// Eagerly loaded pages (critical path)
+// Eagerly loaded pages (critical path) — only the literal landing.
+// Login + Apply moved to lazy so a visitor who only sees the home page
+// doesn't pay for their (~50-100 kB each) bundles up front.
 import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Apply from "./pages/Apply";
 import NotFound from "./pages/NotFound";
+const Login = lazy(() => import("./pages/Login"));
+const Apply = lazy(() => import("./pages/Apply"));
 
 // Lazy loaded pages (heavy or less critical)
 const LogNumbers = lazy(() => import("./pages/LogNumbers"));

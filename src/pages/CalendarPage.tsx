@@ -600,7 +600,7 @@ export default function CalendarPage() {
 
                             <div className="flex items-center gap-1.5 shrink-0">
                               {iv.meeting_link && (
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(iv.meeting_link!, "_blank")}>
+                                <Button variant="ghost" size="icon" aria-label="Open meeting link" title="Open meeting link" className="h-8 w-8" onClick={() => window.open(iv.meeting_link!, "_blank")}>
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </Button>
                               )}

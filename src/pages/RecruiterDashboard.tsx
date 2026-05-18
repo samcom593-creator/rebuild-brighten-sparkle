@@ -1536,12 +1536,12 @@ function RecruiterDashboardInner() {
                             <TooltipContent><p>Mark contacted</p></TooltipContent>
                           </Tooltip>
                           {lead.phone && (
-                            <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                            <Button variant="ghost" size="icon" aria-label={`Call ${lead.first_name ?? "lead"}`} className="h-6 w-6" asChild>
                               <a href={`tel:${lead.phone}`} title="Call"><Phone className="h-3 w-3" /></a>
                             </Button>
                           )}
                           {lead.phone && (
-                            <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                            <Button variant="ghost" size="icon" aria-label={`Text ${lead.first_name ?? "lead"}`} className="h-6 w-6" asChild>
                               <a href={`sms:${lead.phone}`} title="Text"><MessageSquare className="h-3 w-3" /></a>
                             </Button>
                           )}

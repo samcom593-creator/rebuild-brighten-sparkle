@@ -11,7 +11,7 @@ const features = [
     icon: Repeat2,
     title: "Repost Pro",
     description:
-      "Run an army of Reels/Slave accounts by Reposting content across hundreds of accounts from a click of a button. Maximise visibility through explore page.",
+      "Repost Reels across a network of satellite accounts in one click. Saturates the Explore page so your offer keeps showing up no matter whose feed someone is in.",
   },
   {
     icon: Bot,
@@ -71,7 +71,7 @@ export function InstagramGrowthSection() {
           </h2>
 
           <p className="text-white/50 max-w-2xl mx-auto text-lg leading-relaxed">
-            We make it easy for Agencies to run hundreds of slave accounts to attract, nurture and convert fans to paid subs from IG.
+            Run a network of satellite IG accounts under one roof. Capture attention, warm prospects, and route them to your money pages — without burning your main profile.
           </p>
         </div>
 
@@ -116,7 +116,7 @@ export function InstagramGrowthSection() {
             Reactions Pro
           </h3>
           <p className="text-white/50 max-w-xl mx-auto text-sm leading-relaxed">
-            Our software uses human-like interaction techniques on IG to captivate the attention of users, diverting it seamlessly from one profile to yours. As a result, more eyes will be drawn to your profile, increasing visibility and engagement.
+            Human-pattern interactions on accounts that already engage with your competitors. The attention moves from their profile to yours — quietly, at scale, on autopilot.
           </p>
         </div>
       </div>

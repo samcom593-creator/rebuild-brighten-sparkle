@@ -516,14 +516,14 @@ export default function AdminCalendar() {
 
         {/* Date Navigator */}
         <div className="flex items-center justify-center gap-4 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => setSelectedDate(d => subDays(d, 1))}>
+          <Button variant="ghost" size="icon" aria-label="Previous day" onClick={() => setSelectedDate(d => subDays(d, 1))}>
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div className="text-center">
             <p className="text-lg font-semibold">{format(selectedDate, "EEEE")}</p>
             <p className="text-sm text-muted-foreground">{format(selectedDate, "MMMM d, yyyy")}</p>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setSelectedDate(d => addDays(d, 1))}>
+          <Button variant="ghost" size="icon" aria-label="Next day" onClick={() => setSelectedDate(d => addDays(d, 1))}>
             <ChevronRight className="h-5 w-5" />
           </Button>
         </div>

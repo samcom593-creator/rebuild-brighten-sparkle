@@ -839,7 +839,7 @@ export default function ContentLibrary() {
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground">{formatBytes(item.file_size)}</span>
                         {canManage && (
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item)}>
+                          <Button variant="ghost" size="icon" aria-label="Delete item" className="h-6 w-6 text-destructive" onClick={() => handleDelete(item)}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         )}
@@ -1001,7 +1001,7 @@ export default function ContentLibrary() {
                 {uploadFile ? (
                   <div className="flex items-center justify-center gap-2">
                     <p className="text-sm font-medium truncate">{uploadFile.name}</p>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setUploadFile(null); }}>
+                    <Button variant="ghost" size="icon" aria-label="Clear upload" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); setUploadFile(null); }}>
                       <X className="h-3 w-3" />
                     </Button>
                   </div>
@@ -1081,11 +1081,11 @@ function ContentCard({
           </div>
         </div>
         <div className="flex gap-1">
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onDownload(item)}>
+          <Button variant="outline" size="icon" aria-label="Download" className="h-8 w-8" onClick={() => onDownload(item)}>
             <Download className="h-3 w-3" />
           </Button>
           {canManage && (
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(item)}>
+            <Button variant="ghost" size="icon" aria-label="Delete" className="h-8 w-8 text-destructive" onClick={() => onDelete(item)}>
               <Trash2 className="h-3 w-3" />
             </Button>
           )}

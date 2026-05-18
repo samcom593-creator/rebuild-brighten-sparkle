@@ -101,19 +101,16 @@ export default function OnboardingCourse() {
       setProvisioningInProgress(true);
 
       try {
-        // console.log("Calling self-enroll-course for user:", user.id);
         const { data, error } = await supabase.functions.invoke("self-enroll-course", {
           body: {},
         });
 
         if (!error && data?.agentId) {
-          // console.log("Self-enroll succeeded, agentId:", data.agentId);
           setAgentId(data.agentId);
           setAgentNotFound(false);
-        } else {
-          // console.log("Self-enroll result:", error || data);
-          // If noLicense flag, keep agentNotFound true to show message
         }
+        // else: noLicense / no agent record — keep agentNotFound true so the
+        // "complete your application first" message renders.
       } catch (err) {
         console.error("Self-enroll error:", err);
       } finally {

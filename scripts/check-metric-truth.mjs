@@ -12,13 +12,9 @@ const filesToCheck = [
   "src/pages/AgentPipelineSimple.tsx",
   "src/pages/AgentDetail.tsx",
   "src/components/dashboard/AgentRankBadge.tsx",
-  "src/components/dashboard/LiveLeaderboard.tsx",
-  "src/components/dashboard/ClosingRateLeaderboard.tsx",
-  "src/components/dashboard/TeamOverviewDashboard.tsx",
   "src/components/dashboard/TeamHierarchyManager.tsx",
   "src/components/dashboard/LeaderboardTabs.tsx",
   "src/components/dashboard/ExtendedStatsStrip.tsx",
-  "src/components/dashboard/ForecastCard.tsx",
 ];
 
 const criticalRecruitingFiles = [

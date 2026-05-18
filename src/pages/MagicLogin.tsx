@@ -84,7 +84,6 @@ export default function MagicLogin() {
           
           // Auto-retry once on OTP expiry - get a fresh token
           if (verifyError.message?.includes("otp_expired") || verifyError.message?.includes("expired")) {
-            // console.log("OTP expired, retrying with fresh token...");
             const { data: retryData, error: retryFnError } = await supabase.functions.invoke("verify-magic-link", {
               body: { token },
             });

@@ -46,7 +46,8 @@ const applicationSchema = z.object({
   city: z.string().min(2, "City is required").max(100),
   state: z.string().min(2, "State is required"),
   instagramHandle: z.string().max(50).optional(),
-  
+  carrier: z.string().max(20).optional(),
+
   // Step 2: Experience
   hasInsuranceExperience: z.boolean().default(false),
   yearsExperience: z.preprocess(
@@ -413,6 +414,7 @@ export default function Apply() {
             city: data.city,
             state: data.state,
             instagramHandle,
+            carrier: data.carrier || null,
 
             hasInsuranceExperience: data.hasInsuranceExperience,
             yearsExperience,
@@ -757,8 +759,8 @@ export default function Apply() {
                       <div className="space-y-2">
                         <Label htmlFor="carrier">Mobile Carrier (optional)</Label>
                         <Select
-                          value={watch("carrier" as any) || undefined}
-                          onValueChange={(value) => setValue("carrier" as any, value)}
+                          value={watch("carrier") || undefined}
+                          onValueChange={(value) => setValue("carrier", value)}
                         >
                           <SelectTrigger className="bg-input">
                             <SelectValue placeholder="Select your carrier" />

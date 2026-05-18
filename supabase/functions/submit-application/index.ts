@@ -82,6 +82,7 @@ const SubmitApplicationSchema = z.object({
   city: z.string().min(1).max(100),
   state: z.string().min(2).max(50),
   instagramHandle: z.string().max(50).optional().nullable(),
+  carrier: z.string().max(20).optional().nullable(),
 
   hasInsuranceExperience: z.boolean().default(false),
   yearsExperience: NumOptional(0, 50),
@@ -1024,6 +1025,7 @@ const handler = async (req: Request): Promise<Response> => {
       city: data.city,
       state: data.state,
       instagram_handle: instagramClean,
+      carrier: data.carrier ?? null,
 
       has_insurance_experience: data.hasInsuranceExperience,
       years_experience: data.yearsExperience ?? null,

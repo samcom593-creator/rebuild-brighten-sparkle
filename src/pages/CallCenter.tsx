@@ -110,7 +110,6 @@ export default function CallCenter() {
       setLeads([]);
       return;
     }
-    if (typeof console !== "undefined") console.debug("[CallCenter] fetchLeads admin=", isAdmin, "agentId=", agentId);
 
     setLoading(true);
     try {

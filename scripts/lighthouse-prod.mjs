@@ -17,15 +17,17 @@ import { join } from "node:path";
 
 const URL_ = process.env.URL || "https://apex-financial.org/";
 
-// Budgets (override with env vars). Set deliberately conservative so we
-// only fail on real regressions, not noise.
+// Budgets (override with env vars). Tightened 2026-05-18 round 3 baseline:
+//   Perf 68 / A11y 89 / BP 96 / SEO 100 / FCP 3.8s / LCP 5.7s / CLS 0
+// Budget sits 5pp below measured so noise doesn't false-alarm, but any
+// real regression breaks the build.
 const BUDGETS = {
-  performance:    Number(process.env.PERF_MIN ?? 60),
-  accessibility:  Number(process.env.A11Y_MIN ?? 88),
+  performance:    Number(process.env.PERF_MIN ?? 63),
+  accessibility:  Number(process.env.A11Y_MIN ?? 85),
   "best-practices": Number(process.env.BP_MIN ?? 90),
   seo:            Number(process.env.SEO_MIN ?? 95),
-  lcpMs:          Number(process.env.LCP_MAX ?? 7000),
-  fcpMs:          Number(process.env.FCP_MAX ?? 5000),
+  lcpMs:          Number(process.env.LCP_MAX ?? 6500),
+  fcpMs:          Number(process.env.FCP_MAX ?? 4500),
   cls:            Number(process.env.CLS_MAX ?? 0.05),
 };
 

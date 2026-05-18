@@ -122,7 +122,7 @@ export default function GetLicensed() {
               </div>
               
               <p className="text-sm text-muted-foreground mb-6">
-                Our comprehensive guide walks you through every step of the licensing process, from application to exam preparation.
+                Application, study, exam booking, fingerprints, license issued — every step laid out in one doc.
               </p>
               
               <a href={documentUrl} target="_blank" rel="noopener noreferrer">

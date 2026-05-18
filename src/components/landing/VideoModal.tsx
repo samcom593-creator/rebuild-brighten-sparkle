@@ -44,23 +44,12 @@ export function VideoModal({ isOpen, onClose, testimonial }: VideoModalProps) {
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1)_0%,transparent_50%)]" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(0,0,0,0.2)_0%,transparent_50%)]" />
               
-              {/* Play button with coming soon */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <motion.div
-                  className="w-20 h-20 rounded-full bg-primary/90 backdrop-blur-sm flex items-center justify-center shadow-lg shadow-primary/30 mb-4"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Play className="h-9 w-9 text-primary-foreground fill-primary-foreground ml-1" />
-                </motion.div>
-                <p className="text-white/80 text-sm font-medium bg-black/30 px-4 py-2 rounded-full backdrop-blur-sm">
-                  Video Coming Soon
+              {/* Quote-only card when no video is attached — reads as intentional design, not "coming soon" placeholder */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
+                <Quote className="h-14 w-14 text-white/70 mb-3" />
+                <p className="text-white/90 text-base md:text-lg italic max-w-md leading-relaxed">
+                  "{testimonial.quote.length > 140 ? testimonial.quote.slice(0, 140) + "…" : testimonial.quote}"
                 </p>
-              </div>
-
-              {/* Duration */}
-              <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded bg-background/80 backdrop-blur-sm text-sm font-medium">
-                {testimonial.videoDuration}
               </div>
             </>
           )}

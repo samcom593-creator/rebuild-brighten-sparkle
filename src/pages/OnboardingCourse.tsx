@@ -185,9 +185,9 @@ export default function OnboardingCourse() {
       <>
         <div className="max-w-4xl mx-auto text-center py-20">
           <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Course Coming Soon</h1>
+          <h1 className="text-2xl font-bold mb-2">No modules assigned to you yet</h1>
           <p className="text-muted-foreground mb-6">
-            The onboarding course is being prepared. Check back soon!
+            Your manager hasn't published a module for your stage yet. Once they do, it lands here automatically.
           </p>
         </div>
       </>

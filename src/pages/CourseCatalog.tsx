@@ -362,7 +362,7 @@ export default function CourseCatalog() {
                           ) : (
                             <Card><CardContent className="pt-8 pb-8 text-center">
                               <HelpCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                              <p className="text-muted-foreground">Quiz coming soon.</p>
+                              <p className="text-muted-foreground">No quiz on this module — finish the video and mark it complete.</p>
                             </CardContent></Card>
                           )}
                         </TabsContent>

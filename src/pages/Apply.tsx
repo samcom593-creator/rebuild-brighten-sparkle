@@ -829,9 +829,9 @@ export default function Apply() {
                         <div className="p-6 rounded-lg bg-primary/10 border border-primary/20">
                           <h3 className="font-semibold text-primary mb-2">Great news!</h3>
                           <p className="text-sm text-muted-foreground">
-                            Many of our top producers came to APEX with zero insurance experience. 
-                            Our comprehensive training program will teach you everything you need to know 
-                            to succeed. Most new agents close their first sale within 2 weeks of training.
+                            Half our top producers walked in with zero insurance experience. We hand you the scripts,
+                            the carriers, the leads, and the coaching. Most new agents close their first deal inside
+                            two weeks of training.
                           </p>
                         </div>
                       )}

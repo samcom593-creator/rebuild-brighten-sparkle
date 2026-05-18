@@ -26,7 +26,7 @@ const faqs = [
   },
   {
     question: "What kind of training do you provide?",
-    answer: "We provide comprehensive training including: 1-on-1 mentorship with a top producer, weekly sales training calls, proven scripts and objection handling, CRM and technology training, and ongoing coaching. Most new agents close their first sale within their first two weeks.",
+    answer: "1-on-1 mentorship with a top producer. Weekly live sales training. Scripts, objection handling, CRM, the whole stack. Most new agents close their first deal within the first two weeks.",
   },
   {
     question: "How quickly can I start earning?",

@@ -48,6 +48,7 @@ import {
   Flame,
   ShieldAlert,
   Receipt,
+  Phone,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -288,6 +289,7 @@ export function GlobalSidebar({
       adminItems.push({ icon: Route, label: "Hiring Routing", href: "/dashboard/hiring-routing" });
       adminItems.push({ icon: DollarSign, label: "Comp Tiers", href: "/dashboard/comp-tiers" });
       adminItems.push({ icon: Plug, label: "Integrations", href: "/dashboard/integrations" });
+      adminItems.push({ icon: Phone, label: "ReadyMode Sync", href: "/dashboard/readymode" });
       adminItems.push({ icon: Zap, label: "AgentLink Sync", href: "/dashboard/agentlink-sync", special: true });
       adminItems.push({ icon: Database, label: "AgentLink Vault", href: "/dashboard/agentlink-vault", special: true });
       adminItems.push({ icon: Sparkles, label: "Conduct Center", href: "/dashboard/conduct", special: true });

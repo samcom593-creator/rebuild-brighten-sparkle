@@ -615,3 +615,6 @@ verify_jwt = true
 
 [functions.numbers-reminder]
 verify_jwt = false
+
+[functions.readymode-sync]
+verify_jwt = false

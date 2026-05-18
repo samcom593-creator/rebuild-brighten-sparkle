@@ -131,7 +131,8 @@ export default function PreLicensing() {
     },
   });
 
-  const students = studentsQ.data ?? [];
+  // Stabilize the reference so useMemo deps don't change every render.
+  const students = useMemo(() => studentsQ.data ?? [], [studentsQ.data]);
 
   const counts = useMemo(() => {
     const byBucket: Record<string, number> = {};

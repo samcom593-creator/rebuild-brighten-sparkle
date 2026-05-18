@@ -131,6 +131,7 @@ const ChargesAudit = lazy(() => import("./pages/ChargesAudit"));
 const ConductCommandCenter = lazy(() => import("./pages/ConductCommandCenter"));
 const PreLicensing = lazy(() => import("./pages/PreLicensing"));
 const BookReconciliation = lazy(() => import("./pages/BookReconciliation"));
+const ReadyModeIntegration = lazy(() => import("./pages/ReadyModeIntegration"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
@@ -319,6 +320,8 @@ const App = () => (
                            <Route path="/dashboard/pre-licensing" element={<ProtectedRoute requireAdmin allowManagers><PreLicensing /></ProtectedRoute>} />
                            {/* Book Quality Engine — carrier-direct vs internal recon */}
                            <Route path="/dashboard/book-quality" element={<ProtectedRoute requireAdmin allowManagers><BookReconciliation /></ProtectedRoute>} />
+                           {/* ReadyMode dialer integration — credentials live in system_settings */}
+                           <Route path="/dashboard/readymode" element={<ProtectedRoute requireAdmin><ReadyModeIntegration /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

@@ -475,7 +475,7 @@ function InlineNotesButton({ agent }: { agent: AgentCRM }) {
   return (
     <div className="relative flex items-center gap-1" ref={ref} onClick={e => e.stopPropagation()}>
       {latestNote && !open && (
-        <span className="text-[9px] text-muted-foreground truncate max-w-[80px]" title={latestNote}>
+        <span className="text-[10px] text-muted-foreground truncate max-w-[80px]" title={latestNote}>
           {latestNote.slice(0, 20)}{latestNote.length > 20 ? "…" : ""}
         </span>
       )}
@@ -1540,7 +1540,7 @@ export default function DashboardCRM() {
                                         <p className="text-sm font-semibold truncate leading-tight">{agent.name}</p>
                                         <div className="flex items-center gap-1 mt-0.5">
                                           {agent.aiScoreTier && (
-                                            <Badge variant="outline" className={cn("text-[8px] h-3.5 px-1", {
+                                            <Badge variant="outline" className={cn("text-[10px] h-3.5 px-1", {
                                               "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
                                               "bg-orange-500/10 text-orange-500 border-orange-500/20": agent.aiScoreTier === "warm",
                                               "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
@@ -1550,7 +1550,7 @@ export default function DashboardCRM() {
                                             </Badge>
                                           )}
                                           {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
-                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
                                           )}
                                         </div>
                                       </div>
@@ -1581,37 +1581,37 @@ export default function DashboardCRM() {
                                       <div className="mx-2.5 mb-2 p-2 rounded-md bg-muted/40 border border-border/30 space-y-1">
                                         <div className="flex flex-wrap gap-1.5 text-[10px]">
                                           {agent.recruit.appliedAt && (
-                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5">
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5">
                                               Applied {getTimeAgo(agent.recruit.appliedAt)}
                                             </Badge>
                                           )}
                                           {agent.recruit.state && (
-                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5">
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5">
                                               📍 {agent.recruit.state}
                                             </Badge>
                                           )}
                                           {agent.recruit.desiredIncome != null && agent.recruit.desiredIncome > 0 && (
-                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
                                               💰 ${Number(agent.recruit.desiredIncome).toLocaleString()} goal
                                             </Badge>
                                           )}
                                           {agent.recruit.yearsExperience != null && agent.recruit.yearsExperience > 0 && (
-                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5">
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5">
                                               🧑‍💼 {agent.recruit.yearsExperience}y exp
                                             </Badge>
                                           )}
                                           {agent.recruit.previousCompany && (
-                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5" title="Previous company">
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5" title="Previous company">
                                               🏢 {agent.recruit.previousCompany.slice(0, 18)}{agent.recruit.previousCompany.length > 18 ? "…" : ""}
                                             </Badge>
                                           )}
                                           {agent.recruit.availability && (
-                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5" title="Availability">
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5" title="Availability">
                                               ⏰ {agent.recruit.availability.slice(0, 14)}
                                             </Badge>
                                           )}
                                           {agent.recruit.referralSource && (
-                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20" title="Referral source">
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20" title="Referral source">
                                               📣 {agent.recruit.referralSource.slice(0, 16)}
                                             </Badge>
                                           )}
@@ -1717,10 +1717,10 @@ export default function DashboardCRM() {
                                       <div className="min-w-0">
                                         <p className="font-medium text-xs truncate">{agent.name}</p>
                                         <div className="flex items-center gap-1 mt-0.5">
-                                          {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
-                                          {!agent.avatarUrl && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-red-500/10 text-red-500 border-red-500/20">📷 Photo</Badge>}
+                                          {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[10px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
+                                          {!agent.avatarUrl && <Badge variant="outline" className="text-[10px] h-3.5 px-1 bg-red-500/10 text-red-500 border-red-500/20">📷 Photo</Badge>}
                                           {agent.aiScoreTier && (
-                                            <Badge variant="outline" className={cn("text-[8px] h-3.5 px-1", {
+                                            <Badge variant="outline" className={cn("text-[10px] h-3.5 px-1", {
                                               "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
                                               "bg-orange-500/10 text-orange-500 border-orange-500/20": agent.aiScoreTier === "warm",
                                               "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",

@@ -157,14 +157,16 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
   }
 
   .dark {
-    --background: 222 47% 3%;
-    --foreground: 180 100% 97%;
+    /* Bumped 2026-05-17: was too close to card bg, surfaces blended into each
+     * other. Body slightly darker, card noticeably lighter for clear depth. */
+    --background: 222 60% 2%;
+    --foreground: 0 0% 98%;
 
-    --card: 222 47% 6%;
-    --card-foreground: 180 100% 97%;
+    --card: 222 35% 11%;
+    --card-foreground: 0 0% 97%;
 
-    --popover: 222 47% 8%;
-    --popover-foreground: 180 100% 97%;
+    --popover: 222 40% 13%;
+    --popover-foreground: 0 0% 97%;
 
     --primary: 164 72% 48%;
     --primary-foreground: 222 47% 3%;
@@ -181,8 +183,8 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 30% 15%;
-    --input: 222 30% 12%;
+    --border: 220 25% 22%;
+    --input: 222 30% 14%;
     --ring: 164 72% 48%;
 
     --sidebar-background: 222 47% 4%;
@@ -1233,10 +1235,10 @@ html { background-attachment: fixed; }
 }
 .dark .glass-card,
 .dark [class*="GlassCard"] {
-  background: hsl(222 47% 7%);
-  border: 1px solid hsl(168 60% 50% / 0.16);
+  background: hsl(222 35% 11%);
+  border: 1px solid hsl(220 25% 22%);
   box-shadow:
-    0 4px 14px hsl(222 47% 0% / 0.28);
+    0 4px 14px hsl(222 47% 0% / 0.35);
 }
 .glass-card:hover,
 [class*="GlassCard"]:hover {
@@ -1571,6 +1573,15 @@ button[class*="border-emerald"]:hover {
   box-shadow:
     inset 3px 0 0 hsl(168 80% 55%),
     inset 0 0 40px hsl(168 80% 55% / 0.06);
+}
+
+/* ── Readable minimum: bump any tiny arbitrary text-[Xpx] to 10px floor.
+ *   Tailwind emits class names like `text-[8px]` and `text-[9px]` directly;
+ *   we don't want sub-10px text anywhere in the product. */
+[class*="text-[8px]"],
+[class*="text-[9px]"] {
+  font-size: 10px !important;
+  line-height: 1.3 !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */

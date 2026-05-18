@@ -250,6 +250,46 @@ export default function ReadyModeIntegration() {
 
         {/* SETTINGS */}
         <TabsContent value="settings" className="mt-4 space-y-3">
+          {/* Setup steps — exact path for Sam to wire creds */}
+          <GlassCard className="p-5 mb-3">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
+              How to wire this up (one time)
+            </p>
+            <ol className="space-y-2.5 text-sm">
+              <li className="flex items-start gap-3">
+                <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+                <span>
+                  Open <a className="text-primary underline" href="https://apexfinancial.readymode.com/login_new/" target="_blank" rel="noreferrer">apexfinancial.readymode.com</a> → log in as admin.
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+                <span>
+                  Go to <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted">Admin → API</span> → generate a new API key. Copy the key + the base URL ReadyMode shows.
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
+                <span>
+                  Paste into the four fields below. Set <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted">readymode_sync_enabled=true</span>. Save.
+                </span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">4</span>
+                <span>
+                  Hit <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted">Sync now</span>. If the response shape matches, calls land in the "Today's calls" tab immediately. If not, the Last-sync-error callout shows what to fix.
+                </span>
+              </li>
+            </ol>
+            <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/40">
+              <strong>Bonus path (real-time):</strong> we already deploy
+              <span className="font-mono"> readymode-webhook</span> at
+              <span className="font-mono"> /functions/v1/readymode-webhook</span>. From ReadyMode Admin → Webhooks, point a webhook at that URL with a shared secret stored as
+              <span className="font-mono"> READYMODE_WEBHOOK_SECRET</span>. Disposition events then update
+              <span className="font-mono"> aged_leads</span> the moment a call ends — independent of the poller.
+            </p>
+          </GlassCard>
+
           <GlassCard className="p-5 space-y-3">
             {SETTING_KEYS.map((k) => {
               const current = settingsByKey[k]?.value ?? "";

@@ -17,6 +17,7 @@
     "check:forbidden-language": "node scripts/check-forbidden-language.mjs",
     "smoke": "node scripts/route-smoke.mjs",
     "smoke:prod": "BASE=https://apex-financial.org node scripts/route-smoke.mjs",
+    "lighthouse:prod": "node scripts/lighthouse-prod.mjs",
     "verify:core": "npm run check:forbidden-language && npm run check:metric-truth && npm run check:sync-reliability && npx tsc --noEmit && npm run build"
   },
   "dependencies": {

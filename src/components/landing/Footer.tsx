@@ -14,7 +14,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
               <span className="text-xl font-extrabold text-[#22d3a5] font-display">APEX Financial</span>
             </Link>
             <p className="text-sm text-[#94a3b8] max-w-sm mb-4">
-              Building the next generation of financial professionals. 
+              Where producers stop renting their income and start building it.
               Join America's fastest-growing life insurance agency.
             </p>
             <div className="flex flex-col gap-2 text-sm text-[#94a3b8]">

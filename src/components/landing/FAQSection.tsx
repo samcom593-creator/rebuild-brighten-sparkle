@@ -18,7 +18,7 @@ const faqs = [
   },
   {
     question: "What are the commission rates?",
-    answer: "We offer industry-leading commission rates of 140-160% on first-year premiums. Plus, you'll earn renewals for years to come. Top producers also qualify for production bonuses up to $25,000 per month.",
+    answer: "140-160% on first-year premiums, plus renewals for years after. Top producers also pull production bonuses up to $25,000/month on top of that.",
   },
   {
     question: "Is this a full-time or part-time opportunity?",

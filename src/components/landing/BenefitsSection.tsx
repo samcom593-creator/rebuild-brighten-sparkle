@@ -6,14 +6,14 @@ import {
 import { SectionHeading } from "@/components/ui/section-heading";
 
 const benefits = [
-  { icon: DollarSign, title: "Industry-Leading Commissions", description: "Earn 50%-145% commission rates with bonuses up to $25K per month." },
-  { icon: Target, title: "Exclusive Lead Program", description: "Receive unlimited exclusive leads. No cold calling—only prospects ready to buy." },
-  { icon: GraduationCap, title: "World-Class Training", description: "Access our proven sales system, scripts, and mentorship from day one." },
-  { icon: Calendar, title: "Flexible Schedule", description: "Work from anywhere, set your own hours. Build your business around your life." },
-  { icon: Users, title: "Team Culture & Support", description: "Weekly masterminds, team calls, and 24/7 support when you need it." },
-  { icon: Trophy, title: "Career Advancement", description: "Clear path to management. Build your own team and earn overrides." },
-  { icon: Zap, title: "Fast-Start Bonuses", description: "Earn up to $10,000 in bonuses your first 90 days." },
-  { icon: HeartHandshake, title: "Meaningful Work", description: "Protect families and build generational wealth for your clients." },
+  { icon: DollarSign, title: "50–145% commission", description: "Real rates, paid weekly. Production bonuses up to $25K/mo on top." },
+  { icon: Target,     title: "Warm leads, daily",  description: "No cold calling. Prospects already asked for the appointment." },
+  { icon: GraduationCap, title: "Scripts that close", description: "Same scripts our top producers use. Mentorship from day one." },
+  { icon: Calendar,   title: "Your schedule",       description: "Work from anywhere. Set your own hours. Build the business around your life." },
+  { icon: Users,      title: "Team that picks up",  description: "Weekly masterminds, daily team calls, and a Slack you can ping any hour." },
+  { icon: Trophy,     title: "Build your own team", description: "Clear path to manager. Earn overrides on every producing agent under you." },
+  { icon: Zap,        title: "$10K in 90 days",     description: "Fast-start bonuses for new agents who execute the playbook." },
+  { icon: HeartHandshake, title: "Protect real families", description: "Every policy is generational wealth for the family you wrote it for." },
 ];
 
 export function BenefitsSection() {

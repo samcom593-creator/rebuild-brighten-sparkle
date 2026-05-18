@@ -293,6 +293,7 @@ export function GlobalSidebar({
       adminItems.push({ icon: Sparkles, label: "Conduct Center", href: "/dashboard/conduct", special: true });
       adminItems.push({ icon: ShieldAlert, label: "Agent Strikes", href: "/dashboard/strikes", special: true });
       adminItems.push({ icon: Receipt, label: "Charges Audit", href: "/dashboard/charges-audit", special: true });
+      adminItems.push({ icon: Book, label: "Book Quality", href: "/dashboard/book-quality", special: true });
       adminItems.push({ icon: Shield, label: "Setup", href: "/dashboard/setup" });
     }
     adminItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });

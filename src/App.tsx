@@ -130,6 +130,7 @@ const MyStrikes = lazy(() => import("./pages/MyStrikes"));
 const ChargesAudit = lazy(() => import("./pages/ChargesAudit"));
 const ConductCommandCenter = lazy(() => import("./pages/ConductCommandCenter"));
 const PreLicensing = lazy(() => import("./pages/PreLicensing"));
+const BookReconciliation = lazy(() => import("./pages/BookReconciliation"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
@@ -316,6 +317,8 @@ const App = () => (
                            <Route path="/dashboard/conduct" element={<ProtectedRoute requireAdmin><ConductCommandCenter /></ProtectedRoute>} />
                            {/* XCEL Solutions daily pre-licensing report viewer */}
                            <Route path="/dashboard/pre-licensing" element={<ProtectedRoute requireAdmin allowManagers><PreLicensing /></ProtectedRoute>} />
+                           {/* Book Quality Engine — carrier-direct vs internal recon */}
+                           <Route path="/dashboard/book-quality" element={<ProtectedRoute requireAdmin allowManagers><BookReconciliation /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

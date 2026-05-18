@@ -1,0 +1,46 @@
+name: Post-deploy Lighthouse budget
+
+# Pulls a mobile Lighthouse audit against production after every push to
+# main and asserts the perf budget set in scripts/lighthouse-prod.mjs.
+# A regression (LCP > 7s, Perf < 60, etc.) fails the workflow so we see
+# it before users do.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: post-deploy-lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Wait for Vercel promote
+        # 90s buffer so the new deploy has time to flip into production
+        # before we measure against it.
+        run: sleep 90
+
+      - name: Install Chromium for Lighthouse
+        # lighthouse pulls headless Chrome via Puppeteer. On ubuntu-latest
+        # we already have Chrome at /usr/bin/google-chrome but lighthouse
+        # CLI may want a fresh fetch — let it.
+        run: echo "Using GitHub runner Chrome"
+
+      - name: Run Lighthouse against production
+        run: node scripts/lighthouse-prod.mjs
+        env:
+          URL: https://apex-financial.org/
+
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::Lighthouse perf budget BUSTED on ${{ github.sha }}. See the audit output above. Either roll back, or update the budget in scripts/lighthouse-prod.mjs if the regression is intentional."

@@ -561,9 +561,9 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <h3 style="color: #111827; margin-bottom: 15px;">Why Join APEX?</h3>
                 <ul style="color: #4b5563; line-height: 1.8;">
-                  <li>💰 Top-tier commissions in the industry</li>
-                  <li>📈 Proven lead generation system</li>
-                  <li>🎯 Full training and mentorship</li>
+                  <li>💰 70%–145% commissions, paid weekly</li>
+                  <li>📈 Warm leads delivered daily</li>
+                  <li>🎯 Real training and mentorship from day one</li>
                   <li>🚀 Fast-track onboarding for licensed agents</li>
                 </ul>
 

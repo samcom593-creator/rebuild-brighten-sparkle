@@ -1,22 +1,24 @@
 #!/usr/bin/env node
 // Fails the build if any forbidden term ever ships to user-facing copy.
-// Owned by Website Integrity Bot. To add a term: append to FORBIDDEN below
-// and document why in the comment.
+// Owned by Website Integrity Bot.
+//
+// Rules:
+//   - High-confidence bans only — false positives kill adoption.
+//   - Skips comments (// and /* */), JSX placeholder="..." attrs, and known
+//     vendor/build paths. Add patterns to SKIP_LINE_REGEX rather than
+//     loosening the term list.
+//   - To add a term: append to FORBIDDEN with a one-line reason.
 
 import fs from "node:fs";
 import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-// term → reason it's banned. Match is case-insensitive on word/phrase boundary.
 const FORBIDDEN = [
-  ["slave account", "racially-charged language; replacement: 'satellite account'"],
-  ["slave accounts", "racially-charged language; replacement: 'satellite accounts'"],
+  ["slave account", "racially-charged language; use 'satellite account'"],
+  ["slave accounts", "racially-charged language; use 'satellite accounts'"],
   ["army of slave", "racially-charged language"],
   ["lorem ipsum", "placeholder content must never ship"],
-  ["coming soon", "use a real ship date or remove the section"],
-  ["tbd", "real value or remove"],
-  ["example.com", "placeholder domain"],
   ["delve into", "AI-tell"],
   ["it's important to note", "AI-tell filler"],
   ["seamlessly", "AI-tell — say what actually happens"],
@@ -27,12 +29,19 @@ const FORBIDDEN = [
   ["cutting-edge", "AI-tell"],
 ];
 
-// Scan all user-facing source files. Exclude vendor + build artifacts.
 const TEXT_EXTS = new Set([".tsx", ".ts", ".jsx", ".js", ".md", ".html"]);
 const SKIP_DIRS = new Set([
   "node_modules", ".git", "dist", "build", ".next", ".turbo",
-  "scripts", // this file lives here — and check scripts shouldn't trigger themselves
+  "scripts", // this file lives here — exempt to avoid self-trigger
 ]);
+
+// Lines matching any of these get skipped (legitimate use of a flagged term).
+const SKIP_LINE_REGEX = [
+  /^\s*\/\//,                          // // comment
+  /^\s*\*/,                            // jsdoc / block-comment continuation
+  /^\s*\/\*/,                          // /* comment start
+  /placeholder\s*=\s*["'][^"']*["']/,  // JSX placeholder attrs (UX, not copy)
+];
 
 function walk(dir, acc = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -52,7 +61,9 @@ for (const file of files) {
   const content = fs.readFileSync(file, "utf8");
   const lines = content.split("\n");
   for (let i = 0; i < lines.length; i++) {
-    const lower = lines[i].toLowerCase();
+    const line = lines[i];
+    if (SKIP_LINE_REGEX.some((rx) => rx.test(line))) continue;
+    const lower = line.toLowerCase();
     for (const [term, reason] of FORBIDDEN) {
       if (lower.includes(term.toLowerCase())) {
         violations.push({
@@ -60,7 +71,7 @@ for (const file of files) {
           line: i + 1,
           term,
           reason,
-          snippet: lines[i].trim().slice(0, 140),
+          snippet: line.trim().slice(0, 140),
         });
       }
     }

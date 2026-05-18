@@ -123,9 +123,9 @@ BEGIN
     license_progress = (
       CASE
         WHEN s.pct_complete >= 100 AND a.license_progress NOT IN ('test_scheduled','waiting_on_license','fingerprints_done','licensed')
-          THEN 'finished_course'::license_progress_t
+          THEN 'finished_course'::license_progress
         WHEN s.pct_complete > 0 AND a.license_progress = 'unlicensed'
-          THEN 'course_purchased'::license_progress_t
+          THEN 'course_purchased'::license_progress
         ELSE a.license_progress
       END
     ),

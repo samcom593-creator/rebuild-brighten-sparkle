@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +22,7 @@ import {
   Users, MessageSquare, Target,
   Radio, Anchor, FileText, RefreshCw, Crown,
   Youtube, Music2, Instagram, Camera, Activity,
+  ScrollText, FlaskConical, Flame, Quote, ArrowRight, Plus,
 } from "lucide-react";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { toast } from "sonner";
@@ -120,10 +123,51 @@ const fmtNum = (n: number | null | undefined) => (n == null ? "—" : n.toLocale
 const fmtUsd = (n: number | null | undefined) =>
   n == null ? "—" : `$${Math.round(n).toLocaleString()}`;
 
+// ─── ContentWheel types (brand tab) ───────────────────────────────────────
+type CwPillar = {
+  id: string; code: string; name: string; description: string | null;
+  monetization_tie: string | null; display_order: number;
+};
+type CwDogma = { id: string; number: number; text: string };
+type CwHookRow = {
+  id: string; idea_id: string; variant_label: string; text: string;
+  keyword_a: string | null; keyword_b: string | null;
+  is_agenda: boolean | null; context_ok: boolean | null;
+  contrarian_ok: boolean | null; openloop_ok: boolean | null;
+};
+type CwIdeaRow = {
+  id: string; title: string; audience: string; pillar_id: string | null;
+  dogma_id: string | null; status: string; score: number | null;
+};
+
+// ─── cinematic moments (Brand Bible Ch 1, ranked) ────────────────────────
+const CINEMATIC_MOMENTS = [
+  { num: 1, name: "The Shower Prayer",      note: "the vow + the next-morning hire — flagship" },
+  { num: 2, name: "The Highway Walk",       note: "broken shoulder, 11 PM, football gear" },
+  { num: 3, name: "The $100K Scam",         note: "wholesale deal stolen, demoralized" },
+  { num: 4, name: "The Coach Who Buried You", note: "killed the dream the day before season" },
+  { num: 5, name: "The $5K Graduation Flex", note: "threw $5K in the air — bought the exact car" },
+  { num: 6, name: "Globe AO Betrayal",      note: "agency-stealing chapter" },
+  { num: 7, name: "Nigerian Boarding School", note: "the reset that built the man" },
+  { num: 8, name: "Braxton's Missed Call",  note: "SACRED — only when right, never overplayed" },
+];
+
+// ─── voice rules (Brand Bible Ch 6 + 19) ─────────────────────────────────
+const VOICE_RULES = [
+  { do_text: "Direct, faith-aware (Christian, never performative), anti-soft",  dont: "Performative faith / sprinkled-for-points" },
+  { do_text: "First person. Calm authority. He's been at the bottom.",          dont: "Hype-bro yelling / Gary-Vee energy" },
+  { do_text: "7th-grade English in hooks. Word economy.",                       dont: "Corporate larp / synergy / leverage as a noun" },
+  { do_text: "Say 'hold the standard' naturally. Drop closer-talk: 'closed', 'objection-killer'.", dont: "Fake humility / pretending to be older than 20" },
+  { do_text: "Reference Nigeria as origin, never as flex. Mention Aisha authentically.", dont: "Forcing hero-story beats where they don't fit" },
+];
+
 // ─── page ──────────────────────────────────────────────────────────────────
 export default function SocialMediaBot() {
   const qc = useQueryClient();
   const [activeDraft, setActiveDraft] = useState<Draft | null>(null);
+  const [sandcastleJson, setSandcastleJson] = useState("");
+  const [sandcastleStatus, setSandcastleStatus] = useState<{ kind: "idle" | "ok" | "err"; msg: string }>({ kind: "idle", msg: "" });
+  const [selectedPillarCode, setSelectedPillarCode] = useState<string | null>(null);
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["social-bot-dashboard"],
@@ -137,6 +181,38 @@ export default function SocialMediaBot() {
     },
     refetchInterval: 30_000,
     staleTime: 10_000,
+  });
+
+  // Brand tab queries — ContentWheel pillars, dogmas, hooks
+  const { data: pillars } = useQuery({
+    queryKey: ["cw_pillars"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("cw_pillars").select("*").order("display_order");
+      if (error) throw error;
+      return data as CwPillar[];
+    },
+    staleTime: 5 * 60_000,
+  });
+  const { data: dogmas } = useQuery({
+    queryKey: ["cw_dogmas"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("cw_dogmas").select("*").order("number");
+      if (error) throw error;
+      return data as CwDogma[];
+    },
+    staleTime: 5 * 60_000,
+  });
+  const { data: cwHooks } = useQuery({
+    queryKey: ["cw_hooks_with_idea"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("cw_hooks")
+        .select("*, cw_ideas!inner(title, audience, pillar_id)")
+        .limit(50);
+      if (error) throw error;
+      return data as Array<CwHookRow & { cw_ideas: { title: string; audience: string; pillar_id: string | null } }>;
+    },
+    staleTime: 60_000,
   });
 
   const mutateDraftStatus = async (id: number, status: "approved" | "rejected" | "shipped") => {
@@ -337,6 +413,8 @@ export default function SocialMediaBot() {
       <Tabs defaultValue="pack" className="w-full">
         <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full">
           <TabsTrigger value="pack">Today's Pack</TabsTrigger>
+          <TabsTrigger value="brand">Brand</TabsTrigger>
+          <TabsTrigger value="sandcastles">Sandcastles Lab</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="inbound">Inbound</TabsTrigger>
           <TabsTrigger value="scoreboard">Scoreboard</TabsTrigger>
@@ -407,6 +485,273 @@ export default function SocialMediaBot() {
                 })}
               </div>
             )}
+          </GlassCard>
+        </TabsContent>
+
+        {/* BRAND — pillars, dogmas, voice, hero beats, proof-backed suggestions */}
+        <TabsContent value="brand" className="mt-4 space-y-4">
+          <GlassCard className="p-5">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <ScrollText className="h-5 w-5 text-amber-300" /> The 6 Pillars
+              </h3>
+              <span className="text-xs text-zinc-500">Brand Bible Ch 8 · click to filter hooks</span>
+            </div>
+            <p className="text-xs text-zinc-500 mb-4">Every post lands under exactly one pillar. Best posts weave 2-3.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {(pillars ?? []).map((p) => {
+                const active = selectedPillarCode === p.code;
+                const hookCount = (cwHooks ?? []).filter(h => h.cw_ideas?.pillar_id === p.id).length;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedPillarCode(active ? null : p.code)}
+                    className={`text-left rounded-lg border p-3 transition-colors ${active ? "border-amber-500/60 bg-amber-500/10" : "border-zinc-700/50 bg-zinc-900/40 hover:border-zinc-600"}`}
+                  >
+                    <div className="flex items-center justify-between text-xs text-zinc-400">
+                      <span className="font-mono uppercase tracking-wider">{p.code}</span>
+                      <Badge variant="outline">{hookCount} hooks</Badge>
+                    </div>
+                    <div className="mt-1.5 font-semibold text-sm">{p.name}</div>
+                    {p.description && <div className="mt-1 text-xs text-zinc-500 leading-snug">{p.description}</div>}
+                    {p.monetization_tie && (
+                      <div className="mt-2 text-[11px] text-emerald-300/80 italic">→ {p.monetization_tie}</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </GlassCard>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <GlassCard className="p-5">
+              <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+                <Flame className="h-5 w-5 text-rose-400" /> The 15 Dogmas
+              </h3>
+              <p className="text-xs text-zinc-500 mb-3">Every piece of content carries exactly one.</p>
+              <ol className="space-y-2 text-sm leading-snug">
+                {(dogmas ?? []).map((d) => (
+                  <li key={d.id} className="flex gap-2.5 border-b border-zinc-800 pb-2 last:border-b-0">
+                    <span className="font-mono text-amber-300/70 shrink-0 w-6">{String(d.number).padStart(2, '0')}</span>
+                    <span className="text-zinc-200">{d.text}</span>
+                  </li>
+                ))}
+              </ol>
+            </GlassCard>
+
+            <div className="space-y-4">
+              <GlassCard className="p-5">
+                <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+                  <Quote className="h-5 w-5 text-cyan-300" /> 8 Cinematic Moments
+                </h3>
+                <p className="text-xs text-zinc-500 mb-3">Spine of every long-form. Use surgically.</p>
+                <ol className="space-y-1.5 text-sm">
+                  {CINEMATIC_MOMENTS.map((m) => (
+                    <li key={m.num} className="flex items-baseline gap-2">
+                      <span className="font-mono text-amber-300/70 shrink-0 w-5">{m.num}</span>
+                      <div>
+                        <span className="font-medium">{m.name}</span>
+                        <span className="text-zinc-500 italic"> — {m.note}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </GlassCard>
+
+              <GlassCard className="p-5">
+                <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+                  <Sparkles className="h-5 w-5 text-amber-300" /> Voice Rules
+                </h3>
+                <p className="text-xs text-zinc-500 mb-3">Hard. Enforced at the output gate.</p>
+                <div className="space-y-2.5 text-sm">
+                  {VOICE_RULES.map((r, i) => (
+                    <div key={i} className="border-l-2 border-amber-500/40 pl-3">
+                      <div className="text-emerald-300 text-xs uppercase tracking-wider font-mono">DO</div>
+                      <div className="mb-1">{r.do_text}</div>
+                      <div className="text-rose-400 text-xs uppercase tracking-wider font-mono">DON'T</div>
+                      <div className="text-zinc-400">{r.dont}</div>
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+            </div>
+          </div>
+
+          <GlassCard className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-emerald-300" /> Proof-Backed Hooks
+                {selectedPillarCode && <Badge className="ml-2">filtered: {selectedPillarCode}</Badge>}
+              </h3>
+              <Badge variant="outline">{(cwHooks ?? []).length} in library</Badge>
+            </div>
+            <p className="text-xs text-zinc-500 mb-3">
+              Why each hook works → linked pillar + dogma + ICP/Nurture audience. Click a pillar above to filter.
+              Empty rows mean the hook has been authored but not yet posted; outlier multipliers populate after cw_posts get analytics.
+            </p>
+            <div className="space-y-2">
+              {(cwHooks ?? [])
+                .filter(h => !selectedPillarCode || (pillars ?? []).find(p => p.id === h.cw_ideas?.pillar_id)?.code === selectedPillarCode)
+                .slice(0, 30)
+                .map((h) => {
+                  const pillar = (pillars ?? []).find(p => p.id === h.cw_ideas?.pillar_id);
+                  return (
+                    <div key={h.id} className="rounded-md border border-zinc-700/50 bg-zinc-900/40 p-3">
+                      <div className="text-sm leading-snug">"{h.text}"</div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                        {pillar && <Badge variant="outline">{pillar.code} {pillar.name}</Badge>}
+                        {h.cw_ideas?.audience && <Badge variant="outline" className={h.cw_ideas.audience === "icp" ? "border-emerald-500/40 text-emerald-300" : ""}>{h.cw_ideas.audience}</Badge>}
+                        {h.is_agenda && <Badge variant="outline" className="border-rose-500/40 text-rose-300">agenda</Badge>}
+                        {h.context_ok && h.contrarian_ok && h.openloop_ok && (
+                          <Badge variant="outline" className="border-emerald-500/40 text-emerald-300">3 C's ✓</Badge>
+                        )}
+                        <span className="text-zinc-600 italic ml-auto truncate max-w-[40%]" title={h.cw_ideas?.title ?? ""}>
+                          {h.cw_ideas?.title}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              {(cwHooks ?? []).length === 0 && (
+                <EmptyState
+                  icon={Anchor}
+                  title="No hooks in ContentWheel yet"
+                  description="Seed cw_ideas + cw_hooks via the Sandcastles Lab tab → paste research → run engine → insert. Today's pack already wrote 11 ideas and 12 hooks; refresh if you don't see them."
+                />
+              )}
+            </div>
+          </GlassCard>
+        </TabsContent>
+
+        {/* SANDCASTLES LAB — operate the demand → content engine */}
+        <TabsContent value="sandcastles" className="mt-4 space-y-4">
+          <GlassCard className="p-5">
+            <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
+              <FlaskConical className="h-5 w-5 text-purple-300" /> Sandcastles → ContentWheel Engine
+            </h3>
+            <p className="text-sm text-zinc-400 leading-relaxed mb-4">
+              Sandcastles tells you <em>what the market wants</em>. This lab rebuilds that demand as Samuel James content
+              and inserts into <code className="text-amber-300">cw_demand_mines</code>, <code className="text-amber-300">cw_ideas</code>, <code className="text-amber-300">cw_hooks</code>.
+              Demand is borrowed. Voice is owned.
+            </p>
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 mb-4">
+              <div className="text-xs font-mono uppercase tracking-wider text-amber-300 mb-1.5">Run order</div>
+              <ol className="text-xs text-zinc-300 leading-relaxed space-y-1 list-decimal pl-4">
+                <li>Pick ONE narrow Sandcastles search topic (recruiting fear, 90-day quitting, six-fig no degree, IMO truth, no-cold-call recruiting).</li>
+                <li>In a fresh Claude Code chat, load <code>~/business-ops/master-prompts/sandcastles-to-contentwheel-engine.md</code> and paste your Sandcastles outliers.</li>
+                <li>Claude runs Gate A → Translation → Gate B and emits Block 2 (JSON).</li>
+                <li>Paste Block 2 below. Click Validate, then Insert. Rows land in ContentWheel and the Brand tab re-renders.</li>
+              </ol>
+            </div>
+            <div className="space-y-2">
+              <div className="text-xs uppercase tracking-wider text-zinc-500 font-mono">Block 2 JSON (paste here)</div>
+              <Textarea
+                value={sandcastleJson}
+                onChange={(e) => setSandcastleJson(e.target.value)}
+                rows={14}
+                placeholder='{"engine":"sandcastles-to-contentwheel","version":"1.0","ideas":[{...}]}'
+                className="font-mono text-xs"
+              />
+              {sandcastleStatus.kind !== "idle" && (
+                <div className={`text-xs px-3 py-2 rounded ${sandcastleStatus.kind === "ok" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" : "bg-rose-500/10 text-rose-300 border border-rose-500/30"}`}>
+                  {sandcastleStatus.msg}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    try {
+                      const parsed = JSON.parse(sandcastleJson);
+                      const ideaCount = parsed.ideas?.length ?? 0;
+                      const hookCount = (parsed.ideas ?? []).reduce((acc: number, i: any) => acc + (i.hooks?.length ?? 0), 0);
+                      const mineCount = parsed.demand_mines?.length ?? 0;
+                      setSandcastleStatus({ kind: "ok", msg: `Valid JSON. ${ideaCount} ideas, ${hookCount} hooks, ${mineCount} demand mines ready to insert.` });
+                    } catch (e: any) {
+                      setSandcastleStatus({ kind: "err", msg: `JSON parse failed: ${e.message}` });
+                    }
+                  }}
+                >
+                  Validate
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!sandcastleJson.trim()}
+                  onClick={async () => {
+                    try {
+                      const parsed = JSON.parse(sandcastleJson);
+                      const ideas = (parsed.ideas ?? []) as Array<any>;
+                      if (ideas.length === 0) {
+                        setSandcastleStatus({ kind: "err", msg: "No ideas to insert." });
+                        return;
+                      }
+                      // Resolve pillar/dogma FKs
+                      const pillarByCode = Object.fromEntries((pillars ?? []).map(p => [p.code, p.id]));
+                      const dogmaByNum   = Object.fromEntries((dogmas ?? []).map(d => [d.number, d.id]));
+                      let okIdeas = 0, okHooks = 0, errors: string[] = [];
+                      for (const it of ideas) {
+                        const pillarId = pillarByCode[it.pillar_code];
+                        const dogmaId  = dogmaByNum[it.dogma_number];
+                        if (!pillarId || !dogmaId) {
+                          errors.push(`skip "${it.title}": missing pillar/dogma FK`);
+                          continue;
+                        }
+                        const { data: ideaRow, error: ideaErr } = await (supabase as any).from("cw_ideas").insert({
+                          title: it.title,
+                          body: it.body ?? null,
+                          demand_source: it.demand_source ?? "competitor_outlier",
+                          demand_evidence: it.demand_evidence ?? null,
+                          audience: it.audience ?? "nurture",
+                          pillar_id: pillarId,
+                          dogma_id: dogmaId,
+                          status: it.status ?? "backlog",
+                          score: it.score ?? 0,
+                        }).select("id").single();
+                        if (ideaErr) { errors.push(`idea "${it.title}": ${ideaErr.message}`); continue; }
+                        okIdeas++;
+                        for (const h of (it.hooks ?? [])) {
+                          const { error: hookErr } = await (supabase as any).from("cw_hooks").insert({
+                            idea_id: ideaRow.id,
+                            variant_label: h.variant_label ?? "A",
+                            text: h.text,
+                            keyword_a: h.keyword_a ?? null,
+                            keyword_b: h.keyword_b ?? null,
+                            is_agenda: !!h.is_agenda,
+                            context_ok: !!h.context_ok,
+                            contrarian_ok: !!h.contrarian_ok,
+                            openloop_ok: !!h.openloop_ok,
+                          });
+                          if (hookErr) { errors.push(`hook on "${it.title}": ${hookErr.message}`); } else okHooks++;
+                        }
+                      }
+                      const summary = `Inserted ${okIdeas} ideas + ${okHooks} hooks.${errors.length ? ` ${errors.length} errors: ${errors.slice(0,2).join(" | ")}` : ""}`;
+                      setSandcastleStatus({ kind: errors.length ? "err" : "ok", msg: summary });
+                      qc.invalidateQueries({ queryKey: ["cw_hooks_with_idea"] });
+                      qc.invalidateQueries({ queryKey: ["social-bot-dashboard"] });
+                      if (!errors.length) setSandcastleJson("");
+                      toast.success(summary);
+                    } catch (e: any) {
+                      setSandcastleStatus({ kind: "err", msg: `Insert failed: ${e.message}` });
+                    }
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-1.5" /> Insert into ContentWheel
+                </Button>
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard className="p-5">
+            <h3 className="text-base font-semibold mb-2">Next Sandcastles search (queued)</h3>
+            <p className="text-xs text-zinc-500 mb-3">Highest-priority recruiting demand vein. One narrow topic per search.</p>
+            <ol className="text-sm space-y-1.5 list-decimal pl-5">
+              <li><span className="text-amber-300">Leaving a stable W-2 job for commission/insurance sales — fear and objections</span></li>
+              <li>Why new insurance/sales agents quit in the first 90 days</li>
+              <li>How young people actually make six figures in sales with no degree</li>
+              <li>What nobody tells you before joining a sales/insurance agency</li>
+              <li>Recruiting agents without cold-calling or buying leads</li>
+            </ol>
           </GlassCard>
         </TabsContent>
 

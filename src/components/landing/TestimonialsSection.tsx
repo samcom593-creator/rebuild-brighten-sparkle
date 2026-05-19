@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { useState } from "react";
 import { Play } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -54,17 +53,11 @@ export function TestimonialsSection() {
           subtitle="Real results from a real agent who transformed his career with APEX."
         />
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="mt-12 max-w-4xl mx-auto"
-        >
+        <div className="reveal mt-12 max-w-4xl mx-auto">
           <div className="p-2 md:p-3 bg-gradient-to-br from-[#0f172a] to-[#070d1b] border border-[#1e293b] rounded-xl">
             <LazyYouTubeFrame videoId="YmlLSIwfGdE" title="APEX Success Story" />
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

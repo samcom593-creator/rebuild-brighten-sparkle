@@ -1,6 +1,5 @@
 import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 
 interface SectionHeadingProps {
   badge?: string;
@@ -13,24 +12,16 @@ interface SectionHeadingProps {
 export const SectionHeading = forwardRef<HTMLDivElement, SectionHeadingProps>(
   ({ badge, title, subtitle, centered = true, className }, ref) => {
     return (
-      <motion.div
+      <div
         ref={ref}
-        className={cn("space-y-4", centered && "text-center", className)}
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 0.5 }}
+        className={cn("space-y-4 landing-fade-up", centered && "text-center", className)}
       >
         {badge && (
-          <motion.span
-            className="inline-block px-4 py-1.5 rounded-full text-sm font-bold font-display bg-[#22d3a5]/10 text-[#22d3a5] border border-[#22d3a5]/20"
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.3, delay: 0.1 }}
+          <span
+            className="landing-scale-in landing-delay-100 inline-block px-4 py-1.5 rounded-full text-sm font-bold font-display bg-[#22d3a5]/10 text-[#22d3a5] border border-[#22d3a5]/20"
           >
             {badge}
-          </motion.span>
+          </span>
         )}
         <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-[#f1f5f9] font-display">
           {title}
@@ -40,7 +31,7 @@ export const SectionHeading = forwardRef<HTMLDivElement, SectionHeadingProps>(
             {subtitle}
           </p>
         )}
-      </motion.div>
+      </div>
     );
   }
 );

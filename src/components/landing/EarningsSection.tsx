@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { TrendingUp, Award, Clock, Users } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
 
@@ -62,12 +61,9 @@ export function EarningsSection() {
         </div>
 
         {/* Main Earnings Card */}
-        <motion.div
+        <div
           key={selected}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-          className="max-w-4xl mx-auto"
+          className="landing-scale-in max-w-4xl mx-auto"
         >
           <div className="p-8 md:p-12 rounded-xl bg-gradient-to-br from-[#0f172a] to-[#070d1b] border border-[#1e293b] shadow-[0_0_40px_hsl(168_84%_42%/0.1)]">
             <div className="text-center mb-8">
@@ -86,24 +82,21 @@ export function EarningsSection() {
               ))}
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Milestones */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 max-w-4xl mx-auto">
           {milestones.map((milestone, index) => (
-            <motion.div
+            <div
               key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
-              className="p-4 text-center rounded-xl bg-[#0f172a]/80 border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
+              className="reveal p-4 text-center rounded-xl bg-[#0f172a]/80 border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
+              style={{ transitionDelay: `${index * 80}ms` }}
             >
               <milestone.icon className="h-6 w-6 text-[#22d3a5] mx-auto mb-2" />
               <div className="text-lg font-bold text-[#22d3a5] font-display">{milestone.value}</div>
               <div className="text-sm font-bold text-[#f1f5f9] font-display">{milestone.label}</div>
               <div className="text-xs text-[#64748b] mt-1">{milestone.description}</div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

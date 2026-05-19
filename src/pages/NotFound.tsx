@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect } from "react";
-import { motion } from "framer-motion";
 import { Compass, ArrowRight } from "lucide-react";
 
 const suggestions: Array<{ label: string; to: string; kicker: string }> = [
@@ -19,21 +18,11 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/60 px-6">
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-        className="w-full max-w-md"
-      >
+      <div className="animate-fade-in w-full max-w-md">
         <div className="text-center mb-10">
-          <motion.div
-            initial={{ scale: 0.8, rotate: -10 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 200, damping: 14, delay: 0.1 }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-5"
-          >
+          <div className="landing-scale-in inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mb-5">
             <Compass className="w-8 h-8" />
-          </motion.div>
+          </div>
           <h1 className="text-sm font-bold tracking-[0.2em] text-muted-foreground uppercase mb-2">
             404 · not found
           </h1>
@@ -64,7 +53,7 @@ const NotFound = () => {
         <p className="text-center text-xs text-muted-foreground mt-8">
           APEX Financial
         </p>
-      </motion.div>
+      </div>
     </div>
   );
 };

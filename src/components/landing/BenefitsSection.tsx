@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { 
   DollarSign, GraduationCap, Calendar, Target, 
   Users, Trophy, Zap, HeartHandshake
@@ -28,18 +27,12 @@ export function BenefitsSection() {
           subtitle="We've removed every barrier between you and a six-figure income."
         />
 
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-16"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.08 } } }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-16">
           {benefits.map((b, i) => (
-            <motion.div
+            <div
               key={i}
-              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4 } } }}
-              className="group relative rounded-xl p-6 bg-gradient-to-br from-[#0f172a] to-[#070d1b] border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
+              className="reveal group relative rounded-xl p-6 bg-gradient-to-br from-[#0f172a] to-[#070d1b] border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
+              style={{ transitionDelay: `${i * 60}ms` }}
             >
               {/* Green left border accent */}
               <div className="absolute left-0 top-4 bottom-4 w-[3px] rounded-full bg-[#22d3a5] opacity-60 group-hover:opacity-100 transition-opacity" />
@@ -51,9 +44,9 @@ export function BenefitsSection() {
                 <h3 className="text-lg font-bold mb-2 text-[#f1f5f9] font-display">{b.title}</h3>
                 <p className="text-sm text-[#94a3b8]">{b.description}</p>
               </div>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   );

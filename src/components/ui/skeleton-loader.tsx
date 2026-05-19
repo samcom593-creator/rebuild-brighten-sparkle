@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 import apexIcon from "@/assets/apex-icon.png";
 
 interface SkeletonLoaderProps {
@@ -11,11 +10,7 @@ export function SkeletonLoader({ className, variant = "card" }: SkeletonLoaderPr
   if (variant === "page") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
+        <div className="text-center landing-scale-in">
           <div className="relative">
             <img 
               src={apexIcon} 
@@ -27,7 +22,7 @@ export function SkeletonLoader({ className, variant = "card" }: SkeletonLoaderPr
           <p className="text-muted-foreground font-medium text-sm">
             Powered by Apex
           </p>
-        </motion.div>
+        </div>
       </div>
     );
   }

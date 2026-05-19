@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { 
   Globe, 
   LayoutDashboard, 
@@ -128,13 +127,7 @@ export function SystemsSection() {
 
       <div className="container mx-auto px-4 relative z-10">
         {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-12"
-        >
+        <div className="reveal text-center mb-12">
           <SectionHeading
             badge="Our Platform"
             title="Technology That Powers Your Success"
@@ -142,28 +135,17 @@ export function SystemsSection() {
           />
           
           {/* Powered by APEX badge */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-            className="flex items-center justify-center gap-2 mt-6"
-          >
+          <div className="landing-scale-in landing-delay-300 flex items-center justify-center gap-2 mt-6">
             <Crown className="h-5 w-5 text-primary" />
             <span className="text-sm font-semibold tracking-wide text-primary uppercase">
               Powered by APEX
             </span>
             <Crown className="h-5 w-5 text-primary" />
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
         {/* Main Tabs Container */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-        >
+        <div className="reveal" style={{ transitionDelay: "120ms" }}>
           <GlassCard variant="strong" className="p-6 md:p-10">
             {/* Tab Navigation */}
             <div className="flex flex-wrap justify-center gap-2 mb-8 border-b border-border/50 pb-4">
@@ -181,65 +163,39 @@ export function SystemsSection() {
                 >
                   {tab.label}
                   {activeTab === tab.id && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    />
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full transition-all duration-300" />
                   )}
                 </button>
               ))}
             </div>
 
             {/* Tab Content */}
-            <AnimatePresence mode="sync">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-6"
-              >
-                {features[activeTab as keyof typeof features].map((feature, index) => (
-                  <motion.div
-                    key={feature.title}
-                    initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ 
-                      delay: index * 0.12, 
-                      duration: 0.4,
-                      ease: [0.25, 0.46, 0.45, 0.94]
-                    }}
-                  >
-                    <FeatureCard {...feature} />
-                  </motion.div>
-                ))}
-              </motion.div>
-            </AnimatePresence>
+            <div key={activeTab} className="landing-fade-in grid grid-cols-1 md:grid-cols-2 gap-6">
+              {features[activeTab as keyof typeof features].map((feature, index) => (
+                <div
+                  key={feature.title}
+                  className="landing-scale-in"
+                  style={{ animationDelay: `${index * 90}ms` }}
+                >
+                  <FeatureCard {...feature} />
+                </div>
+              ))}
+            </div>
           </GlassCard>
-        </motion.div>
+        </div>
 
         {/* Stats Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.4, duration: 0.6 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10"
-        >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
           {stats.map((stat, index) => (
-            <motion.div
+            <div
               key={stat.value}
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.5 + index * 0.1, duration: 0.4 }}
+              className="reveal"
+              style={{ transitionDelay: `${240 + index * 80}ms` }}
             >
               <StatCard {...stat} />
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   );

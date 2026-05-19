@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface EmptyStateProps {
@@ -30,12 +29,11 @@ export function EmptyState({
   className,
 }: EmptyStateProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
+    <div
       className={cn(
         "relative overflow-hidden rounded-2xl border border-border/40 px-6 py-14 text-center backdrop-blur-md",
         "bg-gradient-to-b from-card/60 to-card/30",
+        "animate-fade-in",
         className,
       )}
     >
@@ -62,6 +60,6 @@ export function EmptyState({
         )}
         {actions && <div className="mt-2 flex flex-wrap items-center justify-center gap-2">{actions}</div>}
       </div>
-    </motion.div>
+    </div>
   );
 }

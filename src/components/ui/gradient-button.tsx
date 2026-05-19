@@ -1,8 +1,7 @@
 import { cn } from "@/lib/utils";
-import { motion, HTMLMotionProps } from "framer-motion";
-import { forwardRef } from "react";
+import { ButtonHTMLAttributes, forwardRef } from "react";
 
-interface GradientButtonProps extends HTMLMotionProps<"button"> {
+interface GradientButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "outline" | "ghost";
   size?: "sm" | "md" | "lg" | "xl";
   glow?: boolean;
@@ -26,20 +25,19 @@ export const GradientButton = forwardRef<HTMLButtonElement, GradientButtonProps>
     };
 
     return (
-      <motion.button
+      <button
         ref={ref}
         className={cn(
           "inline-flex items-center justify-center gap-2 rounded-lg font-semibold",
           "transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50",
           "disabled:opacity-50 disabled:cursor-not-allowed",
+          !disabled && !loading && "hover:scale-[1.02] active:scale-[0.98]",
           variants[variant],
           sizes[size],
           glow && variant === "primary" && !disabled && "shadow-apex-glow hover:shadow-apex-glow-strong",
           className
         )}
         disabled={disabled || loading}
-        whileHover={{ scale: disabled ? 1 : 1.02 }}
-        whileTap={{ scale: disabled ? 1 : 0.98 }}
         {...props}
       >
         {loading ? (
@@ -65,7 +63,7 @@ export const GradientButton = forwardRef<HTMLButtonElement, GradientButtonProps>
         ) : (
           children
         )}
-      </motion.button>
+      </button>
     );
   }
 );

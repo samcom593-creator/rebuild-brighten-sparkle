@@ -1,4 +1,3 @@
-import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef, forwardRef } from "react";
 import {
   BookOpen,
@@ -235,25 +234,6 @@ const whyAgentsChoose = [
   },
 ];
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5 },
-  },
-};
-
 export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathwaySection(_props, _ref) {
   const { count, isLoading } = useLeadCounter();
   const [activePhase, setActivePhase] = useState(0);
@@ -318,24 +298,15 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
   return (
     <section id="career" ref={sectionRef} className="py-24 relative overflow-hidden bg-[#030712]">
       {/* Floating Progress Sidebar */}
-      <AnimatePresence>
-        {isInView && (
-          <motion.div
-            className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            transition={{ duration: 0.3 }}
-          >
+      {isInView && (
+        <div className="landing-sidebar-enter fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3">
             {/* Glass container */}
             <div className="glass-strong rounded-full p-1.5 md:p-2 flex flex-col items-center gap-1.5 md:gap-2">
               {phaseIndicators.map((phase, index) => (
-                <motion.button
+                <button
                   key={phase.id}
                   onClick={() => scrollToPhase(index)}
-                  className="relative group"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
+                  className="relative group transition-transform duration-200 hover:scale-110 active:scale-95"
                 >
                   {/* Phase dot */}
                   <div
@@ -355,7 +326,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                   </div>
 
                   {/* Active indicator ring */}
-                   {activePhase === index && (
+                  {activePhase === index && (
                     <div
                       className={`absolute inset-0 rounded-full border-2 ${phase.color.replace("bg-", "border-")} opacity-50 scale-110`}
                     />
@@ -369,39 +340,35 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                       </span>
                     </div>
                   </div>
-                </motion.button>
+                </button>
               ))}
 
               {/* Connecting line between dots */}
               <div className="absolute inset-y-2 left-1/2 -translate-x-1/2 w-0.5 bg-border/50 -z-10" />
               
               {/* Progress line */}
-              <motion.div
-                className="absolute top-2 left-1/2 -translate-x-1/2 w-0.5 bg-gradient-to-b from-orange-500 via-blue-500 to-purple-500 -z-10 origin-top"
+              <div
+                className="absolute top-2 left-1/2 -translate-x-1/2 w-0.5 bg-gradient-to-b from-orange-500 via-blue-500 to-purple-500 -z-10 origin-top transition-all duration-300"
                 style={{
                   height: `${((activePhase + 1) / phases.length) * 100}%`,
                 }}
-                transition={{ duration: 0.3 }}
               />
             </div>
 
             {/* Scroll to top button */}
-            <motion.button
+            <button
               onClick={() => {
                 const section = document.getElementById("career");
                 if (section) {
                   section.scrollIntoView({ behavior: "smooth" });
                 }
               }}
-              className="glass-strong p-2 rounded-full hover:bg-primary/20 transition-colors group"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
+              className="glass-strong p-2 rounded-full hover:bg-primary/20 transition-all duration-200 hover:scale-110 active:scale-95 group"
             >
               <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            </motion.button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </button>
+        </div>
+      )}
 
       {/* Background Effects */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(168_84%_42%/0.08)_0%,transparent_60%)]" />
@@ -412,15 +379,13 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
 
       <div className="container mx-auto px-4 relative z-10">
         {/* Stats Banner */}
-        <motion.div
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-        >
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
           {stats.map((stat, index) => (
-            <motion.div key={index} variants={itemVariants}>
+            <div
+              key={index}
+              className="reveal"
+              style={{ transitionDelay: `${index * 70}ms` }}
+            >
               <GlassCard className="p-6 text-center relative group" hoverEffect>
                 {stat.isLive && (
                   <div className="absolute top-3 right-3">
@@ -441,9 +406,9 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                 </div>
                 <div className="text-sm text-muted-foreground">{stat.label}</div>
               </GlassCard>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
 
         {/* Section Header */}
         <SectionHeading
@@ -456,11 +421,9 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
         <div className="mt-16 space-y-4">
           {phases.map((phase, phaseIndex) => (
             <div key={phaseIndex} ref={(el) => (phaseRefs.current[phaseIndex] = el)}>
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.5, delay: phaseIndex * 0.1 }}
+              <div
+                className="reveal"
+                style={{ transitionDelay: `${phaseIndex * 90}ms` }}
               >
                 {/* Phase Header */}
                 <div className={`mb-6 pl-4 border-l-4 ${phase.borderColor}`}>
@@ -475,13 +438,10 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                   {phase.steps.map((step, stepIndex) => {
                     stepNumber++;
                     return (
-                      <motion.div
+                      <div
                         key={stepIndex}
-                        variants={itemVariants}
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true }}
-                        transition={{ delay: stepIndex * 0.05 }}
+                        className="reveal"
+                        style={{ transitionDelay: `${stepIndex * 50}ms` }}
                       >
                         <GlassCard
                           className="h-full p-5 group hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300"
@@ -512,31 +472,19 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                             </div>
                           </div>
                         </GlassCard>
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </div>
-              </motion.div>
+              </div>
 
               {/* Animated Connector Line between phases */}
               {phaseIndex < phases.length - 1 && (
-                <motion.div
-                  className="flex justify-center py-8"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                >
+                <div className="reveal flex justify-center py-8">
                   <div className="relative flex flex-col items-center">
                     {/* Animated gradient line */}
                     <div className="relative w-1 h-16 rounded-full overflow-hidden bg-border/30">
-                      <motion.div
-                        className={`absolute inset-0 w-full bg-gradient-to-b ${phaseConnectorColors[phaseIndex]}`}
-                        initial={{ y: "-100%" }}
-                        whileInView={{ y: "0%" }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-                      />
+                      <div className={`landing-connector-fill absolute inset-0 w-full bg-gradient-to-b ${phaseConnectorColors[phaseIndex]}`} />
                       {/* Static pulse accent */}
                       <div className={`absolute inset-0 w-full bg-gradient-to-b ${phaseConnectorColors[phaseIndex]} opacity-30`} />
                     </div>
@@ -550,16 +498,14 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                         fill="none"
                         className="text-primary"
                       >
-                        <motion.path
+                        <path
+                          pathLength={1}
+                          className="landing-draw-path landing-delay-400"
                           d="M12 5L12 19M12 19L6 13M12 19L18 13"
                           stroke="currentColor"
                           strokeWidth="2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          initial={{ pathLength: 0, opacity: 0 }}
-                          whileInView={{ pathLength: 1, opacity: 1 }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 0.6, delay: 0.5 }}
                         />
                       </svg>
                     </div>
@@ -569,34 +515,26 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                       className={`absolute top-0 w-3 h-3 rounded-full bg-gradient-to-r ${phaseConnectorColors[phaseIndex]} shadow-lg`}
                     />
                   </div>
-                </motion.div>
+                </div>
               )}
             </div>
           ))}
         </div>
 
         {/* Why Agents Choose Us */}
-        <motion.div
-          className="mt-24"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.5 }}
-        >
+        <div className="reveal mt-24">
           <SectionHeading
             title="Why Agents Choose APEX"
             subtitle="Everything you need to build a successful career in life insurance."
           />
 
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12"
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-          >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
             {whyAgentsChoose.map((item, index) => (
-              <motion.div key={index} variants={itemVariants}>
+              <div
+                key={index}
+                className="reveal"
+                style={{ transitionDelay: `${index * 70}ms` }}
+              >
                 <GlassCard className="p-6 group" hoverEffect>
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
                     <item.icon className="h-6 w-6 text-primary" />
@@ -606,19 +544,13 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                   </h3>
                   <p className="text-sm text-muted-foreground">{item.description}</p>
                 </GlassCard>
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
         {/* Powered by APEX Badge */}
-        <motion.div
-          className="mt-16 text-center"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.3 }}
-        >
+        <div className="reveal mt-16 text-center" style={{ transitionDelay: "180ms" }}>
           <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full glass border border-primary/30">
             <Crown className="h-5 w-5 text-primary" />
             <span className="text-sm font-medium">
@@ -626,7 +558,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
               Powered by <span className="gradient-text font-bold">APEX</span>
             </span>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

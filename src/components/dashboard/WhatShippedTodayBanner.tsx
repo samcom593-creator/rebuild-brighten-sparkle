@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Landing performance trimmed",
+    detail: "Public home no longer pulls Framer Motion for the hero, nav, live counters, recent hires, or landing sections. CSS keyframes keep the polish while the motion runtime stays off the first-load path, with vendor chunks grouped tighter.",
+  },
+  {
+    ts: "today",
     label: "Apply continue fixed + duplicate referral removed",
     detail: "Apply is back to 4 steps: agent credit is captured before submit, Continue Application routes straight to the success page, and manual referrers persist without a second referral screen.",
   },

@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Shield, TrendingUp, Users, Sparkles, Play } from "lucide-react";
 import { LiveStatsCounterStrip } from "./LiveStatsCounterStrip";
@@ -33,7 +32,6 @@ function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
             alt={title}
             loading="eager"
             decoding="async"
-            fetchPriority="high"
             className="absolute inset-0 w-full h-full object-cover"
           />
           <span className="absolute inset-0 bg-black/30 group-hover:bg-black/45 transition-colors" />
@@ -87,7 +85,7 @@ export function HeroSection() {
   }, []);
 
   return (
-    <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden pt-24 sm:pt-28 md:pt-32 pb-16">
+    <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden bg-[#030712] pt-24 sm:pt-28 md:pt-32 pb-16">
       {/* Subtle additional decoration layers — aurora handles the heavy lifting */}
       <div
         aria-hidden
@@ -111,28 +109,25 @@ export function HeroSection() {
             <stop offset="100%" stopColor="hsl(38 90% 55%)"  stopOpacity="0.25" />
           </linearGradient>
         </defs>
-        <motion.path
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 2.5, ease: "easeOut" }}
+        <path
+          pathLength={1}
+          className="landing-draw-path"
           stroke="url(#meshGrad)"
           strokeWidth="1.5"
           fill="none"
           d="M 0,400 C 300,200 600,600 1200,300"
         />
-        <motion.path
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 2.5, ease: "easeOut", delay: 0.4 }}
+        <path
+          pathLength={1}
+          className="landing-draw-path landing-delay-400"
           stroke="url(#meshGrad)"
           strokeWidth="1"
           fill="none"
           d="M 0,500 C 400,300 800,700 1200,400"
         />
-        <motion.path
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 2.5, ease: "easeOut", delay: 0.8 }}
+        <path
+          pathLength={1}
+          className="landing-draw-path landing-delay-700"
           stroke="url(#meshGrad)"
           strokeWidth="0.8"
           fill="none"
@@ -143,12 +138,7 @@ export function HeroSection() {
       <div className="container mx-auto px-4 sm:px-6 relative z-10 w-full">
         <div className="max-w-5xl mx-auto text-center w-full">
           {/* Eyebrow pill */}
-          <motion.div
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card/40 border border-primary/30 mb-8 backdrop-blur-xl shadow-[0_0_30px_hsl(168_80%_50%/0.15)]"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
+          <div className="landing-fade-up inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card/40 border border-primary/30 mb-8 backdrop-blur-xl shadow-[0_0_30px_hsl(168_80%_50%/0.15)]">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
@@ -158,55 +148,37 @@ export function HeroSection() {
               <span className="brand-gradient font-bold">Licensed & unlicensed</span>
               <span className="text-muted-foreground"> paths open · new agents onboarding now</span>
             </span>
-          </motion.div>
+          </div>
 
           {/* Headline — massive, parallax, gradient */}
-          <motion.h1
+          <h1
             ref={titleRef}
-            className="font-display font-extrabold leading-[0.95] mb-6 tracking-tight"
+            className="landing-scale-in landing-delay-100 font-display font-extrabold leading-[0.95] mb-6 tracking-tight"
             style={{ fontSize: "clamp(2.5rem, 9vw, 6.5rem)" }}
-            initial={{ opacity: 0, y: 30, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           >
             <span className="block text-foreground">Build your</span>
             <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(168 80% 50% / 0.45))" }}>
               Financial Empire
             </span>
             <span className="block text-foreground">with APEX</span>
-          </motion.h1>
+          </h1>
 
           {/* Video — click-to-load poster (was an eager iframe that
               dragged the YouTube SDK + ~5s into LCP. Now: poster image
               is the LCP target, iframe only mounts on user click). */}
-          <motion.div
-            className="w-full max-w-2xl mx-auto mb-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.18 }}
-          >
+          <div className="landing-fade-up landing-delay-200 w-full max-w-2xl mx-auto mb-8">
             <LazyYouTube videoId="v4Fp3FL9ITo" title="APEX Financial" />
-          </motion.div>
+          </div>
 
           {/* Subheadline */}
-          <motion.p
-            className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.22 }}
-          >
+          <p className="landing-fade-up landing-delay-200 text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed">
             Join the fastest-growing life insurance agency in America. Leads, training,
             carriers, and a recruiting path — all in one operating system. Licensed
             or starting out, we build the engine you sell on.
-          </motion.p>
+          </p>
 
           {/* CTAs — magnetic glow buttons */}
-          <motion.div
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
+          <div className="landing-fade-up landing-delay-300 flex flex-col sm:flex-row items-center justify-center gap-4 mb-14">
             <Link to="/apply" className="group relative">
               <span
                 aria-hidden
@@ -230,15 +202,10 @@ export function HeroSection() {
               </button>
             </Link>
             {/* Watch-demo button removed 2026-05-18 (PL-010) — no real demo yet. */}
-          </motion.div>
+          </div>
 
           {/* Founder credit — Brand Bible: "the face IS the brand" */}
-          <motion.div
-            className="flex items-center justify-center gap-3 mb-10"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
+          <div className="landing-fade-up landing-delay-400 flex items-center justify-center gap-3 mb-10">
             <img
               src="https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/avatars/4491dc82-a056-4fb3-ab38-b132afffb700/avatar-1777285677901.jpg"
               alt="Samuel James, Founder of APEX Financial"
@@ -251,7 +218,7 @@ export function HeroSection() {
                 Founder · $120K/mo producer
               </p>
             </div>
-          </motion.div>
+          </div>
 
           {/* Live counter strip — real numbers from landing_live_stats() */}
           <LiveStatsCounterStrip />
@@ -260,22 +227,16 @@ export function HeroSection() {
           <RecentHiresTicker />
 
           {/* 3 Stat pills — glass */}
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5 max-w-3xl mx-auto mb-10"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
+          <div className="landing-fade-up landing-delay-500 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5 max-w-3xl mx-auto mb-10">
             {stats.map((item, index) => (
-              <motion.div
+              <div
                 key={index}
-                whileHover={{ y: -4, scale: 1.02 }}
                 className="
                   group relative rounded-2xl p-5 text-center
                   bg-card/90 backdrop-blur-xl border border-border/60
                   hover:border-primary/40
                   shadow-md
-                  transition-all duration-300
+                  transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02]
                 "
               >
                 <span
@@ -288,17 +249,12 @@ export function HeroSection() {
                   {item.value}
                 </div>
                 <div className="text-sm text-muted-foreground">{item.label}</div>
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </div>
 
           {/* Carrier marquee — continuous scroll instead of single-cycle */}
-          <motion.div
-            className="rounded-2xl p-4 max-w-2xl mx-auto bg-card/90 backdrop-blur-xl border border-border/60 overflow-hidden shadow-md"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-          >
+          <div className="landing-fade-up landing-delay-600 rounded-2xl p-4 max-w-2xl mx-auto bg-card/90 backdrop-blur-xl border border-border/60 overflow-hidden shadow-md">
             <p className="text-[10px] text-muted-foreground mb-3 uppercase tracking-[0.25em] font-display font-semibold">
               Partnered with top carriers
             </p>
@@ -323,24 +279,19 @@ export function HeroSection() {
             <p className="text-[11px] text-muted-foreground mt-3 font-medium font-display">
               Carrier access varies by market and licensing status
             </p>
-          </motion.div>
+          </div>
         </div>
       </div>
 
       {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1, y: [0, 8, 0] }}
-        transition={{ delay: 1.5, duration: 1.6, repeat: Infinity, repeatType: "loop" }}
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-      >
+      <div className="landing-scroll-bounce absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
         <span className="text-[10px] text-muted-foreground uppercase tracking-[0.3em] font-semibold">
           Scroll
         </span>
         <span className="h-8 w-5 rounded-full border-2 border-primary/40 flex items-start justify-center pt-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-primary" />
         </span>
-      </motion.div>
+      </div>
     </section>
   );
 }

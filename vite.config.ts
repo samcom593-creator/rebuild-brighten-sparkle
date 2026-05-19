@@ -112,13 +112,29 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-          if (/[\\/]node_modules[\\/](react|react-dom|react-router-dom|scheduler)[\\/]/.test(id)) return "vendor-react";
-          if (id.includes("@supabase/supabase-js")) return "vendor-supabase";
-          if (id.includes("recharts")) return "vendor-charts";
-          if (id.includes("framer-motion")) return "vendor-motion";
-          if (id.includes("date-fns")) return "vendor-dates";
-          if (id.includes("@radix-ui/react-dialog") || id.includes("@radix-ui/react-popover") || id.includes("@radix-ui/react-select") || id.includes("@radix-ui/react-tabs")) return "ui";
+          const normalized = id.replace(/\\/g, "/");
+          if (!normalized.includes("node_modules")) return;
+          if (
+            normalized.includes("/node_modules/react/") ||
+            normalized.includes("/node_modules/react-dom/") ||
+            normalized.includes("/node_modules/react-router-dom/") ||
+            normalized.includes("/node_modules/scheduler/") ||
+            normalized.includes("/node_modules/.vite/deps/react.js") ||
+            normalized.includes("/node_modules/.vite/deps/react-dom") ||
+            normalized.includes("/node_modules/.vite/deps/react-router-dom") ||
+            normalized.includes("/node_modules/.vite/deps/jsx-runtime") ||
+            normalized.includes("react/jsx-runtime") ||
+            normalized.includes("react_jsx-runtime") ||
+            normalized.includes("jsx-runtime-")
+          ) return "vendor-react";
+          if (normalized.includes("@supabase/supabase-js")) return "vendor-supabase";
+          if (normalized.includes("@tanstack/react-query")) return "vendor-query";
+          if (normalized.includes("recharts")) return "vendor-charts";
+          if (normalized.includes("lucide-react")) return "vendor-icons";
+          if (normalized.includes("react-hook-form") || normalized.includes("@hookform/resolvers") || normalized.includes("zod")) return "vendor-forms";
+          if (normalized.includes("date-fns")) return "vendor-dates";
+          if (normalized.includes("@radix-ui")) return "vendor-radix";
+          if (normalized.includes("cmdk") || normalized.includes("sonner") || normalized.includes("vaul") || normalized.includes("embla-carousel-react")) return "vendor-ui";
         },
       },
     },

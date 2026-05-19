@@ -1,6 +1,5 @@
 import { forwardRef } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 const benefits = [
@@ -19,21 +18,10 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#22d3a5] to-transparent opacity-40" />
 
       <div className="container mx-auto px-4 relative z-10">
-        <motion.div
-          className="max-w-4xl mx-auto text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-        >
-          <motion.span
-            className="inline-block px-4 py-1.5 rounded-full text-sm font-bold font-display bg-[#22d3a5]/10 text-[#22d3a5] border border-[#22d3a5]/20 mb-6"
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-          >
+        <div className="reveal max-w-4xl mx-auto text-center">
+          <span className="landing-scale-in inline-block px-4 py-1.5 rounded-full text-sm font-bold font-display bg-[#22d3a5]/10 text-[#22d3a5] border border-[#22d3a5]/20 mb-6">
             Limited Spots Available
-          </motion.span>
+          </span>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 text-[#f1f5f9] font-display">
             Ready to{" "}
@@ -48,17 +36,14 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
           {/* Benefits Grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-2xl mx-auto mb-10">
             {benefits.map((benefit, index) => (
-              <motion.div
+              <div
                 key={index}
-                className="flex items-center gap-2 text-sm text-[#94a3b8]"
-                initial={{ opacity: 0, x: -10 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
+                className="reveal flex items-center gap-2 text-sm text-[#94a3b8]"
+                style={{ transitionDelay: `${index * 80}ms` }}
               >
                 <CheckCircle2 className="h-4 w-4 text-[#22d3a5] flex-shrink-0" />
                 <span>{benefit}</span>
-              </motion.div>
+              </div>
             ))}
           </div>
 
@@ -80,7 +65,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
           <p className="text-sm text-[#64748b] mt-4">
             Takes less than 5 minutes • No commitment required
           </p>
-        </motion.div>
+        </div>
       </div>
 
       {/* Bottom accent bar */}

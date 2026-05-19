@@ -426,6 +426,99 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
   animation: ticker-scroll 25s linear infinite;
 }
 
+/* Landing performance animations — CSS-only replacements for Framer Motion
+   on the public home route. Keeps the same movement without loading the
+   ~120 kB motion runtime on first paint. */
+@keyframes landing-fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes landing-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes landing-scale-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes landing-nav-drop {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes landing-panel-enter {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes landing-mobile-menu-enter {
+  from { opacity: 0; transform: translateY(-6px); max-height: 0; }
+  to { opacity: 1; transform: translateY(0); max-height: 520px; }
+}
+
+@keyframes landing-sidebar-enter {
+  from { opacity: 0; transform: translateY(-50%) translateX(40px); }
+  to { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+@keyframes landing-draw {
+  0% { opacity: 0; stroke-dashoffset: 1; }
+  10% { opacity: 1; }
+  100% { opacity: 1; stroke-dashoffset: 0; }
+}
+
+@keyframes landing-connector-fill {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes landing-scroll-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes landing-scroll-bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(8px); }
+}
+
+.landing-fade-up { animation: landing-fade-up 560ms var(--ease-emphasized) both; }
+.landing-fade-in { animation: landing-fade-in 260ms var(--ease-standard) both; }
+.landing-scale-in { animation: landing-scale-in 680ms var(--ease-emphasized) both; }
+.landing-nav-enter { animation: landing-nav-drop 500ms var(--ease-emphasized) both; }
+.landing-panel-enter { animation: landing-panel-enter 180ms var(--ease-standard) both; transform-origin: top right; }
+.landing-mobile-menu-enter { animation: landing-mobile-menu-enter 220ms var(--ease-standard) both; overflow: hidden; }
+.landing-sidebar-enter { animation: landing-sidebar-enter 260ms var(--ease-emphasized) both; }
+.landing-draw-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: landing-draw 2.5s ease-out both;
+}
+.landing-connector-fill {
+  transform: translateY(-100%);
+  animation: landing-connector-fill 800ms ease-out 300ms both;
+}
+.landing-scroll-bounce {
+  opacity: 0;
+  animation:
+    landing-scroll-fade 400ms ease-out 1.2s both,
+    landing-scroll-bounce 1.6s ease-in-out 1.5s infinite;
+}
+.landing-delay-100 { animation-delay: 100ms; }
+.landing-delay-200 { animation-delay: 200ms; }
+.landing-delay-300 { animation-delay: 300ms; }
+.landing-delay-400 { animation-delay: 400ms; }
+.landing-delay-500 { animation-delay: 500ms; }
+.landing-delay-600 { animation-delay: 600ms; }
+.landing-delay-700 { animation-delay: 700ms; }
+.reveal:not(.in-view) .landing-draw-path,
+.reveal:not(.in-view) .landing-connector-fill {
+  animation-play-state: paused;
+}
+
 @keyframes counter-up {
   from {
     opacity: 0;

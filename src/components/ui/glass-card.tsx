@@ -1,8 +1,7 @@
 import { cn } from "@/lib/utils";
-import { motion, HTMLMotionProps } from "framer-motion";
-import { forwardRef } from "react";
+import { forwardRef, HTMLAttributes } from "react";
 
-interface GlassCardProps extends HTMLMotionProps<"div"> {
+interface GlassCardProps extends HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "strong" | "subtle";
   glow?: boolean;
   hoverEffect?: boolean;
@@ -17,7 +16,7 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
     };
 
     return (
-      <motion.div
+      <div
         ref={ref}
         className={cn(
           "rounded-xl transition-all duration-300 hover:border-[#334155]",
@@ -29,7 +28,7 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
         {...props}
       >
         {children}
-      </motion.div>
+      </div>
     );
   }
 );

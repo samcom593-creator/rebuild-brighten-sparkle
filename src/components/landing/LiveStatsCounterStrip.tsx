@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
 import { Users, FileText, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
@@ -39,12 +38,7 @@ export function LiveStatsCounterStrip() {
   const carriers = data?.carriers_partnered ?? 22;
 
   return (
-    <motion.div
-      className="max-w-3xl mx-auto mb-10"
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.36 }}
-    >
+    <div className="landing-fade-up landing-delay-400 max-w-3xl mx-auto mb-10">
       <p className="text-[10px] text-muted-foreground text-center mb-3 uppercase tracking-[0.3em] font-display font-semibold">
         Live · pulled from the operating system
       </p>
@@ -68,7 +62,7 @@ export function LiveStatsCounterStrip() {
           color="cyan"
         />
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -88,10 +82,7 @@ const COLOR_CLASSES: Record<CardProps["color"], { text: string; ring: string; gl
 function CounterCard({ icon: Icon, value, label, color }: CardProps) {
   const c = COLOR_CLASSES[color];
   return (
-    <motion.div
-      whileHover={{ y: -3, scale: 1.02 }}
-      className={`relative rounded-2xl p-4 sm:p-5 text-center bg-card/90 backdrop-blur-xl border ${c.ring} shadow-md overflow-hidden`}
-    >
+    <div className={`relative rounded-2xl p-4 sm:p-5 text-center bg-card/90 backdrop-blur-xl border ${c.ring} shadow-md overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:scale-[1.02]`}>
       <div className={`absolute inset-0 bg-gradient-to-br ${c.glow} via-transparent to-transparent pointer-events-none`} />
       <Icon className={`relative h-6 w-6 ${c.text} mx-auto mb-2`} />
       <div className={`relative font-display font-extrabold tabular-nums ${c.text}`}
@@ -101,6 +92,6 @@ function CounterCard({ icon: Icon, value, label, color }: CardProps) {
       <div className="relative text-[11px] sm:text-xs text-muted-foreground mt-2 font-medium uppercase tracking-wider">
         {label}
       </div>
-    </motion.div>
+    </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useDashboardPayload } from "./useDashboardPayload";
+import { SmbBridgeCard } from "./SmbBridgeCard";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Flame, Target, TrendingUp, Users2, ExternalLink, Sparkles } from "lucide-react";
@@ -50,9 +51,13 @@ export function DashboardModule() {
   const shotVsPosted = data?.shot_vs_posted;
   const split = data?.audience_split;
   const challenge = data?.active_challenge;
+  const smb = data?.smb_bridge ?? null;
 
   return (
     <div className="space-y-6">
+      {/* ─── Social Media Bot bridge — what the doer is shipping right now ─── */}
+      <SmbBridgeCard smb={smb} />
+
       {/* ─── 4 KPI cards — the four questions in 5 seconds ─── */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KpiCard

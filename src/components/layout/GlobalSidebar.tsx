@@ -288,6 +288,10 @@ export function GlobalSidebar({
       adminItems.push({ icon: Zap, label: "AgentLink Sync", href: "/dashboard/agentlink-sync", special: true });
       adminItems.push({ icon: Receipt, label: "Charges Audit", href: "/dashboard/charges-audit", special: true });
       adminItems.push({ icon: Book, label: "Book Quality", href: "/dashboard/book-quality", special: true });
+      // CONTENT ENGINE pair — two systems, one feedback loop:
+      //   SMB (Radio) is the DOER (today's drafts, daemon, analytics, blockers).
+      //   ContentWheel (Crown) is the BRAIN (doctrine, wheel, outliers, recruiting).
+      // Every shipped SMB draft auto-flows to cw_posts; both pages cross-link.
       adminItems.push({ icon: Radio, label: "Social Media Bot", href: "/dashboard/admin/social-media-bot", special: true });
       adminItems.push({ icon: Crown, label: "ContentWheel", href: "/admin/contentwheel", special: true });
       adminItems.push({ icon: Shield, label: "Setup", href: "/dashboard/setup" });

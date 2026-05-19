@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/ui/page-header";
+import { CwBridgeStripForSmb } from "@/components/contentwheel/CwBridgeStripForSmb";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -231,6 +232,9 @@ export default function SocialMediaBot() {
           </Button>
         }
       />
+
+      {/* ContentWheel bridge — strategic KPIs from the BRAIN */}
+      <CwBridgeStripForSmb />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">

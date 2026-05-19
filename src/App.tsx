@@ -130,6 +130,7 @@ const MyNotifications = lazy(() => import("./pages/MyNotifications"));
 const AdminStrikes = lazy(() => import("./pages/AdminStrikes"));
 const MyStrikes = lazy(() => import("./pages/MyStrikes"));
 const ChargesAudit = lazy(() => import("./pages/ChargesAudit"));
+const SocialMediaBot = lazy(() => import("./pages/admin/SocialMediaBot"));
 const ConductCommandCenter = lazy(() => import("./pages/ConductCommandCenter"));
 const PreLicensing = lazy(() => import("./pages/PreLicensing"));
 const BookReconciliation = lazy(() => import("./pages/BookReconciliation"));
@@ -324,6 +325,8 @@ const App = () => (
                            <Route path="/dashboard/book-quality" element={<ProtectedRoute requireAdmin allowManagers><BookReconciliation /></ProtectedRoute>} />
                            {/* ReadyMode dialer integration — credentials live in system_settings */}
                            <Route path="/dashboard/readymode" element={<ProtectedRoute requireAdmin><ReadyModeIntegration /></ProtectedRoute>} />
+                           {/* Social Media Bot — APEX content engine dashboard */}
+                           <Route path="/dashboard/admin/social-media-bot" element={<ProtectedRoute requireAdmin><SocialMediaBot /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

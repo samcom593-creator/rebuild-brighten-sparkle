@@ -15,17 +15,28 @@ const SEVERITY_TONE: Record<string, { ring: string; chip: string; text: string }
   unknown:  { ring: "border-border",        chip: "bg-muted text-muted-foreground border-border",        text: "text-muted-foreground" },
 };
 
+interface NextStepStuckPoolProps {
+  /** Restrict to a manager's downline. Omit for the global admin pool. */
+  ownerUserId?: string | null;
+  /** Override the default top-N (8). */
+  limit?: number;
+  /** Custom heading override (defaults to "Longest-stuck candidates"). */
+  heading?: string;
+  /** Custom subheading override. */
+  subheading?: string;
+}
+
 /**
  * NextStepStuckPool — admin/manager card surfacing the candidates rotting
  * the longest in their current stage. Reads v_next_step_stuck_pool.
  *
- * Renders on DashboardCommandCenter. Each row shows: severity chip, name,
- * stage, days-in-stage, next-action-label, and a one-click contact button
- * + jump-to-action link. The pg_cron stall_sweep fires every 15min, so the
- * data is always within 15min of fresh.
+ * Renders on DashboardCommandCenter (admin) and Today (manager-scoped).
+ * Each row shows: severity chip, name, stage, days-in-stage, next-action-
+ * label, and a one-click contact button + jump-to-action link. The
+ * pg_cron stall_sweep fires every 15min — data is always <=15min fresh.
  */
-export function NextStepStuckPool() {
-  const { data, isLoading, error } = useNextStepStuck(8);
+export function NextStepStuckPool({ ownerUserId, limit = 8, heading, subheading }: NextStepStuckPoolProps = {}) {
+  const { data, isLoading, error } = useNextStepStuck(limit, ownerUserId);
 
   if (isLoading) {
     return <Skeleton className="h-64 rounded-xl" />;
@@ -50,14 +61,13 @@ export function NextStepStuckPool() {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-[0.18em] text-amber-400/80">
-                Stuck pipeline · auto-detected via SLA + stall thresholds
+                {ownerUserId ? "Your downline · stuck" : "Stuck pipeline · auto-detected via SLA + stall thresholds"}
               </p>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight mt-0.5">
-                Longest-stuck candidates
+                {heading ?? "Longest-stuck candidates"}
               </h2>
               <p className="text-[12px] text-muted-foreground leading-snug mt-1 max-w-2xl">
-                Each row is a real applicant or agent stalled past their stage SLA. Critical = blew past 2× the stall threshold.
-                Cron sweep runs every 15 min — call them today, not tomorrow.
+                {subheading ?? "Each row is a real applicant or agent stalled past their stage SLA. Critical = blew past 2× the stall threshold. Cron sweep runs every 15 min — call them today, not tomorrow."}
               </p>
             </div>
           </div>

@@ -63,18 +63,22 @@ export interface NextStepCandidateRow {
   failure_label: string | null;
 }
 
-/** Top-N stuck candidates from v_next_step_stuck_pool (severity DESC, days DESC). */
-export function useNextStepStuck(limit = 8) {
+/**
+ * Top-N stuck candidates from v_next_step_stuck_pool.
+ * Pass `ownerUserId` to restrict to a single manager's downline; omit for
+ * the global admin pool.
+ */
+export function useNextStepStuck(limit = 8, ownerUserId?: string | null) {
   return useQuery({
-    queryKey: ["next_step_stuck_pool", limit],
+    queryKey: ["next_step_stuck_pool", limit, ownerUserId ?? "all"],
     queryFn: async (): Promise<NextStepStuckRow[]> => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("v_next_step_stuck_pool")
         .select(
-          "application_id,agent_id,person_type,first_name,last_name,email,phone,derived_stage_key,stage_display_name,next_action_label,next_action_url,next_action_due_at,stage_entered_at,days_in_stage,severity,is_stalled,sla_hours,color_hex",
-        )
-        .order("days_in_stage", { ascending: false })
-        .limit(limit);
+          "application_id,agent_id,person_type,first_name,last_name,email,phone,derived_stage_key,stage_display_name,next_action_label,next_action_url,next_action_due_at,stage_entered_at,days_in_stage,severity,is_stalled,sla_hours,color_hex,owner_user_id",
+        );
+      if (ownerUserId) q = q.eq("owner_user_id", ownerUserId);
+      const { data, error } = await q.order("days_in_stage", { ascending: false }).limit(limit);
       if (error) throw error;
       return (data ?? []) as NextStepStuckRow[];
     },
@@ -116,12 +120,31 @@ export function useNextStepManagerBoard(managerUserId?: string | null) {
   });
 }
 
-/** Current candidate row — for the signed-in agent's own "Next Step" card. */
+/**
+ * Current candidate row — for the signed-in agent's own "Next Step" card.
+ *
+ * Routing rules:
+ *  - When called with applicationId on a PUBLIC surface (e.g.
+ *    /status/<id>), use the SECURITY DEFINER RPC landing_next_step_for(id)
+ *    so anon callers can read.
+ *  - When called from an authenticated admin surface, prefer direct view
+ *    access (v_next_step_candidate is RLS-gated to admin).
+ */
 export function useMyNextStep(applicationId?: string | null, agentId?: string | null) {
   return useQuery({
     queryKey: ["my_next_step", applicationId ?? agentId ?? "none"],
     enabled: Boolean(applicationId || agentId),
     queryFn: async (): Promise<NextStepCandidateRow | null> => {
+      // Try public RPC first when we have an applicationId — works for both
+      // anon (public /status page) and authed users (admin sees their own).
+      if (applicationId) {
+        const { data: rpcData, error: rpcErr } = await supabase
+          .rpc("landing_next_step_for", { p_application_id: applicationId });
+        if (!rpcErr && rpcData) {
+          return rpcData as unknown as NextStepCandidateRow;
+        }
+      }
+      // Fall back to direct view access (admin only).
       let q = supabase
         .from("v_next_step_candidate")
         .select(

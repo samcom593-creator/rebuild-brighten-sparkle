@@ -21,6 +21,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { DataFreshnessBanner } from "@/components/dashboard/DataFreshnessBanner";
 import { PageHeader } from "@/components/ui/page-header";
+import { NextStepStuckPool } from "@/components/next-step/NextStepStuckPool";
 import {
   countDistinctAgents,
   countDistinctBusinessDays,
@@ -43,7 +44,7 @@ interface TopAgent {
 }
 
 export default function Today() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
 
   const { data, isLoading } = useQuery({
     queryKey: ["today-truth-dashboard"],
@@ -219,6 +220,13 @@ export default function Today() {
       />
 
       <DataFreshnessBanner autoRepair />
+
+      {/* NextStep stuck pool — admin sees all; managers see their downline */}
+      <NextStepStuckPool
+        limit={6}
+        ownerUserId={isAdmin ? null : user?.id ?? null}
+        heading={isAdmin ? "Pipeline drift today" : "Your downline · drift today"}
+      />
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <GlassCard className="p-4">

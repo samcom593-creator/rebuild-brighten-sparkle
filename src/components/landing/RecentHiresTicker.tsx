@@ -1,0 +1,72 @@
+import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { Sparkles } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface HireRow {
+  first_name: string | null;
+  amount: number | null;
+  hired_at: string | null;
+}
+
+/**
+ * Recent-hires ticker — rendered below the hero CTAs.
+ *
+ * Pulls anonymized first-name + amount from the existing public RPC
+ * landing_recent_hires() (shipped 2026-05-16 in [[project-apex-2026-05-16-hire-pipeline]]).
+ * Names mark proof that the agency is actually hiring + producing right now.
+ *
+ * Scrolls continuously like the carrier marquee for visual rhyme.
+ */
+export function RecentHiresTicker() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["landing_recent_hires"],
+    queryFn: async (): Promise<HireRow[]> => {
+      const { data, error } = await supabase.rpc("landing_recent_hires");
+      if (error) throw error;
+      return (data as HireRow[]) ?? [];
+    },
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+
+  const rows = data ?? [];
+  if (isLoading || rows.length === 0) return null;
+
+  // Render the list twice for seamless loop
+  const doubled = [...rows, ...rows];
+
+  return (
+    <motion.div
+      className="rounded-2xl px-4 py-3 max-w-2xl mx-auto mb-10 bg-card/90 backdrop-blur-xl border border-amber-500/30 overflow-hidden shadow-md"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.44 }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+        </span>
+        <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+        <p className="text-[10px] text-muted-foreground uppercase tracking-[0.25em] font-display font-semibold">
+          Recent hires · live
+        </p>
+      </div>
+      <div className="relative h-7 overflow-hidden">
+        <div className="absolute inset-0 flex items-center gap-8 ticker-animate" style={{ width: "200%" }}>
+          {doubled.map((r, i) => (
+            <span key={i} className="text-sm font-display font-bold whitespace-nowrap shrink-0">
+              <span className="text-amber-300">{(r.first_name ?? "Agent").toString().toUpperCase()}</span>
+              {r.amount !== null && r.amount !== undefined && (
+                <span className="text-muted-foreground"> · ${Math.round(r.amount).toLocaleString()}</span>
+              )}
+            </span>
+          ))}
+        </div>
+        <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-card/90 to-transparent" />
+        <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-card/90 to-transparent" />
+      </div>
+    </motion.div>
+  );
+}

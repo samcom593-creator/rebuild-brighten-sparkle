@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Shield, TrendingUp, Users, Sparkles, Play } from "lucide-react";
+import { LiveStatsCounterStrip } from "./LiveStatsCounterStrip";
+import { RecentHiresTicker } from "./RecentHiresTicker";
 
 // LazyYouTube — render a static poster image as the LCP element, only
 // mount the iframe (and pull the YouTube SDK) when the user clicks.
@@ -250,6 +252,12 @@ export function HeroSection() {
               </p>
             </div>
           </motion.div>
+
+          {/* Live counter strip — real numbers from landing_live_stats() */}
+          <LiveStatsCounterStrip />
+
+          {/* Recent hires ticker — proof the engine is firing right now */}
+          <RecentHiresTicker />
 
           {/* 3 Stat pills — glass */}
           <motion.div

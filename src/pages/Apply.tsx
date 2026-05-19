@@ -557,10 +557,13 @@ export default function Apply() {
         return;
       }
 
+      // Carry the applicationId forward so the confirmation page can hydrate
+      // assigned manager + next seminar + status step via get_application_status.
+      const aidQuery = applicationId ? `?aid=${encodeURIComponent(applicationId)}` : "";
       if (savedLicenseStatus === "licensed") {
-        navigate("/apply/success/licensed");
+        navigate(`/apply/success/licensed${aidQuery}`);
       } else {
-        navigate("/apply/success/unlicensed");
+        navigate(`/apply/success/unlicensed${aidQuery}`);
       }
     } catch (err) {
       console.error("Network error updating referral:", err);

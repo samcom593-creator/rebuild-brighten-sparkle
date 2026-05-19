@@ -33,6 +33,8 @@ const LogNumbers = lazy(() => import("./pages/LogNumbers"));
 const ApplySuccess = lazy(() => import("./pages/ApplySuccess"));
 const ApplySuccessLicensed = lazy(() => import("./pages/ApplySuccessLicensed"));
 const ApplySuccessUnlicensed = lazy(() => import("./pages/ApplySuccessUnlicensed"));
+const ApplicationStatus = lazy(() => import("./pages/ApplicationStatus"));
+const StaleRecovery = lazy(() => import("./pages/StaleRecovery"));
 const GetLicensed = lazy(() => import("./pages/GetLicensed"));
 const Signup = lazy(() => import("./pages/Signup"));
 const AgentSignup = lazy(() => import("./pages/AgentSignup"));
@@ -173,6 +175,10 @@ const App = () => (
                   <Route path="/apply/success" element={<ApplySuccess />} />
                   <Route path="/apply/success/licensed" element={<ApplySuccessLicensed />} />
                   <Route path="/apply/success/unlicensed" element={<ApplySuccessUnlicensed />} />
+                  {/* Public status page — applicant can return at any time and see
+                      assigned manager, next seminar, status step. Powered by
+                      get_application_status() RPC (SECURITY DEFINER, anon-callable). */}
+                  <Route path="/status/:applicationId" element={<ApplicationStatus />} />
                   <Route path="/get-licensed" element={<GetLicensed />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<Signup />} />
@@ -218,6 +224,9 @@ const App = () => (
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/dashboard/legacy" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
+                    {/* Stale-recovery panel — admins/managers only. v_stale_applicants
+                        feeds it. Additive: doesn't touch DashboardApplicants. */}
+                    <Route path="/dashboard/stale-recovery" element={<ProtectedRoute allowManagers><StaleRecovery /></ProtectedRoute>} />
                     <Route path="/dashboard/admin" element={<DashboardAdmin />} />
                     <Route path="/dashboard/accounts" element={<ProtectedRoute requireAdmin><DashboardAccounts /></ProtectedRoute>} />
                     <Route path="/dashboard/offers" element={<ProtectedRoute requireAdmin><OffersPage /></ProtectedRoute>} />

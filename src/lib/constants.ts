@@ -101,3 +101,12 @@ export const RESOURCE_TYPES = [
 
 // WhatsApp group invite link (fetched from env or hardcoded fallback)
 export const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/LMx1ORbczN19ijJVRatd1m";
+
+// Telegram group invite link. Authoritative value lives in
+// system_settings.telegram_invite_url (returned by get_application_status RPC);
+// this is the build-time fallback so the CTA renders even if the RPC fails.
+export const TELEGRAM_GROUP_URL = "https://t.me/+8jZjxbN9YzU0NjYx";
+
+// Concierge / AI assistant fallback (WhatsApp Business). Overridden at runtime
+// by system_settings.support_assistant_url via the status RPC.
+export const APEX_SUPPORT_ASSISTANT_URL = "https://wa.me/14695551234";

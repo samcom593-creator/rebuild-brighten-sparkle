@@ -25,6 +25,7 @@ import {
 import AgentCommandDashboard from "@/pages/AgentCommandDashboard";
 import { UnclaimedLeadsCommandCard } from "@/components/dashboard/UnclaimedLeadsCommandCard";
 import { XcelStalledCard } from "@/components/dashboard/XcelStalledCard";
+import { WhatShippedTodayBanner } from "@/components/dashboard/WhatShippedTodayBanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -690,6 +691,11 @@ function ExecutiveDashboard({
           </>
         }
       />
+
+      {/* Pinned receipts banner — what shipped to the platform between
+          this login and the last one. Sam reported "everything looks the
+          same" despite 24+ commits; this makes the delta impossible to miss. */}
+      <WhatShippedTodayBanner />
 
       {/* Funnel-leak command row — biggest two leaks live in one strip
           at the top of every admin dashboard load: unclaimed applicants

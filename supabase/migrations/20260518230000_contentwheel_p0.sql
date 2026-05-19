@@ -134,7 +134,9 @@ DECLARE v_active_count int;
 BEGIN
   IF NEW.active IS TRUE THEN
     SELECT count(*) INTO v_active_count FROM cw_formats
-      WHERE active IS TRUE AND id <> COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::uuid);
+      WHERE active IS TRUE
+        AND id <> COALESCE(NEW.id, '00000000-0000-0000-0000-000000000000'::uuid)
+        AND name <> NEW.name;  -- also exclude the row by name so ON CONFLICT path doesn't false-positive
     IF v_active_count >= 3 THEN
       RAISE EXCEPTION 'cw_formats: cannot have more than 3 active formats. Archive one first.'
         USING ERRCODE = 'check_violation';

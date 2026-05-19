@@ -50,6 +50,7 @@ import {
   Receipt,
   Phone,
   Radio,
+  Send,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -293,6 +294,7 @@ export function GlobalSidebar({
       //   ContentWheel (Crown) is the BRAIN (doctrine, wheel, outliers, recruiting).
       // Every shipped SMB draft auto-flows to cw_posts; both pages cross-link.
       adminItems.push({ icon: Radio, label: "Social Media Bot", href: "/dashboard/admin/social-media-bot", special: true });
+      adminItems.push({ icon: Send, label: "Telegram Bot", href: "/dashboard/admin/telegram-bot", special: true });
       adminItems.push({ icon: Crown, label: "ContentWheel", href: "/admin/contentwheel", special: true });
       adminItems.push({ icon: Shield, label: "Setup", href: "/dashboard/setup" });
     }

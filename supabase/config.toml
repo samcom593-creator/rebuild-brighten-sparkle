@@ -618,3 +618,9 @@ verify_jwt = false
 
 [functions.readymode-sync]
 verify_jwt = false
+
+[functions.next-step-dispatch]
+verify_jwt = false
+
+[functions.telegram-webhook]
+verify_jwt = false

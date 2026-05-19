@@ -133,6 +133,7 @@ const AdminStrikes = lazy(() => import("./pages/AdminStrikes"));
 const MyStrikes = lazy(() => import("./pages/MyStrikes"));
 const ChargesAudit = lazy(() => import("./pages/ChargesAudit"));
 const SocialMediaBot = lazy(() => import("./pages/admin/SocialMediaBot"));
+const TelegramBot = lazy(() => import("./pages/admin/TelegramBot"));
 const ConductCommandCenter = lazy(() => import("./pages/ConductCommandCenter"));
 const PreLicensing = lazy(() => import("./pages/PreLicensing"));
 const BookReconciliation = lazy(() => import("./pages/BookReconciliation"));
@@ -339,6 +340,8 @@ const App = () => (
                            <Route path="/dashboard/readymode" element={<ProtectedRoute requireAdmin><ReadyModeIntegration /></ProtectedRoute>} />
                            {/* Social Media Bot — APEX content engine dashboard */}
                            <Route path="/dashboard/admin/social-media-bot" element={<ProtectedRoute requireAdmin><SocialMediaBot /></ProtectedRoute>} />
+                           {/* Telegram Bot — APEX pre-hire + onboarding operating layer */}
+                           <Route path="/dashboard/admin/telegram-bot" element={<ProtectedRoute requireAdmin><TelegramBot /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

@@ -314,7 +314,7 @@ export default function SocialMediaBot() {
       {/* ContentWheel bridge — strategic KPIs from the BRAIN */}
       <CwBridgeStripForSmb />
 
-      {/* KPI strip */}
+      {/* KPI strip — bigger, higher contrast, more glance-able */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         {kpis.map((k, i) => (
           <motion.div
@@ -323,13 +323,13 @@ export default function SocialMediaBot() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
           >
-            <GlassCard className="p-4">
-              <div className="flex items-center gap-2 text-xs text-zinc-400 uppercase tracking-wide">
-                <k.icon className="h-3.5 w-3.5" />
+            <GlassCard className="p-5 md:p-6 border-amber-500/20 bg-gradient-to-br from-amber-500/[0.03] via-zinc-900/40 to-zinc-900/60 hover:border-amber-500/40 transition-colors">
+              <div className="flex items-center gap-2 text-[11px] text-amber-300/90 uppercase tracking-[0.14em] font-semibold">
+                <k.icon className="h-4 w-4" />
                 {k.label}
               </div>
-              <div className={`mt-2 text-3xl font-bold ${k.accent}`}>{k.value}</div>
-              <div className="mt-1 text-xs text-zinc-500">{k.sub}</div>
+              <div className={`mt-3 text-4xl md:text-5xl font-bold tabular-nums leading-none ${k.accent}`}>{k.value}</div>
+              <div className="mt-2 text-xs text-zinc-400 leading-snug">{k.sub}</div>
             </GlassCard>
           </motion.div>
         ))}
@@ -345,31 +345,44 @@ export default function SocialMediaBot() {
               </h3>
               <span className="text-xs text-zinc-500">Brand Bible Ch 10</span>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-5">
               {(data.goals ?? []).map((g) => {
-                const pct = g.current_value != null
+                // Followers goal pulls live count from the dashboard total
+                const liveCurrent = g.goal_key === "total_followers" ? data.total_followers : g.current_value;
+                const pct = liveCurrent != null
                   ? g.direction === "down"
-                    ? Math.max(0, Math.min(100, ((g.target_value / g.current_value) * 100)))
-                    : Math.max(0, Math.min(100, (g.current_value / g.target_value) * 100))
+                    ? Math.max(0, Math.min(100, ((g.target_value / liveCurrent) * 100)))
+                    : Math.max(0, Math.min(100, (liveCurrent / g.target_value) * 100))
                   : 0;
                 const daysLeft = Math.max(0, Math.ceil(
                   (new Date(g.target_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                 ));
+                const gap = g.direction === "up" ? Math.max(0, g.target_value - (liveCurrent ?? 0)) : Math.max(0, (liveCurrent ?? 0) - g.target_value);
+                const dailyNeeded = daysLeft > 0 ? Math.ceil(gap / daysLeft) : null;
                 return (
-                  <div key={g.id} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{g.goal_label}</span>
-                      <span className="text-zinc-400">
-                        {g.current_value ?? "—"}{g.unit ?? ""} / {g.target_value}{g.unit ?? ""} · {daysLeft}d left
+                  <div key={g.id} className="space-y-2">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-semibold text-sm md:text-base">{g.goal_label}</span>
+                      <span className="font-mono text-xs text-zinc-300 shrink-0">
+                        <span className="text-amber-300 font-semibold">{fmtNum(liveCurrent ?? 0)}{g.unit === "%" ? "%" : ""}</span>
+                        <span className="text-zinc-500"> / {fmtNum(g.target_value)}{g.unit === "%" ? "%" : ""}</span>
                       </span>
                     </div>
-                    <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="relative h-3 bg-zinc-800 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-amber-400 to-amber-200 rounded-full"
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-500 via-amber-300 to-amber-200 rounded-full shadow-[0_0_12px_rgba(232,197,71,0.4)]"
                         style={{ width: `${pct.toFixed(1)}%` }}
                       />
                     </div>
-                    <div className="text-xs text-zinc-500">{pct.toFixed(1)}% complete</div>
+                    <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+                      <span>{pct.toFixed(1)}% complete</span>
+                      <span>
+                        {daysLeft}d left
+                        {dailyNeeded != null && dailyNeeded > 0 && g.direction === "up" && (
+                          <> · need <span className="text-amber-300">{fmtNum(dailyNeeded)}{g.unit ? `/${g.unit?.replace("followers","f").replace("USD","$")}` : ""}/day</span></>
+                        )}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
@@ -399,11 +412,7 @@ export default function SocialMediaBot() {
                   {b.fix_action && (
                     <div className="mt-2 text-xs text-zinc-400 leading-snug">{b.fix_action}</div>
                   )}
-                  <div className="mt-2 flex justify-end">
-                    <Button size="sm" variant="ghost" onClick={() => resolveBlocker(b.id)}>
-                      Mark Resolved
-                    </Button>
-                  </div>
+                  <BlockerActions blocker={b} onResolve={() => resolveBlocker(b.id)} />
                 </div>
               ))}
             </div>
@@ -627,134 +636,7 @@ export default function SocialMediaBot() {
 
         {/* SANDCASTLES LAB — operate the demand → content engine */}
         <TabsContent value="sandcastles" className="mt-4 space-y-4">
-          <GlassCard className="p-5">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-2">
-              <FlaskConical className="h-5 w-5 text-purple-300" /> Sandcastles → ContentWheel Engine
-            </h3>
-            <p className="text-sm text-zinc-400 leading-relaxed mb-4">
-              Sandcastles tells you <em>what the market wants</em>. This lab rebuilds that demand as Samuel James content
-              and inserts into <code className="text-amber-300">cw_demand_mines</code>, <code className="text-amber-300">cw_ideas</code>, <code className="text-amber-300">cw_hooks</code>.
-              Demand is borrowed. Voice is owned.
-            </p>
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 mb-4">
-              <div className="text-xs font-mono uppercase tracking-wider text-amber-300 mb-1.5">Run order</div>
-              <ol className="text-xs text-zinc-300 leading-relaxed space-y-1 list-decimal pl-4">
-                <li>Pick ONE narrow Sandcastles search topic (recruiting fear, 90-day quitting, six-fig no degree, IMO truth, no-cold-call recruiting).</li>
-                <li>In a fresh Claude Code chat, load <code>~/business-ops/master-prompts/sandcastles-to-contentwheel-engine.md</code> and paste your Sandcastles outliers.</li>
-                <li>Claude runs Gate A → Translation → Gate B and emits Block 2 (JSON).</li>
-                <li>Paste Block 2 below. Click Validate, then Insert. Rows land in ContentWheel and the Brand tab re-renders.</li>
-              </ol>
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs uppercase tracking-wider text-zinc-500 font-mono">Block 2 JSON (paste here)</div>
-              <Textarea
-                value={sandcastleJson}
-                onChange={(e) => setSandcastleJson(e.target.value)}
-                rows={14}
-                placeholder='{"engine":"sandcastles-to-contentwheel","version":"1.0","ideas":[{...}]}'
-                className="font-mono text-xs"
-              />
-              {sandcastleStatus.kind !== "idle" && (
-                <div className={`text-xs px-3 py-2 rounded ${sandcastleStatus.kind === "ok" ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" : "bg-rose-500/10 text-rose-300 border border-rose-500/30"}`}>
-                  {sandcastleStatus.msg}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    try {
-                      const parsed = JSON.parse(sandcastleJson);
-                      const ideaCount = parsed.ideas?.length ?? 0;
-                      const hookCount = (parsed.ideas ?? []).reduce((acc: number, i: any) => acc + (i.hooks?.length ?? 0), 0);
-                      const mineCount = parsed.demand_mines?.length ?? 0;
-                      setSandcastleStatus({ kind: "ok", msg: `Valid JSON. ${ideaCount} ideas, ${hookCount} hooks, ${mineCount} demand mines ready to insert.` });
-                    } catch (e: any) {
-                      setSandcastleStatus({ kind: "err", msg: `JSON parse failed: ${e.message}` });
-                    }
-                  }}
-                >
-                  Validate
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={!sandcastleJson.trim()}
-                  onClick={async () => {
-                    try {
-                      const parsed = JSON.parse(sandcastleJson);
-                      const ideas = (parsed.ideas ?? []) as Array<any>;
-                      if (ideas.length === 0) {
-                        setSandcastleStatus({ kind: "err", msg: "No ideas to insert." });
-                        return;
-                      }
-                      // Resolve pillar/dogma FKs
-                      const pillarByCode = Object.fromEntries((pillars ?? []).map(p => [p.code, p.id]));
-                      const dogmaByNum   = Object.fromEntries((dogmas ?? []).map(d => [d.number, d.id]));
-                      let okIdeas = 0, okHooks = 0, errors: string[] = [];
-                      for (const it of ideas) {
-                        const pillarId = pillarByCode[it.pillar_code];
-                        const dogmaId  = dogmaByNum[it.dogma_number];
-                        if (!pillarId || !dogmaId) {
-                          errors.push(`skip "${it.title}": missing pillar/dogma FK`);
-                          continue;
-                        }
-                        const { data: ideaRow, error: ideaErr } = await (supabase as any).from("cw_ideas").insert({
-                          title: it.title,
-                          body: it.body ?? null,
-                          demand_source: it.demand_source ?? "competitor_outlier",
-                          demand_evidence: it.demand_evidence ?? null,
-                          audience: it.audience ?? "nurture",
-                          pillar_id: pillarId,
-                          dogma_id: dogmaId,
-                          status: it.status ?? "backlog",
-                          score: it.score ?? 0,
-                        }).select("id").single();
-                        if (ideaErr) { errors.push(`idea "${it.title}": ${ideaErr.message}`); continue; }
-                        okIdeas++;
-                        for (const h of (it.hooks ?? [])) {
-                          const { error: hookErr } = await (supabase as any).from("cw_hooks").insert({
-                            idea_id: ideaRow.id,
-                            variant_label: h.variant_label ?? "A",
-                            text: h.text,
-                            keyword_a: h.keyword_a ?? null,
-                            keyword_b: h.keyword_b ?? null,
-                            is_agenda: !!h.is_agenda,
-                            context_ok: !!h.context_ok,
-                            contrarian_ok: !!h.contrarian_ok,
-                            openloop_ok: !!h.openloop_ok,
-                          });
-                          if (hookErr) { errors.push(`hook on "${it.title}": ${hookErr.message}`); } else okHooks++;
-                        }
-                      }
-                      const summary = `Inserted ${okIdeas} ideas + ${okHooks} hooks.${errors.length ? ` ${errors.length} errors: ${errors.slice(0,2).join(" | ")}` : ""}`;
-                      setSandcastleStatus({ kind: errors.length ? "err" : "ok", msg: summary });
-                      qc.invalidateQueries({ queryKey: ["cw_hooks_with_idea"] });
-                      qc.invalidateQueries({ queryKey: ["social-bot-dashboard"] });
-                      if (!errors.length) setSandcastleJson("");
-                      toast.success(summary);
-                    } catch (e: any) {
-                      setSandcastleStatus({ kind: "err", msg: `Insert failed: ${e.message}` });
-                    }
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-1.5" /> Insert into ContentWheel
-                </Button>
-              </div>
-            </div>
-          </GlassCard>
-
-          <GlassCard className="p-5">
-            <h3 className="text-base font-semibold mb-2">Next Sandcastles search (queued)</h3>
-            <p className="text-xs text-zinc-500 mb-3">Highest-priority recruiting demand vein. One narrow topic per search.</p>
-            <ol className="text-sm space-y-1.5 list-decimal pl-5">
-              <li><span className="text-amber-300">Leaving a stable W-2 job for commission/insurance sales — fear and objections</span></li>
-              <li>Why new insurance/sales agents quit in the first 90 days</li>
-              <li>How young people actually make six figures in sales with no degree</li>
-              <li>What nobody tells you before joining a sales/insurance agency</li>
-              <li>Recruiting agents without cold-calling or buying leads</li>
-            </ol>
-          </GlassCard>
+          <SandcastlesAutonomous />
         </TabsContent>
 
         {/* ANALYTICS */}
@@ -1029,5 +911,193 @@ export default function SocialMediaBot() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// ============================================================================
+// BlockerActions — 1-click resolution per blocker intent
+// ============================================================================
+function BlockerActions({ blocker, onResolve }: { blocker: Blocker; onResolve: () => void }) {
+  const title = blocker.title.toLowerCase();
+  const actions: Array<{ label: string; href?: string; onClick?: () => void; primary?: boolean }> = [];
+
+  if (title.includes("samueljameshq.com")) {
+    actions.push({ label: "Open Vercel domain buy", href: "https://vercel.com/samcom593-creators-projects/samueljameshq/domains", primary: true });
+    actions.push({ label: "Namecheap search", href: "https://www.namecheap.com/domains/registration/results/?domain=samueljameshq.com" });
+  } else if (title.includes("handle") || title.includes("rebrand")) {
+    actions.push({ label: "Check TT", href: "https://www.tiktok.com/@SamuelJamesHQ", primary: true });
+    actions.push({ label: "Check IG", href: "https://instagram.com/SamuelJamesHQ" });
+  } else if (title.includes("stripe") || title.includes("mentorship") || title.includes("payment link")) {
+    actions.push({ label: "Stripe dashboard", href: "https://dashboard.stripe.com/payment-links", primary: true });
+  } else if (title.includes("upload gap") || title.includes("youtube")) {
+    actions.push({ label: "YT Studio upload", href: "https://studio.youtube.com/", primary: true });
+  } else if (title.includes("supabase") || title.includes("pat") || title.includes("readymode")) {
+    actions.push({ label: "Create Supabase PAT", href: "https://supabase.com/dashboard/account/tokens", primary: true });
+  } else if (title.includes("analytics") || title.includes("api")) {
+    actions.push({ label: "TikTok Developers", href: "https://developers.tiktok.com/" });
+    actions.push({ label: "Meta for Devs", href: "https://developers.facebook.com/" });
+  }
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5">
+      {actions.map((a, i) => (
+        a.href ? (
+          <a
+            key={i}
+            href={a.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded border transition-colors ${a.primary ? "border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20" : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"}`}
+          >
+            <ArrowRight className="h-3 w-3" /> {a.label}
+          </a>
+        ) : (
+          <Button key={i} size="sm" variant={a.primary ? "default" : "ghost"} onClick={a.onClick}>{a.label}</Button>
+        )
+      ))}
+      <Button size="sm" variant="ghost" onClick={onResolve}>Mark Resolved</Button>
+    </div>
+  );
+}
+
+// ============================================================================
+// Sandcastles Autonomous — topic in, daemon does the rest
+// ============================================================================
+type SandcastlesQueueRow = {
+  id: number; requested_at: string; topic: string; hint: string | null;
+  status: "queued" | "running" | "complete" | "failed";
+  started_at: string | null; completed_at: string | null;
+  ideas_inserted: number | null; hooks_inserted: number | null; mines_inserted: number | null;
+  result_json: Record<string, unknown> | null; error_text: string | null;
+};
+const SUGGESTED_TOPICS = [
+  "Leaving a stable W-2 job for commission/insurance sales — fear and objections",
+  "Why new insurance/sales agents quit in the first 90 days",
+  "How young people make six figures in sales with no degree",
+  "What nobody tells you before joining a sales/insurance agency",
+  "Recruiting agents without cold-calling or buying leads",
+  "Faith + ambition: how Christian operators reconcile money vs God",
+  "287→220: hybrid-athlete cut at 20 with no PEDs",
+];
+function SandcastlesAutonomous() {
+  const qc = useQueryClient();
+  const [topic, setTopic] = useState("");
+  const [hint, setHint] = useState("");
+  const { data: queue } = useQuery({
+    queryKey: ["sandcastles_queue"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("sandcastles_queue").select("*")
+        .order("requested_at", { ascending: false }).limit(20);
+      if (error) throw error;
+      return (data ?? []) as SandcastlesQueueRow[];
+    },
+    refetchInterval: 5_000,
+    staleTime: 2_000,
+  });
+  const runAutonomous = async (t: string, h?: string) => {
+    if (!t.trim()) { toast.error("Topic required"); return; }
+    const { error } = await (supabase as any).from("sandcastles_queue").insert({
+      topic: t.trim(), hint: (h ?? "").trim() || null, requested_by: "dashboard",
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Queued — daemon picks up within 2 min`);
+    qc.invalidateQueries({ queryKey: ["sandcastles_queue"] });
+    if (t === topic) setTopic("");
+    setHint("");
+  };
+  const counts = (queue ?? []).reduce((acc, r) => { acc[r.status] = (acc[r.status] ?? 0) + 1; return acc; }, {} as Record<string, number>);
+  return (
+    <>
+      <GlassCard className="p-5">
+        <div className="flex items-start justify-between mb-3 gap-3">
+          <div>
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <FlaskConical className="h-5 w-5 text-purple-300" /> Sandcastles — Autonomous
+            </h3>
+            <p className="text-sm text-zinc-400 mt-1 leading-snug">
+              Type a topic. Click Run. Daemon does research, runs Gate A → Translation → Gate B, inserts ideas + hooks into ContentWheel. You do nothing else.
+            </p>
+          </div>
+          <div className="text-right text-xs text-zinc-500 font-mono shrink-0">
+            <div>queued <span className="text-amber-300">{counts.queued ?? 0}</span></div>
+            <div>running <span className="text-cyan-300">{counts.running ?? 0}</span></div>
+            <div>complete <span className="text-emerald-300">{counts.complete ?? 0}</span></div>
+            {(counts.failed ?? 0) > 0 && <div>failed <span className="text-rose-300">{counts.failed}</span></div>}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Input
+            placeholder="Narrow topic (e.g. 'Why new agents quit in the first 90 days')"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            className="text-sm"
+          />
+          <Input
+            placeholder="Optional hint: competitors, subreddits, demographic… (e.g. 'Cody Askins, r/insurancesales, 22-28 yo')"
+            value={hint}
+            onChange={(e) => setHint(e.target.value)}
+            className="text-sm"
+          />
+          <div className="flex gap-2">
+            <Button onClick={() => runAutonomous(topic, hint)} disabled={!topic.trim()}>
+              <FlaskConical className="h-4 w-4 mr-1.5" /> Run Autonomous
+            </Button>
+            <span className="text-xs text-zinc-500 self-center">Daemon: <code>com.samjames.apex.sandcastles-worker</code> · every 2 min</span>
+          </div>
+        </div>
+        <div className="mt-4">
+          <div className="text-xs uppercase tracking-wider text-zinc-500 font-mono mb-2">Quick-pick topics (1 click)</div>
+          <div className="flex flex-wrap gap-2">
+            {SUGGESTED_TOPICS.map((t) => (
+              <button
+                key={t}
+                onClick={() => runAutonomous(t)}
+                className="text-xs px-2.5 py-1.5 rounded border border-amber-500/30 bg-amber-500/5 text-amber-300 hover:bg-amber-500/15 transition-colors leading-snug max-w-md text-left"
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      </GlassCard>
+
+      <GlassCard className="p-5">
+        <h3 className="text-base font-semibold mb-3">Run history</h3>
+        {(queue ?? []).length === 0 ? (
+          <p className="text-sm text-zinc-500">No runs yet. Drop a topic above to kick off the first one.</p>
+        ) : (
+          <div className="space-y-2">
+            {(queue ?? []).map((r) => (
+              <div key={r.id} className="rounded border border-zinc-700/50 bg-zinc-900/40 p-3 text-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium leading-snug truncate">{r.topic}</div>
+                    {r.hint && <div className="text-xs text-zinc-500 mt-0.5 italic">hint: {r.hint}</div>}
+                    <div className="text-xs text-zinc-500 mt-1">
+                      {format(parseISO(r.requested_at), "MMM d HH:mm")}
+                      {r.completed_at && ` · finished in ${Math.max(1, Math.round((new Date(r.completed_at).getTime() - new Date(r.requested_at).getTime()) / 1000))}s`}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <Badge variant="outline" className={
+                      r.status === "complete" ? "border-emerald-500/40 text-emerald-300" :
+                      r.status === "running"  ? "border-cyan-500/40 text-cyan-300" :
+                      r.status === "failed"   ? "border-rose-500/40 text-rose-300" :
+                      "border-amber-500/40 text-amber-300"
+                    }>{r.status}</Badge>
+                    {r.status === "complete" && (
+                      <div className="text-xs text-zinc-400 mt-1">
+                        {(r.ideas_inserted ?? 0)} ideas · {(r.hooks_inserted ?? 0)} hooks · {(r.mines_inserted ?? 0)} mines
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {r.error_text && <div className="text-xs text-rose-300 mt-2">{r.error_text}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </GlassCard>
+    </>
   );
 }

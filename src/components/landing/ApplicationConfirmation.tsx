@@ -149,8 +149,15 @@ export function ApplicationConfirmation({
     (snap?.license_status as "licensed" | "unlicensed" | "pending" | undefined) ??
     "unlicensed";
 
-  const telegramUrl = snap?.telegram_url || TELEGRAM_GROUP_URL;
-  const telegramLabel = snap?.telegram_label || "Join the APEX Telegram";
+  // Prefer the DM-bot deep-link (auto-links the applicant's chat to their
+  // application via the /start apply_<uuid> payload — the bot stamps
+  // applications.telegram_chat_id so subsequent dispatcher nudges land on
+  // Telegram first instead of email). Fall back to the public group invite
+  // if applicationId is missing.
+  const TG_BOT = "ApexFinancialBot";
+  const tgDeepLink = applicationId ? `https://t.me/${TG_BOT}?start=apply_${applicationId}` : null;
+  const telegramUrl = tgDeepLink || snap?.telegram_url || TELEGRAM_GROUP_URL;
+  const telegramLabel = tgDeepLink ? "Open APEX bot (auto-link your file)" : (snap?.telegram_label || "Join the APEX Telegram");
   const supportUrl = snap?.support_url || APEX_SUPPORT_ASSISTANT_URL;
   const videoUrl = snap?.next_video_url || null;
   const cultureLine = snap?.culture_line || "Hold the Standard. Average is the disease.";

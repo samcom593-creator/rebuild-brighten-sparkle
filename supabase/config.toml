@@ -624,3 +624,6 @@ verify_jwt = false
 
 [functions.telegram-webhook]
 verify_jwt = false
+
+[functions.readymode-ingest]
+verify_jwt = false

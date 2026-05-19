@@ -464,7 +464,75 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
     return;
   }
   switch (command) {
-    case "/start":
+    case "/start": {
+      // Deep-link payload: /start apply_<uuid> | agent_<uuid>
+      // Telegram delivers the payload as `args` whenever someone clicks
+      // https://t.me/ApexBot?start=<payload>. When we resolve it to an
+      // applications.id or agents.id, auto-link telegram_users + stamp
+      // {applications|agents}.telegram_chat_id so the dispatcher's Telegram
+      // channel fires on subsequent nudges.
+      const arg = (args ?? "").trim();
+      const applyMatch = arg.match(/^apply[_-]([0-9a-fA-F-]{36})$/);
+      const agentMatch = arg.match(/^agent[_-]([0-9a-fA-F-]{36})$/);
+
+      if (applyMatch) {
+        const applicationId = applyMatch[1];
+        const { data: app } = await sb
+          .from("applications")
+          .select("id, first_name, ica_paid_at")
+          .eq("id", applicationId)
+          .maybeSingle();
+        if (app) {
+          // Match the stage names defined in the schema: applied_unpaid vs applied_paid.
+          // Matches the auto-link trigger (telegram_autolink_application) so deep-link
+          // and back-end auto-link produce identical stage values.
+          const derivedStage = app.ica_paid_at ? "applied_paid" : "applied_unpaid";
+          await Promise.all([
+            sb.from("telegram_users").update({
+              applicant_id: app.id,
+              stage: derivedStage,
+              flow_state: { step: "linked_via_deep_link", linked_at: new Date().toISOString() },
+            }).eq("chat_id", chat_id),
+            sb.from("applications").update({
+              telegram_chat_id: chat_id,
+              telegram_opt_out: false,
+            }).eq("id", app.id),
+          ]);
+          await tgSend({
+            chat_id,
+            text: `Welcome ${app.first_name ?? "in"}. Your APEX application is linked. I'll keep you on track — next steps, seminar reminders, exam dates, manager pings, every step. Reply /status to see where you are now.`,
+          });
+          break;
+        }
+      }
+      if (agentMatch) {
+        const agentId = agentMatch[1];
+        const { data: g } = await sb
+          .from("agents")
+          .select("id, display_name")
+          .eq("id", agentId)
+          .maybeSingle();
+        if (g) {
+          await Promise.all([
+            sb.from("telegram_users").update({
+              agent_id: g.id,
+              stage: "hired",
+              flow_state: { step: "linked_via_deep_link", linked_at: new Date().toISOString() },
+            }).eq("chat_id", chat_id),
+            sb.from("agents").update({
+              telegram_chat_id: chat_id,
+              telegram_opt_out: false,
+            }).eq("id", g.id),
+          ]);
+          await tgSend({
+            chat_id,
+            text: `Linked to ${g.display_name ?? "your agent file"}. I'll route training, infield, and field-day reminders here.`,
+          });
+          break;
+        }
+      }
+
+      // No deep-link OR unmatched payload — fall back to identity collection.
       await sendTemplate(chat_id, "welcome.start", {}, {
         inline_keyboard: [
           [{ text: "📱 Share contact", callback_data: "start:share_contact" }],
@@ -474,6 +542,7 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
       });
       await sb.from("telegram_users").update({ flow_state: { step: "awaiting_identity" } }).eq("chat_id", chat_id);
       break;
+    }
     case "/apply":
       await tgSend({
         chat_id,

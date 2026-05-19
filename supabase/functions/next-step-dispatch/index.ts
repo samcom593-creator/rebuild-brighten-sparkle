@@ -177,19 +177,40 @@ async function sendTelegram(chat_id: number, body: string, stage_key: string, de
   return data?.id ?? null;
 }
 
-async function sendSms(to: string, body: string): Promise<string> {
-  if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) throw new Error("Twilio not configured");
-  const fromKey = TWILIO_FROM.startsWith("MG") ? "MessagingServiceSid" : "From";
-  const params = new URLSearchParams({ To: to, Body: body, [fromKey]: TWILIO_FROM });
-  const auth = btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`);
-  const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
+async function sendSms(to: string, body: string, application_id: string | null): Promise<string> {
+  // Try direct Twilio first if configured; otherwise fall through to the
+  // existing send-sms-auto-detect edge fn which fans out to carrier email
+  // gateways (att/verizon/tmobile/sprint/uscellular/cricket/metro/boost).
+  // Apex doesn't currently have direct Twilio so the gateway path is the
+  // real SMS surface — keep both supported so adding Twilio later just
+  // takes setting the env vars.
+  if (TWILIO_SID && TWILIO_TOKEN && TWILIO_FROM) {
+    const fromKey = TWILIO_FROM.startsWith("MG") ? "MessagingServiceSid" : "From";
+    const params = new URLSearchParams({ To: to, Body: body, [fromKey]: TWILIO_FROM });
+    const auth = btoa(`${TWILIO_SID}:${TWILIO_TOKEN}`);
+    const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.message || `twilio ${r.status}`);
+    return `twilio:${j.sid}`;
+  }
+  // Carrier email gateway fallback via the existing edge fn.
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/send-sms-auto-detect`, {
     method: "POST",
-    headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
+    headers: {
+      Authorization: `Bearer ${SERVICE_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ phone: to, message: body.substring(0, 160), applicationId: application_id }),
   });
-  const j = await r.json();
-  if (!r.ok) throw new Error(j.message || `twilio ${r.status}`);
-  return j.sid;
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || (j as any).error) {
+    throw new Error((j as any).error ?? `send-sms-auto-detect ${r.status}`);
+  }
+  return `gateway:${(j as any).carrierSelected ?? "broadcast"}`;
 }
 
 async function sendEmail(to: string, subject: string, html: string): Promise<string> {
@@ -259,7 +280,7 @@ async function dispatchOne(msg: any, dry: boolean) {
     const to = smartPhone(person.phone);
     if (to) {
       try {
-        const sid = await sendSms(to, smsBody);
+        const sid = await sendSms(to, smsBody, msg.application_id);
         if (msg.channel !== "telegram") {
           // upgrade the queued parent
           await supabase.from("next_step_messages").update({

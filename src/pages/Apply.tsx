@@ -544,17 +544,24 @@ export default function Apply() {
         },
       });
 
-      // supabase.functions.invoke does NOT throw on non-2xx; surface the error
-      // payload instead of silently falling through to "success". The only
-      // benign error is "already claimed" — for that we still proceed.
+      // supabase.functions.invoke returns `error` for any non-2xx, BUT a 409
+      // with code=ALREADY_CLAIMED is the expected path because the
+      // submit-application edge fn auto-assigns the applicant to Sam
+      // (PL-082) when no referrer was selected. So when the user picks at
+      // step 5, the server-side guard returns 409 ALREADY_CLAIMED — that's
+      // success-equivalent here, the applicant is already routed.
       const payloadError = (data as any)?.error;
       const errCode = (data as any)?.code;
-      if (error || (payloadError && errCode !== "ALREADY_CLAIMED")) {
+      const alreadyClaimed = errCode === "ALREADY_CLAIMED";
+      if (!alreadyClaimed && (error || payloadError)) {
         const msg = payloadError ?? error?.message ?? "Couldn't save your referrer choice.";
         console.error("update-application-referral failed:", msg, { data, error });
         toast.error(typeof msg === "string" ? msg : "Couldn't save your referrer choice.");
         // Don't navigate — keep the user on this step so they can retry or change selection.
         return;
+      }
+      if (alreadyClaimed) {
+        toast.success("You're in. Routing you to your next step…");
       }
 
       // Carry the applicationId forward so the confirmation page can hydrate

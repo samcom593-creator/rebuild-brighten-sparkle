@@ -84,6 +84,8 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ControlTerminal } from "@/components/dashboard/ControlTerminal";
 import { UnclaimedLeadsCard } from "@/components/dashboard/UnclaimedLeadsCard";
 import { InsuraCloudHealthAlert } from "@/components/dashboard/InsuraCloudHealthAlert";
+import { NextStepStuckPool } from "@/components/next-step/NextStepStuckPool";
+import { NextStepFunnelStrip } from "@/components/next-step/NextStepFunnelStrip";
 import { LIVE_AGENT_DEAL_WINDOW_DAYS, getLiveAgentCutoffIso } from "@/lib/metricTruth";
 import { DEAL_TRUTH_STATUS_FILTER, liveDealWindowOr } from "@/lib/dealTruth";
 
@@ -625,6 +627,10 @@ export default function DashboardCommandCenter() {
 
         {/* Unclaimed applicants — money on the floor, first thing Sam sees */}
         <UnclaimedLeadsCard />
+
+        {/* Next Step Engine — 18-stage pipeline funnel + stuck-pool prioritizer */}
+        <NextStepFunnelStrip />
+        <NextStepStuckPool />
 
         {/* Team Commissions (InsuraCloud Live) - sits ABOVE the stat grid */}
         <HideableCard cardKey="admin.team-commissions" label="Team Commissions (Live)">

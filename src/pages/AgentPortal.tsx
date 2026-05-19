@@ -39,6 +39,7 @@ import { AgentTaskManager } from "@/components/dashboard/AgentTaskManager";
 import { AgentReferralLinkCard } from "@/components/agent/AgentReferralLinkCard";
 import { EliteReferralUnlock } from "@/components/agent/EliteReferralUnlock";
 import { AddPhotoPrompt } from "@/components/agent/AddPhotoPrompt";
+import { NextStepCandidateCard } from "@/components/next-step/NextStepCandidateCard";
 import { StreakFlameCard } from "@/components/agent/StreakFlameCard";
 import { HideableCard } from "@/components/dashboard/HideableCard";
 import { HiddenCardsManager } from "@/components/dashboard/HiddenCardsManager";
@@ -466,6 +467,9 @@ export default function AgentPortal() {
       <div className="space-y-6">
         {/* Top banner: prompt to add photo if missing */}
         <AddPhotoPrompt />
+
+        {/* Next Step Engine — auto-hides for non-recruits */}
+        {agentId && <NextStepCandidateCard agentId={agentId} />}
 
         {/* Hero Section with Quick Stats */}
         <section className="space-y-4">

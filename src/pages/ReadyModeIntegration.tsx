@@ -15,6 +15,7 @@ import { motion } from "framer-motion";
 import {
   Phone, RefreshCw, Settings, PlayCircle, CheckCircle2, XCircle,
   AlertCircle, Activity, Clock, Headphones, Loader2,
+  ShieldAlert, Copy, Users, Webhook,
 } from "lucide-react";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,12 +68,49 @@ interface SyncLog {
   matched_count: number | null;
   error_message: string | null;
 }
+interface DormantSeat {
+  agent_id: string;
+  agent_name: string;
+  email: string | null;
+  has_dialer_login: boolean;
+  status: string | null;
+  is_inactive: boolean;
+  is_deactivated: boolean;
+  calls_last_7d: number;
+  calls_last_30d: number;
+  last_call_at: string | null;
+}
+interface IngestHealth {
+  current_mode: string;
+  webhook_enabled: boolean;
+  pull_enabled: boolean;
+  last_ingest_at: string | null;
+  seconds_since_last_ingest: number | null;
+  ingest_24h: number;
+  ingest_total: number;
+  last_heartbeat_at: string | null;
+  seconds_since_heartbeat: number | null;
+  last_error: string | null;
+  last_error_at: string | null;
+  status: string;
+}
+interface StrikeStanding {
+  agent_id: string;
+  agent_name: string;
+  active_count: number;
+  active_warnings: number;
+  active_minor: number;
+  active_major: number;
+  active_terminal: number;
+  standing: string;
+}
 
 const SETTING_KEYS = [
   "readymode_api_base_url",
   "readymode_api_key",
   "readymode_account_id",
   "readymode_sync_enabled",
+  "readymode_webhook_secret",
 ];
 
 export default function ReadyModeIntegration() {
@@ -133,6 +171,43 @@ export default function ReadyModeIntegration() {
     },
   });
 
+  const ingestHealth = useQuery({
+    queryKey: ["readymode-ingest-health"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_readymode_ingest_health" as any)
+        .select("*")
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as unknown as IngestHealth | null;
+    },
+  });
+
+  const dormantSeats = useQuery({
+    queryKey: ["readymode-dormant-seats"],
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_dormant_dialer_seats" as any)
+        .select("*");
+      if (error) throw error;
+      return (data ?? []) as unknown as DormantSeat[];
+    },
+  });
+
+  const strikeStandings = useQuery({
+    queryKey: ["readymode-strike-standings"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_strike_summary" as any)
+        .select("agent_id, agent_name, active_count, active_warnings, active_minor, active_major, active_terminal, standing");
+      if (error) throw error;
+      return (data ?? []) as unknown as StrikeStanding[];
+    },
+  });
+
   const settingsByKey = useMemo(() => {
     const m: Record<string, Setting> = {};
     for (const s of settings.data ?? []) m[s.key] = s;
@@ -141,6 +216,38 @@ export default function ReadyModeIntegration() {
 
   const syncEnabled = settingsByKey.readymode_sync_enabled?.value === "true";
   const hasCredentials = !!settingsByKey.readymode_api_base_url?.value && !!settingsByKey.readymode_api_key?.value;
+
+  const webhookSecret = settingsByKey.readymode_webhook_secret?.value ?? "";
+  const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL ?? "https://xrzweoneiieddzxogewk.supabase.co";
+  const webhookUrl = webhookSecret
+    ? `${supabaseUrl}/functions/v1/readymode-ingest?secret=${webhookSecret}`
+    : "";
+
+  const strikesByAgentId = useMemo(() => {
+    const m: Record<string, StrikeStanding> = {};
+    for (const s of strikeStandings.data ?? []) if (s.agent_id) m[s.agent_id] = s;
+    return m;
+  }, [strikeStandings.data]);
+
+  const terminatedDormants = (dormantSeats.data ?? []).filter((s) => s.status === "terminated" || s.is_deactivated);
+  const inactiveDormants = (dormantSeats.data ?? []).filter((s) => !s.is_deactivated && s.is_inactive);
+  const activeDormants = (dormantSeats.data ?? []).filter((s) => !s.is_inactive && !s.is_deactivated && s.calls_last_30d === 0);
+  const cancellationText = useMemo(() => {
+    if (terminatedDormants.length === 0) return "";
+    const lines = terminatedDormants.map((s, i) => `${i + 1}. ${s.agent_name} — ${s.email ?? "(no email)"}`).join("\n");
+    return `Hey — please remove these ${terminatedDormants.length} dialer licenses from my Apex Financial subscription effective immediately. All are terminated agents who shouldn't have access:\n\n${lines}\n\nConfirm seat count drops to ${(dormantSeats.data ?? []).length - terminatedDormants.length} on the next billing cycle. Thanks.`;
+  }, [terminatedDormants, dormantSeats.data]);
+
+  function copyCancellationText() {
+    if (!cancellationText) { toast.info("Nothing to copy"); return; }
+    navigator.clipboard.writeText(cancellationText);
+    toast.success("Cancellation text copied — paste to your ReadyMode rep");
+  }
+  function copyWebhookUrl() {
+    if (!webhookUrl) { toast.info("Webhook secret not set yet"); return; }
+    navigator.clipboard.writeText(webhookUrl);
+    toast.success("Webhook URL copied — paste into ReadyMode Admin → Integrations → Webhooks");
+  }
 
   async function saveSettings() {
     setBusy(true);
@@ -200,30 +307,36 @@ export default function ReadyModeIntegration() {
       />
 
       {/* Connection status */}
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <StatusTile
-          label="Credentials"
-          status={hasCredentials ? "ok" : "missing"}
-          okText="Present"
-          errText="Missing"
+          label="Bot mode"
+          status={ingestHealth.data?.status === "healthy" ? "ok" : "missing"}
+          okText={ingestHealth.data?.current_mode ?? "AWAITING"}
+          errText={ingestHealth.data?.status ?? "—"}
         />
         <StatusTile
-          label="Sync enabled"
-          status={syncEnabled ? "ok" : "missing"}
-          okText="ON"
+          label="Webhook"
+          status={ingestHealth.data?.webhook_enabled ? "ok" : "missing"}
+          okText="LIVE"
           errText="OFF"
         />
         <StatusTile
-          label="Last sync"
-          status={lastSync ? "ok" : "missing"}
-          okText={lastSync?.finished_at ? formatDistanceToNow(parseISO(lastSync.finished_at), { addSuffix: true }) : "—"}
-          errText="Never"
+          label="Ingests 24h"
+          status={(ingestHealth.data?.ingest_24h ?? 0) > 0 ? "ok" : "missing"}
+          okText={`${ingestHealth.data?.ingest_24h ?? 0}`}
+          errText="0"
         />
         <StatusTile
           label="Calls today"
           status={(calls.data?.length ?? 0) > 0 ? "ok" : "missing"}
           okText={`${calls.data?.length ?? 0}`}
           errText="0"
+        />
+        <StatusTile
+          label="Cancel"
+          status={terminatedDormants.length === 0 ? "ok" : "missing"}
+          okText="0 dormant"
+          errText={`${terminatedDormants.length} to cancel`}
         />
       </div>
 
@@ -240,13 +353,124 @@ export default function ReadyModeIntegration() {
         </GlassCard>
       )}
 
-      <Tabs defaultValue="settings">
+      <Tabs defaultValue={terminatedDormants.length > 0 ? "seats" : "settings"}>
         <TabsList>
           <TabsTrigger value="settings"><Settings className="h-3.5 w-3.5 mr-1.5" /> Settings</TabsTrigger>
+          <TabsTrigger value="seats"><Users className="h-3.5 w-3.5 mr-1.5" /> Seats {terminatedDormants.length > 0 && <Badge variant="outline" className="ml-1 bg-rose-500/10 text-rose-500 border-rose-500/40">{terminatedDormants.length} cancel</Badge>}</TabsTrigger>
           <TabsTrigger value="calls"><Phone className="h-3.5 w-3.5 mr-1.5" /> Today's calls <Badge variant="outline" className="ml-1">{calls.data?.length ?? 0}</Badge></TabsTrigger>
           <TabsTrigger value="agents"><Activity className="h-3.5 w-3.5 mr-1.5" /> Per-agent <Badge variant="outline" className="ml-1">{agents.data?.length ?? 0}</Badge></TabsTrigger>
           <TabsTrigger value="logs"><Clock className="h-3.5 w-3.5 mr-1.5" /> Sync log</TabsTrigger>
         </TabsList>
+
+        {/* SEATS — dormant cancellation roster + active dialer leaderboard */}
+        <TabsContent value="seats" className="mt-4 space-y-3">
+          <GlassCard className="p-5 border-l-4 border-rose-500/60">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">
+                  Cancel immediately ({terminatedDormants.length})
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Terminated/deactivated agents who still have <span className="font-mono">has_dialer_login=true</span>. Each one = ~$139/mo wasted at ReadyMode retail. Tap copy → text your account rep.
+                </p>
+              </div>
+              <Button onClick={copyCancellationText} disabled={!cancellationText} size="sm">
+                <Copy className="h-3.5 w-3.5 mr-1.5" />
+                Copy cancellation text
+              </Button>
+            </div>
+
+            {terminatedDormants.length === 0 ? (
+              <EmptyState
+                icon={<CheckCircle2 className="h-7 w-7 text-emerald-500" />}
+                title="No terminated agents on the dialer subscription"
+                description="Roster is clean."
+              />
+            ) : (
+              <div className="mt-4 space-y-2">
+                {terminatedDormants.map((s) => {
+                  const strike = strikesByAgentId[s.agent_id];
+                  return (
+                    <div key={s.agent_id} className="flex items-center gap-3 p-2.5 rounded border border-border/40 bg-background/40">
+                      <XCircle className="h-4 w-4 text-rose-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">{s.agent_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{s.email ?? "(no email)"} · status: {s.status ?? "—"}</p>
+                      </div>
+                      {strike && strike.active_count > 0 && (
+                        <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/40">
+                          <ShieldAlert className="h-3 w-3 mr-1" />
+                          {strike.active_count} active strike{strike.active_count > 1 ? "s" : ""}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-[10px]">
+                        last call: {s.last_call_at ? formatDistanceToNow(parseISO(s.last_call_at), { addSuffix: true }) : "never"}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </GlassCard>
+
+          {inactiveDormants.length > 0 && (
+            <GlassCard className="p-5 border-l-4 border-amber-500/60">
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
+                Verify before cancelling ({inactiveDormants.length}) — inactive but not terminated
+              </p>
+              <div className="space-y-2">
+                {inactiveDormants.map((s) => (
+                  <div key={s.agent_id} className="flex items-center gap-3 p-2.5 rounded border border-border/40 bg-background/40">
+                    <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{s.agent_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{s.email ?? "(no email)"} · marked inactive</p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px]">
+                      {s.calls_last_30d} calls / 30d
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          )}
+
+          {activeDormants.length > 0 && ingestHealth.data?.ingest_total ? (
+            <GlassCard className="p-5 border-l-4 border-orange-500/60">
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-3">
+                Paying but not dialing ({activeDormants.length}) — active agents, 0 calls / 30d
+              </p>
+              <p className="text-xs text-muted-foreground mb-3">
+                These are active hires paying $250/wk for a dialer they aren't using. Either issue a strike, retrain, or stop charging them.
+              </p>
+              <div className="space-y-2">
+                {activeDormants.map((s) => {
+                  const strike = strikesByAgentId[s.agent_id];
+                  return (
+                    <div key={s.agent_id} className="flex items-center gap-3 p-2.5 rounded border border-border/40 bg-background/40">
+                      <Phone className="h-4 w-4 text-orange-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">{s.agent_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{s.email ?? "(no email)"}</p>
+                      </div>
+                      {strike && (
+                        <Badge variant="outline" className="text-[10px]">
+                          {strike.standing}
+                        </Badge>
+                      )}
+                      <Button asChild size="sm" variant="ghost">
+                        <a href={`/dashboard/strikes?agent=${s.agent_id}`}>
+                          <ShieldAlert className="h-3.5 w-3.5 mr-1" />
+                          Strike
+                        </a>
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </GlassCard>
+          ) : null}
+        </TabsContent>
 
         {/* SETTINGS */}
         <TabsContent value="settings" className="mt-4 space-y-3">
@@ -281,13 +505,33 @@ export default function ReadyModeIntegration() {
                 </span>
               </li>
             </ol>
-            <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/40">
-              <strong>Bonus path (real-time):</strong> we already deploy
-              <span className="font-mono"> readymode-webhook</span> at
-              <span className="font-mono"> /functions/v1/readymode-webhook</span>. From ReadyMode Admin → Webhooks, point a webhook at that URL with a shared secret stored as
-              <span className="font-mono"> READYMODE_WEBHOOK_SECRET</span>. Disposition events then update
-              <span className="font-mono"> aged_leads</span> the moment a call ends — independent of the poller.
-            </p>
+          </GlassCard>
+
+          {/* Webhook URL — preferred ingest path (real-time) */}
+          <GlassCard className="p-5 border-l-4 border-cyan-500/60">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1.5">
+                  <Webhook className="h-3 w-3" /> Webhook URL (preferred — real-time)
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Paste once into <span className="font-mono">ReadyMode Admin → Integrations → Webhooks</span>. Trigger: "on disposition." Every call lands in our DB within 60s of being dispositioned.
+                </p>
+              </div>
+              <Button onClick={copyWebhookUrl} disabled={!webhookUrl} size="sm" variant="outline">
+                <Copy className="h-3.5 w-3.5 mr-1.5" />
+                Copy URL
+              </Button>
+            </div>
+            <div className="mt-3 p-2.5 rounded bg-background/60 border border-border/40 font-mono text-[11px] break-all">
+              {webhookUrl || <span className="text-muted-foreground">Webhook secret not generated yet — apply <span className="bg-muted px-1 rounded">~/business-ops/readymode-bot/sql/02-bot-state.sql</span> via bot-sql first.</span>}
+            </div>
+            {ingestHealth.data && (
+              <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/40">
+                Bot mode: <span className="font-mono">{ingestHealth.data.current_mode}</span> · status: <span className="font-mono">{ingestHealth.data.status}</span> · ingests 24h: <span className="font-mono">{ingestHealth.data.ingest_24h}</span> · total: <span className="font-mono">{ingestHealth.data.ingest_total}</span>
+                {ingestHealth.data.last_ingest_at && <> · last: {formatDistanceToNow(parseISO(ingestHealth.data.last_ingest_at), { addSuffix: true })}</>}
+              </p>
+            )}
           </GlassCard>
 
           <GlassCard className="p-5 space-y-3">
@@ -381,22 +625,33 @@ export default function ReadyModeIntegration() {
           {agents.isLoading ? <SkelList /> :
             (agents.data ?? []).length === 0 ? (
               <EmptyState icon={<Activity className="h-7 w-7" />} title="No dialer activity today" />
-            ) : (agents.data ?? []).map((a, i) => (
-              <motion.div key={a.agent_id ?? a.agent_name} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.01, 0.2) }}>
-                <GlassCard className="p-3 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{a.agent_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {a.calls_today} calls · {a.connects} connects · {a.voicemails} VM · {a.no_answers} NA
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-2xl font-bold tabular-nums text-primary">{a.hours_called}h</p>
-                    <p className="text-[10px] uppercase text-muted-foreground">dialed</p>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            ))
+            ) : (agents.data ?? []).map((a, i) => {
+              const strike = a.agent_id ? strikesByAgentId[a.agent_id] : undefined;
+              return (
+                <motion.div key={a.agent_id ?? a.agent_name} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.01, 0.2) }}>
+                  <GlassCard className="p-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold truncate">{a.agent_name}</p>
+                        {strike && strike.active_count > 0 && (
+                          <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-500 border-amber-500/40">
+                            <ShieldAlert className="h-3 w-3 mr-1" />
+                            {strike.active_count} {strike.standing}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {a.calls_today} calls · {a.connects} connects · {a.voicemails} VM · {a.no_answers} NA
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-2xl font-bold tabular-nums text-primary">{a.hours_called}h</p>
+                      <p className="text-[10px] uppercase text-muted-foreground">dialed</p>
+                    </div>
+                  </GlassCard>
+                </motion.div>
+              );
+            })
           }
         </TabsContent>
 

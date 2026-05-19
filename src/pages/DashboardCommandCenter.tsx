@@ -83,6 +83,7 @@ import { toast } from "sonner";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ControlTerminal } from "@/components/dashboard/ControlTerminal";
 import { UnclaimedLeadsCard } from "@/components/dashboard/UnclaimedLeadsCard";
+import { InsuraCloudHealthAlert } from "@/components/dashboard/InsuraCloudHealthAlert";
 import { LIVE_AGENT_DEAL_WINDOW_DAYS, getLiveAgentCutoffIso } from "@/lib/metricTruth";
 import { DEAL_TRUTH_STATUS_FILTER, liveDealWindowOr } from "@/lib/dealTruth";
 
@@ -618,6 +619,9 @@ export default function DashboardCommandCenter() {
         />
 
         <ControlTerminal />
+
+        {/* InsuraCloud sync auth — only renders when 🔴 broken. Self-hiding. */}
+        <InsuraCloudHealthAlert />
 
         {/* Unclaimed applicants — money on the floor, first thing Sam sees */}
         <UnclaimedLeadsCard />

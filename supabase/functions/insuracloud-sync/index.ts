@@ -32,19 +32,55 @@ interface SyncRequest {
   full?: boolean;
 }
 
+// Custom error class so the calling handler can distinguish auth failure
+// (HTML masquerade / 401) from real HTTP 5xx — and write
+// status='auth_failed' to sync_log instead of fake-success.
+class InsuraCloudAuthError extends Error {
+  constructor(public detail: string, public sample: string) {
+    super(`InsuraCloud auth failed: ${detail}`);
+    this.name = "InsuraCloudAuthError";
+  }
+}
+
 async function fetchInsuraCloud(path: string, token: string) {
   const res = await fetch(`${INSURACLOUD_BASE}${path}`, {
     headers: { Authorization: `Bearer ${token}`, "x-api-key": token, Accept: "application/json" },
   });
+  const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
   const text = await res.text();
+  const sample = (text ?? "").slice(0, 200);
+
+  // ─── Reject masquerade: HTML login page returned with HTTP 200 ──────────
+  // Pre-fix, the sync silently cached the login page as data — 478+ rows of
+  // fake `status='success'` over 18 days. See memory entry
+  // [[project-apex-2026-05-18-insuracloud-auth-dead]]. Now: any non-JSON
+  // content-type, any HTML-shaped body, or any 401 → throw InsuraCloudAuthError
+  // so the caller writes status='auth_failed' to sync_log instead.
+  const looksLikeHtml =
+    /^\s*</.test(sample) ||
+    /<!DOCTYPE\s+html/i.test(sample) ||
+    /<html[\s>]/i.test(sample) ||
+    /Insuracloud\s*[-—]?\s*Agent\s*Link/i.test(sample);
+
+  if (res.status === 401 || res.status === 403) {
+    throw new InsuraCloudAuthError(`http_${res.status}`, sample);
+  }
+  if (looksLikeHtml || (contentType && !contentType.includes("application/json"))) {
+    throw new InsuraCloudAuthError(
+      looksLikeHtml ? "html_login_page" : `non_json_content_type:${contentType || "unknown"}`,
+      sample
+    );
+  }
+
   let data: any = null;
   try {
     data = text ? JSON.parse(text) : null;
   } catch {
-    data = { raw: text };
+    // Body looked like text/something — and isn't JSON. Treat as auth-fail.
+    throw new InsuraCloudAuthError("unparseable_body", sample);
   }
   if (!res.ok) {
-    throw new Error(`InsuraCloud ${path} ${res.status}: ${text.slice(0, 500)}`);
+    throw new Error(`InsuraCloud ${path} ${res.status}: ${sample}`);
   }
   return data;
 }
@@ -269,7 +305,20 @@ Deno.serve(async (req) => {
 
     const agentOk = anyEndpointSucceeded && Object.keys(endpointErrors).length === 0;
     const agentPartial = anyEndpointSucceeded && Object.keys(endpointErrors).length > 0;
-    const finalStatus = agentOk ? "success" : agentPartial ? "partial" : "error";
+    // If EVERY endpoint failed with InsuraCloudAuthError (or a stringified
+    // version of it), the issue is auth, not endpoint health — write a
+    // dedicated 'auth_failed' status so monitoring views can distinguish it.
+    const errorVals = Object.values(endpointErrors);
+    const allAuthFailed =
+      errorVals.length > 0 &&
+      errorVals.every((e) => /auth failed|InsuraCloudAuthError|html_login_page|http_40[13]/i.test(e));
+    const finalStatus = agentOk
+      ? "success"
+      : agentPartial
+        ? "partial"
+        : allAuthFailed
+          ? "auth_failed"
+          : "error";
     const errorSummary = Object.keys(endpointErrors).length
       ? Object.entries(endpointErrors).map(([k, v]) => `${k}: ${v}`).join(" | ")
       : null;

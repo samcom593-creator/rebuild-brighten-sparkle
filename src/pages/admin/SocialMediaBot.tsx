@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -691,7 +692,10 @@ export default function SocialMediaBot() {
                   ) : (
                     <div className="text-sm text-zinc-500">
                       <div className="mb-2">Handle: {a.channel_handle ?? "—"}</div>
-                      <Badge variant="outline">API not authed</Badge>
+                      <Badge variant="outline" className="mb-2">
+                        {a.platform === "snapchat" ? "No public count" : "API not authed"}
+                      </Badge>
+                      {a.platform === "snapchat" && <SnapManualInput handle={a.channel_handle ?? "@SamuelJamesHQ"} />}
                       {a.raw_json?.note != null && (
                         <p className="mt-2 text-xs">{String(a.raw_json.note)}</p>
                       )}
@@ -701,6 +705,11 @@ export default function SocialMediaBot() {
               );
             })}
           </div>
+          <Card className="p-4 mt-3 border-amber-500/30 bg-amber-500/5">
+            <div className="text-xs text-amber-200/90 leading-relaxed">
+              <strong className="text-amber-300">Snapchat note:</strong> Snap doesn't expose public subscriber counts unless your account is a designated Snap Star (apply once you cross 1K subscribers + post Spotlight regularly). Until then, use the "Set Snap stats" input above to log your Snap Insights numbers (in app: Profile → ⚙ → Snap Insights) — they land in <code>social_bot_analytics_snapshots</code> and feed all KPIs.
+            </div>
+          </Card>
         </TabsContent>
 
         {/* INBOUND */}
@@ -910,6 +919,56 @@ export default function SocialMediaBot() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ============================================================================
+// SnapManualInput — Snap doesn't expose API. Sam pastes numbers from Snap Insights.
+// ============================================================================
+function SnapManualInput({ handle }: { handle: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [subs, setSubs] = useState("");
+  const [storyViews, setStoryViews] = useState("");
+  const [spotlightViews, setSpotlightViews] = useState("");
+  const save = async () => {
+    const subN = parseInt(subs, 10);
+    const storyN = parseInt(storyViews, 10);
+    const spotN = parseInt(spotlightViews, 10);
+    if (Number.isNaN(subN) && Number.isNaN(storyN) && Number.isNaN(spotN)) {
+      toast.error("Enter at least one number");
+      return;
+    }
+    const { error } = await (supabase as any).from("social_bot_analytics_snapshots").insert({
+      platform: "snapchat",
+      channel_handle: handle,
+      subscribers: Number.isNaN(subN) ? null : subN,
+      views_window: Number.isNaN(spotN) ? null : spotN,
+      raw_json: {
+        source: "manual_snap_insights",
+        story_views_recent: Number.isNaN(storyN) ? null : storyN,
+        spotlight_views_total: Number.isNaN(spotN) ? null : spotN,
+        entered_by: "dashboard",
+      },
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Snap stats logged");
+    qc.invalidateQueries({ queryKey: ["social-bot-dashboard"] });
+    setOpen(false); setSubs(""); setStoryViews(""); setSpotlightViews("");
+  };
+  if (!open) {
+    return <Button size="sm" variant="outline" className="mt-1 w-full" onClick={() => setOpen(true)}>Set Snap stats</Button>;
+  }
+  return (
+    <div className="mt-2 space-y-1.5 p-2 rounded bg-zinc-900/60 border border-zinc-700">
+      <Input className="h-8 text-xs" placeholder="Subscribers" value={subs} onChange={(e) => setSubs(e.target.value)} />
+      <Input className="h-8 text-xs" placeholder="Story views (recent)" value={storyViews} onChange={(e) => setStoryViews(e.target.value)} />
+      <Input className="h-8 text-xs" placeholder="Spotlight views total" value={spotlightViews} onChange={(e) => setSpotlightViews(e.target.value)} />
+      <div className="flex gap-1.5">
+        <Button size="sm" onClick={save}>Save</Button>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+      </div>
     </div>
   );
 }

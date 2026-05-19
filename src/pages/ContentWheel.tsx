@@ -5,6 +5,8 @@ import { Crown } from "lucide-react";
 import { ContentWheelSubNav } from "@/components/contentwheel/ContentWheelSubNav";
 import { DashboardModule } from "@/components/contentwheel/DashboardModule";
 import { PlaceholderModule } from "@/components/contentwheel/PlaceholderModule";
+import { IdeationRolodexModule } from "@/components/contentwheel/IdeationRolodexModule";
+import { HookLabModule } from "@/components/contentwheel/HookLabModule";
 import { CW_MODULES, isCwModuleKey, type CwModuleKey } from "@/components/contentwheel/modules";
 
 /**
@@ -53,6 +55,10 @@ export default function ContentWheel() {
         <main className="min-w-0">
           {active === "dashboard" ? (
             <DashboardModule />
+          ) : active === "ideation" ? (
+            <IdeationRolodexModule />
+          ) : active === "hooks" ? (
+            <HookLabModule />
           ) : (
             <PlaceholderModule module={activeModule} />
           )}

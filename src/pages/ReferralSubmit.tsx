@@ -125,6 +125,16 @@ export default function ReferralSubmit() {
         <ArrowLeft className="h-4 w-4 mr-1" /> Back
       </Button>
 
+      {/* PL-064: surface the $300 / first $10k bonus prominently above the
+          form so referrers see the deal before they fill anything in. */}
+      <div className="mb-4 rounded-xl border border-primary/40 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent p-4">
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Referral bonus</p>
+        <h2 className="text-lg font-bold mt-1">$300 when your referral hits their first $10k in production.</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Paid out automatically when the agent you sent crosses the $10k AP mark. No paperwork — we track it for you in your <span className="text-foreground">My Referrals</span> tab.
+        </p>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

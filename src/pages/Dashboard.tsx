@@ -733,21 +733,10 @@ function ExecutiveDashboard({
 
       <WeekProductionCard snapshot={snapshot} />
 
-      <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+      {/* PL-026: removed "Activity And Referrals" 30-day widget per Sam.
+          Recruiting block now spans full width. */}
+      <div className="grid gap-4">
         <RecruitingGrid stats={snapshot.recruiting} />
-        <Card className="rounded-lg">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="h-4 w-4 text-primary" />
-              Activity And Referrals
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <StatTile icon={Bell} label="Referrals caught" value={number(snapshot.referrals.caught)} detail={`${number(snapshot.referrals.presentations)} referral presentations`} />
-            <StatTile icon={CalendarDays} label="Booked in-home referrals" value={number(snapshot.referrals.bookedInHome)} detail="Source: weekly daily_production inputs" />
-            <StatTile icon={Briefcase} label="Month ALP" value={money(snapshot.production.monthAlp)} detail={`${number(snapshot.production.monthDeals)} posted deals MTD`} />
-          </CardContent>
-        </Card>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">

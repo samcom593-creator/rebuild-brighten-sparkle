@@ -894,15 +894,18 @@ function AgencyCommandView() {
   });
 
   // ── Tighter active-agent + licensed-hire counts + PLE pipeline ───────
+  // PL-019: "producing" window dropped 30d → 10d so we flag stalls fast.
+  // Sam: "we fire people a lot, so put it for one who has not produced a
+  // deal inside the last ten days."
   const tight = useQuery({
     queryKey: ["agency-tight-counts"],
     refetchInterval: 60_000,
     queryFn: async () => {
-      const since30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
+      const since10 = new Date(Date.now() - 10 * 86_400_000).toISOString();
       const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
       const [dealAgents, prodAgents, licensedMtdRes, contractedMtdRes, inCourseRes, finishedRes, examScheduledRes] = await Promise.all([
-        supabase.from("deals").select("agent_id").gte("posted_at", since30).in("status", ["submitted", "active"]),
-        supabase.from("daily_production").select("agent_id").gte("production_date", since30.slice(0, 10)),
+        supabase.from("deals").select("agent_id").gte("posted_at", since10).in("status", ["submitted", "active"]),
+        supabase.from("daily_production").select("agent_id").gte("production_date", since10.slice(0, 10)),
         supabase.from("applications").select("id", { count: "exact", head: true }).gte("licensed_at", monthStart).is("terminated_at", null),
         supabase.from("applications").select("id", { count: "exact", head: true }).gte("contracted_at", monthStart).is("terminated_at", null),
         // Pre-licensing education (PLE) pipeline — from license_progress
@@ -937,28 +940,36 @@ function AgencyCommandView() {
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
-      <PageHeader
-        eyebrow="Agency · Owner Mode"
-        eyebrowIcon={<Crown className="h-3 w-3" />}
-        title="Agency Command"
-        subtitle={
-          <>
-            Live agency-wide production, pipeline, and team activity.
-            {c?.as_of && <> · As of {format(new Date(c.as_of), "MMM d, h:mm a")}</>}
-          </>
-        }
-        accent="primary"
-        actions={
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> Live · 60s refresh
-            </Badge>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/dashboard/command">CEO panel <ArrowRight className="h-4 w-4 ml-1.5" /></Link>
-            </Button>
-          </div>
-        }
-      />
+      {/* PL-018: Agency Command top widget redesign — Sam said the box
+          was "bare" and hard to read. Boosted contrast, added gradient
+          frame + scanline animation, bumped title size, swapped the
+          green-on-green live indicator to amber-pulse for visibility. */}
+      <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/[0.03] to-transparent p-5 sm:p-6 shadow-[0_0_60px_hsl(168_80%_50%/0.12)]">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+        <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-primary/[0.08] blur-3xl pointer-events-none" />
+        <PageHeader
+          eyebrow="Agency · Owner Mode"
+          eyebrowIcon={<Crown className="h-3 w-3" />}
+          title="Agency Command"
+          subtitle={
+            <>
+              Live agency-wide production, pipeline, and team activity.
+              {c?.as_of && <> · As of {format(new Date(c.as_of), "MMM d, h:mm a")}</>}
+            </>
+          }
+          accent="primary"
+          actions={
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-amber-500/15 text-amber-300 border-amber-400/50 font-semibold">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 mr-1.5 animate-pulse" /> Live · 60s refresh
+              </Badge>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/dashboard/command">CEO panel <ArrowRight className="h-4 w-4 ml-1.5" /></Link>
+              </Button>
+            </div>
+          }
+        />
+      </div>
 
       {/* ── 4 KPI TILES (real verified numbers) ─────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -981,9 +992,9 @@ function AgencyCommandView() {
         />
         <KpiTile
           icon={Users}
-          label="Producing agents · 30d"
+          label="Producing agents · 10d"
           value={`${fmtNum(c?.producing_agents_30d ?? 0)} / ${fmtNum(tight.data?.active30d ?? 0)}`}
-          subValue={`Active = any deal or production logged in last 30d`}
+          subValue={`Active = any deal or production logged in last 10d`}
           color="text-primary"
           loading={ceo.isLoading || tight.isLoading}
         />

@@ -8,7 +8,7 @@
 //   2. KPI strip — total clients, SOLD policies, in-flight, untouched/stale
 //   3. Stage funnel — NEW_INITIAL → WORKING → ALMOST_THERE → SOLD
 //   4. State distribution map (bar)
-//   5. Callbacks/follow-ups due (priority list)
+//   5. Chargebacks watchlist (priority list — PL-044)
 //   6. Recent additions
 //   7. Full client list — search, stage filter, sort
 
@@ -170,7 +170,7 @@ export default function ClientPipeline() {
       .slice(0, 10);
   }, [rows]);
 
-  // Callbacks due — next 7 days
+  // Chargebacks watch — next 7 days (PL-044: renamed from callbacks)
   const callbacks = useMemo(() => {
     const now = Date.now();
     const horizon = now + 7 * 86_400_000;
@@ -329,7 +329,7 @@ export default function ClientPipeline() {
         </GlassCard>
       </div>
 
-      {/* Callbacks due + Recent additions */}
+      {/* Chargebacks watchlist + Recent additions */}
       <div className="grid gap-3 lg:grid-cols-2">
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">

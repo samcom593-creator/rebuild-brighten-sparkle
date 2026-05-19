@@ -80,7 +80,9 @@ export function DealsTicker() {
     if (!el) return;
     let raf: number;
     let pos = 0;
-    const speed = 0.5; // px per frame
+    // PL-011: bumped from 0.5 → 1.2 px/frame so the ticker reads as
+    // "live" instead of "frozen." Sam: "this part isn't moving at all."
+    const speed = 1.2;
 
     const tick = () => {
       pos += speed;

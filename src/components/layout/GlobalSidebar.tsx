@@ -559,12 +559,15 @@ export function GlobalSidebar({
                         <button
                           key={result.id}
                           onClick={() => {
-                            navigate(`/dashboard/applicants`);
+                            // PL-016: previously routed everyone to /applicants
+                            // and the row was un-clickable for direct profile
+                            // view. Deep-link straight to the agent profile.
+                            navigate(`/agent/${result.id}`);
                             setSearchQuery("");
                             setSearchResults([]);
                             setShowSearch(false);
                           }}
-                          className="w-full text-left px-3 py-2 hover:bg-white/[0.03] transition-colors"
+                          className="w-full text-left px-3 py-2 hover:bg-white/[0.04] transition-colors"
                         >
                           <p className="text-sm font-medium truncate text-[#e2e8f0]">{result.name}</p>
                           <p className="text-xs text-[#64748b] truncate">{result.email}</p>

@@ -25,10 +25,15 @@ export default function CompTiersSettings() {
   const { data: agents = [], isLoading } = useQuery({
     queryKey: ["comp-tiers"],
     queryFn: async (): Promise<AgentComp[]> => {
+      // PL-075: show only active agents — Sam: "I see a bunch of agents
+      // who aren't active. I only want to honestly see active agents."
+      // is_deactivated=false + status='active' both required (legacy data
+      // had rows with is_deactivated=false AND status='inactive').
       const { data } = await supabase
         .from("agents")
         .select("id, display_name, contract_percentage, override_rate, insuracloud_user_id, user_id, profile:profiles!agents_profile_id_fkey(full_name)")
         .eq("is_deactivated", false)
+        .eq("status", "active")
         .order("display_name");
       const rolesRes = await supabase.from("user_roles").select("user_id, role");
       const roleMap = new Map((rolesRes.data || []).map((r: any) => [r.user_id, r.role]));

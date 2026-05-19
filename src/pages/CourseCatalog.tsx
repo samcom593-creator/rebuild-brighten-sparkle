@@ -93,6 +93,41 @@ export default function CourseCatalog() {
     checkAvatar();
   }, [user?.id]);
 
+  // PL-067 license gate. Treat the user as licensed if any matching agent /
+  // application row is licensed or further along.
+  const [isLicensed, setIsLicensed] = useState(false);
+  const [licenseCheckLoading, setLicenseCheckLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      if (!user?.id) return;
+      setLicenseCheckLoading(true);
+      try {
+        // Agents table may already have a license flag; otherwise fall back
+        // to applications.license_status / license_progress for this user.
+        const [agentRes, appRes] = await Promise.all([
+          supabase.from("agents").select("is_licensed").eq("user_id", user.id).maybeSingle(),
+          supabase
+            .from("applications")
+            .select("license_status, license_progress")
+            .eq("email", user.email || "__nope__")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+        const agentLicensed = (agentRes.data as any)?.is_licensed === true;
+        const app = appRes.data as { license_status?: string; license_progress?: string } | null;
+        const appLicensed = app?.license_status === "licensed"
+          || ["licensed", "fingerprints_done", "waiting_on_license"].includes(app?.license_progress || "");
+        if (!cancelled) setIsLicensed(agentLicensed || appLicensed);
+      } finally {
+        if (!cancelled) setLicenseCheckLoading(false);
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, [user?.id, user?.email]);
+
   useEffect(() => {
     const autoProvision = async () => {
       if (!agentNotFound || autoProvisionAttempted || !user?.id) return;
@@ -145,6 +180,29 @@ export default function CourseCatalog() {
         <h1 className="text-2xl font-bold mb-2" style={{ fontFamily: "Syne" }}>Course Access Pending</h1>
         <p className="text-muted-foreground mb-6">Your manager hasn't enrolled you yet. Contact your manager for access.</p>
         <Button onClick={() => navigate("/agent-login")} className="gap-2">Sign In Manually</Button>
+      </div>
+    );
+  }
+
+  // PL-067: Course catalog is for LICENSED agents only.
+  // Sam: "the course catalog... should only be for applicants who have
+  // their license already." Unlicensed users are routed back to pre-licensing.
+  if (licenseCheckLoading) {
+    return <div className="max-w-4xl mx-auto py-20 text-center text-muted-foreground">Checking your license status…</div>;
+  }
+  if (!isLicensed) {
+    return (
+      <div className="max-w-3xl mx-auto text-center py-20 space-y-5">
+        <Lock className="h-14 w-14 mx-auto text-amber-400" />
+        <h1 className="text-2xl font-bold" style={{ fontFamily: "Syne" }}>Pre-licensing comes first</h1>
+        <p className="text-muted-foreground">
+          The APEX course catalog is for licensed agents only. Finish your
+          pre-licensing course, pass the state exam, and we'll unlock this for you.
+        </p>
+        <div className="flex flex-wrap justify-center gap-2 pt-2">
+          <Button onClick={() => navigate("/get-licensed")} variant="outline">Pre-licensing path</Button>
+          <Button onClick={() => navigate("/dashboard")}>Back to dashboard</Button>
+        </div>
       </div>
     );
   }

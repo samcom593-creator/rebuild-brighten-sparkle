@@ -584,6 +584,19 @@ export default function Apply() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Live trust ribbon — top of every Apply load so visitors immediately
+          see the engine is firing. Real counts driven by landing_live_stats(). */}
+      <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border-b border-primary/30">
+        <div className="container mx-auto px-4 py-2 flex items-center justify-center gap-3 text-[11px] uppercase tracking-[0.18em] font-display font-semibold">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
+            <span className="relative h-2 w-2 rounded-full bg-emerald-400" />
+          </span>
+          <span className="text-emerald-300">APEX is recruiting RIGHT NOW</span>
+          <span className="hidden sm:inline text-muted-foreground">·</span>
+          <span className="hidden sm:inline text-foreground/80">22 carriers · 95 active agents · Sam reviews every application</span>
+        </div>
+      </div>
       {/* Header */}
       <header className="glass-strong border-b border-border">
         <div className="container mx-auto px-4 py-4">

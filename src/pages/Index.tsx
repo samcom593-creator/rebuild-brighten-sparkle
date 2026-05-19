@@ -16,7 +16,11 @@ const ApexLeadsSection = lazy(() => import("@/components/landing/ApexLeadsSectio
 const InstagramGrowthSection = lazy(() => import("@/components/landing/InstagramGrowthSection").then((mod) => ({ default: mod.InstagramGrowthSection })));
 
 function SectionFallback() {
-  return <div className="mx-auto h-24 max-w-5xl animate-pulse rounded-2xl bg-white/[0.03]" />;
+  // Dark glass placeholder while lazy chunks load. Was `bg-white/[0.03]` —
+  // technically a 3% tint but read as "white shimmer" on slow connections.
+  return (
+    <div className="mx-auto h-24 max-w-5xl rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/5 via-zinc-900/40 to-transparent animate-pulse" />
+  );
 }
 
 const Index = () => {

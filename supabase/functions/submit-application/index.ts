@@ -95,6 +95,7 @@ const SubmitApplicationSchema = z.object({
 
   availability: z.string().min(1).max(500),
   referralSource: z.string().max(500).optional().nullable(),
+  customReferrer: z.string().trim().max(120).optional().nullable(),
   
   // New: selected referral agent ID (the manager assigned)
   selectedReferralAgentId: z.string().uuid().optional().nullable(),
@@ -319,6 +320,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     previousCompany: data.previousCompany ? sanitizeHtml(data.previousCompany) : undefined,
     availability: sanitizeHtml(data.availability),
     referralSource: data.referralSource ? sanitizeHtml(data.referralSource) : undefined,
+    customReferrer: data.customReferrer ? sanitizeHtml(data.customReferrer) : undefined,
     instagramHandle: data.instagramHandle ? sanitizeHtml(data.instagramHandle) : undefined,
   };
 
@@ -470,6 +472,12 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280;">Referred By:</td>
                   <td style="padding: 8px 0; font-weight: bold;">${sanitizeHtml(managerInfo.name)}</td>
+                </tr>
+                ` : ''}
+                ${!managerInfo && sanitized.customReferrer ? `
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280;">Referred By:</td>
+                  <td style="padding: 8px 0; font-weight: bold;">${sanitized.customReferrer}</td>
                 </tr>
                 ` : ''}
               </table>
@@ -881,6 +889,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const data: SubmitApplicationRequest = parsed.data;
+    const customReferrer = (data.customReferrer ?? "").trim();
+    const manualReferralNote = customReferrer ? `Referred by: ${customReferrer}` : null;
 
     // Normalize instagram handle
     const instagram = (data.instagramHandle ?? "").trim();
@@ -936,7 +946,7 @@ const handler = async (req: Request): Promise<Response> => {
       const incomingReferrer = data.selectedReferralAgentId || data.recruiterId || null;
       const { data: existingFull } = await supabaseAdmin
         .from("applications")
-        .select("id, assigned_agent_id, referral_manager_id, recruiter_id")
+        .select("id, assigned_agent_id, referral_manager_id, recruiter_id, notes")
         .eq("id", existingApp.id)
         .maybeSingle();
 
@@ -976,6 +986,15 @@ const handler = async (req: Request): Promise<Response> => {
           }
         }
         referrerAdopted = true;
+      }
+
+      if (manualReferralNote) {
+        const existingNotes = (existingFull?.notes ?? "").toString();
+        update.notes = existingNotes.includes(manualReferralNote)
+          ? existingNotes
+          : existingNotes
+            ? `${existingNotes}\n${manualReferralNote}`
+            : manualReferralNote;
       }
 
       await supabaseAdmin.from("applications").update(update).eq("id", existingApp.id);
@@ -1053,7 +1072,7 @@ const handler = async (req: Request): Promise<Response> => {
       desired_income: null,
       availability: data.availability,
       referral_source: data.referralSource ?? null,
-      notes: null,
+      notes: manualReferralNote,
       
       // Assign to the selected referral agent. PL-082: when no referrer is
       // picked, route directly to Sam James instead of leaving null (the

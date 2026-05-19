@@ -16,7 +16,6 @@ import {
   CheckCircle2,
   Loader2,
   Instagram,
-  Users,
   Heart,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -112,7 +111,6 @@ const steps = [
   { id: 2, title: "Experience", icon: Briefcase },
   { id: 3, title: "Licensing", icon: FileText },
   { id: 4, title: "Goals", icon: CheckCircle2 },
-  { id: 5, title: "Referral", icon: Users },
 ];
 
 export default function Apply() {
@@ -126,11 +124,9 @@ export default function Apply() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   // VSL gate fully removed — no video, no gate, no placeholder state.
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
-  const [applicationId, setApplicationId] = useState<string | null>(null);
   const [activeAgents, setActiveAgents] = useState<ActiveAgent[]>([]);
   const [selectedReferrer, setSelectedReferrer] = useState<string>("");
   const [customReferrer, setCustomReferrer] = useState("");
-  const [savedLicenseStatus, setSavedLicenseStatus] = useState<string>("unlicensed");
   
   const [smsConsentError, setSmsConsentError] = useState(false);
   const smsConsentRef = useRef<HTMLDivElement>(null);
@@ -226,7 +222,7 @@ export default function Apply() {
   // Warn on page unload if form has progress
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (isSubmittedRef.current || currentStep >= 5) return;
+      if (isSubmittedRef.current || currentStep >= steps.length) return;
       const values = getValues();
       if (values.firstName || values.email || values.phone) {
         e.preventDefault();
@@ -386,12 +382,12 @@ export default function Apply() {
       return;
     }
     
-    // Auto-save partial application after each step (except step 5 which is referral)
-    if (currentStep <= 4) {
+    // Auto-save partial application after each step.
+    if (currentStep <= steps.length) {
       savePartialApplication(currentStep);
     }
     
-    if (currentStep < 5) {
+    if (currentStep < steps.length) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -448,6 +444,10 @@ export default function Apply() {
 
             availability: data.availability,
             referralSource: data.referralSource,
+            customReferrer:
+              selectedReferrer === "other" && customReferrer.trim()
+                ? customReferrer.trim()
+                : null,
 
             // Referral attribution.
             // 1. Prefer the ?ref= URL slug (referrerId resolved server-side).
@@ -486,17 +486,19 @@ export default function Apply() {
       // Mark partial application as converted
       await markAsConverted();
 
-      // Save application ID and license status for referral step
-      setApplicationId(submitResult.applicationId);
-      setSavedLicenseStatus(data.licenseStatus);
-
       // Email notifications are now handled by submit-application function
       // No need to call send-application-notification separately
 
-      toast.success("Application submitted! One more step...");
-      
-      // Move to referral step
-      setCurrentStep(5);
+      toast.success("Application submitted. Routing you to your next step...");
+
+      // Referral credit is captured before submit, so there is no second
+      // post-submit referral gate to block the applicant.
+      const aidQuery = `?aid=${encodeURIComponent(submitResult.applicationId)}`;
+      if (data.licenseStatus === "licensed") {
+        navigate(`/apply/success/licensed${aidQuery}`);
+      } else {
+        navigate(`/apply/success/unlicensed${aidQuery}`);
+      }
     } catch (error: any) {
       console.error("Error submitting application:", error);
       
@@ -530,56 +532,6 @@ export default function Apply() {
       setIsSubmitting(false);
     }
   };
-
-  const handleReferralSubmit = async () => {
-    if (!applicationId) return;
-
-    setIsSubmitting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("update-application-referral", {
-        body: {
-          applicationId,
-          selectedReferrer,
-          customReferrer,
-        },
-      });
-
-      // supabase.functions.invoke returns `error` for any non-2xx, BUT a 409
-      // with code=ALREADY_CLAIMED is the expected path because the
-      // submit-application edge fn auto-assigns the applicant to Sam
-      // (PL-082) when no referrer was selected. So when the user picks at
-      // step 5, the server-side guard returns 409 ALREADY_CLAIMED — that's
-      // success-equivalent here, the applicant is already routed.
-      const payloadError = (data as any)?.error;
-      const errCode = (data as any)?.code;
-      const alreadyClaimed = errCode === "ALREADY_CLAIMED";
-      if (!alreadyClaimed && (error || payloadError)) {
-        const msg = payloadError ?? error?.message ?? "Couldn't save your referrer choice.";
-        console.error("update-application-referral failed:", msg, { data, error });
-        toast.error(typeof msg === "string" ? msg : "Couldn't save your referrer choice.");
-        // Don't navigate — keep the user on this step so they can retry or change selection.
-        return;
-      }
-      if (alreadyClaimed) {
-        toast.success("You're in. Routing you to your next step…");
-      }
-
-      // Carry the applicationId forward so the confirmation page can hydrate
-      // assigned manager + next seminar + status step via get_application_status.
-      const aidQuery = applicationId ? `?aid=${encodeURIComponent(applicationId)}` : "";
-      if (savedLicenseStatus === "licensed") {
-        navigate(`/apply/success/licensed${aidQuery}`);
-      } else {
-        navigate(`/apply/success/unlicensed${aidQuery}`);
-      }
-    } catch (err) {
-      console.error("Network error updating referral:", err);
-      toast.error("Network error. Please retry.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
 
   const toggleState = (stateValue: string) => {
     setSelectedStates(prev => 
@@ -1032,7 +984,7 @@ export default function Apply() {
                         <Label>
                           {referrerName
                             ? `Referred by ${referrerName} ✓`
-                            : "How did you hear about APEX? (optional)"}
+                            : "Where did you find APEX? (optional)"}
                         </Label>
                         <Select value={watch("referralSource") || undefined} onValueChange={(value) => setValue("referralSource", value, { shouldValidate: true })}>
                           <SelectTrigger className="bg-input">
@@ -1054,20 +1006,22 @@ export default function Apply() {
                           identified the referrer. */}
                       {!referrerId && (
                         <div className="space-y-2">
-                          <Label>Who referred you to APEX?</Label>
+                          <Label>Which APEX agent should get credit?</Label>
                           <Select
                             value={selectedReferrer}
                             onValueChange={setSelectedReferrer}
                           >
                             <SelectTrigger className="bg-input">
-                              <SelectValue placeholder="Choose who referred you (optional)" />
+                              <SelectValue placeholder="Choose an agent (optional)" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">I found APEX on my own</SelectItem>
                               {activeAgents.map((agent) => (
                                 <SelectItem key={agent.id} value={agent.id}>
                                   <div className="flex items-center gap-2 py-0.5">
+                                    <ManagerAvatar name={agent.name} src={agent.avatarUrl ?? null} />
                                     <span className="font-medium">{agent.name}</span>
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-primary">Manager</Badge>
                                     {agent.instagramHandle && (
                                       <span className="text-xs text-muted-foreground">@{agent.instagramHandle}</span>
                                     )}
@@ -1085,6 +1039,9 @@ export default function Apply() {
                               className="bg-input mt-2"
                             />
                           )}
+                          <p className="text-xs text-muted-foreground">
+                            We lock this in before submission so the right leader gets credit immediately.
+                          </p>
                         </div>
                       )}
 
@@ -1151,78 +1108,9 @@ export default function Apply() {
                     </div>
                   )}
 
-                  {/* Step 5: Referral Selection OR Motivation */}
-                  {currentStep === 5 && (
-                    <div className="space-y-6">
-                      <div className="text-center">
-                        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                          <Users className="h-8 w-8 text-primary" />
-                        </div>
-                        <h2 className="text-2xl font-bold mb-2">One More Thing!</h2>
-                        <p className="text-muted-foreground">
-                          Who referred you to APEX Financial?
-                        </p>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>Select your referrer</Label>
-                          <Select 
-                            value={selectedReferrer}
-                            onValueChange={setSelectedReferrer}
-                          >
-                            <SelectTrigger className="bg-input">
-                              <SelectValue placeholder="Choose who referred you" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">I found APEX on my own</SelectItem>
-                             {activeAgents.map((agent) => (
-                                <SelectItem key={agent.id} value={agent.id}>
-                                  <div className="flex items-center gap-2 py-0.5">
-                                    <ManagerAvatar name={agent.name} src={agent.avatarUrl ?? null} />
-                                    <span className="font-medium">{agent.name}</span>
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-primary">Manager</Badge>
-                                    {agent.instagramHandle && (
-                                      <span className="text-xs text-muted-foreground">@{agent.instagramHandle}</span>
-                                    )}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                              <SelectItem value="other">Someone else not listed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {selectedReferrer === "other" && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            className="space-y-2"
-                          >
-                            <Label htmlFor="customReferrer">Who referred you?</Label>
-                            <Input
-                              id="customReferrer"
-                              value={customReferrer}
-                              onChange={(e) => setCustomReferrer(e.target.value)}
-                              placeholder="Enter their name"
-                              className="bg-input"
-                            />
-                          </motion.div>
-                        )}
-                      </div>
-
-                      <div className="p-4 rounded-lg bg-muted/50 border border-border">
-                        <p className="text-sm text-muted-foreground text-center">
-                          This helps us give credit to our team members who spread the word about APEX.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-
                   {/* Navigation Buttons */}
                   <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
-                    {currentStep > 1 && currentStep < 5 ? (
+                    {currentStep > 1 && currentStep <= steps.length ? (
                       <GradientButton
                         type="button"
                         variant="outline"
@@ -1235,12 +1123,12 @@ export default function Apply() {
                       <div />
                     )}
 
-                    {currentStep < 4 ? (
+                    {currentStep < steps.length ? (
                       <GradientButton type="button" onClick={nextStep}>
                         Next Step
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </GradientButton>
-                    ) : currentStep === 4 ? (
+                    ) : (
                       <GradientButton
                         type="button"
                         disabled={isSubmitting}
@@ -1272,25 +1160,7 @@ export default function Apply() {
                           </>
                         ) : (
                           <>
-                            Submit Application
-                            <CheckCircle2 className="h-4 w-4 ml-2" />
-                          </>
-                        )}
-                      </GradientButton>
-                    ) : (
-                      <GradientButton 
-                        type="button" 
-                        onClick={handleReferralSubmit}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Finishing...
-                          </>
-                        ) : (
-                          <>
-                            Complete Application
+                            Continue Application
                             <CheckCircle2 className="h-4 w-4 ml-2" />
                           </>
                         )}

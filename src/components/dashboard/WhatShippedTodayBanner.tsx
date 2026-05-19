@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Apply continue fixed + duplicate referral removed",
+    detail: "Apply is back to 4 steps: agent credit is captured before submit, Continue Application routes straight to the success page, and manual referrers persist without a second referral screen.",
+  },
+  {
+    ts: "today",
     label: "Apply submission unblocked",
     detail: "Applicants were stuck on step 5 with a red toast. Treat ALREADY_CLAIMED as success — they now land on /apply/success cleanly.",
     commit: "5e11e11e",

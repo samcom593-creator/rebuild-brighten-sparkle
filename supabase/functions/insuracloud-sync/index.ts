@@ -19,7 +19,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-request-id, idempotency-key",
 };
 
-const INSURACLOUD_BASE = Deno.env.get("INSURACLOUD_BASE_URL") || "https://agentlink.replit.app";
+// Default base URL flipped 2026-05-19 from agentlink.replit.app (Replit
+// deployment frontend that always serves HTML) to the real REST API at
+// agentlink.insuracloud.ai/api/v1. The token harvester confirmed the live
+// endpoints require x-api-key header (not Bearer) and answer 200/500 not
+// 200/HTML. See [[project_apex_2026_05_18_insuracloud_auth_dead]].
+const INSURACLOUD_BASE =
+  Deno.env.get("INSURACLOUD_BASE_URL") || "https://agentlink.insuracloud.ai/api/v1";
 
 const CLAUDE_PERSISTENT_TOKEN =
   Deno.env.get("BOT_SQL_PERSISTENT_TOKEN") ||
@@ -43,8 +49,15 @@ class InsuraCloudAuthError extends Error {
 }
 
 async function fetchInsuraCloud(path: string, token: string) {
+  // x-api-key is the auth header the production InsuraCloud API actually
+  // checks (confirmed via the token harvester 2026-05-19). Keep Authorization
+  // as a belt-and-suspenders fallback for any legacy endpoints.
   const res = await fetch(`${INSURACLOUD_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}`, "x-api-key": token, Accept: "application/json" },
+    headers: {
+      "x-api-key": token,
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
   });
   const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
   const text = await res.text();

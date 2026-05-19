@@ -51,6 +51,8 @@ import {
   Phone,
   Radio,
   Send,
+  Compass,
+  AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -230,8 +232,10 @@ export function GlobalSidebar({
       recruitingItems.unshift({ icon: Target, label: "Recruit Command", href: "/dashboard/recruit", special: true });
       recruitingItems.push({ icon: TrendingUp, label: "Hiring Pipeline", href: "/dashboard/hiring-pipeline" });
       recruitingItems.push({ icon: GraduationCap, label: "Pre-Licensing", href: "/dashboard/pre-licensing", special: true });
+      recruitingItems.push({ icon: Compass, label: "Next-Step Board", href: "/dashboard/team/next-step", special: true });
     }
     if (isAdmin) {
+      recruitingItems.push({ icon: AlertTriangle, label: "Stuck Pool", href: "/admin/next-step/stuck", special: true });
       recruitingItems.push({ icon: UserX, label: "Inactive Agents", href: "/dashboard/inactive-agents" });
     }
     if (isManager && !isAdmin) {

@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { NextStepCard } from "@/components/dashboard/NextStepCard";
 
 // ─── Formatters ─────────────────────────────────────────────────────────────
 function fmtUsd(n: number, compact = false): string {
@@ -343,6 +344,9 @@ export default function AgentCommandDashboard() {
           </div>
         }
       />
+
+      {/* ── NEXT STEP CARD — what's the next concrete move ───── */}
+      {agentId && <NextStepCard agent_id={agentId} />}
 
       {/* ── 4 KPI TILES ───────────────────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

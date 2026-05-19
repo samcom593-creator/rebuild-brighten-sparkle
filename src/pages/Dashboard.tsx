@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 
 import AgentCommandDashboard from "@/pages/AgentCommandDashboard";
+import { UnclaimedLeadsCommandCard } from "@/components/dashboard/UnclaimedLeadsCommandCard";
+import { XcelStalledCard } from "@/components/dashboard/XcelStalledCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -688,6 +690,14 @@ function ExecutiveDashboard({
           </>
         }
       />
+
+      {/* Funnel-leak command row — biggest two leaks live in one strip
+          at the top of every admin dashboard load: unclaimed applicants
+          (recruiting side) + stalled XCEL students (licensing side). */}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <UnclaimedLeadsCommandCard />
+        <XcelStalledCard />
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile icon={DollarSign} label="Today ALP" value={money(snapshot.production.todayAlp)} detail={`${number(snapshot.production.todayDeals)} posted deals today`} />

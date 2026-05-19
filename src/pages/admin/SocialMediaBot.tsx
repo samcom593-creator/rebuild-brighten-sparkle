@@ -286,7 +286,7 @@ export default function SocialMediaBot() {
     return (
       <div className="p-6">
         <EmptyState
-          icon={AlertTriangle}
+          icon={<AlertTriangle className="h-7 w-7" />}
           title="Social Media Bot data unavailable"
           description="The bot's Supabase view is unreachable. Confirm RLS + auth, or check ~/business-ops/social-media-bot/heartbeat.txt for the daemon."
           action={<Button onClick={() => refetch()}>Retry</Button>}
@@ -298,10 +298,12 @@ export default function SocialMediaBot() {
   return (
     <div className="space-y-6 p-4 md:p-6 max-w-[1400px] mx-auto">
       <PageHeader
-        icon={Sparkles}
+        eyebrow="Content engine"
+        eyebrowIcon={<Sparkles className="h-3 w-3" />}
         title="Social Media Bot"
         subtitle="APEX Standard content engine — daemon + chat-session intel · auto-refresh every 30s"
-        action={
+        accent="amber"
+        actions={
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefetching ? "animate-spin" : ""}`} />
             Refresh
@@ -433,7 +435,7 @@ export default function SocialMediaBot() {
             </div>
             {(data.today_pack ?? []).length === 0 ? (
               <EmptyState
-                icon={FileText}
+                icon={<FileText className="h-7 w-7" />}
                 title="No drafts queued for today"
                 description="The morning daemon fires at 6:03 AM CT. Manually trigger with: launchctl start com.samjames.apex.social-media-bot"
               />
@@ -614,7 +616,7 @@ export default function SocialMediaBot() {
                 })}
               {(cwHooks ?? []).length === 0 && (
                 <EmptyState
-                  icon={Anchor}
+                  icon={<Anchor className="h-7 w-7" />}
                   title="No hooks in ContentWheel yet"
                   description="Seed cw_ideas + cw_hooks via the Sandcastles Lab tab → paste research → run engine → insert. Today's pack already wrote 11 ideas and 12 hooks; refresh if you don't see them."
                 />
@@ -830,7 +832,7 @@ export default function SocialMediaBot() {
             </div>
             {(data.inbound ?? []).length === 0 ? (
               <EmptyState
-                icon={MessageSquare}
+                icon={<MessageSquare className="h-7 w-7" />}
                 title="No inbound DMs captured yet"
                 description="The hourly daemon (9 AM–9 PM CT) scans YT comments. TT/IG/Snap DMs await API auth. Manual DMs can be inserted via the CRM."
               />
@@ -877,7 +879,7 @@ export default function SocialMediaBot() {
               </pre>
             ) : (
               <EmptyState
-                icon={Crown}
+                icon={<Crown className="h-7 w-7" />}
                 title="No scoreboard yet"
                 description="The Monday 7:03 AM CT daemon ships the weekly scoreboard."
               />

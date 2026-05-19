@@ -175,7 +175,13 @@ Deno.serve(async (req) => {
   }
 
   // ─── Execute ──
+  // 2026-05-19: JSON.stringify can't handle BigInt — Postgres BIGINT / COUNT(*) /
+  // SUM() / EXTRACT(epoch) all come back as JS BigInt and throw. We now walk
+  // the response and coerce BigInt → string (preserves precision; loses BigInt
+  // type but no caller of this fn distinguishes BigInt from string anyway).
   const started = Date.now();
+  const stripBigInt = (_k: string, v: unknown) =>
+    typeof v === "bigint" ? v.toString() : v;
   try {
     const { rows, rowCount } = await execViaPostgres(query);
     return new Response(JSON.stringify({
@@ -183,7 +189,7 @@ Deno.serve(async (req) => {
       rows,
       rowCount,
       duration_ms: Date.now() - started,
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }, stripBigInt), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     return new Response(JSON.stringify({
       ok: false,

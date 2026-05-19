@@ -468,12 +468,17 @@ async function handlePaymentFailed(supabase: any, event: Stripe.Event): Promise<
   const obj = event.data.object as any;
   const isInvoice = event.type === "invoice.payment_failed";
 
+  // Stripe API ≥2024 moved invoice.subscription to invoice.parent.subscription_details.subscription
+  const subId = isInvoice
+    ? (obj.subscription || obj.parent?.subscription_details?.subscription || null)
+    : null;
+
   await supabase.from("stripe_failed_payments").insert({
     invoice_id: isInvoice ? obj.id : null,
     payment_intent: isInvoice ? obj.payment_intent : obj.id,
     customer_id: obj.customer || null,
     customer_email: obj.customer_email || obj.receipt_email || obj.billing_details?.email || null,
-    subscription_id: isInvoice ? obj.subscription : null,
+    subscription_id: subId,
     amount_due_cents: isInvoice ? obj.amount_due : obj.amount,
     attempt_count: isInvoice ? obj.attempt_count : 1,
     next_payment_attempt: isInvoice && obj.next_payment_attempt ? new Date(obj.next_payment_attempt * 1000).toISOString() : null,

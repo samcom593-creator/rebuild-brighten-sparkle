@@ -194,9 +194,9 @@ export function GlobalSidebar({
     //    Routes still exist for deep links.
     const productionItems: NavItem[] = [
       { icon: Edit3, label: "Log Numbers", href: "/numbers", special: true },
-      // Agent Pipeline = client/policy servicing book of business — separate
+      // Client Pipeline = client/policy servicing book of business — separate
       // from Recruit Pipeline (applicants/licensing) which lives under RECRUITING.
-      { icon: Flame, label: "Agent Pipeline", href: "/dashboard/agent-pipeline", special: true },
+      { icon: Flame, label: "Client Pipeline", href: "/dashboard/agent-pipeline", special: true },
       { icon: DollarSign, label: "My Deals", href: "/dashboard/my-deals" },
       { icon: Wallet, label: "My Commissions", href: "/dashboard/my-commissions" },
       { icon: Trophy, label: "Leaderboard", href: "/dashboard/leaderboard", special: true },
@@ -243,9 +243,8 @@ export function GlobalSidebar({
       { icon: Plus, label: "Submit Referral", href: "/dashboard/referrals/new", special: true },
       { icon: Briefcase, label: "My Referrals", href: "/dashboard/referrals/mine" },
     ];
-    if (isAdmin || isManager) {
-      referralItems.push({ icon: TrendingUp, label: "Referral Pipeline", href: "/dashboard/referrals" });
-    }
+    // Referral Pipeline removed from sidebar (PL-031) — redundant with My Referrals.
+    // Route /dashboard/referrals still exists for admin deep-link.
     sections.push({ label: "REFERRALS", items: referralItems });
 
     // 5. SEMINAR — group interview workflow.
@@ -281,26 +280,32 @@ export function GlobalSidebar({
       adminItems.push({ icon: ShoppingCart, label: "Offers", href: "/dashboard/offers" });
       adminItems.push({ icon: Library, label: "Content Library", href: "/dashboard/content" });
       adminItems.push({ icon: Zap, label: "Automation Hub", href: "/dashboard/automation" });
-      adminItems.push({ icon: Activity, label: "Automation Health", href: "/dashboard/automation-health" });
       adminItems.push({ icon: Shield, label: "System Health", href: "/dashboard/system-health" });
-      adminItems.push({ icon: Bell, label: "Notification Hub", href: "/dashboard/notifications" });
-      adminItems.push({ icon: UserCog, label: "Accounts", href: "/dashboard/accounts" });
       adminItems.push({ icon: Route, label: "Hiring Routing", href: "/dashboard/hiring-routing" });
       adminItems.push({ icon: DollarSign, label: "Comp Tiers", href: "/dashboard/comp-tiers" });
       adminItems.push({ icon: Plug, label: "Integrations", href: "/dashboard/integrations" });
       adminItems.push({ icon: Phone, label: "ReadyMode Sync", href: "/dashboard/readymode" });
       adminItems.push({ icon: Zap, label: "AgentLink Sync", href: "/dashboard/agentlink-sync", special: true });
-      adminItems.push({ icon: Database, label: "AgentLink Vault", href: "/dashboard/agentlink-vault", special: true });
-      adminItems.push({ icon: Sparkles, label: "Conduct Center", href: "/dashboard/conduct", special: true });
-      adminItems.push({ icon: ShieldAlert, label: "Agent Strikes", href: "/dashboard/strikes", special: true });
       adminItems.push({ icon: Receipt, label: "Charges Audit", href: "/dashboard/charges-audit", special: true });
       adminItems.push({ icon: Book, label: "Book Quality", href: "/dashboard/book-quality", special: true });
       adminItems.push({ icon: Radio, label: "Social Media Bot", href: "/dashboard/admin/social-media-bot", special: true });
+      adminItems.push({ icon: Crown, label: "ContentWheel", href: "/admin/contentwheel", special: true });
       adminItems.push({ icon: Shield, label: "Setup", href: "/dashboard/setup" });
     }
-    adminItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });
     adminItems.push({ icon: Settings, label: "Settings", href: "/dashboard/settings" });
+    // Notifications moved to bottom — rarely used per Sam's 2026-05-18 punch list.
+    if (isAdmin) {
+      adminItems.push({ icon: Bell, label: "Notification Hub", href: "/dashboard/notifications" });
+    }
+    adminItems.push({ icon: Bell, label: "My Notifications", href: "/dashboard/notifications/mine" });
     sections.push({ label: "ADMIN", items: adminItems });
+    // Removed from sidebar 2026-05-18 (Sam's punch list — routes still resolve):
+    //   - Accounts            (PL-030)
+    //   - Purchase Leads      (PL-029)
+    //   - Conduct Center      (PL-027)
+    //   - Agent Strikes       (PL-028)
+    //   - Automation Health   (PL-073, folds into Automation Hub)
+    //   - AgentLink Vault     (PL-078, folds into CRM)
 
     return sections;
   }, [isAdmin, isManager, isAgent, isPresenter]);

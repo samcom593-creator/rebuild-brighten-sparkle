@@ -135,6 +135,7 @@ const ConductCommandCenter = lazy(() => import("./pages/ConductCommandCenter"));
 const PreLicensing = lazy(() => import("./pages/PreLicensing"));
 const BookReconciliation = lazy(() => import("./pages/BookReconciliation"));
 const ReadyModeIntegration = lazy(() => import("./pages/ReadyModeIntegration"));
+const ContentWheel = lazy(() => import("./pages/ContentWheel"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
@@ -312,6 +313,8 @@ const App = () => (
                            <Route path="/dashboard/integrations" element={<ProtectedRoute requireAdmin><IntegrationsSettings /></ProtectedRoute>} />
                            <Route path="/dashboard/my-team" element={<ProtectedRoute><MyTeam /></ProtectedRoute>} />
                            <Route path="/dashboard/my-deals" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
+                           {/* ContentWheel — personal-brand + recruiting Content OS (admin-only). */}
+                           <Route path="/admin/contentwheel" element={<ProtectedRoute requireAdmin><ContentWheel /></ProtectedRoute>} />
                            {/* Conduct: admin issues strikes; agents view their own record. */}
                            <Route path="/dashboard/strikes" element={<ProtectedRoute requireAdmin><AdminStrikes /></ProtectedRoute>} />
                            <Route path="/dashboard/my-strikes" element={<ProtectedRoute><MyStrikes /></ProtectedRoute>} />

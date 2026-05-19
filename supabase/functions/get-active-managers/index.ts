@@ -61,27 +61,61 @@ const handler = async (req: Request): Promise<Response> => {
     // 3. Batch fetch profiles
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from("profiles")
-      .select("user_id, full_name, instagram_handle")
+      .select("user_id, full_name, instagram_handle, avatar_url")
       .in("user_id", userIds);
 
     if (profilesError) throw profilesError;
 
-    const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+    // 3b. Batch fetch agent photos as a fallback for avatar.
+    const { data: agentExtras } = await supabaseAdmin
+      .from("agents")
+      .select("id, photo_url, display_name")
+      .in("id", agents.map(a => a.id));
 
-    // Assemble list
-    const result = agents
+    const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+    const agentMap = new Map((agentExtras || []).map(a => [a.id, a]));
+
+    // Normalize "Sam James" → "Samuel James" (PL-008): same person, two
+    // labels were appearing on the applicant referral picker.
+    const normalizeName = (raw: string | null | undefined): string => {
+      const trimmed = (raw || "").trim();
+      if (!trimmed) return "Unknown";
+      if (/\bsam\s+james\b/i.test(trimmed)) return "Samuel James";
+      return trimmed;
+    };
+
+    // Assemble list with avatar + normalized name.
+    const rawList = agents
       .filter(a => a.user_id)
       .map(a => {
         const profile = profileMap.get(a.user_id!);
+        const extras = agentMap.get(a.id);
         return {
           id: a.id,
-          name: profile?.full_name || "Unknown",
+          name: normalizeName(extras?.display_name || profile?.full_name),
           instagramHandle: profile?.instagram_handle || undefined,
+          avatarUrl: extras?.photo_url || (profile as any)?.avatar_url || null,
           role: "manager",
         };
       })
-      .filter(m => m.name !== "Unknown")
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .filter(m => m.name !== "Unknown");
+
+    // Dedupe by normalized name (Sam James + Samuel James → one Samuel James).
+    // We prefer the agent row with more assigned applicants but we don't have
+    // that here — just take the first occurrence, which after sort is alphabetic.
+    const seen = new Map<string, typeof rawList[0]>();
+    for (const m of rawList) {
+      if (!seen.has(m.name)) seen.set(m.name, m);
+    }
+    const result = Array.from(seen.values())
+      // Pin Samuel James to the top (PL-007); everyone else alphabetic.
+      .sort((a, b) => {
+        const aIsSam = a.name === "Samuel James";
+        const bIsSam = b.name === "Samuel James";
+        if (aIsSam && !bIsSam) return -1;
+        if (!aIsSam && bIsSam) return 1;
+        return a.name.localeCompare(b.name);
+      });
 
     console.log(`Found ${result.length} managers`);
 

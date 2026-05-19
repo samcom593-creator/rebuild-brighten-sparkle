@@ -1,4 +1,9 @@
-import { Instagram, Zap, MessageCircle, Cloud, Repeat2, MousePointerClick, Bot, Heart } from "lucide-react";
+import { Instagram, Zap, MessageCircle, Cloud, Repeat2, MousePointerClick, Bot, Heart, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const features = [
   {
@@ -35,6 +40,34 @@ const highlights = [
 ];
 
 export function InstagramGrowthSection() {
+  const [checkingOut, setCheckingOut] = useState(false);
+  const navigate = useNavigate();
+
+  const handlePurchase = async () => {
+    setCheckingOut(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session) {
+        navigate(`/signup?next=/leads&pkg=social_growth`);
+        toast.info("Create an APEX account to unlock IG Growth.");
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke("create-lead-checkout", {
+        body: { sku: "social_growth" },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch {
+      toast.error("Couldn't start IG Growth checkout. Try again, or contact Sam.");
+    } finally {
+      setCheckingOut(false);
+    }
+  };
+
   return (
     <section
       id="ig-growth"
@@ -110,14 +143,23 @@ export function InstagramGrowthSection() {
           ))}
         </div>
 
-        {/* Bottom callout */}
+        {/* Bottom callout + buy CTA (PL-003: section had zero purchase path) */}
         <div className="relative text-center bg-gradient-to-r from-[#E1306C]/10 via-[#E1306C]/5 to-transparent border border-[#E1306C]/20 rounded-2xl p-8">
           <h3 className="text-xl font-bold text-white mb-3" style={{ fontFamily: "Syne" }}>
             Reactions Pro
           </h3>
-          <p className="text-white/50 max-w-xl mx-auto text-sm leading-relaxed">
+          <p className="text-white/50 max-w-xl mx-auto text-sm leading-relaxed mb-6">
             Human-pattern interactions on accounts that already engage with your competitors. The attention moves from their profile to yours — quietly, at scale, on autopilot.
           </p>
+          <Button
+            onClick={handlePurchase}
+            disabled={checkingOut}
+            size="lg"
+            className="bg-[#E1306C] hover:bg-[#E1306C]/90 text-white font-bold"
+            style={{ fontFamily: "Syne" }}
+          >
+            {checkingOut ? "Loading…" : <>Get IG Growth <ArrowRight className="h-4 w-4 ml-2" /></>}
+          </Button>
         </div>
       </div>
     </section>

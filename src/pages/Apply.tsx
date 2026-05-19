@@ -84,6 +84,27 @@ interface ActiveAgent {
   id: string;
   name: string;
   instagramHandle?: string;
+  avatarUrl?: string | null;
+}
+
+// Compact circular avatar for the referral picker (PL-006: "add circles of
+// our faces"). Falls back to initials when no photo is uploaded.
+function ManagerAvatar({ name, src }: { name: string; src?: string | null }) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0]?.toUpperCase() ?? "")
+    .join("");
+  return (
+    <span className="h-7 w-7 rounded-full overflow-hidden bg-gradient-to-br from-primary/60 to-accent/60 ring-1 ring-primary/40 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+      {src ? (
+        <img src={src} alt={name} className="h-full w-full object-cover" loading="lazy" />
+      ) : (
+        <span>{initials || "?"}</span>
+      )}
+    </span>
+  );
 }
 
 const steps = [
@@ -1135,6 +1156,7 @@ export default function Apply() {
                              {activeAgents.map((agent) => (
                                 <SelectItem key={agent.id} value={agent.id}>
                                   <div className="flex items-center gap-2 py-0.5">
+                                    <ManagerAvatar name={agent.name} src={agent.avatarUrl ?? null} />
                                     <span className="font-medium">{agent.name}</span>
                                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-primary">Manager</Badge>
                                     {agent.instagramHandle && (

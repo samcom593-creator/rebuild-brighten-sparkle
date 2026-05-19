@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Shield, TrendingUp, Users, Sparkles, PlayCircle, Play } from "lucide-react";
+import { ArrowRight, Shield, TrendingUp, Users, Sparkles, Play } from "lucide-react";
 
 // LazyYouTube — render a static poster image as the LCP element, only
 // mount the iframe (and pull the YouTube SDK) when the user clicks.
@@ -227,19 +227,7 @@ export function HeroSection() {
                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </button>
             </Link>
-            <Link to="/schedule-call">
-              <button className="
-                inline-flex items-center justify-center gap-2
-                px-10 py-5 text-lg sm:text-xl rounded-2xl font-bold font-display
-                border-2 border-primary/50 text-foreground
-                bg-card/30 backdrop-blur-md
-                hover:border-primary hover:bg-card/50 hover:scale-105
-                transition-all duration-200
-              ">
-                <PlayCircle className="h-5 w-5 text-primary" />
-                Watch demo
-              </button>
-            </Link>
+            {/* Watch-demo button removed 2026-05-18 (PL-010) — no real demo yet. */}
           </motion.div>
 
           {/* Founder credit — Brand Bible: "the face IS the brand" */}

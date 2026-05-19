@@ -268,8 +268,8 @@ export default function ClientPipeline() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi icon={Users}        label="Total clients"      value={stats.total}    sub={`+${stats.new7d} new this week`}                      color="text-foreground" loading={isLoading} />
         <Kpi icon={ShieldCheck}  label="Sold policies"      value={stats.sold}     sub={`${stats.total ? ((stats.sold / stats.total) * 100).toFixed(0) : 0}% of book`} color="text-emerald-500 dark:text-emerald-400" loading={isLoading} />
-        <Kpi icon={Flame}        label="In flight"          value={stats.inFlight} sub="working + pitched + almost"                            color="text-amber-500 dark:text-amber-400" loading={isLoading} />
-        <Kpi icon={CalendarClock} label="Callbacks · 7d"    value={stats.callbacksDue} sub="scheduled in the next week"                       color="text-rose-500 dark:text-rose-400" loading={isLoading} />
+        <Kpi icon={Flame}        label="Working on it"      value={stats.inFlight} sub="working + pitched + almost"                            color="text-amber-500 dark:text-amber-400" loading={isLoading} />
+        <Kpi icon={CalendarClock} label="Chargebacks · 7d"   value={stats.callbacksDue} sub="watch list (wiring period filter next)"            color="text-rose-500 dark:text-rose-400" loading={isLoading} />
       </div>
 
       {/* Stage funnel + state distribution */}
@@ -336,7 +336,7 @@ export default function ClientPipeline() {
             <div>
               <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Priority queue</p>
               <h3 className="text-lg font-bold flex items-center gap-2">
-                <CalendarClock className="h-5 w-5 text-rose-500" /> Callbacks due
+                <CalendarClock className="h-5 w-5 text-rose-500" /> Chargebacks watchlist
               </h3>
             </div>
             <Badge variant="outline" className="text-xs">{stats.callbacksDue} this week</Badge>

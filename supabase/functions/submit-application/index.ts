@@ -1013,6 +1013,18 @@ const handler = async (req: Request): Promise<Response> => {
     // Extract consent data
     const consent = data.consent;
 
+    // PL-082: When the applicant has no referrer (no ?ref= URL slug and
+    // selected nothing / "none" / "other" in the picker), default both
+    // assigned + recruiter to Sam James's canonical agent row. Sam's punch
+    // list: "assure any applicant that clicks unknown auto goes to me."
+    // Canonical row chosen by display_name='Samuel James' + admin role,
+    // tiebreak on most-recruited.
+    const SAM_DEFAULT_AGENT_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
+    const fallbackAgentId = SAM_DEFAULT_AGENT_ID;
+    const resolvedAssigned = data.selectedReferralAgentId || data.recruiterId || fallbackAgentId;
+    const resolvedRecruiter = data.recruiterId || fallbackAgentId;
+    const resolvedReferralManager = data.selectedReferralAgentId || data.recruiterId || fallbackAgentId;
+
     const insertPayload = {
       ...(raw?.id && typeof raw.id === "string" && uuidRegex.test(raw.id)
         ? { id: raw.id }
@@ -1043,15 +1055,12 @@ const handler = async (req: Request): Promise<Response> => {
       referral_source: data.referralSource ?? null,
       notes: null,
       
-      // Assign to the selected referral agent, or leave null for manual routing
-      // (DB trigger auto_assign_unassigned_application will assign to admin if still null)
-      assigned_agent_id: data.selectedReferralAgentId || data.recruiterId || null,
-      // Track recruiter (link sharer) separately from assigned manager
-      recruiter_id: data.recruiterId || null,
-      // referral_manager_id is what downstream visibility filters check ("am I
-      // the referrer for this applicant?"). Without it, dashboards that filter
-      // on referral_manager_id show nothing even when assigned_agent_id is set.
-      referral_manager_id: data.selectedReferralAgentId || data.recruiterId || null,
+      // Assign to the selected referral agent. PL-082: when no referrer is
+      // picked, route directly to Sam James instead of leaving null (the
+      // legacy auto_assign trigger picked the wrong admin in practice).
+      assigned_agent_id: resolvedAssigned,
+      recruiter_id: resolvedRecruiter,
+      referral_manager_id: resolvedReferralManager,
 
       status: "new",
       reviewed_at: null,

@@ -3,6 +3,7 @@ import { Check, Shield, TrendingUp, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const packages = [
   {
@@ -29,21 +30,32 @@ const trustSignals = [
 
 export function ApexLeadsSection() {
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const handlePurchase = async (tier: string) => {
     setCheckingOut(tier);
     try {
+      // Visitors hit a hard auth gate on `create-lead-checkout` (requireAuth=true).
+      // Pre-check session before invoking; if not logged in, send them to the
+      // signup flow with a deep-link back to checkout. PL-004: previously the
+      // button silently no-op'd with a toast and lost every conversion.
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session) {
+        navigate(`/signup?next=/leads&pkg=${encodeURIComponent(tier)}`);
+        toast.info("Create an APEX agent account to purchase leads.");
+        return;
+      }
       const { data, error } = await supabase.functions.invoke("create-lead-checkout", {
         body: { tier },
       });
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, "_blank");
+        window.location.href = data.url;
       } else {
         throw new Error("No checkout URL returned");
       }
     } catch (err: any) {
-      toast.error("Failed to start checkout. Please log in first.");
+      toast.error("Failed to start checkout. Try again, or contact Sam.");
     } finally {
       setCheckingOut(null);
     }

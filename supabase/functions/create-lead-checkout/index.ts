@@ -81,6 +81,53 @@ Deno.serve(
       const customers = await stripe.customers.list({ email, limit: 1 });
       const customerId = customers.data[0]?.id;
 
+      // CFO Bot 2026-05-20 — idempotency gate. Before opening a new Checkout
+      // Session, refuse if this customer already has an active/past_due/trialing
+      // sub (subscription mode) or any successful one-time charge (payment mode)
+      // for the same Stripe price. Stops the Wendell/Creese/Christopher/Bowman/
+      // Isaac duplicate-sub bleed at the source.
+      if (customerId) {
+        if (config.mode === "subscription") {
+          const existingSubs = await stripe.subscriptions.list({
+            customer: customerId,
+            price: config.priceId,
+            status: "all",
+            limit: 10,
+          });
+          const live = existingSubs.data.find((s: Stripe.Subscription) =>
+            ["active", "trialing", "past_due", "unpaid"].includes(s.status)
+          );
+          if (live) {
+            return errorResponse(
+              `You already have an active subscription to ${tier}. Manage or cancel it from your Stripe billing portal — opening a new checkout would create a duplicate charge.`,
+              409,
+              "DUPLICATE_SUBSCRIPTION",
+              { existing_subscription_id: live.id, status: live.status, current_period_end: live.current_period_end }
+            );
+          }
+        } else if (config.mode === "payment" && config.expectedAmountCents) {
+          // For one-time payments, refuse if a successful charge for the same
+          // amount has happened in the last 24h (cheap dedup heuristic — a real
+          // repurchase a day later is fine, a double-click is not).
+          const recentCharges = await stripe.charges.list({
+            customer: customerId,
+            limit: 20,
+            created: { gte: Math.floor(Date.now() / 1000) - 24 * 60 * 60 },
+          });
+          const dupCharge = recentCharges.data.find(
+            (c: Stripe.Charge) => c.status === "succeeded" && c.amount === config.expectedAmountCents && !c.refunded
+          );
+          if (dupCharge) {
+            return errorResponse(
+              `You already purchased ${tier} in the last 24 hours. Check your email for the receipt. If you intended to buy a second copy, please reach out to support.`,
+              409,
+              "DUPLICATE_PAYMENT",
+              { existing_charge_id: dupCharge.id, amount_cents: dupCharge.amount, charged_at: dupCharge.created }
+            );
+          }
+        }
+      }
+
       const origin = req.headers.get("origin") || "https://apex-financial.org";
       const successPath = config.mode === "subscription" ? "/purchase-leads" : "/dashboard";
 

@@ -13,10 +13,12 @@ import { motion } from "framer-motion";
 import {
   GraduationCap, Clock, Mail, Phone, CheckCircle2, Flame,
   AlertCircle, Calendar, TrendingUp, Filter, Search, ExternalLink,
-  RefreshCw, BookOpen, FileText, Sparkles,
+  RefreshCw, BookOpen, FileText, Sparkles, CalendarRange, XCircle,
 } from "lucide-react";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useMyDownline } from "@/hooks/useMyDownline";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -99,9 +101,15 @@ function fmtHours(min: number | null): string {
 export default function PreLicensing() {
   usePageTitle("Pre-Licensing · APEX");
 
+  const { isAdmin, isManager } = useAuth();
+  const downline = useMyDownline();
+
   const [search, setSearch] = useState("");
   const [sectionFilter, setSectionFilter] = useState<string>("__all__");
   const [healthFilter, setHealthFilter] = useState<string>("__all__");
+  // PL-061: custom date-enrolled range. Empty strings = no bound.
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   const reportQ = useQuery({
     queryKey: ["xcel-report-latest"],
@@ -134,18 +142,60 @@ export default function PreLicensing() {
   // Stabilize the reference so useMemo deps don't change every render.
   const students = useMemo(() => studentsQ.data ?? [], [studentsQ.data]);
 
+  // PL-061: manager downline names — for non-admin managers we restrict the
+  // student list to their own recruits (matched via the agents.assigned_agent
+  // string on each XCEL student row).
+  const downlineNamesQ = useQuery({
+    queryKey: ["xcel-downline-names", downline.data ?? []],
+    enabled: !isAdmin && isManager && !!(downline.data?.length),
+    queryFn: async (): Promise<Set<string>> => {
+      const ids = downline.data ?? [];
+      if (ids.length === 0) return new Set();
+      const { data, error } = await supabase
+        .from("agents")
+        .select("display_name, profile:profiles(full_name)")
+        .in("id", ids);
+      if (error) {
+        console.warn("[prelicensing:downline-names]", error);
+        return new Set();
+      }
+      const set = new Set<string>();
+      for (const row of (data ?? []) as any[]) {
+        if (row.display_name) set.add(String(row.display_name).toLowerCase().trim());
+        if (row.profile?.full_name) set.add(String(row.profile.full_name).toLowerCase().trim());
+      }
+      return set;
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  // Scope students to manager downline if non-admin manager.
+  const scopedStudents = useMemo(() => {
+    if (isAdmin || !isManager) return students;
+    const names = downlineNamesQ.data;
+    if (!names || names.size === 0) return students;
+    return students.filter((s) => {
+      const agent = String(s.assigned_agent_name ?? "").toLowerCase().trim();
+      const mgr = String(s.hiring_manager_name ?? "").toLowerCase().trim();
+      return (agent && names.has(agent)) || (mgr && names.has(mgr));
+    });
+  }, [students, isAdmin, isManager, downlineNamesQ.data]);
+
   const counts = useMemo(() => {
     const byBucket: Record<string, number> = {};
-    for (const s of students) byBucket[s.health_bucket] = (byBucket[s.health_bucket] ?? 0) + 1;
+    for (const s of scopedStudents) byBucket[s.health_bucket] = (byBucket[s.health_bucket] ?? 0) + 1;
     const bySection: Record<string, number> = {};
-    for (const s of students) bySection[s.course_section] = (bySection[s.course_section] ?? 0) + 1;
+    for (const s of scopedStudents) bySection[s.course_section] = (bySection[s.course_section] ?? 0) + 1;
     return { byBucket, bySection };
-  }, [students]);
+  }, [scopedStudents]);
 
   const filtered = useMemo(() => {
-    let r = students;
+    let r = scopedStudents;
     if (sectionFilter !== "__all__") r = r.filter((s) => s.course_section === sectionFilter);
     if (healthFilter !== "__all__") r = r.filter((s) => s.health_bucket === healthFilter);
+    // PL-061: date-enrolled range filter (inclusive, ISO YYYY-MM-DD)
+    if (dateFrom) r = r.filter((s) => (s.date_enrolled ?? "") >= dateFrom);
+    if (dateTo) r = r.filter((s) => (s.date_enrolled ?? "") <= dateTo);
     if (search.trim()) {
       const q = search.toLowerCase();
       r = r.filter(
@@ -158,7 +208,7 @@ export default function PreLicensing() {
       );
     }
     return r;
-  }, [students, sectionFilter, healthFilter, search]);
+  }, [scopedStudents, sectionFilter, healthFilter, dateFrom, dateTo, search]);
 
   const report = reportQ.data;
   const pctCompleted = Number(report?.pct_completed ?? 0);
@@ -206,11 +256,14 @@ export default function PreLicensing() {
             <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Student health</p>
             <h3 className="text-lg font-bold">Where your enrollees sit right now</h3>
           </div>
-          <Badge variant="outline" className="text-xs">{students.length} students</Badge>
+          <Badge variant="outline" className="text-xs">
+            {scopedStudents.length} students
+            {!isAdmin && isManager ? <span className="ml-1 text-muted-foreground">· your downline</span> : null}
+          </Badge>
         </div>
         {studentsQ.isLoading ? (
           <Skeleton className="h-10 w-full" />
-        ) : students.length === 0 ? (
+        ) : scopedStudents.length === 0 ? (
           <EmptyState
             icon={<GraduationCap className="h-6 w-6" />}
             title="No XCEL report ingested yet"
@@ -273,6 +326,30 @@ export default function PreLicensing() {
               ))}
             </SelectContent>
           </Select>
+          {/* PL-061: date-enrolled range — applies to date_enrolled column */}
+          <div className="flex items-center gap-1.5 md:gap-2 text-xs">
+            <CalendarRange className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-9 w-[140px] text-xs"
+              aria-label="Date enrolled from"
+            />
+            <span className="text-muted-foreground">→</span>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-9 w-[140px] text-xs"
+              aria-label="Date enrolled to"
+            />
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" className="h-9 px-2" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+                <XCircle className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
           <Badge variant="outline" className="hidden md:inline-flex">
             <Filter className="h-3 w-3 mr-1" /> {filtered.length} shown
           </Badge>
@@ -286,7 +363,7 @@ export default function PreLicensing() {
         <EmptyState
           icon={<GraduationCap className="h-7 w-7" />}
           title="No students match these filters"
-          actions={<Button variant="ghost" size="sm" onClick={() => { setSearch(""); setSectionFilter("__all__"); setHealthFilter("__all__"); }}>Clear filters</Button>}
+          actions={<Button variant="ghost" size="sm" onClick={() => { setSearch(""); setSectionFilter("__all__"); setHealthFilter("__all__"); setDateFrom(""); setDateTo(""); }}>Clear filters</Button>}
         />
       ) : (
         // PL-062: bump gap from space-y-2 (8px) → space-y-3 (12px) so rows

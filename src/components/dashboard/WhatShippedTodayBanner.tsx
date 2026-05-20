@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Pre-licensing: manager downline + custom date range (PL-061)",
+    detail: "Two changes on /dashboard/pre-licensing. (1) Recruit managers (non-admin) now see only their own recruits — student list filters to students whose assigned_agent_name or hiring_manager_name matches the manager's downline (resolved via useMyDownline → agents.display_name + profiles.full_name). Sam sees everything as before. Header badge shows 'your downline' tag for managers. (2) Filter strip gained a date-enrolled range picker (from/to date inputs + clear button), applied alongside the existing search / section / health filters.",
+  },
+  {
+    ts: "today",
     label: "Pre-licensing green-bars headache fixed (PL-062)",
     detail: "Back-to-back green progress bars were unreadable. Each row now has alternating zebra tint (bg-card/60 ↔ bg-card/30), a colored left-border accent matching the health bucket, +12px row spacing (space-y-2 → space-y-3), and the Progress bar fill is now health-driven: completed=emerald, almost_done=cyan, in_progress=primary, just_started=amber, stalled=rose. No more wall of identical green.",
   },

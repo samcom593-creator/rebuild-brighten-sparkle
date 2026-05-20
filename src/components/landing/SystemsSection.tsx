@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { 
   Globe, 
   LayoutDashboard, 
@@ -92,28 +92,6 @@ const features = {
   ],
 };
 
-const stats = [
-  {
-    value: 92,
-    suffix: "%",
-    description: "of agents report increased production after implementing APEX platform",
-    gradient: "from-orange-500 to-red-400",
-  },
-  {
-    value: 14.3,
-    suffix: "",
-    description: "hours saved per agent each week through automated workflows",
-    gradient: "from-blue-500 to-indigo-500",
-    decimals: 1,
-  },
-  {
-    value: 3,
-    suffix: "x",
-    description: "faster agent onboarding compared to industry standard processes",
-    gradient: "from-purple-500 to-violet-400",
-  },
-];
-
 export function SystemsSection() {
   const [activeTab, setActiveTab] = useState("core");
 
@@ -184,18 +162,6 @@ export function SystemsSection() {
           </GlassCard>
         </div>
 
-        {/* Stats Banner */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
-          {stats.map((stat, index) => (
-            <div
-              key={stat.value}
-              className="reveal"
-              style={{ transitionDelay: `${240 + index * 80}ms` }}
-            >
-              <StatCard {...stat} />
-            </div>
-          ))}
-        </div>
       </div>
     </section>
   );
@@ -235,99 +201,3 @@ function FeatureCard({ icon: Icon, title, description }: FeatureCardProps) {
   );
 }
 
-interface StatCardProps {
-  value: number;
-  suffix: string;
-  description: string;
-  gradient: string;
-  decimals?: number;
-}
-
-function StatCard({ value, suffix, description, gradient, decimals = 0 }: StatCardProps) {
-  const [count, setCount] = useState(0);
-  const [hasStarted, setHasStarted] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !hasStarted) {
-          setHasStarted(true);
-        }
-      },
-      { threshold: 0.3 }
-    );
-
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
-
-    return () => observer.disconnect();
-  }, [hasStarted]);
-
-  useEffect(() => {
-    if (!hasStarted) return;
-
-    const duration = 2000;
-    let startTime: number;
-    let animationFrame: number;
-
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      
-      // Easing function for smooth animation
-      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
-      const currentValue = easeOutQuart * value;
-      
-      setCount(decimals > 0 ? parseFloat(currentValue.toFixed(decimals)) : Math.floor(currentValue));
-
-      if (progress < 1) {
-        animationFrame = requestAnimationFrame(animate);
-      }
-    };
-
-    animationFrame = requestAnimationFrame(animate);
-
-    return () => cancelAnimationFrame(animationFrame);
-  }, [value, hasStarted, decimals]);
-
-  return (
-    <div 
-      ref={ref}
-      className={`
-        relative overflow-hidden rounded-xl p-6 text-white
-        bg-gradient-to-br ${gradient}
-        before:absolute before:inset-0 before:bg-gradient-to-r before:from-white/0 before:via-white/20 before:to-white/0
-        before:translate-x-[-200%] before:animate-[shimmer_3s_ease-in-out_infinite]
-      `}
-      style={{
-        backgroundSize: '200% 200%',
-        animation: 'gradientShift 4s ease infinite',
-      }}
-    >
-      <style>{`
-        @keyframes shimmer {
-          0% { transform: translateX(-200%); }
-          100% { transform: translateX(200%); }
-        }
-        @keyframes gradientShift {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-      `}</style>
-      {/* Decorative overlay */}
-      <div className="absolute inset-0 bg-black/10" />
-      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 animate-pulse" />
-      
-      <div className="relative">
-        <div className="text-4xl md:text-5xl font-bold mb-2">
-          {decimals > 0 ? count.toFixed(decimals) : count}{suffix}
-        </div>
-        <p className="text-sm text-white/90 leading-relaxed">
-          {description}
-        </p>
-      </div>
-    </div>
-  );
-}

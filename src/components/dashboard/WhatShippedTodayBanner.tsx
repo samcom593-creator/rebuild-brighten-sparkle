@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Landing stats: killed fake fluff numbers + wired real Apex counts (website-integrity-bot)",
+    detail: "Two surgical fixes on apex-financial.org public landing. (1) SystemsSection dropped the fabricated '92% of agents report increased production / 14.3 hours saved / 3x faster onboarding' stat banner — those were unverifiable marketing larp that failed Sam's real-data-only rule. Section keeps the feature grid + Powered-by-APEX badge; the lying stats are gone. (2) CareerPathwaySection's four-card stat banner ('Premium / Lead Volume / Carriers / Active Agents') now pulls active_agents + carriers_partnered from landing_live_stats() RPC instead of lead_counter (which counted LEADS, not agents — mislabel), and the hardcoded '50+ Carriers' (reality: 22) is replaced with the real number. Cards fall back to the canonical 95/22 if the RPC lags, so they never render '0' or '...' on first paint. Active Agents tile keeps the live-pulse dot + AnimatedCounter — but now powered by truth.",
+  },
+  {
+    ts: "today",
     label: "Leaderboard activity: counts ReadyMode dialer pages (PL-053)",
     detail: "Activity board's 'primary' score was presentations + referrals + hours_called from daily_production only. Now ALSO adds 1 activity unit per ReadyMode dialer call (readymode_dialer_calls.call_started_at in window). Counter graceful-falls-back to daily_production when the dialer table lags — no breakage. As soon as the readymode-ingest fn flows calls in, dialer pages add to the activity score on every leaderboard tab.",
   },

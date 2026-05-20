@@ -27,7 +27,15 @@ import {
 import { SectionHeading } from "@/components/ui/section-heading";
 import { GlassCard } from "@/components/ui/glass-card";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
-import { useLeadCounter } from "@/hooks/useLeadCounter";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+interface LandingLiveStats {
+  active_agents: number;
+  applications_30d: number;
+  applications_total: number;
+  carriers_partnered: number;
+}
 
 interface Phase {
   name: string;
@@ -235,7 +243,22 @@ const whyAgentsChoose = [
 ];
 
 export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathwaySection(_props, _ref) {
-  const { count, isLoading } = useLeadCounter();
+  const { data: liveStats } = useQuery({
+    queryKey: ["landing_live_stats_career"],
+    queryFn: async (): Promise<LandingLiveStats | null> => {
+      const { data, error } = await supabase.rpc("landing_live_stats");
+      if (error) throw error;
+      return data as unknown as LandingLiveStats;
+    },
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+
+  // Fall back to the same canonical numbers the LiveStatsCounterStrip uses,
+  // so the cards never render "0" or "..." even before the RPC resolves.
+  const activeAgents = liveStats?.active_agents ?? 95;
+  const carriers = liveStats?.carriers_partnered ?? 22;
+
   const [activePhase, setActivePhase] = useState(0);
   const [isInView, setIsInView] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -289,8 +312,8 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
   const stats = [
     { value: "$150M+", label: "Premium Generated" },
     { value: "166K+", label: "Lead Volume" },
-    { value: "50+", label: "Carrier Partners" },
-    { value: isLoading ? "..." : `${count}+`, label: "Active Agents", isLive: true },
+    { value: `${carriers}`, label: "Carrier Partners" },
+    { value: `${activeAgents}`, label: "Active Agents", isLive: true },
   ];
 
   let stepNumber = 0;
@@ -396,10 +419,8 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                   </div>
                 )}
                 <div className="text-2xl md:text-3xl font-bold gradient-text mb-1">
-                  {stat.isLive && !isLoading ? (
-                    <>
-                      <AnimatedCounter value={count} />+
-                    </>
+                  {stat.isLive ? (
+                    <AnimatedCounter value={activeAgents} />
                   ) : (
                     stat.value
                   )}

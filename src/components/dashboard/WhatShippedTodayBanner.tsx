@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Landing: killed fake 'VSL Test' testimonial section (website-integrity-bot)",
+    detail: "The 'Watch How APEX Changed His Life / Real results from a real agent who transformed his career with APEX' block on the public landing was wired to YouTube video YmlLSIwfGdE — title fetched live: 'VSL Test' by @SamuelJamesHQ. No agent, no transformation, no proof — just a placeholder VSL test video masquerading as a customer success story. Section pulled from Index.tsx and the TestimonialsSection.tsx file deleted (git preserves it; re-mount when a real recorded testimonial drops). Public landing now flows BenefitsSection → EarningsSection → SystemsSection (which is already real Apex data after audit pass #6) without a lying middle section. Fewer sections, zero fake proof.",
+  },
+  {
+    ts: "today",
     label: "Deal posting: Apex → Discord + AgentLink in one shot (PL-074)",
     detail: "New post-deal edge fn. JWT-authed agent (or admin with agent_id override) POSTs a single JSON body and the fn (1) inserts a row into deals with status=submitted and source=apex_post_deal, (2) fires discord-webhook-notify with event=deal_closed so the deal hits #wins with milestone + streak detection, (3) mirrors to AgentLink via /deals POST when AGENTLINK_API_TOKEN is set (best-effort, never blocks the Apex write). Sam can now log a deal without leaving Apex.",
   },

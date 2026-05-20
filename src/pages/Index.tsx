@@ -8,7 +8,6 @@ import { DealsTicker } from "@/components/landing/DealsTicker";
 
 const BenefitsSection = lazy(() => import("@/components/landing/BenefitsSection").then((mod) => ({ default: mod.BenefitsSection })));
 const EarningsSection = lazy(() => import("@/components/landing/EarningsSection").then((mod) => ({ default: mod.EarningsSection })));
-const TestimonialsSection = lazy(() => import("@/components/landing/TestimonialsSection").then((mod) => ({ default: mod.TestimonialsSection })));
 const SystemsSection = lazy(() => import("@/components/landing/SystemsSection").then((mod) => ({ default: mod.SystemsSection })));
 const CareerPathwaySection = lazy(() => import("@/components/landing/CareerPathwaySection").then((mod) => ({ default: mod.CareerPathwaySection })));
 const CTASection = lazy(() => import("@/components/landing/CTASection").then((mod) => ({ default: mod.CTASection })));
@@ -36,7 +35,6 @@ const Index = () => {
         <Suspense fallback={<SectionFallback />}>
           <BenefitsSection />
           <EarningsSection />
-          <TestimonialsSection />
           <SystemsSection />
           <CareerPathwaySection />
           <ApexLeadsSection />

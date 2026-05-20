@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Comp Tiers: 36 ghost-active agents removed (PL-075)",
+    detail: "CompTiersSettings only filtered by is_deactivated=false + status='active'. 36 agents marked is_inactive=true were still listed because the third flag wasn't gated. Added .eq('is_inactive', false) so only the truly active roster shows in the comp editor.",
+  },
+  {
+    ts: "today",
     label: "Calendly webhook → seminar + manager-call sync (PL-058)",
     detail: "New calendly-webhook edge fn ingests invitee.created and invitee.canceled events from Calendly. Classifies by event slug: seminar URLs → upsert into seminar_registrations + stamp applications.seminar_date / seminar_registered_at; 1on1/manager URLs → set applications.test_scheduled_date; exam URLs → set applications.exam_scheduled_at. Cancellations clear the same fields. Auth: shared secret in ?secret= query param + optional HMAC-SHA256 signature verification when CALENDLY_SIGNING_KEY is set. Sam subscribes at calendly.com/integrations/api_webhooks pointing at the function URL.",
   },

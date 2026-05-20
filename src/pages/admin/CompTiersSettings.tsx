@@ -27,12 +27,15 @@ export default function CompTiersSettings() {
     queryFn: async (): Promise<AgentComp[]> => {
       // PL-075: show only active agents — Sam: "I see a bunch of agents
       // who aren't active. I only want to honestly see active agents."
-      // is_deactivated=false + status='active' both required (legacy data
-      // had rows with is_deactivated=false AND status='inactive').
+      // Three flags must ALL be active: is_deactivated=false (HR off-boarded),
+      // is_inactive=false (system-flagged inactive — 36 rows leak through
+      // without this), and status='active' (enum truth). Legacy data had
+      // combinations of all three that needed explicit gating.
       const { data } = await supabase
         .from("agents")
         .select("id, display_name, contract_percentage, override_rate, insuracloud_user_id, user_id, profile:profiles!agents_profile_id_fkey(full_name)")
         .eq("is_deactivated", false)
+        .eq("is_inactive", false)
         .eq("status", "active")
         .order("display_name");
       const rolesRes = await supabase.from("user_roles").select("user_id, role");

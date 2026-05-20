@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import {
   Phone, Mail, MessageSquare, MoreVertical, RefreshCw, AlertTriangle,
   Download, Search, XCircle, CheckCircle2, GripVertical,
@@ -7,7 +8,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { differenceInDays, format } from "date-fns";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
+import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 
 /**
  * Hiring Pipeline — drag-drop kanban + row actions on every card.
@@ -333,42 +334,68 @@ export default function HiringPipeline() {
   }
 
   if (isLoading) {
-    return <div className="p-6 text-center text-muted-foreground">Loading pipeline…</div>;
+    return <PageLoadingSkeleton variant="dashboard" />;
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-[1600px] mx-auto">
+    <div className="min-h-screen bg-background p-4 md:p-6 space-y-4 max-w-[1680px] mx-auto">
       <PageHeader
         accent="cyan"
-        eyebrow="Recruiting · Hiring"
+        eyebrow="Recruiting command"
         eyebrowIcon={<Target className="h-3 w-3" />}
         title="Hiring Pipeline"
-        subtitle="Drag candidates between stages · click any card to call, text, or email"
-      />
-      <div className="flex items-center justify-end flex-wrap gap-3">
-        <div className="flex gap-2">
-          <div className="flex items-center bg-muted rounded-md p-0.5 text-xs">
-            <button
-              onClick={() => setViewMode("kanban")}
-              className={cn("px-3 py-1 rounded font-medium transition", viewMode === "kanban" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}
-            >
-              Board
-            </button>
-            <button
-              onClick={() => setViewMode("zoom")}
-              className={cn("px-3 py-1 rounded font-medium transition", viewMode === "zoom" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}
-            >
-              Zoom Out
-            </button>
+        subtitle="Work the hottest applicants first, move them by drag-and-drop, and log every contact from the card."
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center rounded-md border border-border/60 bg-background/80 p-0.5 text-xs shadow-sm">
+              <button
+                onClick={() => setViewMode("kanban")}
+                className={cn("px-3 py-1.5 rounded font-semibold transition", viewMode === "kanban" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+              >
+                Board
+              </button>
+              <button
+                onClick={() => setViewMode("zoom")}
+                className={cn("px-3 py-1.5 rounded font-semibold transition", viewMode === "zoom" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+              >
+                Overview
+              </button>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="bg-background/80">
+              <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportCSV} className="bg-background/80">
+              <Download className="h-4 w-4 mr-1" /> Export
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-1" /> Refresh
-          </Button>
-          <Button variant="outline" size="sm" onClick={exportCSV}>
-            <Download className="h-4 w-4 mr-1" /> Export CSV
-          </Button>
+        }
+      />
+
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-lg border border-cyan-500/25 bg-gradient-to-r from-cyan-500/10 via-card to-card shadow-sm"
+      >
+        <div className="grid gap-3 p-3 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <Badge variant="outline" className="border-cyan-500/30 bg-cyan-500/10 text-cyan-500">
+              Live board
+            </Badge>
+            <span className="text-muted-foreground">
+              {totalApps} active applicants across {STAGES.length} stages
+            </span>
+            {(activeFilters.size > 0 || stateFilter || search) && (
+              <Badge variant="secondary" className="text-xs">
+                Filtered view
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <GripVertical className="h-4 w-4" />
+            Drag cards between stages
+          </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Actionable metric tiles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -400,67 +427,69 @@ export default function HiringPipeline() {
       </div>
 
       {/* Search + filter pills */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[240px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search name, email, phone, state…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+      <div className="rounded-lg border border-border/60 bg-card/80 p-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[240px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search name, email, phone, state…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9 bg-background"
+            />
+          </div>
 
-        <FilterPill
-          active={activeFilters.has("stalled")}
-          onToggle={() => setActiveFilters(prev => {
-            const n = new Set(prev); n.has("stalled") ? n.delete("stalled") : n.add("stalled"); return n;
-          })}
-          icon={<AlertTriangle className="h-3 w-3" />} label="Stalled 7d+" danger
-        />
-        <FilterPill
-          active={activeFilters.has("has_phone")}
-          onToggle={() => setActiveFilters(prev => {
-            const n = new Set(prev); n.has("has_phone") ? n.delete("has_phone") : n.add("has_phone"); return n;
-          })}
-          icon={<Phone className="h-3 w-3" />} label="Has phone"
-        />
-        <FilterPill
-          active={activeFilters.has("top_tier")}
-          onToggle={() => setActiveFilters(prev => {
-            const n = new Set(prev); n.has("top_tier") ? n.delete("top_tier") : n.add("top_tier"); return n;
-          })}
-          icon={<Star className="h-3 w-3" />} label="Tier A+B"
-        />
-        <FilterPill
-          active={activeFilters.has("in_licensing")}
-          onToggle={() => setActiveFilters(prev => {
-            const n = new Set(prev); n.has("in_licensing") ? n.delete("in_licensing") : n.add("in_licensing"); return n;
-          })}
-          icon={<Target className="h-3 w-3" />} label="In licensing"
-        />
-        <FilterPill
-          active={activeFilters.has("no_contact_7d")}
-          onToggle={() => setActiveFilters(prev => {
-            const n = new Set(prev); n.has("no_contact_7d") ? n.delete("no_contact_7d") : n.add("no_contact_7d"); return n;
-          })}
-          icon={<PhoneOff className="h-3 w-3" />} label="No contact 7d+" danger
-        />
-        <Input
-          placeholder="State (e.g. TX)"
-          value={stateFilter}
-          onChange={e => setStateFilter(e.target.value)}
-          className="w-28 h-8 text-xs uppercase"
-          maxLength={2}
-        />
-        {(activeFilters.size > 0 || stateFilter) && (
-          <button
-            onClick={() => { setActiveFilters(new Set()); setStateFilter(""); }}
-            className="text-xs text-muted-foreground hover:text-foreground underline"
-          >
-            Clear all
-          </button>
-        )}
+          <FilterPill
+            active={activeFilters.has("stalled")}
+            onToggle={() => setActiveFilters(prev => {
+              const n = new Set(prev); n.has("stalled") ? n.delete("stalled") : n.add("stalled"); return n;
+            })}
+            icon={<AlertTriangle className="h-3 w-3" />} label="Stalled 7d+" danger
+          />
+          <FilterPill
+            active={activeFilters.has("has_phone")}
+            onToggle={() => setActiveFilters(prev => {
+              const n = new Set(prev); n.has("has_phone") ? n.delete("has_phone") : n.add("has_phone"); return n;
+            })}
+            icon={<Phone className="h-3 w-3" />} label="Has phone"
+          />
+          <FilterPill
+            active={activeFilters.has("top_tier")}
+            onToggle={() => setActiveFilters(prev => {
+              const n = new Set(prev); n.has("top_tier") ? n.delete("top_tier") : n.add("top_tier"); return n;
+            })}
+            icon={<Star className="h-3 w-3" />} label="Tier A+B"
+          />
+          <FilterPill
+            active={activeFilters.has("in_licensing")}
+            onToggle={() => setActiveFilters(prev => {
+              const n = new Set(prev); n.has("in_licensing") ? n.delete("in_licensing") : n.add("in_licensing"); return n;
+            })}
+            icon={<Target className="h-3 w-3" />} label="In licensing"
+          />
+          <FilterPill
+            active={activeFilters.has("no_contact_7d")}
+            onToggle={() => setActiveFilters(prev => {
+              const n = new Set(prev); n.has("no_contact_7d") ? n.delete("no_contact_7d") : n.add("no_contact_7d"); return n;
+            })}
+            icon={<PhoneOff className="h-3 w-3" />} label="No contact 7d+" danger
+          />
+          <Input
+            placeholder="State (e.g. TX)"
+            value={stateFilter}
+            onChange={e => setStateFilter(e.target.value)}
+            className="w-28 h-8 text-xs uppercase"
+            maxLength={2}
+          />
+          {(activeFilters.size > 0 || stateFilter) && (
+            <button
+              onClick={() => { setActiveFilters(new Set()); setStateFilter(""); }}
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Mobile stage picker — pill row, tap to switch the visible column. */}
@@ -496,13 +525,19 @@ export default function HiringPipeline() {
             const items = grouped[stage.key];
             const top3 = items.slice(0, 3);
             return (
-              <div key={stage.key} className={cn("rounded-lg border-t-4 p-3 bg-card", stage.color)}>
+              <motion.div
+                key={stage.key}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -2 }}
+                className={cn("rounded-lg border border-border/60 border-t-4 bg-card p-3 shadow-sm", stage.color)}
+              >
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-semibold text-sm">{stage.label}</span>
                   <Badge variant="outline" className="text-xs">{items.length}</Badge>
                 </div>
                 {items.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">empty</p>
+                  <p className="rounded-md border border-dashed border-border/70 bg-muted/30 p-3 text-xs text-muted-foreground">No applicants in this stage.</p>
                 ) : (
                   <ul className="space-y-1">
                     {top3.map((a: any) => {
@@ -529,7 +564,7 @@ export default function HiringPipeline() {
                 >
                   open stage →
                 </button>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -548,7 +583,7 @@ export default function HiringPipeline() {
               key={stage.key}
               id={`col-${stage.key}`}
               className={cn(
-                "rounded-lg border-t-4 flex flex-col min-h-[400px]",
+                "rounded-lg border border-border/70 border-t-4 flex flex-col min-h-[400px] bg-card shadow-sm",
                 hiddenOnMobile && "hidden md:flex",
                 stage.color,
                 isDragTarget ? "bg-primary/10 ring-2 ring-primary" : stage.bg,
@@ -562,16 +597,17 @@ export default function HiringPipeline() {
                 setDragId(null);
               }}
             >
-              <div className="p-3 border-b border-border/30 flex items-center justify-between">
+              <div className="p-3 border-b border-border/50 flex items-center justify-between bg-background/70 rounded-t-lg">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm text-foreground">{stage.label}</span>
                   <Badge variant="outline" className="text-xs">{items.length}</Badge>
                 </div>
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[70vh]">
                 {items.length === 0 ? (
-                  <div className="text-center text-xs text-muted-foreground py-6">
-                    Drag cards here
+                  <div className="rounded-md border border-dashed border-border/70 bg-background/60 px-3 py-8 text-center text-xs text-muted-foreground">
+                    No applicants here. Drop a card to update this stage.
                   </div>
                 ) : (
                   items.map((a: any) => (
@@ -627,24 +663,26 @@ function MetricTile({
   label, value, danger, hint, onClick,
 }: { label: string; value: number; danger?: boolean; hint?: string; onClick: () => void }) {
   return (
-    <button
+    <motion.button
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.99 }}
       onClick={onClick}
       className={cn(
-        "text-left p-3 rounded-lg border transition",
+        "text-left p-3 rounded-lg border shadow-sm transition",
         danger
-          ? "border-destructive/40 bg-destructive/5 hover:border-destructive"
-          : "border-border/40 bg-card/50 hover:border-border",
+          ? "border-destructive/40 bg-destructive/10 hover:border-destructive"
+          : "border-border/60 bg-card hover:border-primary/50",
       )}
     >
       <div className="flex items-center gap-2">
         {danger && <AlertTriangle className="h-4 w-4 text-destructive" />}
-        <span className={cn("text-2xl font-bold", danger ? "text-destructive" : "text-foreground")}>
+        <span className={cn("text-2xl font-bold tabular-nums", danger ? "text-destructive" : "text-foreground")}>
           {value}
         </span>
       </div>
-      <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
-      {hint && <div className="text-[10px] text-muted-foreground/70 mt-0.5">{hint}</div>}
-    </button>
+      <div className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+      {hint && <div className="mt-0.5 text-[10px] text-muted-foreground/80">{hint}</div>}
+    </motion.button>
   );
 }
 
@@ -681,14 +719,18 @@ function ApplicantCard({
     app.ai_score_tier === "D" ? "bg-slate-500/15 text-slate-400 border-slate-500/30" : "";
 
   return (
-    <div
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -1 }}
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={cn(
-        "group rounded-lg bg-card border p-3 cursor-grab active:cursor-grabbing transition",
-        "hover:border-primary/50 hover:shadow-lg",
-        "border-border/50",
+        "group rounded-lg bg-background border p-3 cursor-grab active:cursor-grabbing transition shadow-sm",
+        "hover:border-primary/50 hover:shadow-md",
+        "border-border/70",
         dragging && "opacity-40",
         veryStalled && "ring-2 ring-destructive/50 border-destructive/30",
         stalled && !veryStalled && "ring-1 ring-amber-500/40 border-amber-500/30",
@@ -716,10 +758,10 @@ function ApplicantCard({
       {/* Stalled badge - always visible when >= 7 days */}
       {stalled && (
         <div className={cn(
-          "text-[10px] font-medium px-1.5 py-0.5 rounded mb-2 inline-block",
+          "text-[10px] font-semibold px-1.5 py-0.5 rounded mb-2 inline-flex items-center gap-1",
           veryStalled ? "bg-destructive/20 text-destructive" : "bg-amber-500/20 text-amber-500"
         )}>
-          {veryStalled ? "🔴" : "⚠️"} Stalled {days}d
+          <AlertTriangle className="h-3 w-3" /> Stalled {days}d
         </div>
       )}
 
@@ -728,9 +770,9 @@ function ApplicantCard({
         <a
           href={`tel:${app.phone}`}
           onClick={(e) => e.stopPropagation()}
-          className="block bg-primary/10 hover:bg-primary/20 text-primary rounded-md px-2 py-1.5 mb-1.5 text-sm font-mono font-semibold tracking-tight transition"
+          className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-md px-2 py-1.5 mb-1.5 text-sm font-mono font-semibold tracking-tight transition"
         >
-          📞 {formatPhone(app.phone)}
+          <Phone className="h-3.5 w-3.5" /> {formatPhone(app.phone)}
         </a>
       )}
 
@@ -742,7 +784,7 @@ function ApplicantCard({
           className="block text-[11px] text-muted-foreground hover:text-primary truncate mb-2"
           title={app.email}
         >
-          ✉ {app.email}
+          <Mail className="mr-1 inline h-3 w-3" />{app.email}
         </a>
       )}
 
@@ -762,7 +804,7 @@ function ApplicantCard({
       </div>
 
       {/* Always-visible action row: Call (with outcome logger) + Text + More */}
-      <div className="flex items-center gap-1 pt-2 border-t border-border/30">
+      <div className="flex items-center gap-1 pt-2 border-t border-border/50">
         {app.phone && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -874,6 +916,6 @@ function ApplicantCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </div>
+    </motion.div>
   );
 }

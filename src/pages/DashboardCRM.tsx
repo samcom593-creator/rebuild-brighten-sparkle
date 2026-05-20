@@ -41,6 +41,7 @@ import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { getBusinessDayKey, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
 import { getCloseRate, sumAnnualPremium } from "@/lib/metricTruth";
+import { motion } from "framer-motion";
 
 /** Feature flag: hide destructive bulk delete by default. Set VITE_ENABLE_CRM_BULK_DELETE=true to enable. */
 const ENABLE_BULK_DELETE = import.meta.env.VITE_ENABLE_CRM_BULK_DELETE === "true";
@@ -184,6 +185,12 @@ const UNLICENSED_COLUMNS = [
   { key: "test_scheduled", label: "Test Scheduled", progress: ["test_scheduled", "passed_test"] },
   { key: "waiting_on_license", label: "Waiting on License", progress: ["fingerprints_done", "waiting_on_license"] },
 ];
+
+const surfaceMotion = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.28, ease: "easeOut" },
+};
 
 // ─── Contact buttons row ─────────────────────────────────────────────────
 function ContactActions({ agent, onViewApp, onRecord, onEditLogin, onDeactivate, onAgentUpdate, currentAgentId }: {
@@ -1324,40 +1331,46 @@ export default function DashboardCRM() {
 
   return (
     <>
-      <div className="space-y-4 page-enter relative">
+      <div className="space-y-5 page-enter relative p-4 md:p-6">
         <BackgroundGlow accent="teal" intensity="subtle" />
-        <PageHeader
-          accent="cyan"
-          eyebrow="CRM · Agents"
-          title="Agent CRM"
-          subtitle={
-            staleCount > 0
-              ? `${filteredAgents.length} agents · ${staleCount} need follow-up`
-              : `${filteredAgents.length} agents · all up to date`
-          }
-          actions={
-            <>
-              {(isAdmin || isManager) && (
-                <Button variant={bulkMode ? "secondary" : "outline"} size="sm" className="gap-1.5" onClick={() => { setBulkMode(!bulkMode); setSelectedAgents(new Set()); }}>
-                  <CheckSquare className="h-3.5 w-3.5" /> {bulkMode ? "Exit Bulk" : "Bulk Actions"}
+        <motion.div
+          {...surfaceMotion}
+          className="relative overflow-hidden rounded-lg border border-slate-900/10 bg-slate-950 px-4 py-4 text-white shadow-xl shadow-slate-950/10 dark:border-white/10 md:px-5"
+        >
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400" />
+          <PageHeader
+            accent="cyan"
+            eyebrow="CRM · Agents"
+            title="Agent CRM"
+            subtitle={
+              staleCount > 0
+                ? `${filteredAgents.length} agents · ${staleCount} need follow-up`
+                : `${filteredAgents.length} agents · all up to date`
+            }
+            actions={
+              <>
+                {(isAdmin || isManager) && (
+                  <Button variant={bulkMode ? "secondary" : "outline"} size="sm" className="gap-1.5 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => { setBulkMode(!bulkMode); setSelectedAgents(new Set()); }}>
+                    <CheckSquare className="h-3.5 w-3.5" /> {bulkMode ? "Exit Bulk" : "Bulk Actions"}
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Button onClick={handleBulkSendPortalLogins} variant="outline" size="sm" className="gap-1.5 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white" disabled={sendingBulkLogins}>
+                    <Mail className="h-3.5 w-3.5" /> {sendingBulkLogins ? "Sending..." : "Email All Logins"}
+                  </Button>
+                )}
+                <AddAgentModal onAgentAdded={fetchAgents} />
+                <Button variant="outline" size="sm" className="gap-1.5 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                  onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into WhatsApp"); }}>
+                  <Link2 className="h-3.5 w-3.5" /> Check-In Link
                 </Button>
-              )}
-              {isAdmin && (
-                <Button onClick={handleBulkSendPortalLogins} variant="outline" size="sm" className="gap-1.5" disabled={sendingBulkLogins}>
-                  <Mail className="h-3.5 w-3.5" /> {sendingBulkLogins ? "Sending..." : "Email All Logins"}
+                <Button onClick={fetchAgents} variant="outline" size="sm" className="gap-1.5 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white">
+                  <RefreshCw className="h-3.5 w-3.5" /> Refresh
                 </Button>
-              )}
-              <AddAgentModal onAgentAdded={fetchAgents} />
-              <Button variant="outline" size="sm" className="gap-1.5"
-                onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into WhatsApp 📋"); }}>
-                <Link2 className="h-3.5 w-3.5" /> Check-In Link
-              </Button>
-              <Button onClick={fetchAgents} variant="outline" size="sm" className="gap-1.5">
-                <RefreshCw className="h-3.5 w-3.5" /> Refresh
-              </Button>
-            </>
-          }
-        />
+              </>
+            }
+          />
+        </motion.div>
 
         {bulkMode && (
           <div className="space-y-2">
@@ -1403,7 +1416,7 @@ export default function DashboardCRM() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+        <motion.div {...surfaceMotion} transition={{ duration: 0.28, delay: 0.04, ease: "easeOut" }} className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
           {[
             { label: "Present", count: meetingPresentCount, icon: ClipboardCheck, color: "text-sky-500", borderColor: "border-t-sky-500", bgGlow: "bg-sky-500/5" },
             { label: "Onboarding", count: onboardingCount, icon: BookOpen, color: "text-primary", borderColor: "border-t-primary", bgGlow: "bg-primary/5" },
@@ -1414,17 +1427,17 @@ export default function DashboardCRM() {
             { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
             { label: "Needs F/U", count: needsFollowUpCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
           ].map(s => (
-            <div key={s.label} className={cn("flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-default", s.borderColor, s.bgGlow)}>
-              <div className="p-1.5 rounded-lg bg-background/60"><s.icon className={cn("h-4 w-4", s.color)} /></div>
+            <div key={s.label} className={cn("group flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/70 bg-card/95 shadow-sm border-t-2 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md cursor-default", s.borderColor, s.bgGlow)}>
+              <div className="p-1.5 rounded-md bg-background/80 ring-1 ring-border/60 transition-transform group-hover:scale-105"><s.icon className={cn("h-4 w-4", s.color)} /></div>
               <div>
                 <p className="text-xl font-extrabold leading-none tabular-nums">{s.count}</p>
-                <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">{s.label}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold mt-0.5 uppercase tracking-wide">{s.label}</p>
               </div>
             </div>
           ))}
-        </div>
+        </motion.div>
 
-        <div className="flex flex-col sm:flex-row gap-2 flex-wrap p-3 rounded-xl bg-card/50 backdrop-blur-sm border border-border/40">
+        <motion.div {...surfaceMotion} transition={{ duration: 0.28, delay: 0.08, ease: "easeOut" }} className="flex flex-col sm:flex-row gap-2 flex-wrap p-3 rounded-lg bg-card/95 shadow-sm border border-border/70">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Search agents..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 h-8 text-sm" />
@@ -1476,14 +1489,18 @@ export default function DashboardCRM() {
               </Badge>
             </Button>
           )}
-        </div>
+        </motion.div>
 
         {loading ? (
           <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>
         ) : (
           <>
           {/* Bucket toggle — fold pipeline into Licensed vs Unlicensed groups */}
-          <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1 w-fit mb-3">
+          <motion.div
+            {...surfaceMotion}
+            transition={{ duration: 0.28, delay: 0.12, ease: "easeOut" }}
+            className="flex w-full flex-col gap-2 rounded-lg border border-border/70 bg-card/95 p-2 shadow-sm sm:w-fit sm:flex-row sm:items-center"
+          >
             {(["all","unlicensed","licensed"] as const).map(b => {
               const count = b === "all"
                 ? SECTIONS.reduce((s, sec) => s + getAgentsForSection(sec).length, 0)
@@ -1491,21 +1508,21 @@ export default function DashboardCRM() {
               const active = activeBucket === b;
               return (
                 <button key={b} onClick={() => setActiveBucket(b)}
-                  className={cn("px-3 py-1.5 rounded-md text-xs font-semibold transition-all",
-                    active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-                  {b === "all" ? "All" : b === "unlicensed" ? "📚 Getting Licensed" : "✅ Licensed & Selling"}
+                  className={cn("flex items-center justify-between gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-all",
+                    active ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")}>
+                  {b === "all" ? "All" : b === "unlicensed" ? "Getting Licensed" : "Licensed & Selling"}
                   <Badge variant="outline" className="ml-2 text-[10px] h-4 px-1 font-bold">{count}</Badge>
                 </button>
               );
             })}
-          </div>
+          </motion.div>
           <Tabs value={activeStageTab} onValueChange={(v) => { setActiveStageTab(v); playSound("click"); }} className="space-y-3">
-            <TabsList className="w-full justify-start flex-wrap h-auto gap-1.5 p-1.5 bg-muted/60">
+            <TabsList className="w-full justify-start flex-wrap h-auto gap-1.5 rounded-lg border border-border/70 bg-card/95 p-1.5 shadow-sm">
               {SECTIONS.filter(s => activeBucket === "all" || s.bucket === activeBucket).map(section => {
                 const count = getAgentsForSection(section).length;
                 const Icon = section.icon;
                 return (
-                  <TabsTrigger key={section.key} value={section.key} className="gap-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-md px-3 py-2">
+                  <TabsTrigger key={section.key} value={section.key} className="gap-1.5 rounded-md px-3 py-2 text-xs font-semibold data-[state=active]:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-950">
                     <Icon className={cn("h-3.5 w-3.5", section.iconColor)} />
                     {section.label}
                     <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5 font-bold", section.headerBg, section.iconColor, "border-current/20")}>{count}</Badge>
@@ -1529,7 +1546,10 @@ export default function DashboardCRM() {
                         <p className="text-sm text-muted-foreground">No unlicensed agents</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                      <motion.div
+                        {...surfaceMotion}
+                        className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5"
+                      >
                         {UNLICENSED_COLUMNS.map(col => {
                           const colAgents = sectionAgents.filter(a => col.progress.includes(a.licenseProgress || "unlicensed"));
                           const colColors: Record<string, string> = {
@@ -1540,17 +1560,21 @@ export default function DashboardCRM() {
                             waiting_on_license: "border-t-emerald-500 bg-emerald-500/3",
                           };
                           return (
-                            <div key={col.key} className={cn("rounded-xl border border-border overflow-hidden border-t-3", colColors[col.key])}>
-                              <div className="px-3 py-2.5 bg-muted/30 border-b border-border flex items-center justify-between">
-                                <span className="text-xs font-bold tracking-wide">{col.label}</span>
+                            <div key={col.key} className={cn("rounded-lg border border-border/70 overflow-hidden border-t-4 bg-card/95 shadow-sm", colColors[col.key])}>
+                              <div className="px-3 py-2.5 bg-slate-950 text-white border-b border-border flex items-center justify-between">
+                                <span className="text-xs font-bold uppercase tracking-wide">{col.label}</span>
                                 <Badge variant="outline" className="text-[10px] h-5 font-bold tabular-nums">{colAgents.length}</Badge>
                               </div>
                               <div className="p-2 space-y-2 overflow-y-auto" style={{ maxHeight: "calc(100vh - 220px)" }}>
                                 {colAgents.length === 0 ? (
                                   <p className="text-xs text-muted-foreground text-center py-6 italic">No agents here</p>
                                 ) : colAgents.map(agent => (
-                                  <div key={agent.id}
-                                    className="rounded-lg border border-border/60 bg-card hover:bg-muted/30 transition-colors group overflow-hidden">
+                                  <motion.div
+                                    key={agent.id}
+                                    whileHover={{ y: -2 }}
+                                    transition={{ duration: 0.16 }}
+                                    className="rounded-lg border border-border/70 bg-background/95 shadow-sm hover:border-foreground/20 hover:bg-muted/30 transition-colors group overflow-hidden"
+                                  >
                                     {/* Agent Header */}
                                     <div className="flex items-center gap-2.5 p-2.5 cursor-pointer"
                                       onClick={() => { setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id }); playSound("click"); }}>
@@ -1672,13 +1696,13 @@ export default function DashboardCRM() {
                                     <div className="px-2.5 pb-2" onClick={e => e.stopPropagation()}>
                                       <InlineNotesButton agent={agent} />
                                     </div>
-                                  </div>
+                                  </motion.div>
                                 ))}
                               </div>
                             </div>
                           );
                         })}
-                      </div>
+                      </motion.div>
                     )}
                   </TabsContent>
                 );
@@ -1694,10 +1718,13 @@ export default function DashboardCRM() {
                       <p className="text-sm text-muted-foreground">No agents in this stage yet</p>
                     </div>
                   ) : (
-                    <div className={cn("rounded-xl border border-border overflow-x-auto", section.accent, "border-l-4")}>
+                    <motion.div
+                      {...surfaceMotion}
+                      className={cn("rounded-lg border border-border/70 bg-card/95 shadow-sm overflow-x-auto", section.accent, "border-l-4")}
+                    >
                       <Table className="min-w-[900px]">
-                        <TableHeader>
-                          <TableRow className="hover:bg-transparent">
+                        <TableHeader className="bg-slate-950">
+                          <TableRow className="border-slate-800 hover:bg-transparent [&_th]:h-10 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide">
                             {bulkMode && <TableHead className="w-8" />}
                             {getTableHeaders(section.key)}
                           </TableRow>
@@ -1772,7 +1799,7 @@ export default function DashboardCRM() {
                           })}
                         </TableBody>
                       </Table>
-                    </div>
+                    </motion.div>
                   )}
                 </TabsContent>
               );

@@ -1742,3 +1742,167 @@ button[class*="border-emerald"]:hover {
     -webkit-backdrop-filter: blur(10px) saturate(140%);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══  APEX v4 — OPERATING ROOM VISUAL SYSTEM (2026-05-20)        ═══ */
+/* ═══  High-contrast command surfaces, measured motion, no blobs.  ═══ */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+@keyframes apex-rail-scan {
+  0% { transform: translateX(-18%); opacity: 0.3; }
+  45% { opacity: 1; }
+  100% { transform: translateX(18%); opacity: 0.35; }
+}
+
+@keyframes apex-panel-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.apex-app-shell {
+  background:
+    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 58%, hsl(var(--muted) / 0.28) 100%);
+}
+
+.dark .apex-app-shell {
+  background:
+    linear-gradient(180deg, hsl(222 60% 2%) 0%, hsl(222 44% 5%) 50%, hsl(220 32% 7%) 100%);
+}
+
+.apex-main-canvas {
+  background-image:
+    linear-gradient(hsl(var(--foreground) / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--foreground) / 0.035) 1px, transparent 1px);
+  background-position: top left;
+  background-size: 44px 44px;
+}
+
+.apex-content-frame {
+  width: 100%;
+  max-width: 1760px;
+  margin-inline: auto;
+}
+
+.apex-page-header {
+  animation: apex-panel-rise 360ms var(--ease-emphasized) both;
+  border-radius: 0 0 8px 8px;
+}
+
+.apex-page-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(120deg, hsl(var(--primary) / 0.10), transparent 26%),
+    linear-gradient(90deg, hsl(38 90% 55% / 0.08), transparent 38%),
+    linear-gradient(180deg, hsl(var(--card) / 0.96), hsl(var(--card) / 0.86));
+}
+
+.dark .apex-page-header::before {
+  background:
+    linear-gradient(120deg, hsl(168 70% 48% / 0.18), transparent 28%),
+    linear-gradient(90deg, hsl(38 90% 55% / 0.12), transparent 40%),
+    linear-gradient(180deg, hsl(222 36% 11% / 0.98), hsl(222 42% 7% / 0.98));
+}
+
+.apex-page-header::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(90deg, transparent 0, hsl(var(--foreground) / 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, transparent 0, hsl(var(--foreground) / 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(90deg, black 0%, black 65%, transparent 100%);
+}
+
+.apex-header-scan {
+  animation: apex-rail-scan 3.8s ease-in-out infinite alternate;
+}
+
+.apex-page-header h1,
+h1,
+.h1 {
+  letter-spacing: 0 !important;
+}
+
+.apex-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.apex-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, hsl(255 100% 100% / 0.055), transparent 44%);
+  opacity: 0.9;
+}
+
+.apex-card:hover {
+  border-color: hsl(var(--primary) / 0.42);
+  box-shadow:
+    var(--elev-3),
+    0 0 0 1px hsl(var(--primary) / 0.12);
+}
+
+.dark .apex-card:hover {
+  box-shadow:
+    0 14px 38px hsl(222 70% 0% / 0.48),
+    0 0 0 1px hsl(168 72% 48% / 0.32);
+}
+
+.apex-op-panel {
+  border: 1px solid hsl(var(--border) / 0.75);
+  border-radius: 8px;
+  background: hsl(var(--card) / 0.94);
+  box-shadow: var(--elev-2);
+}
+
+.apex-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.apex-kpi-tile {
+  min-height: 96px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border) / 0.72);
+  background:
+    linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--card) / 0.88));
+  box-shadow: var(--elev-2);
+  transition:
+    border-color 180ms var(--ease-standard),
+    box-shadow 180ms var(--ease-standard),
+    transform 180ms var(--ease-standard);
+}
+
+.apex-kpi-tile:hover {
+  transform: translateY(-2px);
+  border-color: hsl(var(--primary) / 0.45);
+  box-shadow:
+    var(--elev-3),
+    0 0 0 1px hsl(var(--primary) / 0.14);
+}
+
+@media (max-width: 640px) {
+  .apex-page-header {
+    margin-bottom: 1rem;
+    padding-block: 1.1rem;
+  }
+
+  .apex-page-header h1,
+  h1,
+  .h1 {
+    font-size: clamp(1.5rem, 9vw, 2.15rem) !important;
+    line-height: 1.08 !important;
+  }
+
+  .apex-main-canvas {
+    background-size: 28px 28px;
+  }
+}

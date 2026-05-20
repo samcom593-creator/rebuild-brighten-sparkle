@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Visual overhaul priority: CRM, Command Center, Hiring Pipeline, Seminar, and shared shell",
+    detail: "Stripe was demoted out of the P0 lane. The visible website priority is now the app-wide visual overhaul: shared authenticated shell got the v4 command-room surface system, PageHeader lost the decorative orb treatment and now renders as a crisp operational command band, base cards gained stronger contrast/depth, CRM and Command Center got high-contrast headers + tighter KPI/filter/leaderboard surfaces, and Hiring/Seminar got rebuilt as readable operating boards with live status bands, upgraded metrics, denser filters, motion polish, and stronger empty/loading states.",
+  },
+  {
+    ts: "today",
     label: "Landing: killed placeholder testimonial section (website-integrity-bot)",
     detail: "The success-story block on the public landing was wired to YouTube video YmlLSIwfGdE — oEmbed title fetched live came back as a VSL placeholder video by @SamuelJamesHQ. No named agent, no production number, no timeline — just a test clip masquerading as customer proof. Section pulled from Index.tsx, TestimonialsSection.tsx deleted (git preserves it for re-mount when a real recorded testimonial drops), and three placeholder phrasings added to check-forbidden-language.mjs so any future copy that names no agent gets blocked at build time. Public landing now flows BenefitsSection → EarningsSection → SystemsSection (real Apex data after audit pass #6) with zero fake proof in the middle.",
   },

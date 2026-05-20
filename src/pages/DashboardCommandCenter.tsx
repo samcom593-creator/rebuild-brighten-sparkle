@@ -88,6 +88,7 @@ import { NextStepStuckPool } from "@/components/next-step/NextStepStuckPool";
 import { NextStepFunnelStrip } from "@/components/next-step/NextStepFunnelStrip";
 import { LIVE_AGENT_DEAL_WINDOW_DAYS, getLiveAgentCutoffIso } from "@/lib/metricTruth";
 import { DEAL_TRUTH_STATUS_FILTER, liveDealWindowOr } from "@/lib/dealTruth";
+import { motion } from "framer-motion";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 type FilterType = "all" | "producers" | "weak" | "zero" | "inactive";
@@ -114,6 +115,12 @@ const HIDEABLE_CARDS: Record<string, string> = {
   "admin.manager-invites": "Manager Invites",
   "admin.bulk-lead-assignment": "Bulk Lead Assignment",
   "admin.team-commissions": "Team Commissions (InsuraCloud Live)",
+};
+
+const surfaceMotion = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.28, ease: "easeOut" },
 };
 
 interface AgentWithStats {
@@ -588,37 +595,43 @@ export default function DashboardCommandCenter() {
   return (
     <>
       <div className="space-y-6 page-enter p-4 md:p-6">
-        <PageHeader
-          accent="primary"
-          eyebrow="Admin · Command"
-          eyebrowIcon={<Crown className="h-3 w-3" />}
-          title="Command Center"
-          subtitle="Full agency control. Every metric live, every agent within reach, zero spreadsheets."
-          actions={
-            <>
-              <HiddenCardsManager catalog={HIDEABLE_CARDS} />
-              <LeadImporter />
-              <LeadExporter />
-              <AddAgentModal onAgentAdded={() => refetch()} />
-              <Button
-                variant="default"
-                onClick={() => setShowInviteModal(true)}
-                className="gap-2"
-              >
-                <UserPlus className="h-4 w-4" />
-                Invite Team
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowDuplicateTool(true)}
-                className="gap-2"
-              >
-                <Users className="h-4 w-4" />
-                Find Duplicates
-              </Button>
-            </>
-          }
-        />
+        <motion.div
+          {...surfaceMotion}
+          className="relative overflow-hidden rounded-lg border border-slate-900/10 bg-slate-950 px-4 py-4 text-white shadow-xl shadow-slate-950/10 dark:border-white/10 md:px-5"
+        >
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400 via-cyan-400 to-emerald-400" />
+          <PageHeader
+            accent="primary"
+            eyebrow="Admin · Command"
+            eyebrowIcon={<Crown className="h-3 w-3" />}
+            title="Command Center"
+            subtitle="Full agency control. Every metric live, every agent within reach, zero spreadsheets."
+            actions={
+              <>
+                <HiddenCardsManager catalog={HIDEABLE_CARDS} />
+                <LeadImporter />
+                <LeadExporter />
+                <AddAgentModal onAgentAdded={() => refetch()} />
+                <Button
+                  variant="default"
+                  onClick={() => setShowInviteModal(true)}
+                  className="gap-2 bg-white text-slate-950 hover:bg-white/90"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Invite Team
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDuplicateTool(true)}
+                  className="gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                >
+                  <Users className="h-4 w-4" />
+                  Find Duplicates
+                </Button>
+              </>
+            }
+          />
+        </motion.div>
 
         <ControlTerminal />
 
@@ -638,15 +651,20 @@ export default function DashboardCommandCenter() {
         </HideableCard>
 
         {/* Summary Stats - Clickable */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 card-hover-lift">
+        <motion.div
+          {...surfaceMotion}
+          transition={{ duration: 0.28, delay: 0.04, ease: "easeOut" }}
+          className="grid grid-cols-2 lg:grid-cols-5 gap-4 card-hover-lift"
+        >
           <HideableCard cardKey="admin.stat.totalAlp" label="Total ALP">
             <Card
-              className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
               onClick={() => setStatPopup({ type: "totalAlp", open: true })}
             >
               <CardContent className="p-4">
+                <div className="mb-3 h-1 w-14 rounded-full bg-primary/80 transition-all group-hover:w-20" />
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
+                  <div className="p-2 rounded-md bg-primary/10 ring-1 ring-primary/15">
                     <DollarSign className="h-5 w-5 text-primary" />
                   </div>
                   <div>
@@ -660,12 +678,13 @@ export default function DashboardCommandCenter() {
 
           <HideableCard cardKey="admin.stat.activeAgents" label="Live Agents">
             <Card
-              className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
               onClick={() => setStatPopup({ type: "activeAgents", open: true })}
             >
               <CardContent className="p-4">
+                <div className="mb-3 h-1 w-14 rounded-full bg-cyan-500/80 transition-all group-hover:w-20" />
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
+                  <div className="p-2 rounded-md bg-cyan-500/10 ring-1 ring-cyan-500/15">
                     <Users className="h-5 w-5 text-primary" />
                   </div>
                   <div>
@@ -680,12 +699,13 @@ export default function DashboardCommandCenter() {
 
           <HideableCard cardKey="admin.stat.producers" label="Producers">
             <Card
-              className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
               onClick={() => setStatPopup({ type: "producers", open: true })}
             >
               <CardContent className="p-4">
+                <div className="mb-3 h-1 w-14 rounded-full bg-emerald-500/80 transition-all group-hover:w-20" />
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
+                  <div className="p-2 rounded-md bg-emerald-500/10 ring-1 ring-emerald-500/15">
                     <TrendingUp className="h-5 w-5 text-primary" />
                   </div>
                   <div>
@@ -699,12 +719,13 @@ export default function DashboardCommandCenter() {
 
           <HideableCard cardKey="admin.stat.needsAttention" label="Needs Attention">
             <Card
-              className="stat-card border-destructive/20 cursor-pointer hover:ring-2 hover:ring-destructive/50 transition-all"
+              className="stat-card group cursor-pointer overflow-hidden border-destructive/30 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-destructive/60 hover:shadow-md"
               onClick={() => setStatPopup({ type: "needsAttention", open: true })}
             >
               <CardContent className="p-4">
+                <div className="mb-3 h-1 w-14 rounded-full bg-destructive/80 transition-all group-hover:w-20" />
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-destructive/10">
+                  <div className="p-2 rounded-md bg-destructive/10 ring-1 ring-destructive/15">
                     <AlertTriangle className="h-5 w-5 text-destructive" />
                   </div>
                   <div>
@@ -718,12 +739,13 @@ export default function DashboardCommandCenter() {
 
           <HideableCard cardKey="admin.stat.totalDeals" label="Total Deals">
             <Card
-              className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
               onClick={() => setStatPopup({ type: "totalDeals", open: true })}
             >
               <CardContent className="p-4">
+                <div className="mb-3 h-1 w-14 rounded-full bg-amber-500/80 transition-all group-hover:w-20" />
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-500/10">
+                  <div className="p-2 rounded-md bg-amber-500/10 ring-1 ring-amber-500/15">
                     <TrendingUp className="h-5 w-5 text-emerald-500" />
                   </div>
                   <div>
@@ -734,12 +756,16 @@ export default function DashboardCommandCenter() {
               </CardContent>
             </Card>
           </HideableCard>
-        </div>
+        </motion.div>
 
         {/* Time Period Toggle + Custom Date Range */}
-        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+        <motion.div
+          {...surfaceMotion}
+          transition={{ duration: 0.28, delay: 0.08, ease: "easeOut" }}
+          className="flex flex-col gap-4 rounded-lg border border-border/70 bg-card/95 p-3 shadow-sm lg:flex-row lg:items-center"
+        >
           <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)} className="w-full lg:w-auto">
-            <TabsList className="grid grid-cols-4 w-full lg:w-auto">
+            <TabsList className="grid grid-cols-4 w-full rounded-md bg-muted/70 lg:w-auto">
               <TabsTrigger value="day" className="px-3 text-sm">Today</TabsTrigger>
               <TabsTrigger value="week" className="px-3 text-sm">Week</TabsTrigger>
               <TabsTrigger value="month" className="px-3 text-sm">Month</TabsTrigger>
@@ -767,31 +793,35 @@ export default function DashboardCommandCenter() {
                 placeholder="Search agents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 bg-background/80"
               />
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Quick Filters */}
         <QuickFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} />
 
         {/* Main Content Grid */}
-        <div className="flex flex-col lg:flex-row gap-6">
+        <motion.div
+          {...surfaceMotion}
+          transition={{ duration: 0.28, delay: 0.12, ease: "easeOut" }}
+          className="flex flex-col lg:flex-row gap-6"
+        >
           {/* Leaderboard - Takes 70% on desktop */}
           <div className="w-full lg:w-[70%]">
-            <Card className="flex flex-col h-full">
+            <Card className="flex flex-col h-full overflow-hidden border-border/70 bg-card/95 shadow-sm">
               <Tabs defaultValue="live" className="w-full flex flex-col h-full">
-                <CardHeader className="pb-3 shrink-0">
+                <CardHeader className="shrink-0 border-b border-slate-800 bg-slate-950 text-white pb-4">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3">
                       <CardTitle className="text-lg font-semibold">Leaderboard</CardTitle>
-                      <TabsList>
-                        <TabsTrigger value="live" className="text-xs">Commissions (Live)</TabsTrigger>
-                        <TabsTrigger value="logged" className="text-xs">Logged ALP</TabsTrigger>
+                      <TabsList className="bg-white/10">
+                        <TabsTrigger value="live" className="text-xs text-white/75 data-[state=active]:bg-white data-[state=active]:text-slate-950">Commissions (Live)</TabsTrigger>
+                        <TabsTrigger value="logged" className="text-xs text-white/75 data-[state=active]:bg-white data-[state=active]:text-slate-950">Logged ALP</TabsTrigger>
                       </TabsList>
                     </div>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="border-white/20 bg-white/10 text-xs text-white">
                       {filteredAgents.length} agents
                     </Badge>
                   </div>
@@ -815,12 +845,14 @@ export default function DashboardCommandCenter() {
                 ) : (
                   <div className="space-y-2 overflow-y-auto scrollbar-custom px-6 pb-6 max-h-none lg:max-h-[70vh]">
                     {filteredAgents.map((agent, index) => (
-                      <div
+                      <motion.div
                         key={agent.id}
+                        whileHover={{ y: -2 }}
+                        transition={{ duration: 0.16 }}
                         onClick={() => setSelectedAgent(agent)}
                         className={cn(
                           "flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 rounded-lg cursor-pointer transition-all min-h-[56px]",
-                          "hover:bg-muted/50 border border-transparent hover:border-border",
+                          "border border-border/70 bg-background/85 shadow-sm hover:bg-muted/45 hover:border-foreground/20 hover:shadow-md",
                           index === 0 && "bg-primary/5 border-primary/20",
                           index === 1 && "bg-muted/30",
                           index === 2 && "bg-muted/20",
@@ -1037,7 +1069,7 @@ export default function DashboardCommandCenter() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 )}
@@ -1063,7 +1095,7 @@ export default function DashboardCommandCenter() {
               <ActivityFeedWidget limit={12} />
             </HideableCard>
           </div>
-        </div>
+        </motion.div>
 
         {/* Team Hierarchy Manager */}
         <HideableCard cardKey="admin.team-hierarchy" label="Team Hierarchy Manager">
@@ -1083,7 +1115,7 @@ export default function DashboardCommandCenter() {
         {/* Collapsible: Invite Links + Lead Reassignment */}
         <Collapsible open={showInviteLinks} onOpenChange={setShowInviteLinks}>
           <CollapsibleTrigger asChild>
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <Card className="cursor-pointer border-border/70 bg-card/95 shadow-sm transition-colors hover:bg-muted/50">
               <CardHeader className="py-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-medium">Manager Links & Lead Reassignment</CardTitle>
@@ -1104,7 +1136,7 @@ export default function DashboardCommandCenter() {
         <div className="space-y-3">
           <Collapsible open={showTerminated} onOpenChange={setShowTerminated}>
             <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <Card className="cursor-pointer border-border/70 bg-card/95 shadow-sm transition-colors hover:bg-muted/50">
                 <CardHeader className="py-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -1122,7 +1154,7 @@ export default function DashboardCommandCenter() {
 
           <Collapsible open={showAbandoned} onOpenChange={setShowAbandoned}>
             <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <Card className="cursor-pointer border-border/70 bg-card/95 shadow-sm transition-colors hover:bg-muted/50">
                 <CardHeader className="py-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -1140,7 +1172,7 @@ export default function DashboardCommandCenter() {
 
           <Collapsible open={showAllLeads} onOpenChange={setShowAllLeads}>
             <CollapsibleTrigger asChild>
-              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <Card className="cursor-pointer border-border/70 bg-card/95 shadow-sm transition-colors hover:bg-muted/50">
                 <CardHeader className="py-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base font-medium flex items-center gap-2">

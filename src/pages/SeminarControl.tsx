@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CalendarClock, CheckCircle2, AlertTriangle, Trophy, GraduationCap, FileCheck2, UserPlus, Crown, Mail, MessageSquare, Bell } from "lucide-react";
+import { CalendarClock, CheckCircle2, AlertTriangle, Trophy, GraduationCap, FileCheck2, UserPlus, Crown, Mail, MessageSquare, Bell, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -200,39 +200,76 @@ export default function SeminarControl() {
     );
   }
 
-  if (metricsQuery.isLoading || rosterQuery.isLoading || presenterQuery.isLoading) return <PageLoadingSkeleton />;
+  if (metricsQuery.isLoading || rosterQuery.isLoading || presenterQuery.isLoading) return <PageLoadingSkeleton variant="dashboard" />;
 
   const Stat = ({ icon: Icon, label, value, tone = "neutral" as const }: any) => (
-    <Card className={`border ${TONE_CLS[tone as keyof typeof TONE_CLS]} backdrop-blur`}>
-      <CardContent className="p-4 flex items-center gap-3">
-        <Icon className="h-5 w-5" />
-        <div>
-          <div className="text-xs uppercase tracking-wider opacity-80">{label}</div>
-          <div className="text-2xl font-bold tabular-nums">{value ?? 0}</div>
-        </div>
-      </CardContent>
-    </Card>
+    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.99 }}>
+      <Card className={`border shadow-sm ${TONE_CLS[tone as keyof typeof TONE_CLS]} backdrop-blur`}>
+        <CardContent className="p-4 flex items-center gap-3 min-h-[92px]">
+          <Icon className="h-5 w-5" />
+          <div>
+            <div className="text-xs uppercase tracking-wide opacity-80">{label}</div>
+            <div className="text-2xl font-bold tabular-nums">{value ?? 0}</div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 
   const funnel = metrics?.conversion_funnel;
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="min-h-screen bg-background p-4 sm:p-6 space-y-6">
       <PageHeader
         accent="amber"
-        eyebrow="Seminar Control"
+        eyebrow="Seminar command"
         eyebrowIcon={<Crown className="h-3 w-3" />}
         title="Group interview pipeline"
         subtitle={metrics?.next_seminar_date
-          ? `Next seminar: ${format(new Date(metrics.next_seminar_date), "EEE, MMM d")}`
-          : "Track every applicant through the group interview workflow."
+          ? `Next seminar: ${format(new Date(metrics.next_seminar_date), "EEE, MMM d")} · track each registrant from attendance to production.`
+          : "Track every registrant from group interview attendance to production."
         }
         actions={
-          <Badge variant="outline" className="text-xs">
-            As of {metrics?.as_of ? format(new Date(metrics.as_of), "p") : ""}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="bg-background/80 text-xs">
+              As of {metrics?.as_of ? format(new Date(metrics.as_of), "p") : ""}
+            </Badge>
+            <Button
+              size="sm"
+              variant="outline"
+              className="bg-background/80"
+              onClick={() => {
+                metricsQuery.refetch();
+                rosterQuery.refetch();
+              }}
+            >
+              <RefreshCw className="mr-1 h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
         }
       />
+
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-lg border border-amber-500/25 bg-gradient-to-r from-amber-500/10 via-card to-card shadow-sm"
+      >
+        <div className="grid gap-3 p-3 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-500">
+              Live roster
+            </Badge>
+            <span className="text-muted-foreground">
+              {roster.length} registrants grouped by seminar date
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CalendarClock className="h-4 w-4" />
+            60 second auto-refresh
+          </div>
+        </div>
+      </motion.div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <Stat icon={CalendarClock} label="Upcoming" value={metrics?.upcoming_total} />
@@ -247,8 +284,8 @@ export default function SeminarControl() {
       </div>
 
       {funnel && (
-        <Card>
-          <CardHeader>
+        <Card className="border-border/60 bg-card shadow-sm">
+          <CardHeader className="border-b border-border/50">
             <CardTitle className="text-base">Conversion funnel</CardTitle>
           </CardHeader>
           <CardContent>
@@ -261,12 +298,20 @@ export default function SeminarControl() {
                 ["Contracted", funnel.contracted],
                 ["Producing", funnel.producing],
               ].map(([label, n]) => (
-                <div key={label as string} className="rounded-lg border bg-card/50 p-3">
-                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+                <div key={label as string} className="rounded-lg border border-border/60 bg-background p-3">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
                   <div className="text-xl font-bold tabular-nums">{n as number}</div>
                   {funnel.registered ? (
-                    <div className="text-[10px] text-muted-foreground mt-1">
-                      {((((n as number) / funnel.registered) * 100) || 0).toFixed(0)}%
+                    <div className="mt-2 space-y-1">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-amber-500"
+                          style={{ width: `${Math.min(100, (((n as number) / funnel.registered) * 100) || 0)}%` }}
+                        />
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {((((n as number) / funnel.registered) * 100) || 0).toFixed(0)}%
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -276,33 +321,40 @@ export default function SeminarControl() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="border-border/60 bg-card shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-border/50">
           <CardTitle className="text-base">Roster</CardTitle>
           <div className="text-xs text-muted-foreground">{roster.length} registrants</div>
         </CardHeader>
         <CardContent className="space-y-6">
           {groupedByDate.length === 0 && (
-            <div className="text-center py-12 text-sm text-muted-foreground">
-              No seminar registrations yet. Drive traffic to{" "}
-              <a href="/seminar" className="underline">/seminar</a> to start collecting registrations.
+            <div className="rounded-lg border border-dashed border-border/70 bg-background/70 px-4 py-12 text-center text-sm text-muted-foreground">
+              <CalendarClock className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
+              <div className="font-medium text-foreground">No seminar registrations yet</div>
+              <div className="mt-1">
+                Drive traffic to <a href="/seminar" className="underline">/seminar</a> to start collecting registrations.
+              </div>
             </div>
           )}
           {groupedByDate.map(([date, rows]) => (
-            <div key={date}>
-              <div className="flex items-center gap-2 mb-2">
+            <motion.div key={date} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+              <div className="mb-2 flex items-center gap-2">
                 <CalendarClock className="h-4 w-4" />
                 <h3 className="font-semibold">
                   {date === "unscheduled" ? "Unscheduled" : format(new Date(date), "EEE, MMM d")}
                 </h3>
                 <Badge variant="outline" className="text-[10px]">{rows.length}</Badge>
               </div>
-              <div className="rounded-lg border divide-y divide-border/50">
+              <div className="overflow-hidden rounded-lg border border-border/60 bg-background divide-y divide-border/50">
                 {rows.map((r) => {
                   const meta = STAGE_META[r.stage] || STAGE_META.unknown;
                   const Icon = meta.icon;
                   return (
-                    <div key={r.registration_id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3">
+                    <motion.div
+                      key={r.registration_id}
+                      layout
+                      className="flex flex-col justify-between gap-3 p-3 transition hover:bg-muted/35 sm:flex-row sm:items-center"
+                    >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium truncate">{r.attendee_name}</span>
@@ -312,7 +364,7 @@ export default function SeminarControl() {
                           </Badge>
                         </div>
                         <div className="text-xs text-muted-foreground truncate">
-                          {r.email} · {r.phone} · {r.license_status ?? "?"}
+                          {r.email ?? "No email"} · {r.phone ?? "No phone"} · {r.license_status ?? "License unknown"}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           <Badge variant="outline" className={r.reminder_opt_in ? "text-[10px] border-emerald-500/30 text-emerald-500" : "text-[10px] border-amber-500/30 text-amber-500"}>
@@ -335,7 +387,7 @@ export default function SeminarControl() {
                           App: {r.app_status ?? "none"} · Licensing: {r.app_license_progress ?? r.license_status ?? "unknown"} · Source: {r.source ?? "unknown"}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-2">
                         {r.stage === "upcoming" || r.stage === "no_show" ? (
                           <>
                             <Button
@@ -357,11 +409,11 @@ export default function SeminarControl() {
                           </>
                         ) : null}
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
-            </div>
+            </motion.div>
           ))}
         </CardContent>
       </Card>

@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 /**
  * PageHeader — hero-class header used across every operating-system route.
  *
- * v3 (2026-05-17): Bigger title, decorative floating orbs, gradient ring,
- * accent-aware glow. Renders identically to v2's API so 30+ existing
- * pages level up automatically.
+ * v4 (2026-05-20): Operational command band with crisp contrast, motion
+ * rails, and no decorative blobs. Renders through the same API so 30+
+ * existing pages level up automatically.
  */
 export interface PageHeaderProps {
   eyebrow?: string;
@@ -19,14 +19,24 @@ export interface PageHeaderProps {
   className?: string;
 }
 
-const ACCENT_GRADIENTS: Record<NonNullable<PageHeaderProps["accent"]>, string> = {
-  primary: "from-primary/20 via-primary/5 to-transparent",
-  emerald: "from-emerald-500/20 via-emerald-500/5 to-transparent",
-  blue:    "from-blue-500/20 via-blue-500/5 to-transparent",
-  amber:   "from-amber-500/20 via-amber-500/5 to-transparent",
-  rose:    "from-rose-500/20 via-rose-500/5 to-transparent",
-  purple:  "from-purple-500/20 via-purple-500/5 to-transparent",
-  cyan:    "from-cyan-500/20 via-cyan-500/5 to-transparent",
+const ACCENT_BARS: Record<NonNullable<PageHeaderProps["accent"]>, string> = {
+  primary: "from-primary via-emerald-400 to-amber-400",
+  emerald: "from-emerald-500 via-teal-300 to-amber-400",
+  blue: "from-blue-500 via-cyan-300 to-amber-400",
+  amber: "from-amber-500 via-orange-300 to-emerald-400",
+  rose: "from-rose-500 via-fuchsia-400 to-amber-400",
+  purple: "from-purple-500 via-violet-300 to-cyan-300",
+  cyan: "from-cyan-500 via-teal-300 to-amber-400",
+};
+
+const ACCENT_SHEENS: Record<NonNullable<PageHeaderProps["accent"]>, string> = {
+  primary: "bg-primary",
+  emerald: "bg-emerald-500",
+  blue: "bg-blue-500",
+  amber: "bg-amber-500",
+  rose: "bg-rose-500",
+  purple: "bg-purple-500",
+  cyan: "bg-cyan-500",
 };
 
 const ACCENT_TEXTS: Record<NonNullable<PageHeaderProps["accent"]>, string> = {
@@ -37,16 +47,6 @@ const ACCENT_TEXTS: Record<NonNullable<PageHeaderProps["accent"]>, string> = {
   rose:    "text-rose-400",
   purple:  "text-purple-400",
   cyan:    "text-cyan-400",
-};
-
-const ACCENT_ORBS: Record<NonNullable<PageHeaderProps["accent"]>, string> = {
-  primary: "bg-primary/20",
-  emerald: "bg-emerald-500/25",
-  blue:    "bg-blue-500/25",
-  amber:   "bg-amber-500/25",
-  rose:    "bg-rose-500/25",
-  purple:  "bg-purple-500/25",
-  cyan:    "bg-cyan-500/25",
 };
 
 export function PageHeader({
@@ -61,32 +61,30 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "relative -mx-4 sm:-mx-6 mb-6 px-4 sm:px-6 lg:px-8 py-7 sm:py-10",
-        "bg-gradient-to-br border-b border-border/40 overflow-hidden isolation-isolate",
-        ACCENT_GRADIENTS[accent],
+        "apex-page-header relative -mx-4 sm:-mx-6 mb-6 overflow-hidden px-4 py-5 sm:px-6 lg:px-8",
+        "border-b border-border/70 bg-card/95 shadow-[0_16px_50px_hsl(var(--foreground)/0.08)] isolation-isolate",
         className,
       )}
     >
-      {/* Floating accent orb — top-right */}
+      <span aria-hidden className={cn("absolute inset-x-0 top-0 h-1 bg-gradient-to-r", ACCENT_BARS[accent])} />
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full blur-3xl opacity-70",
-          ACCENT_ORBS[accent],
+          "pointer-events-none absolute inset-y-0 left-0 w-1 opacity-80",
+          ACCENT_SHEENS[accent],
         )}
       />
-      {/* Subtle scan-line at bottom */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-6 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"
+        className="apex-header-scan pointer-events-none absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent"
       />
 
-      <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+      <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
           {eyebrow && (
             <div
               className={cn(
-                "inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.22em] font-bold mb-2 px-2.5 py-1 rounded-full bg-card/40 backdrop-blur-sm border border-border/40",
+                "inline-flex items-center gap-1.5 rounded-md border border-border/70 bg-background/70 px-2.5 py-1 text-[11px] font-bold uppercase tracking-normal shadow-sm",
                 ACCENT_TEXTS[accent],
               )}
             >
@@ -94,7 +92,7 @@ export function PageHeader({
               <span>{eyebrow}</span>
             </div>
           )}
-          <h1 className="text-3xl sm:text-4xl lg:text-[2.6rem] font-bold tracking-tight leading-[1.05]">
+          <h1 className="text-3xl font-extrabold tracking-normal leading-tight">
             {title}
           </h1>
           {subtitle && (

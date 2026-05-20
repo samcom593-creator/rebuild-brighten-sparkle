@@ -54,7 +54,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
   const marginLeft = isDesktop ? (isFullscreen ? 0 : sidebarWidth) : 0;
 
   return (
-    <div className="min-h-screen relative">
+    <div className="apex-app-shell min-h-screen relative bg-background">
       {/* Mobile Header - only visible on small screens */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border shadow-sm">
         <div className="flex items-center justify-between p-4 pt-[max(1rem,env(safe-area-inset-top))]">
@@ -139,7 +139,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       <ScrollProgress />
       <main
         className={cn(
-          "min-h-screen pt-16 lg:pt-0"
+          "apex-main-canvas min-h-screen pt-16 lg:pt-0"
         )}
         style={{
           marginLeft: isDesktop ? `${marginLeft}px` : 0,
@@ -148,7 +148,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       >
         <TopBar />
         <RolePreviewBubbles />
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="apex-content-frame p-4 sm:p-6 lg:p-8">
           <PageContent showPhoneBanner={showPhoneBanner}>
             {children}
           </PageContent>

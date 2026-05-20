@@ -507,7 +507,11 @@ export default function ClientPipeline() {
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.005, 0.15) }}
-                  className="flex items-center gap-3 rounded-lg border border-border/40 px-3 py-2.5 hover:border-primary/40 hover:bg-primary/[0.03] transition-colors"
+                  className="flex items-center gap-3 rounded-lg border border-border/40 px-3 py-2.5 hover:border-primary/40 hover:bg-primary/[0.03] transition-colors cursor-pointer"
+                  onClick={() => { window.location.href = `/dashboard/clients/${c.id}`; }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter") window.location.href = `/dashboard/clients/${c.id}`; }}
                 >
                   <div className="h-9 w-9 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold shrink-0">
                     {(c.first_name?.[0] ?? "?") + (c.last_name?.[0] ?? "")}

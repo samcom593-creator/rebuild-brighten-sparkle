@@ -26,6 +26,16 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "\"Add to Seminar\" quick action on agent pages (PL-056)",
+    detail: "New <AgentActionsMenu /> reusable component (src/components/agent/AgentActionsMenu.tsx) ships an 'Add to Seminar' button with a Popover that lists the next 4 Apex seminar dates (Wed + Sat, computed in America/Chicago, no DB round trip). Click a slot → calls register_for_seminar RPC with the agent's first name + last name + email + phone + license_status, which atomically updates the agent's applications row AND creates a seminar_registrations entry tied to that application. Mounted today on /dashboard/agents/:id (AgentDetail header) — every agent profile page now has a one-click path from 'view agent' → 'in next week's seminar.' Empty-email and missing-phone are guarded with a clear error + the menu hides if the agent has no email on file. Reusable: same component drops into CRM, pipeline cards, dashboard popovers, call-center contacts in follow-up PRs without re-implementing the picker logic.",
+  },
+  {
+    ts: "today",
+    label: "Client detail drilldown — full AgentLink mirror (PL-046)",
+    detail: "Per-client page at /dashboard/clients/<id> renders 9 sections from agentlink_clients + agentlink_beneficiaries + agentlink_contracts: Status & owner · Policies (carrier/policy#/face/premium + every contract row) · Financials (incomes, expenses, surplus, qualified/non-qualified, bank) · Needs analysis (objectives, retirement goals, legacy estate) · Beneficiaries · Referral source · Schedule (callback, next action, best time, timezone, channel) · Client care (occupation, address, DOB, physician, medical notes) · Notes (communication + reminders). DNC/DNE/DNT badges in header. Tap-to-call + email actions. Admin sees raw AgentLink payload. Pipeline rows are now clickable rows → cursor-pointer + onClick navigate. Closes PL-046.",
+  },
+  {
+    ts: "today",
     label: "AgentLink sync prompt for agents without data (PL-047)",
     detail: "New <AgentLinkConnectionPrompt /> component embedded at the top of /dashboard/book-of-business and /dashboard/agent-pipeline (Client Pipeline). For non-admin users who have no agents.insuracloud_api_token + no agents.insuracloud_user_id set, surfaces a blue-tinted card with a one-tap 'Sync your AgentLink' CTA that deep-links to /dashboard/agent-link-sync. Auto-hides for admins (they use the agency-wide cookie path) and for already-connected agents so the prompt doesn't nag once configured. Reusable — same component drops into AgentCommandDashboard / MyDeals / any agent-facing surface that depends on AgentLink data.",
   },

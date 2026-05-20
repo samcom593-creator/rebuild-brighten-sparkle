@@ -630,3 +630,6 @@ verify_jwt = false
 
 [functions.telegram-drain]
 verify_jwt = false
+
+[functions.notify-seminar-signup]
+verify_jwt = false

@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Course-paid → auto-signup for next seminar (PL-057)",
+    detail: "When an applicant pays for the pre-license course, applications.course_purchased_at flips NULL→NOT NULL. New trigger fires: fn_next_seminar_date() picks the next Wed 7pm or Sat 10am CT (≥6h lead time), stamps applications.seminar_date + seminar_registered_at, inserts seminar_registrations with source='auto_course_paid' (dedupe by email+date), then pg_net→notify-seminar-signup edge fn emails the assigned manager (or Sam fallback) with the booked date + applicant contact. Closes the leak where managers forgot to manually move course-paid applicants onto a seminar.",
+  },
+  {
+    ts: "today",
     label: "\"Add to Seminar\" quick action on agent pages (PL-056)",
     detail: "New <AgentActionsMenu /> reusable component (src/components/agent/AgentActionsMenu.tsx) ships an 'Add to Seminar' button with a Popover that lists the next 4 Apex seminar dates (Wed + Sat, computed in America/Chicago, no DB round trip). Click a slot → calls register_for_seminar RPC with the agent's first name + last name + email + phone + license_status, which atomically updates the agent's applications row AND creates a seminar_registrations entry tied to that application. Mounted today on /dashboard/agents/:id (AgentDetail header) — every agent profile page now has a one-click path from 'view agent' → 'in next week's seminar.' Empty-email and missing-phone are guarded with a clear error + the menu hides if the agent has no email on file. Reusable: same component drops into CRM, pipeline cards, dashboard popovers, call-center contacts in follow-up PRs without re-implementing the picker logic.",
   },

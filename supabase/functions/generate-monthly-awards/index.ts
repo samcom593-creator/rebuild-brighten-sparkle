@@ -245,24 +245,30 @@ Deno.serve(async (req) => {
     const { start, end, label } = monthBounds(yyyymm);
 
     // Fetch top-6 producers for the month (all statuses)
-    const { data: top6 } = await sb.rpc("execute_sql", { q: `
-      SELECT a.id AS agent_id, p.full_name, p.email, p.avatar_url,
-             count(d.id)::int AS deals, sum(d.annual_premium)::numeric AS alp
-      FROM deals d
-      JOIN agents a ON a.id = d.agent_id
-      JOIN profiles p ON p.id = a.profile_id
-      WHERE d.effective_date BETWEEN '${start}' AND '${end}'
-      GROUP BY a.id, p.full_name, p.email, p.avatar_url
-      ORDER BY alp DESC LIMIT 6
-    `}).catch(async () => {
+    // supabase-js QueryBuilder/rpc has no .catch — must await + try/catch
+    let top6: any[] | null = null;
+    try {
+      const { data } = await sb.rpc("execute_sql", { q: `
+        SELECT a.id AS agent_id, p.full_name, p.email, p.avatar_url,
+               count(d.id)::int AS deals, sum(d.annual_premium)::numeric AS alp
+        FROM deals d
+        JOIN agents a ON a.id = d.agent_id
+        JOIN profiles p ON p.id = a.profile_id
+        WHERE d.effective_date BETWEEN '${start}' AND '${end}'
+        GROUP BY a.id, p.full_name, p.email, p.avatar_url
+        ORDER BY alp DESC LIMIT 6
+      `});
+      top6 = data as any[] | null;
+    } catch (_rpcErr) {
       // Fallback to direct query if execute_sql RPC doesn't exist
       // Truth-layer 2026-04-28: status submitted/active + Sam excluded
-      return sb.from("deals")
+      const { data } = await sb.from("deals")
         .select("agent_id, annual_premium, agent:agents!inner(id, profile:profiles!agents_profile_id_fkey(full_name, email, avatar_url))")
         .gte("effective_date", start).lte("effective_date", end)
         .in("status", ["submitted", "active"])
         .neq("agent_id", "7c3c5581-3544-437f-bfe2-91391afb217d");
-    });
+      top6 = data as any[] | null;
+    }
 
     const top6Rows: Array<{ agent_id: string; full_name: string; email: string | null; avatar_url: string | null; deals: number; alp: number }> =
       Array.isArray(top6) ? top6.map((r: any) => ({ ...r, alp: Number(r.alp) })) : [];

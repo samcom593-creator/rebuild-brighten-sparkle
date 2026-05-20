@@ -372,13 +372,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    await sb.from("insuracloud_snapshots").insert({
-      agent_id: null,
-      snapshot_date: new Date().toISOString().slice(0, 10),
-      snapshot_time: new Date().toISOString(),
-      source: "agentlink-cookie-sync:/api/deals",
-      raw_payload: { count: policies.length, sample: policies.slice(0, 5) },
-    }).catch(() => {});
+    // supabase-js QueryBuilder is a thenable but does NOT expose .catch — must await + try/catch
+    try {
+      await sb.from("insuracloud_snapshots").insert({
+        agent_id: null,
+        snapshot_date: new Date().toISOString().slice(0, 10),
+        snapshot_time: new Date().toISOString(),
+        source: "agentlink-cookie-sync:/api/deals",
+        raw_payload: { count: policies.length, sample: policies.slice(0, 5) },
+      });
+    } catch (_snapshotErr) { /* snapshot is audit-only; never block the sync */ }
 
     await finishLog({
       status: summary.errors.length ? "error" : "ok",

@@ -84,15 +84,18 @@ Deno.serve(async (req) => {
   // inbox UI ready to send manually + ping Discord so he sees it on his
   // phone in real time. This is the offline-safe path: nothing is lost.
   if (!token || !pageId) {
-    await sb.from("inbox_messages").insert({
-      source: "instagram",
-      external_id: recipientId,
-      sender_handle: recipientId,
-      body: message,
-      direction: "outbound",
-      auto_replied: false,
-      raw_payload: { queued: true, reason: "no_token", queued_at: new Date().toISOString() },
-    }).catch(() => {});
+    // supabase-js QueryBuilder has no .catch — await + try/catch
+    try {
+      await sb.from("inbox_messages").insert({
+        source: "instagram",
+        external_id: recipientId,
+        sender_handle: recipientId,
+        body: message,
+        direction: "outbound",
+        auto_replied: false,
+        raw_payload: { queued: true, reason: "no_token", queued_at: new Date().toISOString() },
+      });
+    } catch (_queueErr) { /* queue is best-effort; Discord ping below is the durable receipt */ }
 
     // Discord ping if the webhook is configured — Sam can act in seconds
     const { data: setting } = await sb.from("system_settings")
@@ -133,15 +136,18 @@ Deno.serve(async (req) => {
   const result = await res.json().catch(() => ({}));
   if (!res.ok) {
     // Meta rejected — also queue + ping so the reply isn't lost
-    await sb.from("inbox_messages").insert({
-      source: "instagram",
-      external_id: recipientId,
-      sender_handle: recipientId,
-      body: message,
-      direction: "outbound",
-      auto_replied: false,
-      raw_payload: { queued: true, reason: "send_failed", error: result?.error?.message ?? `HTTP ${res.status}` },
-    }).catch(() => {});
+    // supabase-js QueryBuilder has no .catch — await + try/catch
+    try {
+      await sb.from("inbox_messages").insert({
+        source: "instagram",
+        external_id: recipientId,
+        sender_handle: recipientId,
+        body: message,
+        direction: "outbound",
+        auto_replied: false,
+        raw_payload: { queued: true, reason: "send_failed", error: result?.error?.message ?? `HTTP ${res.status}` },
+      });
+    } catch (_queueErr) { /* queue is best-effort */ }
     return new Response(JSON.stringify({ ok: false, error: result?.error?.message ?? `HTTP ${res.status}`, raw: result, queued: true }),
       { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }

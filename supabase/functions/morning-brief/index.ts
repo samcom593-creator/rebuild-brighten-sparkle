@@ -147,11 +147,14 @@ Let's go. 💥`,
     }
 
     // Log
-    await sb.from("automation_runs").insert({
-      automation_name: "morning-brief",
-      status: "success",
-      metadata: { recruit_target: recruitTargetToday, prod_target: prodTargetToday, top5 },
-    }).catch(() => {});
+    // supabase-js QueryBuilder is a thenable but does NOT expose .catch — must await + try/catch
+    try {
+      await sb.from("automation_runs").insert({
+        automation_name: "morning-brief",
+        status: "success",
+        metadata: { recruit_target: recruitTargetToday, prod_target: prodTargetToday, top5 },
+      });
+    } catch (_logErr) { /* audit-only; never block the brief */ }
 
     return new Response(JSON.stringify({
       ok: true, recruit_target: recruitTargetToday, prod_target: prodTargetToday,

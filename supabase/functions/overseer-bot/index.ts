@@ -78,9 +78,14 @@ Deno.serve(async (req) => {
   }
 
   // ─── 4. Deal sync queue backlog ──
-  const { count: queueBacklog } = await sb.from("deal_sync_queue")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "pending").catch(() => ({ count: null }) as any);
+  // supabase-js QueryBuilder is a thenable but does NOT expose .catch — must await + try/catch
+  let queueBacklog: number | null = null;
+  try {
+    const { count } = await sb.from("deal_sync_queue")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+    queueBacklog = count ?? null;
+  } catch (_qErr) { queueBacklog = null; }
   if ((queueBacklog ?? 0) > 50) {
     checks.push({ name: "deal_sync_queue", status: "warning", detail: `${queueBacklog} pending — triggering sweep` });
     try {
@@ -123,10 +128,15 @@ Deno.serve(async (req) => {
   });
 
   // ─── 7. Recent automation_runs errors ──
-  const { count: errRuns } = await sb.from("automation_runs")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "error")
-    .gte("ran_at", new Date(Date.now() - 86_400_000).toISOString()).catch(() => ({ count: null }) as any);
+  // supabase-js QueryBuilder is a thenable but does NOT expose .catch — must await + try/catch
+  let errRuns: number | null = null;
+  try {
+    const { count } = await sb.from("automation_runs")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "error")
+      .gte("ran_at", new Date(Date.now() - 86_400_000).toISOString());
+    errRuns = count ?? null;
+  } catch (_eErr) { errRuns = null; }
   if ((errRuns ?? 0) > 5) {
     checks.push({ name: "automation_runs", status: "warning", detail: `${errRuns} errors in 24h` });
   } else {
@@ -138,14 +148,16 @@ Deno.serve(async (req) => {
   const warningCount  = checks.filter(c => c.status === "warning").length;
   const overall = criticalCount > 0 ? "critical" : warningCount > 2 ? "degraded" : "healthy";
 
-  // ─── Log it ──
-  await sb.from("system_health_logs").insert({
-    overall_status: overall,
-    critical_count: criticalCount,
-    warning_count: warningCount,
-    auto_fixed: autoFixed,
-    results: checks,
-  }).catch(() => {});
+  // ─── Log it ── (supabase-js QueryBuilder has no .catch — must await + try/catch)
+  try {
+    await sb.from("system_health_logs").insert({
+      overall_status: overall,
+      critical_count: criticalCount,
+      warning_count: warningCount,
+      auto_fixed: autoFixed,
+      results: checks,
+    });
+  } catch (_logErr) { /* logging failure is non-fatal */ }
 
   // ─── Email Sam if degraded or critical ──
   if (overall !== "healthy") {

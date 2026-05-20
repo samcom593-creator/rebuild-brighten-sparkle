@@ -72,11 +72,14 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://xrzweoneiieddzxogewk.supabase.co";
 
   for (const entry of entries) {
-    await sb.from("instagram_events").insert({
-      event_type: payload?.object ?? "unknown",
-      external_id: entry?.id ?? null,
-      payload: entry,
-    }).catch(() => {});
+    // supabase-js QueryBuilder has no .catch — await + try/catch
+    try {
+      await sb.from("instagram_events").insert({
+        event_type: payload?.object ?? "unknown",
+        external_id: entry?.id ?? null,
+        payload: entry,
+      });
+    } catch (_logErr) { /* event log is best-effort; Meta still gets a 200 */ }
 
     // Pull DM events out — IG sends them as entry.messaging[].message.text
     const dms = (entry?.messaging ?? []).filter((m: any) =>

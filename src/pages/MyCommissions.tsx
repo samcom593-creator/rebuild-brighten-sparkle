@@ -109,6 +109,24 @@ export default function MyCommissions() {
   const totalClawed  = clawed.reduce((a, r) => a + r.amount, 0);
   const estimatedRows = rows.filter(r => r.source === "estimate").length;
 
+  // PL-050: YTD by-month breakdown — mirrors AgentLink's finances tab cadence.
+  const ytd = rows.filter(r => new Date(r.created_at).getFullYear() === new Date().getFullYear());
+  const byMonth = new Map<string, { label: string; premium: number; commission: number; deals: number }>();
+  for (const r of ytd) {
+    const d = new Date(r.created_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    const label = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    const cur = byMonth.get(key) ?? { label, premium: 0, commission: 0, deals: 0 };
+    cur.premium += r.annual_premium || 0;
+    cur.commission += r.amount || 0;
+    cur.deals += 1;
+    byMonth.set(key, cur);
+  }
+  const monthsDesc = Array.from(byMonth.entries()).sort((a,b) => b[0].localeCompare(a[0]));
+  const totalYtdCommission = ytd.reduce((a, r) => a + (r.amount || 0), 0);
+  const totalYtdPremium    = ytd.reduce((a, r) => a + (r.annual_premium || 0), 0);
+  const avgPerDeal = ytd.length > 0 ? totalYtdCommission / ytd.length : 0;
+
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto page-enter">
       <PageHeader
@@ -165,6 +183,37 @@ export default function MyCommissions() {
               <div className="text-xs text-muted-foreground mt-1">{clawed.length} deal{clawed.length === 1 ? "" : "s"}</div>
             </GlassCard>
           </div>
+
+          {monthsDesc.length > 0 && (
+            <GlassCard className="p-0 overflow-hidden">
+              <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between text-sm">
+                <span className="font-semibold">YTD by month · {new Date().getFullYear()}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  ${totalYtdCommission.toLocaleString(undefined,{maximumFractionDigits:0})} commission · ${totalYtdPremium.toLocaleString(undefined,{maximumFractionDigits:0})} premium · avg ${avgPerDeal.toLocaleString(undefined,{maximumFractionDigits:0})}/deal
+                </span>
+              </div>
+              <table className="w-full text-xs">
+                <thead className="bg-muted/20">
+                  <tr>
+                    <th className="text-left px-3 py-2">Month</th>
+                    <th className="text-right px-3 py-2">Deals</th>
+                    <th className="text-right px-3 py-2">Premium</th>
+                    <th className="text-right px-3 py-2">Commission</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthsDesc.map(([k, m]) => (
+                    <tr key={k} className="border-t border-border/20">
+                      <td className="px-3 py-1.5 font-medium">{m.label}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{m.deals}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">${m.premium.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-emerald-400">${m.commission.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </GlassCard>
+          )}
 
           <GlassCard className="p-0 overflow-hidden">
             <div className="px-4 py-3 border-b border-border/40 text-sm font-semibold">Ledger ({rows.length})</div>

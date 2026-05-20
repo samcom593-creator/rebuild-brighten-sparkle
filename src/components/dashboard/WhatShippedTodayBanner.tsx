@@ -26,6 +26,16 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Today page actuals are Sam-excluded + at-risk widgets ship names (PL-037 + PL-038)",
+    detail: "The 'Actuals' number on /dashboard/today was pulling ALL submitted+active deals including Sam's own — so the displayed total drifted from the agency-only truth on the leaderboards. Switched every deal query (today/week/month/prior-week) to the canonical VALID_DEAL_STATUSES + .not('agent_id','in', SAM_AGENT_IDS) filter so the actuals match the metric-truth layer used by /admin/audit. The duplicate 'Actuals' panel below the KPI strip (was just restating weekAlp + pipeline) is now an 'At-Risk Agents (Last 7d)' card with two color-coded buckets — 'Profile not activated' (portal_password_set=false) and 'Live 7d · no sale' (zero posted deals in 7d) — each showing the top 3 names + a '+ N more' chip so Sam can act before they ghost. Refresh button is now wired to useQuery's refetch() with a 'last refresh · 2 min ago' relative timestamp next to it.",
+  },
+  {
+    ts: "today",
+    label: "Recent Hires panel on /dashboard (PL-017)",
+    detail: "Just-hired agents with 0 production were invisible — the agency view's top-producers panel filters deals_mtd > 0 and there was no recent-hires surface anywhere. New 'Just hired · last 14 days' card on the agency dashboard reads v_recent_hires (excludes deactivated/inactive/ghost rows) and shows name, agent code, manager, days on team, and onboarding stage. 18 recently-hired agents now visible.",
+  },
+  {
+    ts: "today",
     label: "Licensed-hires tile is now date-range aware (PL-020)",
     detail: "The 'Licensed' stat on /dashboard's Recruiting Pipeline was a single fixed all-time count. Replaced with a LicensedHiresRange tile that defaults to 'This month' and pops out a presets menu (This month / Last 30 days / This quarter / This year / All time) + a custom-range date picker. Counts applications by licensed_at between the chosen start/end dates so Sam can answer 'how many did we license this month?' directly from the dashboard.",
   },

@@ -17,7 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Activity, ArrowRight, BarChart3, Briefcase, Calendar, ChevronRight,
   CircleDollarSign, Crown, DollarSign, Flame, ShieldCheck, Sparkles,
-  Target, TrendingDown, TrendingUp, Trophy, Users, Wallet,
+  Target, TrendingDown, TrendingUp, Trophy, UserPlus, Users, Wallet,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -836,6 +836,31 @@ function AgencyCommandView() {
     },
   });
 
+  // ── Recent hires (last 14d) — surfaces just-hired agents who have
+  // zero production yet and would otherwise be invisible in the agency
+  // view. v_recent_hires filters out deactivated/inactive/ghost rows
+  // and joins managers, so we just sort by hired_on. (PL-017)
+  const recentHires = useQuery({
+    queryKey: ["agency-recent-hires-14d"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10);
+      const { data, error } = await supabase
+        .from("v_recent_hires" as any)
+        .select("id, display_name, agent_code, hired_on, manager_name, onboarding_stage, days_on_team, total_premium, total_policies")
+        .gte("hired_on", since)
+        .order("hired_on", { ascending: false })
+        .limit(12);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string; display_name: string; agent_code: string | null;
+        hired_on: string; manager_name: string | null;
+        onboarding_stage: string | null; days_on_team: number;
+        total_premium: number | string; total_policies: number;
+      }>;
+    },
+  });
+
   // ── 30-day production trend (real daily AP + deals) ──────────────────
   const trend = useQuery({
     queryKey: ["agency-trend-30d"],
@@ -1176,6 +1201,43 @@ function AgencyCommandView() {
           )}
         </GlassCard>
       </div>
+
+      {/* ── Recent hires (last 14d) — PL-017 visibility fix ────────── */}
+      <GlassCard className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Just hired · last 14 days</p>
+            <h3 className="text-lg font-bold">
+              Recent hires{recentHires.data ? ` (${recentHires.data.length})` : ""}
+            </h3>
+          </div>
+          <Button asChild size="sm" variant="ghost">
+            <Link to="/dashboard/team-hierarchy">All agents <ArrowRight className="h-3 w-3 ml-1" /></Link>
+          </Button>
+        </div>
+        {recentHires.isLoading ? (
+          <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : (recentHires.data ?? []).length === 0 ? (
+          <EmptyState icon={<UserPlus className="h-6 w-6" />} title="No new hires in the last 14 days" description="When a new agent is onboarded they'll surface here even before their first deal." />
+        ) : (
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {(recentHires.data ?? []).map((h) => (
+              <li key={h.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm truncate">{h.display_name}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {h.agent_code ?? "—"}{h.manager_name ? ` · mgr ${h.manager_name}` : ""}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-semibold text-primary tabular-nums">{h.days_on_team}d</p>
+                  <p className="text-[10px] text-muted-foreground truncate max-w-[8rem]">{h.onboarding_stage ?? "—"}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </GlassCard>
 
       {/* ── System health + Referrals + Underperformers ─────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

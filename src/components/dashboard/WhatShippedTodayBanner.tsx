@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "CRM segments: Live + Below $20k + Needs Follow-Up rewired (PL-055)",
+    detail: "Three segments on /dashboard/crm were either too strict or empty: (1) Live filtered monthlyALP>=20000 and only stages live+evaluated — agents with <$20k production were hidden even though they ARE live; dropped the floor, expanded stages to in_field_training+evaluated+live+below_10k, all licensed non-deactivated/inactive agents now surface. (2) Below $20k used stage='below_10k' (0 agents have it as enum); replaced with the same stage set + monthlyALP < 20000 ALP-threshold filter. (3) Needs Follow-Up was 'uncontacted 6+ days'; now ALSO catches licensed low-producers (monthlyALP < $10k) per Sam's '<$10k/15d' spec, sorted lowest ALP first. Applied section's filter (stages=['applied']) is correctly wired — segment is empty because new-hire path skips that enum, not a bug in this page.",
+  },
+  {
+    ts: "today",
     label: "Inbox: Push out to all (bulk-blast campaign button) — PL-069",
     detail: "Sam needed it this week. New 'Push out to all' button (emerald, top-right of /admin/inbox) opens a dialog with three campaigns: Reapply blast (warm 30d), Seminar invite blast (RSVPs last 14d), and Unlicensed outreach (cold + dormant unlicensed). Dry-run is default-on with audience count + JSON preview; live send shows a rose warning + 'SEND LIVE' button. Each campaign calls the matching existing edge fn (send-reapply-blast / send-seminar-invite-blast / send-bulk-unlicensed-outreach) which already handle dedupe via notification_log.metadata.campaign. Toast on success and auto-refreshes the inbox 1.5s later so Sam sees the audit rows land.",
   },

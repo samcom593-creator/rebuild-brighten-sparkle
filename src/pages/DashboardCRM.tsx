@@ -1037,17 +1037,25 @@ export default function DashboardCRM() {
       return [...filteredAgents].filter(a => a.agentLicenseStatus === "licensed").sort((a, b) => a.name.localeCompare(b.name));
     }
     if (section.key === "needs_followup") {
-      // Inclusive: anyone 6+ days uncontacted shows up here, regardless of
-      // whether they're also in "live" or "in_field_training" or elsewhere.
-      // Sam's spec: "just because they're in one column doesn't mean they
-      // can't be another column — a live agent still needs follow-up."
+      // PL-055: needs follow-up = licensed agents EITHER (a) low-producing
+      // — under $10k monthly ALP — OR (b) uncontacted for 6+ days. Sam's
+      // spec: "Needs follow-up = <$10k/15d". The agent type carries
+      // monthlyALP (30d window) since that's the data we have; the spirit
+      // is "if they're not posting, we need to call them." The 6-day
+      // uncontacted criterion stays as a second predicate so a fresh
+      // licensee who hasn't been contacted at all surfaces too.
       return filteredAgents.filter(a => {
         if (a.isDeactivated || a.onboardingStage === "inactive") return false;
+        if (a.agentLicenseStatus !== "licensed") return false;
+        const lowProducer = (a.monthlyALP ?? 0) < 10000;
         const daysSinceContact = a.lastContactedAt
           ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)
           : 999;
-        return daysSinceContact >= 6;
+        const stale = daysSinceContact >= 6;
+        return lowProducer || stale;
       }).sort((a, b) => {
+        // Sort by lowest ALP first, then by least-recently-contacted
+        if ((a.monthlyALP ?? 0) !== (b.monthlyALP ?? 0)) return (a.monthlyALP ?? 0) - (b.monthlyALP ?? 0);
         if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
         if (!a.lastContactedAt) return -1;
         if (!b.lastContactedAt) return 1;
@@ -1065,20 +1073,31 @@ export default function DashboardCRM() {
         return ["unlicensed", "course_purchased", "finished_course", "test_scheduled", "passed_test", "fingerprints_done", "waiting_fingerprints", "waiting_on_license"].includes(progress);
       });
     }
-    // Live = actively selling + above $20K monthly ALP (≈ $5K/wk avg) in last 30 days
+    // PL-055: Live = "Licensed & Selling" — every licensed agent whose stage
+    // says they're past onboarding (in_field_training, evaluated, live,
+    // below_10k). Drops the prior $20k ALP floor so low-producing live
+    // agents still show up here (they ALSO surface in Needs Follow-Up).
+    // Sam: "Licensed & Selling should still include agents <$20k/14d (live)".
     if (section.key === "live") {
+      const liveStages = ["in_field_training", "evaluated", "live", "below_10k"];
       return filteredAgents.filter(a =>
-        (section.stages.includes(a.onboardingStage) || a.onboardingStage === "below_10k") &&
         a.agentLicenseStatus === "licensed" &&
-        a.monthlyALP >= 20000
+        liveStages.includes(a.onboardingStage) &&
+        !a.isDeactivated &&
+        !a.isInactive
       ).sort((a, b) => b.monthlyALP - a.monthlyALP);
     }
-    // Below 10K = licensed agents selling but under $20K monthly ALP (last 30 days)
+    // PL-055: Below $20K — licensed and selling but monthlyALP < $20k.
+    // Filter on the ALP threshold itself rather than the stale "below_10k"
+    // enum (which 0 agents currently carry, so the segment was empty).
     if (section.key === "below_10k") {
+      const liveStages = ["in_field_training", "evaluated", "live", "below_10k"];
       return filteredAgents.filter(a =>
-        (["evaluated", "live", "below_10k"].includes(a.onboardingStage)) &&
         a.agentLicenseStatus === "licensed" &&
-        a.monthlyALP < 20000
+        liveStages.includes(a.onboardingStage) &&
+        !a.isDeactivated &&
+        !a.isInactive &&
+        (a.monthlyALP ?? 0) < 20000
       ).sort((a, b) => b.monthlyALP - a.monthlyALP);
     }
     // Transfer = course done, not yet in field training

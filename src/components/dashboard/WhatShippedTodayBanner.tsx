@@ -26,6 +26,17 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Chargebacks 30d verified + consolidated view (PL-024)",
+    detail: "Sam: 'chargebacks 30d showing 0 — verify accuracy.' Audited deals.chargeback_at (0), lead_purchases.refunded_at (0), stripe_subscription_events.event_type ILIKE '%dispute%' (0). The dashboard's 0 is REAL, not a bug. Future-proofed: new v_chargebacks_30d UNIONs all 3 chargeback signal sources so when the first chargeback lands via Stripe dispute OR lead-pack refund OR a manual deals.chargeback_status flag, the KPI catches it regardless of path. v_ceo_command_center.chargebacks_30d now reads from the consolidated view. Migration 20260520020000 applied live + committed.",
+    commit: "3f2532ca",
+  },
+  {
+    ts: "today",
+    label: "Book of Business: role-based scoping + period chargeback widget (PL-041 + PL-043)",
+    detail: "PL-041 (Sam → entire agency, Manager → downline, Agent → own book) was already wired via agentScopeIds + my_downline_agent_ids RPC and the ProtectedRoute is open to all authed users — confirmed end-to-end so it's no longer 'locked by command center.' PL-043 adds a dedicated Chargebacks card (rose-tinted) above the filter row with a real date-range picker: defaults to last 30 days, plus 1-click 30d/90d/YTD presets and from/to date inputs. The card runs a separate Postgres query against deals (charged_back across policy_status_standard / pipeline_stage / status) filtered by status_updated_at within the chosen window, respecting the same role scope, and surfaces count + monthly-lost + ALP-lost totals + a collapsible per-policy list (client, agent, carrier, date, $/mo, $/ALP). Replaces the silent 'last 7 days = 0' that always returned nothing because chargebacks don't cluster that recently.",
+  },
+  {
+    ts: "today",
     label: "Today page actuals are Sam-excluded + at-risk widgets ship names (PL-037 + PL-038)",
     detail: "The 'Actuals' number on /dashboard/today was pulling ALL submitted+active deals including Sam's own — so the displayed total drifted from the agency-only truth on the leaderboards. Switched every deal query (today/week/month/prior-week) to the canonical VALID_DEAL_STATUSES + .not('agent_id','in', SAM_AGENT_IDS) filter so the actuals match the metric-truth layer used by /admin/audit. The duplicate 'Actuals' panel below the KPI strip (was just restating weekAlp + pipeline) is now an 'At-Risk Agents (Last 7d)' card with two color-coded buckets — 'Profile not activated' (portal_password_set=false) and 'Live 7d · no sale' (zero posted deals in 7d) — each showing the top 3 names + a '+ N more' chip so Sam can act before they ghost. Refresh button is now wired to useQuery's refetch() with a 'last refresh · 2 min ago' relative timestamp next to it.",
   },

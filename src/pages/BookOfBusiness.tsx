@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { format } from "date-fns";
-import { Book, Search, RefreshCw, AlertTriangle, Eye } from "lucide-react";
+import { format, subDays } from "date-fns";
+import { Book, Search, RefreshCw, AlertTriangle, Eye, TrendingDown, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
@@ -73,6 +73,25 @@ function pipelineLabel(deal: DealRow): string {
   return deal.policy_status_standard || deal.pipeline_stage || deal.status || "submitted";
 }
 
+// PL-043 — chargeback widget: list of policies that flipped to
+// charged_back within a user-controlled date range. Default 30 days
+// (the old hardcoded 7-day window was always 0 because chargebacks
+// don't cluster that recently).
+
+interface ChargebackRow {
+  id: string;
+  client_first_name: string | null;
+  client_last_name: string | null;
+  agent_id: string | null;
+  agent_name?: string;
+  carrier_name?: string;
+  policy_number: string | null;
+  monthly_premium: number | null;
+  annual_premium: number | null;
+  status_updated_at: string | null;
+  posted_at: string | null;
+}
+
 export default function BookOfBusiness() {
   const { user, isAdmin, isManager } = useAuth();
   const [deals, setDeals]       = useState<DealRow[]>([]);
@@ -84,6 +103,12 @@ export default function BookOfBusiness() {
   const [stageFilter, setStage]   = useState<string>("all");
   const [sortKey, setSortKey]     = useState<SortKey>("posted_at");
   const [sortDir, setSortDir]     = useState<SortDir>("desc");
+
+  // PL-043 — chargeback widget state
+  const [cbSince, setCbSince] = useState<string>(() => format(subDays(new Date(), 30), "yyyy-MM-dd"));
+  const [cbUntil, setCbUntil] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
+  const [chargebacks, setChargebacks] = useState<ChargebackRow[]>([]);
+  const [cbLoading, setCbLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,6 +212,78 @@ export default function BookOfBusiness() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [agentScopeIds, isAdmin, load]);
+
+  // PL-043 — chargeback fetch, refreshed on date change OR scope change
+  const loadChargebacks = useCallback(async () => {
+    if (!isAdmin && agentScopeIds !== null && agentScopeIds.length === 0) {
+      setChargebacks([]);
+      return;
+    }
+    setCbLoading(true);
+    try {
+      // Date range covers status_updated_at (when the chargeback flipped)
+      // OR posted_at as fallback for older rows missing status_updated_at.
+      const startIso = `${cbSince}T00:00:00.000Z`;
+      const endIso   = `${cbUntil}T23:59:59.999Z`;
+      let query = supabase
+        .from("deals")
+        .select(`
+          id, agent_id, client_first_name, client_last_name, policy_number,
+          monthly_premium, annual_premium, status_updated_at, posted_at,
+          carrier_id, policy_status_standard, pipeline_stage, status
+        `)
+        .or("policy_status_standard.eq.charged_back,pipeline_stage.eq.charged_back,status.eq.charged_back")
+        .gte("status_updated_at", startIso)
+        .lte("status_updated_at", endIso)
+        .neq("status", "draft")
+        .order("status_updated_at", { ascending: false })
+        .limit(500);
+      if (!isAdmin && agentScopeIds !== null) {
+        query = query.in("agent_id", agentScopeIds);
+      }
+      const { data } = await query;
+      const rows = (data ?? []) as any[];
+
+      // Hydrate agent + carrier names
+      const agentIds   = [...new Set(rows.map(r => r.agent_id).filter(Boolean))];
+      const carrierIds = [...new Set(rows.map(r => r.carrier_id).filter((v: any): v is string => Boolean(v)))];
+      const [{ data: agents }, { data: carriers }] = await Promise.all([
+        agentIds.length
+          ? supabase.from("agents").select("id, display_name, profile:profiles(full_name)").in("id", agentIds)
+          : Promise.resolve({ data: [] } as any),
+        carrierIds.length
+          ? supabase.from("carriers").select("id, name").in("id", carrierIds)
+          : Promise.resolve({ data: [] } as any),
+      ]);
+      const agentMap: Record<string, string> = {};
+      for (const a of (agents ?? []) as any[]) agentMap[a.id] = a.profile?.full_name ?? a.display_name ?? "Unmatched";
+      const carrierMap: Record<string, string> = {};
+      for (const c of (carriers ?? []) as any[]) carrierMap[c.id] = c.name;
+
+      setChargebacks(rows.map(r => ({
+        id: r.id,
+        client_first_name: r.client_first_name,
+        client_last_name: r.client_last_name,
+        agent_id: r.agent_id,
+        agent_name: agentMap[r.agent_id] ?? "Agent",
+        carrier_name: r.carrier_id ? carrierMap[r.carrier_id] ?? "" : "",
+        policy_number: r.policy_number,
+        monthly_premium: r.monthly_premium,
+        annual_premium: r.annual_premium,
+        status_updated_at: r.status_updated_at,
+        posted_at: r.posted_at,
+      })));
+    } finally {
+      setCbLoading(false);
+    }
+  }, [agentScopeIds, isAdmin, cbSince, cbUntil]);
+
+  useEffect(() => {
+    if (isAdmin || agentScopeIds !== null) loadChargebacks();
+  }, [isAdmin, agentScopeIds, loadChargebacks]);
+
+  const cbTotalALP     = useMemo(() => chargebacks.reduce((s, c) => s + Number(c.annual_premium ?? 0), 0), [chargebacks]);
+  const cbTotalMonthly = useMemo(() => chargebacks.reduce((s, c) => s + Number(c.monthly_premium ?? 0), 0), [chargebacks]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -300,6 +397,121 @@ export default function BookOfBusiness() {
           </div>
         </GlassCard>
       )}
+
+      {/* PL-043 — period chargeback widget (custom date range) */}
+      <GlassCard className="p-4 border-rose-500/30 bg-rose-500/5">
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <TrendingDown className="h-4 w-4 text-rose-300" />
+            <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+              Chargebacks · {cbSince} → {cbUntil}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              type="date"
+              value={cbSince}
+              onChange={e => setCbSince(e.target.value)}
+              className="h-8 w-[150px] text-xs"
+              max={cbUntil}
+            />
+            <span className="text-xs text-muted-foreground">to</span>
+            <Input
+              type="date"
+              value={cbUntil}
+              onChange={e => setCbUntil(e.target.value)}
+              className="h-8 w-[150px] text-xs"
+              min={cbSince}
+              max={format(new Date(), "yyyy-MM-dd")}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => {
+                setCbSince(format(subDays(new Date(), 30), "yyyy-MM-dd"));
+                setCbUntil(format(new Date(), "yyyy-MM-dd"));
+              }}
+            >
+              30d
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => {
+                setCbSince(format(subDays(new Date(), 90), "yyyy-MM-dd"));
+                setCbUntil(format(new Date(), "yyyy-MM-dd"));
+              }}
+            >
+              90d
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => {
+                setCbSince(format(subDays(new Date(), 365), "yyyy-MM-dd"));
+                setCbUntil(format(new Date(), "yyyy-MM-dd"));
+              }}
+            >
+              YTD
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Count</div>
+            <div className="text-2xl font-bold tabular-nums text-rose-300">
+              {cbLoading ? "…" : chargebacks.length}
+            </div>
+          </div>
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Monthly lost</div>
+            <div className="text-2xl font-bold tabular-nums text-rose-300">
+              {cbLoading ? "…" : fmt$(cbTotalMonthly)}
+            </div>
+          </div>
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">ALP lost</div>
+            <div className="text-2xl font-bold tabular-nums text-rose-300">
+              {cbLoading ? "…" : fmt$(cbTotalALP)}
+            </div>
+          </div>
+        </div>
+        {!cbLoading && chargebacks.length > 0 && (
+          <details className="mt-3">
+            <summary className="text-xs text-muted-foreground hover:text-foreground cursor-pointer">
+              Show {chargebacks.length} chargeback{chargebacks.length === 1 ? "" : "s"}
+            </summary>
+            <div className="mt-2 space-y-1 max-h-[260px] overflow-y-auto">
+              {chargebacks.map(c => (
+                <div key={c.id} className="flex items-center justify-between gap-2 text-xs px-2 py-1.5 rounded bg-background/40 border border-border/30">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">
+                      {c.client_first_name} {c.client_last_name}
+                      {c.policy_number && <span className="ml-2 font-mono text-[10px] text-muted-foreground">#{c.policy_number}</span>}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {c.agent_name} · {c.carrier_name || "—"} · {c.status_updated_at ? format(new Date(c.status_updated_at), "MMM d, yyyy") : "—"}
+                    </div>
+                  </div>
+                  <div className="text-right tabular-nums shrink-0">
+                    <div className="text-rose-300 font-semibold">{c.monthly_premium ? fmt$(Number(c.monthly_premium)) : "—"}/mo</div>
+                    <div className="text-[10px] text-muted-foreground">{c.annual_premium ? fmt$(Number(c.annual_premium)) : "—"} ALP</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+        {!cbLoading && chargebacks.length === 0 && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            No chargebacks in this range. Widen the window if you expect to see older ones.
+          </p>
+        )}
+      </GlassCard>
 
       {/* Filters */}
       <GlassCard className="p-3 flex flex-wrap gap-2 items-center">

@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Leaderboard activity: counts ReadyMode dialer pages (PL-053)",
+    detail: "Activity board's 'primary' score was presentations + referrals + hours_called from daily_production only. Now ALSO adds 1 activity unit per ReadyMode dialer call (readymode_dialer_calls.call_started_at in window). Counter graceful-falls-back to daily_production when the dialer table lags — no breakage. As soon as the readymode-ingest fn flows calls in, dialer pages add to the activity score on every leaderboard tab.",
+  },
+  {
+    ts: "today",
     label: "Sidebar surgery: Offers → CRM, AgentLink → bottom, Hiring Pipeline → Production (PL-034/035/036)",
     detail: "Three nav moves Sam asked for. (1) Offers no longer lives buried in Admin — moved into CRM next to Lead Center / Aged Leads so managers+agents browsing leads see package offers in the same group. (2) AgentLink Sync demoted to the bottom of Admin (just above Setup) — it's not daily-use. (3) Hiring Pipeline surfaced into PRODUCTION (was buried mid-RECRUITING) so it's visible at the top of nav for admins/managers. No duplicate listings.",
   },

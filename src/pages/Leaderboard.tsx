@@ -199,12 +199,24 @@ export default function Leaderboard() {
       }
 
       if (board === "activity") {
-        const { data } = await supabase
-          .from("daily_production")
-          .select("agent_id, presentations, hours_called, referrals_caught, referral_presentations, booked_inhome_referrals, production_date")
-          .gte("production_date", bounds.startIso.slice(0, 10))
-          .lt("production_date", bounds.endIso.slice(0, 10));
-        for (const activity of (data ?? []) as any[]) {
+        const [{ data: dailyRows }, { data: dialerRows }] = await Promise.all([
+          supabase
+            .from("daily_production")
+            .select("agent_id, presentations, hours_called, referrals_caught, referral_presentations, booked_inhome_referrals, production_date")
+            .gte("production_date", bounds.startIso.slice(0, 10))
+            .lt("production_date", bounds.endIso.slice(0, 10)),
+          // PL-053: also count dialer pages — every ReadyMode dialer call
+          // counts as 1 unit of activity. The table is populated by the
+          // readymode-ingest fn; when it lags the activity number falls
+          // back to daily_production-only (graceful).
+          supabase
+            .from("readymode_dialer_calls" as any)
+            .select("agent_id")
+            .gte("call_started_at", bounds.startIso)
+            .lt("call_started_at", bounds.endIso)
+            .not("agent_id", "is", null),
+        ]);
+        for (const activity of (dailyRows ?? []) as any[]) {
           const owner = activity.agent_id;
           if (!owner) continue;
           const row = grouped.get(owner) ?? { primary: 0, secondary: 0, tertiary: 0 };
@@ -215,6 +227,17 @@ export default function Leaderboard() {
           row.secondary += presentations;
           row.tertiary += referrals;
           grouped.set(owner, row);
+        }
+        // PL-053: roll up dialer pages by agent — each call = 1 activity unit
+        const dialerByAgent = new Map<string, number>();
+        for (const call of (dialerRows ?? []) as Array<{ agent_id: string | null }>) {
+          if (!call.agent_id) continue;
+          dialerByAgent.set(call.agent_id, (dialerByAgent.get(call.agent_id) ?? 0) + 1);
+        }
+        for (const [agentId, pages] of dialerByAgent) {
+          const row = grouped.get(agentId) ?? { primary: 0, secondary: 0, tertiary: 0 };
+          row.primary += pages;
+          grouped.set(agentId, row);
         }
       }
 

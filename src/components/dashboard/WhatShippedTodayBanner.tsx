@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Pre-Licensing list is readable again (PL-062)",
+    detail: "The /dashboard/pre-licensing student list was a wall of back-to-back identical-green progress bars — Sam called it 'a headache.' Three changes ship together: (1) row spacing bumped from space-y-2 (8px) to space-y-3 (12px) so rows breathe, (2) zebra striping via alternating bg-card/60 vs bg-card/30 + a left-border colored by health bucket so completed (emerald) / almost done (cyan) / in progress (primary) / just started (amber) / stalled (rose) each have a visible left-edge stripe, (3) the Progress bar's indicator color is now driven by health bucket via Tailwind arbitrary [&>div]:bg-X selectors so the variance between rows reads at a glance. Scanning 100+ students is no longer a sea of green.",
+  },
+  {
+    ts: "today",
     label: "Course-paid → auto-signup for next seminar (PL-057)",
     detail: "When an applicant pays for the pre-license course, applications.course_purchased_at flips NULL→NOT NULL. New trigger fires: fn_next_seminar_date() picks the next Wed 7pm or Sat 10am CT (≥6h lead time), stamps applications.seminar_date + seminar_registered_at, inserts seminar_registrations with source='auto_course_paid' (dedupe by email+date), then pg_net→notify-seminar-signup edge fn emails the assigned manager (or Sam fallback) with the booked date + applicant contact. Closes the leak where managers forgot to manually move course-paid applicants onto a seminar.",
   },

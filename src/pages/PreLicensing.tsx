@@ -289,12 +289,24 @@ export default function PreLicensing() {
           actions={<Button variant="ghost" size="sm" onClick={() => { setSearch(""); setSectionFilter("__all__"); setHealthFilter("__all__"); }}>Clear filters</Button>}
         />
       ) : (
-        <div className="space-y-2">
+        // PL-062: bump gap from space-y-2 (8px) → space-y-3 (12px) so rows
+        // are visually separable, alternate row tint, and color the Progress
+        // bar by health bucket so back-to-back greens become a varied stripe.
+        <div className="space-y-3">
           {filtered.map((s, i) => {
             const section = SECTION_META[s.course_section] ?? { label: s.course_section, color: "bg-muted" };
             const health = HEALTH_META[s.health_bucket];
             const HealthIcon = health.icon;
             const pct = Number(s.pct_complete ?? 0);
+            // PL-062: zebra striping + health-driven bar color
+            const zebra = i % 2 === 0 ? "bg-card/60" : "bg-card/30";
+            const barColor = {
+              completed:   "[&>div]:bg-emerald-500",
+              almost_done: "[&>div]:bg-cyan-400",
+              in_progress: "[&>div]:bg-primary",
+              just_started: "[&>div]:bg-amber-400",
+              stalled:     "[&>div]:bg-rose-500",
+            }[s.health_bucket] ?? "[&>div]:bg-primary";
             return (
               <motion.div
                 key={s.id}
@@ -302,7 +314,7 @@ export default function PreLicensing() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(i * 0.01, 0.2), duration: 0.25 }}
               >
-                <GlassCard className="p-4">
+                <GlassCard className={`p-4 border-l-2 ${health.color.split(" ").find((c) => c.startsWith("border-")) ?? "border-border/40"} ${zebra}`}>
                   <div className="flex flex-col gap-3 md:flex-row md:items-center">
                     {/* Identity */}
                     <div className="flex items-center gap-3 md:w-[260px] shrink-0">
@@ -333,7 +345,7 @@ export default function PreLicensing() {
                         )}
                       </div>
                       <div className="flex items-center gap-3">
-                        <Progress value={pct} className="h-2 flex-1" />
+                        <Progress value={pct} className={`h-2 flex-1 ${barColor}`} />
                         <span className={`text-sm font-bold tabular-nums shrink-0 w-12 text-right ${
                           pct >= 100 ? "text-emerald-400" : pct >= 50 ? "text-cyan-400" : "text-amber-400"
                         }`}>

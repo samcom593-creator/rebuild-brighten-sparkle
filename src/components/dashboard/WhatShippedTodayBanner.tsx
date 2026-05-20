@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Agent dashboard upgraded to true command center (PL-040)",
+    detail: "Two new agent-facing cards above the recent-deals row: (1) Region Peers — top 5 MTD producers whose license_states overlap with yours, current agent highlighted with primary ring + 'you' label so you know exactly where you stand in your actual market not just agency-wide. (2) Chargeback Ledger — pulls v_agent_charge_rollup, shows clean-state with emerald check when total_charges=0, escalates to rose-border at-risk count + dupe count + last_charged_at + link to /dashboard/charges-audit. Together with the existing Commission Projected KPI tile + Next Step Card + Next Action panel, the agent dashboard now hits all 4 PL-040 must-haves (projected income, upcoming chargebacks, next-best-action, top-recruit/top-sales in own region).",
+  },
+  {
+    ts: "today",
     label: "Chargebacks 30d verified + consolidated view (PL-024)",
     detail: "Sam: 'chargebacks 30d showing 0 — verify accuracy.' Audited deals.chargeback_at (0), lead_purchases.refunded_at (0), stripe_subscription_events.event_type ILIKE '%dispute%' (0). The dashboard's 0 is REAL, not a bug. Future-proofed: new v_chargebacks_30d UNIONs all 3 chargeback signal sources so when the first chargeback lands via Stripe dispute OR lead-pack refund OR a manual deals.chargeback_status flag, the KPI catches it regardless of path. v_ceo_command_center.chargebacks_30d now reads from the consolidated view. Migration 20260520020000 applied live + committed.",
     commit: "3f2532ca",

@@ -35,6 +35,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { NextStepCard } from "@/components/dashboard/NextStepCard";
+import { RegionPeerCard, UpcomingChargebackCard } from "@/components/dashboard/AgentPeerAndChargebackCards";
 
 // ─── Formatters ─────────────────────────────────────────────────────────────
 function fmtUsd(n: number, compact = false): string {
@@ -543,6 +544,12 @@ export default function AgentCommandDashboard() {
             <Link to="/dashboard/leaderboard">View leaderboard <ArrowRight className="h-3 w-3 ml-1" /></Link>
           </Button>
         </GlassCard>
+      </div>
+
+      {/* ── PL-040 · Region peers + Upcoming chargebacks ────────── */}
+      <div className="grid gap-3 lg:grid-cols-2">
+        <RegionPeerCard agentId={agentId} />
+        <UpcomingChargebackCard agentId={agentId} />
       </div>
 
       {/* ── RECENT DEALS + DAILY DEAL BAR ──────────────────────── */}

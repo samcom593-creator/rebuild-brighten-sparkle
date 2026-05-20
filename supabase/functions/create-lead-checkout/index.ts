@@ -78,15 +78,30 @@ Deno.serve(
         apiVersion: "2025-08-27.basil",
       });
 
+      // CFO Bot 2026-05-20 — ALWAYS upsert the Stripe customer upfront.
+      // Without this, passing only `customer_email` lets Stripe mint a brand
+      // new Stripe customer every time the user reaches the hosted checkout
+      // page. Bowman 4×, Wendell 3×, Isaac 3×, Christopher 2×, Xaviar 2×,
+      // Castellanos 2×, bowmangrey 3 customers in 2 min 44s on 2026-05-04
+      // all came from this race. Looking up by email + creating-if-missing
+      // collapses the human to a single customer_id so subsequent idempotency
+      // (and human-readable reconciliation) actually works.
       const customers = await stripe.customers.list({ email, limit: 1 });
-      const customerId = customers.data[0]?.id;
+      let customerId = customers.data[0]?.id;
+      if (!customerId) {
+        const created = await stripe.customers.create({
+          email,
+          metadata: { user_id: auth!.userId, created_by: "create-lead-checkout" },
+        });
+        customerId = created.id;
+      }
 
       // CFO Bot 2026-05-20 — idempotency gate. Before opening a new Checkout
       // Session, refuse if this customer already has an active/past_due/trialing
       // sub (subscription mode) or any successful one-time charge (payment mode)
       // for the same Stripe price. Stops the Wendell/Creese/Christopher/Bowman/
       // Isaac duplicate-sub bleed at the source.
-      if (customerId) {
+      {
         if (config.mode === "subscription") {
           const existingSubs = await stripe.subscriptions.list({
             customer: customerId,
@@ -131,24 +146,33 @@ Deno.serve(
       const origin = req.headers.get("origin") || "https://apex-financial.org";
       const successPath = config.mode === "subscription" ? "/purchase-leads" : "/dashboard";
 
-      const session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        customer_email: customerId ? undefined : email,
-        line_items: [{ price: config.priceId, quantity: 1 }],
-        mode: config.mode,
-        allow_promotion_codes: true,
-        success_url: `${origin}${successPath}?success=true&sku=${tier}`,
-        cancel_url: `${origin}${successPath}?canceled=true&sku=${tier}`,
-        metadata: {
-          user_id: auth!.userId,
-          tier,
-          sku: tier,
-          agent_id: agentId ?? "",
-          package_type: leadPackageType ?? "",
-          lead_purchase_request_id: requestId ?? "",
-          expected_amount_cents: config.expectedAmountCents ? String(config.expectedAmountCents) : "",
+      // CFO Bot 2026-05-20 — Stripe idempotency-key on session create.
+      // 2 rapid clicks within the same 10-minute window collapse to the same
+      // Checkout Session (Stripe replays the response). Belt-and-suspenders
+      // against the dup-customer race even if checkout completes mid-click.
+      const idemBucket = Math.floor(Date.now() / (10 * 60 * 1000));
+      const idempotencyKey = `clc:${auth!.userId}:${tier}:${idemBucket}`;
+
+      const session = await stripe.checkout.sessions.create(
+        {
+          customer: customerId,
+          line_items: [{ price: config.priceId, quantity: 1 }],
+          mode: config.mode,
+          allow_promotion_codes: true,
+          success_url: `${origin}${successPath}?success=true&sku=${tier}`,
+          cancel_url: `${origin}${successPath}?canceled=true&sku=${tier}`,
+          metadata: {
+            user_id: auth!.userId,
+            tier,
+            sku: tier,
+            agent_id: agentId ?? "",
+            package_type: leadPackageType ?? "",
+            lead_purchase_request_id: requestId ?? "",
+            expected_amount_cents: config.expectedAmountCents ? String(config.expectedAmountCents) : "",
+          },
         },
-      });
+        { idempotencyKey }
+      );
 
       if (requestId) {
         await auth!.serviceClient

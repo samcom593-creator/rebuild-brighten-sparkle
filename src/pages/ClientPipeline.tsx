@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
+import { AgentLinkConnectionPrompt } from "@/components/dashboard/AgentLinkConnectionPrompt";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -263,6 +264,9 @@ export default function ClientPipeline() {
           </div>
         }
       />
+
+      {/* PL-047 — surface AgentLink sync prompt for non-admin agents w/o data */}
+      <AgentLinkConnectionPrompt />
 
       {/* KPI strip */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

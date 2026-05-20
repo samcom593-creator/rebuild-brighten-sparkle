@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { PageHeader } from "@/components/ui/page-header";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { AgentLinkConnectionPrompt } from "@/components/dashboard/AgentLinkConnectionPrompt";
 
 interface DealRow {
   id: string;
@@ -364,6 +365,9 @@ export default function BookOfBusiness() {
           </>
         }
       />
+
+      {/* PL-047 — surface AgentLink sync prompt for non-admin agents w/o data */}
+      <AgentLinkConnectionPrompt />
 
       {/* Totals strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

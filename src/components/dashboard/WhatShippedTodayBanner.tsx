@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "AgentLink sync prompt for agents without data (PL-047)",
+    detail: "New <AgentLinkConnectionPrompt /> component embedded at the top of /dashboard/book-of-business and /dashboard/agent-pipeline (Client Pipeline). For non-admin users who have no agents.insuracloud_api_token + no agents.insuracloud_user_id set, surfaces a blue-tinted card with a one-tap 'Sync your AgentLink' CTA that deep-links to /dashboard/agent-link-sync. Auto-hides for admins (they use the agency-wide cookie path) and for already-connected agents so the prompt doesn't nag once configured. Reusable — same component drops into AgentCommandDashboard / MyDeals / any agent-facing surface that depends on AgentLink data.",
+  },
+  {
+    ts: "today",
     label: "Recruiting stats now treat Sam James == Samuel James (PL-052)",
     detail: "Two agent rows (SJAMES01 with profile, SJAMES02 orphan duplicate) were splitting Sam's recruiting numbers across leaderboards. New canonical_agent_id column on agents + v_agent_canonical_map view lets every UI roll up duplicate identities to one row. Leaderboard.tsx (Production / Recruiting / Referrals / Activity boards) now canonicalizes before grouping — Sam's 4 recruiter apps + 279 assigned apps now show as one identity instead of two.",
   },

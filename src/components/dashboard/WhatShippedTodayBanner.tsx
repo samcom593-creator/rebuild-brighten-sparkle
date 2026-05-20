@@ -26,8 +26,8 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
-    label: "Landing: killed fake 'VSL Test' testimonial section (website-integrity-bot)",
-    detail: "The 'Watch How APEX Changed His Life / Real results from a real agent who transformed his career with APEX' block on the public landing was wired to YouTube video YmlLSIwfGdE — title fetched live: 'VSL Test' by @SamuelJamesHQ. No agent, no transformation, no proof — just a placeholder VSL test video masquerading as a customer success story. Section pulled from Index.tsx and the TestimonialsSection.tsx file deleted (git preserves it; re-mount when a real recorded testimonial drops). Public landing now flows BenefitsSection → EarningsSection → SystemsSection (which is already real Apex data after audit pass #6) without a lying middle section. Fewer sections, zero fake proof.",
+    label: "Landing: killed placeholder testimonial section (website-integrity-bot)",
+    detail: "The success-story block on the public landing was wired to YouTube video YmlLSIwfGdE — oEmbed title fetched live came back as a VSL placeholder video by @SamuelJamesHQ. No named agent, no production number, no timeline — just a test clip masquerading as customer proof. Section pulled from Index.tsx, TestimonialsSection.tsx deleted (git preserves it for re-mount when a real recorded testimonial drops), and three placeholder phrasings added to check-forbidden-language.mjs so any future copy that names no agent gets blocked at build time. Public landing now flows BenefitsSection → EarningsSection → SystemsSection (real Apex data after audit pass #6) with zero fake proof in the middle.",
   },
   {
     ts: "today",

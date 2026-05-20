@@ -27,6 +27,9 @@ const FORBIDDEN = [
   ["unlock the power", "AI-tell"],
   ["robust solution", "AI-tell"],
   ["cutting-edge", "AI-tell"],
+  ["real results from a real", "placeholder testimonial — name the agent + number + timeline"],
+  ["real agent who transformed", "placeholder testimonial — name the agent + number + timeline"],
+  ["watch how apex changed his life", "placeholder testimonial header — name the agent (this was wired to 'VSL Test' once)"],
 ];
 
 const TEXT_EXTS = new Set([".tsx", ".ts", ".jsx", ".js", ".md", ".html"]);

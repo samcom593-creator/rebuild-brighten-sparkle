@@ -77,14 +77,38 @@ export default function Leaderboard() {
 
   const buildRows = useCallback(async (ids: string[], grouped: Map<string, { primary: number; secondary: number; tertiary: number }>) => {
     if (ids.length === 0) return [];
+
+    // PL-052: canonicalize duplicate identity rows (e.g. Sam James SJAMES01
+    // == SJAMES02). v_agent_canonical_map returns COALESCE(canonical_agent_id, id)
+    // per agent. Roll up grouped totals onto the canonical id before fetching
+    // agent metadata so each identity gets one leaderboard row.
+    const { data: canonMap } = await supabase
+      .from("v_agent_canonical_map" as any)
+      .select("agent_id, canonical_agent_id")
+      .in("agent_id", ids);
+    const canonical = new Map<string, string>(
+      ((canonMap ?? []) as Array<{ agent_id: string; canonical_agent_id: string }>)
+        .map((r) => [r.agent_id, r.canonical_agent_id])
+    );
+    const rolled = new Map<string, { primary: number; secondary: number; tertiary: number }>();
+    for (const [aid, totals] of grouped) {
+      const canon = canonical.get(aid) ?? aid;
+      const row = rolled.get(canon) ?? { primary: 0, secondary: 0, tertiary: 0 };
+      row.primary += totals.primary;
+      row.secondary += totals.secondary;
+      row.tertiary += totals.tertiary;
+      rolled.set(canon, row);
+    }
+    const canonIds = Array.from(rolled.keys());
+
     const { data: agents } = await supabase
       .from("agents")
       .select("id, display_name, profile:profiles(full_name, avatar_url)")
-      .in("id", ids);
+      .in("id", canonIds);
     const byId = new Map((agents ?? []).map((agent: any) => [agent.id, agent]));
-    return ids
+    return canonIds
       .map((agentId) => {
-        const totals = grouped.get(agentId)!;
+        const totals = rolled.get(agentId)!;
         const agent = byId.get(agentId) as any;
         return {
           rank: 0,

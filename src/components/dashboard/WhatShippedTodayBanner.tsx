@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Recruiting stats now treat Sam James == Samuel James (PL-052)",
+    detail: "Two agent rows (SJAMES01 with profile, SJAMES02 orphan duplicate) were splitting Sam's recruiting numbers across leaderboards. New canonical_agent_id column on agents + v_agent_canonical_map view lets every UI roll up duplicate identities to one row. Leaderboard.tsx (Production / Recruiting / Referrals / Activity boards) now canonicalizes before grouping — Sam's 4 recruiter apps + 279 assigned apps now show as one identity instead of two.",
+  },
+  {
+    ts: "today",
     label: "Agent dashboard upgraded to true command center (PL-040)",
     detail: "Two new agent-facing cards above the recent-deals row: (1) Region Peers — top 5 MTD producers whose license_states overlap with yours, current agent highlighted with primary ring + 'you' label so you know exactly where you stand in your actual market not just agency-wide. (2) Chargeback Ledger — pulls v_agent_charge_rollup, shows clean-state with emerald check when total_charges=0, escalates to rose-border at-risk count + dupe count + last_charged_at + link to /dashboard/charges-audit. Together with the existing Commission Projected KPI tile + Next Step Card + Next Action panel, the agent dashboard now hits all 4 PL-040 must-haves (projected income, upcoming chargebacks, next-best-action, top-recruit/top-sales in own region).",
   },

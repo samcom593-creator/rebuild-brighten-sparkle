@@ -9,12 +9,24 @@ export function isRolePreview(value: string | null): value is RolePreview {
   return Boolean(value && PREVIEW_ROLES.includes(value as RolePreview));
 }
 
+// PL-015: the role-preview bubbles are a dev/internal-only tool. Showing them
+// to every admin was confusing — agents on staff with admin grants saw the
+// switcher and thought it was a feature. Restrict to Sam (the only operator
+// who actually previews flows). Identification by email keeps the gate
+// declarative + portable (no hard-coded user_id in source).
+const SAM_EMAILS = new Set<string>([
+  "sam.com593@gmail.com",
+  "sam@apex-financial.org",
+]);
+
 export function useRolePreview() {
-  const { isAdmin, isManager } = useAuth();
+  const { user, isAdmin, isManager } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedPreview = searchParams.get("previewRole");
   const actualRole: RolePreview = isAdmin ? "admin" : isManager ? "manager" : "agent";
-  const previewRole = isAdmin && isRolePreview(requestedPreview) ? requestedPreview : null;
+
+  const isSam = !!(user?.email && SAM_EMAILS.has(user.email.toLowerCase()));
+  const previewRole = isSam && isRolePreview(requestedPreview) ? requestedPreview : null;
 
   const setPreviewRole = (role: RolePreview | null) => {
     const next = new URLSearchParams(searchParams);
@@ -28,7 +40,7 @@ export function useRolePreview() {
     effectiveRole: previewRole ?? actualRole,
     isPreviewing: Boolean(previewRole),
     previewRole,
-    canPreviewRoles: isAdmin,
+    canPreviewRoles: isSam,
     setPreviewRole,
   };
 }

@@ -141,6 +141,7 @@ const ConductCommandCenter = lazy(() => import("./pages/ConductCommandCenter"));
 const PreLicensing = lazy(() => import("./pages/PreLicensing"));
 const BookReconciliation = lazy(() => import("./pages/BookReconciliation"));
 const ReadyModeIntegration = lazy(() => import("./pages/ReadyModeIntegration"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ContentWheel = lazy(() => import("./pages/ContentWheel"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
@@ -185,6 +186,8 @@ const App = () => (
                   <Route path="/status/:applicationId" element={<ApplicationStatus />} />
                   <Route path="/get-licensed" element={<GetLicensed />} />
                   <Route path="/login" element={<Login />} />
+                  {/* PL-014 — landing for Supabase password-reset email links */}
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/join" element={<Join />} />
                   {/* /agent-signup is the canonical recruiting URL referenced from

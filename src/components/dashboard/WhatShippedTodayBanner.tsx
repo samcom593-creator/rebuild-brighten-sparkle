@@ -26,8 +26,13 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
-    label: "Login: forgot-password + phone-OTP wired end-to-end (PL-014)",
-    detail: "Forgot password now reads the email via react-hook-form watch() (was racing with document.getElementById), hits the send-password-reset edge fn first, then falls back to native supabase.auth.resetPasswordForEmail() if the edge fn is unreachable — always-on path. Phone OTP got a real E.164 normalizer with min-length 10-digit guard, deduplicated send+verify normalization, and a clear toast when Supabase Auth phone provider isn't configured ('Phone sign-in isn't configured yet — use email + Forgot password instead') so the button doesn't silently no-op. Backlog item PL-014 (P0) closed.",
+    label: "Role preview switcher: Sam-only + draggable (PL-015)",
+    detail: "Top-right Agent/Manager/Admin view switcher was visible to every admin user — confusing on-staff admins who thought it was a feature. Restricted to Sam's email only (sam.com593@gmail.com / sam@apex-financial.org). Container is now framer-motion draggable with localStorage persistence (apex.role-preview-bubbles.pos) + viewport clamping so it can never get dragged offscreen. Drag handle (GripVertical icon) added on the left of the strip; tooltips updated to 'Drag to move · Sam-only role preview'. Click-vs-drag isolation via a ref-guarded onClickCapture so a drag doesn't accidentally toggle a role.",
+  },
+  {
+    ts: "today",
+    label: "Login: forgot-password landing page + phone-OTP end-to-end (PL-014)",
+    detail: "Forgot password now reads the email via react-hook-form watch() (was racing with document.getElementById), hits the send-password-reset edge fn first, then falls back to native supabase.auth.resetPasswordForEmail() with redirectTo=/reset-password (always-on path). NEW /reset-password page handles the Supabase magic-link redirect: waits up to 3s for the SDK to exchange ?code= for a session, then prompts for + confirms a new password via supabase.auth.updateUser({password}), then bounces back to /login. Invalid/expired links show a clear error + Back-to-sign-in CTA. Phone OTP got a real E.164 normalizer with min-length 10-digit guard, deduplicated send+verify normalization, and a clear toast when Supabase Auth phone provider isn't configured ('Phone sign-in isn't configured yet — use email + Forgot password instead') so the button doesn't silently no-op. Backlog item PL-014 (P0) closed.",
   },
   {
     ts: "today",

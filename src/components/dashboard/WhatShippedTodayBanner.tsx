@@ -26,6 +26,26 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Login: forgot-password + phone-OTP wired end-to-end (PL-014)",
+    detail: "Forgot password now reads the email via react-hook-form watch() (was racing with document.getElementById), hits the send-password-reset edge fn first, then falls back to native supabase.auth.resetPasswordForEmail() if the edge fn is unreachable — always-on path. Phone OTP got a real E.164 normalizer with min-length 10-digit guard, deduplicated send+verify normalization, and a clear toast when Supabase Auth phone provider isn't configured ('Phone sign-in isn't configured yet — use email + Forgot password instead') so the button doesn't silently no-op. Backlog item PL-014 (P0) closed.",
+  },
+  {
+    ts: "today",
+    label: "Telegram bot: cloud-native nudge drain + inactivity sweep",
+    detail: "telegram-drain edge fn now runs on Supabase pg_cron every 5 min — Telegram nudges fire 24/7, no laptop dependency. fn_telegram_queue_inactivity_nudges sweeps every 15 min for stuck stages (lobby >48h, applied_paid >5d, pre_license >7d) and queues nudges idempotently. Local Mac daemon stays as backup/dev. Same dedupe + ON CONFLICT guards across both paths.",
+  },
+  {
+    ts: "today",
+    label: "Telegram bot: admin broadcast button (one-click queued sends)",
+    detail: "/dashboard/admin/telegram-bot now has a Broadcast tab — pick a stage filter (Lobby / Applied paid / Studying / Hired / etc.), pick a template, hit send. Inserts batched rows into telegram_scheduled_messages with per-broadcast dedupe so re-clicks within the minute no-op. Drain delivers within 5 min.",
+  },
+  {
+    ts: "today",
+    label: "Telegram bot: seminar reminders parallel-send",
+    detail: "seminar-reminder-tick now queues T-24h and T-1h Telegram nudges alongside the existing email path. Matches telegram_users by email. Try/catch isolated so email send is never blocked by Telegram side.",
+  },
+  {
+    ts: "today",
     label: "Next Step Engine v3 — compliance + auto-dispatch + funnel health",
     detail: "All 18 stage templates now CAN-SPAM compliant (unsubscribe link → /unsubscribe?u={{email}} pre-checked against email_unsubscribes pre-send) + TCPA STOP language on every SMS. Dispatcher gained agentlink_agents fallback for agents with empty profile rows (recovered 7 of 10 hard-fails). pg_net INSERT trigger on next_step_messages fires next-step-dispatch immediately — 0-60 min cron-nudge latency collapsed to seconds. New /admin/next-step/funnel-health page surfaces conversion-to-next-stage % + median time-in-stage + biggest-leak callout + 24h outbound message breakdown.",
   },

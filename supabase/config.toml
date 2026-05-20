@@ -627,3 +627,6 @@ verify_jwt = false
 
 [functions.readymode-ingest]
 verify_jwt = false
+
+[functions.telegram-drain]
+verify_jwt = false

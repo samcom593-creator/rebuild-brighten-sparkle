@@ -39,10 +39,13 @@ export default function Login() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
+  const watchedEmail = watch("email");
+  const [resetLoading, setResetLoading] = useState(false);
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -119,32 +122,45 @@ export default function Login() {
     }
   };
 
+  // PL-014: shared phone normalizer + length guard (was duplicated, no validation)
+  const normalizePhone = (raw: string): { ok: boolean; phone: string; reason?: string } => {
+    const digitsOnly = raw.replace(/\D/g, "");
+    if (digitsOnly.length < 10) {
+      return { ok: false, phone: "", reason: "Phone number is too short (need 10+ digits)" };
+    }
+    if (digitsOnly.length === 10) return { ok: true, phone: `+1${digitsOnly}` };
+    if (digitsOnly.length === 11 && digitsOnly.startsWith("1")) return { ok: true, phone: `+${digitsOnly}` };
+    if (raw.trim().startsWith("+")) return { ok: true, phone: raw.trim() };
+    if (digitsOnly.length >= 11) return { ok: true, phone: `+${digitsOnly}` };
+    return { ok: false, phone: "", reason: "Could not normalize to E.164 format" };
+  };
+
   const handleSendOtp = async () => {
     if (!phoneNumber.trim()) {
       toast.error("Please enter your phone number");
       return;
     }
+    const norm = normalizePhone(phoneNumber);
+    if (!norm.ok) {
+      toast.error(norm.reason || "Invalid phone number");
+      return;
+    }
 
     setPhoneLoading(true);
     try {
-      // Normalize phone to E.164 format
-      const digitsOnly = phoneNumber.replace(/\D/g, "");
-      let normalizedPhone = digitsOnly;
-      
-      // If 10 digits, assume US and add +1
-      if (digitsOnly.length === 10) {
-        normalizedPhone = `+1${digitsOnly}`;
-      } else if (digitsOnly.length === 11 && digitsOnly.startsWith("1")) {
-        normalizedPhone = `+${digitsOnly}`;
-      } else if (!phoneNumber.startsWith("+")) {
-        normalizedPhone = `+${digitsOnly}`;
+      const { error } = await supabase.auth.signInWithOtp({ phone: norm.phone });
+
+      if (error) {
+        // PL-014: phone provider disabled is the most likely failure mode (no Twilio config in Supabase Auth).
+        // Surface a clear, action-oriented message + give email as the always-on fallback.
+        const msg = error.message?.toLowerCase() ?? "";
+        if (msg.includes("phone") && (msg.includes("disabled") || msg.includes("not enabled") || msg.includes("provider"))) {
+          toast.error("Phone sign-in isn't configured yet. Use email + password or 'Forgot password' to email yourself a magic link.");
+          setShowPhoneLogin(false);
+          return;
+        }
+        throw error;
       }
-
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: normalizedPhone,
-      });
-
-      if (error) throw error;
 
       setOtpSent(true);
       toast.success("Verification code sent!");
@@ -161,23 +177,16 @@ export default function Login() {
       toast.error("Please enter the verification code");
       return;
     }
+    const norm = normalizePhone(phoneNumber);
+    if (!norm.ok) {
+      toast.error(norm.reason || "Invalid phone number");
+      return;
+    }
 
     setPhoneLoading(true);
     try {
-      // Normalize phone to match what was used for OTP
-      const digitsOnly = phoneNumber.replace(/\D/g, "");
-      let normalizedPhone = digitsOnly;
-      
-      if (digitsOnly.length === 10) {
-        normalizedPhone = `+1${digitsOnly}`;
-      } else if (digitsOnly.length === 11 && digitsOnly.startsWith("1")) {
-        normalizedPhone = `+${digitsOnly}`;
-      } else if (!phoneNumber.startsWith("+")) {
-        normalizedPhone = `+${digitsOnly}`;
-      }
-
       const { error } = await supabase.auth.verifyOtp({
-        phone: normalizedPhone,
+        phone: norm.phone,
         token: otpCode,
         type: "sms",
       });
@@ -191,6 +200,45 @@ export default function Login() {
       toast.error(error.message || "Invalid code");
     } finally {
       setPhoneLoading(false);
+    }
+  };
+
+  // PL-014: real Forgot Password flow — uses the send-password-reset edge function
+  // (custom Resend path), falls back to native Supabase resetPasswordForEmail() if
+  // the edge fn is unreachable. Uses react-hook-form watch() for the email value
+  // instead of brittle document.getElementById which races with re-renders.
+  const handleForgotPassword = async () => {
+    const email = (watchedEmail || "").trim();
+    if (!email) {
+      toast.error("Type your email above first.");
+      return;
+    }
+    if (!email.includes("@")) {
+      toast.error("That doesn't look like a valid email.");
+      return;
+    }
+    setResetLoading(true);
+    try {
+      // Try the branded Resend-based edge fn first.
+      const { error: edgeErr } = await supabase.functions.invoke("send-password-reset", {
+        body: { email, type: "reset" },
+      });
+      if (edgeErr) throw edgeErr;
+      toast.success(`Reset link sent to ${email}. Check your inbox (+ spam).`);
+    } catch (edgeFail: any) {
+      // Native Supabase fallback — always available.
+      try {
+        const { error: nativeErr } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (nativeErr) throw nativeErr;
+        toast.success(`Reset link sent to ${email} via Supabase. Check your inbox.`);
+      } catch (nativeFail: any) {
+        console.error("Forgot-password both paths failed:", { edgeFail, nativeFail });
+        toast.error(nativeFail.message || edgeFail.message || "Could not send reset email.");
+      }
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -403,24 +451,17 @@ export default function Login() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={async () => {
-                    const email = (document.getElementById("email") as HTMLInputElement)?.value;
-                    if (!email) {
-                      toast.error("Please enter your email first");
-                      return;
-                    }
-                    try {
-                      const { error } = await supabase.functions.invoke("send-password-reset", {
-                        body: { email, type: "reset" },
-                      });
-                      if (error) throw error;
-                      toast.success("Password reset email sent! Check your inbox.");
-                    } catch (err: any) {
-                      toast.error(err.message || "Failed to send reset email");
-                    }
-                  }}
+                  onClick={handleForgotPassword}
+                  disabled={resetLoading}
                 >
-                  Forgot password?
+                  {resetLoading ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
+                      Sending…
+                    </>
+                  ) : (
+                    "Forgot password?"
+                  )}
                 </Button>
                 <Button
                   variant="ghost"

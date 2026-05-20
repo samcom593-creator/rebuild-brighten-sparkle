@@ -8,14 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from "@/components/ui/tabs";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Send, Users, MessageSquare, AlertTriangle, RefreshCw, Activity,
-  CheckCircle2, XCircle, Clock,
+  CheckCircle2, XCircle, Clock, Megaphone,
 } from "lucide-react";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
+import { toast } from "sonner";
 
 type Dashboard = {
   total_users: number; dau: number; wau: number;
@@ -211,6 +217,7 @@ export default function TelegramBot() {
             </TabsTrigger>
             <TabsTrigger value="stuck"><Clock className="h-4 w-4 mr-1.5" />Stuck users</TabsTrigger>
             <TabsTrigger value="groups"><MessageSquare className="h-4 w-4 mr-1.5" />Groups</TabsTrigger>
+            <TabsTrigger value="broadcast"><Megaphone className="h-4 w-4 mr-1.5" />Broadcast</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
           </TabsList>
 
@@ -340,6 +347,11 @@ export default function TelegramBot() {
             </GlassCard>
           </TabsContent>
 
+          {/* BROADCAST */}
+          <TabsContent value="broadcast" className="space-y-4">
+            <BroadcastPanel templates={templates ?? []} />
+          </TabsContent>
+
           {/* TEMPLATES */}
           <TabsContent value="templates" className="space-y-4">
             <GlassCard className="p-5">
@@ -393,5 +405,174 @@ function HealthLine({ label, status, hint }: { label: string; status: "ok" | "wa
         <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
     </li>
+  );
+}
+
+const BROADCAST_STAGES: Array<{ value: string; label: string }> = [
+  { value: "all_active", label: "All active users (not opted out)" },
+  { value: "lobby", label: "Lobby" },
+  { value: "applied_unpaid", label: "Applied (ICA unpaid)" },
+  { value: "applied_paid", label: "Applied (ICA paid)" },
+  { value: "manager_call_scheduled", label: "Manager call scheduled" },
+  { value: "seminar_rsvp", label: "Seminar RSVP'd" },
+  { value: "seminar_attended", label: "Seminar attended" },
+  { value: "pre_license_studying", label: "Pre-license studying" },
+  { value: "exam_scheduled", label: "Exam scheduled" },
+  { value: "licensed", label: "Licensed (unhired)" },
+  { value: "hired", label: "Hired (in onboarding)" },
+];
+
+function BroadcastPanel({ templates }: { templates: Template[] }) {
+  const qc = useQueryClient();
+  const [audience, setAudience] = useState<string>("applied_paid");
+  const [templateKey, setTemplateKey] = useState<string>("");
+  const [previewBody, setPreviewBody] = useState<string>("");
+  const [sending, setSending] = useState(false);
+  const [lastResult, setLastResult] = useState<{ queued: number; skipped: number } | null>(null);
+
+  // Audience size preview
+  const { data: audienceCount } = useQuery<number>({
+    queryKey: ["broadcast-audience-count", audience],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      let q = supabase.from("telegram_users").select("chat_id", { count: "exact", head: true })
+        .eq("opt_out_all", false)
+        .eq("opt_out_nudges", false);
+      if (audience !== "all_active") q = q.eq("stage", audience);
+      const { count, error } = await q;
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const onTemplateChange = (key: string) => {
+    setTemplateKey(key);
+    const t = templates.find((x) => x.key === key);
+    setPreviewBody(t?.body ?? "");
+  };
+
+  const onSend = async () => {
+    if (!templateKey) {
+      toast.error("Pick a template first");
+      return;
+    }
+    if (!confirm(`Queue broadcast "${templateKey}" to ~${audienceCount ?? 0} users? This will send within ~5 minutes.`)) return;
+
+    setSending(true);
+    try {
+      // Fetch recipient chat_ids
+      let q = supabase.from("telegram_users").select("chat_id")
+        .eq("opt_out_all", false)
+        .eq("opt_out_nudges", false);
+      if (audience !== "all_active") q = q.eq("stage", audience);
+      const { data, error } = await q;
+      if (error) throw error;
+      const recipients = (data as Array<{ chat_id: number }>) ?? [];
+      if (recipients.length === 0) {
+        toast.warning("Nobody matched — nothing queued.");
+        setSending(false);
+        return;
+      }
+
+      // Dedupe key per broadcast so re-clicks within the same minute don't double-queue
+      const broadcastId = `broadcast_${audience}_${templateKey}_${Math.floor(Date.now() / 60_000)}`;
+      const rows = recipients.map((r) => ({
+        chat_id: r.chat_id,
+        template_key: templateKey,
+        scheduled_at: new Date().toISOString(),
+        reason: `admin_broadcast:${audience}`,
+        dedupe_key: `${broadcastId}_${r.chat_id}`,
+      }));
+
+      // Insert in batches of 500 to stay within Postgres limits
+      let queued = 0;
+      let skipped = 0;
+      for (let i = 0; i < rows.length; i += 500) {
+        const batch = rows.slice(i, i + 500);
+        const { data: inserted, error: insErr } = await supabase
+          .from("telegram_scheduled_messages")
+          .upsert(batch, { onConflict: "chat_id,dedupe_key", ignoreDuplicates: true })
+          .select("id");
+        if (insErr) throw insErr;
+        queued += inserted?.length ?? 0;
+        skipped += batch.length - (inserted?.length ?? 0);
+      }
+      setLastResult({ queued, skipped });
+      toast.success(`Queued ${queued} messages. Daemon drains within 5 min.`);
+      qc.invalidateQueries({ queryKey: ["telegram-dashboard"] });
+    } catch (e: any) {
+      console.error("broadcast failed", e);
+      toast.error(`Broadcast failed: ${e?.message ?? "unknown"}`);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <GlassCard className="p-5 space-y-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Broadcast to an audience</h3>
+        <p className="text-xs text-muted-foreground">
+          Pick a stage filter, pick a template, hit send. Recipients are queued in <code>telegram_scheduled_messages</code> and drained by the daemon every 5 min. Idempotent via per-broadcast dedupe key.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Audience</Label>
+            <Select value={audience} onValueChange={setAudience}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {BROADCAST_STAGES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              <span className="font-mono">{audienceCount ?? "…"}</span> users match (excl. opted-out)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Template</Label>
+            <Select value={templateKey} onValueChange={onTemplateChange}>
+              <SelectTrigger><SelectValue placeholder="Pick a template" /></SelectTrigger>
+              <SelectContent>
+                {templates.filter((t) => t.active).map((t) => (
+                  <SelectItem key={t.key} value={t.key}>{t.key}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">{templates.find((t) => t.key === templateKey)?.description ?? "Pick a template to preview"}</p>
+          </div>
+        </div>
+
+        {previewBody ? (
+          <div className="space-y-1">
+            <Label>Preview (variables stay as placeholders until each user's row is rendered)</Label>
+            <Textarea value={previewBody} readOnly className="font-mono text-xs h-32" />
+          </div>
+        ) : null}
+
+        <div className="flex items-center gap-3">
+          <Button onClick={onSend} disabled={!templateKey || sending}>
+            <Send className="h-4 w-4 mr-2" />
+            {sending ? "Queuing…" : `Queue broadcast (${audienceCount ?? 0} recipients)`}
+          </Button>
+          {lastResult ? (
+            <Badge variant="outline">Last: queued {lastResult.queued} · skipped {lastResult.skipped}</Badge>
+          ) : null}
+        </div>
+      </GlassCard>
+
+      <GlassCard className="p-5">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Notes</h3>
+        <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+          <li>Re-clicking within the same minute is a no-op (dedupe_key per broadcast).</li>
+          <li>Recipients who hit <code>/pause</code> are excluded automatically.</li>
+          <li>Bot daemon ticks every 5 min — expect 1-5 min delivery latency.</li>
+          <li>Template variables like <code>{`{first_name}`}</code> are rendered against each user's <code>telegram_users</code> row at send time, not now.</li>
+        </ul>
+      </GlassCard>
+    </div>
   );
 }

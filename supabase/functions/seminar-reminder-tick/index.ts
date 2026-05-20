@@ -157,6 +157,41 @@ Deno.serve(async (_req) => {
       console.error("seminar reminder send failed", e);
       out.push({ id: r.id, error: e?.message });
     }
+
+    // Parallel Telegram nudge — queues a row in telegram_scheduled_messages
+    // for any telegram_users row matched by email. Daemon (every 5 min via
+    // launchd) drains the queue. Dedupe key keeps this idempotent across
+    // multiple cron ticks even if idempotency_keys gets cleared.
+    try {
+      const tgTemplate = window === 24 ? "nudge.seminar_rsvp_t_minus_24h" : "nudge.seminar_rsvp_t_minus_1h";
+      const { data: tgUser } = await supabase
+        .from("telegram_users")
+        .select("chat_id")
+        .eq("email", r.email.toLowerCase())
+        .eq("opt_out_all", false)
+        .eq("opt_out_nudges", false)
+        .maybeSingle();
+      if (tgUser?.chat_id) {
+        const { error: tgErr } = await supabase.from("telegram_scheduled_messages").insert({
+          chat_id: tgUser.chat_id,
+          template_key: tgTemplate,
+          context: {
+            seminar_at: fmtSeminarTime(r.seminar_date),
+            seminar_link: meetingCfg.url,
+            seminar_passcode: "",
+            first_name: r.first_name ?? "Friend",
+          },
+          scheduled_at: new Date().toISOString(),
+          reason: `seminar_reminder_t_minus_${window}h`,
+          dedupe_key: `seminar_${r.id}_t_minus_${window}h`,
+        });
+        if (tgErr && !String(tgErr.message ?? "").includes("duplicate")) {
+          console.error("telegram seminar queue failed", tgErr);
+        }
+      }
+    } catch (e: any) {
+      console.error("telegram seminar parallel send failed", e);
+    }
   }
 
   return jsonResponse({ ok: true, checked: regs?.length ?? 0, sent: out });

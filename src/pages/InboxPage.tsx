@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bell, Mail, MessageSquare, RefreshCw, RotateCcw, Search,
   Phone, Copy, Trash2, ExternalLink, MoreVertical, CheckCheck,
-  Download, X,
+  Download, X, Megaphone, AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,8 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/ui/page-header";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSeparator,
@@ -185,6 +192,12 @@ export default function InboxPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [resending, setResending] = useState(false);
+  // PL-069: Push out to all — bulk-blast campaign dialog
+  const [blastOpen, setBlastOpen] = useState(false);
+  const [blastCampaign, setBlastCampaign] = useState<"reapply" | "seminar" | "unlicensed_outreach">("reapply");
+  const [blastDryRun, setBlastDryRun] = useState(true);
+  const [blastFiring, setBlastFiring] = useState(false);
+  const [blastResult, setBlastResult] = useState<unknown>(null);
 
   const fetchMessages = useCallback(async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
@@ -434,6 +447,14 @@ export default function InboxPage() {
         subtitle="Every push, SMS, auto-SMS, and email response from your team and clients in one stream."
         actions={
           <>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => { setBlastResult(null); setBlastOpen(true); }}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              <Megaphone className="mr-2 h-4 w-4" /> Push out to all
+            </Button>
             <Button variant="outline" size="sm" onClick={exportCSV} disabled={filtered.length === 0}>
               <Download className="mr-2 h-4 w-4" /> Export
             </Button>
@@ -443,6 +464,103 @@ export default function InboxPage() {
           </>
         }
       />
+
+      {/* PL-069: Push-out-to-all campaign dialog */}
+      <Dialog open={blastOpen} onOpenChange={setBlastOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Megaphone className="h-5 w-5 text-emerald-500" /> Push out to all
+            </DialogTitle>
+            <DialogDescription>
+              Fires a recruiting campaign against the entire matching audience. Dedupe is per-campaign (each recipient gets it once). Always dry-run first.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Campaign</Label>
+              <Select value={blastCampaign} onValueChange={(v) => setBlastCampaign(v as typeof blastCampaign)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="reapply">Reapply blast (doors-back-open · warm 30d)</SelectItem>
+                  <SelectItem value="seminar">Seminar invite blast (RSVP'd in last 14d)</SelectItem>
+                  <SelectItem value="unlicensed_outreach">Unlicensed outreach (cold + dormant unlicensed)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {blastCampaign === "reapply" && "Pulls applications status=new/no_pickup/reviewing/interview from the last 30d. Two copy variants (licensed/unlicensed). Email + SMS where available."}
+                {blastCampaign === "seminar" && "Pulls seminar_registrations from the last 14d. Re-sends the seminar invite + link + WhatsApp join code via carrier-gateway SMS where supported."}
+                {blastCampaign === "unlicensed_outreach" && "Pulls every unlicensed applicant not terminated. Wakes up dormant signups + nudges them onto the licensing path."}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+              <Checkbox
+                id="blast-dry-run"
+                checked={blastDryRun}
+                onCheckedChange={(v) => setBlastDryRun(v === true)}
+              />
+              <Label htmlFor="blast-dry-run" className="text-sm cursor-pointer">
+                Dry run (count audience + render preview, send NOTHING)
+              </Label>
+            </div>
+
+            {!blastDryRun && (
+              <div className="flex items-start gap-2 rounded-md border border-rose-500/40 bg-rose-500/10 p-3 text-xs">
+                <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+                <p>Live send. This will email + text every matching recipient once. There is no undo.</p>
+              </div>
+            )}
+
+            {blastResult ? (
+              <div className="space-y-1">
+                <Label className="text-xs">Result</Label>
+                <pre className="text-[11px] bg-muted/40 p-2 rounded max-h-32 overflow-y-auto">
+                  {JSON.stringify(blastResult, null, 2)}
+                </pre>
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBlastOpen(false)} disabled={blastFiring}>Close</Button>
+            <Button
+              disabled={blastFiring}
+              onClick={async () => {
+                const fnByCampaign: Record<string, string> = {
+                  reapply: "send-reapply-blast",
+                  seminar: "send-seminar-invite-blast",
+                  unlicensed_outreach: "send-bulk-unlicensed-outreach",
+                };
+                const fn = fnByCampaign[blastCampaign];
+                if (!fn) return;
+                setBlastFiring(true);
+                setBlastResult(null);
+                try {
+                  const { data, error } = await supabase.functions.invoke(fn, {
+                    body: { dryRun: blastDryRun },
+                  });
+                  if (error) throw error;
+                  setBlastResult(data);
+                  if (blastDryRun) {
+                    toast.success("Dry run complete — review the audience size below.");
+                  } else {
+                    toast.success("Blast sent. Audit rows landing in this inbox now.");
+                    setTimeout(() => fetchMessages(), 1500);
+                  }
+                } catch (e: any) {
+                  toast.error(`Blast failed: ${e?.message ?? "unknown"}`);
+                  setBlastResult({ error: String(e?.message ?? e) });
+                } finally {
+                  setBlastFiring(false);
+                }
+              }}
+              className={blastDryRun ? "" : "bg-rose-600 hover:bg-rose-700"}
+            >
+              {blastFiring ? "Firing…" : blastDryRun ? "Dry run" : "SEND LIVE"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Clickable stat cards */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">

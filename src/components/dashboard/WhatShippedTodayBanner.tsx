@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Inbox: Push out to all (bulk-blast campaign button) — PL-069",
+    detail: "Sam needed it this week. New 'Push out to all' button (emerald, top-right of /admin/inbox) opens a dialog with three campaigns: Reapply blast (warm 30d), Seminar invite blast (RSVPs last 14d), and Unlicensed outreach (cold + dormant unlicensed). Dry-run is default-on with audience count + JSON preview; live send shows a rose warning + 'SEND LIVE' button. Each campaign calls the matching existing edge fn (send-reapply-blast / send-seminar-invite-blast / send-bulk-unlicensed-outreach) which already handle dedupe via notification_log.metadata.campaign. Toast on success and auto-refreshes the inbox 1.5s later so Sam sees the audit rows land.",
+  },
+  {
+    ts: "today",
     label: "Comp Tiers: 36 ghost-active agents removed (PL-075)",
     detail: "CompTiersSettings only filtered by is_deactivated=false + status='active'. 36 agents marked is_inactive=true were still listed because the third flag wasn't gated. Added .eq('is_inactive', false) so only the truly active roster shows in the comp editor.",
   },

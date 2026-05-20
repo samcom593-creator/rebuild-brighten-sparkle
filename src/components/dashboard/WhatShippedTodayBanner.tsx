@@ -24,6 +24,12 @@ interface ShippedItem {
 // 2026-05-18 / 2026-05-19 receipts. Most-recent first. Update this on
 // every meaningful ship so the dashboard always shows the latest delta.
 const SHIPPED: ShippedItem[] = [
+  // forbidden-allow: this entry documents prior banned phrasings; guard skips this block
+  {
+    ts: "today",
+    label: "Landing: killed SystemsSection + fixed fake-roster claim on closing CTA (website-integrity-bot)",
+    detail: "Audit pass #9 found two more trust leaks on the public landing — same pattern as the VSL Test fix from pass #8. (1) SystemsSection (3-tab cluster of 12 generic SaaS feature cards) was wholesale corporate AI-larp that didn't drive an agent decision — purposeless UI per Check #2 of the Website Integrity contract. Pulled from Index.tsx, file deleted, lazy import removed. Landing now flows Benefits → Earnings → CareerPathway → ApexLeads → InstagramGrowth → CTA, all sections that show actual APEX systems and numbers. (2) CTASection's closing line previously claimed an inflated roster — APEX has ~95 active agents per landing_live_stats() RPC, not the four-digit number that was hardcoded. Replaced with the live number from the same RPC the LiveStatsCounterStrip uses ('{N}+ agents are running the APEX system right now') so the closing CTA can never overstate the roster again. (3) Headline rewritten to 'Ready to Run with the Standard?' — brand-bible voice instead of generic AI motivational filler. (4) Caught a real bonus leak in supabase/functions/send-followup-emails — the licensed-applicant follow-up email closed with an AI-tell motivational line; rewritten to brand-bible voice. (5) Extended check-forbidden-language.mjs with 13 new bans covering seamless-integration / inflated-roster / transform-X / elevate-X / unlock-your-potential / top-of-class / generic-SaaS patterns so none of these can silently re-ship, plus an explicit 'forbidden-allow' opt-in marker so receipts blocks can document prior bans without tripping the guard.",
+  },
   {
     ts: "today",
     label: "Visual overhaul priority: CRM, Command Center, Hiring Pipeline, Seminar, and shared shell",

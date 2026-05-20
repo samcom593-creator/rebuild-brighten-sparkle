@@ -1,6 +1,8 @@
 import { forwardRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const benefits = [
   "No experience required",
@@ -11,7 +13,24 @@ const benefits = [
   "7-figure income potential",
 ];
 
+type LandingLiveStats = { active_agents: number };
+
 export const CTASection = forwardRef<HTMLElement>((_, ref) => {
+  // Pull the real agent count from landing_live_stats() so the closing CTA
+  // never claims a number that isn't true. Prior copy said "thousands of
+  // agents" — actual roster is ~95. Fake-success killer.
+  const { data: liveStats } = useQuery({
+    queryKey: ["landing_live_stats_cta"],
+    queryFn: async (): Promise<LandingLiveStats | null> => {
+      const { data, error } = await supabase.rpc("landing_live_stats");
+      if (error) throw error;
+      return data as unknown as LandingLiveStats;
+    },
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+  const activeAgents = liveStats?.active_agents ?? 95;
+
   return (
     <section ref={ref} className="py-24 relative overflow-hidden bg-[#030712]">
       {/* Accent bars */}
@@ -25,12 +44,12 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 text-[#f1f5f9] font-display">
             Ready to{" "}
-            <span className="text-[#22d3a5] text-glow">Transform Your Life?</span>
+            <span className="text-[#22d3a5] text-glow">Run with the Standard?</span>
           </h2>
 
           <p className="text-lg md:text-xl text-[#94a3b8] max-w-2xl mx-auto mb-8">
-            Join thousands of agents who've built thriving careers with APEX. 
-            Your first $100K year is just an application away.
+            {activeAgents}+ agents are running the APEX system right now.
+            Your first $100K year is one application away.
           </p>
 
           {/* Benefits Grid */}

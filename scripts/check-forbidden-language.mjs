@@ -30,6 +30,19 @@ const FORBIDDEN = [
   ["real results from a real", "placeholder testimonial — name the agent + number + timeline"],
   ["real agent who transformed", "placeholder testimonial — name the agent + number + timeline"],
   ["watch how apex changed his life", "placeholder testimonial header — name the agent (this was wired to 'VSL Test' once)"],
+  ["seamless integration", "AI-tell — name the integration + what it actually does"],
+  ["leading crms", "vague corporate filler — name the CRM"],
+  ["built-in solution", "AI-tell corporate larp"],
+  ["thousands of agents", "fake-success number — APEX has ~95 agents, not thousands; use landing_live_stats() RPC"],
+  ["transform your life", "AI-tell headline — say what changes in concrete terms"],
+  ["transform your career", "AI-tell headline — say what changes"],
+  ["elevate your", "AI-tell"],
+  ["unlock your potential", "AI-tell"],
+  ["powerful mobile experience", "AI-tell — show the screen + what it lets the agent do"],
+  ["world-class", "AI-tell vague"],
+  ["best-in-class", "AI-tell vague"],
+  ["game-changer", "AI-tell"],
+  ["game changer", "AI-tell"],
 ];
 
 const TEXT_EXTS = new Set([".tsx", ".ts", ".jsx", ".js", ".md", ".html"]);
@@ -44,6 +57,7 @@ const SKIP_LINE_REGEX = [
   /^\s*\*/,                            // jsdoc / block-comment continuation
   /^\s*\/\*/,                          // /* comment start
   /placeholder\s*=\s*["'][^"']*["']/,  // JSX placeholder attrs (UX, not copy)
+  /forbidden-allow/i,                  // explicit opt-in: receipts/docs that name banned terms
 ];
 
 function walk(dir, acc = []) {

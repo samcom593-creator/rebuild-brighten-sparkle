@@ -306,7 +306,7 @@ async function sendLicensedFollowup(app: {
             </div>
 
             <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 25px;">
-              Ready to transform your career? We're excited to have you on the team!
+              Run with the Standard. We're glad you're here.
             </p>
           </div>
         </div>

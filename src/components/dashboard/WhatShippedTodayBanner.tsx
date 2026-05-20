@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Pre-licensing green-bars headache fixed (PL-062)",
+    detail: "Back-to-back green progress bars were unreadable. Each row now has alternating zebra tint (bg-card/60 ↔ bg-card/30), a colored left-border accent matching the health bucket, +12px row spacing (space-y-2 → space-y-3), and the Progress bar fill is now health-driven: completed=emerald, almost_done=cyan, in_progress=primary, just_started=amber, stalled=rose. No more wall of identical green.",
+  },
+  {
+    ts: "today",
     label: "Pre-Licensing list is readable again (PL-062)",
     detail: "The /dashboard/pre-licensing student list was a wall of back-to-back identical-green progress bars — Sam called it 'a headache.' Three changes ship together: (1) row spacing bumped from space-y-2 (8px) to space-y-3 (12px) so rows breathe, (2) zebra striping via alternating bg-card/60 vs bg-card/30 + a left-border colored by health bucket so completed (emerald) / almost done (cyan) / in progress (primary) / just started (amber) / stalled (rose) each have a visible left-edge stripe, (3) the Progress bar's indicator color is now driven by health bucket via Tailwind arbitrary [&>div]:bg-X selectors so the variance between rows reads at a glance. Scanning 100+ students is no longer a sea of green.",
   },

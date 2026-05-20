@@ -205,6 +205,11 @@ export function GlobalSidebar({
       { icon: Trophy, label: "Leaderboard", href: "/dashboard/leaderboard", special: true },
       { icon: Book, label: "Book of Business", href: "/dashboard/book-of-business" },
     ];
+    // PL-036: Hiring Pipeline surfaced into Production (admin/manager only) —
+    // Sam wants it visible higher in nav, not buried under Recruiting.
+    if (isAdmin || isManager) {
+      productionItems.push({ icon: TrendingUp, label: "Hiring Pipeline", href: "/dashboard/hiring-pipeline" });
+    }
     sections.push({ label: "PRODUCTION", items: productionItems });
 
     // 2b. CRM — Sam wants CRM higher than admin (core OS surface, not buried).
@@ -217,6 +222,9 @@ export function GlobalSidebar({
     }
     if (isAdmin) {
       crmItems.push({ icon: Target, label: "Lead Center", href: "/dashboard/leads" });
+      // PL-034: Offers groups under Leads/CRM so managers + agents can browse
+      // package offers without hunting in Admin. (Was an admin-only top-level tab.)
+      crmItems.push({ icon: ShoppingCart, label: "Offers", href: "/dashboard/offers" });
     }
     sections.push({ label: "CRM", items: crmItems });
 
@@ -230,7 +238,7 @@ export function GlobalSidebar({
     ];
     if (isAdmin || isManager) {
       recruitingItems.unshift({ icon: Target, label: "Recruit Command", href: "/dashboard/recruit", special: true });
-      recruitingItems.push({ icon: TrendingUp, label: "Hiring Pipeline", href: "/dashboard/hiring-pipeline" });
+      // PL-036: Hiring Pipeline lives in PRODUCTION now — no duplicate listing here.
       recruitingItems.push({ icon: GraduationCap, label: "Pre-Licensing", href: "/dashboard/pre-licensing", special: true });
       recruitingItems.push({ icon: Compass, label: "Next-Step Board", href: "/dashboard/team/next-step", special: true });
     }
@@ -283,7 +291,8 @@ export function GlobalSidebar({
     if (isAdmin) {
       adminItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command", special: true });
       adminItems.push({ icon: Mail, label: "Inbox", href: "/dashboard/inbox" });
-      adminItems.push({ icon: ShoppingCart, label: "Offers", href: "/dashboard/offers" });
+      // PL-034: Offers now lives under CRM (with Lead Center / Aged Leads) so
+      // it's grouped with the rest of the leads / packages surfaces.
       adminItems.push({ icon: Library, label: "Content Library", href: "/dashboard/content" });
       adminItems.push({ icon: Zap, label: "Automation Hub", href: "/dashboard/automation" });
       adminItems.push({ icon: Shield, label: "System Health", href: "/dashboard/system-health" });
@@ -291,7 +300,8 @@ export function GlobalSidebar({
       adminItems.push({ icon: DollarSign, label: "Comp Tiers", href: "/dashboard/comp-tiers" });
       adminItems.push({ icon: Plug, label: "Integrations", href: "/dashboard/integrations" });
       adminItems.push({ icon: Phone, label: "ReadyMode Sync", href: "/dashboard/readymode" });
-      adminItems.push({ icon: Zap, label: "AgentLink Sync", href: "/dashboard/agentlink-sync", special: true });
+      // PL-035: AgentLink Sync moved to bottom of Admin (just above Setup)
+      // since it's not daily-priority. Placement now below the daemon block.
       adminItems.push({ icon: Receipt, label: "Charges Audit", href: "/dashboard/charges-audit", special: true });
       adminItems.push({ icon: Book, label: "Book Quality", href: "/dashboard/book-quality", special: true });
       // CONTENT ENGINE pair — two systems, one feedback loop:
@@ -301,6 +311,8 @@ export function GlobalSidebar({
       adminItems.push({ icon: Radio, label: "Social Media Bot", href: "/dashboard/admin/social-media-bot", special: true });
       adminItems.push({ icon: Send, label: "Telegram Bot", href: "/dashboard/admin/telegram-bot", special: true });
       adminItems.push({ icon: Crown, label: "ContentWheel", href: "/admin/contentwheel", special: true });
+      // PL-035: AgentLink Sync demoted to bottom of admin nav (not daily-use).
+      adminItems.push({ icon: Zap, label: "AgentLink Sync", href: "/dashboard/agentlink-sync", special: true });
       adminItems.push({ icon: Shield, label: "Setup", href: "/dashboard/setup" });
     }
     adminItems.push({ icon: Settings, label: "Settings", href: "/dashboard/settings" });

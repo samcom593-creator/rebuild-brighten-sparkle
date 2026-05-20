@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Sidebar surgery: Offers → CRM, AgentLink → bottom, Hiring Pipeline → Production (PL-034/035/036)",
+    detail: "Three nav moves Sam asked for. (1) Offers no longer lives buried in Admin — moved into CRM next to Lead Center / Aged Leads so managers+agents browsing leads see package offers in the same group. (2) AgentLink Sync demoted to the bottom of Admin (just above Setup) — it's not daily-use. (3) Hiring Pipeline surfaced into PRODUCTION (was buried mid-RECRUITING) so it's visible at the top of nav for admins/managers. No duplicate listings.",
+  },
+  {
+    ts: "today",
     label: "CRM segments: Live + Below $20k + Needs Follow-Up rewired (PL-055)",
     detail: "Three segments on /dashboard/crm were either too strict or empty: (1) Live filtered monthlyALP>=20000 and only stages live+evaluated — agents with <$20k production were hidden even though they ARE live; dropped the floor, expanded stages to in_field_training+evaluated+live+below_10k, all licensed non-deactivated/inactive agents now surface. (2) Below $20k used stage='below_10k' (0 agents have it as enum); replaced with the same stage set + monthlyALP < 20000 ALP-threshold filter. (3) Needs Follow-Up was 'uncontacted 6+ days'; now ALSO catches licensed low-producers (monthlyALP < $10k) per Sam's '<$10k/15d' spec, sorted lowest ALP first. Applied section's filter (stages=['applied']) is correctly wired — segment is empty because new-hire path skips that enum, not a bug in this page.",
   },

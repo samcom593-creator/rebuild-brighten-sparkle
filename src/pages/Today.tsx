@@ -1,17 +1,17 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, formatDistanceToNowStrict } from "date-fns";
 import {
+  AlertTriangle,
   CalendarDays,
   CheckCircle2,
   ClipboardCopy,
   Coffee,
   FileText,
+  RefreshCw,
   Sparkles,
   Target,
-  TrendingUp,
   Trophy,
-  UserCheck,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { DataFreshnessBanner } from "@/components/dashboard/DataFreshnessBanner";
 import { PageHeader } from "@/components/ui/page-header";
 import { NextStepStuckPool } from "@/components/next-step/NextStepStuckPool";
+import { SAM_AGENT_IDS, VALID_DEAL_STATUSES } from "@/lib/dataLayer";
 import {
   countDistinctAgents,
   countDistinctBusinessDays,
@@ -43,16 +44,30 @@ interface TopAgent {
   alp: number;
 }
 
+interface AtRiskAgent {
+  id: string;
+  name: string;
+  created_at: string;
+  portal_password_set: boolean | null;
+  deal_count: number;
+}
+
+// PL-037: canonical truth filter + Sam-exclusion in one place.
+// PostgREST 'not in' wants a parenthesized comma-separated list of literals.
+const SAM_NOT_IN = `(${SAM_AGENT_IDS.map((id) => `"${id}"`).join(",")})`;
+const DEAL_STATUSES = VALID_DEAL_STATUSES as unknown as string[];
+
 export default function Today() {
   const { isAdmin, user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ["today-truth-dashboard"],
     queryFn: async () => {
       const dayBounds = getMetricBounds("day");
       const weekBounds = getMetricBounds("week");
       const monthBounds = getMetricBounds("month");
       const priorWeekBounds = getPriorWeekMatchedBounds();
+      const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
       const [
         todayDealsRes,
@@ -65,31 +80,38 @@ export default function Today() {
         contractedWeekRes,
         presentationsRes,
         agentRes,
+        recentAgentRes,
+        recentAgentDealCountsRes,
       ] = await Promise.all([
+        // PL-037: VALID_DEAL_STATUSES + SAM_AGENT_IDS exclusion — match metric-truth canonical filter
         supabase
           .from("deals")
           .select("agent_id, annual_premium")
           .gte("posted_at", dayBounds.startIso)
           .lt("posted_at", dayBounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_STATUSES)
+          .not("agent_id", "in", SAM_NOT_IN),
         supabase
           .from("deals")
           .select("agent_id, annual_premium")
           .gte("posted_at", weekBounds.startIso)
           .lt("posted_at", weekBounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_STATUSES)
+          .not("agent_id", "in", SAM_NOT_IN),
         supabase
           .from("deals")
           .select("annual_premium, posted_at")
           .gte("posted_at", monthBounds.startIso)
           .lt("posted_at", monthBounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_STATUSES)
+          .not("agent_id", "in", SAM_NOT_IN),
         supabase
           .from("deals")
           .select("annual_premium")
           .gte("posted_at", priorWeekBounds.startIso)
           .lt("posted_at", priorWeekBounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_STATUSES)
+          .not("agent_id", "in", SAM_NOT_IN),
         supabase
           .from("applications")
           .select("id", { count: "exact", head: true })
@@ -122,6 +144,23 @@ export default function Today() {
           .eq("is_deactivated", false)
           .eq("is_inactive", false)
           .eq("status", "active"),
+        // PL-038: at-risk bucket source — agents hired in the last 7 days.
+        // We pull all of them, then split client-side into (a) profile not set
+        // and (b) no posted deals — see derivations below.
+        supabase
+          .from("agents")
+          .select("id, created_at, portal_password_set, profile:profiles(full_name)")
+          .eq("is_deactivated", false)
+          .or("is_inactive.is.null,is_inactive.eq.false")
+          .gte("created_at", sevenDaysAgoIso)
+          .not("id", "in", SAM_NOT_IN)
+          .order("created_at", { ascending: false }),
+        // Count posted deals per recent-hire agent in one round trip.
+        supabase
+          .from("deals")
+          .select("agent_id")
+          .in("status", DEAL_STATUSES)
+          .gte("posted_at", sevenDaysAgoIso),
       ]);
 
       const todayDeals = (todayDealsRes.data ?? []) as Array<{ agent_id?: string | null; annual_premium?: number | null }>;
@@ -145,6 +184,30 @@ export default function Today() {
         .map(([id, alp]) => ({ name: nameById[id] ?? "Agent", alp }))
         .sort((a, b) => b.alp - a.alp)
         .slice(0, 5);
+
+      // PL-038: build the at-risk lists from the last-7d agents query.
+      // - profileNotSet: portal_password_set is null/false (they never logged in)
+      // - noSale: zero posted deals in the last 7 days
+      const recentDealCountByAgent: Record<string, number> = {};
+      for (const d of (recentAgentDealCountsRes.data ?? []) as Array<{ agent_id?: string | null }>) {
+        if (d.agent_id) recentDealCountByAgent[d.agent_id] = (recentDealCountByAgent[d.agent_id] || 0) + 1;
+      }
+      const recentAgents = (recentAgentRes.data ?? []) as Array<{
+        id: string;
+        created_at: string;
+        portal_password_set: boolean | null;
+        profile?: { full_name?: string | null } | null;
+      }>;
+      const toAtRisk = (rows: typeof recentAgents): AtRiskAgent[] =>
+        rows.map((r) => ({
+          id: r.id,
+          name: r.profile?.full_name?.trim() || "Unnamed agent",
+          created_at: r.created_at,
+          portal_password_set: r.portal_password_set,
+          deal_count: recentDealCountByAgent[r.id] ?? 0,
+        }));
+      const newAgentsProfileNotSet = toAtRisk(recentAgents.filter((r) => !r.portal_password_set));
+      const liveSevenDayNoSale = toAtRisk(recentAgents.filter((r) => (recentDealCountByAgent[r.id] ?? 0) === 0));
 
       const todayAlp = sumAnnualPremium(todayDeals);
       const weekAlp = sumAnnualPremium(weekDeals);
@@ -171,6 +234,9 @@ export default function Today() {
         activeAgents: (agentRes.data ?? []).length,
         closeRate: getCloseRate(weekDeals.length, presentations),
         top5,
+        newAgentsProfileNotSet,
+        liveSevenDayNoSale,
+        recentHiresCount: recentAgents.length,
       };
     },
     staleTime: 60_000,
@@ -217,6 +283,29 @@ export default function Today() {
         eyebrowIcon={<Sparkles className="h-3 w-3" />}
         title="Today"
         subtitle={format(new Date(), "EEEE · MMMM d, yyyy")}
+        actions={
+          // PL-037: the Refresh button now does meaningful work — calls
+          // useQuery's refetch() AND shows the last-refreshed timestamp.
+          <div className="flex items-center gap-3">
+            {dataUpdatedAt ? (
+              <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                Last refresh · {formatDistanceToNowStrict(new Date(dataUpdatedAt), { addSuffix: true })}
+              </span>
+            ) : null}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                await refetch();
+                toast.success("Refreshed");
+              }}
+              disabled={isFetching}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+        }
       />
 
       <DataFreshnessBanner autoRepair />
@@ -252,20 +341,59 @@ export default function Today() {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        {/* PL-038: REPLACED the duplicate "Actuals" panel.
+            Original showed weekAlp + pipeline (already covered in the 4-tile
+            strip + Pace card below). New panel surfaces two at-risk pools so
+            Sam can act on stalled agents before they ghost. */}
         <GlassCard className="p-5">
-          <div className="mb-3 flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /><h2 className="text-lg font-bold">Actuals</h2></div>
+          <div className="mb-3 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-orange-400" />
+            <h2 className="text-lg font-bold">At-Risk Agents (Last 7d)</h2>
+            <span className="ml-auto text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              {data.recentHiresCount} hires
+            </span>
+          </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-border/40 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Agency Production</p>
-              <p className="mt-1 text-2xl font-bold">{fmt$(data.weekAlp)}</p>
-              <p className="text-sm text-muted-foreground">{data.activeAgents} active agents</p>
+            <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Profile not activated</p>
+              <p className="mt-1 text-2xl font-bold text-orange-300">{data.newAgentsProfileNotSet.length}</p>
+              {data.newAgentsProfileNotSet.length === 0 ? (
+                <p className="mt-1 text-xs text-muted-foreground">All new hires set their password 👍</p>
+              ) : (
+                <ul className="mt-2 space-y-1">
+                  {data.newAgentsProfileNotSet.slice(0, 3).map((a) => (
+                    <li key={a.id} className="truncate text-xs text-muted-foreground">
+                      · {a.name}
+                    </li>
+                  ))}
+                  {data.newAgentsProfileNotSet.length > 3 ? (
+                    <li className="text-[11px] text-orange-300/80">+ {data.newAgentsProfileNotSet.length - 3} more</li>
+                  ) : null}
+                </ul>
+              )}
             </div>
-            <div className="rounded-xl border border-border/40 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Applications This Week</p>
-              <p className="mt-1 text-2xl font-bold">{data.pipeline}</p>
-              <p className="text-sm text-muted-foreground">{data.uncontacted} uncontacted</p>
+            <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Live 7d · no sale</p>
+              <p className="mt-1 text-2xl font-bold text-rose-300">{data.liveSevenDayNoSale.length}</p>
+              {data.liveSevenDayNoSale.length === 0 ? (
+                <p className="mt-1 text-xs text-muted-foreground">Every new hire posted in their first week 🔥</p>
+              ) : (
+                <ul className="mt-2 space-y-1">
+                  {data.liveSevenDayNoSale.slice(0, 3).map((a) => (
+                    <li key={a.id} className="truncate text-xs text-muted-foreground">
+                      · {a.name}
+                    </li>
+                  ))}
+                  {data.liveSevenDayNoSale.length > 3 ? (
+                    <li className="text-[11px] text-rose-300/80">+ {data.liveSevenDayNoSale.length - 3} more</li>
+                  ) : null}
+                </ul>
+              )}
             </div>
           </div>
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            Agents hired in the last 7 days · {data.activeAgents} active agents in total
+          </p>
         </GlassCard>
 
         <GlassCard className="p-5">

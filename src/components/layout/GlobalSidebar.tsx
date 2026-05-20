@@ -236,6 +236,7 @@ export function GlobalSidebar({
     }
     if (isAdmin) {
       recruitingItems.push({ icon: AlertTriangle, label: "Stuck Pool", href: "/admin/next-step/stuck", special: true });
+      recruitingItems.push({ icon: TrendingUp, label: "Funnel Health", href: "/admin/next-step/funnel-health", special: true });
       recruitingItems.push({ icon: UserX, label: "Inactive Agents", href: "/dashboard/inactive-agents" });
     }
     if (isManager && !isAdmin) {

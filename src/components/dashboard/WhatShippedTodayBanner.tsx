@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Next Step Engine v3 — compliance + auto-dispatch + funnel health",
+    detail: "All 18 stage templates now CAN-SPAM compliant (unsubscribe link → /unsubscribe?u={{email}} pre-checked against email_unsubscribes pre-send) + TCPA STOP language on every SMS. Dispatcher gained agentlink_agents fallback for agents with empty profile rows (recovered 7 of 10 hard-fails). pg_net INSERT trigger on next_step_messages fires next-step-dispatch immediately — 0-60 min cron-nudge latency collapsed to seconds. New /admin/next-step/funnel-health page surfaces conversion-to-next-stage % + median time-in-stage + biggest-leak callout + 24h outbound message breakdown.",
+  },
+  {
+    ts: "today",
     label: "Landing performance trimmed",
     detail: "Public home no longer pulls Framer Motion for the hero, nav, live counters, recent hires, or landing sections. CSS keyframes keep the polish while the motion runtime stays off the first-load path, with vendor chunks grouped tighter.",
   },

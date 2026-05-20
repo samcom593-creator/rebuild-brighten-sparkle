@@ -133,6 +133,27 @@ async function loadPerson(application_id: string | null, agent_id: string | null
       first_name = parts[0] ?? null;
       last_name = parts.slice(1).join(" ") || null;
     }
+    // Fallback contact-info recovery: when profiles is empty (Sam-imported
+    // agents often skip the profile row), look up agentlink_agents by name.
+    if (!email || !phone) {
+      const fn = (first_name ?? "").trim();
+      const ln = (last_name ?? "").trim();
+      if (fn) {
+        const { data: ag } = await supabase
+          .from("agentlink_agents")
+          .select("email, contact_email, phone_number")
+          .ilike("first_name", fn)
+          .ilike("last_name", ln || "%")
+          .limit(1)
+          .maybeSingle();
+        if (ag) {
+          if (!email) email = (ag as any).email ?? (ag as any).contact_email ?? null;
+          if (!phone && (ag as any).phone_number) {
+            phone = String((ag as any).phone_number).replace(/\D+/g, "");
+          }
+        }
+      }
+    }
     return {
       kind: "agent",
       application_id: null,
@@ -229,11 +250,33 @@ function smartPhone(phone: string | null): string | null {
   return null;
 }
 
+async function isUnsubscribed(email: string | null): Promise<boolean> {
+  if (!email) return false;
+  const { data } = await supabase
+    .from("email_unsubscribes")
+    .select("email")
+    .eq("email", email.toLowerCase())
+    .limit(1)
+    .maybeSingle();
+  return !!data;
+}
+
 async function dispatchOne(msg: any, dry: boolean) {
   const stage = await loadStage(msg.stage_key);
   if (!stage) throw new Error(`stage ${msg.stage_key} not found`);
   const person = await loadPerson(msg.application_id, msg.agent_id);
   if (!person) throw new Error("person not found");
+
+  // CAN-SPAM / TCPA pre-flight: skip sending entirely if person has
+  // unsubscribed via the email path. Mark the queued row as failed_at
+  // with a clear reason so the stuck pool surfaces it.
+  if (!dry && person.email && (await isUnsubscribed(person.email))) {
+    await supabase.from("next_step_messages").update({
+      failed_at: new Date().toISOString(),
+      error: "skipped: recipient unsubscribed",
+    }).eq("id", msg.id);
+    return { ok: false, skipped: true, reason: "unsubscribed", id: msg.id };
+  }
 
   const ctx: Record<string, any> = {
     first_name: person.first_name ?? "there",
@@ -242,6 +285,9 @@ async function dispatchOne(msg: any, dry: boolean) {
     seminar_date: person.seminar_date ?? "",
     exam_date: person.exam_scheduled_at ?? "",
     phone: person.phone ?? "",
+    email: encodeURIComponent(person.email ?? ""),
+    application_id: msg.application_id ?? "",
+    agent_id: msg.agent_id ?? "",
     days_in_stage: msg.metadata?.day ?? "",
   };
   const tgBody = render(stage.telegram_template || stage.candidate_message_template, ctx);

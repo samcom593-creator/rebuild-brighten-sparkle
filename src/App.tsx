@@ -51,6 +51,7 @@ const DashboardAgedLeads = lazy(() => import("./pages/DashboardAgedLeads"));
 const DashboardCommandCenter = lazy(() => import("./pages/DashboardCommandCenter"));
 const ManagerNextStepBoard = lazy(() => import("./pages/ManagerNextStepBoard"));
 const AdminStuckPool = lazy(() => import("./pages/AdminStuckPool"));
+const AdminFunnelHealth = lazy(() => import("./pages/AdminFunnelHealth"));
 const ScheduleCall = lazy(() => import("./pages/ScheduleCall"));
 const Settings = lazy(() => import("./pages/Settings"));
 const DeletedLeadsVault = lazy(() => import("./pages/DeletedLeadsVault"));
@@ -242,6 +243,7 @@ const App = () => (
                     <Route path="/dashboard/command" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     <Route path="/dashboard/team/next-step" element={<ProtectedRoute requireAdmin allowManagers><ManagerNextStepBoard /></ProtectedRoute>} />
                     <Route path="/admin/next-step/stuck" element={<ProtectedRoute requireAdmin><AdminStuckPool /></ProtectedRoute>} />
+                    <Route path="/admin/next-step/funnel-health" element={<ProtectedRoute requireAdmin><AdminFunnelHealth /></ProtectedRoute>} />
                     {/* Seminar control: admins, managers, and flagged presenters
                         such as KJ (agents.is_presenting=true). */}
                     <Route path="/dashboard/seminar-control" element={<ProtectedRoute requireAdmin allowManagers allowPresenters><SeminarControl /></ProtectedRoute>} />

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getBusinessMonthBounds } from "@/lib/dateUtils";
+import { AgentActionsMenu } from "@/components/agent/AgentActionsMenu";
 
 type AgentDetail = {
   id: string;
@@ -164,6 +165,24 @@ export default function AgentDetail() {
             {agent.start_date && <Badge variant="outline">Started {new Date(agent.start_date).toLocaleDateString()}</Badge>}
           </div>
         </div>
+        {/* PL-056: Quick action — register this agent for the next Apex seminar.
+            Calls register_for_seminar RPC which matches by email so an existing
+            applications row gets the seminar_date update + a new
+            seminar_registrations row in one transaction. */}
+        {agent.email ? (
+          <div className="shrink-0">
+            <AgentActionsMenu
+              person={{
+                firstName: (agent.full_name ?? "").split(" ").slice(0, -1).join(" ") || agent.full_name || "Agent",
+                lastName: (agent.full_name ?? "").split(" ").slice(-1)[0] ?? "",
+                email: agent.email,
+                phone: agent.phone,
+                licenseStatus: agent.license_status,
+                source: "agent-detail",
+              }}
+            />
+          </div>
+        ) : null}
       </GlassCard>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

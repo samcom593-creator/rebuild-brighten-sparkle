@@ -26,6 +26,7 @@ import AgentCommandDashboard from "@/pages/AgentCommandDashboard";
 import { UnclaimedLeadsCommandCard } from "@/components/dashboard/UnclaimedLeadsCommandCard";
 import { XcelStalledCard } from "@/components/dashboard/XcelStalledCard";
 import { WhatShippedTodayBanner } from "@/components/dashboard/WhatShippedTodayBanner";
+import { LicensedHiresRange } from "@/components/dashboard/LicensedHiresRange";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -555,6 +556,9 @@ function IntegrationCard({
 }
 
 function RecruitingGrid({ stats }: { stats: DashboardSnapshot["recruiting"] }) {
+  // PL-020: Licensed is now a date-range-aware tile (default this-month).
+  // Every other tile stays the all-time count because that's what they
+  // represent in the source rollup.
   const rows = [
     ["Applicants", stats.applicants],
     ["Contacted", stats.contacted],
@@ -563,7 +567,6 @@ function RecruitingGrid({ stats }: { stats: DashboardSnapshot["recruiting"] }) {
     ["No-show", stats.noShow],
     ["Advanced", stats.advanced],
     ["Contract sent", stats.icaSent],
-    ["Licensed", stats.licensed],
     ["Contracted", stats.contracted],
     ["Activated", stats.activated],
     ["First sale", stats.firstSale],
@@ -579,6 +582,7 @@ function RecruitingGrid({ stats }: { stats: DashboardSnapshot["recruiting"] }) {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          <LicensedHiresRange />
           {rows.map(([label, value]) => (
             <div key={label} className="rounded-lg border border-border/70 p-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>

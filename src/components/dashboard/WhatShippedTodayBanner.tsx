@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Licensed-hires tile is now date-range aware (PL-020)",
+    detail: "The 'Licensed' stat on /dashboard's Recruiting Pipeline was a single fixed all-time count. Replaced with a LicensedHiresRange tile that defaults to 'This month' and pops out a presets menu (This month / Last 30 days / This quarter / This year / All time) + a custom-range date picker. Counts applications by licensed_at between the chosen start/end dates so Sam can answer 'how many did we license this month?' directly from the dashboard.",
+  },
+  {
+    ts: "today",
     label: "Role preview switcher: Sam-only + draggable (PL-015)",
     detail: "Top-right Agent/Manager/Admin view switcher was visible to every admin user — confusing on-staff admins who thought it was a feature. Restricted to Sam's email only (sam.com593@gmail.com / sam@apex-financial.org). Container is now framer-motion draggable with localStorage persistence (apex.role-preview-bubbles.pos) + viewport clamping so it can never get dragged offscreen. Drag handle (GripVertical icon) added on the left of the strip; tooltips updated to 'Drag to move · Sam-only role preview'. Click-vs-drag isolation via a ref-guarded onClickCapture so a drag doesn't accidentally toggle a role.",
   },

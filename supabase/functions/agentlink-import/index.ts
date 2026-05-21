@@ -158,9 +158,14 @@ Deno.serve(async (req) => {
       summary.policies_seen += policies.length;
       if (dryRun) continue;
 
+      // AgentLink returns garbage placeholder external IDs ("0000","RN","123","123456","null") for some deals.
+      // They collide on idx_deals_external_deal_id_unique and break the whole batch — coerce to NULL.
+      const PLACEHOLDER_EXTERNAL = /^(0+|RN|123|123456|null|none|n\/a|undefined)$/i;
+
       for (const p of policies) {
-        const external = String(p.id ?? p.policy_number ?? "");
-        if (!external) continue;
+        let externalRaw = String(p.id ?? p.policy_number ?? "");
+        if (!externalRaw) continue;
+        const external = PLACEHOLDER_EXTERNAL.test(externalRaw) ? null : externalRaw;
         const carrier_id = (p.carrier_id && carrierByExt.get(Number(p.carrier_id)))
           || (p.carrier_name && carrierByName.get(String(p.carrier_name).toLowerCase().trim()))
           || null;
@@ -199,8 +204,12 @@ Deno.serve(async (req) => {
           if (existing) { continue; } // already imported, skip
         }
         const { error } = await sb.from("deals").insert(row);
-        if (error) summary.errors.push(`upsert ${external}: ${error.message}`);
-        else       summary.deals_inserted++;
+        if (error) {
+          if (error.code === "23505") { /* dup on unique index, silent skip — already imported */ }
+          else summary.errors.push(`upsert ${externalRaw}: ${error.message}`);
+        } else {
+          summary.deals_inserted++;
+        }
       }
 
       // Keep the raw payload as a snapshot for audit

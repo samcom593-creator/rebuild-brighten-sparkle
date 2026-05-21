@@ -299,9 +299,15 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const external = str(p.id ?? p.external_deal_id ?? p.policyId);
-      const policyNumber = str(p.policyNumber ?? p.policy_number ?? external);
-      if (!policyNumber) {
+      // AgentLink returns garbage placeholder external IDs ("0000", "RN", "123", "123456", "null") for some deals.
+      // Left raw, they collide on idx_deals_external_deal_id_unique within a single batch and blow up the whole sync.
+      // PG treats NULL as distinct per unique-index, so coerce placeholders to NULL.
+      const PLACEHOLDER_EXTERNAL = /^(0+|RN|123|123456|null|none|n\/a|undefined)$/i;
+      let external = str(p.id ?? p.external_deal_id ?? p.policyId);
+      if (external && PLACEHOLDER_EXTERNAL.test(external)) external = null;
+      const rawPolicyNumber = str(p.policyNumber ?? p.policy_number);
+      const policyNumber = rawPolicyNumber ?? external;
+      if (!policyNumber || PLACEHOLDER_EXTERNAL.test(policyNumber)) {
         summary.deals_skipped++;
         continue;
       }
@@ -358,8 +364,12 @@ Deno.serve(async (req) => {
 
       if (existing?.id) {
         const { error } = await sb.from("deals").update(row).eq("id", existing.id);
-        if (error) summary.errors.push(`${policyNumber}: update ${error.message}`);
-        else summary.deals_updated++;
+        if (error) {
+          if (error.code === "23505") summary.deals_skipped++;
+          else summary.errors.push(`${policyNumber}: update ${error.message}`);
+        } else {
+          summary.deals_updated++;
+        }
         continue;
       }
 

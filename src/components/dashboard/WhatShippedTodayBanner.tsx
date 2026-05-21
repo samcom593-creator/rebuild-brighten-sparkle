@@ -27,6 +27,12 @@ const SHIPPED: ShippedItem[] = [
   // forbidden-allow: this entry documents prior banned phrasings; guard skips this block
   {
     ts: "today",
+    label: "Career Pathway: carrier-count claim reconciled with live RPC (website-integrity-bot)",
+    // forbidden-allow: receipts entry references prior banned phrasings; guard skips this line
+    detail: "Audit pass #11 caught the carrier-count discrepancy. CareerPathwaySection had its stats banner already wired to landing_live_stats() showing 22 Carrier Partners, but Phase 2 Step 2 still had hardcoded marketing copy referencing the older inflated claim of fifty-plus carriers in both description + green-check benefit row. Two contradicting numbers on the same section of the same page. The canonical truth is 22 (HeroSection carriers[] list length + landing_live_stats RPC value). Fix: hoisted the static phases array into a buildPhases(carriers) factory called via useMemo inside the component, so Phase 2 Step 2 description + benefit interpolate the live carrier count. Same RPC pattern as Apply.tsx (pass #10) + CTASection (pass #9). Forbidden-language guard extended with three new bans for the carrier-inflation phrasings so the marketing larp can never silently re-ship.",
+  },
+  {
+    ts: "today",
     label: "Apply page: trust ribbon now pulls live numbers from RPC instead of hardcoded stats (website-integrity-bot)",
     detail: "Audit pass #10 closed the third instance of the same fake-success disease (after the VSL Test fix in pass #8 + the closing-CTA fake-roster fix in pass #9). The /apply trust ribbon was rendering a hardcoded carrier count + active-agent count — when hiring + terminations move the agent roster (and they do, daily), the ribbon would lie. Rewired Apply.tsx to call landing_live_stats() via useQuery — same RPC pattern the LiveStatsCounterStrip + CTASection already use. Carrier + active-agent numbers now follow the database. Fallback values match LiveStatsCounterStrip so the ribbon never renders '0' or '...' on first paint. Forbidden-language guard extended with two new bans so the exact hardcoded strings can never silently re-ship. Sam-Reviews-Every-Application claim retained — that's true since PL-005 default-routes unknown referrers to Samuel James.",
   },
@@ -53,7 +59,8 @@ const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label: "Landing stats: killed fake fluff numbers + wired real Apex counts (website-integrity-bot)",
-    detail: "Two surgical fixes on apex-financial.org public landing. (1) SystemsSection dropped the fabricated '92% of agents report increased production / 14.3 hours saved / 3x faster onboarding' stat banner — those were unverifiable marketing larp that failed Sam's real-data-only rule. Section keeps the feature grid + Powered-by-APEX badge; the lying stats are gone. (2) CareerPathwaySection's four-card stat banner ('Premium / Lead Volume / Carriers / Active Agents') now pulls active_agents + carriers_partnered from landing_live_stats() RPC instead of lead_counter (which counted LEADS, not agents — mislabel), and the hardcoded '50+ Carriers' (reality: 22) is replaced with the real number. Cards fall back to the canonical 95/22 if the RPC lags, so they never render '0' or '...' on first paint. Active Agents tile keeps the live-pulse dot + AnimatedCounter — but now powered by truth.",
+    // forbidden-allow: receipts entry references prior banned phrasings; guard skips this line
+    detail: "Two surgical fixes on apex-financial.org public landing. (1) SystemsSection dropped the fabricated '92% of agents report increased production / 14.3 hours saved / 3x faster onboarding' stat banner — those were unverifiable marketing larp that failed Sam's real-data-only rule. Section keeps the feature grid + Powered-by-APEX badge; the lying stats are gone. (2) CareerPathwaySection's four-card stat banner ('Premium / Lead Volume / Carriers / Active Agents') now pulls active_agents + carriers_partnered from landing_live_stats() RPC instead of lead_counter (which counted LEADS, not agents — mislabel), and the hardcoded carrier-count inflation (reality: 22) is replaced with the real number. Cards fall back to the canonical 95/22 if the RPC lags, so they never render '0' or '...' on first paint. Active Agents tile keeps the live-pulse dot + AnimatedCounter — but now powered by truth.",
   },
   {
     ts: "today",

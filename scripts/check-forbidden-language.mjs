@@ -45,6 +45,9 @@ const FORBIDDEN = [
   ["game changer", "AI-tell"],
   ["95 active agents", "hardcoded fake-success stat — use landing_live_stats() RPC; roster moves daily"],
   ["22 carriers ·", "hardcoded fake-success stat — use landing_live_stats() RPC; carriers_partnered field exists"],
+  ["50+ carriers", "marketing inflation — canonical carrier count is landing_live_stats().carriers_partnered (22). Interpolate the variable."],
+  ["over 50 carriers", "marketing inflation — canonical carrier count is landing_live_stats().carriers_partnered (22). Interpolate the variable."],
+  ["50 carrier partners", "marketing inflation — canonical carrier count is landing_live_stats().carriers_partnered (22). Interpolate the variable."],
 ];
 
 const TEXT_EXTS = new Set([".tsx", ".ts", ".jsx", ".js", ".md", ".html"]);

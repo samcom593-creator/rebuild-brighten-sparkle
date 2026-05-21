@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, forwardRef } from "react";
+import { useState, useEffect, useMemo, useRef, forwardRef } from "react";
 import {
   BookOpen,
   ClipboardCheck,
@@ -60,7 +60,11 @@ const phaseConnectorColors = [
   "from-primary to-purple-500",
 ];
 
-const phases: Phase[] = [
+// phases is now built per-render inside the component so the carrier count
+// stays in lockstep with landing_live_stats().carriers_partnered. Marketing
+// "50+ carriers" claim contradicted the canonical 22-carrier HeroSection list
+// (Audit pass #11, 2026-05-21).
+const buildPhases = (carriers: number): Phase[] => [
   {
     name: "Phase 1: Foundation",
     subtitle: "Become a Licensed Life Insurance Agent",
@@ -104,8 +108,8 @@ const phases: Phase[] = [
       {
         icon: FileSignature,
         title: "Receive & Submit Carrier Contracts",
-        description: "Sign contracts with top carriers for the products you want to sell. Access over 50 carriers through our platform.",
-        benefit: "✓ 50+ carriers available",
+        description: `Sign contracts with top carriers for the products you want to sell. Contract with up to ${carriers} carriers through APEX — Final Expense, Mortgage Protection, and IUL.`,
+        benefit: `✓ ${carriers} carrier partners`,
       },
       {
         icon: GraduationCap,
@@ -258,6 +262,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
   // so the cards never render "0" or "..." even before the RPC resolves.
   const activeAgents = liveStats?.active_agents ?? 95;
   const carriers = liveStats?.carriers_partnered ?? 22;
+  const phases = useMemo(() => buildPhases(carriers), [carriers]);
 
   const [activePhase, setActivePhase] = useState(0);
   const [isInView, setIsInView] = useState(false);

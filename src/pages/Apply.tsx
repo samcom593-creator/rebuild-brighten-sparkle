@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { 
   Crown, 
@@ -298,6 +299,22 @@ export default function Apply() {
   const hasExperience = watch("hasInsuranceExperience");
   const licenseStatus = watch("licenseStatus");
 
+  // Live trust-ribbon numbers (carriers + active agents). Pulled from the same
+  // landing_live_stats() RPC the LiveStatsCounterStrip + CTASection use so the
+  // ribbon can never silently drift past the roster — fake-success killer.
+  const { data: liveStats } = useQuery({
+    queryKey: ["landing_live_stats_apply"],
+    queryFn: async (): Promise<{ active_agents: number; carriers_partnered: number } | null> => {
+      const { data, error } = await supabase.rpc("landing_live_stats");
+      if (error) throw error;
+      return data as unknown as { active_agents: number; carriers_partnered: number };
+    },
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+  const liveActiveAgents = liveStats?.active_agents ?? 95;
+  const liveCarriers = liveStats?.carriers_partnered ?? 22;
+
   // Fetch only active MANAGERS for referral selection via edge function (bypasses RLS for public access)
   useEffect(() => {
     const fetchActiveManagers = async () => {
@@ -553,7 +570,7 @@ export default function Apply() {
           </span>
           <span className="text-emerald-300">APEX is recruiting RIGHT NOW</span>
           <span className="hidden sm:inline text-muted-foreground">·</span>
-          <span className="hidden sm:inline text-foreground/80">22 carriers · 95 active agents · Sam reviews every application</span>
+          <span className="hidden sm:inline text-foreground/80">{liveCarriers} carriers · {liveActiveAgents} active agents · Sam reviews every application</span>
         </div>
       </div>
       {/* Header */}

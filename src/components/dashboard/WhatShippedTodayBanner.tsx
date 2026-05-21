@@ -27,6 +27,11 @@ const SHIPPED: ShippedItem[] = [
   // forbidden-allow: this entry documents prior banned phrasings; guard skips this block
   {
     ts: "today",
+    label: "Apply page: trust ribbon now pulls live numbers from RPC instead of hardcoded stats (website-integrity-bot)",
+    detail: "Audit pass #10 closed the third instance of the same fake-success disease (after the VSL Test fix in pass #8 + the closing-CTA fake-roster fix in pass #9). The /apply trust ribbon was rendering a hardcoded carrier count + active-agent count — when hiring + terminations move the agent roster (and they do, daily), the ribbon would lie. Rewired Apply.tsx to call landing_live_stats() via useQuery — same RPC pattern the LiveStatsCounterStrip + CTASection already use. Carrier + active-agent numbers now follow the database. Fallback values match LiveStatsCounterStrip so the ribbon never renders '0' or '...' on first paint. Forbidden-language guard extended with two new bans so the exact hardcoded strings can never silently re-ship. Sam-Reviews-Every-Application claim retained — that's true since PL-005 default-routes unknown referrers to Samuel James.",
+  },
+  {
+    ts: "today",
     label: "Landing: killed SystemsSection + fixed fake-roster claim on closing CTA (website-integrity-bot)",
     detail: "Audit pass #9 found two more trust leaks on the public landing — same pattern as the VSL Test fix from pass #8. (1) SystemsSection (3-tab cluster of 12 generic SaaS feature cards) was wholesale corporate AI-larp that didn't drive an agent decision — purposeless UI per Check #2 of the Website Integrity contract. Pulled from Index.tsx, file deleted, lazy import removed. Landing now flows Benefits → Earnings → CareerPathway → ApexLeads → InstagramGrowth → CTA, all sections that show actual APEX systems and numbers. (2) CTASection's closing line previously claimed an inflated roster — APEX has ~95 active agents per landing_live_stats() RPC, not the four-digit number that was hardcoded. Replaced with the live number from the same RPC the LiveStatsCounterStrip uses ('{N}+ agents are running the APEX system right now') so the closing CTA can never overstate the roster again. (3) Headline rewritten to 'Ready to Run with the Standard?' — brand-bible voice instead of generic AI motivational filler. (4) Caught a real bonus leak in supabase/functions/send-followup-emails — the licensed-applicant follow-up email closed with an AI-tell motivational line; rewritten to brand-bible voice. (5) Extended check-forbidden-language.mjs with 13 new bans covering seamless-integration / inflated-roster / transform-X / elevate-X / unlock-your-potential / top-of-class / generic-SaaS patterns so none of these can silently re-ship, plus an explicit 'forbidden-allow' opt-in marker so receipts blocks can document prior bans without tripping the guard.",
   },
@@ -212,7 +217,7 @@ const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label: "Live trust ribbon on /apply",
-    detail: "Emerald-pulse ribbon at the top: '22 carriers · 95 active agents · Sam reviews every application'. White-shimmer skeleton killed too.",
+    detail: "Emerald-pulse ribbon at the top of /apply now pulls carrier + active-agent counts from landing_live_stats() RPC instead of the hardcoded numbers it shipped with — same fake-success pattern that just killed the CTASection lie about the roster size. White-shimmer skeleton also killed.",
     commit: "a79ee8f7",
   },
   {

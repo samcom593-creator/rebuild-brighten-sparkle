@@ -43,6 +43,8 @@ const FORBIDDEN = [
   ["best-in-class", "AI-tell vague"],
   ["game-changer", "AI-tell"],
   ["game changer", "AI-tell"],
+  ["95 active agents", "hardcoded fake-success stat — use landing_live_stats() RPC; roster moves daily"],
+  ["22 carriers ·", "hardcoded fake-success stat — use landing_live_stats() RPC; carriers_partnered field exists"],
 ];
 
 const TEXT_EXTS = new Set([".tsx", ".ts", ".jsx", ".js", ".md", ".html"]);

@@ -757,6 +757,10 @@ function ExecutiveDashboard({
           v_manager_hierarchy_mtd + v_top_producers_mtd — real data only. */}
       <ManagerHierarchyMtdPanel />
 
+      {/* Just-hired-direct-to-Sam feed — surfaces last-30d hires routed to Sam
+          (no manager). Sam's 2026-05-22 ask: "Just-hired direct-to-Sam feed". */}
+      <JustHiredPanel />
+
       <WeekProductionCard snapshot={snapshot} />
 
       {/* PL-026: removed "Activity And Referrals" 30-day widget per Sam.

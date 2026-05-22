@@ -37,6 +37,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { NextStepCard } from "@/components/dashboard/NextStepCard";
 import { RegionPeerCard, UpcomingChargebackCard } from "@/components/dashboard/AgentPeerAndChargebackCards";
+import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, getDealTruthTimestamp } from "@/lib/dealTruth";
 
 // ─── Formatters ─────────────────────────────────────────────────────────────
 function fmtUsd(n: number, compact = false): string {
@@ -772,28 +773,6 @@ interface CeoRow {
   as_of: string | null;
 }
 
-interface AgencyTopProducer {
-  agent_id: string;
-  display_name: string | null;
-  agent_code: string | null;
-  deals_mtd: number;
-  ap_mtd: number | string;
-  rank_agency_mtd: number | null;
-  avatar_url: string | null;
-}
-
-interface AgencyDeal {
-  id: string;
-  client_first_name: string | null;
-  client_last_name: string | null;
-  product_sold: string | null;
-  annual_premium: number | string;
-  posted_at: string | null;
-  pipeline_stage: string | null;
-  agent_name: string;
-  avatar_url: string | null;
-}
-
 interface AgencyTrendRow { day: string; deals: number; ap: number | string; }
 
 type AgencyPeriod = "day" | "week" | "month" | "custom";
@@ -870,19 +849,52 @@ function AgencyCommandView() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("deals" as any)
-        .select(`
-          id, annual_premium, posted_at, agent_id,
-          agent:agents!inner(
-            id, display_name, agent_code, manager_id,
-            manager:agents!agents_manager_id_fkey(id, display_name),
-            profile:profiles!agents_profile_id_fkey(avatar_url)
-          )
-        `)
-        .gte("posted_at", periodBounds.startIso)
-        .lte("posted_at", periodBounds.endIso)
-        .in("status", ["submitted", "active"]);
+        .select("id, annual_premium, posted_at, created_at, agent_id")
+        .or(dealTruthWindowOr(periodBounds.startIso, periodBounds.endIso))
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
       if (error) throw error;
-      return (data ?? []) as any[];
+
+      const dealRows = (data ?? []) as Array<{
+        id: string;
+        annual_premium: number | string | null;
+        posted_at: string | null;
+        created_at: string | null;
+        agent_id: string | null;
+      }>;
+      const agentIds = Array.from(new Set(dealRows.map((row) => row.agent_id).filter(Boolean))) as string[];
+      if (agentIds.length === 0) return dealRows.map((row) => ({ ...row, agent: null }));
+
+      const { data: agentRows, error: agentError } = await supabase
+        .from("agents")
+        .select("id, display_name, agent_code, manager_id")
+        .in("id", agentIds);
+      if (agentError) throw agentError;
+
+      const agents = (agentRows ?? []) as Array<{
+        id: string;
+        display_name: string | null;
+        agent_code: string | null;
+        manager_id: string | null;
+      }>;
+      const managerIds = Array.from(new Set(agents.map((agent) => agent.manager_id).filter(Boolean))) as string[];
+      const managerById = new Map<string, { id: string; display_name: string | null }>();
+      if (managerIds.length > 0) {
+        const { data: managers, error: managerError } = await supabase
+          .from("agents")
+          .select("id, display_name")
+          .in("id", managerIds);
+        if (managerError) throw managerError;
+        for (const manager of (managers ?? []) as Array<{ id: string; display_name: string | null }>) {
+          managerById.set(manager.id, manager);
+        }
+      }
+
+      const agentById = new Map(agents.map((agent) => [
+        agent.id,
+        { ...agent, manager: agent.manager_id ? managerById.get(agent.manager_id) ?? null : null },
+      ]));
+
+      return dealRows.map((row) => ({ ...row, agent: row.agent_id ? agentById.get(row.agent_id) ?? null : null }));
     },
   });
 
@@ -909,7 +921,7 @@ function AgencyCommandView() {
         agent_id: agentId,
         display_name: agentName,
         agent_code: agent?.agent_code ?? null,
-        avatar_url: agent?.profile?.avatar_url ?? null,
+        avatar_url: null,
         ap: 0,
         deals: 0,
       };
@@ -956,9 +968,8 @@ function AgencyCommandView() {
       const { data, error } = await supabase
         .from("deals" as any)
         .select("annual_premium")
-        .gte("posted_at", priorStart.toISOString())
-        .lt("posted_at", priorEnd.toISOString())
-        .in("status", ["submitted", "active"]);
+        .or(dealTruthWindowOr(priorStart.toISOString(), priorEnd.toISOString()))
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
       if (error) throw error;
       return (data ?? []).reduce((sum: number, row: any) => sum + Number(row.annual_premium ?? 0), 0);
     },
@@ -1000,9 +1011,9 @@ function AgencyCommandView() {
       const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
       const { data, error } = await supabase
         .from("deals")
-        .select("posted_at, annual_premium, status")
-        .gte("posted_at", since)
-        .in("status", ["submitted", "active"])
+        .select("posted_at, created_at, annual_premium, status")
+        .or(dealTruthWindowOr(since, new Date().toISOString()))
+        .in("status", DEAL_TRUTH_STATUS_FILTER)
         .order("posted_at", { ascending: true });
       if (error) throw error;
       // Bucket into 30 days
@@ -1011,9 +1022,10 @@ function AgencyCommandView() {
         const k = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10);
         map.set(k, { deals: 0, ap: 0 });
       }
-      for (const d of (data ?? []) as Array<{ posted_at: string | null; annual_premium: number | string }>) {
-        if (!d.posted_at) continue;
-        const k = d.posted_at.slice(0, 10);
+      for (const d of (data ?? []) as Array<{ posted_at: string | null; created_at: string | null; annual_premium: number | string }>) {
+        const ts = getDealTruthTimestamp(d);
+        if (!ts) continue;
+        const k = ts.slice(0, 10);
         const bucket = map.get(k);
         if (bucket) {
           bucket.deals += 1;
@@ -1021,36 +1033,6 @@ function AgencyCommandView() {
         }
       }
       return Array.from(map.entries()).map(([day, v]) => ({ day, deals: v.deals, ap: v.ap }));
-    },
-  });
-
-  // ── Recent 8 deals across the agency ─────────────────────────────────
-  const recentDeals = useQuery({
-    queryKey: ["agency-recent-deals"],
-    refetchInterval: 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("deals")
-        .select(`
-          id, client_first_name, client_last_name, product_sold,
-          annual_premium, posted_at, pipeline_stage, status,
-          agent:agents!inner(display_name, profile:profiles!agents_profile_id_fkey(full_name, avatar_url))
-        `)
-        .in("status", ["submitted", "active"])
-        .order("posted_at", { ascending: false, nullsFirst: false })
-        .limit(8);
-      if (error) throw error;
-      return ((data ?? []) as any[]).map((r) => ({
-        id: r.id,
-        client_first_name: r.client_first_name,
-        client_last_name: r.client_last_name,
-        product_sold: r.product_sold,
-        annual_premium: r.annual_premium,
-        posted_at: r.posted_at,
-        pipeline_stage: r.pipeline_stage,
-        agent_name: r.agent?.display_name ?? r.agent?.profile?.full_name ?? "Unknown",
-        avatar_url: r.agent?.profile?.avatar_url ?? null,
-      })) as AgencyDeal[];
     },
   });
 
@@ -1337,7 +1319,7 @@ function AgencyCommandView() {
         </GlassCard>
       )}
 
-      {/* ── Pipeline funnel + Recent deals ─────────────────────────── */}
+      {/* ── Pipeline funnel + period production stats ──────────────── */}
       <div className="grid gap-3 lg:grid-cols-3">
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
@@ -1369,49 +1351,26 @@ function AgencyCommandView() {
         <GlassCard className="p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Recent across agency</p>
-              <h3 className="text-lg font-bold">Last 8 deals</h3>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Pipeline stats · {periodBounds.label}</p>
+              <h3 className="text-lg font-bold">Production and leakage snapshot</h3>
             </div>
             <Button asChild size="sm" variant="ghost">
-              <Link to="/dashboard/applicants">All deals <ArrowRight className="h-3 w-3 ml-1" /></Link>
+              <Link to="/dashboard/admin/content-command">Content loop <ArrowRight className="h-3 w-3 ml-1" /></Link>
             </Button>
           </div>
-          {recentDeals.isLoading ? (
-            <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
-          ) : (recentDeals.data ?? []).length === 0 ? (
-            <EmptyState icon={<Trophy className="h-6 w-6" />} title="No deals yet" />
+          {periodDeals.isLoading ? (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+            </div>
           ) : (
-            <ul className="divide-y divide-border/40">
-              {(recentDeals.data ?? []).map((d) => (
-                <li key={d.id} className="py-2 flex items-center justify-between gap-3 hover:bg-primary/[0.04] rounded px-2 -mx-2 transition-colors">
-                  <div className="flex items-center gap-3 min-w-0">
-                    {d.avatar_url ? (
-                      <img src={d.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-border" />
-                    ) : (
-                      <div className="h-7 w-7 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center">
-                        {d.agent_name.split(" ").map(s => s[0]).slice(0, 2).join("")}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-semibold truncate text-sm">
-                        {[d.client_first_name, d.client_last_name].filter(Boolean).join(" ") || "Unknown client"}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground truncate">
-                        {d.agent_name} · {d.product_sold ?? "—"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="font-bold tabular-nums text-emerald-500 dark:text-emerald-400 text-sm">
-                      {fmtUsd(Number(d.annual_premium ?? 0), true)}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {d.posted_at ? format(new Date(d.posted_at), "MMM d · h:mm a") : "—"}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <PipelineStat label="AP selected" value={fmtUsd(periodSummary.totalAp)} detail={`${fmtNum(periodSummary.dealCount)} trusted deals`} tone="success" />
+              <PipelineStat label="Producers selected" value={fmtNum(periodSummary.producingAgents)} detail="Unique agents with trusted deals" />
+              <PipelineStat label="Avg AP / deal" value={fmtUsd(periodSummary.dealCount ? periodSummary.totalAp / periodSummary.dealCount : 0, true)} detail="Selected period efficiency" />
+              <PipelineStat label="Managers producing" value={fmtNum(periodSummary.managers.filter((m) => m.name !== "Direct to Sam / no manager").length)} detail={`${fmtNum(periodSummary.managers.length)} total buckets`} />
+              <PipelineStat label="Direct to Sam / no manager" value={fmtUsd(periodSummary.managers.find((m) => m.name === "Direct to Sam / no manager")?.ap ?? 0, true)} detail={`${fmtNum(periodSummary.managers.find((m) => m.name === "Direct to Sam / no manager")?.deals ?? 0)} deals`} tone="warning" />
+              <PipelineStat label="Uncontacted >24h" value={fmtNum(c?.uncontacted_24h ?? 0)} detail={`${fmtNum(c?.stale_new_3d ?? 0)} stale 3d+`} tone={(c?.uncontacted_24h ?? 0) > 0 ? "warning" : "default"} />
+            </div>
           )}
         </GlassCard>
       </div>
@@ -1494,6 +1453,30 @@ function AgencyCommandView() {
 }
 
 interface StatRowCardProps { icon: React.ElementType; label: string; value: string; color: string; }
+function PipelineStat({
+  label,
+  value,
+  detail,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "default" | "success" | "warning";
+}) {
+  const valueColor =
+    tone === "success" ? "text-emerald-500 dark:text-emerald-400" :
+    tone === "warning" ? "text-amber-500 dark:text-amber-400" :
+    "text-foreground";
+  return (
+    <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-2xl font-bold tabular-nums ${valueColor}`}>{value}</p>
+      <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
 function StatRowCard({ icon: Icon, label, value, color }: StatRowCardProps) {
   return (
     <GlassCard className="p-4 flex items-center justify-between">

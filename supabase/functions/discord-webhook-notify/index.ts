@@ -331,14 +331,15 @@ async function checkAndFireMilestone(
       // Crossed! Get agent info for instagram handle + avatar
       const { data: agent } = await supabase
         .from("agents")
-        .select("photo_url, profile:profiles!agents_profile_id_fkey(full_name, instagram_handle, avatar_url)")
+        .select("profile:profiles!agents_profile_id_fkey(full_name, instagram_handle, avatar_url)")
         .eq("id", agentId)
         .maybeSingle();
 
       const profile = (agent as any)?.profile;
       const agentName = profile?.full_name ?? "Agent";
       const instagram = profile?.instagram_handle ?? null;
-      const photo_url = (agent as any)?.photo_url ?? profile?.avatar_url ?? null;
+      // agents.photo_url does not exist; avatar lives on profiles via profile_id FK
+      const photo_url = profile?.avatar_url ?? null;
 
       const milestonePayload = buildPayload("deal_milestone", {
         agent_name: agentName,

@@ -68,7 +68,7 @@ Deno.serve(
       await sendPush(
         pushTargetIds,
         `🚨🔥 DEAL ALERT!`,
-        `${agentName} just closed ${deals > 1 ? `${deals} deals` : "a deal"} for $${formattedAop} ALP!`,
+        `${agentName} just logged ${deals > 1 ? `${deals} deals today` : "a deal"} · $${formattedAop} ALP`,
         "/numbers"
       );
 
@@ -103,7 +103,7 @@ Deno.serve(
         </td></tr>
         <tr><td style="background: rgba(0,0,0,0.2); padding: 32px 24px; text-align: center;">
           <h2 style="color: white; font-size: 32px; font-weight: 900; margin: 0 0 16px 0; text-transform: uppercase;">${agentName.toUpperCase()}</h2>
-          <p style="color: rgba(255,255,255,0.9); font-size: 18px; margin: 0;">Just closed ${deals > 1 ? `${deals} deals` : "a deal"} for</p>
+          <p style="color: rgba(255,255,255,0.9); font-size: 18px; margin: 0;">${deals > 1 ? `Logged ${deals} deals today` : "Just closed a deal"} for</p>
           <div style="font-size: 48px; font-weight: 900; color: #fef08a; margin: 16px 0;">$${formattedAop} ALP</div>
           <p style="color: rgba(255,255,255,0.7); font-size: 14px; margin: 0;">📍 ${pstTime} PST</p>
         </td></tr>

@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
   try {
     const { data: agentInfo } = await sb
       .from("agents")
-      .select("display_name, profile:profiles(full_name, instagram_handle)")
+      .select("display_name, photo_url, profile:profiles(full_name, instagram_handle, avatar_url)")
       .eq("id", agentId)
       .maybeSingle();
     const agentName =
@@ -96,16 +96,27 @@ Deno.serve(async (req) => {
       ?? (agentInfo as any)?.display_name
       ?? "an Apex agent";
     const instagram = (agentInfo as any)?.profile?.instagram_handle ?? null;
+    // PL-AVATAR fix: Sam's complaint — "people post deals and don't get their picture inside their chat".
+    // Discord embed needs the agent thumbnail URL. Prefer agents.photo_url, fall back to profiles.avatar_url.
+    const photo_url =
+      (agentInfo as any)?.photo_url
+      ?? (agentInfo as any)?.profile?.avatar_url
+      ?? null;
 
     const r = await fetch(`${SUPABASE_URL}/functions/v1/discord-webhook-notify`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SERVICE_KEY}` },
       body: JSON.stringify({
-        event: "deal_closed",
+        event_type: "deal_closed",
         agent_name: agentName,
-        aop: Number(annual_premium),
-        product_type: product_sold ?? "Life",
-        instagram,
+        details: {
+          agent_id: agentId,
+          agent_name: agentName,
+          aop: Number(annual_premium),
+          product_type: product_sold ?? "Life",
+          instagram,
+          photo_url,
+        },
       }),
     });
     discordOk = r.ok;

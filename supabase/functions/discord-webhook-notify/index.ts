@@ -121,12 +121,16 @@ function embedDealClosed(d: Record<string, unknown>) {
   const aop     = Number(d.aop) || 0;
   const product = productLabel(d.product_type as string);
   const insta   = ig(d.instagram as string);
+  const photo   = (d.photo_url as string) || null;
 
   return {
     embeds: [{
       title:       "💰 Deal Closed!",
       description: `**${name}${insta}** closed a **${product}** deal`,
       color:       CLR.gold,
+      // PL-AVATAR: Sam's complaint — "people post deals and don't get their picture inside their chat".
+      // Discord embed now includes the agent thumbnail when agents.photo_url is set.
+      ...(photo ? { thumbnail: { url: photo } } : {}),
       fields: [
         { name: "ALP", value: fmt$(aop), inline: true },
         { name: "Product",        value: product,     inline: true },
@@ -140,6 +144,7 @@ function embedStreak7Day(d: Record<string, unknown>) {
   const name  = (d.agent_name as string) || "Agent";
   const days  = Number(d.streak_days) || 7;
   const insta = ig(d.instagram as string);
+  const photo = (d.photo_url as string) || null;
   const fires = "🔥".repeat(Math.min(days, 7));
 
   return {
@@ -147,6 +152,7 @@ function embedStreak7Day(d: Record<string, unknown>) {
       title:       `${fires} 7-Day Activity Streak!`,
       description: `**${name}${insta}** has logged production for **${days} consecutive days**`,
       color:       CLR.orange,
+      ...(photo ? { thumbnail: { url: photo } } : {}),
       fields: [
         { name: "Streak", value: `${days} days`, inline: true },
       ],
@@ -160,6 +166,7 @@ function embedDealMilestone(d: Record<string, unknown>) {
   const tier  = Number(d.tier) || 25_000;
   const mtd   = Number(d.mtd_alp) || tier;
   const insta = ig(d.instagram as string);
+  const photo = (d.photo_url as string) || null;
   const label = MILESTONE_LABEL[tier] ?? `$${(tier / 1000).toFixed(0)}K Milestone`;
 
   return {
@@ -167,6 +174,7 @@ function embedDealMilestone(d: Record<string, unknown>) {
       title:       `${label} — Monthly Milestone!`,
       description: `**${name}${insta}** just crossed **${fmt$(tier)}** in monthly production!`,
       color:       tier >= 100_000 ? CLR.diamond : tier >= 75_000 ? CLR.purple : CLR.gold,
+      ...(photo ? { thumbnail: { url: photo } } : {}),
       fields: [
         { name: "MTD Production", value: fmt$(mtd), inline: true },
         { name: "Tier Unlocked",  value: label,     inline: true },
@@ -320,22 +328,24 @@ async function checkAndFireMilestone(
 
   for (const t of MILESTONES) {
     if (prevMtd < t && mtd >= t) {
-      // Crossed! Get agent info for instagram handle
+      // Crossed! Get agent info for instagram handle + avatar
       const { data: agent } = await supabase
         .from("agents")
-        .select("profile:profiles!agents_profile_id_fkey(full_name, instagram_handle)")
+        .select("photo_url, profile:profiles!agents_profile_id_fkey(full_name, instagram_handle, avatar_url)")
         .eq("id", agentId)
         .maybeSingle();
 
       const profile = (agent as any)?.profile;
       const agentName = profile?.full_name ?? "Agent";
       const instagram = profile?.instagram_handle ?? null;
+      const photo_url = (agent as any)?.photo_url ?? profile?.avatar_url ?? null;
 
       const milestonePayload = buildPayload("deal_milestone", {
         agent_name: agentName,
         tier:       t,
         mtd_alp:    mtd,
         instagram,
+        photo_url,
       });
       if (milestonePayload) {
         await sendToDiscord(webhookUrl, milestonePayload).catch(() => {});

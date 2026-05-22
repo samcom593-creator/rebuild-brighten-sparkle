@@ -243,7 +243,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center px-4 py-8 relative bg-background text-foreground ops-surface ops-fade-in">
+    <div className="min-h-[100dvh] flex items-center justify-center px-4 py-8 relative overflow-x-hidden bg-background text-foreground ops-surface ops-fade-in">
       {/* PL-013: explicit dark surface — Welcome-back page rendered white in
           some hydration paths. bg-background + text-foreground bind to the
           dark theme tokens regardless of pre-paint state. */}
@@ -251,7 +251,7 @@ export default function Login() {
         initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-md relative z-10"
+        className="w-full max-w-[calc(100vw-2rem)] sm:max-w-md relative z-10"
       >
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-4 mb-6 group">
@@ -269,15 +269,19 @@ export default function Login() {
             </div>
           </Link>
           <motion.h1
-            className="font-extrabold mb-3 brand-gradient leading-tight tracking-tight"
-            style={{ fontSize: "clamp(2rem, 7vw, 3.5rem)", filter: "drop-shadow(0 0 30px hsl(168 80% 50% / 0.35))" }}
+            className="font-extrabold mb-3 brand-gradient leading-tight tracking-tight max-w-full text-balance"
+            style={{ fontSize: "clamp(2rem, 8vw, 3.5rem)", filter: "drop-shadow(0 0 30px hsl(168 80% 50% / 0.35))" }}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
           >
-            Welcome back
+            <span className="block">Welcome</span>
+            <span className="block">back</span>
           </motion.h1>
-          <p className="text-muted-foreground">Sign in to access your operating system</p>
+          <p className="text-muted-foreground leading-snug">
+            <span className="block">Sign in to access</span>
+            <span className="block">your operating system</span>
+          </p>
         </div>
 
         <GlassCard className="p-4 sm:p-8">
@@ -447,10 +451,11 @@ export default function Login() {
                 </GradientButton>
               </form>
 
-              <div className="flex items-center justify-between mt-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4">
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="w-full sm:w-auto justify-center"
                   onClick={handleForgotPassword}
                   disabled={resetLoading}
                 >
@@ -466,6 +471,7 @@ export default function Login() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="w-full sm:w-auto justify-center"
                   onClick={() => setShowPhoneLogin(true)}
                 >
                   <Phone className="h-4 w-4 mr-2" />
@@ -486,8 +492,8 @@ export default function Login() {
             </Button>
           </div>
 
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Contact your administrator for account access.
+          <p className="mt-4 text-center text-sm text-muted-foreground leading-snug">
+            Contact your admin for account access.
           </p>
         </GlassCard>
       </motion.div>

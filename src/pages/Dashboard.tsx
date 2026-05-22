@@ -751,6 +751,12 @@ function ExecutiveDashboard({
         />
       </div>
 
+      {/* Manager hierarchy MTD + top producers — replaces the weak "Recent deals"
+          widget per Sam's 2026-05-22 punch ("dashboard literally empty, leaderboard
+          empty, last 8 deals still there, doesn't have pipeline stats"). Reads
+          v_manager_hierarchy_mtd + v_top_producers_mtd — real data only. */}
+      <ManagerHierarchyMtdPanel />
+
       <WeekProductionCard snapshot={snapshot} />
 
       {/* PL-026: removed "Activity And Referrals" 30-day widget per Sam.

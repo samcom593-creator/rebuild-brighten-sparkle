@@ -4,7 +4,7 @@ import { format, isToday, isBefore, startOfWeek, addDays, getHours, getMinutes }
 import { motion } from "framer-motion";
 import {
   Calendar, Video, Phone, MapPin, Clock, Plus, Download,
-  AlertTriangle, CheckCircle2, CalendarPlus, ExternalLink, Search, User,
+  AlertTriangle, CheckCircle2, CalendarPlus, ExternalLink, Search, User, RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,7 +46,7 @@ type LeadResult = {
 type PipelineEvent = {
   id: string;
   date: string;
-  kind: "follow_up" | "test_date" | "seminar" | "licensing" | "contracting" | "onboarding";
+  kind: "follow_up" | "test_date" | "seminar" | "licensing" | "contracting" | "onboarding" | "draft_date" | "post_test_follow_up";
   title: string;
   subtitle: string;
 };
@@ -148,6 +148,7 @@ export default function CalendarPage() {
   const [searching, setSearching] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LeadResult | null>(null);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
+  const [autoPopulating, setAutoPopulating] = useState(false);
 
   const { data: interviews, isLoading } = useQuery({
     queryKey: ["calendar-interviews", user?.id],
@@ -166,7 +167,7 @@ export default function CalendarPage() {
   const { data: pipelineEvents } = useQuery({
     queryKey: ["calendar-pipeline-events", user?.id],
     queryFn: async (): Promise<PipelineEvent[]> => {
-      const [{ data: apps }, { data: seminars }] = await Promise.all([
+      const [{ data: apps }, { data: seminars }, { data: autoEvents }] = await Promise.all([
         supabase
           .from("applications")
           .select("id, first_name, last_name, email, status, next_action_at, next_action_type, test_scheduled_date, exam_scheduled_at, course_purchased_at, course_started_at, licensed_at, contracted_at, start_date")
@@ -176,6 +177,15 @@ export default function CalendarPage() {
           .from("seminar_registrations")
           .select("id, first_name, last_name, email, seminar_date, attended")
           .limit(500),
+        supabase
+          .from("calendar_events")
+          .select("id, title, starts_at, metadata, status")
+          .eq("source", "schedule-auto-populate")
+          .in("status", ["scheduled", "reminder"])
+          .gte("starts_at", new Date(Date.now() - 86_400_000).toISOString())
+          .lte("starts_at", addDays(new Date(), 60).toISOString())
+          .order("starts_at", { ascending: true })
+          .limit(300),
       ]);
 
       const events: PipelineEvent[] = [];
@@ -237,6 +247,22 @@ export default function CalendarPage() {
           kind: "seminar",
           title: `Seminar: ${name}`,
           subtitle: seminar.attended === true ? "Attended" : seminar.attended === false ? "Registered" : "Registered",
+        });
+      }
+      for (const event of (autoEvents ?? []) as any[]) {
+        if (!event.starts_at) continue;
+        const meta = event.metadata && typeof event.metadata === "object" && !Array.isArray(event.metadata)
+          ? event.metadata as Record<string, any>
+          : {};
+        const kind = meta.kind === "draft_date" ? "draft_date" : "post_test_follow_up";
+        events.push({
+          id: `auto-${event.id}`,
+          date: event.starts_at,
+          kind,
+          title: event.title || (kind === "draft_date" ? "Draft check" : "Post-test follow-up"),
+          subtitle: kind === "draft_date"
+            ? [meta.carrier_name, meta.policy_status, meta.policy_label].filter(Boolean).join(" · ") || "Policy draft"
+            : [`Day ${meta.follow_up_day ?? "?"} after test`, meta.license_progress].filter(Boolean).join(" · ") || "Post-test follow-up",
         });
       }
       return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 120);
@@ -308,6 +334,29 @@ export default function CalendarPage() {
     setSearchQuery("");
     setSearchResults([]);
     setSchedulerOpen(true);
+  };
+
+  const handleAutoPopulate = async () => {
+    setAutoPopulating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("schedule-auto-populate", {
+        body: { lookahead_days: 45, email_managers: true },
+      });
+      if (error) throw error;
+      const inserted = (data as any)?.inserted?.total ?? 0;
+      const drafts = (data as any)?.inserted?.draft_dates ?? 0;
+      const followUps = (data as any)?.inserted?.post_test_follow_ups ?? 0;
+      toast.success(
+        inserted > 0
+          ? `Auto-filled ${inserted} schedule item${inserted === 1 ? "" : "s"} (${drafts} drafts, ${followUps} follow-ups)`
+          : "Schedule auto-fill is already current"
+      );
+      queryClient.invalidateQueries({ queryKey: ["calendar-pipeline-events"] });
+    } catch (err: any) {
+      toast.error(err?.message || "Schedule auto-fill failed");
+    } finally {
+      setAutoPopulating(false);
+    }
   };
 
   const handleNoShow = async (iv: InterviewRow) => {
@@ -402,6 +451,10 @@ export default function CalendarPage() {
                 {overdueCount} overdue
               </Badge>
             )}
+            <Button onClick={handleAutoPopulate} variant="outline" size="sm" disabled={autoPopulating}>
+              <RefreshCw className={cn("h-4 w-4 mr-1", autoPopulating && "animate-spin")} />
+              Auto-fill
+            </Button>
             <Button onClick={() => setSearchOpen(true)} size="sm">
               <Plus className="h-4 w-4 mr-1" />
               Schedule
@@ -434,7 +487,7 @@ export default function CalendarPage() {
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <p className="font-semibold">Pipeline Dates</p>
-              <p className="text-xs text-muted-foreground">Follow-ups, test dates, seminar schedules, licensing, contracting, and onboarding events.</p>
+              <p className="text-xs text-muted-foreground">Follow-ups, test dates, seminar schedules, policy draft checks, licensing, contracting, and onboarding events.</p>
             </div>
             <Badge variant="outline" className="text-[10px]">{upcomingPipelineEvents.length} upcoming</Badge>
           </div>
@@ -446,7 +499,7 @@ export default function CalendarPage() {
                 <div key={event.id} className="rounded-lg border border-border/70 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="truncate text-sm font-medium">{event.title}</p>
-                    <Badge variant="secondary" className="text-[10px] capitalize">{event.kind.replace("_", " ")}</Badge>
+                    <Badge variant="secondary" className="text-[10px] capitalize">{event.kind.replace(/_/g, " ")}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{format(new Date(event.date), "EEE, MMM d")} · {event.subtitle}</p>
                 </div>

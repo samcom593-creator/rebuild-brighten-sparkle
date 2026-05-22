@@ -1211,6 +1211,30 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Background email notification failed:", err);
     });
 
+    // PL-SEMINAR-FUNNEL: fire-and-forget the seminar confirmation email
+    // (Zoom + .ics + Telegram bot deep-link). Wrapped in try/catch so a
+    // failure here never fails the parent application submission.
+    (async () => {
+      try {
+        const resp = await fetch(`${supabaseUrl}/functions/v1/seminar-confirmation`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({ application_id: inserted.id }),
+        });
+        if (!resp.ok) {
+          const txt = await resp.text();
+          console.error("[seminar-confirmation] non-ok response:", resp.status, txt.slice(0, 500));
+        } else {
+          console.log("[seminar-confirmation] dispatched for application:", inserted.id);
+        }
+      } catch (e) {
+        console.error("[seminar-confirmation] dispatch threw:", e);
+      }
+    })();
+
     // Send leaderboard notification to ALL managers (competitive motivation)
     sendLeaderboardNotification(data, inserted.id).catch((err) => {
       console.error("Background leaderboard notification failed:", err);

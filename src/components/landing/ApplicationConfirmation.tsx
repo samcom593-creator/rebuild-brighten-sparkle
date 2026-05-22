@@ -16,6 +16,8 @@ import {
   ArrowRight,
   ShieldCheck,
   Bot,
+  Video,
+  Copy,
 } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -29,6 +31,7 @@ import {
 } from "@/lib/constants";
 import { SCHEDULING_LINKS } from "@/lib/apexConfig";
 import { useApplicationStatus } from "@/hooks/useApplicationStatus";
+import { useApplicationSeminarInvite } from "@/hooks/useApplicationSeminarInvite";
 
 interface Props {
   applicationId: string | null;
@@ -143,6 +146,21 @@ export function ApplicationConfirmation({
   showCalendly = true,
 }: Props) {
   const { data: snap, isLoading } = useApplicationStatus(applicationId);
+  const { data: seminar } = useApplicationSeminarInvite(applicationId);
+  const [zoomCopied, setZoomCopied] = useState(false);
+
+  // PL-SEMINAR-FUNNEL: copy-zoom-link handler used by the seminar invite panel.
+  const handleCopyZoom = async () => {
+    if (!seminar?.zoom_url) return;
+    try {
+      await navigator.clipboard.writeText(seminar.zoom_url);
+      setZoomCopied(true);
+      setTimeout(() => setZoomCopied(false), 2000);
+    } catch {
+      // navigator.clipboard not available — leave the visible link as the
+      // fallback.
+    }
+  };
 
   const license =
     forceLicenseStatus ??
@@ -286,6 +304,87 @@ export function ApplicationConfirmation({
               </div>
             )}
           </section>
+
+          {/* PL-SEMINAR-FUNNEL: locked seminar Zoom slot from get_application_seminar_invite RPC */}
+          {seminar?.slot_at ? (
+            <section aria-label="Seminar Zoom locked" className="space-y-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Seminar Zoom locked</h2>
+              <div className="rounded-xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent p-4 sm:p-5 space-y-3">
+                <div className="flex items-start gap-3">
+                  <Video className="h-6 w-6 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-base">
+                      {formatSeminarLocal(seminar.slot_at)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {seminar.schedule_label || "Wed / Fri / Sun at 7pm CT"}
+                    </p>
+                  </div>
+                </div>
+
+                {seminar.zoom_url ? (
+                  <div className="rounded-lg border border-border/50 bg-background/50 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="text-xs font-mono text-foreground break-all min-w-0">
+                        {seminar.zoom_url}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={handleCopyZoom}
+                        className="shrink-0 inline-flex items-center gap-1 rounded-md border border-border/50 bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
+                      >
+                        <Copy className="h-3 w-3" />
+                        {zoomCopied ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                    {seminar.passcode ? (
+                      <p className="text-[11px] text-muted-foreground">
+                        Passcode: <span className="font-mono text-foreground">{seminar.passcode}</span>
+                        {seminar.zoom_meeting_id ? (
+                          <>
+                            {" "}· Meeting ID:{" "}
+                            <span className="font-mono text-foreground">{seminar.zoom_meeting_id}</span>
+                          </>
+                        ) : null}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {seminar.zoom_url ? (
+                    <a href={seminar.zoom_url} target="_blank" rel="noopener noreferrer" className="block">
+                      <GradientButton size="sm" className="w-full text-sm">
+                        <Video className="h-4 w-4 mr-2" />
+                        Join the Zoom
+                      </GradientButton>
+                    </a>
+                  ) : null}
+                  {seminar.telegram_dm_url ? (
+                    <a
+                      href={seminar.telegram_dm_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                    >
+                      <GradientButton
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-sm bg-[#229ED9]/10 hover:bg-[#229ED9]/20 border-[#229ED9]/60 text-[#5fbff0]"
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Open Apex Telegram bot
+                      </GradientButton>
+                    </a>
+                  ) : null}
+                </div>
+
+                <p className="text-[11px] text-muted-foreground">
+                  Confirmation email + calendar invite (.ics) are on the way. Check your inbox in the next 60 seconds. Search "Apex" if it lands in spam.
+                </p>
+              </div>
+            </section>
+          ) : null}
 
           {/* Next seminar countdown */}
           <section aria-label="Next live seminar" className="space-y-3">

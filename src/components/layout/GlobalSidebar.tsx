@@ -47,6 +47,7 @@ import {
   Database,
   Flame,
   ShieldAlert,
+  AlertOctagon,
   Receipt,
   Phone,
   Radio,
@@ -293,6 +294,17 @@ export function GlobalSidebar({
     // don't clutter the sidebar.
     const adminItems: NavItem[] = [];
     if (isAdmin) {
+      // Sam HQ — Sam's single command surface (today's MUST/SHOULD/COULD, week strip, leaks, bots).
+      // Pinned to the top of admin nav since this is his daily entry point.
+      adminItems.push({ icon: Crown, label: "Sam HQ", href: "/dashboard/admin/sam", special: true });
+      // Unclaimed Leads — every stage=new applicant + one-click reassign to Sam
+      adminItems.push({ icon: AlertOctagon, label: "Unclaimed", href: "/dashboard/admin/unclaimed" });
+      // Manager Command — 3-tab manager view
+      adminItems.push({ icon: Users, label: "Manager Command", href: "/dashboard/admin/manager" });
+      // Licensing Tracker — 8-stage kanban
+      adminItems.push({ icon: GraduationCap, label: "Licensing Tracker", href: "/dashboard/admin/licensing" });
+      // Commission Recovery — NULL premium/face policy cleanup
+      adminItems.push({ icon: Wallet, label: "Commission Recovery", href: "/dashboard/admin/commission-recovery" });
       adminItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command", special: true });
       adminItems.push({ icon: Mail, label: "Inbox", href: "/dashboard/inbox" });
       // PL-034: Offers now lives under CRM (with Lead Center / Aged Leads) so
@@ -312,6 +324,7 @@ export function GlobalSidebar({
       //   SMB (Radio) is the DOER (today's drafts, daemon, analytics, blockers).
       //   ContentWheel (Crown) is the BRAIN (doctrine, wheel, outliers, recruiting).
       // Every shipped SMB draft auto-flows to cw_posts; both pages cross-link.
+      adminItems.push({ icon: Radio, label: "Content Command", href: "/dashboard/admin/content-command", special: true });
       adminItems.push({ icon: Radio, label: "Social Media Bot", href: "/dashboard/admin/social-media-bot", special: true });
       adminItems.push({ icon: Send, label: "Telegram Bot", href: "/dashboard/admin/telegram-bot", special: true });
       adminItems.push({ icon: Crown, label: "ContentWheel", href: "/admin/contentwheel", special: true });

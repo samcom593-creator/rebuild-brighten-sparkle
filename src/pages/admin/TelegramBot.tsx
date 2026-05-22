@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import {
   Send, Users, MessageSquare, AlertTriangle, RefreshCw, Activity,
-  CheckCircle2, XCircle, Clock, Megaphone,
+  CheckCircle2, XCircle, Clock, Megaphone, Sparkles, HelpCircle,
 } from "lucide-react";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { toast } from "sonner";
@@ -89,6 +89,28 @@ const GROUP_TYPE_LABEL: Record<string, string> = {
   wins: "Wins Channel",
   ai_dm: "Ask Apex AI (DM)",
   manager_alerts: "Manager Alerts (internal)",
+  // Pre-Agent HQ types
+  licensing_reference: "Licensing Center",
+  daily_movement: "Daily Movement",
+  seminar_reminders: "Seminar Reminders",
+  ask_apex_ai: "Ask Apex AI (channel)",
+};
+
+const PRE_AGENT_HQ_TYPES = [
+  "onboarding",
+  "licensing_reference",
+  "daily_movement",
+  "seminar_reminders",
+  "ask_apex_ai",
+] as const;
+
+type PreAgentHqFaq = {
+  id: number;
+  category: string;
+  question_pattern: string;
+  answer_body: string;
+  use_count: number;
+  active: boolean;
 };
 
 export default function TelegramBot() {
@@ -175,6 +197,36 @@ export default function TelegramBot() {
     },
   });
 
+  // Pre-Agent HQ — 5 channels (filtered by type) + their last activity
+  const { data: hqGroups } = useQuery<Group[]>({
+    queryKey: ["telegram-hq-groups"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("telegram_groups")
+        .select("chat_id, title, type, is_active, invite_link, created_at")
+        .in("type", PRE_AGENT_HQ_TYPES as unknown as string[])
+        .order("chat_id", { ascending: false });
+      if (error) throw error;
+      return ((data as any[]) ?? []).map((row) => ({ ...row, chat_id: String(row.chat_id) }));
+    },
+  });
+
+  // Pre-Agent HQ — the 20 seeded FAQs
+  const { data: hqFaqs } = useQuery<PreAgentHqFaq[]>({
+    queryKey: ["telegram-hq-faqs"],
+    refetchInterval: 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("telegram_faq")
+        .select("id, category, question_pattern, answer_body, use_count, active")
+        .like("question_pattern", "[PRE-AGENT HQ]%")
+        .order("id", { ascending: true });
+      if (error) throw error;
+      return (data as PreAgentHqFaq[]) ?? [];
+    },
+  });
+
   const refreshAll = () => {
     qc.invalidateQueries({ queryKey: ["telegram-dashboard"] });
     qc.invalidateQueries({ queryKey: ["telegram-funnel"] });
@@ -182,6 +234,8 @@ export default function TelegramBot() {
     qc.invalidateQueries({ queryKey: ["telegram-escalations"] });
     qc.invalidateQueries({ queryKey: ["telegram-groups"] });
     qc.invalidateQueries({ queryKey: ["telegram-templates"] });
+    qc.invalidateQueries({ queryKey: ["telegram-hq-groups"] });
+    qc.invalidateQueries({ queryKey: ["telegram-hq-faqs"] });
   };
 
   return (
@@ -219,6 +273,7 @@ export default function TelegramBot() {
             <TabsTrigger value="groups"><MessageSquare className="h-4 w-4 mr-1.5" />Groups</TabsTrigger>
             <TabsTrigger value="broadcast"><Megaphone className="h-4 w-4 mr-1.5" />Broadcast</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
+            <TabsTrigger value="preagent_hq"><Sparkles className="h-4 w-4 mr-1.5" />Pre-Agent HQ</TabsTrigger>
           </TabsList>
 
           {/* OVERVIEW */}
@@ -373,6 +428,11 @@ export default function TelegramBot() {
                 </ul>
               )}
             </GlassCard>
+          </TabsContent>
+
+          {/* PRE-AGENT HQ */}
+          <TabsContent value="preagent_hq" className="space-y-4">
+            <PreAgentHqPanel groups={hqGroups ?? []} faqs={hqFaqs ?? []} />
           </TabsContent>
         </Tabs>
       </div>
@@ -572,6 +632,205 @@ function BroadcastPanel({ templates }: { templates: Template[] }) {
           <li>Bot daemon ticks every 5 min — expect 1-5 min delivery latency.</li>
           <li>Template variables like <code>{`{first_name}`}</code> are rendered against each user's <code>telegram_users</code> row at send time, not now.</li>
         </ul>
+      </GlassCard>
+    </div>
+  );
+}
+
+function PreAgentHqPanel({ groups, faqs }: { groups: Group[]; faqs: PreAgentHqFaq[] }) {
+  const qc = useQueryClient();
+  const SENTINEL_RANGE = (chatId: string) => {
+    const n = Number(chatId);
+    return Number.isFinite(n) && n > -1000 && n < 0;
+  };
+
+  const boundCount = groups.filter((g) => !SENTINEL_RANGE(g.chat_id)).length;
+  const pendingCount = groups.filter((g) => SENTINEL_RANGE(g.chat_id)).length;
+
+  // Edit-in-place state for FAQs
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editBody, setEditBody] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  const onSaveFaq = async (id: number) => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("telegram_faq")
+        .update({ answer_body: editBody })
+        .eq("id", id);
+      if (error) throw error;
+      toast.success("FAQ updated");
+      setEditingId(null);
+      qc.invalidateQueries({ queryKey: ["telegram-hq-faqs"] });
+    } catch (e: any) {
+      toast.error(`Save failed: ${e?.message ?? "unknown"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleActive = async (id: number, active: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("telegram_faq")
+        .update({ active })
+        .eq("id", id);
+      if (error) throw error;
+      toast.success(active ? "FAQ enabled" : "FAQ disabled");
+      qc.invalidateQueries({ queryKey: ["telegram-hq-faqs"] });
+    } catch (e: any) {
+      toast.error(`Toggle failed: ${e?.message ?? "unknown"}`);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Activation status header */}
+      <GlassCard className="p-5 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Pre-Agent HQ — activation status
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              5 channels for pre-hire candidates. Discord is reserved for active agents (post-hire + first exam booked).
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={pendingCount === 0 ? "default" : "outline"} className={pendingCount === 0 ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" : ""}>
+              {boundCount}/{groups.length} bound
+            </Badge>
+            {pendingCount > 0 ? <Badge variant="outline" className="text-amber-300 border-amber-500/30">{pendingCount} pending</Badge> : null}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2">
+          {groups.length === 0 ? (
+            <EmptyState
+              title="No HQ channels seeded"
+              description="The migration didn't apply, or the rows were deleted. Re-run 20260522000300_telegram_pre_agent_hq.sql."
+              icon={MessageSquare}
+            />
+          ) : (
+            groups.map((g) => {
+              const isSentinel = SENTINEL_RANGE(g.chat_id);
+              return (
+                <div
+                  key={g.chat_id}
+                  className={`rounded-lg border p-3 flex items-start justify-between gap-3 ${
+                    isSentinel ? "border-amber-500/30 bg-amber-500/5" : "border-emerald-500/30 bg-emerald-500/5"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{g.title}</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      type=<span className="text-foreground">{g.type}</span> · chat_id={g.chat_id}{" "}
+                      {isSentinel ? <span className="text-amber-400">(sentinel — not bound yet)</span> : null}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isSentinel ? (
+                      <Badge variant="outline" className="text-amber-300 border-amber-500/30">
+                        Add bot as admin
+                      </Badge>
+                    ) : (
+                      <Badge variant="default" className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+                        <CheckCircle2 className="h-3 w-3 mr-1" /> Bound
+                      </Badge>
+                    )}
+                    <Badge variant={g.is_active ? "default" : "outline"}>{g.is_active ? "active" : "off"}</Badge>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {pendingCount > 0 ? (
+          <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-xs space-y-2">
+            <p className="text-sm font-medium">To finish activation</p>
+            <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+              <li>Drop the BotFather token at <code>~/.config/apex-creds/telegram-bot.token</code></li>
+              <li>Create each pending Telegram channel and add the bot as admin (Post / Edit / Pin)</li>
+              <li>Run <code>~/business-ops/telegram-bot/scripts/apex-tg-hq-activate.sh</code></li>
+              <li>For each pending channel, post any message in it, find the chat_id via <code>SELECT chat_id, body FROM telegram_messages ORDER BY id DESC LIMIT 5</code>, then run <code>apex-tg-hq-activate.sh bind '&lt;title&gt;' &lt;chat_id&gt;</code></li>
+            </ol>
+          </div>
+        ) : null}
+      </GlassCard>
+
+      {/* FAQ editor */}
+      <GlassCard className="p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <HelpCircle className="h-4 w-4 text-primary" />
+            Ask Apex AI — 20 seeded FAQs
+          </h3>
+          <Badge variant="outline">{faqs.length} loaded</Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          The bot answers from these. Match logic: keyword overlap + confidence. If confidence &lt; 0.7, the bot escalates to <code>@theprincejames</code> + assigned manager via <code>telegram_escalations</code>.
+        </p>
+
+        {faqs.length === 0 ? (
+          <Skeleton className="h-24" />
+        ) : (
+          <ul className="space-y-2">
+            {faqs.map((f) => (
+              <li key={f.id} className="rounded-lg border border-border/40 bg-muted/20 p-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{f.question_pattern.replace(/^\[PRE-AGENT HQ\]\s*/, "")}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      id {f.id} · {f.category} · used {f.use_count}× · {f.active ? "active" : "disabled"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleActive(f.id, !f.active)}
+                    >
+                      {f.active ? <XCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                    </Button>
+                    {editingId === f.id ? (
+                      <>
+                        <Button size="sm" disabled={saving} onClick={() => onSaveFaq(f.id)}>
+                          {saving ? "Saving…" : "Save"}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>
+                          Cancel
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingId(f.id);
+                          setEditBody(f.answer_body);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {editingId === f.id ? (
+                  <Textarea
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    className="font-mono text-xs h-40"
+                  />
+                ) : (
+                  <pre className="text-xs whitespace-pre-wrap text-muted-foreground/80 max-h-32 overflow-y-auto">{f.answer_body}</pre>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </GlassCard>
     </div>
   );

@@ -356,7 +356,7 @@ export default function TelegramBot() {
               </ol>
             </GlassCard>
 
-            <GlassCard className="p-5 space-y-3">
+            <GlassCard className="p-5 space-y-3 ops-card-depth">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Telegram proof status</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Stat label="Registered chats" value={proof?.registeredChats ?? 0} tone={proof?.registeredChats ? "ok" : "warn"} />
@@ -373,6 +373,8 @@ export default function TelegramBot() {
                 Telegram is only considered done when this panel shows a real bot identity, registered chats, and a last successful send. If not, the blocker is still Sam-only BotFather/channel setup.
               </p>
             </GlassCard>
+
+            <ActivationChecklist proof={proof} groups={groups ?? []} />
           </TabsContent>
 
           {/* FUNNEL */}
@@ -900,5 +902,107 @@ function PreAgentHqPanel({ groups, faqs }: { groups: Group[]; faqs: PreAgentHqFa
         )}
       </GlassCard>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------------
+   ActivationChecklist — honest 5-step proof of Telegram being live or not.
+   Reads real DB state; no auto-go-green if a step actually isn't proven.
+   ------------------------------------------------------------------------ */
+function ActivationChecklist({
+  proof,
+  groups,
+}: {
+  proof: TelegramProof | undefined;
+  groups: Group[];
+}) {
+  const SENTINEL_RANGE = (chatId: string) => {
+    const n = Number(chatId);
+    return Number.isFinite(n) && n > -1000 && n < 0;
+  };
+  const boundGroups = groups.filter((g) => !SENTINEL_RANGE(g.chat_id));
+  const activeGroups = boundGroups.filter((g) => g.is_active);
+
+  const steps: Array<{ ok: boolean; label: string; fix: string }> = [
+    {
+      ok: Boolean(proof?.botUsername && proof?.botDmUrl),
+      label: "Bot identity proven",
+      fix: "Drop the BotFather token at ~/.config/apex-creds/telegram-bot.token then run apex-tg-hq-activate.sh — script writes telegram_bot_username + telegram_bot_dm_url to system_settings.",
+    },
+    {
+      ok: (proof?.registeredChats ?? 0) > 0,
+      label: "At least one registered chat",
+      fix: "Once the bot has admin in any channel and someone posts, the webhook handler inserts a telegram_users row. Until the token is dropped + webhook set, this stays at 0.",
+    },
+    {
+      ok: boundGroups.length >= 5,
+      label: "5 Pre-Agent HQ channels bound",
+      fix: "Create the 5 Telegram super-groups (START HERE / LICENSING CENTER / DAILY MOVEMENT / SEMINAR REMINDERS / ASK APEX AI), add the bot as admin, post a message in each, then run `apex-tg-hq-activate.sh bind '<title>' <chat_id>` for each.",
+    },
+    {
+      ok: activeGroups.length >= 5,
+      label: "Bot confirmed admin in all 5 channels",
+      fix: "Activation script flips telegram_groups.is_active to true once it can validate getChatMember for the bot in each channel. If a channel stays sentinel, bot wasn't made admin.",
+    },
+    {
+      ok: Boolean(proof?.lastSentAt),
+      label: "First successful send recorded",
+      fix: "Trigger a real test send: invoke fn_telegram_queue_test or wait for the seminar/onboarding triggers to enqueue a message. telegram_scheduled_messages.sent_at must populate.",
+    },
+  ];
+
+  const greenCount = steps.filter((s) => s.ok).length;
+  const allGreen = greenCount === steps.length;
+
+  return (
+    <GlassCard className={`p-5 space-y-4 ops-card-depth border ${allGreen ? "border-emerald-500/30" : "border-amber-500/30"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <AlertTriangle className={`h-4 w-4 ${allGreen ? "text-emerald-300" : "text-amber-300"}`} />
+            Activation checklist
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            5 steps to prove Telegram is actually live. Until every step is green, the bot is not done.
+          </p>
+        </div>
+        <Badge
+          variant="outline"
+          className={`${allGreen ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-amber-500/15 text-amber-300 border-amber-500/30"} font-mono`}
+        >
+          {greenCount}/{steps.length} green
+        </Badge>
+      </div>
+      <ol className="space-y-2">
+        {steps.map((s, i) => (
+          <li
+            key={s.label}
+            className={`rounded-lg border p-3 ${s.ok ? "border-emerald-500/20 bg-emerald-500/5" : "border-amber-500/20 bg-amber-500/5"}`}
+          >
+            <div className="flex items-center gap-2">
+              <span className={`font-mono text-xs ${s.ok ? "text-emerald-300" : "text-amber-300"}`}>#{i + 1}</span>
+              {s.ok ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-300 shrink-0" />
+              ) : (
+                <XCircle className="h-4 w-4 text-amber-300 shrink-0" />
+              )}
+              <span className="text-sm font-medium">{s.label}</span>
+            </div>
+            {!s.ok ? (
+              <p className="text-xs text-muted-foreground mt-2 ml-7">{s.fix}</p>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+      {!allGreen ? (
+        <p className="text-xs text-muted-foreground/80 italic">
+          Sam HQ surfaces an amber Telegram tile until this strip is all green. Don't trust any "Telegram is wired" claim while this strip is mixed.
+        </p>
+      ) : (
+        <p className="text-xs text-emerald-300">
+          All 5 steps proven. Telegram Pre-Agent HQ is live.
+        </p>
+      )}
+    </GlassCard>
   );
 }

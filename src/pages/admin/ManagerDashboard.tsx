@@ -286,7 +286,7 @@ function StatTile({ label, value, color }: { label: string; value: number | stri
 export default function ManagerDashboard() {
   const [tab, setTab] = useState("recruiting");
   return (
-    <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4">
+    <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4 ops-surface">
       <PageHeader
         title="Manager Command"
         subtitle="One screen for the manager who runs the room. Recruiting (new apps + contact gaps), Licensing (paid → exam-ready), Production (deals + leaderboard)."

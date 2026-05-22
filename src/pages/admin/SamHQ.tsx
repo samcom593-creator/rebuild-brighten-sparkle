@@ -603,12 +603,14 @@ export default function SamHQ() {
   }, [today]);
 
   return (
-    <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4">
+    <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4 ops-surface">
       <PageHeader
         title="Sam HQ"
         subtitle="One command surface. Today's must-do, this week, what shipped, what leaks. Edits sync across devices every 60s."
         icon={<Crown className="w-6 h-6 text-[#22d3a5]" />}
       />
+
+      <TelegramStatusTile />
 
       <TodaySection today={today} />
 
@@ -632,5 +634,75 @@ export default function SamHQ() {
         Hold the Standard. Average is the disease.
       </div>
     </div>
+  );
+}
+
+/* ============================================================
+   TELEGRAM STATUS TILE — loud amber when not proven, slim when green
+   ============================================================ */
+function TelegramStatusTile() {
+  const { data } = useQuery({
+    queryKey: ["sam_hq_telegram_status"],
+    queryFn: async () => {
+      const [groupsResp, sentResp, settingsResp, usersResp] = await Promise.all([
+        supabase.from("telegram_groups").select("chat_id, is_active"),
+        supabase.from("telegram_scheduled_messages").select("sent_at").not("sent_at", "is", null).order("sent_at", { ascending: false }).limit(1),
+        supabase.from("system_settings").select("key, value").in("key", ["telegram_bot_username", "telegram_bot_dm_url"]),
+        supabase.from("telegram_users").select("chat_id", { count: "exact", head: true }),
+      ]);
+      const groups = (groupsResp.data ?? []) as Array<{ chat_id: string | number; is_active: boolean }>;
+      const isSentinel = (n: string | number) => {
+        const v = Number(n);
+        return Number.isFinite(v) && v > -1000 && v < 0;
+      };
+      const bound = groups.filter((g) => !isSentinel(g.chat_id)).length;
+      const active = groups.filter((g) => !isSentinel(g.chat_id) && g.is_active).length;
+      const settingsMap = new Map((settingsResp.data ?? []).map((s: { key: string; value: unknown }) => [s.key, String(s.value ?? "")]));
+      const botUsername = settingsMap.get("telegram_bot_username") ?? "";
+      const lastSent = (sentResp.data?.[0] as { sent_at?: string } | undefined)?.sent_at ?? null;
+      const registeredChats = usersResp.count ?? 0;
+
+      const checks = [
+        Boolean(botUsername),
+        registeredChats > 0,
+        bound >= 5,
+        active >= 5,
+        Boolean(lastSent),
+      ];
+      const greenCount = checks.filter(Boolean).length;
+      return { greenCount, total: checks.length, botUsername, registeredChats, bound, lastSent };
+    },
+    refetchInterval: 60_000,
+  });
+
+  if (!data) return null;
+  const allGreen = data.greenCount === data.total;
+
+  return (
+    <Card className={cn(allGreen ? "border-emerald-500/30 bg-emerald-500/[0.04]" : "border-amber-500/40 bg-amber-500/[0.05]", "ops-card-depth")}>
+      <CardContent className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <Send className={cn("w-5 h-5 mt-0.5", allGreen ? "text-emerald-300" : "text-amber-300")} />
+          <div>
+            <div className="text-sm font-semibold flex items-center gap-2">
+              Telegram Pre-Agent HQ
+              <Badge variant="outline" className={cn(allGreen ? "text-emerald-300 border-emerald-500/30" : "text-amber-300 border-amber-500/30", "font-mono text-xs")}>
+                {data.greenCount}/{data.total} proven
+              </Badge>
+            </div>
+            <div className="text-xs text-slate-400 mt-0.5">
+              {allGreen ? (
+                <span className="text-emerald-300">All 5 activation steps green. Bot is live.</span>
+              ) : (
+                <>BotFather token + 5 channel binds pending. <span className="text-amber-300 font-medium">Open Telegram Bot admin → Activation checklist</span> for the exact 7-step fix.</>
+              )}
+            </div>
+          </div>
+        </div>
+        <Button asChild size="sm" variant={allGreen ? "outline" : "destructive"}>
+          <Link to="/dashboard/admin/telegram-bot">{allGreen ? "Open bot" : "Fix Telegram"}</Link>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

@@ -287,7 +287,7 @@ export default function ContentCommand() {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-6 max-w-[1500px] mx-auto space-y-5">
+    <div className="min-h-screen p-4 md:p-6 max-w-[1500px] mx-auto space-y-5 ops-surface">
       <PageHeader
         accent="amber"
         eyebrow="Admin · Content"

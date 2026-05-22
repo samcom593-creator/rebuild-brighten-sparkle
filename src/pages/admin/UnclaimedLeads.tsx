@@ -115,7 +115,7 @@ export default function UnclaimedLeads() {
   }, [apps, kjId]);
 
   return (
-    <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4">
+    <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4 ops-surface">
       <PageHeader
         title="Unclaimed Leads"
         subtitle="Every applicant currently in stage=new. The longer they sit cold, the deader the lead. Reassign in one click."

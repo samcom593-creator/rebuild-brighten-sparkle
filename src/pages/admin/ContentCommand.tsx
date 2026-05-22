@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clipboard,
   Copy,
+  DollarSign,
   ExternalLink,
   FileText,
   Filter,
@@ -16,6 +17,7 @@ import {
   RefreshCw,
   Send,
   Sparkles,
+  TrendingUp,
   XCircle,
   Youtube,
   Camera,
@@ -141,6 +143,96 @@ function scoreDraft(d: Draft) {
 async function copyText(text: string, label: string) {
   await navigator.clipboard.writeText(text);
   toast.success(`${label} copied`);
+}
+
+type CultureEvent = {
+  id: number;
+  deal_id: string;
+  created_at: string;
+  annual_premium: number | null;
+  product_sold: string | null;
+  agent_name: string | null;
+  draft_id: number | null;
+  draft_status: string | null;
+  draft_hook: string | null;
+};
+
+function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["culture_feed"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("v_culture_feed")
+        .select("id, deal_id, created_at, annual_premium, product_sold, agent_name, draft_id, draft_status, draft_hook")
+        .limit(8);
+      if (error) return [];
+      return (data ?? []) as CultureEvent[];
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
+  if (isLoading) return <Skeleton className="h-16 w-full" />;
+  if (!data || data.length === 0) return null;
+
+  const pending = data.filter((e) => e.draft_status === "awaiting_approval");
+
+  return (
+    <Card className="border-white/10 bg-white/[0.02]">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-sm flex items-center gap-2 text-slate-200">
+          <TrendingUp className="h-4 w-4 text-emerald-400" />
+          Deal Win Feed
+          {pending.length > 0 && (
+            <Badge variant="outline" className="text-[10px] text-amber-300 border-amber-500/30 bg-amber-500/10 ml-1">
+              {pending.length} draft{pending.length > 1 ? "s" : ""} awaiting approval
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {data.map((ev) => (
+            <div
+              key={ev.id}
+              className="rounded-md border border-white/5 bg-white/[0.02] p-3 flex flex-col gap-1.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-slate-200 truncate">{ev.agent_name ?? "Unknown"}</span>
+                <span className="text-[10px] text-slate-500 whitespace-nowrap">
+                  {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true })}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <DollarSign className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+                <span className="text-sm font-bold text-emerald-300">
+                  ${Number(ev.annual_premium ?? 0).toLocaleString()}
+                </span>
+                <span className="text-[10px] text-slate-500 truncate">{ev.product_sold ?? "Life"}</span>
+              </div>
+              {ev.draft_hook && (
+                <p className="text-[10px] text-slate-400 leading-snug line-clamp-2">{ev.draft_hook}</p>
+              )}
+              {ev.draft_id && ev.draft_status === "awaiting_approval" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[10px] border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 mt-0.5"
+                  onClick={() => onApproveDraft(ev.draft_id!)}
+                >
+                  Approve draft
+                </Button>
+              ) : ev.draft_status === "approved" ? (
+                <Badge variant="outline" className="text-[10px] text-amber-300 border-amber-500/30 w-fit">approved</Badge>
+              ) : ev.draft_status === "shipped" ? (
+                <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-600 w-fit">shipped</Badge>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function ContentCommand() {
@@ -307,6 +399,8 @@ export default function ContentCommand() {
       />
 
       <PoolOverview drafts={drafts ?? []} />
+
+      <CultureFeed onApproveDraft={(id) => statusMutation.mutate({ id, status: "approved" })} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric label="Active drafts" value={totals.active} tone="text-cyan-300" />

@@ -868,6 +868,38 @@ function AgencyCommandView() {
     },
   });
 
+  // ── Manager hierarchy production share (MTD) ─────────────────────────
+  const managerHierarchy = useQuery({
+    queryKey: ["agency-manager-hierarchy-mtd"],
+    refetchInterval: 120_000,
+    queryFn: async () => {
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      // Get all deals this month with their agent's manager_id
+      const { data: deals, error } = await supabase
+        .from("deals")
+        .select("annual_premium, agent:agents!inner(id, display_name, manager_id, manager:agents!agents_manager_id_fkey(id, display_name))")
+        .gte("posted_at", monthStart)
+        .in("status", ["submitted", "active"]);
+      if (error || !deals) return [];
+      const byManager = new Map<string, { name: string; ap: number; deals: number; }>();
+      let totalAp = 0;
+      for (const d of (deals as any[])) {
+        const ap = Number(d.annual_premium ?? 0);
+        totalAp += ap;
+        const mgr = d.agent?.manager;
+        const mgrId = mgr?.id ?? "direct";
+        const mgrName = mgr?.display_name ?? "Direct (no manager)";
+        const existing = byManager.get(mgrId) ?? { name: mgrName, ap: 0, deals: 0 };
+        byManager.set(mgrId, { name: mgrName, ap: existing.ap + ap, deals: existing.deals + 1 });
+      }
+      const rows = Array.from(byManager.values())
+        .map((r) => ({ ...r, pct: totalAp > 0 ? (r.ap / totalAp) * 100 : 0 }))
+        .sort((a, b) => b.ap - a.ap)
+        .slice(0, 6);
+      return { rows, totalAp };
+    },
+  });
+
   // ── 30-day production trend (real daily AP + deals) ──────────────────
   const trend = useQuery({
     queryKey: ["agency-trend-30d"],
@@ -1129,6 +1161,48 @@ function AgencyCommandView() {
           </Button>
         </GlassCard>
       </div>
+
+      {/* ── Manager hierarchy production share (MTD) ─────────────── */}
+      {managerHierarchy.data && (managerHierarchy.data.rows?.length ?? 0) > 0 && (
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Manager production share · MTD</p>
+              <h3 className="text-lg font-bold">
+                Hierarchy breakdown
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  {fmtUsd(managerHierarchy.data.totalAp, true)} total
+                </span>
+              </h3>
+            </div>
+            <Users className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="space-y-2">
+            {managerHierarchy.data.rows.map((m, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-28 text-sm font-medium truncate shrink-0">{m.name}</div>
+                <div className="flex-1">
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary/70 transition-all"
+                      style={{ width: `${Math.min(m.pct, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="text-right shrink-0 min-w-[4rem]">
+                  <span className="text-sm font-bold tabular-nums text-emerald-500 dark:text-emerald-400">
+                    {fmtUsd(m.ap, true)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground ml-1.5">{m.pct.toFixed(0)}%</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground w-14 text-right tabular-nums shrink-0">
+                  {fmtNum(m.deals)} deal{m.deals !== 1 ? "s" : ""}
+                </div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
 
       {/* ── Pipeline funnel + Recent deals ─────────────────────────── */}
       <div className="grid gap-3 lg:grid-cols-3">

@@ -277,7 +277,7 @@ function ThisWeekSection({ today }: { today: string }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {days.map(d => {
             const isToday = d.date === today;
             const done = d.row?.done_count ?? 0;

@@ -304,6 +304,9 @@ verify_jwt = false
 [functions.schedule-interview]
 verify_jwt = false
 
+[functions.schedule-auto-populate]
+verify_jwt = false
+
 [functions.check-low-aop-friday]
 verify_jwt = false
 

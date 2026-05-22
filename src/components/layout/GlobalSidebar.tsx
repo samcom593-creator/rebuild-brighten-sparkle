@@ -53,6 +53,7 @@ import {
   Send,
   Compass,
   AlertTriangle,
+  Gauge,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -185,6 +186,9 @@ export function GlobalSidebar({
     const dashboardItems: NavItem[] = [
       { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     ];
+    if (isAdmin) {
+      dashboardItems.push({ icon: Gauge, label: "APEX Control", href: "/dashboard/apex-control", special: true });
+    }
     if (isAdmin || isManager) {
       dashboardItems.push({ icon: Sunrise, label: "Today", href: "/dashboard/today", special: true });
     }

@@ -40,6 +40,7 @@ const Signup = lazy(() => import("./pages/Signup"));
 const AgentSignup = lazy(() => import("./pages/AgentSignup"));
 const AgentNumbersLogin = lazy(() => import("./pages/AgentNumbersLogin"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const ApexControl = lazy(() => import("./pages/ApexControl"));
 const DashboardApplicants = lazy(() => import("./pages/DashboardApplicants"));
 const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
 const DashboardAccounts = lazy(() => import("./pages/DashboardAccounts"));
@@ -230,6 +231,7 @@ const App = () => (
                         numbers, and agent/manager/admin views live here.
                         The old command center stays available below. */}
                     <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/dashboard/apex-control" element={<ProtectedRoute requireAdmin><ApexControl /></ProtectedRoute>} />
                     <Route path="/dashboard/legacy" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
                     {/* Stale-recovery panel — admins/managers only. v_stale_applicants

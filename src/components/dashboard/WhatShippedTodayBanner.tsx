@@ -24,6 +24,11 @@ interface ShippedItem {
 // 2026-05-18 / 2026-05-19 receipts. Most-recent first. Update this on
 // every meaningful ship so the dashboard always shows the latest delta.
 const SHIPPED: ShippedItem[] = [
+  {
+    ts: "today",
+    label: "APEX Control: one-prompt command room shipped",
+    detail: "Added an admin-only APEX Control page at /dashboard/apex-control and surfaced it in the dashboard sidebar. It turns Sam's credit-safe operating rules into a visual page: what to do when Claude is out of credits, what each AI lane handles, the current P0 background mode, device roles, and copy buttons for the exact Claude, Codex, cleanup, Gemini/Flow, and SD-card prompts. Also persisted the full prompt bank at /Users/samjames/business-ops/master-prompts/102-apex-one-prompt-system.md so Sam does not have to keep prompt fragments in Notes.",
+  },
   // forbidden-allow: this entry documents prior banned phrasings; guard skips this block
   {
     ts: "today",

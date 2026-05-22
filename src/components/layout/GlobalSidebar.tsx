@@ -293,6 +293,9 @@ export function GlobalSidebar({
     // don't clutter the sidebar.
     const adminItems: NavItem[] = [];
     if (isAdmin) {
+      // Sam HQ — Sam's single command surface (today's MUST/SHOULD/COULD, week strip, leaks, bots).
+      // Pinned to the top of admin nav since this is his daily entry point.
+      adminItems.push({ icon: Crown, label: "Sam HQ", href: "/dashboard/admin/sam", special: true });
       adminItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command", special: true });
       adminItems.push({ icon: Mail, label: "Inbox", href: "/dashboard/inbox" });
       // PL-034: Offers now lives under CRM (with Lead Center / Aged Leads) so

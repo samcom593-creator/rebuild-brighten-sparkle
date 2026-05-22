@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "APEX OS Week shipped overnight: /mentorship page LIVE on samueljameshq.vercel.app, $3K Stripe link for 1:1 created, /admin/sam Sam HQ dashboard with editable MUST/SHOULD/COULD checklist + 11 seeded Friday tasks",
+    detail: "Five overnight ships before Sam wakes at 6 AM. (1) /mentorship landing page LIVE at samueljameshq.vercel.app/mentorship with all four tiers and live Stripe payment links: Apex Fit $497, Sales Academy $997, Inner Circle $2,500/qtr, and 1:1 $3,000/90d (new — dropped from $5K via Stripe API). (2) New $3,000 Stripe payment link minted (plink_1TZj0JC3Khd8IPVmuHyp5Ccq) and saved to system_settings.mentorship_payment_links; the legacy $5K link is archived as one_on_one_5k_legacy for audit trail. (3) /admin/sam Sam HQ shipped: editable MUST/SHOULD/COULD daily checklist that persists in Supabase, syncs across devices every 60s, plus a 7-day week strip, recent-hires panel, LEAKS surface (unclaimed applicants + policies missing premium + unreconciled commissions + InsuraCloud auth status), and a one-line BOTS strip. (4) sam_daily_tasks schema applied live, 11 Friday 2026-05-22 tasks seeded covering testing the mentorship buy flow, testing the seminar funnel end-to-end, recording one DJI short-form, the 9:30 AM CT morning meeting, and the food/protein anchor. (5) DM pitch bank persisted at /business-ops/apex-os-week/dm-pitch-bank/dm-pitch-bank.md with 12 templates across three buckets: cold fitness DMs at $497, warm mentorship upsells at $3K, and seminar invites for cold recruiting DMs.",
+  },
+  {
+    ts: "today",
     label: "APEX Control: one-prompt command room shipped",
     detail: "Added an admin-only APEX Control page at /dashboard/apex-control and surfaced it in the dashboard sidebar. It turns Sam's credit-safe operating rules into a visual page: what to do when Claude is out of credits, what each AI lane handles, the current P0 background mode, device roles, and copy buttons for the exact Claude, Codex, cleanup, Gemini/Flow, and SD-card prompts. Also persisted the full prompt bank at /Users/samjames/business-ops/master-prompts/102-apex-one-prompt-system.md so Sam does not have to keep prompt fragments in Notes.",
   },

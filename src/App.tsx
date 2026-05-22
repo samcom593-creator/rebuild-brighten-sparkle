@@ -115,6 +115,7 @@ const SamHQ = lazy(() => import("./pages/admin/SamHQ"));
 const UnclaimedLeads = lazy(() => import("./pages/admin/UnclaimedLeads"));
 const ManagerDashboard = lazy(() => import("./pages/admin/ManagerDashboard"));
 const LicensingTracker = lazy(() => import("./pages/admin/LicensingTracker"));
+const CommissionRecovery = lazy(() => import("./pages/admin/CommissionRecovery"));
 const Join = lazy(() => import("./pages/Join"));
 const AgentDetail = lazy(() => import("./pages/AgentDetail"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
@@ -149,6 +150,7 @@ const BookReconciliation = lazy(() => import("./pages/BookReconciliation"));
 const ReadyModeIntegration = lazy(() => import("./pages/ReadyModeIntegration"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ContentWheel = lazy(() => import("./pages/ContentWheel"));
+const ContentCommand = lazy(() => import("./pages/admin/ContentCommand"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
@@ -342,6 +344,8 @@ const App = () => (
                            <Route path="/dashboard/my-deals" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
                            {/* ContentWheel — personal-brand + recruiting Content OS (admin-only). */}
                            <Route path="/admin/contentwheel" element={<ProtectedRoute requireAdmin><ContentWheel /></ProtectedRoute>} />
+                           {/* Content Command — unified draft queue + approval command center */}
+                           <Route path="/dashboard/admin/content-command" element={<ProtectedRoute requireAdmin><ContentCommand /></ProtectedRoute>} />
                            {/* Conduct: admin issues strikes; agents view their own record. */}
                            <Route path="/dashboard/strikes" element={<ProtectedRoute requireAdmin><AdminStrikes /></ProtectedRoute>} />
                            <Route path="/dashboard/my-strikes" element={<ProtectedRoute><MyStrikes /></ProtectedRoute>} />
@@ -367,6 +371,8 @@ const App = () => (
                            <Route path="/dashboard/admin/manager" element={<ProtectedRoute requireAdmin allowManagers><ManagerDashboard /></ProtectedRoute>} />
                            {/* Licensing Tracker — 8-stage kanban + stalled-SLA pane */}
                            <Route path="/dashboard/admin/licensing" element={<ProtectedRoute requireAdmin allowManagers><LicensingTracker /></ProtectedRoute>} />
+                           {/* Commission Recovery — ghost AP stays out of real AP until policy data is recovered */}
+                           <Route path="/dashboard/admin/commission-recovery" element={<ProtectedRoute requireAdmin><CommissionRecovery /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

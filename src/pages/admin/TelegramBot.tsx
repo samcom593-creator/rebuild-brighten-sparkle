@@ -113,6 +113,15 @@ type PreAgentHqFaq = {
   active: boolean;
 };
 
+type TelegramProof = {
+  queueDepth: number;
+  failedSends: number;
+  lastSentAt: string | null;
+  registeredChats: number;
+  botUsername: string | null;
+  botDmUrl: string | null;
+};
+
 export default function TelegramBot() {
   const qc = useQueryClient();
   const [tab, setTab] = useState("overview");
@@ -227,6 +236,41 @@ export default function TelegramBot() {
     },
   });
 
+  // Proof panel: this is the honest Telegram-side status Sam needs before calling it "done".
+  const { data: proof } = useQuery<TelegramProof>({
+    queryKey: ["telegram-proof"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const [recent, users, settings] = await Promise.all([
+        supabase
+          .from("telegram_scheduled_messages")
+          .select("id, status, sent_at, last_error, created_at")
+          .order("created_at", { ascending: false })
+          .limit(100),
+        supabase.from("telegram_users").select("chat_id", { count: "exact", head: true }),
+        supabase
+          .from("system_settings")
+          .select("key, value")
+          .in("key", ["telegram_bot_username", "telegram_bot_dm_url"]),
+      ]);
+      if (recent.error) throw recent.error;
+      if (users.error) throw users.error;
+      if (settings.error) throw settings.error;
+
+      const rows = (recent.data as Array<{ status: string | null; sent_at: string | null; last_error: string | null }> | null) ?? [];
+      const lastSent = rows.find((row) => row.sent_at)?.sent_at ?? null;
+      const settingsMap = new Map((settings.data ?? []).map((row) => [row.key, row.value]));
+      return {
+        queueDepth: rows.filter((row) => !row.sent_at && row.status !== "failed").length,
+        failedSends: rows.filter((row) => row.status === "failed" || row.last_error).length,
+        lastSentAt: lastSent,
+        registeredChats: users.count ?? 0,
+        botUsername: settingsMap.get("telegram_bot_username") ?? null,
+        botDmUrl: settingsMap.get("telegram_bot_dm_url") ?? null,
+      };
+    },
+  });
+
   const refreshAll = () => {
     qc.invalidateQueries({ queryKey: ["telegram-dashboard"] });
     qc.invalidateQueries({ queryKey: ["telegram-funnel"] });
@@ -236,6 +280,7 @@ export default function TelegramBot() {
     qc.invalidateQueries({ queryKey: ["telegram-templates"] });
     qc.invalidateQueries({ queryKey: ["telegram-hq-groups"] });
     qc.invalidateQueries({ queryKey: ["telegram-hq-faqs"] });
+    qc.invalidateQueries({ queryKey: ["telegram-proof"] });
   };
 
   return (
@@ -303,8 +348,30 @@ export default function TelegramBot() {
                 <HealthLine label="Templates seeded" status={(templates?.length ?? 0) >= 38 ? "ok" : "warn"} hint={`${templates?.length ?? 0}/42`} />
                 <HealthLine label="Wins group registered" status={groups?.some((g) => g.type === "wins") ? "ok" : "warn"} hint={groups?.some((g) => g.type === "wins") ? "✓" : "no wins group yet — bot can't broadcast hires"} />
                 <HealthLine label="Manager Alerts group registered" status={groups?.some((g) => g.type === "manager_alerts") ? "ok" : "warn"} hint={groups?.some((g) => g.type === "manager_alerts") ? "✓" : "no manager_alerts group yet — escalations have no audience"} />
-                <HealthLine label="Telegram bot token" status="info" hint="check ~/.config/apex-creds/telegram-bot.token on the operator machine" />
+                <HealthLine
+                  label="Telegram bot identity"
+                  status={proof?.botUsername ? "ok" : "warn"}
+                  hint={proof?.botUsername ? `@${proof.botUsername} · ${proof.botDmUrl ?? "DM URL missing"}` : "BotFather token not proven in system_settings. Drop ~/.config/apex-creds/telegram-bot.token and run apex-tg-hq-activate.sh."}
+                />
               </ol>
+            </GlassCard>
+
+            <GlassCard className="p-5 space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Telegram proof status</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Stat label="Registered chats" value={proof?.registeredChats ?? 0} tone={proof?.registeredChats ? "ok" : "warn"} />
+                <Stat label="Queue depth" value={proof?.queueDepth ?? 0} tone={proof?.queueDepth ? "warn" : "ok"} />
+                <Stat label="Failed sends" value={proof?.failedSends ?? 0} tone={proof?.failedSends ? "warn" : "ok"} />
+                <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Last sent</p>
+                  <p className="text-sm font-medium mt-2">
+                    {proof?.lastSentAt ? formatDistanceToNow(parseISO(proof.lastSentAt), { addSuffix: true }) : "no sent proof"}
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Telegram is only considered done when this panel shows a real bot identity, registered chats, and a last successful send. If not, the blocker is still Sam-only BotFather/channel setup.
+              </p>
             </GlassCard>
           </TabsContent>
 

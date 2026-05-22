@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/ui/page-header";
@@ -352,7 +353,135 @@ function ShippedSection() {
 }
 
 /* ============================================================
-   SECTION 4 — LEAKS (live counts from existing views)
+   SECTION 4 — CONTENT COMMAND (draft queue + what to post next)
+   ============================================================ */
+function ContentCommandSection() {
+  const { data: drafts } = useQuery({
+    queryKey: ["sam_hq_content_drafts"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("social_bot_drafts")
+        .select("id, draft_date, platform, title, hook, status, file_path, created_at")
+        .in("status", ["pending", "awaiting_approval", "approved"])
+        .order("draft_date", { ascending: true, nullsFirst: false })
+        .limit(5);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: number;
+        draft_date: string | null;
+        platform: string | null;
+        title: string | null;
+        hook: string | null;
+        status: string;
+        file_path: string | null;
+        created_at: string;
+      }>;
+    },
+    refetchInterval: 60_000,
+  });
+
+  const awaiting = (drafts ?? []).filter((d) => d.status === "awaiting_approval" || d.status === "pending").length;
+  const approved = (drafts ?? []).filter((d) => d.status === "approved").length;
+
+  return (
+    <Card className="border-amber-500/30 bg-amber-500/[0.03]">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Radio className="w-4 h-4 text-amber-300" /> CONTENT COMMAND
+        </CardTitle>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/dashboard/admin/content-command">Open drafts</Link>
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-md border border-white/10 bg-white/[0.03] p-3">
+            <div className="text-2xl font-bold text-amber-300">{awaiting}</div>
+            <div className="text-xs text-slate-400">need Sam stamp</div>
+          </div>
+          <div className="rounded-md border border-white/10 bg-white/[0.03] p-3">
+            <div className="text-2xl font-bold text-emerald-300">{approved}</div>
+            <div className="text-xs text-slate-400">approved to post</div>
+          </div>
+        </div>
+        {(drafts ?? []).length === 0 ? (
+          <div className="text-xs text-slate-500 rounded-md border border-dashed border-white/10 p-3">
+            No active drafts loaded. Source checked: <code>social_bot_drafts</code>.
+          </div>
+        ) : (
+          <ul className="space-y-1.5">
+            {(drafts ?? []).slice(0, 3).map((d) => (
+              <li key={d.id} className="rounded-md border border-white/10 bg-white/[0.025] p-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium truncate">{d.title ?? `Draft ${d.id}`}</span>
+                  <Badge variant="outline">{d.status}</Badge>
+                </div>
+                <div className="text-slate-500 mt-1 truncate">
+                  {d.platform ?? "unknown"} · {d.draft_date ?? "no date"}{d.hook ? ` · ${d.hook}` : ""}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ============================================================
+   SECTION 5 — NEXT ACTIONS (top 3)
+   ============================================================ */
+function NextActionsSection() {
+  const { data } = useQuery({
+    queryKey: ["sam_hq_next_actions"],
+    queryFn: async () => {
+      const [drafts, groups, unclaimed] = await Promise.all([
+        (supabase as any).from("social_bot_drafts").select("id", { count: "exact", head: true }).in("status", ["pending", "awaiting_approval"]),
+        supabase.from("telegram_groups").select("chat_id", { count: "exact" }).in("type", ["onboarding", "licensing_reference", "daily_movement", "seminar_reminders", "ask_apex_ai"]),
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "new"),
+      ]);
+      const pendingTelegram = ((groups.data ?? []) as Array<{ chat_id: number }>).filter((g) => Number(g.chat_id) > -1000 && Number(g.chat_id) < 0).length;
+      return {
+        draftCount: drafts.count ?? 0,
+        pendingTelegram,
+        unclaimedCount: unclaimed.count ?? 0,
+      };
+    },
+    refetchInterval: 60_000,
+  });
+
+  const actions = [
+    data?.draftCount ? { label: `Stamp ${data.draftCount} content drafts`, href: "/dashboard/admin/content-command", tone: "text-amber-300" } : null,
+    data?.pendingTelegram ? { label: `Bind ${data.pendingTelegram} Telegram HQ channels`, href: "/dashboard/admin/telegram-bot", tone: "text-rose-300" } : null,
+    data?.unclaimedCount ? { label: `Review ${data.unclaimedCount} new applicants`, href: "/dashboard/admin/unclaimed", tone: "text-cyan-300" } : null,
+    { label: "Run final branch QA before merge/deploy", href: "/dashboard/system-health", tone: "text-emerald-300" },
+  ].filter(Boolean).slice(0, 3) as Array<{ label: string; href: string; tone: string }>;
+
+  return (
+    <Card className="border-[#22d3a5]/30 bg-[#22d3a5]/[0.03]">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <AlertTriangle className="w-4 h-4 text-[#22d3a5]" /> TOP 3 NEXT ACTIONS
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {actions.map((action, index) => (
+          <Link
+            key={action.label}
+            to={action.href}
+            className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm hover:border-[#22d3a5]/40 transition-colors"
+          >
+            <span><span className={cn("font-mono mr-2", action.tone)}>#{index + 1}</span>{action.label}</span>
+            <span className="text-slate-500">open</span>
+          </Link>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ============================================================
+   SECTION 6 — LEAKS (live counts from existing views)
    ============================================================ */
 function LeaksSection() {
   const { data: leaks } = useQuery({
@@ -403,7 +532,7 @@ function LeaksSection() {
 }
 
 /* ============================================================
-   SECTION 5 — BOTS (one-line status per APEX launchd bot)
+   SECTION 7 — BOTS (one-line status per APEX launchd bot)
    ============================================================ */
 function BotsSection() {
   const { data: settings } = useQuery({
@@ -483,13 +612,19 @@ export default function SamHQ() {
 
       <TodaySection today={today} />
 
+      <NextActionsSection />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ThisWeekSection today={today} />
-        <ShippedSection />
+        <ContentCommandSection />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ShippedSection />
         <LeaksSection />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
         <BotsSection />
       </div>
 

@@ -243,7 +243,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center px-4 py-8 relative bg-background text-foreground">
+    <div className="min-h-[100dvh] flex items-center justify-center px-4 py-8 relative bg-background text-foreground ops-surface ops-fade-in">
       {/* PL-013: explicit dark surface — Welcome-back page rendered white in
           some hydration paths. bg-background + text-foreground bind to the
           dark theme tokens regardless of pre-paint state. */}

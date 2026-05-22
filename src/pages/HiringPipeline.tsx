@@ -338,7 +338,7 @@ export default function HiringPipeline() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6 space-y-4 max-w-[1680px] mx-auto">
+    <div className="min-h-screen bg-background p-4 md:p-6 space-y-4 max-w-[1680px] mx-auto ops-surface ops-fade-in">
       <PageHeader
         accent="cyan"
         eyebrow="Recruiting command"

@@ -38,7 +38,7 @@ export default function ContentWheel() {
   );
 
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-6">
+    <div className="container mx-auto p-4 md:p-6 space-y-6 ops-surface ops-fade-in">
       <PageHeader
         accent="amber"
         eyebrow="Admin · Content OS"

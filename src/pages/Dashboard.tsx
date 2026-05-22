@@ -672,7 +672,7 @@ function ExecutiveDashboard({
     : `Updated ${ageLabel(snapshot.readyMode.updatedAt)} from ReadyMode inventory setting.`;
 
   return (
-    <div className="space-y-6 pb-8 lg:pr-[18rem]">
+    <div className="space-y-6 pb-8 lg:pr-[18rem] ops-fade-in">
       <PageHeader
         accent="primary"
         eyebrow={role === "admin" ? "Apex Financial · CEO Command" : "Manager · Command"}

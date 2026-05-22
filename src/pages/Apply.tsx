@@ -559,7 +559,7 @@ export default function Apply() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background ops-surface ops-fade-in">
       {/* Live trust ribbon — top of every Apply load so visitors immediately
           see the engine is firing. Real counts driven by landing_live_stats(). */}
       <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border-b border-primary/30">

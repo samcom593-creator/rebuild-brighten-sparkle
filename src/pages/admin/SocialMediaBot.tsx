@@ -297,7 +297,7 @@ export default function SocialMediaBot() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6 max-w-[1400px] mx-auto">
+    <div className="space-y-6 p-4 md:p-6 max-w-[1400px] mx-auto ops-surface ops-fade-in">
       <PageHeader
         eyebrow="Content engine"
         eyebrowIcon={<Sparkles className="h-3 w-3" />}

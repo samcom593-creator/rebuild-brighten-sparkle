@@ -112,6 +112,7 @@ const AgentLinkVault = lazy(() => import("./pages/AgentLinkVault"));
 const ClientPipeline = lazy(() => import("./pages/ClientPipeline"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
 const SamHQ = lazy(() => import("./pages/admin/SamHQ"));
+const UnclaimedLeads = lazy(() => import("./pages/admin/UnclaimedLeads"));
 const Join = lazy(() => import("./pages/Join"));
 const AgentDetail = lazy(() => import("./pages/AgentDetail"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
@@ -358,6 +359,8 @@ const App = () => (
                            <Route path="/dashboard/admin/telegram-bot" element={<ProtectedRoute requireAdmin><TelegramBot /></ProtectedRoute>} />
                            {/* Sam HQ — Sam's command surface: today's tasks, week strip, what shipped, leaks, bots */}
                            <Route path="/dashboard/admin/sam" element={<ProtectedRoute requireAdmin><SamHQ /></ProtectedRoute>} />
+                           {/* Unclaimed Leads — bulk reassign + per-row claim back to Sam */}
+                           <Route path="/dashboard/admin/unclaimed" element={<ProtectedRoute requireAdmin><UnclaimedLeads /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

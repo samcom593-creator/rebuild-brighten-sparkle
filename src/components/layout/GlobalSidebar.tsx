@@ -47,6 +47,7 @@ import {
   Database,
   Flame,
   ShieldAlert,
+  AlertOctagon,
   Receipt,
   Phone,
   Radio,
@@ -296,6 +297,8 @@ export function GlobalSidebar({
       // Sam HQ — Sam's single command surface (today's MUST/SHOULD/COULD, week strip, leaks, bots).
       // Pinned to the top of admin nav since this is his daily entry point.
       adminItems.push({ icon: Crown, label: "Sam HQ", href: "/dashboard/admin/sam", special: true });
+      // Unclaimed Leads — every stage=new applicant + one-click reassign to Sam
+      adminItems.push({ icon: AlertOctagon, label: "Unclaimed", href: "/dashboard/admin/unclaimed" });
       adminItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command", special: true });
       adminItems.push({ icon: Mail, label: "Inbox", href: "/dashboard/inbox" });
       // PL-034: Offers now lives under CRM (with Lead Center / Aged Leads) so

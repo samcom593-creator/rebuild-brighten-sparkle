@@ -663,7 +663,7 @@ function ExecutiveDashboard({
   onRunSystemCheck: () => Promise<void>;
   runningSystemCheck: boolean;
 }) {
-  const title = role === "admin" ? "CEO Command Dashboard" : "Manager Command Dashboard";
+  const title = role === "admin" ? "Apex Financial" : "Manager Command";
   const readyValue = snapshot.readyMode.available === null ? "Unavailable" : number(snapshot.readyMode.available);
   const readyDetail = snapshot.readyMode.available === null
     ? snapshot.readyMode.manualCounter === null
@@ -675,7 +675,7 @@ function ExecutiveDashboard({
     <div className="space-y-6 pb-8 lg:pr-[18rem]">
       <PageHeader
         accent="primary"
-        eyebrow={role === "admin" ? "CEO · Command" : "Manager · Command"}
+        eyebrow={role === "admin" ? "Apex Financial · CEO Command" : "Manager · Command"}
         eyebrowIcon={<ShieldCheck className="h-3 w-3" />}
         title={title}
         subtitle="Production, recruiting, lead inventory, Stripe, and integration state — every number sourced from live tables, with explicit unavailable states instead of filler."

@@ -11,7 +11,7 @@
 // No mock numbers, no fallback placeholders, no fluff. If a row is
 // missing the page shows the empty state with the reason and a CTA.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -32,6 +32,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { NextStepCard } from "@/components/dashboard/NextStepCard";
@@ -795,8 +796,56 @@ interface AgencyDeal {
 
 interface AgencyTrendRow { day: string; deals: number; ap: number | string; }
 
+type AgencyPeriod = "day" | "week" | "month" | "custom";
+
+const AGENCY_PERIODS: Array<{ value: AgencyPeriod; label: string }> = [
+  { value: "day", label: "Day" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "custom", label: "Custom" },
+];
+
+function dateInputValue(date: Date): string {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+}
+
+function getAgencyPeriodBounds(period: AgencyPeriod, customStart: string, customEnd: string) {
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
+  if (period === "week") {
+    const mondayOffset = (start.getDay() + 6) % 7;
+    start.setDate(start.getDate() - mondayOffset);
+  } else if (period === "month") {
+    start.setDate(1);
+  } else if (period === "custom") {
+    const parsedStart = new Date(`${customStart}T00:00:00`);
+    const parsedEnd = new Date(`${customEnd}T23:59:59.999`);
+    if (Number.isFinite(parsedStart.getTime()) && Number.isFinite(parsedEnd.getTime()) && parsedStart <= parsedEnd) {
+      return {
+        startIso: parsedStart.toISOString(),
+        endIso: parsedEnd.toISOString(),
+        label: `${format(parsedStart, "MMM d")} - ${format(parsedEnd, "MMM d")}`,
+      };
+    }
+  }
+
+  const label = period === "day" ? "Today" : period === "week" ? "This week" : "This month";
+  return { startIso: start.toISOString(), endIso: end.toISOString(), label };
+}
+
 function AgencyCommandView() {
   usePageTitle("Agency Command · APEX");
+  const [period, setPeriod] = useState<AgencyPeriod>("month");
+  const [customStart, setCustomStart] = useState(() => dateInputValue(new Date(Date.now() - 6 * 86_400_000)));
+  const [customEnd, setCustomEnd] = useState(() => dateInputValue(new Date()));
+  const periodBounds = useMemo(
+    () => getAgencyPeriodBounds(period, customStart, customEnd),
+    [period, customStart, customEnd],
+  );
 
   // ── CEO rollup ────────────────────────────────────────────────────────
   const ceo = useQuery({
@@ -812,36 +861,112 @@ function AgencyCommandView() {
     },
   });
 
-  // ── Top 10 producers MTD ─────────────────────────────────────────────
-  const top = useQuery({
-    queryKey: ["agency-top-producers"],
+  // ── Period truth: one query drives owner KPIs, top producers, and
+  // manager production share. This stops the owner view from mixing MTD
+  // cards with day/week/custom context.
+  const periodDeals = useQuery({
+    queryKey: ["agency-period-deals", periodBounds.startIso, periodBounds.endIso],
     refetchInterval: 60_000,
     queryFn: async () => {
-      // v_agent_command_center has the per-agent rollup; we just sort.
-      // Join through agents → profiles for avatar.
       const { data, error } = await supabase
-        .from("v_agent_command_center" as any)
-        .select("agent_id, display_name, agent_code, deals_mtd, ap_mtd, rank_agency_mtd")
-        .gt("deals_mtd", 0)
-        .order("ap_mtd", { ascending: false })
-        .limit(10);
+        .from("deals" as any)
+        .select(`
+          id, annual_premium, posted_at, agent_id,
+          agent:agents!inner(
+            id, display_name, agent_code, manager_id,
+            manager:agents!agents_manager_id_fkey(id, display_name),
+            profile:profiles!agents_profile_id_fkey(avatar_url)
+          )
+        `)
+        .gte("posted_at", periodBounds.startIso)
+        .lte("posted_at", periodBounds.endIso)
+        .in("status", ["submitted", "active"]);
       if (error) throw error;
-      const rows = (data ?? []) as Array<Omit<AgencyTopProducer, "avatar_url">>;
-      // Fetch avatars in one shot
-      const ids = rows.map((r) => r.agent_id);
-      let avatarById: Record<string, string | null> = {};
-      if (ids.length) {
-        const { data: agentRows } = await supabase
-          .from("agents")
-          .select("id, profile:profiles!agents_profile_id_fkey(avatar_url)")
-          .in("id", ids);
-        for (const a of (agentRows ?? []) as any[]) {
-          avatarById[a.id] = a.profile?.avatar_url ?? null;
-        }
-      }
-      return rows.map((r) => ({ ...r, avatar_url: avatarById[r.agent_id] ?? null }));
+      return (data ?? []) as any[];
     },
   });
+
+  const periodSummary = useMemo(() => {
+    const byAgent = new Map<string, {
+      agent_id: string;
+      display_name: string;
+      agent_code: string | null;
+      avatar_url: string | null;
+      ap: number;
+      deals: number;
+    }>();
+    const byManager = new Map<string, { name: string; ap: number; deals: number }>();
+    let totalAp = 0;
+
+    for (const deal of (periodDeals.data ?? []) as any[]) {
+      const ap = Number(deal.annual_premium ?? 0);
+      const agent = deal.agent;
+      const agentId = deal.agent_id ?? agent?.id ?? "unknown";
+      const agentName = agent?.display_name ?? "Unknown";
+      totalAp += ap;
+
+      const existingAgent = byAgent.get(agentId) ?? {
+        agent_id: agentId,
+        display_name: agentName,
+        agent_code: agent?.agent_code ?? null,
+        avatar_url: agent?.profile?.avatar_url ?? null,
+        ap: 0,
+        deals: 0,
+      };
+      byAgent.set(agentId, { ...existingAgent, ap: existingAgent.ap + ap, deals: existingAgent.deals + 1 });
+
+      const manager = agent?.manager;
+      const managerId = manager?.id ?? "direct";
+      const managerName = manager?.display_name ?? "Direct to Sam / no manager";
+      const existingManager = byManager.get(managerId) ?? { name: managerName, ap: 0, deals: 0 };
+      byManager.set(managerId, {
+        name: managerName,
+        ap: existingManager.ap + ap,
+        deals: existingManager.deals + 1,
+      });
+    }
+
+    const producers = Array.from(byAgent.values())
+      .sort((a, b) => b.ap - a.ap)
+      .slice(0, 10);
+
+    const managers = Array.from(byManager.values())
+      .map((row) => ({ ...row, pct: totalAp > 0 ? (row.ap / totalAp) * 100 : 0 }))
+      .sort((a, b) => b.ap - a.ap)
+      .slice(0, 6);
+
+    return {
+      totalAp,
+      dealCount: (periodDeals.data ?? []).length,
+      producingAgents: byAgent.size,
+      producers,
+      managers,
+    };
+  }, [periodDeals.data]);
+
+  const priorPeriodDeals = useQuery({
+    queryKey: ["agency-prior-period-deals", periodBounds.startIso, periodBounds.endIso],
+    refetchInterval: 120_000,
+    queryFn: async () => {
+      const start = new Date(periodBounds.startIso);
+      const end = new Date(periodBounds.endIso);
+      const lengthMs = Math.max(86_400_000, end.getTime() - start.getTime());
+      const priorStart = new Date(start.getTime() - lengthMs);
+      const priorEnd = new Date(start.getTime());
+      const { data, error } = await supabase
+        .from("deals" as any)
+        .select("annual_premium")
+        .gte("posted_at", priorStart.toISOString())
+        .lt("posted_at", priorEnd.toISOString())
+        .in("status", ["submitted", "active"]);
+      if (error) throw error;
+      return (data ?? []).reduce((sum: number, row: any) => sum + Number(row.annual_premium ?? 0), 0);
+    },
+  });
+
+  const periodTrendPct = priorPeriodDeals.data && priorPeriodDeals.data > 0
+    ? ((periodSummary.totalAp - priorPeriodDeals.data) / priorPeriodDeals.data) * 100
+    : null;
 
   // ── Recent hires (last 14d) — surfaces just-hired agents who have
   // zero production yet and would otherwise be invisible in the agency
@@ -865,38 +990,6 @@ function AgencyCommandView() {
         onboarding_stage: string | null; days_on_team: number;
         total_premium: number | string; total_policies: number;
       }>;
-    },
-  });
-
-  // ── Manager hierarchy production share (MTD) ─────────────────────────
-  const managerHierarchy = useQuery({
-    queryKey: ["agency-manager-hierarchy-mtd"],
-    refetchInterval: 120_000,
-    queryFn: async () => {
-      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-      // Get all deals this month with their agent's manager_id
-      const { data: deals, error } = await supabase
-        .from("deals")
-        .select("annual_premium, agent:agents!inner(id, display_name, manager_id, manager:agents!agents_manager_id_fkey(id, display_name))")
-        .gte("posted_at", monthStart)
-        .in("status", ["submitted", "active"]);
-      if (error || !deals) return [];
-      const byManager = new Map<string, { name: string; ap: number; deals: number; }>();
-      let totalAp = 0;
-      for (const d of (deals as any[])) {
-        const ap = Number(d.annual_premium ?? 0);
-        totalAp += ap;
-        const mgr = d.agent?.manager;
-        const mgrId = mgr?.id ?? "direct";
-        const mgrName = mgr?.display_name ?? "Direct (no manager)";
-        const existing = byManager.get(mgrId) ?? { name: mgrName, ap: 0, deals: 0 };
-        byManager.set(mgrId, { name: mgrName, ap: existing.ap + ap, deals: existing.deals + 1 });
-      }
-      const rows = Array.from(byManager.values())
-        .map((r) => ({ ...r, pct: totalAp > 0 ? (r.ap / totalAp) * 100 : 0 }))
-        .sort((a, b) => b.ap - a.ap)
-        .slice(0, 6);
-      return { rows, totalAp };
     },
   });
 
@@ -966,16 +1059,15 @@ function AgencyCommandView() {
   // Sam: "we fire people a lot, so put it for one who has not produced a
   // deal inside the last ten days."
   const tight = useQuery({
-    queryKey: ["agency-tight-counts"],
+    queryKey: ["agency-tight-counts", periodBounds.startIso, periodBounds.endIso],
     refetchInterval: 60_000,
     queryFn: async () => {
       const since10 = new Date(Date.now() - 10 * 86_400_000).toISOString();
-      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
       const [dealAgents, prodAgents, licensedMtdRes, contractedMtdRes, inCourseRes, finishedRes, examScheduledRes] = await Promise.all([
         supabase.from("deals").select("agent_id").gte("posted_at", since10).in("status", ["submitted", "active"]),
         supabase.from("daily_production").select("agent_id").gte("production_date", since10.slice(0, 10)),
-        supabase.from("applications").select("id", { count: "exact", head: true }).gte("licensed_at", monthStart).is("terminated_at", null),
-        supabase.from("applications").select("id", { count: "exact", head: true }).gte("contracted_at", monthStart).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true }).gte("licensed_at", periodBounds.startIso).lte("licensed_at", periodBounds.endIso).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true }).gte("contracted_at", periodBounds.startIso).lte("contracted_at", periodBounds.endIso).is("terminated_at", null),
         // Pre-licensing education (PLE) pipeline — from license_progress
         supabase.from("applications").select("id", { count: "exact", head: true }).eq("license_progress", "course_purchased").is("terminated_at", null),
         supabase.from("applications").select("id", { count: "exact", head: true }).eq("license_progress", "finished_course").is("terminated_at", null),
@@ -1000,11 +1092,7 @@ function AgencyCommandView() {
   });
 
   const c = ceo.data;
-  const apMtd = Number(c?.ap_mtd ?? 0);
   const ap30 = Number(c?.ap_30d ?? 0);
-  const apPrev30 = Number(c?.ap_prev_30d ?? 0);
-  const trendPct = c?.ap_trend_pct != null ? Number(c.ap_trend_pct) :
-    (apPrev30 > 0 ? ((ap30 - apPrev30) / apPrev30) * 100 : null);
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
@@ -1039,40 +1127,85 @@ function AgencyCommandView() {
         />
       </div>
 
+      <GlassCard className="p-3 sm:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Owner metric window</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              KPIs, top producers, licensed hires, and manager share are reading <span className="font-semibold text-foreground">{periodBounds.label}</span>.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="grid grid-cols-4 gap-1 rounded-lg border border-border/60 bg-muted/30 p-1">
+              {AGENCY_PERIODS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={period === option.value ? "default" : "ghost"}
+                  className="h-8 px-2 text-xs"
+                  onClick={() => setPeriod(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            {period === "custom" && (
+              <div className="grid grid-cols-2 gap-2 sm:w-[17rem]">
+                <Input
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className="h-9 text-xs"
+                  aria-label="Custom period start"
+                />
+                <Input
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className="h-9 text-xs"
+                  aria-label="Custom period end"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </GlassCard>
+
       {/* ── 4 KPI TILES (real verified numbers) ─────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiTile
           icon={DollarSign}
-          label="Agency AP · MTD"
-          value={fmtUsd(apMtd)}
-          subValue={`${fmtUsd(Number(c?.ap_wtd ?? 0), true)} WTD · ${fmtNum(c?.deals_mtd ?? 0)} deals MTD`}
-          trendPct={trendPct}
+          label={`Agency AP · ${periodBounds.label}`}
+          value={fmtUsd(periodSummary.totalAp)}
+          subValue={`${fmtNum(periodSummary.dealCount)} trusted deals · previous period ${priorPeriodDeals.data == null ? "loading" : fmtUsd(priorPeriodDeals.data, true)}`}
+          trendPct={periodTrendPct}
           color="text-emerald-500 dark:text-emerald-400"
-          loading={ceo.isLoading}
+          loading={periodDeals.isLoading || priorPeriodDeals.isLoading}
         />
         <KpiTile
           icon={Trophy}
-          label="Deals · MTD"
-          value={fmtNum(c?.deals_mtd ?? 0)}
-          subValue={`${fmtNum(c?.deals_wtd ?? 0)} WTD · ${fmtNum(c?.deals_30d ?? 0)} in 30d`}
+          label={`Deals · ${periodBounds.label}`}
+          value={fmtNum(periodSummary.dealCount)}
+          subValue={`${fmtNum(periodSummary.producingAgents)} producing agents in selected window`}
           color="text-amber-500 dark:text-amber-400"
-          loading={ceo.isLoading}
+          loading={periodDeals.isLoading}
         />
         <KpiTile
           icon={Users}
-          label="Producing agents · 10d"
-          value={`${fmtNum(c?.producing_agents_30d ?? 0)} / ${fmtNum(tight.data?.active30d ?? 0)}`}
-          subValue={`Active = any deal or production logged in last 10d`}
+          label={`Producers · ${periodBounds.label}`}
+          value={fmtNum(periodSummary.producingAgents)}
+          subValue={`${fmtNum(tight.data?.active30d ?? 0)} agents have any deal or production log in last 10d`}
           color="text-primary"
-          loading={ceo.isLoading || tight.isLoading}
+          loading={periodDeals.isLoading || tight.isLoading}
         />
         <KpiTile
           icon={ShieldCheck}
-          label="Licensed hires · MTD"
+          label={`Licensed hires · ${periodBounds.label}`}
           value={fmtNum(tight.data?.licensedMtd ?? 0)}
-          subValue={`${fmtNum(tight.data?.pleInCourse ?? 0)} in pre-license course · ${fmtNum(tight.data?.pleFinished ?? 0)} finished · ${fmtNum(tight.data?.pleExamScheduled ?? 0)} exam scheduled`}
+          subValue={`${fmtNum(tight.data?.contractedMtd ?? 0)} contracted · ${fmtNum(tight.data?.pleInCourse ?? 0)} in pre-license course · ${fmtNum(tight.data?.pleExamScheduled ?? 0)} exam scheduled`}
           color="text-violet-500 dark:text-violet-400"
-          loading={ceo.isLoading || tight.isLoading}
+          loading={tight.isLoading}
         />
       </div>
 
@@ -1114,18 +1247,18 @@ function AgencyCommandView() {
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Top producers · MTD</p>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Top producers · {periodBounds.label}</p>
               <h3 className="text-lg font-bold">Leaderboard</h3>
             </div>
             <Crown className="h-5 w-5 text-amber-500 dark:text-amber-400" />
           </div>
-          {top.isLoading ? (
+          {periodDeals.isLoading ? (
             <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
-          ) : (top.data ?? []).length === 0 ? (
-            <EmptyState icon={<Trophy className="h-6 w-6" />} title="No production yet this month" />
+          ) : periodSummary.producers.length === 0 ? (
+            <EmptyState icon={<Trophy className="h-6 w-6" />} title={`No production in ${periodBounds.label.toLowerCase()}`} />
           ) : (
             <ul className="space-y-1.5">
-              {(top.data ?? []).map((a, i) => (
+              {periodSummary.producers.map((a, i) => (
                 <li
                   key={a.agent_id}
                   className="flex items-center gap-3 rounded-lg border border-border/30 px-2.5 py-2 hover:border-primary/40 hover:bg-primary/[0.04] transition-colors"
@@ -1147,10 +1280,10 @@ function AgencyCommandView() {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold truncate">{a.display_name ?? "Unknown"}</p>
-                    <p className="text-[11px] text-muted-foreground">{a.agent_code ?? "—"} · {fmtNum(a.deals_mtd)} deals</p>
+                    <p className="text-[11px] text-muted-foreground">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
                   </div>
                   <p className="text-sm font-bold tabular-nums text-emerald-500 dark:text-emerald-400 shrink-0">
-                    {fmtUsd(Number(a.ap_mtd), true)}
+                    {fmtUsd(a.ap, true)}
                   </p>
                 </li>
               ))}
@@ -1162,23 +1295,23 @@ function AgencyCommandView() {
         </GlassCard>
       </div>
 
-      {/* ── Manager hierarchy production share (MTD) ─────────────── */}
-      {managerHierarchy.data && (managerHierarchy.data.rows?.length ?? 0) > 0 && (
+      {/* ── Manager hierarchy production share (selected period) ─── */}
+      {periodSummary.managers.length > 0 && (
         <GlassCard className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Manager production share · MTD</p>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Manager production share · {periodBounds.label}</p>
               <h3 className="text-lg font-bold">
                 Hierarchy breakdown
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  {fmtUsd(managerHierarchy.data.totalAp, true)} total
+                  {fmtUsd(periodSummary.totalAp, true)} total
                 </span>
               </h3>
             </div>
             <Users className="h-5 w-5 text-muted-foreground" />
           </div>
           <div className="space-y-2">
-            {managerHierarchy.data.rows.map((m, i) => (
+            {periodSummary.managers.map((m, i) => (
               <div key={i} className="flex items-center gap-3">
                 <div className="w-28 text-sm font-medium truncate shrink-0">{m.name}</div>
                 <div className="flex-1">

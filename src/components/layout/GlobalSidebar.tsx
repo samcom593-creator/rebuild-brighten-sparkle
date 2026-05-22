@@ -299,6 +299,8 @@ export function GlobalSidebar({
       adminItems.push({ icon: Crown, label: "Sam HQ", href: "/dashboard/admin/sam", special: true });
       // Unclaimed Leads — every stage=new applicant + one-click reassign to Sam
       adminItems.push({ icon: AlertOctagon, label: "Unclaimed", href: "/dashboard/admin/unclaimed" });
+      // Manager Command — 3-tab manager view
+      adminItems.push({ icon: Users, label: "Manager Command", href: "/dashboard/admin/manager" });
       adminItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command", special: true });
       adminItems.push({ icon: Mail, label: "Inbox", href: "/dashboard/inbox" });
       // PL-034: Offers now lives under CRM (with Lead Center / Aged Leads) so

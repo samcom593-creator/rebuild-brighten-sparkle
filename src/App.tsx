@@ -113,6 +113,7 @@ const ClientPipeline = lazy(() => import("./pages/ClientPipeline"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
 const SamHQ = lazy(() => import("./pages/admin/SamHQ"));
 const UnclaimedLeads = lazy(() => import("./pages/admin/UnclaimedLeads"));
+const ManagerDashboard = lazy(() => import("./pages/admin/ManagerDashboard"));
 const Join = lazy(() => import("./pages/Join"));
 const AgentDetail = lazy(() => import("./pages/AgentDetail"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
@@ -361,6 +362,8 @@ const App = () => (
                            <Route path="/dashboard/admin/sam" element={<ProtectedRoute requireAdmin><SamHQ /></ProtectedRoute>} />
                            {/* Unclaimed Leads — bulk reassign + per-row claim back to Sam */}
                            <Route path="/dashboard/admin/unclaimed" element={<ProtectedRoute requireAdmin><UnclaimedLeads /></ProtectedRoute>} />
+                           {/* Manager Command — 3 tabs (Recruiting / Licensing / Production) for any manager */}
+                           <Route path="/dashboard/admin/manager" element={<ProtectedRoute requireAdmin allowManagers><ManagerDashboard /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

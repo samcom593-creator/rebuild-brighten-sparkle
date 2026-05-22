@@ -306,6 +306,8 @@ export default function ContentCommand() {
         }
       />
 
+      <PoolOverview drafts={drafts ?? []} />
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric label="Active drafts" value={totals.active} tone="text-cyan-300" />
         <Metric label="Awaiting stamp" value={totals.awaiting} tone="text-amber-300" />
@@ -569,5 +571,72 @@ function HonestEmpty({ title, detail }: { title: string; detail: string }) {
       <div className="font-medium text-slate-200">{title}</div>
       <div className="text-xs text-slate-500 mt-1">{detail}</div>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------------
+   PoolOverview — 7-pool flow strip per Sam's add-on. Reads real ContentWheel
+   tables (cw_ideas / cw_hooks / cw_demand_mines / cw_outliers) + the local
+   drafts param. Empty pools render '—' instead of fake zero.
+   ------------------------------------------------------------------------ */
+function PoolOverview({ drafts }: { drafts: any[] }) {
+  const { data } = useQuery({
+    queryKey: ["content_command_pools"],
+    queryFn: async () => {
+      const probes = await Promise.all([
+        (supabase as any).from("cw_ideas").select("id", { count: "exact", head: true }),
+        (supabase as any).from("cw_hooks").select("id", { count: "exact", head: true }),
+        (supabase as any).from("cw_demand_mines").select("id", { count: "exact", head: true }),
+        (supabase as any).from("cw_outliers").select("id", { count: "exact", head: true }),
+        (supabase as any).from("cw_posts").select("id", { count: "exact", head: true }),
+      ]);
+      return {
+        ideas: probes[0].count ?? null,
+        hooks: probes[1].count ?? null,
+        demand_mines: probes[2].count ?? null,
+        outliers: probes[3].count ?? null,
+        posts: probes[4].count ?? null,
+      };
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const draftAwait = drafts.filter((d) => d.status === "awaiting_approval" || d.status === "pending").length;
+  const draftApproved = drafts.filter((d) => d.status === "approved").length;
+  const draftShipped = drafts.filter((d) => d.status === "shipped").length;
+
+  const pools = [
+    { label: "Raw Ideas", value: data?.ideas, hint: "cw_ideas", tone: "text-slate-300" },
+    { label: "Demand mines", value: data?.demand_mines, hint: "cw_demand_mines", tone: "text-slate-300" },
+    { label: "Hook pool", value: data?.hooks, hint: "cw_hooks", tone: "text-violet-300" },
+    { label: "Outliers", value: data?.outliers, hint: "cw_outliers", tone: "text-cyan-300" },
+    { label: "Drafts awaiting", value: draftAwait, hint: "social_bot_drafts", tone: "text-amber-300" },
+    { label: "Approved to post", value: draftApproved, hint: "social_bot_drafts", tone: "text-emerald-300" },
+    { label: "Shipped", value: draftShipped + (data?.posts ?? 0), hint: "social_bot_drafts + cw_posts", tone: "text-slate-400" },
+  ];
+
+  return (
+    <Card className="ops-card-depth border-white/10 bg-white/[0.02]">
+      <CardContent className="p-3 md:p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">Full content flow</span>
+          <span className="text-[10px] text-slate-600">read-only · pulls live</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+          {pools.map((p, i) => (
+            <div key={p.label} className="rounded-md border border-white/5 bg-white/[0.02] p-2.5">
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className={cn("text-[9px] font-mono", p.tone)}>{i + 1}</span>
+                <span className="text-[10px] text-slate-400 truncate">{p.label}</span>
+              </div>
+              <div className={cn("text-xl font-bold tabular-nums leading-tight", p.tone)}>
+                {p.value === null || p.value === undefined ? <span className="text-slate-600">—</span> : p.value}
+              </div>
+              <div className="text-[9px] text-slate-600 font-mono mt-0.5 truncate" title={p.hint}>{p.hint}</div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

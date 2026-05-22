@@ -343,6 +343,33 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
       0 22px 70px hsl(222 47% 0% / 0.3);
   }
 
+  /* APEX OS entrance: subtle fade-up. Use on top-level page wrappers + stagger
+     children so the operating surface feels alive without bouncing around. */
+  .ops-fade-in {
+    animation: ops-fade-in-up 280ms var(--ease-standard) both;
+  }
+  .ops-fade-in > * + * {
+    animation: ops-fade-in-up 320ms var(--ease-standard) both;
+  }
+  .ops-fade-in > *:nth-child(1) { animation-delay: 0ms; }
+  .ops-fade-in > *:nth-child(2) { animation-delay: 40ms; }
+  .ops-fade-in > *:nth-child(3) { animation-delay: 80ms; }
+  .ops-fade-in > *:nth-child(4) { animation-delay: 120ms; }
+  .ops-fade-in > *:nth-child(5) { animation-delay: 160ms; }
+  .ops-fade-in > *:nth-child(6) { animation-delay: 200ms; }
+  .ops-fade-in > *:nth-child(7) { animation-delay: 240ms; }
+  .ops-fade-in > *:nth-child(n+8) { animation-delay: 280ms; }
+  @keyframes ops-fade-in-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ops-fade-in,
+    .ops-fade-in > * {
+      animation: none !important;
+    }
+  }
+
   /* Gradient text */
   .gradient-text {
     background: linear-gradient(135deg, hsl(168 84% 50%), hsl(160 84% 45%), hsl(168 84% 55%));

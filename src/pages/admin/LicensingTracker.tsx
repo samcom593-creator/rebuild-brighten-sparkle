@@ -191,7 +191,7 @@ function StalledTab() {
 /* ============================================================ */
 export default function LicensingTracker() {
   return (
-    <div className="min-h-screen p-4 lg:p-6 max-w-[1600px] mx-auto space-y-4 ops-surface">
+    <div className="min-h-screen p-4 lg:p-6 max-w-[1600px] mx-auto space-y-4 ops-surface ops-fade-in">
       <PageHeader
         title="Licensing Tracker"
         subtitle="8-stage pipeline from Enrolled → Quit. Auto-enrolls on application paid. Per-student exam-readiness rollup lights up Monday when the course player ships (see /business-ops/apex-os-week/specs/PRELICENSING-NEXT-WEEK.md)."

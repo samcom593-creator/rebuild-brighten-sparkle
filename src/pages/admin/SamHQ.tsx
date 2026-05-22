@@ -603,7 +603,7 @@ export default function SamHQ() {
   }, [today]);
 
   return (
-    <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4 ops-surface">
+    <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4 ops-surface ops-fade-in">
       <PageHeader
         title="Sam HQ"
         subtitle="One command surface. Today's must-do, this week, what shipped, what leaks. Edits sync across devices every 60s."

@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "ReadyMode sync fixed end-to-end: manager-login pull is live (PL-077)",
+    detail: "ReadyMode's Apex account does not expose a REST API key, so the old sync stayed in 'credentials missing' even with sync_enabled=true. readymode-sync now uses Edge-secret manager login credentials, pulls ReadyMode's authenticated /+CCS Reports/call_log/update JSON endpoint, normalizes call rows, and upserts into readymode_dialer_calls. system_settings now has readymode_auth_mode=browser_login + base URL + sync_enabled=true, and pg_cron runs readymode-sync-pull every 5 minutes. Live fill pulled 300 calls via browser_login and DB health shows current_mode=PULL, pull_enabled=true, ingest_24h=300, cron_jobs=1.",
+  },
+  {
+    ts: "today",
     label: "PL-066 Schedule auto-fill LIVE: policy draft checks + post-test follow-ups now land on manager calendars with email summaries",
     detail: "New schedule-auto-populate edge function reads live book-of-business mirrors (agentlink_book_of_business when populated, carrier_policies as the current live fallback) and creates idempotent calendar_events rows with source='schedule-auto-populate'. It computes upcoming monthly policy draft checks, assigns each to the writing agent's manager schedule, and emails grouped manager summaries through Resend with retry/backoff. Applicants who are past their licensing test now get follow-up calendar events every 3 days through day 30. Migration 20260522000600_schedule_auto_populate.sql added the unique source/external_id guard, v_schedule_auto_events, schedule_auto_populate_tick(), and daily cron job apex-schedule-auto-populate at 12:11 UTC. Calendar page now reads those auto-filled events in Pipeline Dates and has an Auto-fill button for admin/manager refresh. Live run inserted 71 events: 41 draft checks and 30 post-test follow-ups; 7 manager summary emails sent after retrying two Resend 429s.",
   },

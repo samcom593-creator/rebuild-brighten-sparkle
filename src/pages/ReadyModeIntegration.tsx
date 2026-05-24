@@ -109,6 +109,7 @@ const SETTING_KEYS = [
   "readymode_api_base_url",
   "readymode_api_key",
   "readymode_account_id",
+  "readymode_auth_mode",
   "readymode_sync_enabled",
   "readymode_webhook_secret",
 ];
@@ -215,7 +216,10 @@ export default function ReadyModeIntegration() {
   }, [settings.data]);
 
   const syncEnabled = settingsByKey.readymode_sync_enabled?.value === "true";
-  const hasCredentials = !!settingsByKey.readymode_api_base_url?.value && !!settingsByKey.readymode_api_key?.value;
+  const authMode = settingsByKey.readymode_auth_mode?.value || "browser_login";
+  const hasApiCredentials = !!settingsByKey.readymode_api_base_url?.value && !!settingsByKey.readymode_api_key?.value;
+  const hasBrowserLoginSync = authMode === "browser_login" && !!settingsByKey.readymode_api_base_url?.value;
+  const hasCredentials = hasApiCredentials || hasBrowserLoginSync;
 
   const webhookSecret = settingsByKey.readymode_webhook_secret?.value ?? "";
   const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL ?? "https://xrzweoneiieddzxogewk.supabase.co";
@@ -273,9 +277,9 @@ export default function ReadyModeIntegration() {
     try {
       const { data, error } = await supabase.functions.invoke("readymode-sync");
       if (error) throw error;
-      const d = data as { ok?: boolean; pulled?: number; inserted?: number; matched?: number; error?: string; skipped?: boolean };
+      const d = data as { ok?: boolean; pulled?: number; inserted?: number; matched?: number; error?: string; skipped?: boolean; source?: string; pages_fetched?: number | null };
       if (d?.skipped) toast.info("Sync is disabled — flip readymode_sync_enabled to 'true' first");
-      else if (d?.ok) toast.success(`Synced ${d.pulled ?? 0} calls · ${d.inserted ?? 0} new · ${d.matched ?? 0} matched to agents`);
+      else if (d?.ok) toast.success(`Synced ${d.pulled ?? 0} calls via ${d.source ?? "ReadyMode"} · ${d.inserted ?? 0} upserted · ${d.matched ?? 0} matched`);
       else toast.error(`Sync failed: ${d?.error ?? "unknown"}`);
       qc.invalidateQueries({ queryKey: ["readymode-today"] });
       qc.invalidateQueries({ queryKey: ["readymode-agents-today"] });
@@ -295,8 +299,8 @@ export default function ReadyModeIntegration() {
         eyebrowIcon={<Phone className="h-3 w-3" />}
         title="ReadyMode Sync"
         subtitle={hasCredentials && syncEnabled
-          ? <>Live · pulling dialer calls every 5 minutes. Last successful sync {lastSync?.finished_at ? formatDistanceToNow(parseISO(lastSync.finished_at), { addSuffix: true }) : "—"}</>
-          : <>Awaiting credentials. Drop the ReadyMode API key + base URL below, set <span className="font-mono">readymode_sync_enabled=true</span>, then hit Sync now.</>}
+          ? <>Live · pulling ReadyMode call logs by {authMode === "browser_login" ? "manager login" : "API"} every 5 minutes. Last successful sync {lastSync?.finished_at ? formatDistanceToNow(parseISO(lastSync.finished_at), { addSuffix: true }) : "—"}</>
+          : <>Awaiting ReadyMode sync wiring. Base URL/auth mode must be set and <span className="font-mono">readymode_sync_enabled=true</span>.</>}
         accent="cyan"
         actions={
           <Button onClick={syncNow} disabled={busy} variant="outline" size="sm">
@@ -309,10 +313,10 @@ export default function ReadyModeIntegration() {
       {/* Connection status */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <StatusTile
-          label="Bot mode"
-          status={ingestHealth.data?.status === "healthy" ? "ok" : "missing"}
-          okText={ingestHealth.data?.current_mode ?? "AWAITING"}
-          errText={ingestHealth.data?.status ?? "—"}
+          label="Credentials"
+          status={hasCredentials && syncEnabled ? "ok" : "missing"}
+          okText={authMode === "browser_login" ? "LOGIN" : "API"}
+          errText={!syncEnabled ? "SYNC OFF" : "MISSING"}
         />
         <StatusTile
           label="Webhook"
@@ -483,25 +487,25 @@ export default function ReadyModeIntegration() {
               <li className="flex items-start gap-3">
                 <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
                 <span>
-                  Open <a className="text-primary underline" href="https://apexfinancial.readymode.com/login_new/" target="_blank" rel="noreferrer">apexfinancial.readymode.com</a> → log in as admin.
+                  ReadyMode manager login is stored as Edge secrets. No API-key paste is required for this account.
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
                 <span>
-                  Go to <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted">Admin → API</span> → generate a new API key. Copy the key + the base URL ReadyMode shows.
+                  Keep <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted">readymode_auth_mode=browser_login</span>, <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted">readymode_api_base_url=https://apexfinancial.readymode.com</span>, and <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted">readymode_sync_enabled=true</span>.
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
                 <span>
-                  Paste into the four fields below. Set <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted">readymode_sync_enabled=true</span>. Save.
+                  The sync function logs in, pulls <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted">/+CCS Reports/call_log/update</span>, normalizes the rows, then upserts calls into Supabase.
                 </span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="h-6 w-6 rounded-full bg-primary/15 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">4</span>
                 <span>
-                  Hit <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted">Sync now</span>. If the response shape matches, calls land in the "Today's calls" tab immediately. If not, the Last-sync-error callout shows what to fix.
+                  Hit <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted">Sync now</span>. Calls land in the "Today's calls" tab immediately and the scheduled job keeps it warm.
                 </span>
               </li>
             </ol>
@@ -564,11 +568,7 @@ export default function ReadyModeIntegration() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground pt-2 border-t border-border/40">
-              ReadyMode endpoints + auth shape can vary by account tier. The edge function at
-              <span className="font-mono"> supabase/functions/readymode-sync</span> assumes a
-              <span className="font-mono"> GET /v1/calls?account_id=X&since=Y</span> response shape;
-              if ReadyMode returns something different, swap the URL builder + the normalize() block
-              and the rest of the pipeline keeps working.
+              The edge function at <span className="font-mono"> supabase/functions/readymode-sync</span> uses ReadyMode's authenticated call-log JSON endpoint for this account, with API-key mode kept as a future fallback.
             </p>
           </GlassCard>
         </TabsContent>

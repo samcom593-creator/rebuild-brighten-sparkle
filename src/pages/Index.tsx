@@ -10,6 +10,9 @@ const BenefitsSection = lazy(() => import("@/components/landing/BenefitsSection"
 const EarningsSection = lazy(() => import("@/components/landing/EarningsSection").then((mod) => ({ default: mod.EarningsSection })));
 const CareerPathwaySection = lazy(() => import("@/components/landing/CareerPathwaySection").then((mod) => ({ default: mod.CareerPathwaySection })));
 const CTASection = lazy(() => import("@/components/landing/CTASection").then((mod) => ({ default: mod.CTASection })));
+const Testimonials = lazy(() => import("@/components/landing/Testimonials").then((mod) => ({ default: mod.Testimonials })));
+const RecruitFAQ = lazy(() => import("@/components/landing/RecruitFAQ").then((mod) => ({ default: mod.RecruitFAQ })));
+import { StickyMobileCTA } from "@/components/landing/StickyMobileCTA";
 const ApexLeadsSection = lazy(() => import("@/components/landing/ApexLeadsSection").then((mod) => ({ default: mod.ApexLeadsSection })));
 const InstagramGrowthSection = lazy(() => import("@/components/landing/InstagramGrowthSection").then((mod) => ({ default: mod.InstagramGrowthSection })));
 
@@ -32,15 +35,18 @@ const Index = () => {
       <main>
         <HeroSection />
         <Suspense fallback={<SectionFallback />}>
+          <Testimonials />
           <BenefitsSection />
           <EarningsSection />
           <CareerPathwaySection />
           <ApexLeadsSection />
           <InstagramGrowthSection />
+          <RecruitFAQ />
           <CTASection />
         </Suspense>
       </main>
       <Footer />
+      <StickyMobileCTA />
     </div>
   );
 };

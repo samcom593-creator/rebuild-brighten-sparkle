@@ -115,6 +115,10 @@
     <!-- Analytics: GA4 + PostHog + Meta Pixel are all env-gated in src/lib/analyticsBoot.ts
          (imported from main.tsx). If a vendor's env var is missing at build,
          that vendor stays dark — nothing throws. Wired 2026-05-24. -->
+
+    <!-- Structured data: Organization + VideoObject for SERP + AI Overview eligibility -->
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"APEX Financial","url":"https://apex-financial.org","logo":"https://apex-financial.org/apex-logo.png","sameAs":["https://instagram.com/theprincejamez","https://youtube.com/@samueljameshq","https://tiktok.com/@theprincejamez"],"founder":{"@type":"Person","name":"Samuel James"}}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoObject","name":"APEX Financial — Build Your Financial Empire","description":"Samuel James, founder of APEX Financial, walks through the opportunity. Earn 70%–145% commission selling life insurance, warm leads, paid weekly.","thumbnailUrl":"https://i.ytimg.com/vi/v4Fp3FL9ITo/hqdefault.jpg","uploadDate":"2026-04-15","contentUrl":"https://www.youtube.com/watch?v=v4Fp3FL9ITo","embedUrl":"https://www.youtube-nocookie.com/embed/v4Fp3FL9ITo"}</script>
 </head>
 
   <body>

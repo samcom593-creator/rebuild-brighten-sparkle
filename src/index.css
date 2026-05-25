@@ -1960,3 +1960,6 @@ h1,
     background-size: 28px 28px;
   }
 }
+
+/* AgencyHub: defer below-fold render */
+.lazy-section{content-visibility:auto;contain-intrinsic-size:0 800px}

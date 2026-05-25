@@ -8228,6 +8228,7 @@ export type Database = {
         | "approved"
         | "rejected"
         | "no_pickup"
+        | "quick_qualified"
       attendance_mark: "present" | "absent" | "excused" | "unmarked"
       attendance_status: "good" | "warning" | "critical"
       attendance_type:

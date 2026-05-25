@@ -74,7 +74,8 @@ const ConsentSchema = z.object({
   formVersion: z.string().max(50).optional().nullable(),
 });
 
-const SubmitApplicationSchema = z.object({
+const FullSubmitApplicationSchema = z.object({
+  quickQualifiedApplicationId: z.string().uuid().optional().nullable(),
   firstName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
   lastName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
   email: z.string().email().max(254),
@@ -104,9 +105,31 @@ const SubmitApplicationSchema = z.object({
   
   // Consent data for Twilio compliance
   consent: ConsentSchema.optional().nullable(),
+
+  // Paid-social attribution captured from the public Apply URL.
+  source: z.string().max(100).optional().nullable(),
+  utmSource: z.string().max(200).optional().nullable(),
+  utmMedium: z.string().max(200).optional().nullable(),
+  utmCampaign: z.string().max(200).optional().nullable(),
 });
 
-type SubmitApplicationRequest = z.infer<typeof SubmitApplicationSchema>;
+const QuickQualifySchema = z.object({
+  quickQualify: z.literal(true),
+  firstName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
+  email: z.string().email().max(254),
+  phone: z.string().min(10).max(20).regex(/^[\d\s\-\+\(\)]+$/, "Invalid phone format"),
+  licenseStatus: z.enum(["licensed", "unlicensed"]),
+  selectedReferralAgentId: z.string().uuid().optional().nullable(),
+  recruiterId: z.string().uuid().optional().nullable(),
+  consent: ConsentSchema.optional().nullable(),
+  source: z.string().max(100).optional().nullable(),
+  utmSource: z.string().max(200).optional().nullable(),
+  utmMedium: z.string().max(200).optional().nullable(),
+  utmCampaign: z.string().max(200).optional().nullable(),
+});
+
+type SubmitApplicationRequest = z.infer<typeof FullSubmitApplicationSchema>;
+type QuickQualifyRequest = z.infer<typeof QuickQualifySchema>;
 
 // Sanitize string for HTML output to prevent XSS
 function sanitizeHtml(str: string): string {
@@ -854,6 +877,205 @@ async function sendLeaderboardNotification(data: SubmitApplicationRequest, appli
   }
 }
 
+function dispatchFullSubmissionSideEffects(data: SubmitApplicationRequest, applicationId: string): void {
+  // Send email notifications in background (pass the application ID)
+  sendEmailNotifications(data, applicationId).catch((err) => {
+    console.error("Background email notification failed:", err);
+  });
+
+  // PL-SEMINAR-FUNNEL: fire-and-forget the seminar confirmation email
+  // (Zoom + .ics + Telegram bot deep-link). Wrapped in try/catch so a
+  // failure here never fails the parent application submission.
+  (async () => {
+    try {
+      const resp = await fetch(`${supabaseUrl}/functions/v1/seminar-confirmation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({ application_id: applicationId }),
+      });
+      if (!resp.ok) {
+        const txt = await resp.text();
+        console.error("[seminar-confirmation] non-ok response:", resp.status, txt.slice(0, 500));
+      } else {
+        console.log("[seminar-confirmation] dispatched for application:", applicationId);
+      }
+    } catch (e) {
+      console.error("[seminar-confirmation] dispatch threw:", e);
+    }
+  })();
+
+  // Send leaderboard notification to ALL managers (competitive motivation)
+  sendLeaderboardNotification(data, applicationId).catch((err) => {
+    console.error("Background leaderboard notification failed:", err);
+  });
+
+  // Auto opt-in: Send welcome notification via all channels (push + SMS + email)
+  (async () => {
+    try {
+      // SMS welcome via auto-detect (applicant likely doesn't have an account yet)
+      if (data.phone) {
+        await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({
+            phone: data.phone,
+            message: `Welcome to Apex Financial, ${data.firstName}! 🚀 Your application has been received. Check your email for next steps!`.substring(0, 160),
+            applicationId,
+          }),
+        });
+        console.log("Welcome SMS sent to:", data.phone);
+      }
+    } catch (err) {
+      console.error("Welcome notification failed:", err);
+    }
+  })();
+}
+
+async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): Promise<Response> {
+  const normalizedEmail = data.email.toLowerCase().trim();
+  const normalizedPhone = data.phone.replace(/\D/g, "").slice(-10);
+
+  const { data: isBanned } = await supabaseAdmin.rpc("check_banned_prospect", {
+    p_email: normalizedEmail,
+    p_phone: normalizedPhone,
+    p_first_name: data.firstName,
+    p_last_name: "",
+  });
+
+  if (isBanned) {
+    console.log(`Banned quick-qualified prospect detected: ${normalizedEmail}`);
+    return new Response(
+      JSON.stringify({ error: "This applicant has been blocked." }),
+      {
+        status: 403,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      },
+    );
+  }
+
+  const SAM_DEFAULT_AGENT_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
+  const resolvedAssigned = data.selectedReferralAgentId || data.recruiterId || SAM_DEFAULT_AGENT_ID;
+  const resolvedRecruiter = data.recruiterId || SAM_DEFAULT_AGENT_ID;
+  const resolvedReferralManager = data.selectedReferralAgentId || data.recruiterId || SAM_DEFAULT_AGENT_ID;
+  const consent = data.consent;
+
+  const { data: existingApp } = await supabaseAdmin
+    .from("applications")
+    .select("id, status")
+    .or(`email.ilike.${normalizedEmail},phone.eq.${normalizedPhone}`)
+    .is("terminated_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingApp) {
+    if (existingApp.status !== "quick_qualified") {
+      return new Response(
+        JSON.stringify({ applicationId: existingApp.id, isDuplicate: true }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
+      );
+    }
+
+    const update: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+      first_name: data.firstName,
+      phone: data.phone,
+      email: data.email,
+      license_status: data.licenseStatus,
+      consent_source_url: consent?.sourceUrl ?? null,
+      consent_ip_address: clientIP,
+      consent_user_agent: consent?.userAgent ?? null,
+      consent_form_version: consent?.formVersion ?? null,
+    };
+
+    update.assigned_agent_id = resolvedAssigned;
+    update.recruiter_id = resolvedRecruiter;
+    update.referral_manager_id = resolvedReferralManager;
+    update.qualified_at = new Date().toISOString();
+    update.referral_source = data.utmMedium === "paid_social" ? "paid_social" : (data.source ?? "paid_social");
+    update.referral_source_detail = data.utmCampaign ?? data.utmSource ?? data.source ?? null;
+    update.source = data.source ?? "ad";
+    update.utm_source = data.utmSource ?? null;
+    update.utm_medium = data.utmMedium ?? null;
+    update.utm_campaign = data.utmCampaign ?? null;
+
+    await supabaseAdmin.from("applications").update(update).eq("id", existingApp.id);
+
+    return new Response(
+      JSON.stringify({ applicationId: existingApp.id, status: "quick_qualified" }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      },
+    );
+  }
+
+  const insertPayload = {
+    first_name: data.firstName,
+    last_name: "Pending",
+    email: data.email,
+    phone: data.phone,
+    has_insurance_experience: false,
+    license_status: data.licenseStatus,
+    availability: null,
+    referral_source: data.utmMedium === "paid_social" ? "paid_social" : (data.source ?? "paid_social"),
+    referral_source_detail: data.utmCampaign ?? data.utmSource ?? data.source ?? null,
+    source: data.source ?? "ad",
+    utm_source: data.utmSource ?? null,
+    utm_medium: data.utmMedium ?? null,
+    utm_campaign: data.utmCampaign ?? null,
+    notes: "Quick-qualified paid-social lead; full application pending.",
+    assigned_agent_id: resolvedAssigned,
+    recruiter_id: resolvedRecruiter,
+    referral_manager_id: resolvedReferralManager,
+    status: "quick_qualified",
+    qualified_at: new Date().toISOString(),
+    sms_consent_given: consent?.smsConsentGiven ?? false,
+    sms_consent_text: consent?.smsConsentText ?? null,
+    email_consent_given: consent?.emailConsentGiven ?? false,
+    email_consent_text: consent?.emailConsentText ?? null,
+    consent_timestamp_utc: consent?.consentTimestampUtc ?? null,
+    consent_source_url: consent?.sourceUrl ?? null,
+    consent_ip_address: clientIP,
+    consent_user_agent: consent?.userAgent ?? null,
+    consent_form_version: consent?.formVersion ?? null,
+  };
+
+  const { data: inserted, error } = await supabaseAdmin
+    .from("applications")
+    .insert(insertPayload)
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error("submit-application quick qualify insert error:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to save quick application" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      },
+    );
+  }
+
+  return new Response(
+    JSON.stringify({ applicationId: inserted.id, status: "quick_qualified" }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    },
+  );
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -875,7 +1097,24 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const raw = await req.json();
-    const parsed = SubmitApplicationSchema.safeParse(raw);
+
+    if (raw?.quickQualify === true) {
+      const quickParsed = QuickQualifySchema.safeParse(raw);
+      if (!quickParsed.success) {
+        console.error("submit-application quick qualify validation error:", quickParsed.error.issues);
+        return new Response(
+          JSON.stringify({ error: "Invalid input data", details: quickParsed.error.issues }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          },
+        );
+      }
+
+      return await handleQuickQualify(quickParsed.data, clientIP);
+    }
+
+    const parsed = FullSubmitApplicationSchema.safeParse(raw);
 
     if (!parsed.success) {
       console.error("submit-application validation error:", parsed.error.issues);
@@ -928,15 +1167,105 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Extract consent data
+    const consent = data.consent;
+
+    // PL-082: When the applicant has no referrer (no ?ref= URL slug and
+    // selected nothing / "none" / "other" in the picker), default both
+    // assigned + recruiter to Sam James's canonical agent row. Sam's punch
+    // list: "assure any applicant that clicks unknown auto goes to me."
+    // Canonical row chosen by display_name='Samuel James' + admin role,
+    // tiebreak on most-recruited.
+    const SAM_DEFAULT_AGENT_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
+    const fallbackAgentId = SAM_DEFAULT_AGENT_ID;
+    const resolvedAssigned = data.selectedReferralAgentId || data.recruiterId || fallbackAgentId;
+    const resolvedRecruiter = data.recruiterId || fallbackAgentId;
+    const resolvedReferralManager = data.selectedReferralAgentId || data.recruiterId || fallbackAgentId;
+
+    const buildApplicationPayload = (includeRawId: boolean) => ({
+      ...(includeRawId && raw?.id && typeof raw.id === "string" && uuidRegex.test(raw.id)
+        ? { id: raw.id }
+        : {}),
+
+      first_name: data.firstName,
+      last_name: data.lastName,
+      email: data.email,
+      phone: data.phone,
+      city: data.city,
+      state: data.state,
+      instagram_handle: instagramClean,
+      carrier: data.carrier ?? null,
+
+      has_insurance_experience: data.hasInsuranceExperience,
+      years_experience: data.yearsExperience ?? null,
+      previous_company: data.previousCompany ?? null,
+      previous_production: data.numberOfDownlines ?? null, // Stores number of downlines
+
+      license_status: data.licenseStatus,
+      nipr_number: data.niprNumber ?? null,
+      licensed_states: data.licensedStates && data.licensedStates.length > 0
+        ? data.licensedStates
+        : null,
+
+      desired_income: null,
+      availability: data.availability,
+      referral_source: data.referralSource ?? (data.utmMedium === "paid_social" ? "paid_social" : data.source ?? null),
+      referral_source_detail: data.utmCampaign ?? data.utmSource ?? null,
+      source: data.source ?? null,
+      utm_source: data.utmSource ?? null,
+      utm_medium: data.utmMedium ?? null,
+      utm_campaign: data.utmCampaign ?? null,
+      notes: manualReferralNote,
+
+      // Assign to the selected referral agent. PL-082: when no referrer is
+      // picked, route directly to Sam James instead of leaving null (the
+      // legacy auto_assign trigger picked the wrong admin in practice).
+      assigned_agent_id: resolvedAssigned,
+      recruiter_id: resolvedRecruiter,
+      referral_manager_id: resolvedReferralManager,
+
+      status: "new",
+      reviewed_at: null,
+      reviewed_by: null,
+      contacted_at: null,
+      qualified_at: null,
+      closed_at: null,
+
+      // Consent audit trail for Twilio compliance
+      sms_consent_given: consent?.smsConsentGiven ?? false,
+      sms_consent_text: consent?.smsConsentText ?? null,
+      email_consent_given: consent?.emailConsentGiven ?? false,
+      email_consent_text: consent?.emailConsentText ?? null,
+      consent_timestamp_utc: consent?.consentTimestampUtc ?? null,
+      consent_source_url: consent?.sourceUrl ?? null,
+      consent_ip_address: clientIP,
+      consent_user_agent: consent?.userAgent ?? null,
+      consent_form_version: consent?.formVersion ?? null,
+    });
+
     // ── HOLE 1: Duplicate Application Detection ──
-    const { data: existingApp } = await supabaseAdmin
-      .from("applications")
-      .select("id, created_at, license_progress, status")
-      .or(`email.ilike.${normalizedEmail},phone.eq.${normalizedPhone}`)
-      .is("terminated_at", null)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    let existingApp: any = null;
+    if (data.quickQualifiedApplicationId) {
+      const { data: quickApp } = await supabaseAdmin
+        .from("applications")
+        .select("id, created_at, license_progress, status")
+        .eq("id", data.quickQualifiedApplicationId)
+        .is("terminated_at", null)
+        .maybeSingle();
+      existingApp = quickApp ?? null;
+    }
+
+    if (!existingApp) {
+      const { data: matchedExistingApp } = await supabaseAdmin
+        .from("applications")
+        .select("id, created_at, license_progress, status")
+        .or(`email.ilike.${normalizedEmail},phone.eq.${normalizedPhone}`)
+        .is("terminated_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      existingApp = matchedExistingApp ?? null;
+    }
 
     if (existingApp) {
       // If the duplicate application has no referral attribution AND the new
@@ -949,6 +1278,38 @@ const handler = async (req: Request): Promise<Response> => {
         .select("id, assigned_agent_id, referral_manager_id, recruiter_id, notes")
         .eq("id", existingApp.id)
         .maybeSingle();
+
+      if (existingApp.status === "quick_qualified") {
+        const updatePayload = buildApplicationPayload(false);
+        const { error: upgradeError } = await supabaseAdmin
+          .from("applications")
+          .update({
+            ...updatePayload,
+            notes: manualReferralNote
+              ? `Quick-qualified paid-social lead converted to full application.\n${manualReferralNote}`
+              : "Quick-qualified paid-social lead converted to full application.",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingApp.id);
+
+        if (upgradeError) {
+          console.error("submit-application quick qualify upgrade error:", upgradeError);
+          return new Response(
+            JSON.stringify({ error: "Failed to submit application" }),
+            {
+              status: 500,
+              headers: { "Content-Type": "application/json", ...corsHeaders },
+            },
+          );
+        }
+
+        dispatchFullSubmissionSideEffects(data, existingApp.id);
+
+        return new Response(
+          JSON.stringify({ applicationId: existingApp.id, upgradedFromQuickQualified: true }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
 
       const existingHasReferrer = !!(
         existingFull?.referral_manager_id || existingFull?.recruiter_id
@@ -1029,76 +1390,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Extract consent data
-    const consent = data.consent;
-
-    // PL-082: When the applicant has no referrer (no ?ref= URL slug and
-    // selected nothing / "none" / "other" in the picker), default both
-    // assigned + recruiter to Sam James's canonical agent row. Sam's punch
-    // list: "assure any applicant that clicks unknown auto goes to me."
-    // Canonical row chosen by display_name='Samuel James' + admin role,
-    // tiebreak on most-recruited.
-    const SAM_DEFAULT_AGENT_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
-    const fallbackAgentId = SAM_DEFAULT_AGENT_ID;
-    const resolvedAssigned = data.selectedReferralAgentId || data.recruiterId || fallbackAgentId;
-    const resolvedRecruiter = data.recruiterId || fallbackAgentId;
-    const resolvedReferralManager = data.selectedReferralAgentId || data.recruiterId || fallbackAgentId;
-
-    const insertPayload = {
-      ...(raw?.id && typeof raw.id === "string" && uuidRegex.test(raw.id)
-        ? { id: raw.id }
-        : {}),
-
-      first_name: data.firstName,
-      last_name: data.lastName,
-      email: data.email,
-      phone: data.phone,
-      city: data.city,
-      state: data.state,
-      instagram_handle: instagramClean,
-      carrier: data.carrier ?? null,
-
-      has_insurance_experience: data.hasInsuranceExperience,
-      years_experience: data.yearsExperience ?? null,
-      previous_company: data.previousCompany ?? null,
-      previous_production: data.numberOfDownlines ?? null, // Stores number of downlines
-
-      license_status: data.licenseStatus,
-      nipr_number: data.niprNumber ?? null,
-      licensed_states: data.licensedStates && data.licensedStates.length > 0
-        ? data.licensedStates
-        : null,
-
-      desired_income: null,
-      availability: data.availability,
-      referral_source: data.referralSource ?? null,
-      notes: manualReferralNote,
-      
-      // Assign to the selected referral agent. PL-082: when no referrer is
-      // picked, route directly to Sam James instead of leaving null (the
-      // legacy auto_assign trigger picked the wrong admin in practice).
-      assigned_agent_id: resolvedAssigned,
-      recruiter_id: resolvedRecruiter,
-      referral_manager_id: resolvedReferralManager,
-
-      status: "new",
-      reviewed_at: null,
-      reviewed_by: null,
-      contacted_at: null,
-      qualified_at: null,
-      closed_at: null,
-      
-      // Consent audit trail for Twilio compliance
-      sms_consent_given: consent?.smsConsentGiven ?? false,
-      sms_consent_text: consent?.smsConsentText ?? null,
-      email_consent_given: consent?.emailConsentGiven ?? false,
-      email_consent_text: consent?.emailConsentText ?? null,
-      consent_timestamp_utc: consent?.consentTimestampUtc ?? null,
-      consent_source_url: consent?.sourceUrl ?? null,
-      consent_ip_address: clientIP,
-      consent_user_agent: consent?.userAgent ?? null,
-      consent_form_version: consent?.formVersion ?? null,
-    };
+    const insertPayload = buildApplicationPayload(true);
 
     const { data: inserted, error } = await supabaseAdmin
       .from("applications")
@@ -1206,63 +1498,7 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Auto-merge error (non-fatal):", mergeErr);
     }
 
-    // Send email notifications in background (pass the application ID)
-    sendEmailNotifications(data, inserted.id).catch((err) => {
-      console.error("Background email notification failed:", err);
-    });
-
-    // PL-SEMINAR-FUNNEL: fire-and-forget the seminar confirmation email
-    // (Zoom + .ics + Telegram bot deep-link). Wrapped in try/catch so a
-    // failure here never fails the parent application submission.
-    (async () => {
-      try {
-        const resp = await fetch(`${supabaseUrl}/functions/v1/seminar-confirmation`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${serviceRoleKey}`,
-          },
-          body: JSON.stringify({ application_id: inserted.id }),
-        });
-        if (!resp.ok) {
-          const txt = await resp.text();
-          console.error("[seminar-confirmation] non-ok response:", resp.status, txt.slice(0, 500));
-        } else {
-          console.log("[seminar-confirmation] dispatched for application:", inserted.id);
-        }
-      } catch (e) {
-        console.error("[seminar-confirmation] dispatch threw:", e);
-      }
-    })();
-
-    // Send leaderboard notification to ALL managers (competitive motivation)
-    sendLeaderboardNotification(data, inserted.id).catch((err) => {
-      console.error("Background leaderboard notification failed:", err);
-    });
-
-    // Auto opt-in: Send welcome notification via all channels (push + SMS + email)
-    (async () => {
-      try {
-        // SMS welcome via auto-detect (applicant likely doesn't have an account yet)
-        if (data.phone) {
-          await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${serviceRoleKey}`,
-            },
-            body: JSON.stringify({
-              phone: data.phone,
-              message: `Welcome to Apex Financial, ${data.firstName}! 🚀 Your application has been received. Check your email for next steps!`.substring(0, 160),
-              applicationId: inserted.id,
-            }),
-          });
-          console.log("Welcome SMS sent to:", data.phone);
-        }
-      } catch (err) {
-        console.error("Welcome notification failed:", err);
-      }
-    })();
+    dispatchFullSubmissionSideEffects(data, inserted.id);
 
     return new Response(
       JSON.stringify({ applicationId: inserted.id }),

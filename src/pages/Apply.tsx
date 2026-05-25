@@ -36,6 +36,8 @@ import {
 } from "@/components/ui/select";
 import { US_STATES, AVAILABILITY_OPTIONS, REFERRAL_SOURCES } from "@/lib/constants";
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
+import { track } from "@/lib/analytics";
+import { QuickQualifyStep } from "@/pages/apply/QuickQualifyStep";
 
 const applicationSchema = z.object({
   // Step 1: Personal Info
@@ -79,6 +81,13 @@ const applicationSchema = z.object({
   emailConsent: z.boolean().default(false),
 });
 
+const quickQualifySchema = applicationSchema.pick({
+  firstName: true,
+  email: true,
+  phone: true,
+  licenseStatus: true,
+});
+
 type ApplicationFormData = z.infer<typeof applicationSchema>;
 
 interface ActiveAgent {
@@ -120,9 +129,16 @@ export default function Apply() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const refSlug = searchParams.get("ref");
+  const sourceParam = searchParams.get("source")?.trim().toLowerCase() ?? "";
+  const utmMediumParam = searchParams.get("utm_medium")?.trim().toLowerCase() ?? "";
+  const isQuickQualifyTraffic = sourceParam === "ad" || utmMediumParam === "paid_social";
   const [referrerId, setReferrerId] = useState<string | null>(null);
   const [referrerName, setReferrerName] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const activeSteps = isQuickQualifyTraffic
+    ? [{ id: 1, title: "Quick Qualify", icon: User }, ...steps.map((step) => ({ ...step, id: step.id + 1 }))]
+    : steps;
+  const visibleFormStep = isQuickQualifyTraffic ? currentStep - 1 : currentStep;
   const [isSubmitting, setIsSubmitting] = useState(false);
   // VSL gate fully removed — no video, no gate, no placeholder state.
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
@@ -133,6 +149,10 @@ export default function Apply() {
   const [smsConsentError, setSmsConsentError] = useState(false);
   const smsConsentRef = useRef<HTMLDivElement>(null);
   const isSubmittedRef = useRef(false);
+  const STORAGE_KEY_FORM = "apex_apply_form";
+  const STORAGE_KEY_STEP = isQuickQualifyTraffic ? "apex_apply_step_quick" : "apex_apply_step";
+  const STORAGE_KEY_STATES = "apex_apply_states";
+  const STORAGE_KEY_QUICK_APP = "apex_apply_quick_application_id";
   const [sessionId] = useState<string>(() => {
     // Generate a unique session ID for partial application tracking
     const stored = sessionStorage.getItem("apex_apply_session");
@@ -141,10 +161,10 @@ export default function Apply() {
     sessionStorage.setItem("apex_apply_session", newId);
     return newId;
   });
-
-  const STORAGE_KEY_FORM = "apex_apply_form";
-  const STORAGE_KEY_STEP = "apex_apply_step";
-  const STORAGE_KEY_STATES = "apex_apply_states";
+  const [quickApplicationId, setQuickApplicationId] = useState<string | null>(() => {
+    if (!isQuickQualifyTraffic) return null;
+    return sessionStorage.getItem(STORAGE_KEY_QUICK_APP);
+  });
 
   const {
     register,
@@ -171,7 +191,7 @@ export default function Apply() {
       const savedStep = sessionStorage.getItem(STORAGE_KEY_STEP);
       if (savedStep) {
         const step = parseInt(savedStep, 10);
-        if (step >= 1 && step <= 4) setCurrentStep(step);
+        if (step >= 1 && step <= activeSteps.length) setCurrentStep(step);
       }
 
       const savedStates = sessionStorage.getItem(STORAGE_KEY_STATES);
@@ -191,7 +211,7 @@ export default function Apply() {
     } catch (e) {
       console.error("Error restoring form data:", e);
     }
-  }, [setValue]);
+  }, [STORAGE_KEY_STEP, activeSteps.length, setValue]);
 
   // Persist form data to sessionStorage (debounced)
   useEffect(() => {
@@ -209,10 +229,10 @@ export default function Apply() {
 
   // Persist currentStep
   useEffect(() => {
-    if (!isSubmittedRef.current && currentStep <= 4) {
+    if (!isSubmittedRef.current && currentStep <= activeSteps.length) {
       sessionStorage.setItem(STORAGE_KEY_STEP, String(currentStep));
     }
-  }, [currentStep]);
+  }, [STORAGE_KEY_STEP, activeSteps.length, currentStep]);
 
   // Persist selectedStates
   useEffect(() => {
@@ -224,7 +244,7 @@ export default function Apply() {
   // Warn on page unload if form has progress
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (isSubmittedRef.current || currentStep >= steps.length) return;
+      if (isSubmittedRef.current || currentStep >= activeSteps.length) return;
       const values = getValues();
       if (values.firstName || values.email || values.phone) {
         e.preventDefault();
@@ -232,10 +252,10 @@ export default function Apply() {
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [currentStep, getValues]);
+  }, [activeSteps.length, currentStep, getValues]);
 
   // Auto-save partial application after Step 1 is completed
-  const savePartialApplication = async (stepCompleted: number) => {
+  const savePartialApplication = async (stepCompleted: number, quickIdOverride?: string | null) => {
     try {
       const values = getValues();
       
@@ -258,6 +278,11 @@ export default function Apply() {
           licenseStatus: values.licenseStatus,
           instagramHandle: values.instagramHandle,
           availability: values.availability,
+          quickQualifiedApplicationId: quickIdOverride ?? quickApplicationId ?? null,
+          source: searchParams.get("source") || null,
+          utmSource: searchParams.get("utm_source") || null,
+          utmMedium: searchParams.get("utm_medium") || null,
+          utmCampaign: searchParams.get("utm_campaign") || null,
         },
         user_agent: navigator.userAgent,
       };
@@ -292,6 +317,7 @@ export default function Apply() {
       sessionStorage.removeItem(STORAGE_KEY_FORM);
       sessionStorage.removeItem(STORAGE_KEY_STEP);
       sessionStorage.removeItem(STORAGE_KEY_STATES);
+      sessionStorage.removeItem(STORAGE_KEY_QUICK_APP);
     } catch (err) {
       console.error("Error marking as converted:", err);
     }
@@ -393,19 +419,113 @@ export default function Apply() {
     return await trigger(fieldsToValidate);
   };
 
+  const getTrafficPayload = () => ({
+    source: searchParams.get("source") || null,
+    utmSource: searchParams.get("utm_source") || null,
+    utmMedium: searchParams.get("utm_medium") || null,
+    utmCampaign: searchParams.get("utm_campaign") || null,
+  });
+
+  const submitQuickQualify = async () => {
+    const values = getValues();
+    const parsed = quickQualifySchema.safeParse(values);
+
+    if (!parsed.success) {
+      await trigger(["firstName", "email", "phone", "licenseStatus"]);
+      toast.error("Please fill in the quick qualify fields before continuing");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const traffic = getTrafficPayload();
+      const { data: submitResult, error } = await supabase.functions.invoke(
+        "submit-application",
+        {
+          body: {
+            quickQualify: true,
+            firstName: parsed.data.firstName,
+            email: parsed.data.email,
+            phone: parsed.data.phone,
+            licenseStatus: parsed.data.licenseStatus === "pending" ? "unlicensed" : parsed.data.licenseStatus,
+            recruiterId:
+              referrerId ??
+              (selectedReferrer && selectedReferrer !== "none" && selectedReferrer !== "other" && selectedReferrer !== ""
+                ? selectedReferrer
+                : null),
+            selectedReferralAgentId:
+              referrerId ??
+              (selectedReferrer && selectedReferrer !== "none" && selectedReferrer !== "other" && selectedReferrer !== ""
+                ? selectedReferrer
+                : null),
+            consent: {
+              smsConsentGiven: false,
+              emailConsentGiven: false,
+              consentTimestampUtc: new Date().toISOString(),
+              sourceUrl: window.location.href,
+              userAgent: navigator.userAgent,
+              formVersion: "apply_quick_qualify_v1",
+            },
+            ...traffic,
+          },
+        },
+      );
+
+      if (error) throw error;
+      if (!submitResult?.applicationId) throw new Error("Missing application id");
+
+      setQuickApplicationId(submitResult.applicationId);
+      sessionStorage.setItem(STORAGE_KEY_QUICK_APP, submitResult.applicationId);
+      await savePartialApplication(1, submitResult.applicationId);
+
+      track("apply_quick_qualified", {
+        application_id: submitResult.applicationId,
+        source: traffic.source,
+        utm_source: traffic.utmSource,
+        utm_medium: traffic.utmMedium,
+        utm_campaign: traffic.utmCampaign,
+      });
+
+      toast.success("You're qualified. Finish the full application when you're ready.");
+      setCurrentStep(2);
+    } catch (error: any) {
+      console.error("Error quick-qualifying application:", error);
+
+      if (error?.context && typeof error.context.json === "function") {
+        try {
+          const body = await error.context.json();
+          toast.error(body?.error || "Could not save your quick application. Please try again.", { duration: 5000 });
+        } catch (_) {
+          toast.error("Could not save your quick application. Please try again.", { duration: 5000 });
+        }
+      } else {
+        toast.error("Could not save your quick application. Please try again.", { duration: 5000 });
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const nextStep = async () => {
-    const isValid = await validateStep(currentStep);
+    if (isQuickQualifyTraffic && currentStep === 1) {
+      await submitQuickQualify();
+      return;
+    }
+
+    const formStep = isQuickQualifyTraffic ? currentStep - 1 : currentStep;
+    const isValid = await validateStep(formStep);
     if (!isValid) {
       toast.error("Please fill in all required fields before continuing");
       return;
     }
     
     // Auto-save partial application after each step.
-    if (currentStep <= steps.length) {
-      savePartialApplication(currentStep);
+    if (formStep >= 1 && formStep <= steps.length) {
+      savePartialApplication(formStep);
     }
     
-    if (currentStep < steps.length) {
+    if (currentStep < activeSteps.length) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -442,6 +562,7 @@ export default function Apply() {
         "submit-application",
         {
           body: {
+            quickQualifiedApplicationId: quickApplicationId,
             firstName: data.firstName,
             lastName: data.lastName,
             email: data.email,
@@ -494,6 +615,7 @@ export default function Apply() {
               userAgent: navigator.userAgent,
               formVersion: "apply_v2.0",
             },
+            ...getTrafficPayload(),
           },
         },
       );
@@ -616,10 +738,10 @@ export default function Apply() {
               <div className="absolute top-5 left-0 right-0 h-0.5 bg-border" />
               <div 
                 className="absolute top-5 left-0 h-0.5 bg-primary transition-all duration-500"
-                style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+                style={{ width: `${((currentStep - 1) / (activeSteps.length - 1)) * 100}%` }}
               />
               
-              {steps.map((step) => (
+              {activeSteps.map((step) => (
                 <div key={step.id} className="relative z-10 flex flex-col items-center">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
@@ -640,7 +762,7 @@ export default function Apply() {
             </div>
             {/* Mobile step label */}
             <p className="text-center text-sm text-muted-foreground mt-3 sm:hidden">
-              Step {currentStep} of {steps.length}: {steps[currentStep - 1]?.title}
+              Step {currentStep} of {activeSteps.length}: {activeSteps[currentStep - 1]?.title}
             </p>
           </div>
 
@@ -655,8 +777,21 @@ export default function Apply() {
                 transition={{ duration: 0.2 }}
               >
                 <GlassCard className="p-4 sm:p-8">
+                  {isQuickQualifyTraffic && currentStep === 1 && (
+                    <QuickQualifyStep
+                      firstNameInput={register("firstName")}
+                      emailInput={register("email")}
+                      phoneInput={register("phone")}
+                      firstNameError={errors.firstName}
+                      emailError={errors.email}
+                      phoneError={errors.phone}
+                      licenseStatus={licenseStatus}
+                      onLicenseStatusChange={(value) => setValue("licenseStatus", value, { shouldValidate: true })}
+                    />
+                  )}
+
                   {/* Step 1: Personal Info */}
-                  {currentStep === 1 && (
+                  {visibleFormStep === 1 && (
                     <div className="space-y-6">
                       <div>
                         <h2 className="text-2xl font-bold mb-2">Personal Information</h2>
@@ -796,7 +931,7 @@ export default function Apply() {
                   )}
 
                   {/* Step 2: Experience */}
-                  {currentStep === 2 && (
+                  {visibleFormStep === 2 && (
                     <div className="space-y-6">
                       <div>
                         <h2 className="text-2xl font-bold mb-2">Your Experience</h2>
@@ -872,7 +1007,7 @@ export default function Apply() {
                   )}
 
                   {/* Step 3: Licensing */}
-                  {currentStep === 3 && (
+                  {visibleFormStep === 3 && (
                     <div className="space-y-6">
                       <div>
                         <h2 className="text-2xl font-bold mb-2">Licensing Status</h2>
@@ -948,7 +1083,7 @@ export default function Apply() {
                   )}
 
                    {/* Step 4: Goals */}
-                  {currentStep === 4 && (
+                  {visibleFormStep === 4 && (
                     <div className="space-y-6">
                       <div>
                         <h2 className="text-2xl font-bold mb-2">Your Goals</h2>
@@ -1129,7 +1264,7 @@ export default function Apply() {
 
                   {/* Navigation Buttons */}
                   <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
-                    {currentStep > 1 && currentStep <= steps.length ? (
+                    {currentStep > 1 && currentStep <= activeSteps.length ? (
                       <GradientButton
                         type="button"
                         variant="outline"
@@ -1142,10 +1277,19 @@ export default function Apply() {
                       <div />
                     )}
 
-                    {currentStep < steps.length ? (
-                      <GradientButton type="button" onClick={nextStep}>
-                        Next Step
-                        <ArrowRight className="h-4 w-4 ml-2" />
+                    {currentStep < activeSteps.length ? (
+                      <GradientButton type="button" onClick={nextStep} disabled={isSubmitting}>
+                        {isSubmitting && currentStep === 1 && isQuickQualifyTraffic ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            {isQuickQualifyTraffic && currentStep === 1 ? "Continue" : "Next Step"}
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </>
+                        )}
                       </GradientButton>
                     ) : (
                       <GradientButton

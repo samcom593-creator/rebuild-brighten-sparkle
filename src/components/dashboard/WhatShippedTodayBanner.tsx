@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "PL-AHO-WEB-001 Apply quick-qualify path live for paid-social traffic",
+    detail: "Visitors landing on /apply with ?source=ad or ?utm_medium=paid_social now see a 4-field Step 1: first name, phone, email, and licensed yes/no. Submitting that step writes an applications row with status=quick_qualified, preserves paid-social attribution, fires apply_quick_qualified analytics, saves the partial session, and moves them into the full application as Step 2. Standard traffic stays on the original 4-step application control.",
+  },
+  {
+    ts: "today",
     label: "PL-086 Seminar form write path live: /seminar now writes registrations, stamps application seminar fields, and alerts the manager",
     detail: "The public SeminarPage no longer calls the mismatched browser RPC directly. It posts to the new seminar-register Edge Function, which validates the payload, calls the corrected register_for_seminar SECURITY DEFINER RPC, writes or updates seminar_registrations, stamps applications.seminar_date + seminar_registered_at + seminar_slot_at, logs confirmation/reminder rows, and sends the assigned hiring manager a Resend email with applicant contact info. Migration 20260525090000 also fixes the production RPC signature mismatch that caused the form to post without a durable registration.",
   },

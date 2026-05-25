@@ -3,10 +3,12 @@ import App from "./App.tsx";
 import "./index.css";
 import { initWebVitals } from "./shared/lib/webVitals";
 import { installRippleOrigin, installRevealObserver } from "./lib/gameFx";
+import { bootAnalytics } from "./lib/analyticsBoot";
 
 initWebVitals();
 installRippleOrigin();
 installRevealObserver();
+bootAnalytics();
 
 // ── PWA: autoUpdate + clientsClaim means new SW takes over IMMEDIATELY
 // on deploy. We still hard-reload ONCE when the controller changes so

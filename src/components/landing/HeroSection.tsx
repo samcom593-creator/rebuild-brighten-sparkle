@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Shield, TrendingUp, Users, Sparkles, Play } from "lucide-react";
 import { LiveStatsCounterStrip } from "./LiveStatsCounterStrip";
 import { RecentHiresTicker } from "./RecentHiresTicker";
+import { track, getVariant } from "@/lib/analytics";
 
 // LazyYouTube — render a static poster image as the LCP element, only
 // mount the iframe (and pull the YouTube SDK) when the user clicks.
@@ -156,17 +157,52 @@ export function HeroSection() {
             className="landing-scale-in landing-delay-100 font-display font-extrabold leading-[0.95] mb-6 tracking-tight"
             style={{ fontSize: "clamp(2.5rem, 9vw, 6.5rem)" }}
           >
-            <span className="block text-foreground">Build your</span>
-            <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(168 80% 50% / 0.45))" }}>
-              Financial Empire
-            </span>
-            <span className="block text-foreground">with APEX</span>
+            {/* Variant-driven hero. PostHog flag `hero_variant` swaps copy
+                when set (control / number / story). Control keeps the
+                original brand-gradient empire line so we don't regress
+                on org-search and brand recall while testing. */}
+            {(() => {
+              const v = getVariant("hero_variant");
+              if (v === "number") {
+                return (
+                  <>
+                    <span className="block text-foreground">Earn 70%–145%</span>
+                    <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(168 80% 50% / 0.45))" }}>
+                      selling life insurance
+                    </span>
+                    <span className="block text-foreground text-[0.55em] mt-3">Warm leads · Paid weekly · 95+ agents writing</span>
+                  </>
+                );
+              }
+              if (v === "story") {
+                return (
+                  <>
+                    <span className="block text-foreground">I built a $120K/mo agency</span>
+                    <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(168 80% 50% / 0.45))" }}>
+                      from a college dorm.
+                    </span>
+                    <span className="block text-foreground text-[0.55em] mt-3">Here's the exact system — yours when you join APEX.</span>
+                  </>
+                );
+              }
+              // control (default) — preserves shipped brand line
+              return (
+                <>
+                  <span className="block text-foreground">Build your</span>
+                  <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(168 80% 50% / 0.45))" }}>
+                    Financial Empire
+                  </span>
+                  <span className="block text-foreground">with APEX</span>
+                </>
+              );
+            })()}
           </h1>
 
           {/* Video — click-to-load poster (was an eager iframe that
               dragged the YouTube SDK + ~5s into LCP. Now: poster image
-              is the LCP target, iframe only mounts on user click). */}
-          <div className="landing-fade-up landing-delay-200 w-full max-w-2xl mx-auto mb-8">
+              is the LCP target, iframe only mounts on user click).
+              id="hero-video" so the secondary CTA can scroll to it. */}
+          <div id="hero-video" className="landing-fade-up landing-delay-200 w-full max-w-2xl mx-auto mb-8 scroll-mt-24">
             <LazyYouTube videoId="v4Fp3FL9ITo" title="APEX Financial" />
           </div>
 
@@ -177,9 +213,16 @@ export function HeroSection() {
             or starting out, we build the engine you sell on.
           </p>
 
-          {/* CTAs — magnetic glow buttons */}
-          <div className="landing-fade-up landing-delay-300 flex flex-col sm:flex-row items-center justify-center gap-4 mb-14">
-            <Link to="/apply" className="group relative">
+          {/* CTAs — magnetic glow primary + trust-tail microcopy.
+              Secondary "Watch the walkthrough" scrolls to the hero video
+              above (id=hero-video) — keeps high-intent visitors moving,
+              gives skeptics a softer first action. */}
+          <div className="landing-fade-up landing-delay-300 flex flex-col items-center justify-center gap-3 mb-14">
+            <Link
+              to="/apply"
+              onClick={() => track("hero_cta_click", { position: "hero", cta_label: "Start My Application" })}
+              className="group relative"
+            >
               <span
                 aria-hidden
                 className="absolute inset-0 rounded-2xl blur-xl opacity-60 group-hover:opacity-100 transition-opacity duration-300"
@@ -197,11 +240,20 @@ export function HeroSection() {
                   group-hover:scale-105 transition-transform duration-200
                 "
               >
-                Apply Now
+                Start My Application
                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </button>
             </Link>
-            {/* Watch-demo button removed 2026-05-18 (PL-010) — no real demo yet. */}
+            <p className="text-xs sm:text-sm text-muted-foreground text-center max-w-md">
+              Takes 90 seconds · auto-saves if you bounce · Sam replies within 24 hours
+            </p>
+            <a
+              href="#hero-video"
+              onClick={() => track("secondary_cta_click", { cta_label: "Watch the walkthrough" })}
+              className="text-sm text-primary/90 hover:text-primary underline-offset-4 hover:underline transition-colors mt-1"
+            >
+              Watch the 2-min walkthrough first →
+            </a>
           </div>
 
           {/* Founder credit — Brand Bible: "the face IS the brand" */}

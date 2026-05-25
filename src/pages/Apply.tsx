@@ -71,10 +71,11 @@ const applicationSchema = z.object({
   whyJoin: z.string().optional(),
   motivation: z.string().min(25, "Please share your motivation (minimum 25 characters)"),
   
-  // Communication Consent
-  smsConsent: z.boolean().refine(val => val === true, {
-    message: "SMS consent is required to receive onboarding steps by text",
-  }),
+  // Communication Consent — both opt-in (was required for SMS until 2026-05-24;
+  // hard-required SMS consent killed an estimated 4-6% of submissions for
+  // negligible deliverability gain. We already have phone + email, so SMS is
+  // additive, not gating. Users see the checkbox; unchecked is fine.)
+  smsConsent: z.boolean().default(false),
   emailConsent: z.boolean().default(false),
 });
 

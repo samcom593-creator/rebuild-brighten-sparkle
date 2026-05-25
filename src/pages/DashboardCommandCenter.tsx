@@ -51,6 +51,7 @@ import { RecognitionQueue } from "@/components/admin/RecognitionQueue";
 import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { ActivityFeedWidget } from "@/components/dashboard/ActivityFeedWidget";
+import { ProductionAnalyticsCard } from "@/components/dashboard/ProductionAnalyticsCard";
 import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
 import { StatCardPopup, type StatType } from "@/components/dashboard/StatCardPopup";
 import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
@@ -656,24 +657,8 @@ export default function DashboardCommandCenter() {
           transition={{ duration: 0.28, delay: 0.04, ease: "easeOut" }}
           className="grid grid-cols-2 lg:grid-cols-5 gap-4 card-hover-lift"
         >
-          <HideableCard cardKey="admin.stat.totalAlp" label="Total ALP">
-            <Card
-              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
-              onClick={() => setStatPopup({ type: "totalAlp", open: true })}
-            >
-              <CardContent className="p-4">
-                <div className="mb-3 h-1 w-14 rounded-full bg-primary/80 transition-all group-hover:w-20" />
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-md bg-primary/10 ring-1 ring-primary/15">
-                    <DollarSign className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Total ALP</p>
-                    <p className="text-2xl font-bold">${Math.round(summaryStats.totalAlp).toLocaleString()}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <HideableCard cardKey="admin.stat.totalAlp" label="Production (Week / Month / Year)">
+            <ProductionAnalyticsCard />
           </HideableCard>
 
           <HideableCard cardKey="admin.stat.activeAgents" label="Live Agents">

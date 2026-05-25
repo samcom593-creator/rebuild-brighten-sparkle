@@ -29,13 +29,16 @@ const TESTIMONIALS = [
 
 export function Testimonials() {
   return (
-    <section className="relative py-24 md:py-32 bg-gradient-to-b from-transparent via-zinc-950/50 to-transparent">
-      <div className="container mx-auto px-4 sm:px-6">
+    <section className="relative py-24 md:py-32 bg-[#0a0f1a] overflow-hidden">
+      {/* dark aurora wash — matches the rest of the landing's dark surface */}
+      <div aria-hidden className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse 80% 50% at 50% 50%, hsl(168 80% 50% / 0.08) 0%, transparent 60%)" }} />
+      <div className="container mx-auto px-4 sm:px-6 relative z-10">
         <div className="text-center mb-16 landing-fade-up">
           <p className="text-[10px] text-muted-foreground mb-3 uppercase tracking-[0.3em] font-display font-semibold">
             Real agents · real receipts
           </p>
-          <h2 className="font-display font-extrabold text-4xl sm:text-5xl md:text-6xl tracking-tight">
+          <h2 className="font-display font-extrabold text-4xl sm:text-5xl md:text-6xl tracking-tight text-foreground">
             <span className="brand-gradient">Numbers</span> not slogans
           </h2>
         </div>

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
 import { Users, FileText, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
@@ -12,6 +13,26 @@ interface LiveStats {
   generated_at: string;
 }
 
+const CACHE_KEY = "apex_live_stats_last_good";
+const HARDCODED_FLOOR = { active_agents: 95, applications_30d: 131, carriers_partnered: 22 } as const;
+
+function readCache(): Partial<LiveStats> | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+function writeCache(d: LiveStats) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...d, _cached_at: Date.now() })); } catch { /* swallow */ }
+}
+// Treat 0 / null / undefined as "no data yet" — never render a zero above the fold.
+// A real count we trust is anything ≥ HARDCODED_FLOOR.<key> (we only ever grow).
+function pick(live: number | undefined, cached: number | undefined, floor: number): number {
+  if (typeof live === "number" && live >= floor) return live;
+  if (typeof cached === "number" && cached >= floor) return cached;
+  return floor;
+}
+
 /**
  * Live-counter strip rendered below the hero CTA on the public landing.
  *
@@ -20,6 +41,11 @@ interface LiveStats {
  * AnimatedCounter primitive so the page feels alive on every load.
  *
  * Refresh cadence: 5 min — counts move slowly, no need to hammer.
+ *
+ * Resilience (2026-05-24): the RPC sometimes returns 0 on cold render or
+ * during a Supabase blip. A zero above the fold destroys the trust the
+ * deals ticker just built. So we layer three fallbacks: RPC → localStorage
+ * last-good → HARDCODED_FLOOR. We only ever count UP, never down to 0.
  */
 export function LiveStatsCounterStrip() {
   const { data } = useQuery({
@@ -33,9 +59,18 @@ export function LiveStatsCounterStrip() {
     refetchInterval: 5 * 60_000,
   });
 
-  const agents = data?.active_agents ?? 95;
-  const apps30d = data?.applications_30d ?? 131;
-  const carriers = data?.carriers_partnered ?? 22;
+  const cached = useMemo(() => readCache(), []);
+  // Persist any RPC result whose values clear the floor so the next cold load
+  // shows real numbers instead of falling through to the hard-coded base.
+  useEffect(() => {
+    if (data && (data.active_agents ?? 0) >= HARDCODED_FLOOR.active_agents) {
+      writeCache(data);
+    }
+  }, [data]);
+
+  const agents = pick(data?.active_agents, cached?.active_agents, HARDCODED_FLOOR.active_agents);
+  const apps30d = pick(data?.applications_30d, cached?.applications_30d, HARDCODED_FLOOR.applications_30d);
+  const carriers = pick(data?.carriers_partnered, cached?.carriers_partnered, HARDCODED_FLOOR.carriers_partnered);
 
   return (
     <div className="landing-fade-up landing-delay-400 max-w-3xl mx-auto mb-10">

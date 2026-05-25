@@ -111,6 +111,10 @@
          preconnect to that origin. -->
     <link rel="preconnect" href="https://i.ytimg.com" crossorigin />
     <link rel="preload" as="image" href="https://i.ytimg.com/vi/v4Fp3FL9ITo/hqdefault.jpg" fetchpriority="high" />
+
+    <!-- Analytics: GA4 + PostHog + Meta Pixel are all env-gated in src/lib/analyticsBoot.ts
+         (imported from main.tsx). If a vendor's env var is missing at build,
+         that vendor stays dark — nothing throws. Wired 2026-05-24. -->
 </head>
 
   <body>

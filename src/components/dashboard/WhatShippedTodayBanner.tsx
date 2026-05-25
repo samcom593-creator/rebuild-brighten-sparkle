@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "PL-086 Seminar form write path live: /seminar now writes registrations, stamps application seminar fields, and alerts the manager",
+    detail: "The public SeminarPage no longer calls the mismatched browser RPC directly. It posts to the new seminar-register Edge Function, which validates the payload, calls the corrected register_for_seminar SECURITY DEFINER RPC, writes or updates seminar_registrations, stamps applications.seminar_date + seminar_registered_at + seminar_slot_at, logs confirmation/reminder rows, and sends the assigned hiring manager a Resend email with applicant contact info. Migration 20260525090000 also fixes the production RPC signature mismatch that caused the form to post without a durable registration.",
+  },
+  {
+    ts: "today",
     label: "ReadyMode sync fixed end-to-end: manager-login pull is live (PL-077)",
     detail: "ReadyMode's Apex account does not expose a REST API key, so the old sync stayed in 'credentials missing' even with sync_enabled=true. readymode-sync now uses Edge-secret manager login credentials, pulls ReadyMode's authenticated /+CCS Reports/call_log/update JSON endpoint, normalizes call rows, and upserts into readymode_dialer_calls. system_settings now has readymode_auth_mode=browser_login + base URL + sync_enabled=true, and pg_cron runs readymode-sync-pull every 5 minutes. Live fill pulled 300 calls via browser_login and DB health shows current_mode=PULL, pull_enabled=true, ingest_24h=300, cron_jobs=1.",
   },

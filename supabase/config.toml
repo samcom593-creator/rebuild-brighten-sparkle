@@ -28,6 +28,9 @@ verify_jwt = false
 [functions.seminar-confirmation]
 verify_jwt = false
 
+[functions.seminar-register]
+verify_jwt = false
+
 [functions.update-application-referral]
 verify_jwt = false
 

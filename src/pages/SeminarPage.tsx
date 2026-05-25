@@ -110,26 +110,36 @@ export default function SeminarPage() {
   async function onSubmit(values: FormData) {
     setSubmitting(true);
     try {
-      const { data, error } = await (supabase.rpc as any)("register_for_seminar", {
-        p_first_name: values.firstName,
-        p_last_name: values.lastName,
-        p_email: values.email.trim().toLowerCase(),
-        p_phone: values.phone,
-        p_seminar_date: values.seminarSlot,
-        p_license_status: values.licenseStatus,
-        p_source: "website-seminar-form",
-        p_utm_source: utms.utm_source,
-        p_utm_medium: utms.utm_medium,
-        p_utm_campaign: utms.utm_campaign,
-        p_reminder_opt_in: values.reminderOptIn,
+      const { data, error } = await supabase.functions.invoke("seminar-register", {
+        body: {
+          firstName: values.firstName,
+          lastName: values.lastName,
+          email: values.email.trim().toLowerCase(),
+          phone: values.phone,
+          seminarDate: values.seminarSlot,
+          licenseStatus: values.licenseStatus,
+          reminderOptIn: values.reminderOptIn,
+          utm: utms,
+        },
       });
 
-      if (error) throw error;
+      if (error) {
+        let message = error.message;
+        const context = (error as any).context;
+        if (context && typeof context.clone === "function") {
+          try {
+            const body = await context.clone().json();
+            message = body?.error ?? message;
+          } catch {
+            // Keep Supabase's original function error when the body is not JSON.
+          }
+        }
+        throw new Error(message);
+      }
+      if (!data?.ok) throw new Error(data?.error ?? "Couldn't register — try again in a moment.");
 
       const slotLabel = slots.find((s) => s.date === values.seminarSlot)?.label ?? values.seminarSlot;
-      // The RPC returns rows like { registration_id, application_id, is_new_application }
-      const row = Array.isArray(data) ? data[0] : data;
-      setSuccess({ slotLabel, isNew: !!row?.is_new_application });
+      setSuccess({ slotLabel, isNew: !!data?.is_new_application });
       toast.success("You're registered. Check your email for confirmation.");
     } catch (err: any) {
       console.error("[seminar.register]", err);

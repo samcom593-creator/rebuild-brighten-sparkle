@@ -699,6 +699,41 @@ Deno.serve(async (req) => {
     return new Response("bad request", { status: 400, headers: corsHeaders });
   }
 
+  // AgencyHub command-center fork: Sam's DMs (chat_id 6018839640) skip APEX
+  // onboarding entirely and queue for the AgencyHub bridge to handle.
+  // Same bot token serves both surfaces — APEX recruits + Sam's command center.
+  const SAM_CHAT_ID = 6018839640;
+  const samMsg = update.message?.chat?.id === SAM_CHAT_ID ? update.message : null;
+  const samCb = update.callback_query?.message?.chat?.id === SAM_CHAT_ID ? update.callback_query : null;
+  if (samMsg || samCb) {
+    try {
+      const m = samMsg ?? samCb.message;
+      const text = samMsg ? (m.text ?? "") : `cb:${samCb.data ?? ""}`;
+      const isCmd = text.startsWith("/");
+      const command = isCmd ? text.split(/\s+/)[0].toLowerCase().replace(/@.*$/, "") : null;
+      const args = command ? text.slice(command.length).trim() : null;
+      await sb.from("agencyhub_command_queue").insert({
+        chat_id: SAM_CHAT_ID,
+        from_user_id: (samMsg?.from?.id ?? samCb?.from?.id) ?? null,
+        from_user_name: (samMsg?.from?.username ?? samCb?.from?.username) ?? null,
+        message_id: m.message_id ?? null,
+        text,
+        command,
+        args,
+      });
+      if (samCb) {
+        await fetch(TG("answerCallbackQuery"), {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ callback_query_id: samCb.id }),
+        });
+      }
+    } catch (e) {
+      console.error("agencyhub-fork insert failed", e);
+    }
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   try {
     if (update.my_chat_member) {
       await handleMyChatMember(update);

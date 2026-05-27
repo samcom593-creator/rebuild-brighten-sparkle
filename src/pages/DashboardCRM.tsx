@@ -166,6 +166,25 @@ const getContactInfo = (agent: AgentCRM) => {
 // or 'licensed' (already licensed + operating). The top-level CRM toggle folds
 // the tab list to show only one bucket at a time.
 type PipelineBucket = "unlicensed" | "licensed";
+
+// Module-level Set for O(1) pre-licensed progress lookups — avoids per-render array creation
+const PRELICENSED_PROGRESS = new Set([
+  "unlicensed", "course_purchased", "finished_course", "test_scheduled",
+  "passed_test", "fingerprints_done", "waiting_fingerprints", "waiting_on_license",
+]);
+
+// Module-level label map — avoids per-row object creation in getTableCells
+const PROGRESS_LABELS: Record<string, string> = {
+  unlicensed: "Not Started",
+  course_purchased: "In Course",
+  finished_course: "Finished",
+  test_scheduled: "Test Sched.",
+  passed_test: "Passed",
+  fingerprints_done: "Fingerprints",
+  waiting_fingerprints: "Waiting FP",
+  waiting_on_license: "Waiting Lic.",
+  licensed: "Licensed",
+};
 const SECTIONS = [
   { key: "applied", bucket: "unlicensed" as PipelineBucket, label: "Applied", icon: Users, stages: ["applied"] as OnboardingStage[], accent: "border-l-blue-500", headerBg: "bg-blue-500/5", iconColor: "text-blue-500" },
   { key: "meeting_attendance", bucket: "unlicensed" as PipelineBucket, label: "Meeting Attendance", icon: ClipboardCheck, stages: ["meeting_attendance"] as OnboardingStage[], accent: "border-l-purple-500", headerBg: "bg-purple-500/5", iconColor: "text-purple-500" },
@@ -1077,7 +1096,7 @@ export default function DashboardCRM() {
       return filteredAgents.filter(a => {
         if (a.agentLicenseStatus === "licensed") return false;
         const progress = (a as any).licenseProgress || "unlicensed";
-        return ["unlicensed", "course_purchased", "finished_course", "test_scheduled", "passed_test", "fingerprints_done", "waiting_fingerprints", "waiting_on_license"].includes(progress);
+        return PRELICENSED_PROGRESS.has(progress);
       });
     }
     // PL-055: Live = "Licensed & Selling" — every licensed agent whose stage
@@ -1135,13 +1154,14 @@ export default function DashboardCRM() {
   }, [activeAgents]);
 
   const meetingAgents = filteredAgents.filter(a => a.agentLicenseStatus === "licensed");
-  const meetingPresentCount = Array.from(meetingAttendance.entries()).filter(([id, v]) => v === "present" && meetingAgents.some(a => a.id === id)).length;
+  const meetingAgentIds = useMemo(() => new Set(meetingAgents.map(a => a.id)), [meetingAgents]);
+  const meetingPresentCount = Array.from(meetingAttendance.entries()).filter(([id, v]) => v === "present" && meetingAgentIds.has(id)).length;
   const appliedCount = filteredAgents.filter(a => a.onboardingStage === "applied").length;
   const onboardingCount = filteredAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
   const preLicensedCount = filteredAgents.filter(a => {
     if (a.agentLicenseStatus === "licensed") return false;
     const p = (a as any).licenseProgress || "unlicensed";
-    return ["unlicensed", "course_purchased", "finished_course", "test_scheduled", "passed_test", "fingerprints_done", "waiting_fingerprints", "waiting_on_license"].includes(p);
+    return PRELICENSED_PROGRESS.has(p);
   }).length;
   const transferCount = filteredAgents.filter(a => a.onboardingStage === "transfer").length;
   const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;

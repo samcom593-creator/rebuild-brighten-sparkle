@@ -591,19 +591,21 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
       }
 
     let sent = 0;
-      for (const app of apps) {
-        try {
-          await invokeEdge("send-sms-auto-detect", {
-            phone: app.phone,
-            message: `Hey ${app.first_name}! You're making great progress on your course. Let's schedule a call to discuss next steps! 📞`,
-            applicationId: app.id,
-          });
-          sent++;
-        } catch {
-          // continue
-        }
-        // Pace to avoid rate limits
-        await new Promise(r => setTimeout(r, 600));
+      const BATCH_SIZE = 5;
+      for (let i = 0; i < apps.length; i += BATCH_SIZE) {
+        const batch = apps.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map(app =>
+            invokeEdge("send-sms-auto-detect", {
+              phone: app.phone,
+              message: `Hey ${app.first_name}! You're making great progress on your course. Let's schedule a call to discuss next steps! 📞`,
+              applicationId: app.id,
+            })
+          )
+        );
+        sent += results.filter(r => r.status === "fulfilled").length;
+        // Pace between batches to avoid rate limits
+        if (i + BATCH_SIZE < apps.length) await new Promise(r => setTimeout(r, 600));
       }
       playSound("celebrate");
       toast.success(`Sent scheduling SMS to ${sent} applicants with course progress`);

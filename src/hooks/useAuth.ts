@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, createContext, useContext, ReactNode } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { useIdleSession } from "@/shared/auth/useIdleSession";
@@ -223,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAgent = hasRole("agent");
   const isFullyLoaded = !isLoading && !rolesLoading;
 
-  const value: AuthContextValue = {
+  const value: AuthContextValue = useMemo(() => ({
     user,
     session,
     profile,
@@ -237,7 +237,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signOut,
     refreshProfile: () => user && fetchProfile(user.id),
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [user, session, profile, roles, isFullyLoaded, isAdmin, isManager, isAgent, signUp, signIn, signOut]);
 
   return React.createElement(
     AuthContext.Provider,

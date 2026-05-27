@@ -489,7 +489,13 @@ function CarrierAssignmentTool() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-6">Loading...</TableCell></TableRow>
+                [0,1,2,3,4].map((i) => (
+                  <TableRow key={`skel-${i}`}>
+                    <TableCell colSpan={4} className="py-2">
+                      <div className="h-6 rounded bg-muted/40 animate-pulse" />
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : leads?.length === 0 ? (
                 <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">All leads have carriers assigned ✓</TableCell></TableRow>
               ) : (
@@ -505,7 +511,7 @@ function CarrierAssignmentTool() {
                     <TableCell className="text-sm text-muted-foreground">{lead.phone}</TableCell>
                     <TableCell>
                       <Select onValueChange={(v) => updateCarrier.mutate({ id: lead.id, carrier: v })}>
-                        <SelectTrigger className="w-[150px] h-8">
+                        <SelectTrigger className="w-full sm:w-[150px] h-8">
                           <SelectValue placeholder="Select..." />
                         </SelectTrigger>
                         <SelectContent>

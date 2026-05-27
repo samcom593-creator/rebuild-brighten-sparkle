@@ -417,7 +417,7 @@ export default function BookOfBusiness() {
               type="date"
               value={cbSince}
               onChange={e => setCbSince(e.target.value)}
-              className="h-8 w-[150px] text-xs"
+              className="h-8 w-full sm:w-[150px] text-xs"
               max={cbUntil}
             />
             <span className="text-xs text-muted-foreground">to</span>
@@ -425,7 +425,7 @@ export default function BookOfBusiness() {
               type="date"
               value={cbUntil}
               onChange={e => setCbUntil(e.target.value)}
-              className="h-8 w-[150px] text-xs"
+              className="h-8 w-full sm:w-[150px] text-xs"
               min={cbSince}
               max={format(new Date(), "yyyy-MM-dd")}
             />
@@ -529,7 +529,7 @@ export default function BookOfBusiness() {
           />
         </div>
         <Select value={sourceFilter} onValueChange={v => setSource(v as any)}>
-          <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Source" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[150px] h-9"><SelectValue placeholder="Source" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All sources</SelectItem>
             <SelectItem value="apex">APEX</SelectItem>
@@ -537,7 +537,7 @@ export default function BookOfBusiness() {
           </SelectContent>
         </Select>
         <Select value={stageFilter} onValueChange={v => setStage(v as any)}>
-          <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Stage" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[150px] h-9"><SelectValue placeholder="Stage" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All stages</SelectItem>
             <SelectItem value="submitted">Submitted</SelectItem>

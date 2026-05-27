@@ -314,8 +314,8 @@ export default function Leaderboard() {
           {period === "custom" && (
             <div className="flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-9 w-[150px]" />
-              <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-9 w-[150px]" />
+              <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-9 w-full sm:w-[150px]" />
+              <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-9 w-full sm:w-[150px]" />
             </div>
           )}
         </div>
@@ -325,8 +325,10 @@ export default function Leaderboard() {
         {(["production", "recruiting", "referrals", "activity"] as Board[]).map((tab) => (
           <TabsContent key={tab} value={tab} className="mt-0">
             {loading ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground">
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading...
+              <div className="space-y-2 py-2" aria-label="Loading leaderboard">
+                {[0,1,2,3,4,5,6,7].map((i) => (
+                  <div key={i} className="h-12 rounded-lg bg-muted/40 animate-pulse" />
+                ))}
               </div>
             ) : rows.length === 0 ? (
               <GlassCard className="p-12 text-center text-muted-foreground">

@@ -374,7 +374,13 @@ export default function InactiveAgents() {
       )}
 
       <div className="space-y-2">
-        {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+        {isLoading && (
+          <div className="space-y-2" aria-label="Loading inactive agents">
+            {[0,1,2,3,4].map((i) => (
+              <div key={i} className="h-16 rounded-lg bg-muted/40 animate-pulse" />
+            ))}
+          </div>
+        )}
         {!isLoading && filtered.length === 0 && (
           <Card>
             <CardContent className="p-8 text-center text-sm text-muted-foreground">

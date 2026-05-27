@@ -197,6 +197,36 @@ export default function ChargesAudit() {
     setActionType("acknowledged");
   }
 
+  // PL-092: one-click strike on anomaly row. Picks reason_code from the flag.
+  async function issueStrikeForCharge(c: ChargeRow) {
+    const agentId = c.resolved_agent_id ?? c.agent_id_ref ?? c.agent_id;
+    if (!agentId) {
+      toast.error("No agent linked to this charge — strike skipped");
+      return;
+    }
+    let reason: string = "false_charge";
+    if (c.flag_duplicate_window) reason = "billing_dispute";
+    else if (c.flag_name_mismatch) reason = "misrepresentation";
+    else if (c.flag_unlinked) reason = "compliance";
+    else if (c.flag_unusual_amount) reason = "false_charge";
+    const description = `Charges Audit anomaly · ${c.stripe_charge_id} · $${c.amount_usd.toFixed(2)} · flags: ${[
+      c.flag_name_mismatch && "name_mismatch",
+      c.flag_unlinked && "unlinked",
+      c.flag_unusual_amount && "unusual_amount",
+      c.flag_duplicate_window && "duplicate_window",
+    ].filter(Boolean).join(", ")}`;
+    const { error } = await supabase.rpc("issue_strike" as any, {
+      p_agent_id: agentId,
+      p_reason_code: reason,
+      p_severity: "minor",
+      p_description: description,
+      p_evidence_urls: [`https://dashboard.stripe.com/payments/${c.stripe_charge_id}`],
+    });
+    if (error) { toast.error(`Strike failed: ${error.message}`); return; }
+    toast.success(`Strike issued (${reason}) — ${c.resolved_agent_name ?? "agent"}`);
+    qc.invalidateQueries({ queryKey: ["charges-audit"] });
+  }
+
   const wh = summary?.webhook_status ?? "no_data";
   const whAge = summary?.webhook_silent_minutes ? Number(summary.webhook_silent_minutes) : null;
   const dupOvercharge = Number(summary?.duplicate_overcharge_usd ?? 0);
@@ -521,6 +551,17 @@ export default function ChargesAudit() {
                             title="Flag for Stripe refund"
                           >
                             <Banknote className="h-3.5 w-3.5 mr-1" /> Refund
+                          </Button>
+                        )}
+                        {(c.flag_name_mismatch || c.flag_unusual_amount || c.flag_duplicate_window) && (c.resolved_agent_id || c.agent_id_ref || c.agent_id) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-rose-500/40 text-rose-400 hover:bg-rose-500/10"
+                            onClick={() => issueStrikeForCharge(c)}
+                            title="Issue strike to agent for this anomaly (PL-092)"
+                          >
+                            <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Strike
                           </Button>
                         )}
                         <Button

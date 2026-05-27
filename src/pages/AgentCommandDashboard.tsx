@@ -898,6 +898,25 @@ function AgencyCommandView() {
     },
   });
 
+  // PL: Agency AP should be ALL deals (excl chargebacks), NOT only "trusted"
+  // statuses (submitted + active). Sam flagged that the headline number was
+  // being filtered down and undercounting actual production.
+  const periodDealsAllStatuses = useQuery({
+    queryKey: ["agency-period-deals-all", periodBounds.startIso, periodBounds.endIso],
+    refetchInterval: 120_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deals" as any)
+        .select("annual_premium, status")
+        .or(dealTruthWindowOr(periodBounds.startIso, periodBounds.endIso))
+        .is("chargeback_at", null);
+      if (error) throw error;
+      const rows = data ?? [];
+      const totalAp = rows.reduce((s: number, r: any) => s + Number(r.annual_premium ?? 0), 0);
+      return { totalAp, count: rows.length };
+    },
+  });
+
   const periodSummary = useMemo(() => {
     const byAgent = new Map<string, {
       agent_id: string;
@@ -1159,11 +1178,11 @@ function AgencyCommandView() {
         <KpiTile
           icon={DollarSign}
           label={`Agency AP · ${periodBounds.label}`}
-          value={fmtUsd(periodSummary.totalAp)}
-          subValue={`${fmtNum(periodSummary.dealCount)} trusted deals · previous period ${priorPeriodDeals.data == null ? "loading" : fmtUsd(priorPeriodDeals.data, true)}`}
+          value={fmtUsd(periodDealsAllStatuses.data?.totalAp ?? periodSummary.totalAp)}
+          subValue={`${fmtNum(periodDealsAllStatuses.data?.count ?? periodSummary.dealCount)} deals (${fmtNum(periodSummary.dealCount)} trusted) · prior period ${priorPeriodDeals.data == null ? "…" : fmtUsd(priorPeriodDeals.data, true)}`}
           trendPct={periodTrendPct}
           color="text-emerald-500 dark:text-emerald-400"
-          loading={periodDeals.isLoading || priorPeriodDeals.isLoading}
+          loading={periodDeals.isLoading || priorPeriodDeals.isLoading || periodDealsAllStatuses.isLoading}
         />
         <KpiTile
           icon={Trophy}

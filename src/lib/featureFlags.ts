@@ -44,9 +44,15 @@ export const FEATURE_FLAG_LABELS: Record<FeatureFlagName, string> = {
 function getOverrides(): Partial<Record<FeatureFlagName, boolean>> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Guard against JSON.parse("null") returning null, or any non-object value
+      if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Partial<Record<FeatureFlagName, boolean>>;
+      }
+    }
   } catch {
-    // ignore
+    // ignore malformed JSON
   }
   return {};
 }

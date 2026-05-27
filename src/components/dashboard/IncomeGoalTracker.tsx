@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getBusinessDayKey, getBusinessMonthBounds } from "@/lib/dateUtils";
 import { sumAnnualPremium } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface IncomeGoalTrackerProps {
@@ -48,7 +49,7 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
           .from("deals")
           .select("annual_premium, posted_at")
           .eq("agent_id", agentId)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
       ]);
 
       if (prodError) throw prodError;

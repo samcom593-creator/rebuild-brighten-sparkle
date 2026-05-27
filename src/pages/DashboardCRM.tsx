@@ -41,6 +41,7 @@ import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { getBusinessDayKey, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
 import { getCloseRate, sumAnnualPremium } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 import { motion } from "framer-motion";
 
 /** Feature flag: hide destructive bulk delete by default. Set VITE_ENABLE_CRM_BULK_DELETE=true to enable. */
@@ -668,7 +669,7 @@ export default function DashboardCRM() {
               .in("agent_id", allAgentIds)
               .gte("posted_at", monthBounds.startIso)
               .lt("posted_at", monthBounds.endIso)
-              .in("status", ["submitted", "active"])
+              .in("status", DEAL_TRUTH_STATUS_FILTER)
           : Promise.resolve({ data: [] as any[] }),
         allAgentIds.length > 0
           ? supabase
@@ -677,7 +678,7 @@ export default function DashboardCRM() {
               .in("agent_id", allAgentIds)
               .gte("posted_at", weekBounds.startIso)
               .lt("posted_at", weekBounds.endIso)
-              .in("status", ["submitted", "active"])
+              .in("status", DEAL_TRUTH_STATUS_FILTER)
           : Promise.resolve({ data: [] as any[] }),
         allAgentIds.length > 0
           ? supabase
@@ -686,7 +687,7 @@ export default function DashboardCRM() {
               .in("agent_id", allAgentIds)
               .gte("posted_at", priorWeekBounds.startIso)
               .lt("posted_at", priorWeekBounds.endIso)
-              .in("status", ["submitted", "active"])
+              .in("status", DEAL_TRUTH_STATUS_FILTER)
           : Promise.resolve({ data: [] as any[] }),
         allAgentIds.length > 0
           ? supabase

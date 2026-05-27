@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getBusinessWeekBounds } from "@/lib/dateUtils";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
 const STAGES = [
   { key: "applied",        label: "Applied",         color: "bg-blue-500/20 text-blue-400 border-blue-500/30",    dot: "bg-blue-400" },
@@ -106,7 +107,7 @@ export default function AgentPipelineSimple() {
         .select("agent_id, annual_premium")
         .gte("posted_at", weekBounds.startIso)
         .lt("posted_at", weekBounds.endIso)
-        .in("status", ["submitted", "active"]);
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
 
       const alpByAgent: Record<string, number> = {};
       prodData?.forEach((p: any) => {

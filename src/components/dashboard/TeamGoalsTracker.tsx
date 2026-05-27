@@ -8,6 +8,7 @@ import { AnimatedNumber } from "./AnimatedNumber";
 import confetti from "canvas-confetti";
 import { getBusinessMonthBounds } from "@/lib/dateUtils";
 import { sumAnnualPremium } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface GoalData {
@@ -51,7 +52,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
           .select("annual_premium")
           .gte("posted_at", monthBounds.startIso)
           .lt("posted_at", monthBounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase
           .from("daily_production")
           .select("presentations, referrals_caught")

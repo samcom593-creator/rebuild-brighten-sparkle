@@ -1065,7 +1065,7 @@ function AgencyCommandView() {
     queryFn: async () => {
       const since10 = new Date(Date.now() - 10 * 86_400_000).toISOString();
       const [dealAgents, prodAgents, licensedMtdRes, contractedMtdRes, inCourseRes, finishedRes, examScheduledRes] = await Promise.all([
-        supabase.from("deals").select("agent_id").gte("posted_at", since10).in("status", ["submitted", "active"]),
+        supabase.from("deals").select("agent_id").gte("posted_at", since10).in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase.from("daily_production").select("agent_id").gte("production_date", since10.slice(0, 10)),
         supabase.from("applications").select("id", { count: "exact", head: true }).gte("licensed_at", periodBounds.startIso).lte("licensed_at", periodBounds.endIso).is("terminated_at", null),
         supabase.from("applications").select("id", { count: "exact", head: true }).gte("contracted_at", periodBounds.startIso).lte("contracted_at", periodBounds.endIso).is("terminated_at", null),

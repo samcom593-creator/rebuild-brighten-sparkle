@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { getClosingRateColor } from "@/lib/closingRateColors";
 import { getMetricBounds } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 
@@ -115,7 +116,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
           .select("agent_id, annual_premium")
           .gte("posted_at", bounds.startIso)
           .lt("posted_at", bounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
       ]);
       const presRows = (presRes.data || []) as any[];
       const dealRows = (dealsRes.data || []) as any[];
@@ -189,7 +190,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
           .from("deals")
           .select("annual_premium")
           .eq("agent_id", agentId)
-          .in("status", ["submitted", "active"])
+          .in("status", DEAL_TRUTH_STATUS_FILTER)
           .order("annual_premium", { ascending: false })
           .limit(1)
           .maybeSingle();

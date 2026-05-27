@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { countDistinctBusinessDays, projectMonthEndAlp, sumAnnualPremium } from "@/lib/metricTruth";
 import { getBusinessMonthBounds } from "@/lib/dateUtils";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
 interface ProductionForecastProps {
   agentId: string;
@@ -24,7 +25,7 @@ export function ProductionForecast({ agentId }: ProductionForecastProps) {
           .eq("agent_id", agentId)
           .gte("posted_at", monthBounds.startIso)
           .lt("posted_at", monthBounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase
           .from("daily_production")
           .select("presentations")

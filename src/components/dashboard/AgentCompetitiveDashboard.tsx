@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface Props {
@@ -80,7 +81,7 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
         .select("agent_id, annual_premium")
         .gte("posted_at", weekBounds.startIso)
         .lt("posted_at", weekBounds.endIso)
-        .in("status", ["submitted", "active"])
+        .in("status", DEAL_TRUTH_STATUS_FILTER)
         .in("agent_id", agentIds.length ? agentIds : ["00000000-0000-0000-0000-000000000000"]);
 
       const alpMap: Record<string, number> = {};

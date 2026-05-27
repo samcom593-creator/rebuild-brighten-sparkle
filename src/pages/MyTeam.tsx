@@ -7,6 +7,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { PageHeader } from "@/components/ui/page-header";
 import { Users, DollarSign, TrendingUp, Target } from "lucide-react";
 import { getBusinessMonthBounds } from "@/lib/dateUtils";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
 export default function MyTeam() {
   const { isManager } = useAuth();
@@ -25,7 +26,7 @@ export default function MyTeam() {
           .in("agent_id", downlineIds)
           .gte("posted_at", monthBounds.startIso)
           .lt("posted_at", monthBounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase.from("agents").select("id, display_name, profile:profiles!agents_profile_id_fkey(full_name, avatar_url)").in("id", downlineIds).eq("is_deactivated", false),
       ]);
 

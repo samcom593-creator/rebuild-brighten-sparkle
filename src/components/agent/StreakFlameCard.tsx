@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { getBusinessDayKey } from "@/lib/dateUtils";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface Props { agentId: string | null | undefined; }
@@ -27,7 +28,7 @@ export function StreakFlameCard({ agentId }: Props) {
       const { data } = await supabase.from("deals")
         .select("posted_at")
         .eq("agent_id", agentId)
-        .in("status", ["submitted", "active"])
+        .in("status", DEAL_TRUTH_STATUS_FILTER)
         .order("posted_at", { ascending: false })
         .limit(180);
 

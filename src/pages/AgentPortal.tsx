@@ -66,6 +66,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getBusinessDayBounds, getTodayPST } from "@/lib/dateUtils";
 import { getCloseRate, getMetricBounds, sumAnnualPremium } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 import apexIcon from "@/assets/apex-icon.png";
 import { ProductionForecast } from "@/components/dashboard/ProductionForecast";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -223,7 +224,7 @@ export default function AgentPortal() {
           .in("agent_id", agentIds)
           .gte("posted_at", bounds.startIso)
           .lt("posted_at", bounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase
           .from("daily_production")
           .select("presentations")
@@ -276,7 +277,7 @@ export default function AgentPortal() {
               .eq("agent_id", agent.id)
               .gte("posted_at", dayBounds.startIso)
               .lt("posted_at", dayBounds.endIso)
-              .in("status", ["submitted", "active"]),
+              .in("status", DEAL_TRUTH_STATUS_FILTER),
             supabase
               .from("daily_production")
               .select("*")
@@ -349,7 +350,7 @@ export default function AgentPortal() {
           .eq("agent_id", agent.id)
           .gte("posted_at", dayBounds.startIso)
           .lt("posted_at", dayBounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase
           .from("daily_production")
           .select("*")

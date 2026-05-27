@@ -9,6 +9,7 @@ import { subDays, format } from "date-fns";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { formatMetricSource, getMetricBounds, METRIC_REGISTRY } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
 interface CompactLeaderboardProps {
   currentAgentId?: string;
@@ -233,7 +234,7 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
           .select("agent_id, annual_premium, posted_at")
           .gte("posted_at", bounds.startIso)
           .lt("posted_at", bounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase
           .from("agentlink_sync_log" as any)
           .select("finished_at, started_at")

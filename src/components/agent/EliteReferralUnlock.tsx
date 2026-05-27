@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getMetricBounds, sumAnnualPremium } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface Props {
@@ -38,7 +39,7 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
         .eq("agent_id", agentId)
         .gte("posted_at", monthBounds.startIso)
         .lt("posted_at", monthBounds.endIso)
-        .in("status", ["submitted", "active"]);
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
       const sum = sumAnnualPremium((deals ?? []) as Array<{ annual_premium?: number | null }>);
 
       const { data: agent } = await supabase

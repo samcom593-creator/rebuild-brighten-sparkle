@@ -10,6 +10,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { useAuth } from "@/hooks/useAuth";
 import { getBusinessWeekBounds } from "@/lib/dateUtils";
 import { sumAnnualPremium } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
 export default function Numbers() {
   const { user, isLoading: authLoading } = useAuth();
@@ -81,7 +82,7 @@ export default function Numbers() {
         .eq("agent_id", agentId)
         .gte("posted_at", weekBounds.startIso)
         .lt("posted_at", weekBounds.endIso)
-        .in("status", ["submitted", "active"]);
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
 
       const alp = sumAnnualPremium((myDeals || []) as Array<{ annual_premium?: number | null }>);
       const deals = myDeals?.length || 0;
@@ -91,7 +92,7 @@ export default function Numbers() {
         .select("agent_id, annual_premium")
         .gte("posted_at", weekBounds.startIso)
         .lt("posted_at", weekBounds.endIso)
-        .in("status", ["submitted", "active"]);
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
 
       const agentTotals: Record<string, number> = {};
       (allDeals || []).forEach((r: any) => {

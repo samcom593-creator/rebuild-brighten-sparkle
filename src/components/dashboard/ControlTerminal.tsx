@@ -21,6 +21,7 @@ import {
   planOperatorCommand,
 } from "@/lib/operatorConsole";
 import { getBusinessDayBounds } from "@/lib/dateUtils";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
 type RowMap = Record<string, unknown>;
 
@@ -32,7 +33,7 @@ async function loadStatusSnapshot(): Promise<string> {
 
   const [apps, deals, hires, syncRow] = await Promise.all([
     supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", dayBounds.startIso).lt("created_at", dayBounds.endIso),
-    supabase.from("deals").select("annual_premium", { count: "exact" }).gte("posted_at", dayBounds.startIso).lt("posted_at", dayBounds.endIso).in("status", ["submitted", "active"]),
+    supabase.from("deals").select("annual_premium", { count: "exact" }).gte("posted_at", dayBounds.startIso).lt("posted_at", dayBounds.endIso).in("status", DEAL_TRUTH_STATUS_FILTER),
     supabase.from("applications").select("id", { count: "exact", head: true }).gte("closed_at", dayBounds.startIso).lt("closed_at", dayBounds.endIso),
     supabase.from("agentlink_sync_log" as any).select("finished_at, started_at").eq("status", "ok").order("started_at", { ascending: false }).limit(1).maybeSingle(),
   ]);

@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getBusinessDayBounds } from "@/lib/dateUtils";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { subDays } from "date-fns";
 
@@ -42,7 +43,7 @@ export function AgentRankBadge({
         .select("agent_id, annual_premium")
         .gte("posted_at", todayBounds.startIso)
         .lt("posted_at", todayBounds.endIso)
-        .in("status", ["submitted", "active"])
+        .in("status", DEAL_TRUTH_STATUS_FILTER)
         .neq("agent_id", "7c3c5581-3544-437f-bfe2-91391afb217d");
       const todayMap = new Map<string, number>();
       for (const r of (dealsTodayRaw ?? []) as any[]) {
@@ -71,7 +72,7 @@ export function AgentRankBadge({
           .select("agent_id, annual_premium")
           .gte("posted_at", yesterdayBounds.startIso)
           .lt("posted_at", yesterdayBounds.endIso)
-          .in("status", ["submitted", "active"])
+          .in("status", DEAL_TRUTH_STATUS_FILTER)
           .neq("agent_id", "7c3c5581-3544-437f-bfe2-91391afb217d");
         const yestMap = new Map<string, number>();
         for (const r of (dealsYestRaw ?? []) as any[]) {

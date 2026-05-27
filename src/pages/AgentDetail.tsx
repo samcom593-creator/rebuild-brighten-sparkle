@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getBusinessMonthBounds } from "@/lib/dateUtils";
 import { AgentActionsMenu } from "@/components/agent/AgentActionsMenu";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
 type AgentDetail = {
   id: string;
@@ -93,7 +94,7 @@ export default function AgentDetail() {
           .eq("agent_id", id)
           .gte("posted_at", monthBounds.startIso)
           .lt("posted_at", monthBounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
       ]);
       const deals: Deal[] = (dealsRes.data as any[] ?? []).map(x => ({
         id: x.id, client_first_name: x.client_first_name, client_last_name: x.client_last_name,

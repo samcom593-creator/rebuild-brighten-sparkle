@@ -52,6 +52,7 @@ import { AgentProfileEditor } from "@/components/admin/AgentProfileEditor";
 import { DeactivateAgentDialog } from "./DeactivateAgentDialog";
 import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
 import { getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
 interface AgentHierarchyEntry {
   id: string;
@@ -155,7 +156,7 @@ export function TeamHierarchyManager() {
         supabase.from("user_roles").select("user_id").in("role", ["manager", "admin"]),
         supabase.from("onboarding_progress").select("agent_id, passed"),
         supabase.from("onboarding_modules").select("id").eq("is_active", true),
-        supabase.from("deals").select("agent_id, posted_at, annual_premium").in("agent_id", agentIds).gte("posted_at", monthBounds.startIso).lt("posted_at", monthBounds.endIso).in("status", ["submitted", "active"]),
+        supabase.from("deals").select("agent_id, posted_at, annual_premium").in("agent_id", agentIds).gte("posted_at", monthBounds.startIso).lt("posted_at", monthBounds.endIso).in("status", DEAL_TRUTH_STATUS_FILTER),
       ]);
 
       const profiles = profilesResult.data || [];

@@ -17,6 +17,7 @@ import {
 import { format, subDays } from "date-fns";
 import { getBusinessDayKey } from "@/lib/dateUtils";
 import { getMetricBounds, sumAnnualPremium } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
 // Memoized tooltip component to prevent ref warnings
 const CustomTooltip = memo(({ active, payload, label }: any) => {
@@ -80,7 +81,7 @@ export function ProductionHistoryChart({
         .select("posted_at, annual_premium")
         .gte("posted_at", bounds.startIso)
         .lt("posted_at", bounds.endIso)
-        .in("status", ["submitted", "active"])
+        .in("status", DEAL_TRUTH_STATUS_FILTER)
         .order("posted_at", { ascending: true });
       
       // If showing individual agent, filter by agent_id

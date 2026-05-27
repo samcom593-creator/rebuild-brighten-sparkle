@@ -326,7 +326,7 @@ const App = () => (
                         <Route path="/dashboard/hierarchy" element={<ProtectedRoute><TeamHierarchy /></ProtectedRoute>} />
                         <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />
                          <Route path="/dashboard/instagram-automation" element={<ProtectedRoute requireAdmin><InstagramAutomation /></ProtectedRoute>} />
-                          <Route path="/dashboard/content" element={<ContentLibrary />} />
+                          <Route path="/dashboard/content" element={<ProtectedRoute requireAdmin><ContentLibrary /></ProtectedRoute>} />
                            <Route path="/dashboard/hiring-pipeline" element={<ProtectedRoute requireAdmin allowManagers><HiringPipeline /></ProtectedRoute>} />
                           <Route path="/dashboard/admin/board-access" element={<ProtectedRoute requireAdmin><AdminBoardAccess /></ProtectedRoute>} />
                            <Route path="/dashboard/prelicensing" element={<ProtectedRoute><PrelicensingManager /></ProtectedRoute>} />

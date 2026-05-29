@@ -75,6 +75,7 @@ export default function ChargesAudit() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "anomalies" | "name_mismatch" | "duplicate_window" | "unlinked" | "unusual">("anomalies");
+  const [view, setView] = useState<"table" | "cards">("table"); // PL-080: readable table is now default
   const [actionRow, setActionRow] = useState<ChargeRow | null>(null);
   const [actionType, setActionType] = useState<"acknowledged" | "refund_requested" | "duplicate_voided">("acknowledged");
   const [actionNotes, setActionNotes] = useState("");
@@ -429,6 +430,35 @@ export default function ChargesAudit() {
               <SelectItem value="all">All charges</SelectItem>
             </SelectContent>
           </Select>
+          {/* PL-080: view toggle — table is now default for digestibility */}
+          <div className="inline-flex rounded-md border border-border/40 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setView("table")}
+              className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                view === "table"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card/40 text-muted-foreground hover:bg-card/60 hover:text-foreground"
+              }`}
+              aria-pressed={view === "table"}
+              title="Compact table — easiest to scan"
+            >
+              Table
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("cards")}
+              className={`px-3 py-1.5 text-xs font-semibold transition-colors border-l border-border/40 ${
+                view === "cards"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card/40 text-muted-foreground hover:bg-card/60 hover:text-foreground"
+              }`}
+              aria-pressed={view === "cards"}
+              title="Cards — full detail per row"
+            >
+              Cards
+            </button>
+          </div>
           <Badge variant="outline" className="hidden md:inline-flex">{filtered.length} shown</Badge>
         </div>
       </GlassCard>
@@ -449,6 +479,128 @@ export default function ChargesAudit() {
             : "Try widening the filter."}
           variant="success"
         />
+      ) : view === "table" ? (
+        // PL-080: compact, scannable table — replaces motion-heavy card list as the digestible default
+        <GlassCard variant="subtle" className="overflow-hidden p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-card/60 text-[11px] uppercase tracking-wider text-muted-foreground">
+                <tr className="border-b border-border/40">
+                  <th className="text-left font-semibold px-3 py-2 w-[110px]">Amount</th>
+                  <th className="text-left font-semibold px-3 py-2">Customer</th>
+                  <th className="text-left font-semibold px-3 py-2">Agent on record</th>
+                  <th className="text-left font-semibold px-3 py-2">Flags</th>
+                  <th className="text-left font-semibold px-3 py-2 w-[150px]">When</th>
+                  <th className="text-right font-semibold px-3 py-2 w-[200px]">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((c, i) => {
+                  const acts = actionsByChargeId[c.id] ?? [];
+                  const lastAck = acts.find((a) => a.action === "acknowledged");
+                  const lastRefund = acts.find((a) => a.action === "refund_requested" || a.action === "refund_confirmed");
+                  const mismatch = c.customer_name && c.resolved_agent_name && c.customer_name !== c.resolved_agent_name;
+                  return (
+                    <tr
+                      key={c.id}
+                      className={`border-b border-border/20 hover:bg-primary/5 transition-colors ${
+                        i % 2 === 0 ? "bg-transparent" : "bg-card/20"
+                      }`}
+                    >
+                      <td className="px-3 py-2 align-top">
+                        <span className={`font-bold tabular-nums ${c.flag_unusual_amount ? "text-rose-400" : "text-emerald-400"}`}>
+                          ${c.amount_usd.toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 align-top min-w-[180px]">
+                        <p className="font-medium truncate max-w-[260px]">{c.customer_name ?? <span className="text-muted-foreground italic">(no name)</span>}</p>
+                        <p className="text-[11px] text-muted-foreground truncate max-w-[260px]">{c.customer_email}</p>
+                      </td>
+                      <td className="px-3 py-2 align-top min-w-[160px]">
+                        {c.resolved_agent_name ? (
+                          <p className={`truncate max-w-[180px] ${mismatch ? "text-rose-400 font-medium" : ""}`}>{c.resolved_agent_name}</p>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground italic">unlinked</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        <div className="flex flex-wrap gap-1">
+                          {c.flag_name_mismatch && <Badge variant="outline" className="bg-rose-500/15 text-rose-400 border-rose-500/40 text-[10px] py-0">name</Badge>}
+                          {c.flag_duplicate_window && <Badge variant="outline" className="bg-amber-500/15 text-amber-400 border-amber-500/40 text-[10px] py-0">dup</Badge>}
+                          {c.flag_unlinked && <Badge variant="outline" className="bg-orange-500/15 text-orange-400 border-orange-500/40 text-[10px] py-0">unlinked</Badge>}
+                          {c.flag_unusual_amount && <Badge variant="outline" className="bg-rose-500/15 text-rose-400 border-rose-500/40 text-[10px] py-0">$$</Badge>}
+                          {lastAck && <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/40 text-[10px] py-0">ack</Badge>}
+                          {lastRefund && <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/40 text-[10px] py-0">refund</Badge>}
+                          {!c.flag_name_mismatch && !c.flag_duplicate_window && !c.flag_unlinked && !c.flag_unusual_amount && (
+                            <span className="text-[11px] text-emerald-400/70">clean</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 align-top text-[11px] text-muted-foreground tabular-nums">
+                        <p className="text-foreground">{format(new Date(c.charged_at), "MMM d, h:mm a")}</p>
+                        <p>{formatDistanceToNow(new Date(c.charged_at))} ago</p>
+                      </td>
+                      <td className="px-3 py-2 align-top text-right">
+                        <div className="inline-flex items-center gap-1">
+                          {!lastAck && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => { setActionRow(c); setActionType("acknowledged"); setActionNotes(""); }}
+                              title="Acknowledge"
+                            >
+                              <BadgeCheck className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {!lastRefund && (c.flag_duplicate_window || c.flag_name_mismatch || c.flag_unusual_amount) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-amber-400 hover:bg-amber-500/10"
+                              onClick={() => { setActionRow(c); setActionType("refund_requested"); setActionNotes(""); }}
+                              title="Flag for Stripe refund"
+                            >
+                              <Banknote className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {(c.flag_name_mismatch || c.flag_unusual_amount || c.flag_duplicate_window) && (c.resolved_agent_id || c.agent_id_ref || c.agent_id) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-rose-400 hover:bg-rose-500/10"
+                              onClick={() => issueStrikeForCharge(c)}
+                              title="Issue strike to agent"
+                            >
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2"
+                            onClick={() => {
+                              navigator.clipboard.writeText(c.stripe_charge_id);
+                              toast.success("Charge ID copied");
+                            }}
+                            title="Copy charge ID"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="sm" variant="ghost" asChild className="h-7 px-2" title="Open in Stripe">
+                            <a href={`https://dashboard.stripe.com/payments/${c.stripe_charge_id}`} target="_blank" rel="noreferrer">
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </GlassCard>
       ) : (
         <div className="space-y-2">
           <AnimatePresence initial={false}>

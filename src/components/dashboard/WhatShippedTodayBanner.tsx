@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "PL-080 Charges Audit: compact, scannable table view (now default)",
+    detail: "/dashboard/charges-audit was hard to digest — every charge rendered as a full motion-card. Added a compact Table view as the new default with a Table/Cards toggle: amount, customer + email, agent on record (rose-highlighted when name mismatches), inline flag badges (name, dup, unlinked, $$, ack, refund, or 'clean'), absolute timestamp + relative age, and a tight inline action cluster (ack, refund, strike, copy id, open in Stripe). Zebra-striped rows, alternating bg, hover row highlight. Cards view kept for full per-row detail.",
+  },
+  {
+    ts: "today",
     label: "Telegram /register command + 7-type onboarding deeplink path live",
     detail: "Webhook now accepts /register <type> from inside any group to classify it (onboarding, lobby, licensing, seminar, training, wins, manager_alerts). Replaces the old 'Sam: classify this chat by updating telegram_groups.type' nudge that required Sam to drop into SQL. New group join message lists every valid type with one-liner descriptions. Sam-side path is now 2 taps: tap deeplink → name group → type /register onboarding. Wired to the existing nudge-runner.py drip cron so D1/D3/D7/D14 templates fire automatically once a group flips active. Persisted at supabase/functions/telegram-webhook/index.ts + /Users/samjames/business-ops/TELEGRAM-CHANNELS.md.",
   },

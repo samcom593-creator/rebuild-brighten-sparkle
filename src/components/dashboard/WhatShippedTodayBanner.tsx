@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "PL-025 Lapses 30d KPI now opens a drilldown modal on tap (policy + agent + client + lapsed_at)",
+    detail: "AgentCommandDashboard's 'Lapses · 30d' StatRowCard is now interactive — a11y-correct (renders as a button when onClick is set, keyboard + screen-reader friendly), opens LapsesDrilldownModal with the 45 lapsed policies showing policy_number, client name + phone, face_amount, monthly_premium, lapsed_at (relative + absolute), and the writing agent. Shipped in commits 460fa0ae (interactive StatRowCard wiring) + 4837ab49 (LapsesDrilldownModal component).",
+  },
+  {
+    ts: "today",
     label: "PL-051 Leaderboards: stronger top-3 podium contrast + per-row deal breakdown (shipped in 460fa0ae)",
     detail: "/dashboard/leaderboard top widget now scans clearly: #1 gets a gold ring + amber bg + glow shadow, #2 silver fill + ring, #3 bronze fill + ring. Production rows now spell out 'N deals · avg $X / deal' under each agent name so a manager can see if a leader is winning on volume or premium size. Other boards (recruiting / referrals / activity) keep their own breakdown shape. Code shipped in commit 460fa0ae alongside PL-076.",
   },

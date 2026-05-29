@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "PL-076 IG -> Discord voice channel broadcaster + strict PII guard",
+    detail: "New ig-voice-broadcast edge function ships sanitized one-liners to the team's Discord voice channel: 'Another deal from <First>.' / 'Another hire — <First>.' / 'Another applicant in — <First> just sent the link.' STRICT sanitization layer: rejects any agent_first_name carrying PII (phone, email, dollar amounts, 4+ digit runs), strips to first word only, alpha + hyphen + apostrophe only, max 32 chars. Webhook URL pulled from system_settings.discord_webhook_url_voice (registered as empty so the fn returns status='disabled' until Sam pastes the URL — never errors upstream callers). Allowed_mentions stripped on outbound Discord POST so a malicious name can't @everyone. Sam-only follow-up to flip live (Discord voice-channel webhook URL + edge-fn deploy) tracked in BLOCKERS.md.",
+  },
+  {
+    ts: "today",
     label: "PL-093 Referrals: earnings tiles + v_referral_earnings_pending view live",
     detail: "/dashboard/referrals/mine now shows four earnings tiles above the referral list: Pending (bonus owed but not paid), Paid out (lifetime), Sent (total with won/open breakdown), and Win rate (closed-won/closed). Backed by new v_referral_earnings_pending view (per-agent rollup over v_agent_referrals: total_referrals, open/won/dead counts, bonus_owed/paid/pending in cents, last_referral_at). submit_referral RPC already wired on /dashboard/referrals/new — frontend verified, end-to-end live. Migration: supabase/migrations/20260529000200_pl093_v_referral_earnings_pending.sql.",
   },

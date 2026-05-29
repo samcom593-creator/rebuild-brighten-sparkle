@@ -648,3 +648,6 @@ verify_jwt = false
 
 [functions.post-deal]
 verify_jwt = true
+
+[functions.ig-voice-broadcast]
+verify_jwt = false

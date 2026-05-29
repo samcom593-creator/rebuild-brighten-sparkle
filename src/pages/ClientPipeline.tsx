@@ -158,17 +158,25 @@ export default function ClientPipeline() {
       .sort((a, b) => b.value - a.value);
   }, [rows]);
 
-  // Top states
-  const stateData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const c of rows) {
-      if (!c.state) continue;
-      counts[c.state] = (counts[c.state] ?? 0) + 1;
-    }
-    return Object.entries(counts)
-      .map(([state, count]) => ({ state, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+  // PL-045: agentlink_clients.state is empty for 100% of rows upstream,
+  // so the old Top-states chart was permanently empty. Replaced with a
+  // Contact-Freshness Ladder built from last_contact_date — same widget
+  // slot, real data, and immediately actionable for closing the cold
+  // pool (currently ~1.6k untouched clients).
+  const freshnessData = useMemo(() => {
+    const now = Date.now();
+    const DAY = 86_400_000;
+    const buckets = [
+      { label: "Never",  match: (t: number | null) => t === null },
+      { label: "≤ 7d",   match: (t: number | null) => t !== null && now - t <= 7 * DAY },
+      { label: "8-30d",  match: (t: number | null) => t !== null && now - t > 7 * DAY && now - t <= 30 * DAY },
+      { label: "31-60d", match: (t: number | null) => t !== null && now - t > 30 * DAY && now - t <= 60 * DAY },
+      { label: "60d+",   match: (t: number | null) => t !== null && now - t > 60 * DAY },
+    ];
+    return buckets.map(({ label, match }) => ({
+      bucket: label,
+      count: rows.filter((c) => match(c.last_contact_date ? new Date(c.last_contact_date).getTime() : null)).length,
+    }));
   }, [rows]);
 
   // Chargebacks watch — next 7 days (PL-044: renamed from callbacks)
@@ -300,30 +308,30 @@ export default function ClientPipeline() {
           )}
         </GlassCard>
 
-        {/* State bar chart */}
+        {/* PL-045: Contact-Freshness Ladder (replaced empty Geographic mix). */}
         <GlassCard className="p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Geographic mix</p>
-              <h3 className="text-lg font-bold">Top 10 states</h3>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Contact freshness</p>
+              <h3 className="text-lg font-bold">When were they last touched?</h3>
             </div>
             <MapPin className="h-5 w-5 text-muted-foreground" />
           </div>
           {isLoading ? (
             <Skeleton className="h-[180px] w-full" />
-          ) : stateData.length === 0 ? (
-            <EmptyState icon={<MapPin className="h-6 w-6" />} title="No state data" />
+          ) : freshnessData.every((b) => b.count === 0) ? (
+            <EmptyState icon={<MapPin className="h-6 w-6" />} title="No contact data" />
           ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={stateData}>
+              <BarChart data={freshnessData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.4)" />
-                <XAxis dataKey="state" fontSize={10} stroke="hsl(var(--muted-foreground))" />
+                <XAxis dataKey="bucket" fontSize={10} stroke="hsl(var(--muted-foreground))" />
                 <YAxis allowDecimals={false} fontSize={10} stroke="hsl(var(--muted-foreground))" />
                 <Tooltip
                   contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                 />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {stateData.map((_, i) => (
+                  {freshnessData.map((_, i) => (
                     <Cell key={i} fill={`hsl(${168 + i * 18} 70% 50%)`} />
                   ))}
                 </Bar>

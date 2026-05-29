@@ -6,7 +6,7 @@ import { DealEntryForm } from "@/components/deals/DealEntryForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Plus, CheckCircle2, AlertTriangle, Clock, ExternalLink, Zap } from "lucide-react";
+import { DollarSign, Plus, CheckCircle2, AlertTriangle, Clock, ExternalLink, Zap, ChevronDown, ChevronRight } from "lucide-react";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { AGENTLINK_LINKS, AGENTLINK_TAGLINE } from "@/lib/agentlink";
 import { PageHeader } from "@/components/ui/page-header";
@@ -44,9 +44,17 @@ const statusColor = (s: string) => {
   }
 };
 
+function fmtMoney(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "—";
+  return `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
 export default function MyDeals() {
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
+  // PL-048: per-row expansion for full policy info (face, term, effective,
+  // commission, status timeline, sync status) without leaving the page.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data: agentId } = useQuery({
     queryKey: ["my-agent-id", user?.id],
@@ -146,27 +154,83 @@ export default function MyDeals() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {deals.map((d: any) => (
-                <div key={d.id} className="p-3 hover:bg-muted/20 grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
-                  <div>
-                    <p className="font-medium text-sm">{d.client_first_name} {d.client_last_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {d.carrier?.name || "—"} · {d.product_sold} · #{d.policy_number}
-                    </p>
+              {deals.map((d: any) => {
+                const isOpen = expandedId === d.id;
+                return (
+                  <div key={d.id} className="hover:bg-muted/10">
+                    {/* PL-048: clickable summary row — toggles full policy detail below. */}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(isOpen ? null : d.id)}
+                      className="w-full text-left p-3 grid grid-cols-1 md:grid-cols-[20px_1fr_auto_auto_auto] gap-3 items-center"
+                      aria-expanded={isOpen}
+                    >
+                      <span className="text-muted-foreground hidden md:block">
+                        {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </span>
+                      <div>
+                        <p className="font-medium text-sm">{d.client_first_name} {d.client_last_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {d.carrier?.name || "—"} · {d.product_sold} · #{d.policy_number || "no policy #"}
+                        </p>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {d.effective_date ? format(new Date(d.effective_date), "MMM d, yyyy") : "—"}
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-sm">{fmtMoney(d.annual_premium)}</p>
+                        <p className="text-[10px] text-muted-foreground">${Number(d.monthly_premium ?? 0).toFixed(2)}/mo</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge variant="outline" className={statusColor(d.status)}>{d.status}</Badge>
+                        <SyncStatus deal={d} />
+                      </div>
+                    </button>
+                    {isOpen && (
+                      <div className="px-4 pb-4 pt-1 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-muted/10">
+                        <div>
+                          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Face amount</p>
+                          <p className="font-semibold">{fmtMoney(d.face_amount)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Term</p>
+                          <p className="font-semibold">{d.policy_term_months ? `${d.policy_term_months} mo` : "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Commission</p>
+                          <p className="font-semibold">{fmtMoney(d.commission_cents ? d.commission_cents / 100 : null)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Posted</p>
+                          <p className="font-semibold">{d.posted_at ? format(new Date(d.posted_at), "MMM d") : "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Submitted</p>
+                          <p className="font-semibold">{d.submitted_at ? format(new Date(d.submitted_at), "MMM d") : "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Chargeback</p>
+                          <p className="font-semibold">{d.chargeback_status || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Source</p>
+                          <p className="font-semibold">{d.source || "manual"}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground uppercase tracking-wider text-[10px]">External ID</p>
+                          <p className="font-semibold truncate">{d.external_deal_id || "—"}</p>
+                        </div>
+                        {d.notes && (
+                          <div className="col-span-2 md:col-span-4">
+                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Notes</p>
+                            <p className="text-foreground/80 whitespace-pre-wrap">{d.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {format(new Date(d.effective_date), "MMM d, yyyy")}
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-sm">${Number(d.annual_premium).toLocaleString()}</p>
-                    <p className="text-[10px] text-muted-foreground">${Number(d.monthly_premium).toFixed(2)}/mo</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <Badge variant="outline" className={statusColor(d.status)}>{d.status}</Badge>
-                    <SyncStatus deal={d} />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

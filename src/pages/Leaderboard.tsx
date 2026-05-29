@@ -268,8 +268,16 @@ export default function Leaderboard() {
     return row.primary.toLocaleString();
   }
 
+  // PL-051: Production rows now spell out deals × avg-ALP-per-deal so
+  // managers can see whether a leader is winning on volume or on premium
+  // size. Other boards keep their existing breakdown shape.
   function subValue(row: Row): string {
-    if (board === "production") return `${row.secondary} deal${row.secondary === 1 ? "" : "s"}`;
+    if (board === "production") {
+      const deals = row.secondary;
+      if (deals === 0) return "0 deals";
+      const avg = row.primary / deals;
+      return `${deals} deal${deals === 1 ? "" : "s"} · avg ${formatMoney(avg)} / deal`;
+    }
     if (board === "recruiting") return `${row.secondary} advanced · ${row.tertiary} contracted/first sale`;
     if (board === "referrals") return `${row.secondary} licensed · ${row.tertiary} contracted/first sale`;
     return `${row.secondary} presentations · ${row.tertiary} referral actions`;

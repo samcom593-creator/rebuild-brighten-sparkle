@@ -27,6 +27,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 const Login = lazy(() => import("./pages/Login"));
 const Apply = lazy(() => import("./pages/Apply"));
+const StateCareerLanding = lazy(() => import("./pages/StateCareerLanding"));
 
 // Lazy loaded pages (heavy or less critical)
 const LogNumbers = lazy(() => import("./pages/LogNumbers"));
@@ -184,6 +185,7 @@ const App = () => (
                 <Routes>
                   {/* Public routes */}
                   <Route path="/" element={<Index />} />
+                  <Route path="/careers/:state" element={<StateCareerLanding />} />
                   <Route path="/apply" element={<Apply />} />
                   <Route path="/apply/success" element={<ApplySuccess />} />
                   <Route path="/apply/success/licensed" element={<ApplySuccessLicensed />} />

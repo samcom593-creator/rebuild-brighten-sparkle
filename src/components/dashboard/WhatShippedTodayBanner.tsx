@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "PL-AHO-WEB-006 Per-state Career landing pages with Google for Jobs JSON-LD (10 launch states)",
+    detail: "New /careers/:state route serving 10 state-specific recruiting landing pages (FL, TX, CA, GA, AZ, NC, OH, TN, MI, PA). Each page emits Google for Jobs compatible JobPosting JSON-LD on mount: title='Life Insurance Agent — Remote in <State>', employmentType=CONTRACTOR, hiringOrganization=Apex Financial, jobLocation with PostalAddress + region, jobLocationType=TELECOMMUTE, baseSalary $60K-$250K/yr range, datePosted auto-stamps today, validThrough +60d. Page has hero CTA, stat tiles ($120K+ / 2-4 wk license / 22+ carriers), what-you-get list, requirements, bottom CTA, and cross-links to all other state pages for the internal link graph. New JsonLd helper component handles script-tag mount/cleanup so SPA route changes never leave stale schema behind. Eligible for the free Google for Jobs SERP slot for 'life insurance agent <state>' queries.",
+  },
+  {
+    ts: "today",
     label: "PL-080 Charges Audit: compact, scannable table view (now default)",
     detail: "/dashboard/charges-audit was hard to digest — every charge rendered as a full motion-card. Added a compact Table view as the new default with a Table/Cards toggle: amount, customer + email, agent on record (rose-highlighted when name mismatches), inline flag badges (name, dup, unlinked, $$, ack, refund, or 'clean'), absolute timestamp + relative age, and a tight inline action cluster (ack, refund, strike, copy id, open in Stripe). Zebra-striped rows, alternating bg, hover row highlight. Cards view kept for full per-row detail.",
   },

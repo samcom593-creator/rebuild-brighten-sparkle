@@ -350,31 +350,42 @@ export default function Leaderboard() {
                     const rankColor = RANK_ICONS[row.rank]?.color ?? "text-muted-foreground";
                     const highlight = row.rank <= 3;
 
+                    // PL-051: stronger top-3 contrast. #1 gets a gold ring +
+                    // full amber bg tint, #2/#3 get tier-appropriate fills so
+                    // the podium scans cleanly even on small viewports.
+                    const podiumStyle =
+                      row.rank === 1
+                        ? "bg-amber-500/15 ring-1 ring-amber-400/60 shadow-[0_0_12px_-2px_rgba(245,158,11,0.45)]"
+                        : row.rank === 2
+                        ? "bg-slate-300/10 ring-1 ring-slate-300/40"
+                        : row.rank === 3
+                        ? "bg-orange-400/10 ring-1 ring-orange-300/40"
+                        : "";
                     return (
                       <div
                         key={row.agent_id}
                         className={cn(
                           "flex items-center gap-3 px-4 py-3 transition-all",
-                          highlight && "bg-gradient-to-r from-amber-500/10 to-transparent",
+                          highlight && podiumStyle,
                         )}
                       >
-                        <div className={cn("w-10 text-center text-lg font-bold", rankColor)}>
+                        <div className={cn("w-10 text-center text-lg font-bold tabular-nums", rankColor, highlight && "text-shadow")}>
                           #{row.rank}
                         </div>
                         <RankIcon className={cn("h-5 w-5", rankColor)} />
                         {row.avatar_url ? (
-                          <img src={row.avatar_url} alt="" className="h-9 w-9 rounded-full ring-2 ring-border/40" />
+                          <img src={row.avatar_url} alt="" className={cn("h-9 w-9 rounded-full ring-2", row.rank === 1 ? "ring-amber-400/70" : "ring-border/40")} />
                         ) : (
                           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/50 text-xs font-semibold">
                             {(row.agent_name ?? "?").split(" ").map((part) => part[0]).slice(0, 2).join("")}
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <div className="truncate font-semibold">{row.agent_name ?? "Unknown agent"}</div>
-                          <div className="text-xs text-muted-foreground">{subValue(row)}</div>
+                          <div className={cn("truncate font-semibold", highlight && "text-foreground")}>{row.agent_name ?? "Unknown agent"}</div>
+                          <div className={cn("text-xs", highlight ? "text-foreground/75" : "text-muted-foreground")}>{subValue(row)}</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold tabular-nums text-emerald-400">{primaryValue(row)}</div>
+                          <div className={cn("font-bold tabular-nums", highlight ? "text-emerald-300" : "text-emerald-400")}>{primaryValue(row)}</div>
                           <div className="mt-0.5 flex items-center justify-end gap-1 text-xs text-muted-foreground">
                             <Clock3 className="h-3 w-3" />
                             {BOARD_META[tab].label}

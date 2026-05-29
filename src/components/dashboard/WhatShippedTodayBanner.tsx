@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "PL-045 Geographic mix widget replaced with Contact-Freshness Ladder (real data)",
+    detail: "/dashboard/client-pipeline had a 'Top 10 states' chart that rendered permanently empty because agentlink_clients.state is null for 100% of synced rows upstream. Same widget slot now shows a Contact-Freshness Ladder bar chart: Never / ≤7d / 8-30d / 31-60d / 60d+ buckets computed from last_contact_date. Real data, immediately actionable — surfaces the cold-pool size (currently ~1.6k untouched clients) so a manager can drain it. Header updated to 'Contact freshness / When were they last touched?' and old stateData useMemo removed.",
+  },
+  {
+    ts: "today",
     label: "PL-076 IG -> Discord voice channel broadcaster + strict PII guard",
     detail: "New ig-voice-broadcast edge function ships sanitized one-liners to the team's Discord voice channel: 'Another deal from <First>.' / 'Another hire — <First>.' / 'Another applicant in — <First> just sent the link.' STRICT sanitization layer: rejects any agent_first_name carrying PII (phone, email, dollar amounts, 4+ digit runs), strips to first word only, alpha + hyphen + apostrophe only, max 32 chars. Webhook URL pulled from system_settings.discord_webhook_url_voice (registered as empty so the fn returns status='disabled' until Sam pastes the URL — never errors upstream callers). Allowed_mentions stripped on outbound Discord POST so a malicious name can't @everyone. Sam-only follow-up to flip live (Discord voice-channel webhook URL + edge-fn deploy) tracked in BLOCKERS.md.",
   },

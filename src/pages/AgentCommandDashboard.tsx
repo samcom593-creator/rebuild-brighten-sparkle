@@ -1471,7 +1471,7 @@ function AgencyCommandView() {
   );
 }
 
-interface StatRowCardProps { icon: React.ElementType; label: string; value: string; color: string; }
+interface StatRowCardProps { icon: React.ElementType; label: string; value: string; color: string; onClick?: () => void; }
 function PipelineStat({
   label,
   value,
@@ -1496,14 +1496,34 @@ function PipelineStat({
   );
 }
 
-function StatRowCard({ icon: Icon, label, value, color }: StatRowCardProps) {
-  return (
-    <GlassCard className="p-4 flex items-center justify-between">
+function StatRowCard({ icon: Icon, label, value, color, onClick }: StatRowCardProps) {
+  // PL-025: rows with drilldown handlers render as buttons so keyboard and
+  // screen-reader users can open the modal too — not just mouse tappers.
+  const inner = (
+    <>
       <div className="min-w-0">
         <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
         <p className={`text-2xl font-bold tabular-nums mt-1 ${color}`}>{value}</p>
       </div>
       <Icon className={`h-6 w-6 ${color} opacity-70`} />
+    </>
+  );
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="text-left w-full hover:scale-[1.01] transition-transform"
+      >
+        <GlassCard className="p-4 flex items-center justify-between cursor-pointer hover:border-primary/40">
+          {inner}
+        </GlassCard>
+      </button>
+    );
+  }
+  return (
+    <GlassCard className="p-4 flex items-center justify-between">
+      {inner}
     </GlassCard>
   );
 }

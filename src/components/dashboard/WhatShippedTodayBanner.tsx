@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "PL-098 Onboarding curriculum: 4 modules -> 15 modules live",
+    detail: "onboarding_modules table was 4 rows tracking 205 onboarding_progress rows — barely a curriculum. Seeded 11 new modules covering the actual Apex training arc: Apex Story, Carriers & Products, Lead Sources, Dialer (ReadyMode), CRM (AgentLink + Pipeline), First Call Framework, Closing, Underwriting, Compliance (mandatory pass at 100), Commissions & Charge-backs, and the 6-Figure Path. order_index 4-14, all is_active=true, pass_threshold 80 default / 100 for Compliance. video_url currently points to Sam's @SamuelJamesHQ channel as a placeholder — swap each row's URL when the production recording drops. Migration saved at supabase/migrations/20260529000100_pl098_seed_onboarding_curriculum.sql.",
+  },
+  {
+    ts: "today",
     label: "PL-AHO-WEB-006 Per-state Career landing pages with Google for Jobs JSON-LD (10 launch states)",
     detail: "New /careers/:state route serving 10 state-specific recruiting landing pages (FL, TX, CA, GA, AZ, NC, OH, TN, MI, PA). Each page emits Google for Jobs compatible JobPosting JSON-LD on mount: title='Life Insurance Agent — Remote in <State>', employmentType=CONTRACTOR, hiringOrganization=Apex Financial, jobLocation with PostalAddress + region, jobLocationType=TELECOMMUTE, baseSalary $60K-$250K/yr range, datePosted auto-stamps today, validThrough +60d. Page has hero CTA, stat tiles ($120K+ / 2-4 wk license / 22+ carriers), what-you-get list, requirements, bottom CTA, and cross-links to all other state pages for the internal link graph. New JsonLd helper component handles script-tag mount/cleanup so SPA route changes never leave stale schema behind. Eligible for the free Google for Jobs SERP slot for 'life insurance agent <state>' queries.",
   },

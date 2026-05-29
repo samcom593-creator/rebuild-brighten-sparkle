@@ -611,6 +611,33 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
     case "/help":
       await sendTemplate(chat_id, "cmd.help");
       break;
+    case "/register": {
+      if (!isGroup) {
+        await tgSend({ chat_id, text: "Run /register inside a group/channel — not in DM." });
+        break;
+      }
+      const valid = ["lobby", "licensing", "seminar", "onboarding", "training", "wins", "ai_dm", "manager_alerts"];
+      const requested = (args ?? "").trim().toLowerCase();
+      if (!requested || !valid.includes(requested)) {
+        await tgSend({
+          chat_id,
+          text: `Usage: /register <type>\n\nValid types:\n• onboarding — new agent first 14d drip\n• lobby — top-of-funnel warm hold\n• licensing — pre-license Q&A\n• seminar — one-way blasts\n• training — persistent training library\n• wins — public proof board\n• manager_alerts — escalations only\n\nExample: /register onboarding`,
+        });
+        break;
+      }
+      const { error } = await sb
+        .from("telegram_groups")
+        .upsert({ chat_id, type: requested, is_active: true }, { onConflict: "chat_id" });
+      if (error) {
+        await tgSend({ chat_id, text: `Register failed: ${error.message}` });
+      } else {
+        await tgSend({
+          chat_id,
+          text: `Locked. This chat is now type=${requested}. Bot will route messages accordingly.`,
+        });
+      }
+      break;
+    }
     default:
       await tgSend({ chat_id, text: "Unknown command. Try /help." });
   }
@@ -665,10 +692,20 @@ async function handleMyChatMember(update: any) {
       chat_id: ev.chat.id,
       title: ev.chat.title ?? "(unnamed)",
       type: "lobby",
+      is_active: false,
     }, { onConflict: "chat_id", ignoreDuplicates: true });
     await tgSend({
       chat_id: ev.chat.id,
-      text: "Bot online here. Sam: classify this chat by updating telegram_groups.type to one of: lobby, licensing, seminar, onboarding, training, wins, ai_dm, manager_alerts.",
+      text:
+        "Bot online here. To finish setup, send:\n" +
+        "  /register onboarding   (recruit/hire pipeline)\n" +
+        "  /register lobby        (top-of-funnel)\n" +
+        "  /register licensing    (pre-license Q&A)\n" +
+        "  /register seminar      (one-way blasts)\n" +
+        "  /register training     (training library)\n" +
+        "  /register wins         (proof board)\n" +
+        "  /register manager_alerts (escalations)\n\n" +
+        "One command, one tap, you're live.",
     });
   }
 }

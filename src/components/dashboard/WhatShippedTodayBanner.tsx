@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "Telegram /register command + 7-type onboarding deeplink path live",
+    detail: "Webhook now accepts /register <type> from inside any group to classify it (onboarding, lobby, licensing, seminar, training, wins, manager_alerts). Replaces the old 'Sam: classify this chat by updating telegram_groups.type' nudge that required Sam to drop into SQL. New group join message lists every valid type with one-liner descriptions. Sam-side path is now 2 taps: tap deeplink → name group → type /register onboarding. Wired to the existing nudge-runner.py drip cron so D1/D3/D7/D14 templates fire automatically once a group flips active. Persisted at supabase/functions/telegram-webhook/index.ts + /Users/samjames/business-ops/TELEGRAM-CHANNELS.md.",
+  },
+  {
+    ts: "today",
     label: "PL-AHO-WEB-001 Apply quick-qualify path live for paid-social traffic",
     detail: "Visitors landing on /apply with ?source=ad or ?utm_medium=paid_social now see a 4-field Step 1: first name, phone, email, and licensed yes/no. Submitting that step writes an applications row with status=quick_qualified, preserves paid-social attribution, fires apply_quick_qualified analytics, saves the partial session, and moves them into the full application as Step 2. Standard traffic stays on the original 4-step application control.",
   },

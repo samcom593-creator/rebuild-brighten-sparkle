@@ -37,6 +37,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { NextStepCard } from "@/components/dashboard/NextStepCard";
 import { RegionPeerCard, UpcomingChargebackCard } from "@/components/dashboard/AgentPeerAndChargebackCards";
+import { LapsesDrilldownModal } from "@/components/dashboard/LapsesDrilldownModal";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, getDealTruthTimestamp } from "@/lib/dealTruth";
 
 // ─── Formatters ─────────────────────────────────────────────────────────────
@@ -821,6 +822,8 @@ function AgencyCommandView() {
   const [period, setPeriod] = useState<AgencyPeriod>("month");
   const [customStart, setCustomStart] = useState(() => dateInputValue(new Date(Date.now() - 6 * 86_400_000)));
   const [customEnd, setCustomEnd] = useState(() => dateInputValue(new Date()));
+  // PL-025: drilldown modal for the Lapses-30d KPI.
+  const [lapsesOpen, setLapsesOpen] = useState(false);
   const periodBounds = useMemo(
     () => getAgencyPeriodBounds(period, customStart, customEnd),
     [period, customStart, customEnd],
@@ -1444,6 +1447,7 @@ function AgencyCommandView() {
           label="Lapses · 30d"
           value={fmtNum(c?.lapses_30d ?? 0)}
           color={(c?.lapses_30d ?? 0) > 10 ? "text-rose-500 dark:text-rose-400" : "text-amber-500 dark:text-amber-400"}
+          onClick={() => setLapsesOpen(true)}
         />
         <StatRowCard
           icon={Users}
@@ -1467,6 +1471,8 @@ function AgencyCommandView() {
         <QuickAction icon={Wallet}     to="/dashboard/charges-audit"   label="Charges audit" desc="Stripe anomalies" />
         <QuickAction icon={Sparkles}   to="/dashboard/conduct"         label="Conduct center" desc="Strikes + audit" />
       </div>
+
+      <LapsesDrilldownModal open={lapsesOpen} onOpenChange={setLapsesOpen} />
     </div>
   );
 }

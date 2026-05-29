@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "PL-051 Leaderboards: stronger top-3 podium contrast + per-row deal breakdown (shipped in 460fa0ae)",
+    detail: "/dashboard/leaderboard top widget now scans clearly: #1 gets a gold ring + amber bg + glow shadow, #2 silver fill + ring, #3 bronze fill + ring. Production rows now spell out 'N deals · avg $X / deal' under each agent name so a manager can see if a leader is winning on volume or premium size. Other boards (recruiting / referrals / activity) keep their own breakdown shape. Code shipped in commit 460fa0ae alongside PL-076.",
+  },
+  {
+    ts: "today",
     label: "PL-045 Geographic mix widget replaced with Contact-Freshness Ladder (real data)",
     detail: "/dashboard/client-pipeline had a 'Top 10 states' chart that rendered permanently empty because agentlink_clients.state is null for 100% of synced rows upstream. Same widget slot now shows a Contact-Freshness Ladder bar chart: Never / ≤7d / 8-30d / 31-60d / 60d+ buckets computed from last_contact_date. Real data, immediately actionable — surfaces the cold-pool size (currently ~1.6k untouched clients) so a manager can drain it. Header updated to 'Contact freshness / When were they last touched?' and old stateData useMemo removed.",
   },

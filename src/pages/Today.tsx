@@ -243,18 +243,37 @@ export default function Today() {
     refetchInterval: 60_000,
   });
 
+  // PL-039: Shareable Huddle rebuild — punchier copy, sharper structure,
+  // surfaces top 3 (not just top 1) and the one number that decides the
+  // day (untouched applications). Single emoji-prefix line per fact so
+  // it scans cleanly when pasted into Discord/SMS/group chat.
   const huddleMessage = useMemo(() => {
     if (!data) return "";
-    const topLine = data.top5[0]
-      ? `Top producer this week: ${data.top5[0].name} at ${fmt$(data.top5[0].alp)}.`
-      : "No posted deals yet this week.";
+    const dateLine = format(new Date(), "EEEE · MMM d");
+    const top3 = data.top5
+      .slice(0, 3)
+      .map((a, i) => `  ${i + 1}. ${a.name} — ${fmt$(a.alp)}`)
+      .join("\n");
+    const topBlock = top3
+      ? `Top producers this week:\n${top3}`
+      : "No posted deals yet this week — first one sets the pace.";
+    const gapCallout =
+      data.uncontacted > 0
+        ? `🔥 ${data.uncontacted} applications still untouched — first contact wins.`
+        : `✓ Every application has been touched. Now go close.`;
     return [
-      `APEX Today · ${format(new Date(), "EEEE, MMMM d")}`,
-      `Today's ALP: ${fmt$(data.todayAlp)} from ${data.todayDeals} deals.`,
-      `Week-to-date ALP: ${fmt$(data.weekAlp)} (${data.weekDeals} deals, ${data.closeRate}% close rate).`,
-      `Pipeline: ${data.pipeline} open · ${data.uncontacted} untouched · ${data.contractedWeek} contracted this week.`,
-      `Month pace: ${fmt$(data.projection.projection)} projected from ${fmt$(data.monthAlp)} MTD.`,
-      topLine,
+      `═══ APEX HUDDLE · ${dateLine} ═══`,
+      ``,
+      `📅 Today: ${fmt$(data.todayAlp)} ALP · ${data.todayDeals} deals`,
+      `📈 Week: ${fmt$(data.weekAlp)} ALP · ${data.weekDeals} deals · ${data.closeRate}% close`,
+      `🎯 Month pace: ${fmt$(data.projection.projection)} (from ${fmt$(data.monthAlp)} MTD)`,
+      `📋 Pipeline: ${data.pipeline} open · ${data.contractedWeek} contracted this week`,
+      ``,
+      gapCallout,
+      ``,
+      topBlock,
+      ``,
+      `— Hold the Standard.`,
     ].join("\n");
   }, [data]);
 
@@ -447,19 +466,47 @@ export default function Today() {
         </GlassCard>
 
         <GlassCard className="p-5">
-          <div className="mb-3 flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /><h2 className="text-lg font-bold">Shareable Huddle</h2></div>
-          <pre className="whitespace-pre-wrap rounded-lg bg-muted/20 p-3 text-sm text-muted-foreground">{huddleMessage}</pre>
+          {/* PL-039: Shareable Huddle rebuild — header eyebrow + tighter
+              border, native Web Share API on mobile, pre block uses a
+              proper code-like card so spacing reads cleanly. */}
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-bold">Shareable Huddle</h2>
+            </div>
+            <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+              Paste into Discord / SMS
+            </span>
+          </div>
+          <pre className="whitespace-pre-wrap rounded-lg border border-border/40 bg-background/40 p-4 font-mono text-[13px] leading-relaxed text-foreground/90 shadow-inner">{huddleMessage}</pre>
           {isAdmin && (
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
                 size="sm"
                 onClick={async () => {
+                  // PL-039: prefer native share sheet on mobile; fall back
+                  // to clipboard so desktop still works clean.
+                  const canShare =
+                    typeof navigator !== "undefined" &&
+                    typeof navigator.share === "function";
+                  if (canShare) {
+                    try {
+                      await navigator.share({
+                        title: "APEX Huddle",
+                        text: huddleMessage,
+                      });
+                      toast.success("Shared huddle");
+                      return;
+                    } catch {
+                      // user canceled or share unavailable — fall through to copy
+                    }
+                  }
                   await navigator.clipboard.writeText(huddleMessage);
                   toast.success("Copied huddle summary");
                 }}
               >
                 <ClipboardCopy className="mr-2 h-4 w-4" />
-                Copy update
+                Share / Copy
               </Button>
               <Button
                 size="sm"

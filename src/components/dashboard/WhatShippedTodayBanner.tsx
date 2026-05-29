@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "PL-093 Referrals: earnings tiles + v_referral_earnings_pending view live",
+    detail: "/dashboard/referrals/mine now shows four earnings tiles above the referral list: Pending (bonus owed but not paid), Paid out (lifetime), Sent (total with won/open breakdown), and Win rate (closed-won/closed). Backed by new v_referral_earnings_pending view (per-agent rollup over v_agent_referrals: total_referrals, open/won/dead counts, bonus_owed/paid/pending in cents, last_referral_at). submit_referral RPC already wired on /dashboard/referrals/new — frontend verified, end-to-end live. Migration: supabase/migrations/20260529000200_pl093_v_referral_earnings_pending.sql.",
+  },
+  {
+    ts: "today",
     label: "PL-098 Onboarding curriculum: 4 modules -> 15 modules live",
     detail: "onboarding_modules table was 4 rows tracking 205 onboarding_progress rows — barely a curriculum. Seeded 11 new modules covering the actual Apex training arc: Apex Story, Carriers & Products, Lead Sources, Dialer (ReadyMode), CRM (AgentLink + Pipeline), First Call Framework, Closing, Underwriting, Compliance (mandatory pass at 100), Commissions & Charge-backs, and the 6-Figure Path. order_index 4-14, all is_active=true, pass_threshold 80 default / 100 for Compliance. video_url currently points to Sam's @SamuelJamesHQ channel as a placeholder — swap each row's URL when the production recording drops. Migration saved at supabase/migrations/20260529000100_pl098_seed_onboarding_curriculum.sql.",
   },

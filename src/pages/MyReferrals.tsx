@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Plus } from "lucide-react";
+import { Users, Plus, DollarSign, Trophy, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -22,6 +22,20 @@ interface AgentReferralRow {
   bonus_owed_cents: number | null;
   bonus_paid_cents: number | null;
   lifecycle: "open" | "closed_won" | "closed_dead";
+}
+
+// PL-093: per-agent earnings rollup from v_referral_earnings_pending.
+interface ReferralEarningsRow {
+  agent_id: string;
+  agent_name: string | null;
+  total_referrals: number;
+  open_count: number;
+  won_count: number;
+  dead_count: number;
+  bonus_owed_cents: number;
+  bonus_paid_cents: number;
+  bonus_pending_cents: number;
+  last_referral_at: string | null;
 }
 
 const LIFECYCLE_LABEL: Record<string, string> = {
@@ -63,6 +77,23 @@ export default function MyReferrals() {
     },
   });
 
+  // PL-093: pull this agent's earnings rollup so we can show pending bonus
+  // up top before they scroll through individual referrals.
+  const { data: earnings } = useQuery({
+    queryKey: ["my-referral-earnings", myAgentId],
+    enabled: !!myAgentId,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_referral_earnings_pending" as any)
+        .select("*")
+        .eq("agent_id", myAgentId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as ReferralEarningsRow | null;
+    },
+  });
+
   if (isLoading) return <PageLoadingSkeleton />;
 
   return (
@@ -79,6 +110,60 @@ export default function MyReferrals() {
           </Link>
         }
       />
+
+      {/* PL-093: earnings summary tiles — pending bonus visible above the fold */}
+      {earnings && earnings.total_referrals > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <DollarSign className="h-3.5 w-3.5 text-emerald-400" />
+                Pending
+              </div>
+              <p className="text-2xl font-bold tabular-nums text-emerald-400 mt-1">
+                ${(earnings.bonus_pending_cents / 100).toFixed(0)}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Owed, not paid yet</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <Trophy className="h-3.5 w-3.5 text-amber-400" />
+                Paid out
+              </div>
+              <p className="text-2xl font-bold tabular-nums mt-1">
+                ${(earnings.bonus_paid_cents / 100).toFixed(0)}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Lifetime</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <Users className="h-3.5 w-3.5" />
+                Sent
+              </div>
+              <p className="text-2xl font-bold tabular-nums mt-1">{earnings.total_referrals}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{earnings.won_count} won · {earnings.open_count} open</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <Clock className="h-3.5 w-3.5" />
+                Win rate
+              </div>
+              <p className="text-2xl font-bold tabular-nums mt-1">
+                {earnings.total_referrals - earnings.open_count > 0
+                  ? Math.round((earnings.won_count / (earnings.total_referrals - earnings.open_count)) * 100)
+                  : 0}%
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Closed-won / closed</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {(["open", "closed_won", "closed_dead"] as const).map((bucket) => {
         const rows = (data ?? []).filter((r) => r.lifecycle === bucket);

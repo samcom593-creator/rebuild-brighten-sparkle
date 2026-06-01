@@ -218,23 +218,25 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
       // Also fetch leaderboard profiles via RPC as fallback for name resolution
       const { data: rpcProfiles } = await supabase.rpc("get_leaderboard_profiles");
 
-      // All agents with production should be visible now (RLS allows authenticated SELECT)
+      // O(1) lookups instead of O(n) .find() inside .map()
+      const agentById = new Map(agents.map((a) => [a.id, a]));
+      const profileByUserIdDirect = new Map((profilesByUserId || []).map((p) => [p.user_id, p]));
+      const profileByUserIdRpc = new Map((rpcProfiles || []).map((p: any) => [p.user_id, p]));
+
       const allowedAgentIds = new Set(agents.map((a) => a.id));
       const visibleAgentIds = agentIds.filter((id) => allowedAgentIds.has(id));
 
       const leaderboardEntries: LeaderboardEntry[] = visibleAgentIds.map((agentId) => {
-        const agent = agents.find((a) => a.id === agentId);
-        // First check profile via profile_id (for imported agents), then via user_id
+        const agent = agentById.get(agentId);
         const profileViaId = agent?.profile as { full_name?: string; avatar_url?: string } | null;
-        const profileViaUserId = profilesByUserId?.find((p) => p.user_id === agent?.user_id);
+        const profileViaUserId = agent?.user_id ? profileByUserIdDirect.get(agent.user_id) : undefined;
         const totals = agentTotals[agentId];
-        
+
         const avgClosingRate = totals.closingRates.length > 0
           ? totals.closingRates.reduce((a, b) => a + b, 0) / totals.closingRates.length
           : getCloseRate(totals.deals, totals.presentations);
 
-        // Name fallback: profile_id profile -> user_id profile -> RPC profile -> display_name -> Unknown
-        const rpcProfile = rpcProfiles?.find((p: any) => p.user_id === agent?.user_id);
+        const rpcProfile = agent?.user_id ? profileByUserIdRpc.get(agent.user_id) : undefined;
         const displayName = profileViaId?.full_name || profileViaUserId?.full_name || rpcProfile?.full_name || agent?.display_name || "Unknown Agent";
         const avatarUrl = profileViaId?.avatar_url || profileViaUserId?.avatar_url || rpcProfile?.avatar_url;
 

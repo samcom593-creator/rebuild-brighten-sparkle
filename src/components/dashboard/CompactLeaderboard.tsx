@@ -274,13 +274,16 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
       const { data: allLeaderboardProfiles } = await supabase.rpc("get_leaderboard_profiles");
       const profiles = (allLeaderboardProfiles || []).filter((p: any) => userIdSet.has(p.user_id));
 
-      // Only include agents we can actually load (handles inactive/deactivated + deleted + RLS visibility)
+      // O(1) lookups instead of O(n) .find() inside .map()
+      const agentById = new Map(agents.map((a) => [a.id, a]));
+      const profileByUserId = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+
       const allowedAgentIds = new Set(agents.map((a) => a.id));
       const visibleAgentIds = agentIds.filter((id) => allowedAgentIds.has(id));
 
       const leaderboardEntries: LeaderboardEntry[] = visibleAgentIds.map((agentId) => {
-        const agent = agents.find((a) => a.id === agentId);
-        const profile = profiles?.find((p) => p.user_id === agent?.user_id);
+        const agent = agentById.get(agentId);
+        const profile = agent?.user_id ? profileByUserId.get(agent.user_id) : undefined;
         const totals = agentTotals[agentId];
 
         return {

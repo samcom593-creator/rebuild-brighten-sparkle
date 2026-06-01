@@ -149,23 +149,17 @@ export function LeadImporter({ className }: { className?: string }) {
     }
 
     setImporting(true);
-    let successCount = 0;
-    let errorCount = 0;
 
-    for (const lead of parsedLeads) {
-      const { error } = await supabase.from("applications").insert({
-        ...lead,
-        assigned_agent_id: selectedManager,
-        status: "new",
-      });
+    const rows = parsedLeads.map((lead) => ({
+      ...lead,
+      assigned_agent_id: selectedManager,
+      status: "new",
+    }));
 
-      if (error) {
-        console.error("Error importing lead:", error);
-        errorCount++;
-      } else {
-        successCount++;
-      }
-    }
+    const { error } = await supabase.from("applications").insert(rows);
+    const successCount = error ? 0 : rows.length;
+    const errorCount = error ? rows.length : 0;
+    if (error) console.error("Error importing leads:", error);
 
     setImporting(false);
 

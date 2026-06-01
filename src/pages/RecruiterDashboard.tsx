@@ -916,6 +916,8 @@ function RecruiterDashboardInner() {
   const [filterStage, setFilterStage] = useState<string>("all");
   const [xp, setXp] = useState(0);
   const [xpToast, setXpToast] = useState<string | null>(null);
+  const xpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (xpTimerRef.current) clearTimeout(xpTimerRef.current); }, []);
   const [advancedToday, setAdvancedToday] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
@@ -1019,7 +1021,8 @@ function RecruiterDashboardInner() {
       return next;
     });
     setXpToast(`+${pts} XP — ${label}`);
-    setTimeout(() => setXpToast(null), 2500);
+    if (xpTimerRef.current) clearTimeout(xpTimerRef.current);
+    xpTimerRef.current = setTimeout(() => setXpToast(null), 2500);
   }, []);
 
   const triggerCelebrate = useCallback(() => {

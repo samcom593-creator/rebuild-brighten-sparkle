@@ -106,11 +106,11 @@ export function AllLeadsPanel() {
         .select("user_id, full_name")
         .in("user_id", userIds);
 
-      // Build agent name map
+      // O(1) Map lookup instead of O(n) .find() inside .forEach()
+      const profileByUserId = new Map((profiles || []).map((p) => [p.user_id, p]));
       const agentNameMap: Record<string, string> = {};
       agents?.forEach((agent) => {
-        const profile = profiles?.find((p) => p.user_id === agent.user_id);
-        agentNameMap[agent.id] = profile?.full_name || "Unknown";
+        agentNameMap[agent.id] = profileByUserId.get(agent.user_id)?.full_name || "Unknown";
       });
 
       // Transform applications

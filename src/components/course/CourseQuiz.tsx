@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle, XCircle, ArrowRight, RotateCcw, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,9 @@ export function CourseQuiz({
   const [submitting, setSubmitting] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current); }, []);
+
   const currentQuestion = questions[currentIndex];
   const selectedAnswer = answers[currentIndex];
   const isLastQuestion = currentIndex === questions.length - 1;
@@ -47,8 +50,7 @@ export function CourseQuiz({
 
   const handleNext = () => {
     setShowFeedback(true);
-    
-    setTimeout(() => {
+    feedbackTimerRef.current = setTimeout(() => {
       setShowFeedback(false);
       if (isLastQuestion) {
         calculateResults();

@@ -69,6 +69,8 @@ export default function CallCenter() {
   const [currentTranscription, setCurrentTranscription] = useState("");
   const [showContractedModal, setShowContractedModal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const confettiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (confettiTimerRef.current) clearTimeout(confettiTimerRef.current); }, []);
   const [showHireConfirm, setShowHireConfirm] = useState(false);
   // Schedule Meeting modal — Sam: "fix the schedule button, actually
   // work a schedule a meeting." It was never wired into CallCenter.
@@ -470,7 +472,7 @@ export default function CallCenter() {
         }).catch(err => console.error("Failed to send hire announcement:", err));
 
         setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 3000);
+        confettiTimerRef.current = setTimeout(() => setShowConfetti(false), 3000);
         toast.success("Lead marked as hired - follow-up email sent!");
         playSound("celebrate");
       } else if (actionId === "no_pickup") {

@@ -216,20 +216,25 @@ function computeMetrics(leads: Lead[]) {
   const total = leads.length;
   if (total === 0) return { contactRate: 0, licenseRate: 0, avgDaysToLicensed: 0, overdueRate: 0 };
 
-  const contacted = leads.filter((l) => l.last_contacted_at || l.contacted_at).length;
-  const licensed = leads.filter((l) => l.license_progress === "licensed").length;
-  const overdue = leads.filter(isOverdue).length;
+  let contacted = 0, licensed = 0, overdue = 0;
+  let licensedDaysSum = 0, licensedWithContact = 0;
 
-  // Avg days to licensed — from created_at to contacted_at for licensed leads
-  const licensedLeads = leads.filter((l) => l.license_progress === "licensed" && l.contacted_at);
-  const avgDays = licensedLeads.length > 0
-    ? Math.round(licensedLeads.reduce((sum, l) => sum + differenceInDays(new Date(l.contacted_at!), new Date(l.created_at)), 0) / licensedLeads.length)
-    : 0;
+  for (const l of leads) {
+    if (l.last_contacted_at || l.contacted_at) contacted++;
+    if (l.license_progress === "licensed") {
+      licensed++;
+      if (l.contacted_at) {
+        licensedDaysSum += differenceInDays(new Date(l.contacted_at), new Date(l.created_at));
+        licensedWithContact++;
+      }
+    }
+    if (isOverdue(l)) overdue++;
+  }
 
   return {
     contactRate: Math.round((contacted / total) * 100),
     licenseRate: Math.round((licensed / total) * 100),
-    avgDaysToLicensed: avgDays,
+    avgDaysToLicensed: licensedWithContact > 0 ? Math.round(licensedDaysSum / licensedWithContact) : 0,
     overdueRate: Math.round((overdue / total) * 100),
   };
 }
@@ -1021,15 +1026,19 @@ function RecruiterDashboardInner() {
     playSound("celebrate");
   }, [playSound]);
 
-  // Computed stats
-  const totalLeads = leads.length;
-  const needsContact = leads.filter((l) => getLastContactAge(l) > 48 * 3600 * 1000 || getLastContactAge(l) === Infinity).length;
-  const inProgress = leads.filter((l) => l.license_progress && l.license_progress !== "unlicensed" && l.license_progress !== "licensed").length;
-  const thisMonth = leads.filter((l) => {
-    const d = new Date(l.created_at);
+  // Computed stats — single pass over leads to avoid 7 separate filter calls each render
+  const { totalLeads, needsContact, inProgress, thisMonth } = useMemo(() => {
     const now = new Date();
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }).length;
+    let needsContact = 0, inProgress = 0, thisMonth = 0;
+    for (const l of leads) {
+      const age = getLastContactAge(l);
+      if (age > 48 * 3600 * 1000 || age === Infinity) needsContact++;
+      if (l.license_progress && l.license_progress !== "unlicensed" && l.license_progress !== "licensed") inProgress++;
+      const d = new Date(l.created_at);
+      if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) thisMonth++;
+    }
+    return { totalLeads: leads.length, needsContact, inProgress, thisMonth };
+  }, [leads]);
 
   // Filter + sort + focus mode
   const filtered = useMemo(() => {

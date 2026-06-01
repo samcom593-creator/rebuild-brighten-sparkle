@@ -495,9 +495,15 @@ export default function DashboardApplicants() {
     }
   };
 
-  // Split applications into active and terminated
-  const activeApplications = applications.filter(app => !app.terminated_at);
-  const terminatedApplications = applications.filter(app => app.terminated_at);
+  // Split applications into active and terminated — stable refs via useMemo
+  const activeApplications = useMemo(
+    () => applications.filter(app => !app.terminated_at),
+    [applications]
+  );
+  const terminatedApplications = useMemo(
+    () => applications.filter(app => app.terminated_at),
+    [applications]
+  );
 
   // Map applications to PipelineCardData for Kanban
   const kanbanApps: PipelineCardData[] = useMemo(() =>
@@ -523,64 +529,70 @@ export default function DashboardApplicants() {
   // When status filter is "terminated", filter from terminated list instead
   const baseApplications = statusFilter === "terminated" ? terminatedApplications : activeApplications;
 
-  const filteredApplications = baseApplications
-    .filter((app) => {
-      const q = searchQuery.toLowerCase();
-      const name = `${app.first_name} ${app.last_name}`.toLowerCase();
-      const matchesSearch = !q || name.includes(q) ||
-        app.email.toLowerCase().includes(q) ||
-        (app.phone && app.phone.includes(q));
-      
-      const appStatus = getApplicationStatus(app);
-      const matchesStatus = statusFilter === "all" || statusFilter === "terminated" || appStatus === statusFilter;
-      const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
-      const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
-      const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
+  const filteredApplications = useMemo(() =>
+    baseApplications
+      .filter((app) => {
+        const q = searchQuery.toLowerCase();
+        const name = `${app.first_name} ${app.last_name}`.toLowerCase();
+        const matchesSearch = !q || name.includes(q) ||
+          app.email.toLowerCase().includes(q) ||
+          (app.phone && app.phone.includes(q));
 
-      // ?contacted=untouched → only rows where contacted_at AND last_contacted_at are null
-      // ?contacted=recent → rows touched in last 24h
-      const matchesContacted =
-        contactedParam === "untouched"
-          ? !app.contacted_at && !(app as any).last_contacted_at
-          : contactedParam === "recent"
-          ? (app as any).last_contacted_at && new Date((app as any).last_contacted_at).getTime() > Date.now() - 86_400_000
-          : true;
+        const appStatus = getApplicationStatus(app);
+        const matchesStatus = statusFilter === "all" || statusFilter === "terminated" || appStatus === statusFilter;
+        const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
+        const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
+        const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
 
-      // Stage filter from query string (?stage=in_course etc.)
-      let matchesStage = true;
-      if (stageFilter) {
-        const lp = (app as any).license_progress;
-        const map: Record<string, string[]> = {
-          pre_course: ["unlicensed", "not_started", "applied"],
-          in_course: ["course_purchased", "in_course", "studying"],
-          exam_scheduled: ["test_scheduled", "exam_scheduled"],
-          passed: ["passed_test", "exam_passed", "test_passed"],
-          pending_state: ["fingerprints_done", "waiting_on_license", "pending_state"],
-        };
-        const allowed = map[stageFilter] || [];
-        if (stageFilter === "pre_course") {
-          matchesStage = !lp || allowed.includes(lp);
-        } else {
-          matchesStage = allowed.includes(lp);
+        // ?contacted=untouched → only rows where contacted_at AND last_contacted_at are null
+        // ?contacted=recent → rows touched in last 24h
+        const matchesContacted =
+          contactedParam === "untouched"
+            ? !app.contacted_at && !(app as any).last_contacted_at
+            : contactedParam === "recent"
+            ? (app as any).last_contacted_at && new Date((app as any).last_contacted_at).getTime() > Date.now() - 86_400_000
+            : true;
+
+        // Stage filter from query string (?stage=in_course etc.)
+        let matchesStage = true;
+        if (stageFilter) {
+          const lp = (app as any).license_progress;
+          const map: Record<string, string[]> = {
+            pre_course: ["unlicensed", "not_started", "applied"],
+            in_course: ["course_purchased", "in_course", "studying"],
+            exam_scheduled: ["test_scheduled", "exam_scheduled"],
+            passed: ["passed_test", "exam_passed", "test_passed"],
+            pending_state: ["fingerprints_done", "waiting_on_license", "pending_state"],
+          };
+          const allowed = map[stageFilter] || [];
+          if (stageFilter === "pre_course") {
+            matchesStage = !lp || allowed.includes(lp);
+          } else {
+            matchesStage = allowed.includes(lp);
+          }
         }
-      }
 
-      return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot && matchesStage && matchesContacted;
-    })
-    .sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime();
-      const dateB = new Date(b.created_at).getTime();
-      return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
-    });
+        return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot && matchesStage && matchesContacted;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
+      }),
+    [baseApplications, searchQuery, statusFilter, licenseFilter, myDirectsOnly, hotLeadsOnly, contactedParam, stageFilter, sortOrder, agentId]
+  );
 
-  // Stats - exclude terminated from active stats
-  const totalLeads = activeApplications.length;
-  const hired = activeApplications.filter(a => a.closed_at && !a.contracted_at).length;
-  const contracted = activeApplications.filter(a => a.contracted_at).length;
-  const coursePurchased = activeApplications.filter(a => {
-    const lp = a.license_progress as string | null;
-    return lp === "course_purchased" || lp === "finished_course";
-  }).length;
+  // Stats - exclude terminated from active stats — single pass
+  const { totalLeads, hired, contracted, coursePurchased } = useMemo(() => {
+    let hired = 0, contracted = 0, coursePurchased = 0;
+    for (const a of activeApplications) {
+      if (a.closed_at && !a.contracted_at) hired++;
+      if (a.contracted_at) contracted++;
+      const lp = a.license_progress as string | null;
+      if (lp === "course_purchased" || lp === "finished_course") coursePurchased++;
+    }
+    return { totalLeads: activeApplications.length, hired, contracted, coursePurchased };
+  }, [activeApplications]);
 
   // Helper for urgency badge
   const getUrgencyBadge = (app: Application) => {

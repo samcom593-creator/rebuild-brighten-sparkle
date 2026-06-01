@@ -183,17 +183,12 @@ export function BulkStageActions({
 
     setLoading(true);
     try {
-      let sentCount = 0;
-      for (const agent of liveAgents) {
-        try {
-          await supabase.functions.invoke("send-agent-portal-login", {
-            body: { agentId: agent.id }
-          });
-          sentCount++;
-        } catch (err) {
-          console.error(`Failed to send portal login to ${agent.name}:`, err);
-        }
-      }
+      const results = await Promise.allSettled(
+        liveAgents.map((agent) =>
+          supabase.functions.invoke("send-agent-portal-login", { body: { agentId: agent.id } })
+        )
+      );
+      const sentCount = results.filter((r) => r.status === "fulfilled").length;
       toast.success(`Sent portal logins to ${sentCount} agent${sentCount > 1 ? "s" : ""}`);
     } catch (error) {
       console.error("Error sending bulk portal logins:", error);

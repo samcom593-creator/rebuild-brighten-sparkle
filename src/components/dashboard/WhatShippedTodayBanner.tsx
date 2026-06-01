@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "perf: 4 more perf fixes — video listener churn, filteredApplications, RecruiterDashboard stats, N+1 portal logins",
+    detail: "CourseVideoPlayer: useEffect dep on localProgress caused listeners + save timer to re-register on every progress tick → moved callbacks into refs, mount-only effect. DashboardApplicants: activeApplications/terminatedApplications/filteredApplications all re-derived every render → 3 useMemo wraps + stats consolidated to single-pass loop. RecruiterDashboard: computeMetrics had 4 filter passes + render body had 3 more → all merged to single for-loop + useMemo. BulkStageActions: serial for-loop awaiting 1 edge call per agent → Promise.allSettled (parallel).",
+  },
+  {
+    ts: "today",
     label: "perf: 4 performance fixes — batch queries, useMemo, kill 1s tick",
     detail: "AISummaryReport: 5 sequential count queries → Promise.all (parallel, ~5x faster). CourseProgressPanel: 5 .filter() passes per render → single useMemo loop (O(n) once, not O(5n)). BulkStageActions: N+1 serial loop per agent → single batch upsert + single batch insert + parallel edge fn calls; also memoized selectedAgents/canAdvance/canRevert. SupabaseHealthBanner: 1s setInterval that caused 3,600 banner re-renders/hr → isolated ElapsedSince + SecondsSince child components that only mount and tick when the banner is actually visible (during an outage).",
   },

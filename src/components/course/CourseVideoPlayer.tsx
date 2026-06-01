@@ -327,30 +327,36 @@ function NativeVideoPlayer({
   const completedRef = useRef(watchedPercent >= UNLOCK_THRESHOLD);
   const maxWatchedRef = useRef(0);
   const saveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const localProgressRef = useRef(watchedPercent);
+  const onProgressUpdateRef = useRef(onProgressUpdate);
+  const onVideoCompleteRef = useRef(onVideoComplete);
+
+  // Keep callback refs current without re-mounting the effect
+  onProgressUpdateRef.current = onProgressUpdate;
+  onVideoCompleteRef.current = onVideoComplete;
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const handleTimeUpdate = () => {
-      // Update max watched position
       if (video.currentTime > maxWatchedRef.current) {
         maxWatchedRef.current = video.currentTime;
       }
 
       const percent = Math.round((maxWatchedRef.current / video.duration) * 100);
-      if (percent > localProgress) {
+      if (percent > localProgressRef.current) {
+        localProgressRef.current = percent;
         setLocalProgress(percent);
-        onProgressUpdate(percent);
+        onProgressUpdateRef.current(percent);
       }
       if (percent >= UNLOCK_THRESHOLD && !completedRef.current) {
         completedRef.current = true;
-        onVideoComplete();
+        onVideoCompleteRef.current();
       }
     };
 
     const handleSeeking = () => {
-      // Snap back if user tries to skip ahead
       if (video.currentTime > maxWatchedRef.current + 1) {
         video.currentTime = maxWatchedRef.current;
       }
@@ -363,7 +369,7 @@ function NativeVideoPlayer({
     saveTimerRef.current = setInterval(() => {
       if (video.duration > 0) {
         const pct = Math.round((maxWatchedRef.current / video.duration) * 100);
-        if (pct > 0) onProgressUpdate(pct);
+        if (pct > 0) onProgressUpdateRef.current(pct);
       }
     }, 15000);
 
@@ -372,7 +378,7 @@ function NativeVideoPlayer({
       video.removeEventListener("seeking", handleSeeking);
       if (saveTimerRef.current) clearInterval(saveTimerRef.current);
     };
-  }, [localProgress, onProgressUpdate, onVideoComplete]);
+  }, []); // mount-only — refs carry live callbacks and current progress
 
   const handleSpeedChange = (speed: number) => {
     setPlaybackSpeed(speed);

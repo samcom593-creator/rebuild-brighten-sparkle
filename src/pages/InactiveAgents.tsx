@@ -61,6 +61,8 @@ const REASON_LABEL: Record<string, string> = {
   manual_flag: "Flagged manually",
 };
 
+type ProducerSegment = "all" | "never_sold" | "sold_at_least_one" | "sold_only_one";
+
 export default function InactiveAgents() {
   const { user, isAdmin, isManager } = useAuth();
   const queryClient = useQueryClient();
@@ -69,6 +71,9 @@ export default function InactiveAgents() {
   const [severityFilter, setSeverityFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [scanning, setScanning] = useState(false);
+  // PL-063: CRM-grade segmentation — never sold, sold at least one,
+  // sold exactly one. Each group needs different outreach pressure.
+  const [segment, setSegment] = useState<ProducerSegment>("all");
 
   const canAccess = isAdmin || isManager;
 
@@ -88,8 +93,13 @@ export default function InactiveAgents() {
     enabled: canAccess,
   });
 
+  const sortedAgentIds = useMemo(
+    () => [...entries.map((e) => e.agent_id)].sort(),
+    [entries],
+  );
+
   const { data: agentInfo = [] } = useQuery({
-    queryKey: ["inactive-agents-info", entries.map((e) => e.agent_id).join(",")],
+    queryKey: ["inactive-agents-info", sortedAgentIds],
     queryFn: async (): Promise<AgentInfo[]> => {
       if (entries.length === 0) return [];
       const { data } = await supabase
@@ -123,10 +133,48 @@ export default function InactiveAgents() {
 
   const agentMap = useMemo(() => new Map(agentInfo.map((a) => [a.id, a])), [agentInfo]);
 
+  // PL-063: deal count per inactive agent for CRM segmentation.
+  const { data: dealCounts = {} } = useQuery({
+    queryKey: ["inactive-agents-deal-counts", sortedAgentIds],
+    queryFn: async (): Promise<Record<string, number>> => {
+      if (entries.length === 0) return {};
+      const { data } = await supabase
+        .from("deals")
+        .select("agent_id")
+        .in("agent_id", entries.map((e) => e.agent_id))
+        .in("status", ["active", "submitted"]);
+      const counts: Record<string, number> = {};
+      for (const row of (data as Array<{ agent_id: string }>) ?? []) {
+        counts[row.agent_id] = (counts[row.agent_id] ?? 0) + 1;
+      }
+      return counts;
+    },
+    enabled: entries.length > 0,
+  });
+
+  const segmentCounts = useMemo(() => {
+    let neverSold = 0, atLeastOne = 0, onlyOne = 0;
+    for (const e of entries) {
+      const n = dealCounts[e.agent_id] ?? 0;
+      if (n === 0) neverSold += 1;
+      else {
+        atLeastOne += 1;
+        if (n === 1) onlyOne += 1;
+      }
+    }
+    return { neverSold, atLeastOne, onlyOne };
+  }, [entries, dealCounts]);
+
   const filtered = useMemo(() => {
-    if (!search) return entries;
     const q = search.toLowerCase();
     return entries.filter((e) => {
+      // PL-063: segment filter first.
+      const dealN = dealCounts[e.agent_id] ?? 0;
+      if (segment === "never_sold" && dealN !== 0) return false;
+      if (segment === "sold_at_least_one" && dealN === 0) return false;
+      if (segment === "sold_only_one" && dealN !== 1) return false;
+
+      if (!search) return true;
       const a = agentMap.get(e.agent_id);
       if (!a) return false;
       return (
@@ -135,7 +183,7 @@ export default function InactiveAgents() {
         a.phone?.includes(q)
       );
     });
-  }, [entries, search, agentMap]);
+  }, [entries, search, agentMap, segment, dealCounts]);
 
   const stats = useMemo(() => {
     const result = { warning: 0, critical: 0, abandoned: 0, total: entries.length };
@@ -296,6 +344,28 @@ export default function InactiveAgents() {
           <p className="text-2xl font-bold">{stats.total}</p>
           <p className="text-[10px] text-muted-foreground">Showing: {statusFilter}</p>
         </div>
+      </div>
+
+      {/* PL-063: Producer segment tabs. Each group needs different outreach. */}
+      <div className="flex items-center gap-1 rounded-xl border border-border/40 bg-muted/30 p-1 flex-wrap">
+        {([
+          { key: "all" as ProducerSegment,                label: "All",                  count: entries.length },
+          { key: "never_sold" as ProducerSegment,         label: "Never sold",           count: segmentCounts.neverSold },
+          { key: "sold_at_least_one" as ProducerSegment,  label: "Sold ≥ 1",             count: segmentCounts.atLeastOne },
+          { key: "sold_only_one" as ProducerSegment,      label: "Sold only one",        count: segmentCounts.onlyOne },
+        ]).map(({ key, label, count }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setSegment(key)}
+            className={
+              "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors " +
+              (segment === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")
+            }
+          >
+            {label} <span className="opacity-70">({count})</span>
+          </button>
+        ))}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">

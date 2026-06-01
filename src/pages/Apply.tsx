@@ -330,7 +330,7 @@ export default function Apply() {
   // landing_live_stats() RPC the LiveStatsCounterStrip + CTASection use so the
   // ribbon can never silently drift past the roster — fake-success killer.
   const { data: liveStats } = useQuery({
-    queryKey: ["landing_live_stats_apply"],
+    queryKey: ["landing_live_stats"],
     queryFn: async (): Promise<{ active_agents: number; carriers_partnered: number } | null> => {
       const { data, error } = await supabase.rpc("landing_live_stats");
       if (error) throw error;

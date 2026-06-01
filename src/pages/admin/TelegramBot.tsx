@@ -129,6 +129,7 @@ export default function TelegramBot() {
   const { data: dash, isLoading: loadingDash } = useQuery<Dashboard | null>({
     queryKey: ["telegram-dashboard"],
     refetchInterval: 30_000,
+    staleTime: 25_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("v_telegram_dashboard").select("*").maybeSingle();
       if (error) throw error;
@@ -139,6 +140,7 @@ export default function TelegramBot() {
   const { data: funnel } = useQuery<FunnelRow[]>({
     queryKey: ["telegram-funnel"],
     refetchInterval: 60_000,
+    staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("v_telegram_funnel").select("*");
       if (error) throw error;
@@ -149,6 +151,7 @@ export default function TelegramBot() {
   const { data: stuck } = useQuery<StuckUser[]>({
     queryKey: ["telegram-stuck"],
     refetchInterval: 60_000,
+    staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("v_telegram_stuck_users").select("*").limit(50);
       if (error) throw error;
@@ -159,6 +162,7 @@ export default function TelegramBot() {
   const { data: escalations } = useQuery<Escalation[]>({
     queryKey: ["telegram-escalations"],
     refetchInterval: 30_000,
+    staleTime: 25_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("telegram_escalations")
@@ -183,6 +187,7 @@ export default function TelegramBot() {
   const { data: groups } = useQuery<Group[]>({
     queryKey: ["telegram-groups"],
     refetchInterval: 60_000,
+    staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("telegram_groups")
@@ -210,6 +215,7 @@ export default function TelegramBot() {
   const { data: hqGroups } = useQuery<Group[]>({
     queryKey: ["telegram-hq-groups"],
     refetchInterval: 60_000,
+    staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("telegram_groups")
@@ -240,6 +246,7 @@ export default function TelegramBot() {
   const { data: proof } = useQuery<TelegramProof>({
     queryKey: ["telegram-proof"],
     refetchInterval: 30_000,
+    staleTime: 25_000,
     queryFn: async () => {
       const [recent, users, settings] = await Promise.all([
         supabase

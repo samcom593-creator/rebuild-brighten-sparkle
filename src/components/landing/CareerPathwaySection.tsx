@@ -248,7 +248,7 @@ const whyAgentsChoose = [
 
 export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathwaySection(_props, _ref) {
   const { data: liveStats } = useQuery({
-    queryKey: ["landing_live_stats_career"],
+    queryKey: ["landing_live_stats"],
     queryFn: async (): Promise<LandingLiveStats | null> => {
       const { data, error } = await supabase.rpc("landing_live_stats");
       if (error) throw error;

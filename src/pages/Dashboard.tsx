@@ -813,7 +813,7 @@ export default function Dashboard() {
   }, [currentAgent.data?.id, downline.data, effectiveRole]);
 
   const snapshotQuery = useQuery({
-    queryKey: ["launch-dashboard-snapshot", user?.id, effectiveRole, scopedAgentIds?.join(",") ?? "agency"],
+    queryKey: ["launch-dashboard-snapshot", user?.id, effectiveRole, scopedAgentIds ? [...scopedAgentIds].sort() : "agency"],
     queryFn: () => loadDashboardSnapshot(effectiveRole, user!.id, scopedAgentIds),
     enabled: Boolean(user?.id) && !currentAgent.isLoading && !downline.isLoading,
     staleTime: 60_000,

@@ -154,6 +154,7 @@ export default function AgentCommandDashboard() {
     queryKey: ["cc-self", agentId],
     enabled: !!agentId,
     refetchInterval: 60_000,
+    staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_agent_command_center" as any)
@@ -834,6 +835,7 @@ function AgencyCommandView() {
   const ceo = useQuery({
     queryKey: ["agency-ceo"],
     refetchInterval: 60_000,
+    staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_ceo_command_center" as any)
@@ -850,6 +852,7 @@ function AgencyCommandView() {
   const periodDeals = useQuery({
     queryKey: ["agency-period-deals", periodBounds.startIso, periodBounds.endIso],
     refetchInterval: 60_000,
+    staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("deals" as any)
@@ -908,6 +911,7 @@ function AgencyCommandView() {
   const periodDealsAllStatuses = useQuery({
     queryKey: ["agency-period-deals-all", periodBounds.startIso, periodBounds.endIso],
     refetchInterval: 120_000,
+    staleTime: 115_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("deals" as any)
@@ -982,6 +986,7 @@ function AgencyCommandView() {
   const priorPeriodDeals = useQuery({
     queryKey: ["agency-prior-period-deals", periodBounds.startIso, periodBounds.endIso],
     refetchInterval: 120_000,
+    staleTime: 115_000,
     queryFn: async () => {
       const start = new Date(periodBounds.startIso);
       const end = new Date(periodBounds.endIso);
@@ -1009,6 +1014,7 @@ function AgencyCommandView() {
   const recentHires = useQuery({
     queryKey: ["agency-recent-hires", periodBounds.startIso],
     refetchInterval: 60_000,
+    staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_recent_hires" as any)
@@ -1067,6 +1073,7 @@ function AgencyCommandView() {
   const tight = useQuery({
     queryKey: ["agency-tight-counts", periodBounds.startIso, periodBounds.endIso],
     refetchInterval: 60_000,
+    staleTime: 55_000,
     queryFn: async () => {
       const since10 = new Date(Date.now() - 10 * 86_400_000).toISOString();
       const [dealAgents, prodAgents, licensedMtdRes, contractedMtdRes, inCourseRes, finishedRes, examScheduledRes] = await Promise.all([

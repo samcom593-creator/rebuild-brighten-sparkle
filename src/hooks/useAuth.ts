@@ -187,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [handleSession]);
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -199,20 +199,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
     return { data, error };
-  };
+  }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     return { data, error };
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
     return { error };
-  };
+  }, []);
 
   const hasRole = (role: "admin" | "manager" | "agent") => {
     return roles.some((r) => r.role === role);

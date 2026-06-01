@@ -20,7 +20,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
   // never claims a number that isn't true. Prior copy said "thousands of
   // agents" — actual roster is ~95. Fake-success killer.
   const { data: liveStats } = useQuery({
-    queryKey: ["landing_live_stats_cta"],
+    queryKey: ["landing_live_stats"],
     queryFn: async (): Promise<LandingLiveStats | null> => {
       const { data, error } = await supabase.rpc("landing_live_stats");
       if (error) throw error;

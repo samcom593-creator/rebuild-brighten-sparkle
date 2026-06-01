@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,8 +59,10 @@ export function ManagerHierarchyMtdPanel() {
     refetchInterval: 5 * 60_000,
   });
 
-  const totalAgencyAlp = (managers ?? []).reduce((s, m) => s + Number(m.team_alp_mtd ?? 0), 0);
-  const totalAgencyDeals = (managers ?? []).reduce((s, m) => s + Number(m.team_deals_mtd ?? 0), 0);
+  const { totalAgencyAlp, totalAgencyDeals } = useMemo(() => ({
+    totalAgencyAlp: (managers ?? []).reduce((s, m) => s + Number(m.team_alp_mtd ?? 0), 0),
+    totalAgencyDeals: (managers ?? []).reduce((s, m) => s + Number(m.team_deals_mtd ?? 0), 0),
+  }), [managers]);
 
   return (
     <Card className="ops-card-depth border-[#22d3a5]/20 bg-gradient-to-br from-[#22d3a5]/[0.04] via-card to-card">

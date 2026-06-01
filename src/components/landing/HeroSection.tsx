@@ -54,9 +54,9 @@ const carriers = [
 ];
 
 const stats = [
-  { icon: TrendingUp, label: "Commission-based upside", value: "Performance paid", color: "text-emerald-400" },
-  { icon: Users, label: "Warm-lead access", value: "Lead flow ready", color: "text-cyan-400" },
-  { icon: Shield, label: "No experience required", value: "We train you", color: "text-amber-400" },
+  { icon: TrendingUp, label: "Commission contracts", value: "70%–145%", color: "text-emerald-400" },
+  { icon: Users, label: "Carriers on contract", value: "22 carriers", color: "text-cyan-400" },
+  { icon: Shield, label: "Course included, no fee", value: "Licensed in 4 wks", color: "text-amber-400" },
 ];
 
 export function HeroSection() {
@@ -208,9 +208,9 @@ export function HeroSection() {
 
           {/* Subheadline */}
           <p className="landing-fade-up landing-delay-200 text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed">
-            Join the fastest-growing life insurance agency in America. Leads, training,
-            carriers, and a recruiting path — all in one operating system. Licensed
-            or starting out, we build the engine you sell on.
+            Warm leads on your phone. 22 carriers ready. Weekly pay. A team that
+            already did $120K/mo. Licensed or starting from zero, the path is the
+            same: apply, get trained, start writing.
           </p>
 
           {/* CTAs — magnetic glow primary + trust-tail microcopy.

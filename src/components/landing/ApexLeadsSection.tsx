@@ -68,11 +68,11 @@ export function ApexLeadsSection() {
         <div className="text-center mb-12">
           <div className="text-xs tracking-[0.3em] text-primary uppercase mb-4" style={{ fontFamily: "Syne" }}>APEX LEAD MARKETPLACE</div>
           <h2 className="text-3xl md:text-5xl font-extrabold text-white mb-4" style={{ fontFamily: "Syne", lineHeight: 1.1 }}>
-            Warm Leads. Real Conversations.<br />
-            <span className="text-primary">Faster Closes.</span>
+            Stop dialing cold lists.<br />
+            <span className="text-primary">Buy warm ones.</span>
           </h2>
           <p className="text-white/60 max-w-lg mx-auto">
-            Stop cold calling. APEX agents get access to pre-qualified leads who are already interested in life insurance.
+            Real people who filled out a life-insurance form this week. Verified phone, fresh, ready when you call. Pick a pack, pay, dial.
           </p>
         </div>
 

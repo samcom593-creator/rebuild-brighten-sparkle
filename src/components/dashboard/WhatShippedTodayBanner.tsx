@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "voice: Wave-4 AI-tell kill — Hero subhead + stats, Earnings paths, Apex Leads hero",
+    detail: "HeroSection subhead dropped the 'fastest-growing in America / operating system / engine you sell on' corporate puff for the concrete pitch ('Warm leads on your phone. 22 carriers ready. Weekly pay. A team that did $120K/mo.'). Hero stat pills now show real numbers (70%–145% commission contracts, 22 carriers, Licensed in 4 wks) instead of LinkedIn-job-board taxonomy ('Performance paid' / 'Lead flow ready' / 'We train you'). EarningsSection headlines rewritten to concrete promises Sam can actually stand behind: 'Hit the phones day one' + 'first close inside 7 days' for licensed path, 'Licensed in 4 weeks' + 'Course is on us' + 'No quotas, no waiting, no fee to start' for pre-licensing. ApexLeadsSection hero now says 'Stop dialing cold lists. Buy warm ones.' with a one-line how-it-works subhead — kills the AI rule-of-three.",
+  },
+  {
+    ts: "today",
     label: "perf: 4 more perf fixes — video listener churn, filteredApplications, RecruiterDashboard stats, N+1 portal logins",
     detail: "CourseVideoPlayer: useEffect dep on localProgress caused listeners + save timer to re-register on every progress tick → moved callbacks into refs, mount-only effect. DashboardApplicants: activeApplications/terminatedApplications/filteredApplications all re-derived every render → 3 useMemo wraps + stats consolidated to single-pass loop. RecruiterDashboard: computeMetrics had 4 filter passes + render body had 3 more → all merged to single for-loop + useMemo. BulkStageActions: serial for-loop awaiting 1 edge call per agent → Promise.allSettled (parallel).",
   },

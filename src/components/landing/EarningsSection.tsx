@@ -5,17 +5,17 @@ import { SectionHeading } from "@/components/ui/section-heading";
 const earningsData = {
   fullTime: {
     label: "Licensed Path",
-    description: "For agents ready to write soon",
-    headline: "Lead, train, and close",
-    supporting: "Warm lead flow, coaching, and accountability once you're licensed.",
-    bullets: ["Warm lead access", "Sales training", "Carrier-ready process"],
+    description: "You already have your state license",
+    headline: "Hit the phones day one",
+    supporting: "Warm leads on your phone, a dialer that auto-routes, and a manager on the daily huddle. Most new agents close their first deal inside 7 days.",
+    bullets: ["Warm leads, no fee", "Dialer + scripts", "Daily team huddle"],
   },
   topProducer: {
     label: "Pre-Licensing Path",
-    description: "For agents still getting licensed",
-    headline: "Clear next steps",
-    supporting: "Video, guide, course link, and a simple path into onboarding once you finish.",
-    bullets: ["Video overview", "Licensing guide", "Course + onboarding call"],
+    description: "Not licensed yet",
+    headline: "Licensed in 4 weeks",
+    supporting: "Course is on us. Pass the state exam, then we plug you straight into warm leads. No quotas, no waiting, no fee to start.",
+    bullets: ["Course paid for", "Pass the exam", "Straight into leads"],
   },
 };
 

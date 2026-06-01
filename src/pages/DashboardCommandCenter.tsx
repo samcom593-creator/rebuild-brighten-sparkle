@@ -84,6 +84,7 @@ import { toast } from "sonner";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ControlTerminal } from "@/components/dashboard/ControlTerminal";
 import { UnclaimedLeadsCard } from "@/components/dashboard/UnclaimedLeadsCard";
+import { Target20kPaceWidget } from "@/components/dashboard/Target20kPaceWidget";
 import { InsuraCloudHealthAlert } from "@/components/dashboard/InsuraCloudHealthAlert";
 import { NextStepStuckPool } from "@/components/next-step/NextStepStuckPool";
 import { NextStepFunnelStrip } from "@/components/next-step/NextStepFunnelStrip";
@@ -641,6 +642,9 @@ export default function DashboardCommandCenter() {
 
         {/* Unclaimed applicants — money on the floor, first thing Sam sees */}
         <UnclaimedLeadsCard />
+
+        {/* $20K-per-agent pace board. Replaces "type-in-a-date" production widget. */}
+        <Target20kPaceWidget />
 
         {/* Next Step Engine — 18-stage pipeline funnel + stuck-pool prioritizer */}
         <NextStepFunnelStrip />

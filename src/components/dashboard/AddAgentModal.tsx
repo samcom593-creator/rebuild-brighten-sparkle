@@ -155,13 +155,37 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
       // (e.g. empty body / 500 with no JSON) silently no-oped.
       if (error) {
         console.error("[AddAgentModal] transport error:", error);
-        toast.error(error.message || `Add Agent failed (${(error as any)?.context?.status ?? "network"})`);
+        // supabase-js wraps non-2xx responses as FunctionsHttpError with the
+        // raw Response in error.context. Parse the JSON body so the toast
+        // shows the REAL server error instead of "Edge Function returned a
+        // non-2xx status code".
+        let realMessage = error.message || "Add Agent failed";
+        try {
+          const ctx = (error as any)?.context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            if (body?.error) {
+              realMessage = typeof body.error === "string"
+                ? body.error
+                : `${body.error}${body.stage ? ` (at ${body.stage})` : ""}`;
+            } else if (body?.message) {
+              realMessage = body.message;
+            }
+          } else if (ctx && typeof ctx.text === "function") {
+            const txt = await ctx.text();
+            if (txt) realMessage = txt.slice(0, 500);
+          }
+        } catch (parseErr) {
+          console.error("[AddAgentModal] couldn't parse error body:", parseErr);
+        }
+        toast.error(realMessage);
         return;
       }
 
       if (data?.error) {
         console.error("[AddAgentModal] server error:", data.error);
-        toast.error(typeof data.error === "string" ? data.error : JSON.stringify(data.error));
+        const msg = typeof data.error === "string" ? data.error : JSON.stringify(data.error);
+        toast.error(data.stage ? `${msg} (at ${data.stage})` : msg);
         return;
       }
 

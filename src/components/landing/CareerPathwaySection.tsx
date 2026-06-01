@@ -75,14 +75,14 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: BookOpen,
         title: "Enroll in Pre-Licensing Course",
-        description: "Get access to our partner program for pre-licensing education. Pass your exam on the first try with our study guides and exam prep materials.",
-        benefit: "✓ Study guides included",
+        description: "We cover the course. You get the study guides, practice exams, and the prep playbook agents actually pass with.",
+        benefit: "✓ Course on us",
       },
       {
         icon: ClipboardCheck,
         title: "Pass the State Exam",
-        description: "Schedule and pass your state life insurance exam with our proven preparation methods.",
-        benefit: "✓ Exam prep support",
+        description: "Book the exam, sit it, pass it. We tell you exactly what to study and what to skip.",
+        benefit: "✓ Exam prep playbook",
       },
       {
         icon: FileCheck,
@@ -180,8 +180,8 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: Award,
         title: "Become a Consistent 5-Figure Monthly Earner",
-        description: "Reach and maintain $10K+ monthly income with consistent activity and closing ratios.",
-        benefit: "✓ Proven system",
+        description: "Daily dials, deals stack. $10K/mo is the floor once your week is built right.",
+        benefit: "✓ Repeatable week",
       },
       {
         icon: UserPlus,
@@ -198,8 +198,8 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: Building2,
         title: "Establish Your Own Agency Brand",
-        description: "Build your legacy with APEX support. Private-label your own agency while leveraging our systems.",
-        benefit: "✓ Full agency support",
+        description: "Run your own name on top of APEX's infrastructure. Same payouts, same systems, your brand on the door.",
+        benefit: "✓ Your name, our rails",
       },
     ],
   },
@@ -222,7 +222,7 @@ const whyAgentsChoose = [
   {
     icon: Target,
     title: "Unlimited Warm Leads",
-    description: "Access to 166,000+ warm leads ready to convert",
+    description: "166,000+ warm leads you can pull from on day one",
   },
   {
     icon: GraduationCap,

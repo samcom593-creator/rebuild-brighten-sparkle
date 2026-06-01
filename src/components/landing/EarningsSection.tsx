@@ -20,8 +20,8 @@ const earningsData = {
 };
 
 const milestones = [
-  { icon: Clock, label: "First Sale", value: "First Day", description: "Average time to first close" },
-  { icon: TrendingUp, label: "Break Even", value: "Immediate", description: "Time to profitability" },
+  { icon: Clock, label: "First Sale", value: "Inside 7 days", description: "What most new agents see" },
+  { icon: TrendingUp, label: "Out of pocket", value: "$0", description: "No leads fee, course on us" },
   { icon: Award, label: "Six Figures", value: "4-6 months", description: "To reach $100K+ pace" },
   { icon: Users, label: "Build Team", value: "Year One", description: "Earn manager overrides" },
 ];

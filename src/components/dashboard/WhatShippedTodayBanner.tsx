@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "voice: Wave-5 AI-tell kill — Earnings milestones, Career Pathway Phase 1/4, Why Agents Choose",
+    detail: "EarningsSection milestones rewritten — 'First Sale / First Day / Average time to first close' (overpromise) became 'Inside 7 days / What most new agents see'; the marketing-puff 'Break Even / Immediate / Time to profitability' is gone, replaced with the concrete 'Out of pocket / $0 / No leads fee, course on us'. CareerPathway Phase 1 steps 1–2 dropped the AI-tell trifecta ('Pass your exam on the first try' aspirational promise, 'proven preparation methods' filler) for direct, no-hype copy ('Book the exam, sit it, pass it. We tell you exactly what to study and what to skip'). Phase 4 step 5 lost the banned 'leveraging our systems' for 'your name, our rails'. Phase 4 step 2 dropped 'consistent activity and closing ratios' for 'Daily dials, deals stack'. whyAgentsChoose lead-volume tile dropped 'ready to convert' marketing-speak for the literal 166k figure.",
+  },
+  {
+    ts: "today",
     label: "voice: Wave-4 AI-tell kill — Hero subhead + stats, Earnings paths, Apex Leads hero",
     detail: "HeroSection subhead dropped the 'fastest-growing in America / operating system / engine you sell on' corporate puff for the concrete pitch ('Warm leads on your phone. 22 carriers ready. Weekly pay. A team that did $120K/mo.'). Hero stat pills now show real numbers (70%–145% commission contracts, 22 carriers, Licensed in 4 wks) instead of LinkedIn-job-board taxonomy ('Performance paid' / 'Lead flow ready' / 'We train you'). EarningsSection headlines rewritten to concrete promises Sam can actually stand behind: 'Hit the phones day one' + 'first close inside 7 days' for licensed path, 'Licensed in 4 weeks' + 'Course is on us' + 'No quotas, no waiting, no fee to start' for pre-licensing. ApexLeadsSection hero now says 'Stop dialing cold lists. Buy warm ones.' with a one-line how-it-works subhead — kills the AI rule-of-three.",
   },

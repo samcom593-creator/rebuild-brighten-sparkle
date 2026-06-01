@@ -16,8 +16,11 @@
  *   ✅ getMetricBounds           — "day" / "week" / "month" / "custom" dispatch
  *
  * NOT YET TESTED:
- *   ❌ formatMetricSource — depends on date-fns formatDistanceToNowStrict; skip for now
  *   ❌ getPriorWeekMatchedBounds — covered via dateUtils.test.ts
+ *
+ * Added in coverage pass 2026-06-01:
+ *   ✅ getTodayMetricSummary — includes BUSINESS_TIMEZONE, refresh suffix, null case
+ *   ✅ formatMetricSource    — includes displayLabel + sourceTable + dateField + refresh suffix
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -31,6 +34,10 @@ import {
   projectMonthEndAlp,
   getLiveAgentCutoffIso,
   getMetricBounds,
+  getTodayMetricSummary,
+  formatMetricSource,
+  METRIC_REGISTRY,
+  BUSINESS_TIMEZONE,
 } from "@/lib/metricTruth";
 
 // ── getCloseRate ──────────────────────────────────────────────────────────────
@@ -298,5 +305,59 @@ describe("getMetricBounds", () => {
     // Missing `to` → should not throw; falls back to monthly
     const { start, end } = getMetricBounds("custom", { from: new Date() });
     expect(start.getTime()).toBeLessThan(end.getTime());
+  });
+});
+
+// ── getTodayMetricSummary ─────────────────────────────────────────────────────
+describe("getTodayMetricSummary", () => {
+  it("includes BUSINESS_TIMEZONE in the output", () => {
+    expect(getTodayMetricSummary()).toContain(BUSINESS_TIMEZONE);
+  });
+
+  it("appends refresh info when lastUpdatedAt is provided", () => {
+    const recent = new Date(Date.now() - 60_000).toISOString(); // 1 minute ago
+    expect(getTodayMetricSummary(recent)).toMatch(/refreshed .+ ago/);
+  });
+
+  it("returns a string without refresh suffix when null", () => {
+    const s = getTodayMetricSummary(null);
+    expect(s).not.toContain("refreshed");
+  });
+
+  it("returns a non-empty string with no args", () => {
+    expect(getTodayMetricSummary().length).toBeGreaterThan(5);
+  });
+});
+
+// ── formatMetricSource ────────────────────────────────────────────────────────
+describe("formatMetricSource", () => {
+  it("includes displayLabel, sourceTable, and dateField", () => {
+    const def = METRIC_REGISTRY.dealsToday;
+    const s = formatMetricSource(def);
+    expect(s).toContain(def.displayLabel);
+    expect(s).toContain(def.sourceTable);
+    expect(s).toContain(def.dateField);
+  });
+
+  it("includes the timezone", () => {
+    const def = METRIC_REGISTRY.weeklyAlp;
+    expect(formatMetricSource(def)).toContain(BUSINESS_TIMEZONE);
+  });
+
+  it("appends updated info when lastUpdatedAt is given", () => {
+    const def = METRIC_REGISTRY.weeklyAlp;
+    const ts = new Date(Date.now() - 5 * 60_000).toISOString();
+    expect(formatMetricSource(def, ts)).toMatch(/updated .+ ago/);
+  });
+
+  it("returns a string without update suffix when lastUpdatedAt is null", () => {
+    const def = METRIC_REGISTRY.monthlyAlp;
+    expect(formatMetricSource(def, null)).not.toContain("updated");
+  });
+
+  it("works for every key in METRIC_REGISTRY without throwing", () => {
+    for (const key of Object.keys(METRIC_REGISTRY)) {
+      expect(() => formatMetricSource(METRIC_REGISTRY[key])).not.toThrow();
+    }
   });
 });

@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
 import { ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useScrollY } from "@/shared/lib/useScrollY";
 
 interface ScrollToTopProps {
   threshold?: number;
@@ -8,18 +8,8 @@ interface ScrollToTopProps {
 }
 
 export function ScrollToTop({ threshold = 400, className }: ScrollToTopProps) {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsVisible(window.scrollY > threshold);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll(); // Initial check
-
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [threshold]);
+  const scrollY = useScrollY();
+  const isVisible = scrollY > threshold;
 
   const scrollToTop = () => {
     window.scrollTo({

@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "perf: 4 fixes — DeactivateAgent serial deletes → Promise.all, KanbanBoard 3 render filters → useMemo, CronJobsPanel 3 filter passes → useMemo, DashboardAgedLeads 5 stat filters + slice → useMemo",
+    detail: "DeactivateAgentDialog.performDirectDelete: 10 serial awaited Supabase deletes → Promise.all (9 parallel child-table deletes, then agents last). ~1.5s → ~200ms. KanbanBoard: columnApps reduce+filter + totalActive filter + totalLicensed filter (3 O(n) passes) computed bare in render body on every drag/hover event → single useMemo single-pass loop. CronJobsPanel: filtered, totalErrors, totalInactive (3 separate .filter() passes) re-ran on every keystroke → single useMemo single pass. DashboardAgedLeads: 5 bare .filter() stat derivations + paginatedLeads .slice() ran on all 20+ setState calls in this page → useMemo on stats (single loop) + useMemo on slice.",
+  },
+  {
+    ts: "today",
     label: "voice: Wave-5 AI-tell kill — Earnings milestones, Career Pathway Phase 1/4, Why Agents Choose",
     detail: "EarningsSection milestones rewritten — 'First Sale / First Day / Average time to first close' (overpromise) became 'Inside 7 days / What most new agents see'; the marketing-puff 'Break Even / Immediate / Time to profitability' is gone, replaced with the concrete 'Out of pocket / $0 / No leads fee, course on us'. CareerPathway Phase 1 steps 1–2 dropped the AI-tell trifecta ('Pass your exam on the first try' aspirational promise, 'proven preparation methods' filler) for direct, no-hype copy ('Book the exam, sit it, pass it. We tell you exactly what to study and what to skip'). Phase 4 step 5 lost the banned 'leveraging our systems' for 'your name, our rails'. Phase 4 step 2 dropped 'consistent activity and closing ratios' for 'Daily dials, deals stack'. whyAgentsChoose lead-volume tile dropped 'ready to convert' marketing-speak for the literal 166k figure.",
   },

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DndContext,
@@ -275,20 +275,17 @@ export function KanbanBoard({
 
   const activeApp = activeId ? applications.find((a) => a.id === activeId) : null;
 
-  const columnApps = KANBAN_COLUMNS.reduce<Record<string, PipelineCardData[]>>(
-    (acc, col) => {
-      acc[col.id] = applications.filter((app) => getColumnForApp(app) === col.id);
-      return acc;
-    },
-    {}
-  );
-
-  // ── Total active (non-dormant, non-licensed) for conversion indicator ───
-  const totalActive  = applications.filter((a) => a.license_status !== "licensed").length;
-  const totalLicensed = applications.filter((a) => a.license_status === "licensed").length;
-  const convRate = totalActive + totalLicensed > 0
-    ? Math.round((totalLicensed / (totalActive + totalLicensed)) * 100)
-    : 0;
+  const { columnApps, totalActive, totalLicensed, convRate } = useMemo(() => {
+    const apps: Record<string, PipelineCardData[]> = {};
+    KANBAN_COLUMNS.forEach((col) => { apps[col.id] = []; });
+    let active = 0, licensed = 0;
+    for (const app of applications) {
+      apps[getColumnForApp(app)]?.push(app);
+      if (app.license_status === "licensed") licensed++; else active++;
+    }
+    const rate = active + licensed > 0 ? Math.round((licensed / (active + licensed)) * 100) : 0;
+    return { columnApps: apps, totalActive: active, totalLicensed: licensed, convRate: rate };
+  }, [applications]);
 
   const handleDragStart = (event: DragStartEvent) => setActiveId(event.active.id as string);
   const handleDragOver  = (event: DragOverEvent)  => setOverColumnId((event.over?.id as string) || null);

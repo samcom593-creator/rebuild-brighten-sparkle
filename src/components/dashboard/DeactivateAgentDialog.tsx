@@ -116,21 +116,19 @@ export function DeactivateAgentDialog({
     }
   };
 
-  // Direct delete function for admins - no approval needed
   const performDirectDelete = async (targetAgentId: string) => {
-    // Delete from related tables in order (typed individually to avoid TS issues)
-    await supabase.from('agent_notes').delete().eq('agent_id', targetAgentId);
-    await supabase.from('agent_attendance').delete().eq('agent_id', targetAgentId);
-    await supabase.from('agent_goals').delete().eq('agent_id', targetAgentId);
-    await supabase.from('agent_ratings').delete().eq('agent_id', targetAgentId);
-    await supabase.from('onboarding_progress').delete().eq('agent_id', targetAgentId);
-    await supabase.from('agent_onboarding').delete().eq('agent_id', targetAgentId);
-    await supabase.from('daily_production').delete().eq('agent_id', targetAgentId);
-    await supabase.from('agent_achievements').delete().eq('agent_id', targetAgentId);
-    await supabase.from('plaque_awards').delete().eq('agent_id', targetAgentId);
-    await supabase.from('contact_history').delete().eq('agent_id', targetAgentId);
-    
-    // Finally delete agent
+    await Promise.all([
+      supabase.from('agent_notes').delete().eq('agent_id', targetAgentId),
+      supabase.from('agent_attendance').delete().eq('agent_id', targetAgentId),
+      supabase.from('agent_goals').delete().eq('agent_id', targetAgentId),
+      supabase.from('agent_ratings').delete().eq('agent_id', targetAgentId),
+      supabase.from('onboarding_progress').delete().eq('agent_id', targetAgentId),
+      supabase.from('agent_onboarding').delete().eq('agent_id', targetAgentId),
+      supabase.from('daily_production').delete().eq('agent_id', targetAgentId),
+      supabase.from('agent_achievements').delete().eq('agent_id', targetAgentId),
+      supabase.from('plaque_awards').delete().eq('agent_id', targetAgentId),
+      supabase.from('contact_history').delete().eq('agent_id', targetAgentId),
+    ]);
     await supabase.from('agents').delete().eq('id', targetAgentId);
   };
 

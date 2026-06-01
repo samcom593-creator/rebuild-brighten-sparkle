@@ -496,7 +496,10 @@ export default function DashboardAgedLeads() {
   }
 
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
-  const paginatedLeads = filteredLeads.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const paginatedLeads = useMemo(
+    () => filteredLeads.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filteredLeads, currentPage]
+  );
 
   const getLeadAgeDays = (lead: AgedLead) => {
     const dateStr = lead.originalDate || lead.createdAt;
@@ -510,13 +513,15 @@ export default function DashboardAgedLeads() {
     return { border: "border-destructive/30", bg: "bg-destructive/5", badge: "bg-destructive/15 text-destructive border-destructive/20" };
   };
 
-  // Stats
-  const totalLeads = leads.length;
-  const newLeads = leads.filter(l => l.status === "new").length;
-  const processedLeads = leads.filter(l => l.status !== "new").length;
-  const hiredLeads = leads.filter(l => l.status === "hired" || l.status === "contracted").length;
-  const licensedLeads = leads.filter(l => l.licenseStatus === "licensed").length;
-  const unlicensedLeads = leads.filter(l => l.licenseStatus === "unlicensed").length;
+  const { totalLeads, newLeads, processedLeads, hiredLeads, licensedLeads, unlicensedLeads } = useMemo(() => {
+    let newL = 0, processed = 0, hired = 0, licensed = 0, unlicensed = 0;
+    for (const l of leads) {
+      if (l.status === "new") newL++; else processed++;
+      if (l.status === "hired" || l.status === "contracted") hired++;
+      if (l.licenseStatus === "licensed") licensed++; else unlicensed++;
+    }
+    return { totalLeads: leads.length, newLeads: newL, processedLeads: processed, hiredLeads: hired, licensedLeads: licensed, unlicensedLeads: unlicensed };
+  }, [leads]);
 
   // Backend-driven dedupe: calls the dedupe-aged-leads edge function
   const handleAutoMergeDuplicates = async () => {

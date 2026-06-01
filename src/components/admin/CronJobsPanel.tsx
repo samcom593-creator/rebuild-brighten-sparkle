@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Clock, RefreshCw, CheckCircle2, XCircle, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -66,16 +66,19 @@ export function CronJobsPanel() {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = jobs.filter((j) => {
-    if (filter === "errors" && j.errors_24h === 0) return false;
-    if (filter === "inactive" && j.active) return false;
-    if (search && !j.jobname.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
-
-  const total = jobs.length;
-  const totalErrors = jobs.filter((j) => j.errors_24h > 0).length;
-  const totalInactive = jobs.filter((j) => !j.active).length;
+  const { filtered, total, totalErrors, totalInactive } = useMemo(() => {
+    let errors = 0, inactive = 0;
+    const lc = search.toLowerCase();
+    const filtered = jobs.filter((j) => {
+      if (j.errors_24h > 0) errors++;
+      if (!j.active) inactive++;
+      if (filter === "errors" && j.errors_24h === 0) return false;
+      if (filter === "inactive" && j.active) return false;
+      if (search && !j.jobname.toLowerCase().includes(lc)) return false;
+      return true;
+    });
+    return { filtered, total: jobs.length, totalErrors: errors, totalInactive: inactive };
+  }, [jobs, filter, search]);
 
   return (
     <div className="space-y-3">

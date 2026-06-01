@@ -9,7 +9,7 @@ const benefits = [
   { icon: Target,     title: "Warm leads, daily",  description: "No cold calling. Prospects already asked for the appointment." },
   { icon: GraduationCap, title: "Scripts that close", description: "Same scripts our top producers use. Mentorship from day one." },
   { icon: Calendar,   title: "Your schedule",       description: "Work from anywhere. Set your own hours. Build the business around your life." },
-  { icon: Users,      title: "Team that picks up",  description: "Weekly masterminds, daily team calls, and a Slack you can ping any hour." },
+  { icon: Users,      title: "Team that picks up",  description: "Daily team huddle, weekly closer call, Discord that's never quiet." },
   { icon: Trophy,     title: "Build your own team", description: "Clear path to manager. Earn overrides on every producing agent under you." },
   { icon: Zap,        title: "$10K in 90 days",     description: "Fast-start bonuses for new agents who execute the playbook." },
   { icon: HeartHandshake, title: "Protect real families", description: "Every policy is generational wealth for the family you wrote it for." },

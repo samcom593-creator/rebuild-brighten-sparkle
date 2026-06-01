@@ -102,7 +102,7 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: Users,
         title: "Join Our Onboarding Process",
-        description: "Complete your carrier contracting through APEX. Get access to our training platform and agent tools.",
+        description: "Get plugged into the APEX training stack, agent CRM, and contracting paperwork on day one.",
         benefit: "✓ Full platform access",
       },
       {
@@ -114,19 +114,19 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: GraduationCap,
         title: "Complete the Virtual Sales Bootcamp",
-        description: "Intensive virtual training with live coaching on scripts, objection handling, and closing techniques.",
+        description: "Live virtual bootcamp on scripts, objections, and closes. Real reps, real coaching, run by people closing right now.",
         benefit: "✓ Live coaching sessions",
       },
       {
         icon: Smartphone,
         title: "Access Your Free CRM Platform",
-        description: "Full access to our APEX CRM with lead management, automated follow-ups, and pipeline tracking.",
+        description: "APEX CRM tracks every lead, follow-up, and policy you write. Free for every agent on contract.",
         benefit: "✓ Completely free",
       },
       {
         icon: Headphones,
         title: "Get Set Up With Our Free Dialer System",
-        description: "Power dialer access to maximize your call volume with built-in scripts and auto-call recording.",
+        description: "Power dialer that triples your call volume. Scripts loaded in, calls auto-recorded for review.",
         benefit: "✓ Auto-recording included",
       },
     ],
@@ -141,7 +141,7 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: Target,
         title: "Start Working Unlimited Warm Leads",
-        description: "Receive exclusive leads immediately. Our warm leads are pre-qualified and ready for your call.",
+        description: "166K+ warm leads in the queue. Pick a pack, dial, close. They asked for the appointment — you take it.",
         benefit: "✓ Exclusive warm leads",
       },
       {
@@ -153,13 +153,13 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: Home,
         title: "Transition Into Mortgage Protection Sales",
-        description: "Expand beyond final expense into mortgage protection for families seeking coverage.",
+        description: "Add mortgage protection to your book once final-expense reps are dialed in. Bigger premium, same warm-lead flow.",
         benefit: "✓ Higher premiums",
       },
       {
         icon: TrendingUp,
         title: "Convert Mortgage Clients Into IUL Clients",
-        description: "Cross-sell Indexed Universal Life policies for higher premiums and commissions.",
+        description: "Bring an IUL conversation to your mortgage-protection clients. Same household, higher premium, bigger commission.",
         benefit: "✓ Bigger commissions",
       },
     ],
@@ -551,7 +551,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
         <div className="reveal mt-24">
           <SectionHeading
             title="Why Agents Choose APEX"
-            subtitle="Everything you need to build a successful career in life insurance."
+            subtitle="Carriers, leads, training, weekly pay. Bring the work — the system handles the rest."
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">

@@ -207,74 +207,67 @@ export default function DashboardCommandCenter() {
     refetchInterval: 60_000,
     gcTime: 600_000,
     queryFn: async () => {
-      // First get all agents with profiles (with user_id fallback)
-      const { data: agents, error: agentsError } = await supabase
-        .from("agents")
-        .select(`
-          id,
-          profile_id,
-          user_id,
-          status,
-          is_deactivated,
-          is_inactive,
-          profiles!agents_profile_id_fkey (
+      // Compute week start outside the parallel block so it's stable
+      const today = new Date();
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - today.getDay());
+      const weekStartStr = weekStart.toISOString().split("T")[0];
+
+      // Fire agents + production + manager roles + payments in parallel (independent queries)
+      const [agentsRes, productionRes, managerRolesRes, paymentsRes] = await Promise.all([
+        supabase
+          .from("agents")
+          .select(`
             id,
-            full_name,
-            email,
-            phone
-          )
-        `)
-        .order("created_at", { ascending: false });
+            profile_id,
+            user_id,
+            status,
+            is_deactivated,
+            is_inactive,
+            profiles!agents_profile_id_fkey (
+              id,
+              full_name,
+              email,
+              phone
+            )
+          `)
+          .order("created_at", { ascending: false }),
+        supabase.rpc("get_agent_production_stats", {
+          start_date: dateRange.start,
+          end_date: dateRange.end,
+        }),
+        supabase.from("user_roles").select("user_id").eq("role", "manager"),
+        supabase.from("lead_payment_tracking")
+          .select("agent_id, tier, paid")
+          .eq("week_start", weekStartStr)
+          .eq("paid", true),
+      ]);
+
+      const { data: agents, error: agentsError } = agentsRes;
+      const { data: production, error: prodError } = productionRes;
+      const { data: managerRoles } = managerRolesRes;
+      const { data: payments } = paymentsRes;
 
       if (agentsError) throw agentsError;
+      if (prodError) throw prodError;
 
-      // For agents missing profile_id, fetch profiles by user_id as fallback
+      // Conditional second round-trip: only for agents missing a profile_id join
       const agentsMissingProfile = (agents || []).filter(a => !a.profiles && a.user_id);
       const fallbackProfileMap = new Map<string, { full_name: string | null; email: string; phone: string | null }>();
-      
+
       if (agentsMissingProfile.length > 0) {
         const userIds = agentsMissingProfile.map(a => a.user_id!);
         const { data: fallbackProfiles } = await supabase
           .from("profiles")
           .select("user_id, full_name, email, phone")
           .in("user_id", userIds);
-        
+
         fallbackProfiles?.forEach(p => {
           if (p.user_id) fallbackProfileMap.set(p.user_id, p);
         });
       }
 
-      if (agentsError) throw agentsError;
-
-      // Get pre-aggregated production stats from database function (server-side aggregation)
-      const { data: production, error: prodError } = await supabase
-        .rpc("get_agent_production_stats", {
-          start_date: dateRange.start,
-          end_date: dateRange.end,
-        });
-
-      if (prodError) throw prodError;
-
-      // Fetch manager roles to determine which agents are managers
-      const { data: managerRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "manager");
-
       const managerUserIds = new Set(managerRoles?.map(r => r.user_id) || []);
-
-      // Fetch payment tracking for this week
-      const today = new Date();
-      const dayOfWeek = today.getDay();
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - dayOfWeek);
-      const weekStartStr = weekStart.toISOString().split("T")[0];
-
-      const { data: payments } = await supabase
-        .from("lead_payment_tracking")
-        .select("agent_id, tier, paid")
-        .eq("week_start", weekStartStr)
-        .eq("paid", true);
 
       const paymentMap = new Map<string, { standard: boolean; premium: boolean }>();
       payments?.forEach((p: any) => {
@@ -343,8 +336,9 @@ export default function DashboardCommandCenter() {
   // In-flight guard to prevent multiple simultaneous refetches
   const guardedRefetch = useInFlightGuard(refetch);
 
-  // Use singleton realtime hook (shared channel across app, 1s debounce)
-  useProductionRealtime(() => guardedRefetch(), 1000);
+  // Stable callback so useProductionRealtime's useEffect doesn't re-run on every render
+  const handleRealtimeUpdate = useCallback(() => guardedRefetch(), [guardedRefetch]);
+  useProductionRealtime(handleRealtimeUpdate, 1000);
 
   // Handlers for inline reassign/stage change
   const handleReassignManager = useCallback(async (agentId: string, managerId: string | null, managerName: string) => {
@@ -526,29 +520,31 @@ export default function DashboardCommandCenter() {
   // Live-agent rule:
   //   counts as live only when the agent has a submitted/active deal posted in
   //   the last 10 days. Agent-row status and onboarding stage do not count.
-  const { data: activeProducerSet } = useQuery({
+  // Returns string[] so TanStack Query can serialize the cache correctly (Set is not JSON-serializable)
+  const { data: activeProducerIds } = useQuery({
     queryKey: ["live-agent-set-v2", LIVE_AGENT_DEAL_WINDOW_DAYS],
     staleTime: 60_000,
     refetchInterval: 60_000,
     queryFn: async () => {
       const dealsRes = await supabase.from("deals")
-        .select("agent_id, posted_at, created_at")
+        .select("agent_id")
         .or(liveDealWindowOr(getLiveAgentCutoffIso()))
         .in("status", DEAL_TRUTH_STATUS_FILTER);
 
-      const set = new Set<string>();
+      const ids = new Set<string>();
       for (const r of (dealsRes.data || []) as any[]) {
-        if (r.agent_id) set.add(r.agent_id);
+        if (r.agent_id) ids.add(r.agent_id);
       }
-      return set;
+      return Array.from(ids);
     },
   });
+
+  const activeProducerSet = useMemo(() => new Set(activeProducerIds ?? []), [activeProducerIds]);
 
   const summaryStats = useMemo(() => {
     if (!agentsData) return { totalAlp: 0, activeAgents: 0, producers: 0, weakPerformers: 0, totalDeals: 0 };
 
-    const set = activeProducerSet ?? new Set<string>();
-    const activeAgents = agentsData.filter((a) => !a.isDeactivated && !a.isInactive && set.has(a.id));
+    const activeAgents = agentsData.filter((a) => !a.isDeactivated && !a.isInactive && activeProducerSet.has(a.id));
     const producers = activeAgents;
 
     const dayOfWeek = new Date().getDay();

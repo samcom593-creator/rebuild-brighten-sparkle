@@ -85,6 +85,7 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ControlTerminal } from "@/components/dashboard/ControlTerminal";
 import { UnclaimedLeadsCard } from "@/components/dashboard/UnclaimedLeadsCard";
 import { Target20kPaceWidget } from "@/components/dashboard/Target20kPaceWidget";
+import { TeamHierarchyWidget } from "@/components/dashboard/TeamHierarchyWidget";
 import { InsuraCloudHealthAlert } from "@/components/dashboard/InsuraCloudHealthAlert";
 import { NextStepStuckPool } from "@/components/next-step/NextStepStuckPool";
 import { NextStepFunnelStrip } from "@/components/next-step/NextStepFunnelStrip";
@@ -645,6 +646,9 @@ export default function DashboardCommandCenter() {
 
         {/* $20K-per-agent pace board. Replaces "type-in-a-date" production widget. */}
         <Target20kPaceWidget />
+
+        {/* Team hierarchy: who recruited who + their downline production rollup */}
+        <TeamHierarchyWidget />
 
         {/* Next Step Engine — 18-stage pipeline funnel + stuck-pool prioritizer */}
         <NextStepFunnelStrip />

@@ -66,6 +66,15 @@ export function CourseVideoPlayer({
 }: CourseVideoPlayerProps & { playbackRate?: number; onPlaybackRateChange?: (rate: number) => void }) {
   const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
   const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null;
+  // Sam-feedback 2026-06-01: 11 modules pointed at the @SamuelJamesHQ channel
+  // home as a placeholder, which couldn't be embedded. Detect channel/home
+  // URLs and show a "Recording in progress" CTA instead of a broken player.
+  const isPlaceholder =
+    isYouTube && !youtubeId && /(@|user\/|channel\/|c\/|\/playlist)/.test(videoUrl);
+
+  if (isPlaceholder) {
+    return <VideoComingSoonCard channelUrl={videoUrl} onMarkWatched={onVideoComplete} />;
+  }
 
   if (isYouTube && youtubeId) {
     return (
@@ -87,6 +96,41 @@ export function CourseVideoPlayer({
       watchedPercent={watchedPercent}
       onVideoComplete={onVideoComplete}
     />
+  );
+}
+
+// ─── Coming-soon placeholder for modules whose video isn't recorded yet ─
+
+function VideoComingSoonCard({ channelUrl, onMarkWatched }: { channelUrl: string; onMarkWatched: () => void }) {
+  return (
+    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-900 to-black flex flex-col items-center justify-center text-center px-6">
+      <div className="absolute top-4 left-4">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/15 px-3 py-1 text-xs font-medium text-amber-300 border border-amber-600/40">
+          <Clock className="h-3 w-3" /> Recording in progress
+        </span>
+      </div>
+      <div className="h-16 w-16 rounded-full bg-amber-500/15 flex items-center justify-center mb-4">
+        <Play className="h-8 w-8 text-amber-400" />
+      </div>
+      <h3 className="text-lg font-bold text-foreground mb-2">Video coming soon</h3>
+      <p className="text-sm text-muted-foreground max-w-md mb-6">
+        Sam is finalizing this module's video. In the meantime, read the description below to
+        cover the material, then check back when the video drops. Subscribe to be notified.
+      </p>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <a
+          href={channelUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-md bg-rose-600 hover:bg-rose-700 px-4 py-2 text-sm font-medium text-white"
+        >
+          <Play className="h-4 w-4" /> Subscribe on YouTube
+        </a>
+        <Button variant="outline" size="sm" onClick={onMarkWatched} className="gap-1">
+          <CheckCircle className="h-4 w-4" /> Mark as read (unlock quiz)
+        </Button>
+      </div>
+    </div>
   );
 }
 

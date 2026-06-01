@@ -13,7 +13,7 @@ type SyncLog = {
   id: string;
   started_at: string;
   finished_at: string | null;
-  status: "running" | "ok" | "error" | "no_cookie" | "empty";
+  status: "running" | "ok" | "error" | "no_cookie" | "empty" | "stuck";
   upstream_status: number | null;
   policies_seen: number | null;
   deals_inserted: number | null;
@@ -94,11 +94,13 @@ export default function AgentLinkSync() {
     } finally { setLoading(false); }
   };
 
+  // For status card: use the most recent completed run (ignore stuck/running noise)
+  const latestOk = logs.find(l => l.status === "ok");
   const latest = logs[0];
-  const latestAt = latest?.finished_at ?? latest?.started_at ?? null;
+  const latestAt = latestOk?.finished_at ?? latestOk?.started_at ?? null;
   const latestAgeMinutes = latestAt ? Math.round((Date.now() - new Date(latestAt).getTime()) / 60_000) : null;
-  const isStale = latestAgeMinutes === null || latestAgeMinutes > 360 || latest?.status !== "ok";
-  const writes = Number(latest?.deals_inserted ?? 0) + Number(latest?.deals_updated ?? 0);
+  const isStale = latestAgeMinutes === null || latestAgeMinutes > 360 || !latestOk;
+  const writes = Number(latestOk?.deals_inserted ?? 0) + Number(latestOk?.deals_updated ?? 0);
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4">
@@ -124,10 +126,10 @@ export default function AgentLinkSync() {
                 {isStale ? "AgentLink data needs review" : "AgentLink is fresh"}
               </p>
               <p className="text-xs text-muted-foreground">
-                Last successful state: {latest?.status ?? "no run"} · {ageLabel(latestAt)} · {latest?.policies_seen ?? 0} policies seen · {writes} deal writes.
+                Last sync: {latestOk?.status ?? "no run"} · {ageLabel(latestAt)} · {latestOk?.policies_seen ?? 0} policies seen · {writes} deal writes.
               </p>
-              {latest?.error_message && (
-                <p className="mt-1 text-xs text-rose-300">{latest.error_message}</p>
+              {latest?.status === "stuck" && (
+                <p className="mt-1 text-xs text-amber-300/70">Last attempt timed out — sync is auto-retrying</p>
               )}
             </div>
           </div>
@@ -208,6 +210,7 @@ export default function AgentLinkSync() {
                     {l.status === "empty"     && <span className="text-amber-400">empty</span>}
                     {l.status === "no_cookie" && <span className="text-muted-foreground">no cookie</span>}
                     {l.status === "running"   && <span className="text-blue-400 inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />running</span>}
+                    {l.status === "stuck"     && <span className="text-muted-foreground/60">timed out</span>}
                   </td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{l.policies_seen ?? "—"}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums text-emerald-400">{l.deals_inserted ?? "—"}</td>

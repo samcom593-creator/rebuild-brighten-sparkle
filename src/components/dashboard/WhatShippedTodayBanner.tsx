@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "PL-079 AgentLink sync: fix stuck-row display + 'stuck' status type + reaper threshold 10min→5min",
+    detail: "AgentLinkSync page was showing amber 'needs review' even after a successful sync because logs[0] was a stuck/timed-out row. Fix: status card now uses latestOk (most recent status=ok row) for display, while the history table still shows all rows. 'stuck' added to SyncLog union type so the history table renders 'timed out' label gracefully. Reaper DB function threshold tightened from 10min to 5min so phantom running rows clear faster. Also reaped 452 zombie 'running' rows accumulated since 2026-05-21 (reaper cron was registered but job_run_details logging was disabled — ran reaper manually, now runs every 5min via pg_cron).",
+  },
+  {
+    ts: "today",
     label: "perf: 4 fixes — DeactivateAgent serial deletes → Promise.all, KanbanBoard 3 render filters → useMemo, CronJobsPanel 3 filter passes → useMemo, DashboardAgedLeads 5 stat filters + slice → useMemo",
     detail: "DeactivateAgentDialog.performDirectDelete: 10 serial awaited Supabase deletes → Promise.all (9 parallel child-table deletes, then agents last). ~1.5s → ~200ms. KanbanBoard: columnApps reduce+filter + totalActive filter + totalLicensed filter (3 O(n) passes) computed bare in render body on every drag/hover event → single useMemo single-pass loop. CronJobsPanel: filtered, totalErrors, totalInactive (3 separate .filter() passes) re-ran on every keystroke → single useMemo single pass. DashboardAgedLeads: 5 bare .filter() stat derivations + paginatedLeads .slice() ran on all 20+ setState calls in this page → useMemo on stats (single loop) + useMemo on slice.",
   },

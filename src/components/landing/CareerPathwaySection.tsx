@@ -440,7 +440,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
         <SectionHeading
           badge="Career Path"
           title="Your 17-Step Career Path"
-          subtitle="Follow our proven path to financial freedom. From licensing to building your own agency, we guide you every step of the way."
+          subtitle="Licensed in 2 weeks. First commission in 30 days. Your own agency in 18 months. The path is the path — your job is to walk it."
         />
 
         {/* Career Phases */}

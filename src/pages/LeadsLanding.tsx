@@ -223,7 +223,7 @@ export default function LeadsLanding() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <h3 className="font-bold text-white mb-4">APEX Financial</h3>
-              <p className="text-slate-400 text-sm">Leading lead generation and agent empowerment platform.</p>
+              <p className="text-slate-400 text-sm">Warm life insurance leads. Built for agents who dial, not browse.</p>
             </div>
             <div>
               <h4 className="font-semibold text-white mb-4">Product</h4>

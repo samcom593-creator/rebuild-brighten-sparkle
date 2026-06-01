@@ -95,7 +95,7 @@ const getEmailContent = (
     },
     licensing_checkin: {
       subject: `Need Help With Licensing?`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Just checking in to see if you need any help with the licensing process.</p><p>Our team is here to support you every step of the way!</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Quick check — where are you in the licensing process?</p><p>If you're stuck on a section or need a study plan, hit reply and I'll get you moving.</p><p>— Sam<br/>APEX Financial</p></body></html>`,
     },
     course_help: {
       subject: `Need Help With Your Training?`,

@@ -255,7 +255,7 @@ export default function PurchaseLeads() {
             Fuel Your Pipeline
           </h1>
           <p className="text-muted-foreground max-w-lg mx-auto">
-            Premium leads delivered weekly. Invest in your growth with our curated lead packages.
+            Fresh warm leads dropped weekly. Pick a pack. Start dialing today.
           </p>
         </div>
 

@@ -102,7 +102,7 @@ export default function GetLicensed() {
             </div>
             
             <p className="text-sm text-muted-foreground">
-              This video explains everything you need to know about getting your insurance license and how we'll support you every step of the way.
+              How licensing works at APEX. What we pay for, what you handle, and how fast you can start earning.
             </p>
           </motion.div>
         </GlassCard>

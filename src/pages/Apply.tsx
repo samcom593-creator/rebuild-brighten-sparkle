@@ -1071,11 +1071,10 @@ export default function Apply() {
 
                       {licenseStatus === "unlicensed" && (
                         <div className="p-6 rounded-lg bg-primary/10 border border-primary/20">
-                          <h3 className="font-semibold text-primary mb-2">We've got you covered!</h3>
+                          <h3 className="font-semibold text-primary mb-2">Not licensed yet? Doesn't matter.</h3>
                           <p className="text-sm text-muted-foreground">
-                            APEX will guide you through the entire licensing process. We provide study materials, 
-                            exam prep courses, and even reimburse your licensing fees once you're contracted. 
-                            Most candidates get licensed within 2-3 weeks.
+                            APEX pays for your study materials and exam prep. We reimburse your licensing fees
+                            once you're contracted. Most candidates are licensed inside 2–3 weeks.
                           </p>
                         </div>
                       )}

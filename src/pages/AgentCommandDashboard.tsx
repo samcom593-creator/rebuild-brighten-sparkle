@@ -38,6 +38,7 @@ import { Progress } from "@/components/ui/progress";
 import { NextStepCard } from "@/components/dashboard/NextStepCard";
 import { RegionPeerCard, UpcomingChargebackCard } from "@/components/dashboard/AgentPeerAndChargebackCards";
 import { LapsesDrilldownModal } from "@/components/dashboard/LapsesDrilldownModal";
+import { RecentActivationsPanel } from "@/components/dashboard/RecentActivationsPanel";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, getDealTruthTimestamp } from "@/lib/dealTruth";
 
 // ─── Formatters ─────────────────────────────────────────────────────────────
@@ -1006,14 +1007,13 @@ function AgencyCommandView() {
   // view. v_recent_hires filters out deactivated/inactive/ghost rows
   // and joins managers, so we just sort by hired_on. (PL-017)
   const recentHires = useQuery({
-    queryKey: ["agency-recent-hires-14d"],
+    queryKey: ["agency-recent-hires", periodBounds.startIso],
     refetchInterval: 60_000,
     queryFn: async () => {
-      const since = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10);
       const { data, error } = await supabase
         .from("v_recent_hires" as any)
         .select("id, display_name, agent_code, hired_on, manager_name, onboarding_stage, days_on_team, total_premium, total_policies")
-        .gte("hired_on", since)
+        .gte("hired_on", periodBounds.startIso.slice(0, 10))
         .order("hired_on", { ascending: false })
         .limit(12);
       if (error) throw error;
@@ -1028,20 +1028,22 @@ function AgencyCommandView() {
 
   // ── 30-day production trend (real daily AP + deals) ──────────────────
   const trend = useQuery({
-    queryKey: ["agency-trend-30d"],
+    queryKey: ["agency-trend", periodBounds.startIso, periodBounds.endIso],
     queryFn: async () => {
-      const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
       const { data, error } = await supabase
         .from("deals")
         .select("posted_at, created_at, annual_premium, status")
-        .or(dealTruthWindowOr(since, new Date().toISOString()))
+        .or(dealTruthWindowOr(periodBounds.startIso, periodBounds.endIso))
         .in("status", DEAL_TRUTH_STATUS_FILTER)
         .order("posted_at", { ascending: true });
       if (error) throw error;
-      // Bucket into 30 days
+      // Bucket days between start and end (cap at 90)
+      const startMs = new Date(periodBounds.startIso).getTime();
+      const endMs = new Date(periodBounds.endIso).getTime();
+      const totalDays = Math.min(90, Math.ceil((endMs - startMs) / 86_400_000));
       const map = new Map<string, { deals: number; ap: number }>();
-      for (let i = 29; i >= 0; i--) {
-        const k = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10);
+      for (let i = 0; i < totalDays; i++) {
+        const k = new Date(startMs + i * 86_400_000).toISOString().slice(0, 10);
         map.set(k, { deals: 0, ap: 0 });
       }
       for (const d of (data ?? []) as Array<{ posted_at: string | null; created_at: string | null; annual_premium: number | string }>) {
@@ -1213,15 +1215,57 @@ function AgencyCommandView() {
         />
       </div>
 
-      {/* ── 30d trend chart (real data) + Top producers leaderboard ── */}
+      {/* ── Manager hierarchy production share (selected period) ─── */}
+      {periodSummary.managers.length > 0 && (
+        <GlassCard className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Manager production share · {periodBounds.label}</p>
+              <h3 className="text-lg font-bold">
+                Hierarchy breakdown
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  {fmtUsd(periodSummary.totalAp, true)} total
+                </span>
+              </h3>
+            </div>
+            <Users className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="space-y-2">
+            {periodSummary.managers.map((m, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-28 text-sm font-medium truncate shrink-0">{m.name}</div>
+                <div className="flex-1">
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary/70 transition-all"
+                      style={{ width: `${Math.min(m.pct, 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="text-right shrink-0 min-w-[4rem]">
+                  <span className="text-sm font-bold tabular-nums text-emerald-500 dark:text-emerald-400">
+                    {fmtUsd(m.ap, true)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground ml-1.5">{m.pct.toFixed(0)}%</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground w-14 text-right tabular-nums shrink-0">
+                  {fmtNum(m.deals)} deal{m.deals !== 1 ? "s" : ""}
+                </div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* ── Trend chart (period-aware) + Top producers leaderboard ── */}
       <div className="grid gap-3 lg:grid-cols-3">
         <GlassCard className="p-4 lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">30-day agency production</p>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{periodBounds.label} agency production</p>
               <h3 className="text-lg font-bold">Daily AP across all agents</h3>
             </div>
-            <Badge variant="outline" className="text-xs">{fmtUsd(ap30, true)} · last 30d</Badge>
+            <Badge variant="outline" className="text-xs">{fmtUsd(periodSummary.totalAp, true)} · {periodBounds.label}</Badge>
           </div>
           {trend.isLoading ? (
             <Skeleton className="h-[220px] w-full" />
@@ -1299,48 +1343,6 @@ function AgencyCommandView() {
         </GlassCard>
       </div>
 
-      {/* ── Manager hierarchy production share (selected period) ─── */}
-      {periodSummary.managers.length > 0 && (
-        <GlassCard className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Manager production share · {periodBounds.label}</p>
-              <h3 className="text-lg font-bold">
-                Hierarchy breakdown
-                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  {fmtUsd(periodSummary.totalAp, true)} total
-                </span>
-              </h3>
-            </div>
-            <Users className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <div className="space-y-2">
-            {periodSummary.managers.map((m, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-28 text-sm font-medium truncate shrink-0">{m.name}</div>
-                <div className="flex-1">
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary/70 transition-all"
-                      style={{ width: `${Math.min(m.pct, 100)}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="text-right shrink-0 min-w-[4rem]">
-                  <span className="text-sm font-bold tabular-nums text-emerald-500 dark:text-emerald-400">
-                    {fmtUsd(m.ap, true)}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground ml-1.5">{m.pct.toFixed(0)}%</span>
-                </div>
-                <div className="text-[10px] text-muted-foreground w-14 text-right tabular-nums shrink-0">
-                  {fmtNum(m.deals)} deal{m.deals !== 1 ? "s" : ""}
-                </div>
-              </div>
-            ))}
-          </div>
-        </GlassCard>
-      )}
-
       {/* ── Pipeline funnel + period production stats ──────────────── */}
       <div className="grid gap-3 lg:grid-cols-3">
         <GlassCard className="p-4">
@@ -1401,7 +1403,7 @@ function AgencyCommandView() {
       <GlassCard className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Just hired · last 14 days</p>
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Just hired · {periodBounds.label}</p>
             <h3 className="text-lg font-bold">
               Recent hires{recentHires.data ? ` (${recentHires.data.length})` : ""}
             </h3>
@@ -1413,7 +1415,7 @@ function AgencyCommandView() {
         {recentHires.isLoading ? (
           <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
         ) : (recentHires.data ?? []).length === 0 ? (
-          <EmptyState icon={<UserPlus className="h-6 w-6" />} title="No new hires in the last 14 days" description="When a new agent is onboarded they'll surface here even before their first deal." />
+          <EmptyState icon={<UserPlus className="h-6 w-6" />} title={`No new hires in ${periodBounds.label}`} description="When a new agent is onboarded they'll surface here even before their first deal." />
         ) : (
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {(recentHires.data ?? []).map((h) => (
@@ -1433,6 +1435,11 @@ function AgencyCommandView() {
           </ul>
         )}
       </GlassCard>
+
+      {/* PL-023: Recent Activations leaderboard — replaces the empty
+          "last-8-deals second stat" with a real first-30d ALP picture
+          of the new producers. */}
+      <RecentActivationsPanel />
 
       {/* ── System health + Referrals + Underperformers ─────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

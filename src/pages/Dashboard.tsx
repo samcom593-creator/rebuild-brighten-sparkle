@@ -27,6 +27,8 @@ import { UnclaimedLeadsCommandCard } from "@/components/dashboard/UnclaimedLeads
 import { XcelStalledCard } from "@/components/dashboard/XcelStalledCard";
 import { WhatShippedTodayBanner } from "@/components/dashboard/WhatShippedTodayBanner";
 import { LicensedHiresRange } from "@/components/dashboard/LicensedHiresRange";
+import { ManagerHierarchyMtdPanel } from "@/components/dashboard/ManagerHierarchyMtdPanel";
+import { JustHiredPanel } from "@/components/dashboard/JustHiredPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

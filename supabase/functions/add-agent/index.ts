@@ -133,8 +133,14 @@ const handler = async (req: Request): Promise<Response> => {
       console.log(`Auth user already exists for ${normalizedEmail}, using existing`);
       userId = existingAuthUser.id;
     } else {
-      // Create new auth user with default password (agents change on first login)
-      const randomPassword = "123456";
+      // Strong random password. The previous "123456" was rejected when the
+      // Supabase project's password policy required longer / stronger passwords,
+      // surfacing in the UI as a generic 'Edge Function returned a non-2xx
+      // status code.' Agents reset on first login via magic link or reset flow.
+      const bytes = new Uint8Array(18);
+      crypto.getRandomValues(bytes);
+      const randomPassword =
+        Array.from(bytes, b => b.toString(36).padStart(2, "0")).join("") + "Aa1!";
 
       const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: normalizedEmail,
@@ -148,7 +154,11 @@ const handler = async (req: Request): Promise<Response> => {
       if (createError || !newAuthUser?.user) {
         console.error("Error creating auth user:", createError);
         return new Response(
-          JSON.stringify({ error: "Failed to create user account" }),
+          JSON.stringify({
+            error: `Failed to create user account: ${createError?.message ?? "unknown"}`,
+            stage: "auth.admin.createUser",
+            detail: createError ?? null,
+          }),
           { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
@@ -180,7 +190,11 @@ const handler = async (req: Request): Promise<Response> => {
     if (profileError || !newProfile) {
       console.error("Error creating profile:", profileError);
       return new Response(
-        JSON.stringify({ error: "Failed to create profile" }),
+        JSON.stringify({
+          error: `Failed to create profile: ${profileError?.message ?? "unknown"}`,
+          stage: "profiles.insert",
+          detail: profileError ?? null,
+        }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -222,7 +236,11 @@ const handler = async (req: Request): Promise<Response> => {
     if (agentError) {
       console.error("Error creating agent:", agentError);
       return new Response(
-        JSON.stringify({ error: "Failed to create agent record" }),
+        JSON.stringify({
+          error: `Failed to create agent record: ${agentError?.message ?? "unknown"}`,
+          stage: "agents.insert",
+          detail: agentError ?? null,
+        }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }

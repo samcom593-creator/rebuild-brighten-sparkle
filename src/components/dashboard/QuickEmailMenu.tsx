@@ -66,48 +66,48 @@ const getEmailContent = (
   
   const templates: Record<EmailTemplate, { subject: string; html: string }> = {
     cold_licensed: {
-      subject: `${firstName}, Let's Talk About Your Insurance Career`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>I noticed you're already licensed – that's a huge advantage! At Apex Financial, we help licensed agents maximize their earning potential with our proven systems.</p><p>Would you be open to a quick 15-minute call to explore if we might be a good fit?</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+      subject: `${firstName} — warm leads, weekly pay, no lead fees`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Saw you're already licensed. Quick pitch: APEX gives warm leads at no cost, pays weekly, and won't lock you out of your book.</p><p>If that's interesting, hit reply with a time this week or grab one here: <a href="${callbackLink}">${callbackLink}</a></p><p>If not, ignore this — no follow-up spam.</p><p>— Sam<br/>APEX Financial</p></body></html>`,
     },
     cold_unlicensed: {
-      subject: `${firstName}, Start Your Insurance Career with Us`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Thank you for your interest in joining Apex Financial! We help people just like you break into the insurance industry and build successful careers.</p><p>The first step is getting licensed. Would you like to learn more about our training program?</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+      subject: `${firstName} — APEX pays your licensing if you're serious`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>You applied to APEX but you're not licensed yet. That's fine — most of our top producers started there.</p><p>What APEX covers: pre-licensing course, study path, exam timeline. What you do: pass the test, then we plug you into warm leads and weekly pay.</p><p>Reply with where you are in the process, or book a 15-min call: <a href="${callbackLink}">${callbackLink}</a></p><p>— Sam<br/>APEX Financial</p></body></html>`,
     },
     followup1_licensed: {
-      subject: `Following Up - Ready to Grow Your Book?`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Just following up on our conversation. I wanted to share some success stories from agents who've joined our team recently.</p><p>When would be a good time to continue our discussion?</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+      subject: `Quick follow-up, ${firstName}`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Following up from our last conversation. Two new agents wrote $5K in their first week last month — both came from where you're sitting right now.</p><p>If you're still open, grab a time: <a href="${callbackLink}">${callbackLink}</a></p><p>If timing's off, just tell me when to check back.</p><p>— Sam<br/>APEX Financial</p></body></html>`,
     },
     followup2_licensed: {
-      subject: `${firstName}, Don't Miss This Opportunity`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>I wanted to reach out one more time. Our team is growing and we'd love to have you join us.</p><p>Let me know if you have any questions!</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+      subject: `Last check, ${firstName}`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Last note from me. If APEX isn't the right fit or the timing's wrong, no offense taken — just reply "not now" and I'll stop the thread.</p><p>If you want to talk: <a href="${callbackLink}">${callbackLink}</a></p><p>— Sam<br/>APEX Financial</p></body></html>`,
     },
     followup1_unlicensed: {
-      subject: `How's Your Licensing Progress Going?`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Just checking in on your licensing progress. Have you had a chance to start the pre-licensing course?</p><p>Let me know if you need any guidance – we're here to help!</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+      subject: `Where are you on licensing, ${firstName}?`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Checking on your pre-licensing progress. Stuck on a chapter, haven't started, scheduled the exam — wherever you are, tell me and I'll point you at the next step.</p><p>Reply with one of: not started / mid-course / ready to test / passed.</p><p>— Sam<br/>APEX Financial</p></body></html>`,
     },
     followup2_unlicensed: {
-      subject: `${firstName}, This Could Change Your Career`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>I wanted to remind you about the opportunity waiting for you at Apex Financial.</p><p>Getting licensed is the first step to a rewarding career in insurance. Ready to take that step?</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+      subject: `${firstName} — still want to write?`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>You applied a while back to write life insurance with APEX. Haven't seen progress on licensing.</p><p>If you still want this, reply with the date you'll have the course done. If not, say so and I'll close your file.</p><p>— Sam<br/>APEX Financial</p></body></html>`,
     },
     licensing_reminder: {
-      subject: `Reminder: Complete Your Licensing`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>This is a friendly reminder to continue working on your insurance license.</p><p>Once you're licensed, you can start earning right away!</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+      subject: `${firstName} — your licensing course is waiting`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Your pre-licensing course is paid for and sitting there. The longer it sits, the more material you re-read on attempt #2.</p><p>Set a target exam date this week and reply with it. I'll hold you to it.</p><p>— Sam<br/>APEX Financial</p></body></html>`,
     },
     licensing_checkin: {
       subject: `Need Help With Licensing?`,
       html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Quick check — where are you in the licensing process?</p><p>If you're stuck on a section or need a study plan, hit reply and I'll get you moving.</p><p>— Sam<br/>APEX Financial</p></body></html>`,
     },
     course_help: {
-      subject: `Need Help With Your Training?`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>I noticed you might need some help with the training course.</p><p>Let me know what questions you have – I'm here to help!</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+      subject: `Stuck on the course, ${firstName}?`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Looks like the course slowed down on your end. Tell me which chapter or section is the wall and I'll send you the way through it.</p><p>Reply with the chapter title or screenshot the page you're stuck on.</p><p>— Sam<br/>APEX Financial</p></body></html>`,
     },
     schedule_consultation: {
-      subject: `Let's Schedule a Call`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>I'd love to schedule a quick consultation call to discuss your career goals.</p><p>What time works best for you this week?</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+      subject: `15 minutes, ${firstName}?`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Let's do 15 minutes this week. I'll walk you through how APEX actually works — lead flow, comp, what week-one looks like — and you tell me if it's a fit.</p><p>Grab a slot: <a href="${callbackLink}">${callbackLink}</a></p><p>— Sam<br/>APEX Financial</p></body></html>`,
     },
     couldnt_reach_you: {
-      subject: `${firstName}, We Tried to Call You! 📞`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;background-color:#f9fafb;"><div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><h2 style="color:#14b8a6;margin:0 0 16px 0;">Hey ${firstName}!</h2><p style="color:#374151;line-height:1.6;margin:0 0 16px 0;">We tried reaching out to you today about the opportunity at <strong>Apex Financial</strong>, but we couldn't get through to your number.</p><p style="color:#374151;line-height:1.6;margin:0 0 16px 0;">No worries—we still want to connect! Here's what you can do:</p><ul style="color:#374151;line-height:1.8;margin:0 0 24px 0;padding-left:20px;"><li>✓ Reply to this email with your best phone number</li><li>✓ Or schedule a time that works for you below</li></ul><div style="text-align:center;margin:24px 0;"><a href="${callbackLink}" style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">Schedule a Call</a></div><p style="color:#6b7280;font-size:14px;margin:24px 0 0 0;">Talk soon,<br/><strong style="color:#111827;">Apex Financial Team</strong></p></div></body></html>`,
+      subject: `${firstName} — tried to call, didn't get through`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;background-color:#f9fafb;"><div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><h2 style="color:#14b8a6;margin:0 0 16px 0;">Hi ${firstName},</h2><p style="color:#374151;line-height:1.6;margin:0 0 16px 0;">Tried you today about the APEX opportunity — couldn't get through.</p><p style="color:#374151;line-height:1.6;margin:0 0 16px 0;">Two options:</p><ul style="color:#374151;line-height:1.8;margin:0 0 24px 0;padding-left:20px;"><li>Reply with the best number + time to call</li><li>Or book a slot directly:</li></ul><div style="text-align:center;margin:24px 0;"><a href="${callbackLink}" style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">Pick a time</a></div><p style="color:#6b7280;font-size:14px;margin:24px 0 0 0;">— Sam<br/><strong style="color:#111827;">APEX Financial</strong></p></div></body></html>`,
     },
   };
   

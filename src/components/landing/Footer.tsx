@@ -15,7 +15,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
             </Link>
             <p className="text-sm text-[#94a3b8] max-w-sm mb-4">
               Where producers stop renting their income and start building it.
-              Join America's fastest-growing life insurance agency.
+              Warm leads, weekly pay, real coaching. No fee for leads ever.
             </p>
             <div className="flex flex-col gap-2 text-sm text-[#94a3b8]">
               <a href="mailto:info@apex-financial.org" className="flex items-center gap-2 hover:text-[#22d3a5] transition-colors">

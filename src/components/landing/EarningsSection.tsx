@@ -37,8 +37,8 @@ export function EarningsSection() {
       <div className="container mx-auto px-4 relative z-10">
         <SectionHeading
           badge="Earnings Potential"
-          title="How The Opportunity Works"
-          subtitle="We only show what we can stand behind. APEX gives you the path, the support, and the lead flow once you're ready to sell."
+          title="How agents actually make money here"
+          subtitle="No hype, no posted screenshots, no fake checks. Pick your starting line — licensed or not — and see what your first 6 months look like."
         />
 
         {/* Earnings Toggle */}

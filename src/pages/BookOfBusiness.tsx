@@ -321,6 +321,8 @@ export default function BookOfBusiness() {
     () => filtered.reduce((s, d) => s + Number(d.monthly_premium ?? 0), 0),
     [filtered],
   );
+  const apexCount = useMemo(() => filtered.filter(d => sourceKey(d.source) === "apex").length, [filtered]);
+  const agentLinkCount = useMemo(() => filtered.filter(d => sourceKey(d.source) === "agent_link").length, [filtered]);
   const syncErrors = useMemo(
     () => filtered.filter((d) => Boolean(d.insuracloud_sync_error)).length,
     [filtered],
@@ -386,9 +388,9 @@ export default function BookOfBusiness() {
         <GlassCard className="p-3">
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">APEX / AgentLink</div>
           <div className="text-2xl font-bold tabular-nums">
-            {filtered.filter(d => sourceKey(d.source) === "apex").length}
+            {apexCount}
             <span className="text-muted-foreground"> / </span>
-            {filtered.filter(d => sourceKey(d.source) === "agent_link").length}
+            {agentLinkCount}
           </div>
         </GlassCard>
       </div>

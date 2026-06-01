@@ -380,8 +380,8 @@ function ContentCommandSection() {
     refetchInterval: 60_000,
   });
 
-  const awaiting = (drafts ?? []).filter((d) => d.status === "awaiting_approval" || d.status === "pending").length;
-  const approved = (drafts ?? []).filter((d) => d.status === "approved").length;
+  const awaiting = useMemo(() => (drafts ?? []).filter((d) => d.status === "awaiting_approval" || d.status === "pending").length, [drafts]);
+  const approved = useMemo(() => (drafts ?? []).filter((d) => d.status === "approved").length, [drafts]);
 
   return (
     <Card className="border-amber-500/30 bg-amber-500/[0.03]">

@@ -654,3 +654,21 @@ verify_jwt = false
 
 [functions.cfo-notify]
 verify_jwt = false
+
+[functions.notion-sync]
+verify_jwt = false
+
+[functions.sam-ai-chat]
+verify_jwt = false
+
+[functions.sam-email]
+verify_jwt = false
+
+[functions.send-license-milestone]
+verify_jwt = false
+
+[functions.system-health-autopilot]
+verify_jwt = false
+
+[functions.xcel-gmail-pull]
+verify_jwt = false

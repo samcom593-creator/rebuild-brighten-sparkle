@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -1406,6 +1406,7 @@ export default function NotificationHub() {
   const queryClient = useQueryClient();
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
   const [refreshing, setRefreshing] = useState(false);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Single-boost lock: check if there's a blast in progress
   const [boostLocked, setBoostLocked] = useState(() => {
@@ -1440,7 +1441,8 @@ export default function NotificationHub() {
     setRefreshing(true);
     playSound("whoosh");
     await queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
-    setTimeout(() => setRefreshing(false), 600);
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => setRefreshing(false), 600);
   };
 
   // Realtime subscription

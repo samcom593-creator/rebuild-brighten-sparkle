@@ -1045,19 +1045,19 @@ export default function DashboardCRM() {
     }
   };
 
-  const activeAgents = agents.filter(a => {
+  const activeAgents = useMemo(() => agents.filter(a => {
     if (!showDeactivated && a.isDeactivated) return false;
     if (!showInactive && a.isInactive) return false;
     return true;
-  });
+  }), [agents, showDeactivated, showInactive]);
 
-  const filteredAgents = activeAgents.filter(a => {
+  const filteredAgents = useMemo(() => activeAgents.filter(a => {
     const matchesSearch = !searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()) || a.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesManager = managerFilter === "all" || a.managerId === managerFilter;
     const matchesLicense = licenseFilter === "all" || (licenseFilter === "licensed" ? a.agentLicenseStatus === "licensed" : a.agentLicenseStatus !== "licensed");
     const matchesAiScore = aiScoreFilter === "all" || a.aiScoreTier === aiScoreFilter;
     return matchesSearch && matchesManager && matchesLicense && matchesAiScore;
-  });
+  }), [activeAgents, searchTerm, managerFilter, licenseFilter, aiScoreFilter]);
 
   const getAgentsForSection = (section: typeof SECTIONS[number]) => {
     if (section.key === "meeting_attendance") {

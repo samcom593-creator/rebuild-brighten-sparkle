@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Target, Trophy, TrendingUp, Users, Sparkles, CheckCircle2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -150,7 +150,11 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
     return num.toLocaleString();
   };
 
-  const currentMonth = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const currentMonth = useMemo(
+    () => new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+    []
+  );
+  const metGoalsCount = useMemo(() => goals.filter((g) => g.current >= g.target).length, [goals]);
 
   if (loading) {
     return (
@@ -182,7 +186,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
         <div className="text-right">
           <p className="text-xs text-muted-foreground">Goals Hit</p>
           <p className="text-lg font-bold text-primary">
-            {goals.filter((g) => g.current >= g.target).length} / {goals.length}
+            {metGoalsCount} / {goals.length}
           </p>
         </div>
       </div>
@@ -272,7 +276,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
         transition={{ delay: 0.8 }}
         className="mt-6 pt-4 border-t border-border/50"
       >
-        {goals.filter((g) => g.current >= g.target).length === goals.length ? (
+        {metGoalsCount === goals.length ? (
           <div className="text-center">
             <p className="text-sm font-medium text-emerald-500 flex items-center justify-center gap-2">
               <Trophy className="h-4 w-4" />
@@ -282,9 +286,9 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
         ) : (
           <div className="text-center">
             <p className="text-xs text-muted-foreground">
-              {goals.filter((g) => g.current >= g.target).length === 0
+              {metGoalsCount === 0
                 ? "Let's crush these targets together! 💪"
-                : `${goals.length - goals.filter((g) => g.current >= g.target).length} more goals to go. Keep pushing!`}
+                : `${goals.length - metGoalsCount} more goals to go. Keep pushing!`}
             </p>
           </div>
         )}

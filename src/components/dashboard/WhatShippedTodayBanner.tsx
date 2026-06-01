@@ -26,6 +26,11 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "perf: 5 render performance fixes — ManagerInviteLinks N+1→3 queries, TeamGoalsTracker 4× redundant filter→useMemo, PipelineCard React.memo + useMemo dates, Footer/Banner static allocations hoisted",
+    detail: "ManagerInviteLinks fetchInviteLinks + fetchAgents: replaced 2 Promise.all N+1 patterns (2N+1 Supabase calls each) with 3 batched queries total using .in() + Map join — same approach already proven in QuickAssignMenu. TeamGoalsTracker: 4 separate goals.filter() calls in JSX (running per render) replaced with single useMemo metGoalsCount; currentMonth Date alloc also memoized. PipelineCard: wrapped with React.memo to prevent re-renders from parent; consolidated 3 new Date() + differenceInHours + formatDistanceToNow calls into one useMemo keyed on contact/created_at fields. Footer: new Date().getFullYear() in render → CURRENT_YEAR module constant. WhatShippedTodayBanner: SHIPPED.filter() in JSX → SHIPPED_TODAY_COUNT module constant.",
+  },
+  {
+    ts: "today",
     label: "voice: Wave-6 AI-tell kill — CareerPathway Phase 2 (5 steps), Phase 3 (3 steps), Why-Agents-Choose subtitle, BenefitsSection Slack→Discord truth-fix",
     detail: "CareerPathwaySection Phase 2 — all 5 steps rewritten to drop corporate-speak: 'Onboarding Process' description swapped from 'training platform and agent tools' fluff to 'plugged into the APEX training stack, agent CRM, and contracting paperwork on day one'. Virtual Sales Bootcamp ditched 'intensive virtual training with live coaching on scripts, objection handling, and closing techniques' (textbook AI rule-of-three + 'techniques' filler) for 'Live virtual bootcamp on scripts, objections, and closes. Real reps, real coaching, run by people closing right now.' Free CRM lost 'lead management, automated follow-ups, and pipeline tracking' (another AI tri-colon) for 'tracks every lead, follow-up, and policy you write. Free for every agent on contract.' Power dialer description tightened from 'maximize your call volume' corporate-speak to 'triples your call volume.' Phase 3 — 'pre-qualified and ready for your call' replaced with concrete 166K+ figure + dialing call-to-action. The Sam-flagged 'families seeking coverage' (Phase 3 step 3) killed — now 'Add mortgage protection to your book once final-expense reps are dialed in. Bigger premium, same warm-lead flow.' Phase 3 step 4 (IUL cross-sell) lost 'higher premiums and commissions' for 'Same household, higher premium, bigger commission.' Why-Agents-Choose subtitle lost 'Everything you need to build a successful career in life insurance' for 'Carriers, leads, training, weekly pay. Bring the work — the system handles the rest.' BenefitsSection 'Team that picks up' tile fixed: said 'Slack you can ping any hour' (data-truth bug — Apex runs on Discord, not Slack), now reads 'Daily team huddle, weekly closer call, Discord that's never quiet.'",
   },
@@ -373,6 +378,8 @@ const SHIPPED: ShippedItem[] = [
   },
 ];
 
+const SHIPPED_TODAY_COUNT = SHIPPED.filter((s) => s.ts === "today").length;
+
 export function WhatShippedTodayBanner() {
   const [expanded, setExpanded] = useState(true);
 
@@ -399,7 +406,7 @@ export function WhatShippedTodayBanner() {
             <Sparkles className="h-3 w-3" /> Shipped — receipts since you logged in last
           </div>
           <h2 className="text-base sm:text-lg font-bold text-foreground leading-tight">
-            {SHIPPED.length} platform changes live · {SHIPPED.filter(s => s.ts === "today").length} pushed today
+            {SHIPPED.length} platform changes live · {SHIPPED_TODAY_COUNT} pushed today
           </h2>
         </div>
         {expanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}

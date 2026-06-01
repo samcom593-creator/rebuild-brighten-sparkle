@@ -64,32 +64,32 @@ export function ManagerInviteLinks() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      if (!links || links.length === 0) {
+        setInviteLinks([]);
+        return;
+      }
 
-      // Get manager names for each link
-      const linksWithNames = await Promise.all(
-        (links || []).map(async (link) => {
-          const { data: agent } = await supabase
-            .from("agents")
-            .select("user_id")
-            .eq("id", link.manager_agent_id)
-            .maybeSingle();
+      // Batch: 1 query for agents, 1 for profiles — no per-row fetches
+      const agentIds = links.map((l) => l.manager_agent_id);
+      const { data: agents } = await supabase
+        .from("agents")
+        .select("id, user_id")
+        .in("id", agentIds);
 
-          let managerName = "Unknown";
-          if (agent?.user_id) {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("full_name")
-              .eq("user_id", agent.user_id)
-              .maybeSingle();
-            managerName = profile?.full_name || "Unknown";
-          }
+      const userIds = (agents || []).filter((a) => a.user_id).map((a) => a.user_id!);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", userIds);
 
-          return {
-            ...link,
-            manager_name: managerName,
-          };
-        })
-      );
+      const agentUserMap = new Map((agents || []).map((a) => [a.id, a.user_id]));
+      const profileNameMap = new Map((profiles || []).map((p) => [p.user_id, p.full_name]));
+
+      const linksWithNames = links.map((link) => {
+        const userId = agentUserMap.get(link.manager_agent_id);
+        const managerName = (userId && profileNameMap.get(userId)) || "Unknown";
+        return { ...link, manager_name: managerName };
+      });
 
       setInviteLinks(linksWithNames);
     } catch (error) {
@@ -107,23 +107,28 @@ export function ManagerInviteLinks() {
         .eq("status", "active");
 
       if (error) throw error;
+      if (!agentsData || agentsData.length === 0) {
+        setAgents([]);
+        return;
+      }
 
-      // Get profiles for each agent
-      const agentsWithNames = await Promise.all(
-        (agentsData || []).map(async (agent) => {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("full_name, email")
-            .eq("user_id", agent.user_id)
-            .maybeSingle();
+      // Batch: one profiles query for all agents
+      const userIds = agentsData.filter((a) => a.user_id).map((a) => a.user_id!);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .in("user_id", userIds);
 
-          return {
-            id: agent.id,
-            name: profile?.full_name || "Unknown",
-            email: profile?.email || "",
-          };
-        })
-      );
+      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
+
+      const agentsWithNames = agentsData.map((agent) => {
+        const profile = agent.user_id ? profileMap.get(agent.user_id) : null;
+        return {
+          id: agent.id,
+          name: profile?.full_name || "Unknown",
+          email: profile?.email || "",
+        };
+      });
 
       setAgents(agentsWithNames.filter((a) => a.name !== "Unknown"));
     } catch (error) {

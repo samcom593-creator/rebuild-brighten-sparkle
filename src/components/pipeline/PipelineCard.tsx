@@ -6,7 +6,7 @@ import { formatDistanceToNow, differenceInDays, differenceInHours } from "date-f
 import { SCORE_THRESHOLDS } from "@/lib/apexConfig";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
-import { useState } from "react";
+import { useState, useMemo, memo } from "react";
 
 export interface PipelineCardData {
   id: string;
@@ -62,12 +62,13 @@ const NEXT_ACTION: Record<string, string> = {
   licensed:           "🚀 Onboard & write first deal",
 };
 
-function getContactBadge(app: PipelineCardData) {
+function getContactBadge(app: PipelineCardData, now: Date) {
   const last = app.last_contacted_at || app.contacted_at;
   if (!last) {
     return { label: "Never contacted", color: "bg-red-500/20 text-red-400 border-red-500/30 animate-pulse" };
   }
-  const hours = differenceInHours(new Date(), new Date(last));
+  const lastDate = new Date(last);
+  const hours = differenceInHours(now, lastDate);
   if (hours > 48) {
     return {
       label: `${Math.floor(hours / 24)}d ago`,
@@ -75,7 +76,7 @@ function getContactBadge(app: PipelineCardData) {
     };
   }
   return {
-    label: formatDistanceToNow(new Date(last), { addSuffix: true }),
+    label: formatDistanceToNow(lastDate, { addSuffix: true }),
     color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   };
 }
@@ -120,13 +121,18 @@ interface PipelineCardProps {
   isDragging?: boolean;
 }
 
-export function PipelineCard({ app, onClick, onSchedule, isDragging }: PipelineCardProps) {
-  const contactBadge   = getContactBadge(app);
+export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedule, isDragging }: PipelineCardProps) {
   const [sheet, setSheet] = useState(false);
 
-  const last         = app.last_contacted_at || app.contacted_at;
-  const hoursStale   = last ? differenceInHours(new Date(), new Date(last)) : 9999;
-  const daysInStage  = differenceInDays(new Date(), new Date(app.created_at));
+  const { contactBadge, hoursStale, daysInStage } = useMemo(() => {
+    const now = new Date();
+    const last = app.last_contacted_at || app.contacted_at;
+    return {
+      contactBadge: getContactBadge(app, now),
+      hoursStale: last ? differenceInHours(now, new Date(last)) : 9999,
+      daysInStage: differenceInDays(now, new Date(app.created_at)),
+    };
+  }, [app.last_contacted_at, app.contacted_at, app.created_at]);
   const isAtRisk     = hoursStale >= 48 && app.license_status !== "licensed";
   const isHot        = (app.lead_score ?? 0) >= SCORE_THRESHOLDS.medium;
   const nextAction   = NEXT_ACTION[app.license_progress ?? ""] ?? null;
@@ -283,4 +289,4 @@ export function PipelineCard({ app, onClick, onSchedule, isDragging }: PipelineC
       <ApplicationDetailSheet open={sheet} onOpenChange={setSheet} applicationId={app.id} />
     </>
   );
-}
+});

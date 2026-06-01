@@ -2,6 +2,8 @@ import { forwardRef } from "react";
 import { Link } from "react-router-dom";
 import { Crown, Mail, Phone, MapPin } from "lucide-react";
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 export const Footer = forwardRef<HTMLElement>((_, ref) => {
   return (
     <footer ref={ref} className="py-12 border-t border-[#1e293b] bg-[#030712]">
@@ -54,7 +56,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
         <div className="border-t border-[#1e293b] mt-8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex flex-col items-center md:items-start gap-1">
             <p className="text-sm text-[#94a3b8]">
-              © {new Date().getFullYear()} APEX Financial Empire. All rights reserved.
+              © {CURRENT_YEAR} APEX Financial Empire. All rights reserved.
             </p>
             <p className="text-xs text-[#22d3a5] font-bold font-display">
               Powered by Apex Financial

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   CheckSquare, 
@@ -76,15 +76,14 @@ export function BulkStageActions({
 }: BulkStageActionsProps) {
   const [loading, setLoading] = useState(false);
 
-  const selectedAgents = agents.filter(a => selectedIds.has(a.id));
-  const canAdvance = selectedAgents.some(a => {
-    const idx = STAGE_ORDER.indexOf(a.onboardingStage);
-    return idx < STAGE_ORDER.length - 1;
-  });
-  const canRevert = selectedAgents.some(a => {
-    const idx = STAGE_ORDER.indexOf(a.onboardingStage);
-    return idx > 0;
-  });
+  const { selectedAgents, canAdvance, canRevert } = useMemo(() => {
+    const selected = agents.filter(a => selectedIds.has(a.id));
+    return {
+      selectedAgents: selected,
+      canAdvance: selected.some(a => STAGE_ORDER.indexOf(a.onboardingStage) < STAGE_ORDER.length - 1),
+      canRevert:  selected.some(a => STAGE_ORDER.indexOf(a.onboardingStage) > 0),
+    };
+  }, [agents, selectedIds]);
 
   const toggleAgent = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -128,39 +127,38 @@ export function BulkStageActions({
         return;
       }
 
-      // Perform batch update
-      for (const update of updates) {
-        const { error } = await supabase
-          .from("agents")
-          .update({ 
-            onboarding_stage: update.newStage,
-            ...(update.newStage === "evaluated" ? { onboarding_completed_at: new Date().toISOString() } : {}),
-            ...(update.newStage === "in_field_training" ? { field_training_started_at: new Date().toISOString() } : {})
-          })
-          .eq("id", update.id);
+      const now = new Date().toISOString();
+      const noteText = `Bulk ${direction === "forward" ? "advance" : "revert"} via CRM`;
 
-        if (error) throw error;
+      // Batch update agents in one round-trip
+      const { error: updateError } = await supabase
+        .from("agents")
+        .upsert(
+          updates.map(u => ({
+            id: u.id,
+            onboarding_stage: u.newStage,
+            ...(u.newStage === "evaluated" ? { onboarding_completed_at: now } : {}),
+            ...(u.newStage === "in_field_training" ? { field_training_started_at: now } : {}),
+          })),
+          { onConflict: "id" }
+        );
+      if (updateError) throw updateError;
 
-        // Log the transition
-        await supabase.from("agent_onboarding").insert({
-          agent_id: update.id,
-          stage: update.newStage,
-          notes: `Bulk ${direction === "forward" ? "advance" : "revert"} via CRM`,
-        });
+      // Batch insert transition log rows in one round-trip
+      const { error: logError } = await supabase.from("agent_onboarding").insert(
+        updates.map(u => ({ agent_id: u.id, stage: u.newStage, notes: noteText }))
+      );
+      if (logError) throw logError;
 
-        // Send notifications for going live
-        if (update.newStage === "evaluated") {
-          try {
-            await supabase.functions.invoke("notify-agent-live-field", {
-              body: { agentId: update.id }
-            });
-            await supabase.functions.invoke("send-agent-portal-login", {
-              body: { agentId: update.id }
-            });
-          } catch (err) {
-            console.error("Error sending live notifications:", err);
-          }
-        }
+      // Fire "evaluated" notifications in parallel (not serial)
+      const evalIds = updates.filter(u => u.newStage === "evaluated").map(u => u.id);
+      if (evalIds.length > 0) {
+        await Promise.allSettled(
+          evalIds.flatMap(id => [
+            supabase.functions.invoke("notify-agent-live-field", { body: { agentId: id } }),
+            supabase.functions.invoke("send-agent-portal-login", { body: { agentId: id } }),
+          ])
+        );
       }
 
       toast.success(`${updates.length} agent${updates.length > 1 ? "s" : ""} ${direction === "forward" ? "advanced" : "reverted"}`);

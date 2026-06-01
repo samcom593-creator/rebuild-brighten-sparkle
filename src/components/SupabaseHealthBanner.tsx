@@ -12,13 +12,36 @@ import { supabase } from "@/integrations/supabase/client";
  * Site loaded (Vercel was fine) but every dashboard query spun
  * forever with no signal to the user.
  */
+
+// Isolated 1s ticker — only mounts when the banner is visible so
+// the outer component doesn't re-render 3,600x/hr during normal operation.
+function ElapsedSince({ since }: { since: Date }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(n => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const secs = Math.floor((Date.now() - since.getTime()) / 1000);
+  if (secs < 60) return <>{secs}s</>;
+  if (secs < 3600) return <>{Math.floor(secs / 60)}m</>;
+  return <>{Math.floor(secs / 3600)}h {Math.floor((secs % 3600) / 60)}m</>;
+}
+
+function SecondsSince({ since }: { since: Date }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(n => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <>{Math.max(1, Math.floor((Date.now() - since.getTime()) / 1000))}s ago</>;
+}
+
 export function SupabaseHealthBanner() {
   const [state, setState] = useState<"ok" | "slow" | "down">("ok");
   const [dismissed, setDismissed] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [downSince, setDownSince] = useState<Date | null>(null);
   const [probing, setProbing] = useState(false);
-  const [, setTick] = useState(0);
   const probeRef = useRef<() => Promise<void>>(async () => {});
 
   const probe = useCallback(async () => {
@@ -58,24 +81,13 @@ export function SupabaseHealthBanner() {
   useEffect(() => {
     probeRef.current();
     const id = setInterval(() => probeRef.current(), 60_000);
-    const tickId = setInterval(() => setTick((n) => n + 1), 1000);
-    return () => { clearInterval(id); clearInterval(tickId); };
+    return () => clearInterval(id);
   }, []);
 
   if (dismissed || state === "ok") return null;
 
-  const downFor = downSince ? Math.floor((Date.now() - downSince.getTime()) / 1000) : 0;
-  const downForLabel = downFor < 60
-    ? `${downFor}s`
-    : downFor < 3600
-      ? `${Math.floor(downFor / 60)}m`
-      : `${Math.floor(downFor / 3600)}h ${Math.floor((downFor % 3600) / 60)}m`;
-  const lastCheckedLabel = lastChecked
-    ? `${Math.max(1, Math.floor((Date.now() - lastChecked.getTime()) / 1000))}s ago`
-    : "—";
-
   const message = state === "down"
-    ? `Postgres data plane unresponsive (${downForLabel}). Dashboards may load forever or show stale data. Platform-side, not your build.`
+    ? "Postgres data plane unresponsive. Dashboards may load forever or show stale data. Platform-side, not your build."
     : "Backend is sluggish. Some queries are taking >3s.";
 
   return (
@@ -84,7 +96,12 @@ export function SupabaseHealthBanner() {
         <AlertTriangle className="h-4 w-4 flex-shrink-0" />
         <span className="truncate">
           <strong>Supabase {state === "down" ? "down" : "slow"}</strong> · {message}
-          <span className="hidden sm:inline opacity-70"> · last checked {lastCheckedLabel}</span>
+          {state === "down" && downSince && (
+            <span className="opacity-70"> (<ElapsedSince since={downSince} />)</span>
+          )}
+          {lastChecked && (
+            <span className="hidden sm:inline opacity-70"> · last checked <SecondsSince since={lastChecked} /></span>
+          )}
         </span>
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">

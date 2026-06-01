@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { BookOpen, CheckCircle, Clock, GraduationCap, Send, AlertTriangle, ArrowRight } from "lucide-react";
@@ -145,30 +145,29 @@ export function CourseProgressPanel() {
     }
   };
 
-  const filteredProgress = courseProgress?.filter(agent => {
-    const hasStarted = agent.completedModules > 0 || agent.lastActivity;
-    switch (filter) {
-      case "not_started":
-        return !hasStarted;
-      case "in_progress":
-        return hasStarted && agent.moduleProgress < 100 && !agent.isStalled;
-      case "stalled":
-        return agent.isStalled || agent.isAtRisk;
-      case "complete":
-        return agent.allModulesPassed;
-      default:
-        return true;
+  // Single pass: compute stats + filtered list together to avoid 5 separate array walks per render
+  const { filteredProgress, stats } = useMemo(() => {
+    const s = { total: 0, notStarted: 0, inProgress: 0, stalled: 0, complete: 0 };
+    const filtered: AgentCourseProgress[] = [];
+    for (const agent of courseProgress ?? []) {
+      s.total++;
+      const hasStarted = agent.completedModules > 0 || !!agent.lastActivity;
+      if (!hasStarted) s.notStarted++;
+      if (hasStarted && agent.moduleProgress < 100 && !agent.isStalled) s.inProgress++;
+      if (agent.isStalled || agent.isAtRisk) s.stalled++;
+      if (agent.allModulesPassed) s.complete++;
+      let keep = false;
+      switch (filter) {
+        case "not_started": keep = !hasStarted; break;
+        case "in_progress": keep = hasStarted && agent.moduleProgress < 100 && !agent.isStalled; break;
+        case "stalled":     keep = agent.isStalled || agent.isAtRisk; break;
+        case "complete":    keep = agent.allModulesPassed; break;
+        default:            keep = true;
+      }
+      if (keep) filtered.push(agent);
     }
-  }) || [];
-
-  // Stats
-  const stats = {
-    total: courseProgress?.length || 0,
-    notStarted: courseProgress?.filter(a => a.completedModules === 0 && !a.lastActivity).length || 0,
-    inProgress: courseProgress?.filter(a => (a.completedModules > 0 || a.lastActivity) && a.moduleProgress < 100 && !a.isStalled).length || 0,
-    stalled: courseProgress?.filter(a => a.isStalled || a.isAtRisk).length || 0,
-    complete: courseProgress?.filter(a => a.allModulesPassed).length || 0,
-  };
+    return { filteredProgress: filtered, stats: s };
+  }, [courseProgress, filter]);
 
   if (isLoading) {
     return (

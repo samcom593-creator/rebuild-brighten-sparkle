@@ -45,43 +45,29 @@ export function AISummaryReport() {
       const weekPresentations = weekProd?.reduce((s: number, p: any) => s + Number(p.total_presentations || 0), 0) || 0;
       const producersCount = weekProd?.filter((p: any) => Number(p.total_alp) > 0).length || 0;
 
-      // Applications stats
-      const { count: totalApps } = await supabase
-        .from("applications")
-        .select("id", { count: "exact", head: true })
-        .is("terminated_at", null);
-
-      const { count: newThisWeek } = await supabase
-        .from("applications")
-        .select("id", { count: "exact", head: true })
-        .gte("created_at", new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString())
-        .is("terminated_at", null);
-
-      const { count: licensedCount } = await supabase
-        .from("applications")
-        .select("id", { count: "exact", head: true })
-        .eq("license_progress", "licensed")
-        .is("terminated_at", null);
-
-      const { count: inCourse } = await supabase
-        .from("applications")
-        .select("id", { count: "exact", head: true })
-        .in("license_progress", ["course_purchased", "finished_course"])
-        .is("terminated_at", null);
-
-      const { count: testPhase } = await supabase
-        .from("applications")
-        .select("id", { count: "exact", head: true })
-        .in("license_progress", ["test_scheduled", "passed_test"])
-        .is("terminated_at", null);
-
-      // Overdue (no contact 48h+)
+      // Applications stats — all 6 count queries run in parallel
       const cutoff = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
-      const { count: overdueCount } = await supabase
-        .from("applications")
-        .select("id", { count: "exact", head: true })
-        .is("terminated_at", null)
-        .or(`last_contacted_at.lt.${cutoff},last_contacted_at.is.null`);
+      const [
+        { count: totalApps },
+        { count: newThisWeek },
+        { count: licensedCount },
+        { count: inCourse },
+        { count: testPhase },
+        { count: overdueCount },
+      ] = await Promise.all([
+        supabase.from("applications").select("id", { count: "exact", head: true }).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .gte("created_at", new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString())
+          .is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .eq("license_progress", "licensed").is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .in("license_progress", ["course_purchased", "finished_course"]).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .in("license_progress", ["test_scheduled", "passed_test"]).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .is("terminated_at", null).or(`last_contacted_at.lt.${cutoff},last_contacted_at.is.null`),
+      ]);
 
       return {
         activeAgents: liveAgents.size,

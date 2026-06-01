@@ -26,6 +26,16 @@ interface ShippedItem {
 const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
+    label: "perf: 4 performance fixes — batch queries, useMemo, kill 1s tick",
+    detail: "AISummaryReport: 5 sequential count queries → Promise.all (parallel, ~5x faster). CourseProgressPanel: 5 .filter() passes per render → single useMemo loop (O(n) once, not O(5n)). BulkStageActions: N+1 serial loop per agent → single batch upsert + single batch insert + parallel edge fn calls; also memoized selectedAgents/canAdvance/canRevert. SupabaseHealthBanner: 1s setInterval that caused 3,600 banner re-renders/hr → isolated ElapsedSince + SecondsSince child components that only mount and tick when the banner is actually visible (during an outage).",
+  },
+  {
+    ts: "today",
+    label: "Overnight drain: PL-023 + PL-059 + PL-063 + PL-088 + PL-091 + PL-081 + Notion sync + morning brief rewrite",
+    detail: "Single wave from the 2026-05-29 overnight build. PL-023 RecentActivationsPanel shipped on AgentCommandDashboard (v_recent_activations_alp view). PL-059 LeadCenter gets a source-breakdown panel (per-channel volume + contacted + close rate). PL-063 InactiveAgents gets CRM-grade Never-sold / Sold-≥1 / Sold-only-one tabs with live counts. PL-088 SMS milestone infra live (license_milestone_outbox + 6-template seed + trigger on applications.license_progress + send-license-milestone edge fn + cron @ 1 min) — fires the moment Twilio creds drop in vault. PL-091 xcel-gmail-pull edge fn deployed (cron @ 30 min, Gmail OAuth gated). PL-081 system-health-autopilot deployed (cron @ 5 min, reads 5 health views, auto-retries 3x/hr then pages Sam via Telegram). Notion live-sync edge fn + recruiting_pipeline_rollup + finance_snapshot RPCs + cron @ 30 min — gated on NOTION_TOKEN. Morning brief fully rewritten to plain-English Money/Recruiting/Content/Bots/What-broke/One-move sentences; chip cards retired.",
+  },
+  {
+    ts: "today",
     label: "PL-025 Lapses 30d KPI now opens a drilldown modal on tap (policy + agent + client + lapsed_at)",
     detail: "AgentCommandDashboard's 'Lapses · 30d' StatRowCard is now interactive — a11y-correct (renders as a button when onClick is set, keyboard + screen-reader friendly), opens LapsesDrilldownModal with the 45 lapsed policies showing policy_number, client name + phone, face_amount, monthly_premium, lapsed_at (relative + absolute), and the writing agent. Shipped in commits 460fa0ae (interactive StatRowCard wiring) + 4837ab49 (LapsesDrilldownModal component).",
   },

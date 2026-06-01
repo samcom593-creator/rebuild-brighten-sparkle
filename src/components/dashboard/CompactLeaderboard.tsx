@@ -5,8 +5,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { subDays, format } from "date-fns";
-import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { formatMetricSource, getMetricBounds, METRIC_REGISTRY } from "@/lib/metricTruth";
 import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
@@ -27,7 +25,7 @@ interface LeaderboardEntry {
   isCurrentUser: boolean;
 }
 
-type Period = "day" | "week" | "month" | "custom";
+type Period = "day" | "week" | "month" | "last_month" | "ytd";
 
 const getAvatarColor = (name: string) => {
   const colors = [
@@ -214,19 +212,16 @@ function LeaderboardRow({ entry, index, maxALP }: { entry: LeaderboardEntry; ind
 }
 
 export function CompactLeaderboard({ currentAgentId, className, refreshKey }: CompactLeaderboardProps) {
-  const [period, setPeriod] = useState<Period>("day");
+  // Sam-feedback 2026-06-01: default to month (was day). Killed Custom tab.
+  const [period, setPeriod] = useState<Period>("month");
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(true);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
-  const [customRange, setCustomRange] = useState<DateRange>({
-    from: subDays(new Date(), 30),
-    to: new Date(),
-  });
 
   const fetchLeaderboard = useCallback(async () => {
     try {
-      const bounds = getMetricBounds(period, customRange);
+      const bounds = getMetricBounds(period);
 
       const [{ data: production }, { data: syncRow }] = await Promise.all([
         supabase
@@ -325,9 +320,8 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
     day: "Today",
     week: "This Week",
     month: "This Month",
-    custom: customRange.from && customRange.to 
-      ? `${format(customRange.from, "MMM d")} - ${format(customRange.to, "MMM d")}`
-      : "Custom Range",
+    last_month: "Last Month",
+    ytd: "Year to Date",
   };
 
   const top3 = entries.slice(0, 3);
@@ -369,17 +363,10 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
               <TabsTrigger value="day" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Day</TabsTrigger>
               <TabsTrigger value="week" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Week</TabsTrigger>
               <TabsTrigger value="month" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Month</TabsTrigger>
-              <TabsTrigger value="custom" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Custom</TabsTrigger>
+              <TabsTrigger value="last_month" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Last Mo</TabsTrigger>
+              <TabsTrigger value="ytd" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">YTD</TabsTrigger>
             </TabsList>
           </Tabs>
-          {period === "custom" && (
-            <DateRangePicker
-              value={customRange}
-              onChange={setCustomRange}
-              simpleMode
-              className="scale-90 origin-left"
-            />
-          )}
         </div>
       </div>
       <p className="mb-3 text-[11px] text-muted-foreground">

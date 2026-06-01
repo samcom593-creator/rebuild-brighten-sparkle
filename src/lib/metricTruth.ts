@@ -13,14 +13,16 @@ import {
   BUSINESS_TIMEZONE,
   getBusinessDayBounds,
   getBusinessDayKey,
+  getBusinessLastMonthBounds,
   getBusinessMonthBounds,
   getBusinessMonthProjectionContext,
   getBusinessNow,
   getBusinessWeekBounds,
+  getBusinessYearBounds,
   getMatchedPriorWeekBounds,
 } from "@/lib/dateUtils";
 
-export type MetricWindow = "day" | "week" | "month" | "custom";
+export type MetricWindow = "day" | "week" | "month" | "last_month" | "ytd" | "custom";
 
 export interface MetricDefinition {
   key: string;
@@ -167,6 +169,8 @@ export function getMetricBounds(window: MetricWindow, customRange?: CustomMetric
 
   if (window === "day") return getBusinessDayBounds();
   if (window === "week") return getBusinessWeekBounds();
+  if (window === "last_month") return getBusinessLastMonthBounds();
+  if (window === "ytd") return getBusinessYearBounds();
   return getBusinessMonthBounds();
 }
 
@@ -220,13 +224,19 @@ export function formatMetricSource(definition: MetricDefinition, lastUpdatedAt?:
 
 export function isAgentLinkSyncStale(lastSuccessAt?: string | null, freshnessMinutes = 15): boolean {
   if (!lastSuccessAt) return true;
-  const ageMs = getBusinessNow().getTime() - new Date(lastSuccessAt).getTime();
+  // Use Date.now() — not getBusinessNow() — because lastSuccessAt is a true UTC timestamp
+  // and we just need elapsed wall-clock milliseconds. getBusinessNow() shifts epoch millis
+  // by the TZ offset via toZonedTime, which makes the comparison wrong.
+  const ageMs = Date.now() - new Date(lastSuccessAt).getTime();
   return ageMs > freshnessMinutes * 60_000;
 }
 
-export function shouldAutoRepairLeaderboards(now: Date = getBusinessNow()): boolean {
-  const businessNow = now;
-  return businessNow.getHours() > 9 || (businessNow.getHours() === 9 && businessNow.getMinutes() >= 30);
+export function shouldAutoRepairLeaderboards(now: Date = new Date()): boolean {
+  // Use formatInTimeZone so the hour/minute check is always relative to the business timezone,
+  // regardless of what timezone the host machine is running in.
+  const hour = parseInt(formatInTimeZone(now, BUSINESS_TIMEZONE, "H"), 10);
+  const min = parseInt(formatInTimeZone(now, BUSINESS_TIMEZONE, "m"), 10);
+  return hour > 9 || (hour === 9 && min >= 30);
 }
 
 export function getCloseRate(deals: number, presentations: number): number {

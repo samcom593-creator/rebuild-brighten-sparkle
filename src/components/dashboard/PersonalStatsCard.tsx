@@ -5,9 +5,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, subMonths } from "date-fns";
 import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
@@ -15,7 +14,7 @@ import { getClosingRateColor } from "@/lib/closingRateColors";
 import { getMetricBounds } from "@/lib/metricTruth";
 import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
-type TimePeriod = "day" | "week" | "month" | "custom";
+type TimePeriod = "day" | "week" | "month" | "last_month" | "ytd";
 
 interface PersonalStatsCardProps {
   agentId: string;
@@ -38,8 +37,8 @@ interface PeriodStats {
 
 export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCardProps) {
   const { user, isAdmin, isManager } = useAuth();
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>("week");
-  const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
+  // Sam-feedback 2026-06-01: default to month (was week). Killed Custom tab.
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("month");
   const [agencyStats, setAgencyStats] = useState<AgencyStats | null>(null);
   const [personalStats, setPersonalStats] = useState<PeriodStats | null>(null);
   const [personalBest, setPersonalBest] = useState<number>(0);
@@ -55,15 +54,20 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
         return { start: getWeekStartPST(), end: today };
       case "month":
         return { start: getMonthStartPST(), end: today };
-      case "custom":
-        if (customDateRange.from && customDateRange.to) {
-          return { start: format(customDateRange.from, "yyyy-MM-dd"), end: format(customDateRange.to, "yyyy-MM-dd") };
-        }
-        return { start: getMonthStartPST(), end: today };
+      case "last_month": {
+        const lastMonth = subMonths(new Date(), 1);
+        const start = format(new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1), "yyyy-MM-dd");
+        const end = format(new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0), "yyyy-MM-dd");
+        return { start, end };
+      }
+      case "ytd": {
+        const yearStart = format(new Date(new Date().getFullYear(), 0, 1), "yyyy-MM-dd");
+        return { start: yearStart, end: today };
+      }
       default:
-        return { start: getWeekStartPST(), end: today };
+        return { start: getMonthStartPST(), end: today };
     }
-  }, [timePeriod, customDateRange]);
+  }, [timePeriod]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -302,25 +306,12 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
                 <TabsTrigger value="day" className="text-xs px-2 h-6">Day</TabsTrigger>
                 <TabsTrigger value="week" className="text-xs px-2 h-6">Week</TabsTrigger>
                 <TabsTrigger value="month" className="text-xs px-2 h-6">Month</TabsTrigger>
-                <TabsTrigger value="custom" className="text-xs px-2 h-6 gap-1">
-                  <Calendar className="h-3 w-3" />
-                </TabsTrigger>
+                <TabsTrigger value="last_month" className="text-xs px-2 h-6">Last Mo</TabsTrigger>
+                <TabsTrigger value="ytd" className="text-xs px-2 h-6">YTD</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
         </div>
-
-        {/* Custom Date Range Picker */}
-        {timePeriod === "custom" && (
-          <div className="mb-4">
-            <DateRangePicker
-              value={customDateRange}
-              onChange={setCustomDateRange}
-              simpleMode
-              className="w-full"
-            />
-          </div>
-        )}
 
         {/* Loading State */}
         {loading ? (

@@ -6,6 +6,7 @@ import {
   startOfMonth,
   startOfWeek,
   subDays,
+  subMonths,
   subWeeks,
 } from "date-fns";
 import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
@@ -128,6 +129,33 @@ export function getBusinessWeekBounds(date: Date = new Date()): { start: Date; e
 export function getBusinessMonthBounds(date: Date = new Date()): { start: Date; end: Date; startIso: string; endIso: string } {
   const monthStartKey = format(businessMonthStartDate(date), "yyyy-MM-dd");
   const start = fromZonedTime(`${monthStartKey}T00:00:00`, BUSINESS_TIMEZONE);
+  const end = endOfBusinessDay(date);
+  return {
+    start,
+    end,
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+  };
+}
+
+export function getBusinessLastMonthBounds(date: Date = new Date()): { start: Date; end: Date; startIso: string; endIso: string } {
+  // Calendar last month: first day of previous month → first day of this month
+  const thisMonthStart = businessMonthStartDate(date);
+  const lastMonthStart = subMonths(thisMonthStart, 1);
+  const start = fromZonedTime(`${format(lastMonthStart, "yyyy-MM-dd")}T00:00:00`, BUSINESS_TIMEZONE);
+  const end = fromZonedTime(`${format(thisMonthStart, "yyyy-MM-dd")}T00:00:00`, BUSINESS_TIMEZONE);
+  return {
+    start,
+    end,
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+  };
+}
+
+export function getBusinessYearBounds(date: Date = new Date()): { start: Date; end: Date; startIso: string; endIso: string } {
+  // Year-to-date: Jan 1 of current year → now
+  const yearStartKey = format(date, "yyyy") + "-01-01";
+  const start = fromZonedTime(`${yearStartKey}T00:00:00`, BUSINESS_TIMEZONE);
   const end = endOfBusinessDay(date);
   return {
     start,

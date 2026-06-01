@@ -173,9 +173,9 @@ const buildPhases = (carriers: number): Phase[] => [
     steps: [
       {
         icon: MessageCircle,
-        title: "Strategy Call With Our Senior Advisors",
-        description: "One-on-one mentorship calls to discuss your growth strategy and production goals.",
-        benefit: "✓ Personal mentorship",
+        title: "1-on-1s With Sam And The Senior Team",
+        description: "Direct calls with the people writing $1M+ a year. Bring real numbers — leave with the next move.",
+        benefit: "✓ Direct line to the top",
       },
       {
         icon: Award,
@@ -186,13 +186,13 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: UserPlus,
         title: "Plug Into Our Recruiting Systems",
-        description: "Access APEX recruiting tools, scripts, and training to build your own team of agents.",
-        benefit: "✓ Recruiting toolkit",
+        description: "Same DMs, scripts, and lead packs we use to bring in 5-10 new agents a week. Run them with your name on top.",
+        benefit: "✓ The hiring engine",
       },
       {
         icon: UsersRound,
-        title: "Build a Team & Replicate Your Success",
-        description: "Earn override commissions on your team's production. Managers earn $300K+ annually.",
+        title: "Build A Team And Stack Overrides",
+        description: "Recruit 10 producers, write your own deals on top. Managers here clear $300K+ a year on override alone.",
         benefit: "✓ Override income",
       },
       {
@@ -216,33 +216,33 @@ const phaseIndicators = [
 const whyAgentsChoose = [
   {
     icon: DollarSign,
-    title: "Top Commission Rates",
-    description: "Earn 70%-145% on every policy with APEX",
+    title: "70%-145% Commission",
+    description: "Highest contracts in the industry. Your raise comes from production, not negotiation.",
   },
   {
     icon: Target,
-    title: "Unlimited Warm Leads",
-    description: "166,000+ warm leads you can pull from on day one",
+    title: "166,000+ Warm Leads",
+    description: "Already paid for. Pull from the pool from day one — no upfront lead bill.",
   },
   {
     icon: GraduationCap,
     title: "No Experience Needed",
-    description: "Complete training from licensing to closing",
+    description: "License in 4-6 weeks. We walk you through every script, dial, and close.",
   },
   {
     icon: Zap,
-    title: "Fast Commission Payouts",
-    description: "Get paid within 72 hours of policy approval",
+    title: "Paid Within 72 Hours",
+    description: "Policy approved Monday, money in your account by Thursday. Weekly, not monthly.",
   },
   {
     icon: MapPin,
-    title: "Work From Anywhere",
-    description: "Build your business on your schedule",
+    title: "Run It From Your Phone",
+    description: "Laptop, dialer, internet. No office, no commute, no permission slip.",
   },
   {
     icon: UsersRound,
     title: "Build Your Own Team",
-    description: "Earn overrides and establish your agency",
+    description: "Recruit producers under you. Overrides stack on top of your personal deals.",
   },
 ];
 

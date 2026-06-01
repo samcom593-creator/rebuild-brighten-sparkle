@@ -5,7 +5,7 @@ import { track } from "@/lib/analytics";
 const FAQ = [
   {
     q: "How is APEX different from Family First Life or Symmetry?",
-    a: "FFL and Symmetry charge you for leads. APEX gives warm leads at no cost — production thresholds keep the flow open. Plus we pay weekly. Most agencies pay monthly.",
+    a: "FFL and Symmetry charge you for leads. APEX doesn't. You write deals, you keep getting leads. We pay weekly — most agencies make you wait a month.",
   },
   {
     q: "What if I'm already licensed at another agency?",
@@ -13,7 +13,7 @@ const FAQ = [
   },
   {
     q: "Do I really not pay for leads?",
-    a: "Zero upfront. Lead allocation scales with your production. Top producers get the warmest leads first — that's how the system stays fair.",
+    a: "Zero upfront. The harder you work, the warmer your next leads get. Top producers eat first. Slackers get cold lists. That's the deal.",
   },
   {
     q: "What's my realistic income in month 1, 6, 12?",
@@ -47,7 +47,7 @@ export function RecruitFAQ() {
             Real <span className="brand-gradient">questions</span>, real answers
           </h2>
           <p className="mt-4 text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
-            The stuff every recruit actually asks before they take the leap. We answer it the way we'd want to be answered.
+            The questions every recruit calls Sam about at 10pm. Answered like he'd answer his brother.
           </p>
         </div>
         <div className="space-y-3">

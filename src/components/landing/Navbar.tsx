@@ -5,7 +5,7 @@ import { Menu, X, Crown, Search } from "lucide-react";
 const NAV_LINKS = [
   { href: "#benefits", label: "Benefits" },
   { href: "#earnings", label: "Earnings" },
-  { href: "#testimonials", label: "Success Stories" },
+  { href: "#testimonials", label: "Receipts" },
   { href: "#systems", label: "Systems" },
   { href: "#career", label: "Career Path" },
   { href: "#leads", label: "Leads" },

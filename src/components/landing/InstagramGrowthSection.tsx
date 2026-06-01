@@ -49,7 +49,7 @@ export function InstagramGrowthSection() {
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session) {
         navigate(`/signup?next=/leads&pkg=social_growth`);
-        toast.info("Create an APEX account to unlock IG Growth.");
+        toast.info("Create an APEX account first to get IG Growth.");
         return;
       }
       const { data, error } = await supabase.functions.invoke("create-lead-checkout", {

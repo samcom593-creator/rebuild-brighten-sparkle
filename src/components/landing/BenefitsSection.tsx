@@ -24,7 +24,7 @@ export function BenefitsSection() {
         <SectionHeading
           badge="Why APEX"
           title="Everything You Need to Succeed"
-          subtitle="We've removed every barrier between you and a six-figure income."
+          subtitle="Lead flow, scripts, weekly pay, real mentorship. You bring the work."
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-16">

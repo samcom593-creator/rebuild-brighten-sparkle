@@ -82,7 +82,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
           </div>
 
           <p className="text-sm text-[#64748b] mt-4">
-            Takes less than 5 minutes • No commitment required
+            5 minutes to apply • Real reply within 24 hours
           </p>
         </div>
       </div>

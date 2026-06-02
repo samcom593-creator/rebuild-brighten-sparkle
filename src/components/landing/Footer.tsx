@@ -33,17 +33,17 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
           </div>
 
           <div>
-            <h4 className="font-bold mb-4 text-[#f1f5f9] font-display">Quick Links</h4>
+            <h3 className="font-bold mb-4 text-[#f1f5f9] font-display">Quick Links</h3>
             <ul className="space-y-2 text-sm text-[#94a3b8]">
               <li><a href="#benefits" className="hover:text-[#22d3a5] transition-colors">Benefits</a></li>
               <li><a href="#earnings" className="hover:text-[#22d3a5] transition-colors">Earnings</a></li>
-              <li><a href="#testimonials" className="hover:text-[#22d3a5] transition-colors">Success Stories</a></li>
+              <li><a href="#testimonials" className="hover:text-[#22d3a5] transition-colors">Receipts</a></li>
               <li><Link to="/apply" className="hover:text-[#22d3a5] transition-colors">Apply Now</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-bold mb-4 text-[#f1f5f9] font-display">Legal</h4>
+            <h3 className="font-bold mb-4 text-[#f1f5f9] font-display">Legal</h3>
             <ul className="space-y-2 text-sm text-[#94a3b8]">
               <li><Link to="/privacy" className="hover:text-[#22d3a5] transition-colors">Privacy Policy</Link></li>
               <li><Link to="/terms" className="hover:text-[#22d3a5] transition-colors">Terms of Service</Link></li>
@@ -62,7 +62,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
               Powered by Apex Financial
             </p>
           </div>
-          <p className="text-xs text-[#64748b] max-w-xl text-center md:text-right">
+          <p className="text-xs text-[#8395ab] max-w-xl text-center md:text-right">
             Income examples are illustrative and not guaranteed. Individual results vary based on effort, skill, and market conditions.
           </p>
         </div>

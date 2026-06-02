@@ -23,7 +23,7 @@ export function BenefitsSection() {
       <div className="container mx-auto px-4 relative z-10">
         <SectionHeading
           badge="Why APEX"
-          title="Everything You Need to Succeed"
+          title="Everything that closes. Nothing that doesn't."
           subtitle="Lead flow, scripts, weekly pay, real mentorship. You bring the work."
         />
 

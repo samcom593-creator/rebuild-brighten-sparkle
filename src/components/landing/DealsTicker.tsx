@@ -108,18 +108,18 @@ export function DealsTicker() {
     if (item.type === "deal") {
       return (
         <span key={`d-${idx}`} className="inline-flex items-center gap-1.5 px-4 whitespace-nowrap">
-          <span className="text-[#64748b]">🔥</span>
+          <span className="text-[#8395ab]" aria-hidden>🔥</span>
           <span className="font-bold font-display" style={{ color: item.color }}>{item.agent}</span>
-          <span className="text-[#64748b]">closed</span>
+          <span className="text-[#8395ab]">closed</span>
           <span className="font-black font-display" style={{ color: item.color }}>{item.amount}</span>
-          <span className="text-[#64748b]">ALP</span>
+          <span className="text-[#8395ab]">ALP</span>
           <span className="text-[#1e293b] mx-2">|</span>
         </span>
       );
     }
     return (
       <span key={`c-${idx}`} className="inline-flex items-center gap-1.5 px-4 whitespace-nowrap">
-        <span className="text-[#64748b]">Our agents write with</span>
+        <span className="text-[#8395ab]">Our agents write with</span>
         <span className="text-[#22d3a5] font-bold font-display">{item.name}</span>
         <span className="text-[#1e293b] mx-2">|</span>
       </span>

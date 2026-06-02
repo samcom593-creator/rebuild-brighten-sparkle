@@ -95,7 +95,7 @@ export function EarningsSection() {
               <milestone.icon className="h-6 w-6 text-[#22d3a5] mx-auto mb-2" />
               <div className="text-lg font-bold text-[#22d3a5] font-display">{milestone.value}</div>
               <div className="text-sm font-bold text-[#f1f5f9] font-display">{milestone.label}</div>
-              <div className="text-xs text-[#64748b] mt-1">{milestone.description}</div>
+              <div className="text-xs text-[#8395ab] mt-1">{milestone.description}</div>
             </div>
           ))}
         </div>

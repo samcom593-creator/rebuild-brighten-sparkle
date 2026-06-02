@@ -74,6 +74,8 @@ export function Navbar() {
             <div className="relative">
               <button
                 onClick={() => setSearchOpen(!searchOpen)}
+                aria-label="Search sections"
+                aria-expanded={searchOpen}
                 className="p-2 rounded-lg text-[#94a3b8] hover:text-[#f1f5f9] hover:bg-white/5 transition-colors"
               >
                 <Search className="h-4 w-4" />

@@ -81,7 +81,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
             </Link>
           </div>
 
-          <p className="text-sm text-[#64748b] mt-4">
+          <p className="text-sm text-[#8395ab] mt-4">
             5 minutes to apply • Real reply within 24 hours
           </p>
         </div>

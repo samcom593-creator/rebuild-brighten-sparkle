@@ -28,7 +28,7 @@ const SHIPPED: ShippedItem[] = [
     ts: "today",
     label: "a11y wave-9: GlobalSidebar dark-mode contrast (9 hits text-[#64748b] → text-[#8395ab]) + CalendlyEmbed offline-fallback contrast (text-slate-400/500 → text-slate-300) — desktop Lighthouse a11y verified 89 → 100/100, Perf 92, LCP 1.4s",
     detail: "Wave-8 desktop run verified at start of wave-9: a11y 89 → 100/100 (every WCAG fail closed). Continued the contrast leak sweep into admin: GlobalSidebar (dashboard sidebar, hit on every admin page) had 9 instances of text-[#64748b] on dark sidebar bg measuring same ~4.23:1 fail pattern; mass-replaced to text-[#8395ab] (~6.8:1) — same color used in wave-8 footer/CTA/ticker. Added text-[#8395ab] to the .light CSS override in index.css so light-mode keeps the readable hsl(220 18% 30%). Also caught CalendlyEmbed offline-fallback: text-slate-400 (booking-offline copy) and text-slate-500 (auto-show fallback note) both bumped to text-slate-300 — the offline state is the only thing visible to applicants when Calendly's API blips. Lighthouse desktop receipts (/tmp/lh-desktop-20260602-0333.json): Perf 92, A11y 100, BP 96, SEO 100, LCP 1.4s, CLS 0.002, TBT 20ms.",
-    commit: "WAVE9_SHA",
+    commit: "b55b4d88",
   },
   {
     ts: "today",

@@ -52,7 +52,7 @@ export function CalendlyEmbed({ url, className = "" }: CalendlyEmbedProps) {
       <div className={`rounded-2xl border border-primary/30 bg-gradient-to-br from-slate-900 to-slate-950 p-6 md:p-8 ${className}`}>
         <div className="text-center mb-6">
           <h3 className="text-2xl font-bold text-white mb-2">Let's Talk</h3>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-300">
             Booking is offline for the moment — reach Sam directly using any of these:
           </p>
         </div>
@@ -73,7 +73,7 @@ export function CalendlyEmbed({ url, className = "" }: CalendlyEmbedProps) {
             </a>
           </Button>
         </div>
-        <p className="text-xs text-center text-slate-500 mt-6">
+        <p className="text-xs text-center text-slate-300 mt-6">
           Once Calendly is restored, this page will auto-show the embed again.{" "}
           <a href={url} target="_blank" rel="noopener" className="inline-flex items-center gap-1 text-primary hover:underline">
             Try opening in a new tab <ExternalLink className="h-3 w-3" />

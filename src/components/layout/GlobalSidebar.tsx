@@ -388,7 +388,7 @@ export function GlobalSidebar({
             ? "text-[#22d3a5] bg-gradient-to-r from-[#22d3a5]/15 via-[#22d3a5]/5 to-transparent border-l-[3px] border-[#22d3a5] shadow-[inset_0_0_20px_hsl(168_80%_50%/0.08)]"
             : item.special
               ? "bg-gradient-to-r from-[#22d3a5]/10 to-transparent text-[#22d3a5] border border-[#22d3a5]/20 hover:from-[#22d3a5]/25 hover:border-[#22d3a5]/50 hover:shadow-[0_0_20px_hsl(168_80%_50%/0.15)] rounded-lg mx-1"
-              : "text-[#64748b] hover:text-[#e2e8f0] hover:bg-white/[0.04] hover:translate-x-0.5",
+              : "text-[#8395ab] hover:text-[#e2e8f0] hover:bg-white/[0.04] hover:translate-x-0.5",
           isCollapsed && "justify-center px-2"
         )}
         style={{ touchAction: "manipulation" }}
@@ -501,7 +501,7 @@ export function GlobalSidebar({
             <div className="flex items-center gap-1">
               {!isCollapsed && (
                 <ConditionalTooltip label="Inbox">
-                  <NotificationBell className="h-7 w-7 text-[#64748b] hover:text-[#22d3a5]" />
+                  <NotificationBell className="h-7 w-7 text-[#8395ab] hover:text-[#22d3a5]" />
                 </ConditionalTooltip>
               )}
               {!isCollapsed && (isAdmin || isManager) && (
@@ -524,7 +524,7 @@ export function GlobalSidebar({
                   variant="ghost"
                   size="icon"
                   onClick={onToggle}
-                  className="h-7 w-7 text-[#64748b] hover:text-[#94a3b8]"
+                  className="h-7 w-7 text-[#8395ab] hover:text-[#94a3b8]"
                   style={{ touchAction: "manipulation" }}
                 >
                   {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -561,7 +561,7 @@ export function GlobalSidebar({
                     variant="ghost"
                     size="sm"
                     onClick={() => { onToggle(); setTimeout(() => setShowSearch(true), 200); }}
-                    className="w-full justify-center text-[#64748b] hover:text-[#94a3b8]"
+                    className="w-full justify-center text-[#8395ab] hover:text-[#94a3b8]"
                     style={{ touchAction: "manipulation" }}
                   >
                     <Search className="h-4 w-4" />
@@ -606,7 +606,7 @@ export function GlobalSidebar({
                           className="w-full text-left px-3 py-2 hover:bg-white/[0.04] transition-colors"
                         >
                           <p className="text-sm font-medium truncate text-[#e2e8f0]">{result.name}</p>
-                          <p className="text-xs text-[#64748b] truncate">{result.email}</p>
+                          <p className="text-xs text-[#8395ab] truncate">{result.email}</p>
                         </button>
                       ))}
                     </div>
@@ -680,7 +680,7 @@ export function GlobalSidebar({
                 <p className="text-sm font-medium truncate text-[#e2e8f0]">
                   {user.user_metadata?.full_name || user.email}
                 </p>
-                <p className="text-xs text-[#64748b] truncate">{user.email}</p>
+                <p className="text-xs text-[#8395ab] truncate">{user.email}</p>
               </div>
             )}
 
@@ -688,7 +688,7 @@ export function GlobalSidebar({
               "flex items-center mb-2",
               isCollapsed ? "justify-center px-2" : "justify-between px-3"
             )}>
-              {!isCollapsed && <span className="text-sm text-[#64748b]">Theme</span>}
+              {!isCollapsed && <span className="text-sm text-[#8395ab]">Theme</span>}
               <ThemeToggle />
             </div>
 
@@ -698,7 +698,7 @@ export function GlobalSidebar({
                 size="sm"
                 onClick={onFullscreenToggle}
                 className={cn(
-                  "w-full mb-1 text-[#64748b] hover:text-[#94a3b8] hover:bg-white/[0.03]",
+                  "w-full mb-1 text-[#8395ab] hover:text-[#94a3b8] hover:bg-white/[0.03]",
                   isCollapsed ? "justify-center" : "justify-start px-3"
                 )}
                 style={{ touchAction: "manipulation" }}
@@ -723,7 +723,7 @@ export function GlobalSidebar({
                 size="sm"
                 onClick={handleLogout}
                 className={cn(
-                  "w-full text-[#64748b] hover:text-red-400 hover:bg-red-500/10",
+                  "w-full text-[#8395ab] hover:text-red-400 hover:bg-red-500/10",
                   isCollapsed ? "justify-center" : "justify-start px-3"
                 )}
                 style={{ touchAction: "manipulation" }}

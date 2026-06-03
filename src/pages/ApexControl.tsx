@@ -335,7 +335,7 @@ export default function ApexControl() {
               <h3 className="mt-3 text-base font-bold">{lane.title}</h3>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">{lane.state}</p>
               <p className="mt-3 text-sm text-slate-300">{lane.goodFor}</p>
-              <p className="mt-3 text-xs text-slate-500">{lane.whenCapped}</p>
+              <p className="mt-3 text-xs text-slate-300">{lane.whenCapped}</p>
             </Surface>
           ))}
         </div>

@@ -527,7 +527,7 @@ export default function BookReconciliation() {
                   badges={[
                     ...(r.flag_no_policy_num ? [{ label: "No policy #", color: "bg-rose-500/15 text-rose-500 dark:text-rose-400 border-rose-500/40" }] : []),
                     ...(r.flag_unsupported_carrier ? [{ label: r.carrier_short_code ?? "Unsupported", color: "bg-rose-500/15 text-rose-500 dark:text-rose-400 border-rose-500/40" }] : []),
-                    ...(r.flag_dead_policy ? [{ label: r.policy_status ?? "Dead", color: "bg-slate-500/15 text-slate-500 dark:text-slate-300 border-slate-500/40" }] : []),
+                    ...(r.flag_dead_policy ? [{ label: r.policy_status ?? "Dead", color: "bg-slate-500/15 text-slate-300 dark:text-slate-300 border-slate-500/40" }] : []),
                     ...(r.flag_no_internal_deal ? [{ label: "No internal deal", color: "bg-amber-500/15 text-amber-500 dark:text-amber-400 border-amber-500/40" }] : []),
                   ]}
                 />

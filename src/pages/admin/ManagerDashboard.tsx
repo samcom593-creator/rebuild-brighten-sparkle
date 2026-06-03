@@ -110,8 +110,8 @@ function RecruitingTab() {
                   <td className="p-3">{r.state ?? "—"}</td>
                   <td className="p-3"><Badge variant="secondary">{r.status}</Badge></td>
                   <td className="p-3 text-xs">{r.assigned_agent_id ? agentMap.get(r.assigned_agent_id) ?? "—" : <span className="text-rose-400">unassigned</span>}</td>
-                  <td className="p-3 text-xs text-slate-500">{formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}</td>
-                  <td className="p-3 text-xs text-slate-500">{r.contacted_at ? formatDistanceToNow(new Date(r.contacted_at), { addSuffix: true }) : <span className="text-rose-400">never</span>}</td>
+                  <td className="p-3 text-xs text-slate-300">{formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}</td>
+                  <td className="p-3 text-xs text-slate-300">{r.contacted_at ? formatDistanceToNow(new Date(r.contacted_at), { addSuffix: true }) : <span className="text-rose-400">never</span>}</td>
                 </tr>
               ))}</tbody>
             </table></div>}
@@ -172,8 +172,8 @@ function LicensingTab() {
           {!hires ? <div className="p-6"><Skeleton className="h-40 w-full" /></div> :
             <ul className="divide-y divide-white/5">{hires.map((h, i) => (
               <li key={i} className="flex items-center justify-between p-3 text-sm">
-                <span>{h.full_name ?? h.first_name ?? "—"}{h.state ? <span className="text-slate-500 ml-2">· {h.state}</span> : null}</span>
-                <span className="text-xs text-slate-500">{h.hired_at || h.created_at ? formatDistanceToNow(new Date(h.hired_at ?? h.created_at!), { addSuffix: true }) : ""}</span>
+                <span>{h.full_name ?? h.first_name ?? "—"}{h.state ? <span className="text-slate-300 ml-2">· {h.state}</span> : null}</span>
+                <span className="text-xs text-slate-300">{h.hired_at || h.created_at ? formatDistanceToNow(new Date(h.hired_at ?? h.created_at!), { addSuffix: true }) : ""}</span>
               </li>
             ))}</ul>}
         </CardContent>
@@ -235,7 +235,7 @@ function ProductionTab() {
           {!deals ? <div className="p-6"><Skeleton className="h-40 w-full" /></div> :
             <ul className="divide-y divide-white/5">{top.map(([agentId, agg], i) => (
               <li key={agentId} className="flex items-center justify-between p-3 text-sm">
-                <span><span className="text-slate-500 mr-2 tabular-nums">{i + 1}.</span>{agentMap.get(agentId) ?? agentId.slice(0, 8)}</span>
+                <span><span className="text-slate-300 mr-2 tabular-nums">{i + 1}.</span>{agentMap.get(agentId) ?? agentId.slice(0, 8)}</span>
                 <span className="text-xs"><span className="text-slate-300 mr-3">{agg.count} deals</span><span className="text-emerald-300 font-medium tabular-nums">${Math.round(agg.amount).toLocaleString()}</span></span>
               </li>
             ))}</ul>}
@@ -260,7 +260,7 @@ function ProductionTab() {
                   <td className="p-3">{d.carrier ?? "—"}</td>
                   <td className="p-3 tabular-nums text-emerald-300">${Math.round(Number(d.amount) || 0).toLocaleString()}</td>
                   <td className="p-3"><Badge variant="secondary">{d.status}</Badge></td>
-                  <td className="p-3 text-xs text-slate-500">{formatDistanceToNow(new Date(d.created_at), { addSuffix: true })}</td>
+                  <td className="p-3 text-xs text-slate-300">{formatDistanceToNow(new Date(d.created_at), { addSuffix: true })}</td>
                 </tr>
               ))}</tbody>
             </table></div>}
@@ -303,7 +303,7 @@ export default function ManagerDashboard() {
         <TabsContent value="production" className="mt-4"><ProductionTab /></TabsContent>
       </Tabs>
 
-      <div className="text-center text-xs text-slate-600 pt-4 pb-8 italic">Hold the Standard. Average is the disease.</div>
+      <div className="text-center text-xs text-slate-400 pt-4 pb-8 italic">Hold the Standard. Average is the disease.</div>
     </div>
   );
 }

@@ -1320,7 +1320,7 @@ function AgencyCommandView() {
                 >
                   <span className={`h-6 w-6 rounded-md text-[11px] font-bold flex items-center justify-center shrink-0 ${
                     i === 0 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" :
-                    i === 1 ? "bg-slate-400/15 text-slate-600 dark:text-slate-300" :
+                    i === 1 ? "bg-slate-400/15 text-slate-400 dark:text-slate-300" :
                     i === 2 ? "bg-orange-500/15 text-orange-600 dark:text-orange-400" :
                     "bg-muted text-muted-foreground"
                   }`}>

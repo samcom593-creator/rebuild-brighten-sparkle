@@ -215,7 +215,7 @@ export default function UnclaimedLeads() {
                       <tr key={row.id} className="border-t border-white/5 hover:bg-white/[0.02]">
                         <td className="p-3">
                           <div className="font-medium">{[row.first_name, row.last_name].filter(Boolean).join(" ") || "Unknown"}</div>
-                          <div className="text-xs text-slate-500">{row.email ?? "—"} · {row.phone ?? "—"}</div>
+                          <div className="text-xs text-slate-300">{row.email ?? "—"} · {row.phone ?? "—"}</div>
                         </td>
                         <td className="p-3">{row.state ?? "—"}</td>
                         <td className="p-3 text-xs text-slate-400">{row.referral_source ?? "—"}</td>
@@ -225,7 +225,7 @@ export default function UnclaimedLeads() {
                         <td className="p-3">
                           <span className={cn(isKJ && "text-amber-400 font-medium")}>{assigned}</span>
                         </td>
-                        <td className="p-3 text-xs text-slate-500">
+                        <td className="p-3 text-xs text-slate-300">
                           {row.contacted_at ? formatDistanceToNow(new Date(row.contacted_at), { addSuffix: true }) : <span className="text-rose-400">never</span>}
                         </td>
                         <td className="p-3">
@@ -251,7 +251,7 @@ export default function UnclaimedLeads() {
         </CardContent>
       </Card>
 
-      <div className="text-center text-xs text-slate-600 pt-4 pb-8 italic">
+      <div className="text-center text-xs text-slate-400 pt-4 pb-8 italic">
         Hold the Standard. Average is the disease.
       </div>
     </div>

@@ -199,7 +199,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-slate-200 truncate">{ev.agent_name ?? "Unknown"}</span>
-                <span className="text-[10px] text-slate-500 whitespace-nowrap">
+                <span className="text-[10px] text-slate-300 whitespace-nowrap">
                   {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true })}
                 </span>
               </div>
@@ -208,7 +208,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
                 <span className="text-sm font-bold text-emerald-300">
                   ${Number(ev.annual_premium ?? 0).toLocaleString()}
                 </span>
-                <span className="text-[10px] text-slate-500 truncate">{ev.product_sold ?? "Life"}</span>
+                <span className="text-[10px] text-slate-300 truncate">{ev.product_sold ?? "Life"}</span>
               </div>
               {ev.draft_hook && (
                 <p className="text-[10px] text-slate-400 leading-snug line-clamp-2">{ev.draft_hook}</p>
@@ -512,7 +512,7 @@ export default function ContentCommand() {
                     <span className="font-medium">{run.mode ?? `run ${run.id}`}</span>
                     <Badge variant="outline">{run.status}</Badge>
                   </div>
-                  <div className="text-slate-500 mt-1">{formatDistanceToNow(new Date(run.started_at), { addSuffix: true })} · {run.entries ?? 0} entries</div>
+                  <div className="text-slate-300 mt-1">{formatDistanceToNow(new Date(run.started_at), { addSuffix: true })} · {run.entries ?? 0} entries</div>
                 </div>
               ))}
             </CardContent>
@@ -531,7 +531,7 @@ export default function ContentCommand() {
                     <span className="font-medium">{row.handle ?? row.platform}</span>
                     <Badge variant="outline">{row.status}</Badge>
                   </div>
-                  <div className="text-slate-500 mt-1">{row.intent ?? "inbound"} · {row.tier ?? "no tier"} · ${Math.round(row.conversion_value_usd ?? 0).toLocaleString()}</div>
+                  <div className="text-slate-300 mt-1">{row.intent ?? "inbound"} · {row.tier ?? "no tier"} · ${Math.round(row.conversion_value_usd ?? 0).toLocaleString()}</div>
                 </div>
               ))}
             </CardContent>
@@ -602,12 +602,12 @@ function DraftRow({
               <Icon className="h-3 w-3 mr-1" /> {draft.platform ?? "unknown"}
             </Badge>
             <Badge variant="outline" className={statusTone(draft.status)}>{draft.status}</Badge>
-            <span className="text-slate-500">Due {due}</span>
-            {draft.pillar ? <span className="text-slate-500">· {draft.pillar}</span> : null}
+            <span className="text-slate-300">Due {due}</span>
+            {draft.pillar ? <span className="text-slate-300">· {draft.pillar}</span> : null}
           </div>
           <div className="mt-2 font-medium leading-snug">{draft.title ?? "Untitled draft"}</div>
           {draft.hook ? <div className="mt-1 text-sm text-slate-300 italic line-clamp-2">"{draft.hook}"</div> : null}
-          {draft.file_path ? <div className="mt-2 text-[11px] text-slate-500 font-mono truncate">{draft.file_path}</div> : null}
+          {draft.file_path ? <div className="mt-2 text-[11px] text-slate-300 font-mono truncate">{draft.file_path}</div> : null}
         </div>
         <div className="flex flex-wrap lg:justify-end gap-1.5 shrink-0">
           {draft.status !== "approved" && draft.status !== "shipped" ? (
@@ -653,7 +653,7 @@ function HealthLine({ label, ok, detail }: { label: string; ok: boolean; detail:
       {ok ? <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5" /> : <XCircle className="h-4 w-4 text-amber-400 mt-0.5" />}
       <div>
         <div className="font-medium">{label}</div>
-        <div className="text-xs text-slate-500">{detail}</div>
+        <div className="text-xs text-slate-300">{detail}</div>
       </div>
     </div>
   );
@@ -663,7 +663,7 @@ function HonestEmpty({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-5 text-sm">
       <div className="font-medium text-slate-200">{title}</div>
-      <div className="text-xs text-slate-500 mt-1">{detail}</div>
+      <div className="text-xs text-slate-300 mt-1">{detail}</div>
     </div>
   );
 }
@@ -713,8 +713,8 @@ function PoolOverview({ drafts }: { drafts: any[] }) {
     <Card className="ops-card-depth border-white/10 bg-white/[0.02]">
       <CardContent className="p-3 md:p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">Full content flow</span>
-          <span className="text-[10px] text-slate-600">read-only · pulls live</span>
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-300">Full content flow</span>
+          <span className="text-[10px] text-slate-400">read-only · pulls live</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
           {pools.map((p, i) => (
@@ -724,9 +724,9 @@ function PoolOverview({ drafts }: { drafts: any[] }) {
                 <span className="text-[10px] text-slate-400 truncate">{p.label}</span>
               </div>
               <div className={cn("text-xl font-bold tabular-nums leading-tight", p.tone)}>
-                {p.value === null || p.value === undefined ? <span className="text-slate-600">—</span> : p.value}
+                {p.value === null || p.value === undefined ? <span className="text-slate-400">—</span> : p.value}
               </div>
-              <div className="text-[9px] text-slate-600 font-mono mt-0.5 truncate" title={p.hint}>{p.hint}</div>
+              <div className="text-[9px] text-slate-400 font-mono mt-0.5 truncate" title={p.hint}>{p.hint}</div>
             </div>
           ))}
         </div>

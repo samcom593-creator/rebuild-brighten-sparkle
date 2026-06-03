@@ -83,7 +83,7 @@ export default function Storefront() {
                   <a href="mailto:sam.com593@gmail.com"><Mail className="h-4 w-4" /> Email Sam</a>
                 </Button>
               </div>
-              <p className="text-xs text-slate-500 pt-3">
+              <p className="text-xs text-slate-300 pt-3">
                 Receipt was emailed to the address you used at checkout. If you don't see it, check spam.
               </p>
             </CardContent>

@@ -73,7 +73,7 @@ export function RecentActivationsPanel() {
               >
                 <span className={cn(
                   "font-mono text-xs w-5 text-center",
-                  i === 0 ? "text-amber-300 font-bold" : i < 3 ? "text-slate-300" : "text-slate-500",
+                  i === 0 ? "text-amber-300 font-bold" : i < 3 ? "text-slate-300" : "text-slate-300",
                 )}>
                   {i + 1}
                 </span>

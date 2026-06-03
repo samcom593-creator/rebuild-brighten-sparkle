@@ -81,7 +81,7 @@ const STAGE_META: Record<string, { label: string; color: string; tint: string }>
   ALMOST_THERE:  { label: "Almost",     color: "bg-orange-500",  tint: "from-orange-500/15 to-orange-500/0 text-orange-600 dark:text-orange-400 border-orange-500/40" },
   SOLD:          { label: "Sold",       color: "bg-emerald-500", tint: "from-emerald-500/15 to-emerald-500/0 text-emerald-600 dark:text-emerald-400 border-emerald-500/40" },
   FOLLOW_UP:     { label: "Follow-up",  color: "bg-rose-500",    tint: "from-rose-500/15 to-rose-500/0 text-rose-600 dark:text-rose-400 border-rose-500/40" },
-  INACTIVE:      { label: "Inactive",   color: "bg-slate-500",   tint: "from-slate-500/15 to-slate-500/0 text-slate-600 dark:text-slate-400 border-slate-500/40" },
+  INACTIVE:      { label: "Inactive",   color: "bg-slate-500",   tint: "from-slate-500/15 to-slate-500/0 text-slate-400 dark:text-slate-400 border-slate-500/40" },
   UNSORTED:      { label: "Unsorted",   color: "bg-zinc-500",    tint: "from-zinc-500/15 to-zinc-500/0 text-zinc-600 dark:text-zinc-400 border-zinc-500/40" },
 };
 

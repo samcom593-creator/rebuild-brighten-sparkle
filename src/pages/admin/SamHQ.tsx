@@ -206,7 +206,7 @@ function TodaySection({ today }: { today: string }) {
                         title="click to edit"
                       >
                         {t.task_text}
-                        {t.block_time && <span className="block text-xs text-slate-500 mt-0.5">{t.block_time}{t.goal_tag ? ` · ${t.goal_tag}` : ""}</span>}
+                        {t.block_time && <span className="block text-xs text-slate-300 mt-0.5">{t.block_time}{t.goal_tag ? ` · ${t.goal_tag}` : ""}</span>}
                       </div>
                     )}
                     <Button
@@ -290,7 +290,7 @@ function ThisWeekSection({ today }: { today: string }) {
                 <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">{dowLabel(d.date)}</div>
                 <div className="text-xl font-bold mt-1">{new Date(d.date + "T12:00:00").getDate()}</div>
                 <div className="text-xs mt-1.5 text-slate-300">
-                  {total > 0 ? `${done}/${total}` : <span className="text-slate-600">—</span>}
+                  {total > 0 ? `${done}/${total}` : <span className="text-slate-400">—</span>}
                 </div>
               </div>
             );
@@ -330,12 +330,12 @@ function ShippedSection() {
       <CardContent className="space-y-3 text-sm">
         <div>
           <div className="text-xs font-mono text-slate-400 mb-1.5">RECENT HIRES (last 5)</div>
-          {!hires?.length && <div className="text-xs text-slate-500">No hires loaded yet</div>}
+          {!hires?.length && <div className="text-xs text-slate-300">No hires loaded yet</div>}
           <ul className="space-y-1">
             {(hires ?? []).map((h, i) => (
               <li key={i} className="flex items-center justify-between border-b border-white/5 py-1">
                 <span>{h.full_name ?? h.first_name ?? "—"}</span>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-300">
                   {h.hired_at || h.created_at
                     ? formatDistanceToNow(new Date(h.hired_at ?? h.created_at!), { addSuffix: true })
                     : ""}
@@ -344,7 +344,7 @@ function ShippedSection() {
             ))}
           </ul>
         </div>
-        <div className="text-xs text-slate-500 pt-2 border-t border-white/5">
+        <div className="text-xs text-slate-300 pt-2 border-t border-white/5">
           Build + content + bot ships are in the <code className="text-[#22d3a5]">/dashboard</code> What Shipped Today banner and in each bot's ledger. This panel will surface ledger-feed entries once the <code>get-bot-shipped-feed</code> edge fn ships.
         </div>
       </CardContent>
@@ -405,7 +405,7 @@ function ContentCommandSection() {
           </div>
         </div>
         {(drafts ?? []).length === 0 ? (
-          <div className="text-xs text-slate-500 rounded-md border border-dashed border-white/10 p-3">
+          <div className="text-xs text-slate-300 rounded-md border border-dashed border-white/10 p-3">
             No active drafts loaded. Source checked: <code>social_bot_drafts</code>.
           </div>
         ) : (
@@ -416,7 +416,7 @@ function ContentCommandSection() {
                   <span className="font-medium truncate">{d.title ?? `Draft ${d.id}`}</span>
                   <Badge variant="outline">{d.status}</Badge>
                 </div>
-                <div className="text-slate-500 mt-1 truncate">
+                <div className="text-slate-300 mt-1 truncate">
                   {d.platform ?? "unknown"} · {d.draft_date ?? "no date"}{d.hook ? ` · ${d.hook}` : ""}
                 </div>
               </li>
@@ -472,7 +472,7 @@ function NextActionsSection() {
             className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm hover:border-[#22d3a5]/40 transition-colors"
           >
             <span><span className={cn("font-mono mr-2", action.tone)}>#{index + 1}</span>{action.label}</span>
-            <span className="text-slate-500">open</span>
+            <span className="text-slate-300">open</span>
           </Link>
         ))}
       </CardContent>
@@ -576,10 +576,10 @@ function BotsSection() {
               <b.icon className="w-3.5 h-3.5 text-slate-400" />
               <span className="font-medium">{b.label}</span>
             </div>
-            <span className="text-xs text-slate-500">{b.note}</span>
+            <span className="text-xs text-slate-300">{b.note}</span>
           </div>
         ))}
-        <div className="pt-2 text-xs text-slate-500">
+        <div className="pt-2 text-xs text-slate-300">
           Telegram bot: {tgUsername ? <span className="text-[#22d3a5]">@{tgUsername}</span> : <span className="text-amber-400">awaiting BotFather token</span>}
         </div>
       </CardContent>
@@ -630,7 +630,7 @@ export default function SamHQ() {
         <BotsSection />
       </div>
 
-      <div className="text-center text-xs text-slate-600 pt-4 pb-8 italic">
+      <div className="text-center text-xs text-slate-400 pt-4 pb-8 italic">
         Hold the Standard. Average is the disease.
       </div>
     </div>

@@ -1608,7 +1608,7 @@ export default function DashboardCRM() {
                                               "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
                                               "bg-orange-500/10 text-orange-500 border-orange-500/20": agent.aiScoreTier === "warm",
                                               "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
-                                              "bg-slate-500/10 text-slate-500 border-slate-500/20": agent.aiScoreTier === "cold",
+                                              "bg-slate-500/10 text-slate-300 border-slate-500/20": agent.aiScoreTier === "cold",
                                             })}>
                                               {agent.aiScoreTier === "hot" ? "🔥" : agent.aiScoreTier === "warm" ? "☀️" : agent.aiScoreTier === "cool" ? "❄️" : "🧊"} {agent.aiScoreTier}
                                             </Badge>
@@ -1791,7 +1791,7 @@ export default function DashboardCRM() {
                                               "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
                                               "bg-orange-500/10 text-orange-500 border-orange-500/20": agent.aiScoreTier === "warm",
                                               "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
-                                              "bg-slate-500/10 text-slate-500 border-slate-500/20": agent.aiScoreTier === "cold",
+                                              "bg-slate-500/10 text-slate-300 border-slate-500/20": agent.aiScoreTier === "cold",
                                             })}>
                                               {agent.aiScoreTier === "hot" ? "🔥" : agent.aiScoreTier === "warm" ? "☀️" : agent.aiScoreTier === "cool" ? "❄️" : "🧊"} {agent.aiScoreTier}
                                             </Badge>

@@ -104,11 +104,11 @@ function KanbanTab() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-2 space-y-1.5 max-h-[60vh] overflow-y-auto">
-                {students.length === 0 && <div className="text-xs text-slate-500 italic p-2">—</div>}
+                {students.length === 0 && <div className="text-xs text-slate-300 italic p-2">—</div>}
                 {students.map(st => (
                   <div key={st.id} className="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-xs">
                     <div className="font-medium">{[st.first_name, st.last_name].filter(Boolean).join(" ") || "Unknown"}</div>
-                    <div className="text-slate-500 mt-0.5">{st.state ?? "—"} · {Math.round(st.days_in_stage)}d in stage</div>
+                    <div className="text-slate-300 mt-0.5">{st.state ?? "—"} · {Math.round(st.days_in_stage)}d in stage</div>
                     <div className="mt-2">
                       <Select value={st.current_stage} onValueChange={(v) => moveStage.mutate({ id: st.id, stage: v as Stage })}>
                         <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
@@ -156,7 +156,7 @@ function StalledTab() {
       </CardHeader>
       <CardContent className="p-0">
         {!rows?.length ? (
-          <div className="p-6 text-sm text-slate-500">No stalled students. Either the pipeline is clean or no students have crossed SLA thresholds yet.</div>
+          <div className="p-6 text-sm text-slate-300">No stalled students. Either the pipeline is clean or no students have crossed SLA thresholds yet.</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-white/[0.03] text-slate-400 text-xs">
@@ -177,7 +177,7 @@ function StalledTab() {
                   <td className="p-3"><Badge variant="secondary">{r.current_stage}</Badge></td>
                   <td className="p-3 tabular-nums">{Math.round(r.days_in_stage)}d</td>
                   <td className="p-3 text-amber-300">{r.stall_reason}</td>
-                  <td className="p-3 text-xs text-slate-500">{r.email ?? r.phone ?? "—"}</td>
+                  <td className="p-3 text-xs text-slate-300">{r.email ?? r.phone ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -216,7 +216,7 @@ export default function LicensingTracker() {
         <TabsContent value="stalled" className="mt-4"><StalledTab /></TabsContent>
       </Tabs>
 
-      <div className="text-center text-xs text-slate-600 pt-4 pb-8 italic">Hold the Standard. Average is the disease.</div>
+      <div className="text-center text-xs text-slate-400 pt-4 pb-8 italic">Hold the Standard. Average is the disease.</div>
     </div>
   );
 }

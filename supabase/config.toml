@@ -672,3 +672,6 @@ verify_jwt = false
 
 [functions.xcel-gmail-pull]
 verify_jwt = false
+
+[functions.applicant-self-report]
+verify_jwt = false

@@ -29,6 +29,7 @@ import { WhatShippedTodayBanner } from "@/components/dashboard/WhatShippedTodayB
 import { LicensedHiresRange } from "@/components/dashboard/LicensedHiresRange";
 import { ManagerHierarchyMtdPanel } from "@/components/dashboard/ManagerHierarchyMtdPanel";
 import { JustHiredPanel } from "@/components/dashboard/JustHiredPanel";
+import { BuilderProgressDashboard } from "@/components/dashboard/BuilderProgressDashboard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -752,6 +753,11 @@ function ExecutiveDashboard({
           href="/dashboard/system-health"
         />
       </div>
+
+      {/* My Builders — Sam's #1 focus (2026-06-03): hold builders, run the line.
+          Shows Sam-direct recruits, their builder tier, onboarding progress,
+          producing flag. Reads v_sam_builders_dashboard. */}
+      <BuilderProgressDashboard />
 
       {/* Manager hierarchy MTD + top producers — replaces the weak "Recent deals"
           widget per Sam's 2026-05-22 punch ("dashboard literally empty, leaderboard

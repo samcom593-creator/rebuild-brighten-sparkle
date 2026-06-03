@@ -257,6 +257,33 @@ const handler = async (req: Request): Promise<Response> => {
       console.log(`Added initial note for agent ${newAgent.id}`);
     }
 
+    // Sam-feedback 2026-06-03: Transfer block — stash carriers, writing
+    // numbers, previous upline as a single structured agent_note so the
+    // upline can see and act on the transfer in one place.
+    const transferNeeded = (body as any).transferNeeded === true;
+    const tCarriers = (body as any).transferCarriers as string | undefined;
+    const tWriting = (body as any).transferWritingNumbers as string | undefined;
+    const tUpline = (body as any).transferPreviousUpline as string | undefined;
+    if (transferNeeded && newAgent && (tCarriers || tWriting || tUpline)) {
+      const blockLines = [
+        "TRANSFER REQUEST (from Add Agent form)",
+        "",
+        `Carriers: ${tCarriers ?? "(not provided)"}`,
+        `Writing numbers: ${tWriting ?? "(not provided)"}`,
+        `Previous upline: ${tUpline ?? "(not provided)"}`,
+      ].join("\n");
+      await supabaseAdmin.from("agent_notes").insert({
+        agent_id: newAgent.id,
+        note: blockLines,
+        created_by: requestingUserId,
+      });
+      // Stamp the agent row so dashboards can flag transfer agents
+      await supabaseAdmin.from("agents").update({
+        notes: `[TRANSFER PENDING] ${tCarriers ?? ""}`.slice(0, 500),
+      }).eq("id", newAgent.id);
+      console.log(`Added transfer block note for agent ${newAgent.id}`);
+    }
+
     // Fetch contracting link from manager's saved links
     let contractingLink: string | undefined;
     if (managerId) {

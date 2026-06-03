@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -50,6 +51,12 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const [managerId, setManagerId] = useState("");
   const [instagramHandle, setInstagramHandle] = useState("");
   const [licenseStatus, setLicenseStatus] = useState<"licensed" | "unlicensed">("unlicensed");
+  // Sam-feedback 2026-06-03: Transfer needed = ON → collect carriers,
+  // writing numbers, previous upline. Otherwise skip those entirely.
+  const [transferNeeded, setTransferNeeded] = useState(false);
+  const [carriers, setCarriers] = useState("");
+  const [writingNumbers, setWritingNumbers] = useState("");
+  const [previousUpline, setPreviousUpline] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -146,6 +153,11 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           managerId,
           licenseStatus,
           instagramHandle: instagramHandle.trim() || undefined,
+          // Sam-feedback 2026-06-03: Transfer block — only sent when ON
+          transferNeeded,
+          transferCarriers: transferNeeded ? (carriers.trim() || undefined) : undefined,
+          transferWritingNumbers: transferNeeded ? (writingNumbers.trim() || undefined) : undefined,
+          transferPreviousUpline: transferNeeded ? (previousUpline.trim() || undefined) : undefined,
         },
       });
 
@@ -224,6 +236,10 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     setManagerId("");
     setInstagramHandle("");
     setLicenseStatus("unlicensed");
+    setTransferNeeded(false);
+    setCarriers("");
+    setWritingNumbers("");
+    setPreviousUpline("");
   };
 
   return (
@@ -341,6 +357,52 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
               onChange={(e) => setInstagramHandle(e.target.value)}
               placeholder="@username"
             />
+          </div>
+
+          {/* Sam-feedback 2026-06-03: Transfer needed toggle. Off = simple
+              4-field add. On = collect carrier transfer info upline cares about. */}
+          <div className="space-y-3 rounded-lg border border-border/40 bg-muted/20 p-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="transferNeeded"
+                checked={transferNeeded}
+                onCheckedChange={(v) => setTransferNeeded(v === true)}
+              />
+              <Label htmlFor="transferNeeded" className="text-sm font-medium cursor-pointer">
+                Transfer needed (already contracted under another upline)
+              </Label>
+            </div>
+            {transferNeeded ? (
+              <div className="space-y-3 pl-6">
+                <div className="space-y-1.5">
+                  <Label htmlFor="carriers" className="text-xs">All carriers (comma-separated)</Label>
+                  <Input
+                    id="carriers"
+                    value={carriers}
+                    onChange={(e) => setCarriers(e.target.value)}
+                    placeholder="Mutual of Omaha, Americo, Foresters..."
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="writingNumbers" className="text-xs">Writing numbers</Label>
+                  <Input
+                    id="writingNumbers"
+                    value={writingNumbers}
+                    onChange={(e) => setWritingNumbers(e.target.value)}
+                    placeholder="MoO: 123456, AM: 987654..."
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="previousUpline" className="text-xs">Previous upline</Label>
+                  <Input
+                    id="previousUpline"
+                    value={previousUpline}
+                    onChange={(e) => setPreviousUpline(e.target.value)}
+                    placeholder="Agency / SGA / agent name"
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* Actions */}

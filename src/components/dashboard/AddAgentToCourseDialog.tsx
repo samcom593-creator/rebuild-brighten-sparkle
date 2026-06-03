@@ -115,27 +115,18 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
 
           if (agentError) throw new Error(`Stage update failed for ${agentId}: ${agentError.message}`);
 
-          // 2. Check if progress already exists
-          const { data: existing } = await supabase
+          // 2. Upsert initial progress record (skip if already exists)
+          const { error: progressError } = await supabase
             .from("onboarding_progress")
-            .select("id")
-            .eq("agent_id", agentId)
-            .limit(1);
+            .upsert({
+              agent_id: agentId,
+              module_id: firstModule.id,
+              started_at: new Date().toISOString(),
+              video_watched_percent: 0,
+              passed: false,
+            }, { onConflict: "agent_id,module_id", ignoreDuplicates: true });
 
-          // 3. Create initial progress record if none exists
-          if (!existing || existing.length === 0) {
-            const { error: progressError } = await supabase
-              .from("onboarding_progress")
-              .insert({
-                agent_id: agentId,
-                module_id: firstModule.id,
-                started_at: new Date().toISOString(),
-                video_watched_percent: 0,
-                passed: false,
-              });
-
-            if (progressError) throw new Error(`Progress creation failed for ${agentId}: ${progressError.message}`);
-          }
+          if (progressError) throw new Error(`Progress creation failed for ${agentId}: ${progressError.message}`);
 
           // 4. Send course enrollment email
           const { error: emailError } = await supabase.functions.invoke(

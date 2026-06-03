@@ -58,6 +58,8 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
       const { data } = await supabase.from("carriers" as any).select("id, name").eq("is_active", true).order("name");
       return (data as any) || [];
     },
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 
   const annualPremium = useMemo(() => {

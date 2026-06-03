@@ -208,7 +208,8 @@ export default function BookOfBusiness() {
   // Realtime subscription
   useEffect(() => {
     if (!isAdmin && agentScopeIds === null) return;
-    const ch = supabase.channel(`bob-${Math.random()}`)
+    const scopeKey = isAdmin ? "admin" : (agentScopeIds ?? []).slice().sort().join(",");
+    const ch = supabase.channel(`bob-${scopeKey}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "deals" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };

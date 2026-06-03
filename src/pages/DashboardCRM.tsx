@@ -1059,92 +1059,57 @@ export default function DashboardCRM() {
     return matchesSearch && matchesManager && matchesLicense && matchesAiScore;
   }), [activeAgents, searchTerm, managerFilter, licenseFilter, aiScoreFilter]);
 
-  const getAgentsForSection = (section: typeof SECTIONS[number]) => {
-    if (section.key === "meeting_attendance") {
-      return [...filteredAgents].filter(a => a.agentLicenseStatus === "licensed").sort((a, b) => a.name.localeCompare(b.name));
-    }
-    if (section.key === "needs_followup") {
-      // PL-055: needs follow-up = licensed agents EITHER (a) low-producing
-      // — under $10k monthly ALP — OR (b) uncontacted for 6+ days. Sam's
-      // spec: "Needs follow-up = <$10k/15d". The agent type carries
-      // monthlyALP (30d window) since that's the data we have; the spirit
-      // is "if they're not posting, we need to call them." The 6-day
-      // uncontacted criterion stays as a second predicate so a fresh
-      // licensee who hasn't been contacted at all surfaces too.
-      return filteredAgents.filter(a => {
-        if (a.isDeactivated || a.onboardingStage === "inactive") return false;
-        if (a.agentLicenseStatus !== "licensed") return false;
-        const lowProducer = (a.monthlyALP ?? 0) < 10000;
-        const daysSinceContact = a.lastContactedAt
-          ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)
-          : 999;
-        const stale = daysSinceContact >= 6;
-        return lowProducer || stale;
-      }).sort((a, b) => {
-        // Sort by lowest ALP first, then by least-recently-contacted
-        if ((a.monthlyALP ?? 0) !== (b.monthlyALP ?? 0)) return (a.monthlyALP ?? 0) - (b.monthlyALP ?? 0);
-        if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
-        if (!a.lastContactedAt) return -1;
-        if (!b.lastContactedAt) return 1;
-        return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
-      });
-    }
-    if (section.key === "inactive") {
-      return filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive);
-    }
-    if (section.key === "pre_licensed") {
-      // Use license_progress (source of truth from applications table) — not onboardingStage which may be stale
-      return filteredAgents.filter(a => {
-        if (a.agentLicenseStatus === "licensed") return false;
-        const progress = (a as any).licenseProgress || "unlicensed";
-        return PRELICENSED_PROGRESS.has(progress);
-      });
-    }
-    // PL-055: Live = "Licensed & Selling" — every licensed agent whose stage
-    // says they're past onboarding (in_field_training, evaluated, live,
-    // below_10k). Drops the prior $20k ALP floor so low-producing live
-    // agents still show up here (they ALSO surface in Needs Follow-Up).
-    // Sam: "Licensed & Selling should still include agents <$20k/14d (live)".
-    if (section.key === "live") {
-      const liveStages = ["in_field_training", "evaluated", "live", "below_10k"];
-      return filteredAgents.filter(a =>
-        a.agentLicenseStatus === "licensed" &&
-        liveStages.includes(a.onboardingStage) &&
-        !a.isDeactivated &&
-        !a.isInactive
-      ).sort((a, b) => b.monthlyALP - a.monthlyALP);
-    }
-    // PL-055: Below $20K — licensed and selling but monthlyALP < $20k.
-    // Filter on the ALP threshold itself rather than the stale "below_10k"
-    // enum (which 0 agents currently carry, so the segment was empty).
-    if (section.key === "below_10k") {
-      const liveStages = ["in_field_training", "evaluated", "live", "below_10k"];
-      return filteredAgents.filter(a =>
-        a.agentLicenseStatus === "licensed" &&
-        liveStages.includes(a.onboardingStage) &&
-        !a.isDeactivated &&
-        !a.isInactive &&
-        (a.monthlyALP ?? 0) < 20000
-      ).sort((a, b) => b.monthlyALP - a.monthlyALP);
-    }
-    // Transfer = course done, not yet in field training
-    if (section.key === "transfer") {
-      return filteredAgents.filter(a => 
-        a.onboardingStage === "transfer" || 
-        (a.hasTrainingCourse && a.agentLicenseStatus === "licensed" && !["in_field_training", "evaluated", "live", "below_10k"].includes(a.onboardingStage))
-      );
-    }
-    return filteredAgents.filter(a => section.stages.includes(a.onboardingStage)).sort((a, b) => {
+  const agentsBySection = useMemo(() => {
+    const liveStages = ["in_field_training", "evaluated", "live", "below_10k"];
+    const map = new Map<string, AgentCRM[]>();
+    map.set("meeting_attendance", [...filteredAgents].filter(a => a.agentLicenseStatus === "licensed").sort((a, b) => a.name.localeCompare(b.name)));
+    map.set("needs_followup", filteredAgents.filter(a => {
+      if (a.isDeactivated || a.onboardingStage === "inactive") return false;
+      if (a.agentLicenseStatus !== "licensed") return false;
+      const lowProducer = (a.monthlyALP ?? 0) < 10000;
+      const daysSinceContact = a.lastContactedAt
+        ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)
+        : 999;
+      return lowProducer || daysSinceContact >= 6;
+    }).sort((a, b) => {
+      if ((a.monthlyALP ?? 0) !== (b.monthlyALP ?? 0)) return (a.monthlyALP ?? 0) - (b.monthlyALP ?? 0);
       if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
       if (!a.lastContactedAt) return -1;
       if (!b.lastContactedAt) return 1;
       return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
-    });
-  };
+    }));
+    map.set("inactive", filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive));
+    map.set("pre_licensed", filteredAgents.filter(a => {
+      if (a.agentLicenseStatus === "licensed") return false;
+      return PRELICENSED_PROGRESS.has((a as any).licenseProgress || "unlicensed");
+    }));
+    map.set("live", filteredAgents.filter(a =>
+      a.agentLicenseStatus === "licensed" && liveStages.includes(a.onboardingStage) && !a.isDeactivated && !a.isInactive
+    ).sort((a, b) => b.monthlyALP - a.monthlyALP));
+    map.set("below_10k", filteredAgents.filter(a =>
+      a.agentLicenseStatus === "licensed" && liveStages.includes(a.onboardingStage) && !a.isDeactivated && !a.isInactive && (a.monthlyALP ?? 0) < 20000
+    ).sort((a, b) => b.monthlyALP - a.monthlyALP));
+    map.set("transfer", filteredAgents.filter(a =>
+      a.onboardingStage === "transfer" ||
+      (a.hasTrainingCourse && a.agentLicenseStatus === "licensed" && !liveStages.includes(a.onboardingStage))
+    ));
+    for (const sec of SECTIONS) {
+      if (!map.has(sec.key)) {
+        map.set(sec.key, filteredAgents.filter(a => sec.stages.includes(a.onboardingStage)).sort((a, b) => {
+          if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
+          if (!a.lastContactedAt) return -1;
+          if (!b.lastContactedAt) return 1;
+          return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
+        }));
+      }
+    }
+    return map;
+  }, [filteredAgents]);
 
-  const unlicensedAgents = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed");
-  const getUnlicensedForColumn = (progressValues: string[]) =>
-    unlicensedAgents.filter(a => progressValues.includes(a.licenseProgress || "unlicensed"));
+  const unlicensedAgents = useMemo(
+    () => filteredAgents.filter(a => a.agentLicenseStatus !== "licensed"),
+    [filteredAgents]
+  );
 
   const duplicateAgentIds = useMemo(() => {
     const emailCount = new Map<string, number>();
@@ -1154,7 +1119,10 @@ export default function DashboardCRM() {
     return dupeIds;
   }, [activeAgents]);
 
-  const meetingAgents = filteredAgents.filter(a => a.agentLicenseStatus === "licensed");
+  const meetingAgents = useMemo(
+    () => filteredAgents.filter(a => a.agentLicenseStatus === "licensed"),
+    [filteredAgents]
+  );
   const meetingAgentIds = useMemo(() => new Set(meetingAgents.map(a => a.id)), [meetingAgents]);
   const meetingPresentCount = Array.from(meetingAttendance.entries()).filter(([id, v]) => v === "present" && meetingAgentIds.has(id)).length;
   const appliedCount = filteredAgents.filter(a => a.onboardingStage === "applied").length;
@@ -1166,9 +1134,9 @@ export default function DashboardCRM() {
   }).length;
   const transferCount = filteredAgents.filter(a => a.onboardingStage === "transfer").length;
   const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;
-  const below10kCount = getAgentsForSection(SECTIONS.find(s => s.key === "below_10k")!).length;
-  const liveCount = getAgentsForSection(SECTIONS.find(s => s.key === "live")!).length;
-  const needsFollowUpCount = getAgentsForSection(SECTIONS.find(s => s.key === "needs_followup")!).length;
+  const below10kCount = (agentsBySection.get("below_10k") ?? []).length;
+  const liveCount = (agentsBySection.get("live") ?? []).length;
+  const needsFollowUpCount = (agentsBySection.get("needs_followup") ?? []).length;
   const inactiveCount = filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive).length;
   const staleCount = filteredAgents.filter(isStaleAgent).length;
 
@@ -1524,8 +1492,8 @@ export default function DashboardCRM() {
           >
             {(["all","unlicensed","licensed"] as const).map(b => {
               const count = b === "all"
-                ? SECTIONS.reduce((s, sec) => s + getAgentsForSection(sec).length, 0)
-                : SECTIONS.filter(sec => sec.bucket === b).reduce((s, sec) => s + getAgentsForSection(sec).length, 0);
+                ? SECTIONS.reduce((s, sec) => s + (agentsBySection.get(sec.key)?.length ?? 0), 0)
+                : SECTIONS.filter(sec => sec.bucket === b).reduce((s, sec) => s + (agentsBySection.get(sec.key)?.length ?? 0), 0);
               const active = activeBucket === b;
               return (
                 <button key={b} onClick={() => setActiveBucket(b)}
@@ -1540,7 +1508,7 @@ export default function DashboardCRM() {
           <Tabs value={activeStageTab} onValueChange={(v) => { setActiveStageTab(v); playSound("click"); }} className="space-y-3">
             <TabsList className="w-full justify-start flex-wrap h-auto gap-1.5 rounded-lg border border-border/70 bg-card/95 p-1.5 shadow-sm">
               {SECTIONS.filter(s => activeBucket === "all" || s.bucket === activeBucket).map(section => {
-                const count = getAgentsForSection(section).length;
+                const count = (agentsBySection.get(section.key) ?? []).length;
                 const Icon = section.icon;
                 return (
                   <TabsTrigger key={section.key} value={section.key} className="gap-1.5 rounded-md px-3 py-2 text-xs font-semibold data-[state=active]:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-950">
@@ -1553,7 +1521,7 @@ export default function DashboardCRM() {
             </TabsList>
 
             {SECTIONS.filter(s => activeBucket === "all" || s.bucket === activeBucket).map(section => {
-              const sectionAgents = getAgentsForSection(section);
+              const sectionAgents = agentsBySection.get(section.key) ?? [];
 
               // Pre-Licensed tab renders as 5-column pipeline
               if (section.key === "pre_licensed") {

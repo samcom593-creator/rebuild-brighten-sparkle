@@ -66,8 +66,12 @@ function burstConfetti(eventType: string) {
 
 export function CelebrationProvider() {
   const { playSound } = useSoundEffects();
+  const playSoundRef = useRef(playSound);
   const seenIds = useRef<Set<string>>(new Set());
   const armedAt = useRef<number>(Date.now());
+
+  // Keep ref current on every render without recreating the channel
+  useEffect(() => { playSoundRef.current = playSound; });
 
   useEffect(() => {
     const channel = supabase
@@ -83,7 +87,7 @@ export function CelebrationProvider() {
           seenIds.current.add(row.id);
 
           burstConfetti(row.event_type);
-          playSound("celebrate");
+          playSoundRef.current("celebrate");
 
           toast.success(row.subject, {
             description: row.sms_body ?? undefined,
@@ -94,7 +98,7 @@ export function CelebrationProvider() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [playSound]);
+  }, []);
 
   return null;
 }

@@ -106,34 +106,31 @@ export function LeadReassignment() {
 
       if (error) throw error;
 
-      // Get agent names for assigned applications
-      const appsWithNames = await Promise.all(
-        (apps || []).map(async (app) => {
-          let assignedAgentName: string | undefined;
-          
-          if (app.assigned_agent_id) {
-            const { data: agent } = await supabase
-              .from("agents")
-              .select("user_id")
-              .eq("id", app.assigned_agent_id)
-              .maybeSingle();
-
-            if (agent?.user_id) {
-              const { data: profile } = await supabase
-                .from("profiles")
-                .select("full_name")
-                .eq("user_id", agent.user_id)
-                .maybeSingle();
-              assignedAgentName = profile?.full_name || undefined;
-            }
-          }
-
-          return {
-            ...app,
-            assigned_agent_name: assignedAgentName,
-          };
-        })
-      );
+      // Batch-fetch agent names in 3 queries instead of 2N
+      const assignedIds = (apps || []).map(a => a.assigned_agent_id).filter(Boolean) as string[];
+      const agentMap = new Map<string, string>();
+      const profileMap = new Map<string, string>();
+      if (assignedIds.length > 0) {
+        const { data: agentRows } = await supabase
+          .from("agents")
+          .select("id, user_id")
+          .in("id", assignedIds);
+        (agentRows || []).forEach(a => { if (a.user_id) agentMap.set(a.id, a.user_id); });
+        const userIds = [...new Set((agentRows || []).map(a => a.user_id).filter(Boolean) as string[])];
+        if (userIds.length > 0) {
+          const { data: profileRows } = await supabase
+            .from("profiles")
+            .select("user_id, full_name")
+            .in("user_id", userIds);
+          (profileRows || []).forEach(p => { if (p.full_name) profileMap.set(p.user_id, p.full_name); });
+        }
+      }
+      const appsWithNames = (apps || []).map(app => ({
+        ...app,
+        assigned_agent_name: app.assigned_agent_id
+          ? (profileMap.get(agentMap.get(app.assigned_agent_id) ?? "") ?? undefined)
+          : undefined,
+      }));
 
       setApplications(appsWithNames);
     } catch (error) {

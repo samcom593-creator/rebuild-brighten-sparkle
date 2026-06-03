@@ -109,6 +109,21 @@ export default defineConfig(({ mode }) => ({
     target: "esnext",
     minify: "esbuild",
     cssMinify: true,
+    // Live mobile Lighthouse 2026-06-03 found LCP=6.0s on `/` driven by
+    // eager modulepreload of vendor-charts (~104KB) + vendor-forms (zod+rhf)
+    // + vendor-dates (date-fns). None of those are used by landing-eager
+    // components — they are only referenced from lazy admin/form routes.
+    // Vite's default modulepreload manifest includes every shared chunk,
+    // so the browser downloads ~250KB of unused JS before first paint.
+    // Filter them out of the entry HTML preload only; lazy chunks still
+    // resolve their own deps when navigated to.
+    modulePreload: {
+      polyfill: true,
+      resolveDependencies(_filename, deps, { hostType }) {
+        if (hostType !== "html") return deps;
+        return deps.filter((d) => !/vendor-(charts|forms|dates)/.test(d));
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {

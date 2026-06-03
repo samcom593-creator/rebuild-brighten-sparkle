@@ -11,7 +11,16 @@ import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import { SidebarProvider } from "@/hooks/useSidebarState";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AuthenticatedShell } from "@/components/layout/AuthenticatedShell";
+// AuthenticatedShell is lazy: it pulls in SidebarLayout + CommandPalette +
+// CelebrationProvider + RequireProfilePicture which the literal landing route
+// (`/`) does NOT need. Eager-importing it shipped ~40-60kB of sidebar/command
+// UI on every cold visitor. Lazy means landing only loads the shell once a
+// dashboard route is navigated to.
+const AuthenticatedShell = lazy(() =>
+  import("@/components/layout/AuthenticatedShell").then((m) => ({
+    default: m.AuthenticatedShell,
+  })),
+);
 import { RouteTelemetry } from "@/shared/telemetry/useRouteTelemetry";
 import { SupabaseHealthBanner } from "@/components/SupabaseHealthBanner";
 import { initTelemetry } from "@/shared/telemetry/track";
@@ -136,6 +145,7 @@ const IntegrationsSettings = lazy(() => import("./pages/admin/IntegrationsSettin
 const MyTeam = lazy(() => import("./pages/MyTeam"));
 const MyDeals = lazy(() => import("./pages/MyDeals"));
 const SeminarControl = lazy(() => import("./pages/SeminarControl"));
+const SamInbox = lazy(() => import("./pages/SamInbox"));
 const ReferralSubmit = lazy(() => import("./pages/ReferralSubmit"));
 const ReferralPipeline = lazy(() => import("./pages/ReferralPipeline"));
 const MyReferrals = lazy(() => import("./pages/MyReferrals"));
@@ -261,7 +271,9 @@ const App = () => (
                     <Route path="/dashboard/clients/:clientId" element={<ProtectedRoute><ClientDetail /></ProtectedRoute>} />
                     {/* Seminar control: admins, managers, and flagged presenters
                         such as KJ (agents.is_presenting=true). */}
+                    <Route path="/dashboard/seminar" element={<ProtectedRoute requireAdmin allowManagers allowPresenters><SeminarControl /></ProtectedRoute>} />
                     <Route path="/dashboard/seminar-control" element={<ProtectedRoute requireAdmin allowManagers allowPresenters><SeminarControl /></ProtectedRoute>} />
+                    <Route path="/dashboard/my-inbox" element={<ProtectedRoute requireAdmin><SamInbox /></ProtectedRoute>} />
                     {/* Manager referral pipeline: admin or manager. */}
                     <Route path="/dashboard/referrals" element={<ProtectedRoute requireAdmin allowManagers><ReferralPipeline /></ProtectedRoute>} />
                     {/* Agent self-service: any authenticated user. */}

@@ -129,6 +129,18 @@ export default defineConfig(({ mode }) => ({
         manualChunks(id) {
           const normalized = id.replace(/\\/g, "/");
           if (!normalized.includes("node_modules")) return;
+          // Shared shadcn utils — pin to vendor-react so they aren't duplicated
+          // into vendor-charts via the recharts subgraph. cva + tailwind-merge
+          // confirmed moved by 2026-06-03 wave-12; clsx + react-is may still
+          // get hoisted into vendor-charts by rolldown's first-touch chunking
+          // heuristic when recharts reaches them first (~80KB residual on the
+          // landing static import graph). Tracked for follow-up.
+          if (
+            /\/node_modules\/clsx(\/|$|\?)/.test(normalized) ||
+            /\/node_modules\/class-variance-authority(\/|$|\?)/.test(normalized) ||
+            /\/node_modules\/tailwind-merge(\/|$|\?)/.test(normalized) ||
+            /\/node_modules\/react-is(\/|$|\?)/.test(normalized)
+          ) return "vendor-react";
           if (
             normalized.includes("/node_modules/react/") ||
             normalized.includes("/node_modules/react-dom/") ||
@@ -144,7 +156,7 @@ export default defineConfig(({ mode }) => ({
           ) return "vendor-react";
           if (normalized.includes("@supabase/supabase-js")) return "vendor-supabase";
           if (normalized.includes("@tanstack/react-query")) return "vendor-query";
-          if (normalized.includes("recharts")) return "vendor-charts";
+          if (normalized.includes("recharts") || normalized.includes("victory-vendor") || normalized.includes("/node_modules/d3-")) return "vendor-charts";
           if (normalized.includes("lucide-react")) return "vendor-icons";
           if (normalized.includes("react-hook-form") || normalized.includes("@hookform/resolvers") || normalized.includes("zod")) return "vendor-forms";
           if (normalized.includes("date-fns")) return "vendor-dates";

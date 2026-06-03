@@ -38,6 +38,7 @@ const corsHeaders = {
 const APPLY_URL = "https://apex-financial.org/apply";
 const CALENDLY_LICENSED = "https://calendly.com/apexfinancialempire/1on1-call-clone";
 const GET_LICENSED_URL = "https://apex-financial.org/get-licensed";
+const MANYCHAT_APPLY_URL = `${APPLY_URL}?utm_source=manychat&utm_medium=dm&utm_campaign=recruiting_dm`;
 
 // Order matters in classify() — first match wins. Most specific first.
 const LICENSED_PATTERNS = [
@@ -104,15 +105,36 @@ function replyFor(path: ReplyPath, firstName?: string): string {
   const n = (firstName?.trim() && firstName.split(" ")[0]) || "yo";
   const replies: Record<ReplyPath, string> = {
     licensed:        `${n} — licensed? we fast-track contracted producers in 24-48h. grab 15min with me: ${CALENDLY_LICENSED}`,
-    unlicensed:      `${n} — appreciate the dm 🙏 we cover your licensing course and get you producing in ~2 weeks. apply when you're ready: ${GET_LICENSED_URL}`,
-    scam_skeptic:    `${n} — fair question. no MLM, no upfront fees. you contract direct with the carriers, we train + send leads. apply and we'll show you everything: ${APPLY_URL}`,
-    pricing:         `${n} — 100% commission, paid 9-month advance. average rookie writes $20k+ ALP their first month after license. apply: ${APPLY_URL}`,
-    state_ask:       `${n} — we hire across all 50 states. what state are you in? then apply here: ${APPLY_URL}`,
-    time_to_produce: `${n} — licensed agents are contracted in 48h. unlicensed → ~2 weeks to your license, then producing same week. start here: ${APPLY_URL}`,
-    greeting:        `${n} 👋 sam from APEX. we hire + train life insurance agents. covered course, paid leads. you looking to get into the business? ${APPLY_URL}`,
-    generic:         `${n} — APEX Financial. we hire life insurance agents (licensed or not). curious? ${APPLY_URL}`,
+    unlicensed:      `${n} — appreciate the dm. if you're serious, start here and we'll route you by state/license status: ${MANYCHAT_APPLY_URL}`,
+    scam_skeptic:    `${n} — fair question. no downline requirement. you contract with carriers, we train and route the next step. start here: ${MANYCHAT_APPLY_URL}`,
+    pricing:         `${n} — comp depends on license/state/carrier, so we don't quote it loose in DMs. apply and the manager call will walk it clean: ${MANYCHAT_APPLY_URL}`,
+    state_ask:       `${n} — we recruit across the US. what state are you in? fastest path is this form so we can route you correctly: ${MANYCHAT_APPLY_URL}`,
+    time_to_produce: `${n} — licensed moves fastest; unlicensed depends on state/exam pace. start here and we'll put you on the right track: ${MANYCHAT_APPLY_URL}`,
+    greeting:        `${n} — Sam from APEX. We hire and train life insurance agents. Licensed or brand new? Start here: ${MANYCHAT_APPLY_URL}`,
+    generic:         `${n} — APEX Financial. We hire life insurance agents, licensed or not. Start here: ${MANYCHAT_APPLY_URL}`,
   };
   return replies[path];
+}
+
+function firstText(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number") return String(value);
+  }
+  return null;
+}
+
+function normalizePhone(value: string | null) {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : value;
+}
+
+function buildName(body: any) {
+  const subscriber = body.subscriber ?? body.contact ?? body.user ?? {};
+  const first = firstText(body.first_name, subscriber.first_name, subscriber.firstName);
+  const last = firstText(body.last_name, subscriber.last_name, subscriber.lastName);
+  return firstText(body.sender_name, body.name, subscriber.name, [first, last].filter(Boolean).join(" "));
 }
 
 const supabase = createClient(
@@ -139,11 +161,31 @@ Deno.serve(async (req) => {
     });
   }
 
-  const source = (body.source || "instagram").toLowerCase();
-  const subscriberId = body.subscriber_id ?? body.external_id ?? null;
-  const senderHandle = body.sender_handle ?? body.handle ?? body.phone ?? null;
-  const senderName = body.sender_name ?? body.first_name ?? null;
-  const senderAvatar = body.sender_avatar ?? null;
+  const subscriber = body.subscriber ?? body.contact ?? body.user ?? {};
+  const rawSource = firstText(body.source, body.channel, body.platform, body.network, "instagram")!.toLowerCase();
+  const source = rawSource.startsWith("manychat") ? rawSource : `manychat_${rawSource}`;
+  const subscriberId = firstText(
+    body.subscriber_id,
+    body.external_id,
+    body.contact_id,
+    body.user_id,
+    subscriber.id,
+    subscriber.subscriber_id,
+  );
+  const senderHandle = firstText(
+    body.sender_handle,
+    body.handle,
+    body.username,
+    body.phone,
+    subscriber.username,
+    subscriber.handle,
+    subscriber.phone,
+  );
+  const senderName = buildName(body);
+  const senderAvatar = firstText(body.sender_avatar, body.avatar, subscriber.avatar, subscriber.profile_pic);
+  const email = firstText(body.email, subscriber.email);
+  const phone = normalizePhone(firstText(body.phone, subscriber.phone));
+  const state = firstText(body.state, body.us_state, subscriber.state);
   const text = (body.body ?? body.message ?? body.text ?? "").trim();
 
   if (!text) {
@@ -155,6 +197,67 @@ Deno.serve(async (req) => {
 
   const { intent, lead_score, reply_path } = classify(text);
   const auto_reply = reply_path ? replyFor(reply_path, senderName?.split(" ")[0]) : null;
+  const shouldTrackLead = intent !== "spam" && intent !== "not_interested" && lead_score >= 20;
+  const sessionId = `manychat:${source}:${subscriberId ?? senderHandle ?? crypto.randomUUID()}`;
+  let partialApplicationId: string | null = null;
+
+  if (shouldTrackLead) {
+    const nameParts = (senderName ?? "").trim().split(/\s+/).filter(Boolean);
+    const firstName = firstText(body.first_name, subscriber.first_name, nameParts[0]);
+    const lastName = firstText(body.last_name, subscriber.last_name, nameParts.slice(1).join(" "));
+    const formData = {
+      source,
+      raw_source: rawSource,
+      subscriber_id: subscriberId,
+      sender_handle: senderHandle,
+      first_message: text,
+      intent,
+      lead_score,
+      recommended_reply: auto_reply,
+      apply_url: MANYCHAT_APPLY_URL,
+    };
+    const { data: existingPartial } = await supabase
+      .from("partial_applications")
+      .select("id")
+      .eq("session_id", sessionId)
+      .maybeSingle();
+
+    if (existingPartial?.id) {
+      partialApplicationId = existingPartial.id as string;
+      await supabase.from("partial_applications")
+        .update({
+          email,
+          phone,
+          first_name: firstName,
+          last_name: lastName,
+          state,
+          step_completed: 1,
+          step: "manychat_dm",
+          abandoned_at: new Date().toISOString(),
+          form_data: formData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", partialApplicationId);
+    } else {
+      const { data: partial } = await supabase.from("partial_applications")
+        .insert({
+          session_id: sessionId,
+          email,
+          phone,
+          first_name: firstName,
+          last_name: lastName,
+          state,
+          step_completed: 1,
+          step: "manychat_dm",
+          abandoned_at: new Date().toISOString(),
+          form_data: formData,
+          user_agent: "manychat-webhook",
+        })
+        .select("id")
+        .maybeSingle();
+      partialApplicationId = (partial?.id as string | undefined) ?? null;
+    }
+  }
 
   // Persist the inbound message (and the outbound auto-reply as a second row
   // so the full conversation is visible in the inbox view).
@@ -169,7 +272,7 @@ Deno.serve(async (req) => {
     intent,
     lead_score,
     auto_replied: !!auto_reply,
-    raw_payload: body,
+    raw_payload: { ...body, partial_application_id: partialApplicationId, session_id: sessionId },
     replied_at: auto_reply ? new Date().toISOString() : null,
   };
 
@@ -196,7 +299,7 @@ Deno.serve(async (req) => {
       direction: "outbound",
       intent,
       auto_replied: true,
-      raw_payload: { in_reply_to: (inboundRow as any)?.id, path: reply_path },
+      raw_payload: { in_reply_to: (inboundRow as any)?.id, path: reply_path, partial_application_id: partialApplicationId },
     });
   }
 
@@ -206,6 +309,9 @@ Deno.serve(async (req) => {
     lead_score,
     auto_reply,
     message_id: (inboundRow as any)?.id,
+    partial_application_id: partialApplicationId,
+    lead_source: source,
+    apply_url: MANYCHAT_APPLY_URL,
   }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });

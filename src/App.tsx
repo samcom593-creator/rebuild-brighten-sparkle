@@ -97,6 +97,8 @@ const SeminarPage = lazy(() => import("./pages/SeminarPage"));
 const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
 const AgentFlow = lazy(() => import("./pages/AgentFlow"));
 const InboxPage = lazy(() => import("./pages/InboxPage"));
+const MyApplicants = lazy(() => import("./pages/admin/MyApplicants"));
+const AddReferral = lazy(() => import("./pages/admin/AddReferral"));
 const AutomationHub = lazy(() => import("./pages/AutomationHub"));
 const AutomationHealth = lazy(() => import("./pages/AutomationHealth"));
 const TeamHierarchy = lazy(() => import("./pages/TeamHierarchy"));
@@ -252,6 +254,9 @@ const App = () => (
                     <Route path="/dashboard/apex-control" element={<ProtectedRoute requireAdmin><ApexControl /></ProtectedRoute>} />
                     <Route path="/dashboard/legacy" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
+                    {/* Manager self-serve: view their referrals + drop new ones (Sam 2026-06-03) */}
+                    <Route path="/admin/my-applicants" element={<ProtectedRoute allowManagers><MyApplicants /></ProtectedRoute>} />
+                    <Route path="/admin/add-referral" element={<ProtectedRoute allowManagers><AddReferral /></ProtectedRoute>} />
                     {/* Stale-recovery panel — admins/managers only. v_stale_applicants
                         feeds it. Additive: doesn't touch DashboardApplicants. */}
                     <Route path="/dashboard/stale-recovery" element={<ProtectedRoute allowManagers><StaleRecovery /></ProtectedRoute>} />

@@ -283,6 +283,9 @@ export default function Apply() {
           utmSource: searchParams.get("utm_source") || null,
           utmMedium: searchParams.get("utm_medium") || null,
           utmCampaign: searchParams.get("utm_campaign") || null,
+          utmContent: searchParams.get("utm_content") || null,
+          utmTerm: searchParams.get("utm_term") || null,
+          landingUrl: window.location.pathname,
         },
         user_agent: navigator.userAgent,
       };
@@ -424,6 +427,9 @@ export default function Apply() {
     utmSource: searchParams.get("utm_source") || null,
     utmMedium: searchParams.get("utm_medium") || null,
     utmCampaign: searchParams.get("utm_campaign") || null,
+    utmContent: searchParams.get("utm_content") || null,
+    utmTerm: searchParams.get("utm_term") || null,
+    landingUrl: window.location.pathname,
   });
 
   const submitQuickQualify = async () => {
@@ -485,6 +491,9 @@ export default function Apply() {
         utm_source: traffic.utmSource,
         utm_medium: traffic.utmMedium,
         utm_campaign: traffic.utmCampaign,
+        utm_content: traffic.utmContent,
+        utm_term: traffic.utmTerm,
+        landing_url: traffic.landingUrl,
       });
 
       toast.success("You're qualified. Finish the full application when you're ready.");

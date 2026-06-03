@@ -56,7 +56,8 @@ function loadMetaPixel(pixelId: string): void {
 async function loadPostHog(key: string, host: string): Promise<void> {
   try {
     // Dynamic import keeps PostHog out of the LCP critical path.
-    const mod = await import(/* @vite-ignore */ "posthog-js");
+    const posthogModule = "posthog-js";
+    const mod = await import(/* @vite-ignore */ posthogModule);
     const ph = (mod as { default?: { init: (k: string, opts: Record<string, unknown>) => void } }).default
             ?? (mod as unknown as { init: (k: string, opts: Record<string, unknown>) => void });
     ph.init(key, {

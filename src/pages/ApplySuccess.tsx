@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { ApplicationConfirmation } from "@/components/landing/ApplicationConfirmation";
+import { ApplicationConfirmationV2 as ApplicationConfirmation } from "@/components/landing/ApplicationConfirmationV2";
 
 // Generic post-application landing — used as a safety fallback whenever the
 // caller didn't route the applicant into the licensed/unlicensed-specific

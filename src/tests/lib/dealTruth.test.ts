@@ -123,3 +123,44 @@ describe("getDealTruthTimestamp", () => {
     expect(result).toBeNull();
   });
 });
+
+// ── excludeSamAgent ────────────────────────────────────────────────────────────
+
+import { excludeSamAgent } from "@/lib/dealTruth";
+import { SAM_AGENT_ID } from "@/lib/dataLayer";
+
+describe("excludeSamAgent", () => {
+  it("calls neq with column 'agent_id' and the SAM_AGENT_ID constant", () => {
+    let calledWith: [string, string] | null = null;
+    const fakeQuery = {
+      neq: (col: string, val: string) => {
+        calledWith = [col, val];
+        return fakeQuery;
+      },
+    };
+    excludeSamAgent(fakeQuery);
+    expect(calledWith).toEqual(["agent_id", SAM_AGENT_ID]);
+  });
+
+  it("uses the legacy SAM_AGENT_ID (7c3c5581… uuid)", () => {
+    let capturedVal = "";
+    const fakeQuery = {
+      neq: (_col: string, val: string) => { capturedVal = val; return fakeQuery; },
+    };
+    excludeSamAgent(fakeQuery);
+    expect(capturedVal).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(capturedVal).toBe("7c3c5581-3544-437f-bfe2-91391afb217d");
+  });
+
+  it("returns the query (chainable)", () => {
+    const fakeQuery = { neq: () => fakeQuery };
+    expect(excludeSamAgent(fakeQuery)).toBe(fakeQuery);
+  });
+
+  it("neq is called exactly once per excludeSamAgent call", () => {
+    let callCount = 0;
+    const fakeQuery = { neq: () => { callCount++; return fakeQuery; } };
+    excludeSamAgent(fakeQuery);
+    expect(callCount).toBe(1);
+  });
+});

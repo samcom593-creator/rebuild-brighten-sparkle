@@ -54,7 +54,7 @@ const RESOURCE_TEXT =
 
 const CONTRACTING_TEXT =
   `Contracting checklist:\n\n` +
-  `1. ICA paid -> contracting packet sent within 24 hours.\n` +
+  `1. Prelicensing course paid -> contracting packet sent within 24 hours.\n` +
   `2. Have these ready: license number/state, SSN for background, direct deposit/routing, driver's license photo, monitored email + phone.\n` +
   `3. Fill carrier forms carefully. Bad direct deposit or missed carrier emails can stall commissions.\n` +
   `4. Background check usually takes 2-5 days. Carrier appointments usually take 5-10 business days each.\n` +
@@ -676,19 +676,25 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
         await tgSend({ chat_id, text: "Run /register inside a group/channel — not in DM." });
         break;
       }
-      // Sam-feedback 2026-06-03: collapsed to one simple flow. Just "onboarding"
-      // is the team chat where every applicant + milestone lands.
-      const valid = ["onboarding", "manager_alerts", "wins"];
+      // Sam-feedback 2026-06-03: TWO-LAYER architecture.
+      // Layer 1 = per-applicant 1:1 DM with bot (private, automatic, no setup).
+      // Layer 2 = ONE manager-only group ("pipeline") where bot posts every
+      // applicant + milestone tagged with the owner manager. Applicants are
+      // NEVER in this chat.
+      const valid = ["pipeline", "onboarding", "manager_alerts", "wins"];
       const requested = (args ?? "").trim().toLowerCase();
       if (!requested || !valid.includes(requested)) {
         await tgSend({
           chat_id,
           text:
             `Usage: /register <type>\n\n` +
-            `• onboarding — THE team chat. Every new applicant + every milestone (course bought, license passed, hired, first deal) lands here. Add Obi/Chewy/KJ + bot as admin first.\n` +
+            `• pipeline — THE manager-only group. Sam + KJ + Obi + Chewy + Moody. ` +
+            `Bot posts every new applicant + milestone here, tagged with the owner manager. ` +
+            `APPLICANTS ARE NOT IN THIS CHAT. They only get private 1:1 DMs.\n` +
+            `• onboarding — alias for pipeline (backward compat).\n` +
             `• manager_alerts — optional escalation room.\n` +
             `• wins — optional public proof board.\n\n` +
-            `Example: /register onboarding`,
+            `Example: /register pipeline`,
         });
         break;
       }

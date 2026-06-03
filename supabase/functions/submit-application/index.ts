@@ -111,6 +111,9 @@ const FullSubmitApplicationSchema = z.object({
   utmSource: z.string().max(200).optional().nullable(),
   utmMedium: z.string().max(200).optional().nullable(),
   utmCampaign: z.string().max(200).optional().nullable(),
+  utmContent: z.string().max(200).optional().nullable(),
+  utmTerm: z.string().max(200).optional().nullable(),
+  landingUrl: z.string().max(500).optional().nullable(),
 });
 
 const QuickQualifySchema = z.object({
@@ -126,6 +129,9 @@ const QuickQualifySchema = z.object({
   utmSource: z.string().max(200).optional().nullable(),
   utmMedium: z.string().max(200).optional().nullable(),
   utmCampaign: z.string().max(200).optional().nullable(),
+  utmContent: z.string().max(200).optional().nullable(),
+  utmTerm: z.string().max(200).optional().nullable(),
+  landingUrl: z.string().max(500).optional().nullable(),
 });
 
 type SubmitApplicationRequest = z.infer<typeof FullSubmitApplicationSchema>;
@@ -1007,6 +1013,9 @@ async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): 
     update.utm_source = data.utmSource ?? null;
     update.utm_medium = data.utmMedium ?? null;
     update.utm_campaign = data.utmCampaign ?? null;
+    update.utm_content = data.utmContent ?? null;
+    update.utm_term = data.utmTerm ?? null;
+    update.landing_url = data.landingUrl ?? consent?.sourceUrl ?? null;
 
     await supabaseAdmin.from("applications").update(update).eq("id", existingApp.id);
 
@@ -1033,6 +1042,9 @@ async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): 
     utm_source: data.utmSource ?? null,
     utm_medium: data.utmMedium ?? null,
     utm_campaign: data.utmCampaign ?? null,
+    utm_content: data.utmContent ?? null,
+    utm_term: data.utmTerm ?? null,
+    landing_url: data.landingUrl ?? consent?.sourceUrl ?? null,
     notes: "Quick-qualified paid-social lead; full application pending.",
     assigned_agent_id: resolvedAssigned,
     recruiter_id: resolvedRecruiter,
@@ -1210,11 +1222,14 @@ const handler = async (req: Request): Promise<Response> => {
       desired_income: null,
       availability: data.availability,
       referral_source: data.referralSource ?? (data.utmMedium === "paid_social" ? "paid_social" : data.source ?? null),
-      referral_source_detail: data.utmCampaign ?? data.utmSource ?? null,
+      referral_source_detail: data.utmCampaign ?? data.utmContent ?? data.utmSource ?? null,
       source: data.source ?? null,
       utm_source: data.utmSource ?? null,
       utm_medium: data.utmMedium ?? null,
       utm_campaign: data.utmCampaign ?? null,
+      utm_content: data.utmContent ?? null,
+      utm_term: data.utmTerm ?? null,
+      landing_url: data.landingUrl ?? consent?.sourceUrl ?? null,
       notes: manualReferralNote,
 
       // Assign to the selected referral agent. PL-082: when no referrer is

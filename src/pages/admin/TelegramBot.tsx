@@ -61,8 +61,8 @@ type Template = {
 
 const STAGE_LABEL: Record<string, string> = {
   lobby: "Lobby",
-  applied_unpaid: "Applied, ICA unpaid",
-  applied_paid: "Applied, ICA paid",
+  applied_unpaid: "Applied, prelicensing not started",
+  applied_paid: "Applied, prelicensing started",
   manager_call_scheduled: "Call scheduled",
   manager_call_done: "Call done",
   seminar_rsvp: "Seminar RSVP",
@@ -547,8 +547,8 @@ function HealthLine({ label, status, hint }: { label: string; status: "ok" | "wa
 const BROADCAST_STAGES: Array<{ value: string; label: string }> = [
   { value: "all_active", label: "All active users (not opted out)" },
   { value: "lobby", label: "Lobby" },
-  { value: "applied_unpaid", label: "Applied (ICA unpaid)" },
-  { value: "applied_paid", label: "Applied (ICA paid)" },
+  { value: "applied_unpaid", label: "Applied (prelicensing not started)" },
+  { value: "applied_paid", label: "Applied (prelicensing started)" },
   { value: "manager_call_scheduled", label: "Manager call scheduled" },
   { value: "seminar_rsvp", label: "Seminar RSVP'd" },
   { value: "seminar_attended", label: "Seminar attended" },

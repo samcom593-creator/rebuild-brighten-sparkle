@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { ApplicationConfirmation } from "@/components/landing/ApplicationConfirmation";
+import { ApplicationConfirmationV2 as ApplicationConfirmation } from "@/components/landing/ApplicationConfirmationV2";
 
 export default function ApplySuccessLicensed() {
   usePageTitle("Schedule Your Call · APEX Financial");

@@ -25,6 +25,52 @@ const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const ANTHROPIC_MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-haiku-4-5-20251001";
 
 const APPLY_URL = "https://apex-financial.org/apply?utm_source=telegram&utm_medium=bot";
+const ICA_URL = "https://apex-financial.org/pay-ica";
+const LICENSE_URL = "https://apex-financial.org/get-licensed";
+const LICENSED_CALL_URL = "https://calendly.com/apexfinancialempire/1on1-call-clone";
+
+const PUBLIC_GROUP_COMMANDS = new Set([
+  "/help",
+  "/ask",
+  "/faq",
+  "/resources",
+  "/contracting",
+  "/license",
+  "/exam",
+  "/seminar",
+  "/apply",
+]);
+
+const RESOURCE_TEXT =
+  `APEX recruit resources:\n\n` +
+  `1. Apply: ${APPLY_URL}\n` +
+  `2. ICA/payment gate: ${ICA_URL}\n` +
+  `3. Licensing path: ${LICENSE_URL}\n` +
+  `4. Exam help: /exam\n` +
+  `5. Seminar info: /seminar\n` +
+  `6. Contracting checklist: /contracting\n` +
+  `7. Human help: /manager\n\n` +
+  `Already licensed? Book the licensed call: ${LICENSED_CALL_URL}`;
+
+const CONTRACTING_TEXT =
+  `Contracting checklist:\n\n` +
+  `1. ICA paid -> contracting packet sent within 24 hours.\n` +
+  `2. Have these ready: license number/state, SSN for background, direct deposit/routing, driver's license photo, monitored email + phone.\n` +
+  `3. Fill carrier forms carefully. Bad direct deposit or missed carrier emails can stall commissions.\n` +
+  `4. Background check usually takes 2-5 days. Carrier appointments usually take 5-10 business days each.\n` +
+  `5. First carrier approved -> writing number issued -> ready to write.\n\n` +
+  `Stuck or missing a packet? Use /manager.`;
+
+const FAQ_TEXT =
+  `Fast commands:\n\n` +
+  `/status - see your file\n` +
+  `/resources - links and next steps\n` +
+  `/contracting - paperwork checklist\n` +
+  `/license - pre-license path\n` +
+  `/exam - exam scheduling help\n` +
+  `/seminar - next seminar info\n` +
+  `/ask how long does licensing take - FAQ answer\n` +
+  `/manager - human escalation`;
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 const TG = (m: string) => `https://api.telegram.org/bot${BOT_TOKEN}/${m}`;
@@ -259,6 +305,7 @@ async function checkEscalation(chat_id: number, text: string): Promise<boolean> 
 async function tryFAQ(q: string) {
   const tokens = q.toLowerCase().match(/[a-z][a-z'-]{3,}/g) ?? [];
   if (tokens.length === 0) return null;
+  const tokenSet = new Set<string>(tokens);
   const { data } = await sb.from("telegram_faq")
     .select("id, answer_body, match_keywords, use_count")
     .eq("active", true);
@@ -267,7 +314,7 @@ async function tryFAQ(q: string) {
   let bestScore = 0;
   for (const row of data) {
     const kws = (row.match_keywords as string[] | null) ?? [];
-    const matches = kws.filter((k) => tokens.includes(k.toLowerCase())).length;
+    const matches = kws.filter((k) => tokenSet.has(k.toLowerCase())).length;
     if (matches > bestScore) {
       bestScore = matches;
       best = row;
@@ -459,7 +506,7 @@ async function matchByContact(chat_id: number, phone?: string, email?: string, f
 // ============================================================================
 
 async function handleCommand(chat_id: number, fromUser: any, command: string, args: string, isGroup: boolean) {
-  if (isGroup && !["/help", "/ask"].includes(command)) {
+  if (isGroup && !PUBLIC_GROUP_COMMANDS.has(command)) {
     await tgSend({ chat_id, text: `DM me to use ${command}. I'll handle it 1:1.` });
     return;
   }
@@ -549,6 +596,19 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
         text: `Apply in 90 seconds. The moment you submit, your slot reserves on the calendar.\n\n${APPLY_URL}`,
       });
       break;
+    case "/resources":
+      await tgSend({ chat_id, text: RESOURCE_TEXT });
+      break;
+    case "/contracting":
+      await tgSend({ chat_id, text: CONTRACTING_TEXT });
+      break;
+    case "/faq":
+      if (!args.trim()) {
+        await tgSend({ chat_id, text: FAQ_TEXT });
+      } else {
+        await aiAnswer(chat_id, args);
+      }
+      break;
     case "/status":
       await statusCommand(chat_id);
       break;
@@ -616,12 +676,19 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
         await tgSend({ chat_id, text: "Run /register inside a group/channel — not in DM." });
         break;
       }
-      const valid = ["lobby", "licensing", "seminar", "onboarding", "training", "wins", "ai_dm", "manager_alerts"];
+      // Sam-feedback 2026-06-03: collapsed to one simple flow. Just "onboarding"
+      // is the team chat where every applicant + milestone lands.
+      const valid = ["onboarding", "manager_alerts", "wins"];
       const requested = (args ?? "").trim().toLowerCase();
       if (!requested || !valid.includes(requested)) {
         await tgSend({
           chat_id,
-          text: `Usage: /register <type>\n\nValid types:\n• onboarding — new agent first 14d drip\n• lobby — top-of-funnel warm hold\n• licensing — pre-license Q&A\n• seminar — one-way blasts\n• training — persistent training library\n• wins — public proof board\n• manager_alerts — escalations only\n\nExample: /register onboarding`,
+          text:
+            `Usage: /register <type>\n\n` +
+            `• onboarding — THE team chat. Every new applicant + every milestone (course bought, license passed, hired, first deal) lands here. Add Obi/Chewy/KJ + bot as admin first.\n` +
+            `• manager_alerts — optional escalation room.\n` +
+            `• wins — optional public proof board.\n\n` +
+            `Example: /register onboarding`,
         });
         break;
       }

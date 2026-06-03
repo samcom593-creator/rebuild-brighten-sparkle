@@ -2,11 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, Crown, Search } from "lucide-react";
 
+// Sam-feedback 2026-06-03: removed #testimonials and #systems — no matching
+// section IDs on the landing, so taps did nothing. Five real anchors only.
 const NAV_LINKS = [
   { href: "#benefits", label: "Benefits" },
   { href: "#earnings", label: "Earnings" },
-  { href: "#testimonials", label: "Receipts" },
-  { href: "#systems", label: "Systems" },
   { href: "#career", label: "Career Path" },
   { href: "#leads", label: "Leads" },
   { href: "#ig-growth", label: "IG Growth" },

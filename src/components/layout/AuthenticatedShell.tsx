@@ -10,6 +10,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { CelebrationProvider } from "@/components/celebrations/CelebrationProvider";
 import { RequireProfilePicture } from "@/components/profile/RequireProfilePicture";
+// wave-18 (2026-06-04): TooltipProvider lives here, not in App.tsx. Every
+// dashboard component that mounts a <Tooltip> is rendered under this shell,
+// so context is in scope. Landing routes never mount tooltips — moving the
+// provider out of App eliminates the only eager static-import edge to
+// vendor-radix's tooltip slice on cold landing.
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 function InnerPageLoader() {
   return (
@@ -34,19 +40,21 @@ function InnerPageLoader() {
 export function AuthenticatedShell() {
   return (
     <ProtectedRoute>
-      <SidebarLayout showPhoneBanner={true}>
-        <CelebrationProvider />
-        <CommandPalette />
-        <CommandHintFab />
-        <WelcomeToast />
-        <PushNotificationPrompt />
-        <RequireProfilePicture />
-        <ComponentErrorBoundary name="page-content">
-          <Suspense fallback={<InnerPageLoader />}>
-            <Outlet />
-          </Suspense>
-        </ComponentErrorBoundary>
-      </SidebarLayout>
+      <TooltipProvider>
+        <SidebarLayout showPhoneBanner={true}>
+          <CelebrationProvider />
+          <CommandPalette />
+          <CommandHintFab />
+          <WelcomeToast />
+          <PushNotificationPrompt />
+          <RequireProfilePicture />
+          <ComponentErrorBoundary name="page-content">
+            <Suspense fallback={<InnerPageLoader />}>
+              <Outlet />
+            </Suspense>
+          </ComponentErrorBoundary>
+        </SidebarLayout>
+      </TooltipProvider>
     </ProtectedRoute>
   );
 }

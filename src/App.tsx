@@ -11,7 +11,11 @@ const ToasterShadcn = lazy(() =>
 const SonnerToaster = lazy(() =>
   import("@/components/ui/sonner").then((m) => ({ default: m.Toaster })),
 );
-import { TooltipProvider } from "@/components/ui/tooltip";
+// wave-18 (2026-06-04): TooltipProvider moved into AuthenticatedShell. Zero
+// landing-eager components mount a <Tooltip>. All Tooltip consumers live under
+// dashboard routes (already wrapped in AuthenticatedShell) — App-level provider
+// was the sole static-import edge dragging vendor-radix's tooltip slice + popper
+// transitive graph onto every cold landing visit.
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/shared/api/queryClient";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -232,9 +236,8 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <SidebarProvider>
-            <DeferredToasters />
+        <SidebarProvider>
+          <DeferredToasters />
             <Suspense fallback={null}>
               <SupabaseHealthBanner />
             </Suspense>
@@ -455,8 +458,7 @@ const App = () => (
                 </Routes>
               </Suspense>
             </BrowserRouter>
-          </SidebarProvider>
-        </TooltipProvider>
+        </SidebarProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>

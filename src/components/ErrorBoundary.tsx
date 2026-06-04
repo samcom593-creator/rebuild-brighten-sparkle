@@ -1,6 +1,10 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+// wave-18 (2026-06-04): replaced shadcn <Button> with native <button>. Button
+// imports @radix-ui/react-slot for asChild — that single edge dragged the
+// entire vendor-radix slice (TooltipProvider, popper transitive graph, etc.)
+// onto every cold landing visit because ErrorBoundary is the App.tsx root wrap.
+// The error UI fires <1/1000 sessions; styling stays Tailwind-only.
 
 interface Props {
   children: ReactNode;
@@ -98,13 +102,21 @@ export class ErrorBoundary extends Component<Props, State> {
             )}
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={this.handleReload} className="gap-2">
+              <button
+                type="button"
+                onClick={this.handleReload}
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
+              >
                 <RefreshCw className="w-4 h-4" />
                 Refresh Page
-              </Button>
-              <Button variant="outline" onClick={this.handleGoHome}>
+              </button>
+              <button
+                type="button"
+                onClick={this.handleGoHome}
+                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
+              >
                 Go to Home
-              </Button>
+              </button>
             </div>
 
             <p className="text-xs text-muted-foreground">

@@ -2,7 +2,18 @@ import React, { useState, useEffect, useCallback, useMemo, useRef, createContext
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { useIdleSession } from "@/shared/auth/useIdleSession";
-import { SessionWarningDialog } from "@/shared/auth/SessionWarningDialog";
+// wave-18 (2026-06-04): SessionWarningDialog lazy-loaded. It uses radix
+// AlertDialog — the single eager edge that dragged the entire vendor-radix
+// chunk onto every cold landing visit because useAuth is AuthProvider's
+// module and AuthProvider sits above every route. The dialog only renders
+// when an authenticated user has been idle ~59 minutes (showWarning=true),
+// so deferring the chunk costs nothing for the 99%+ of sessions that never
+// hit the warning state.
+const SessionWarningDialog = React.lazy(() =>
+  import("@/shared/auth/SessionWarningDialog").then((m) => ({
+    default: m.SessionWarningDialog,
+  })),
+);
 import { setTelemetryUser, track } from "@/shared/telemetry/track";
 
 interface Profile {
@@ -256,14 +267,22 @@ function IdleSessionGate({ enabled, onTimeout }: { enabled: boolean; onTimeout: 
     },
   });
 
-  return React.createElement(SessionWarningDialog, {
-    open: showWarning,
-    secondsRemaining,
-    onStay: extendSession,
-    onSignOut: () => {
-      void onTimeout();
-    },
-  });
+  // Only mount the dialog (and trigger its lazy chunk load) when the warning
+  // actually needs to be shown. open=false on radix AlertDialog still mounts
+  // and ships JS — gating on showWarning fully defers the chunk.
+  if (!showWarning) return null;
+  return React.createElement(
+    React.Suspense,
+    { fallback: null },
+    React.createElement(SessionWarningDialog, {
+      open: true,
+      secondsRemaining,
+      onStay: extendSession,
+      onSignOut: () => {
+        void onTimeout();
+      },
+    }),
+  );
 }
 
 export function useAuth(): AuthContextValue {

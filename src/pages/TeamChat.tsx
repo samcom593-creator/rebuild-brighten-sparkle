@@ -40,7 +40,11 @@ export default function TeamChat() {
 
   // Realtime subscription
   useEffect(() => {
-    const ch = supabase.channel(`team-chat-${Math.random()}`)
+    // PL: stable channel name. Math.random() was creating a fresh channel +
+    // websocket on every render so Supabase couldn't dedupe — same disease
+    // that hit BookOfBusiness in wave-6. Channel scope is global team-chat,
+    // so a constant key is correct here.
+    const ch = supabase.channel("team-chat-global")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "team_chat_messages" },
         (p) => {
           const m = p.new as any as Message;

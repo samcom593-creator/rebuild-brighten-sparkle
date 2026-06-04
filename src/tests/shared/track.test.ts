@@ -23,6 +23,23 @@ async function freshTrack() {
   return import("@/shared/telemetry/track");
 }
 
+// wave-19 (2026-06-04): flush() now does `await import(supabase/client)` before
+// the insert call so vendor-supabase is no longer on the eager landing graph.
+// Under vi.useFakeTimers(), dynamic-import resolution may queue behind the
+// fake-timer scheduler. Cycling real-timer setImmediate after fake-advance is
+// the canonical drain: it lets the import-promise settle, then any awaited
+// insert. Bumping fake → real briefly is safe because we are post-timer-fire.
+async function flushMicrotasks() {
+  // Allow the fake-timer scheduler's microtask queue to drain first
+  for (let i = 0; i < 4; i++) await Promise.resolve();
+  // Then bridge to real microtasks (dynamic-import is resolved off fake scheduler)
+  await new Promise<void>((resolve) => {
+    // Use queueMicrotask which is not faked by vi.useFakeTimers
+    queueMicrotask(() => resolve());
+  });
+  for (let i = 0; i < 4; i++) await Promise.resolve();
+}
+
 const mockInsert = vi.fn().mockResolvedValue({ data: null, error: null });
 const mockFrom = vi.mocked(supabase.from);
 
@@ -47,8 +64,8 @@ describe("track — basic queueing", () => {
   it("flushes after FLUSH_INTERVAL_MS (5000ms)", async () => {
     const { track } = await freshTrack();
     track("button_click", "interaction", { btn: "apply" });
-    act: vi.advanceTimersByTime(5001);
-    await Promise.resolve(); // drain microtasks
+    vi.advanceTimersByTime(5001);
+    await flushMicrotasks();
     expect(mockInsert).toHaveBeenCalled();
     const batch = mockInsert.mock.calls[0][0] as any[];
     expect(batch).toHaveLength(1);
@@ -61,7 +78,7 @@ describe("track — basic queueing", () => {
     for (let i = 0; i < 20; i++) {
       track(`event_${i}`, "interaction");
     }
-    await Promise.resolve();
+    await flushMicrotasks();
     expect(mockInsert).toHaveBeenCalled();
     const batch = mockInsert.mock.calls[0][0] as any[];
     expect(batch).toHaveLength(20);
@@ -83,7 +100,7 @@ describe("track — error resilience", () => {
     mockInsert.mockRejectedValueOnce(new Error("db dead"));
     track("any", "system");
     vi.advanceTimersByTime(5001);
-    await Promise.resolve();
+    await flushMicrotasks();
     // No unhandled rejection, no throw — telemetry is fire-and-forget
     expect(true).toBe(true);
   });
@@ -95,7 +112,7 @@ describe("setTelemetryUser", () => {
     setTelemetryUser("user-abc");
     track("signed_in", "auth");
     vi.advanceTimersByTime(5001);
-    await Promise.resolve();
+    await flushMicrotasks();
     const batch = mockInsert.mock.calls[0][0] as any[];
     expect(batch[0].user_id).toBe("user-abc");
   });
@@ -106,7 +123,7 @@ describe("setTelemetryUser", () => {
     setTelemetryUser(null);
     track("signed_out", "auth");
     vi.advanceTimersByTime(5001);
-    await Promise.resolve();
+    await flushMicrotasks();
     const batch = mockInsert.mock.calls[0][0] as any[];
     expect(batch[0].user_id).toBeNull();
   });
@@ -136,7 +153,7 @@ describe("initTelemetry — flush on page lifecycle", () => {
     initTelemetry();
     track("last_event", "system");
     window.dispatchEvent(new Event("pagehide"));
-    await Promise.resolve();
+    await flushMicrotasks();
     expect(mockInsert).toHaveBeenCalled();
   });
 });

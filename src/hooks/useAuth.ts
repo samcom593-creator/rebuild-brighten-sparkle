@@ -1,7 +1,30 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, createContext, useContext, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { useIdleSession } from "@/shared/auth/useIdleSession";
+
+// wave-19 (2026-06-04): supabase pulled out of module-scope static graph.
+// useAuth was the LAST eager static-import edge from App.tsx → vendor-supabase
+// (waves 15 + 16 detached ErrorBoundary, SupabaseHealthBanner, ProtectedRoute).
+// With this anchor severed, vendor-supabase exits the cold-landing modulepreload
+// chain entirely — ~47 kB gz saved on every first visit.
+//
+// Trade-off: the first call to supabase inside AuthProvider's useEffect now waits
+// for the dynamic-import chunk to resolve before getSession() can fire. That delays
+// the signed-in/signed-out branch by ~50-150ms on a cold landing, but no landing
+// component renders auth-gated UI before that resolves (Navbar's login/dashboard
+// toggle waits on `isLoading=true`).
+//
+// Singleton-promise pattern: the first caller starts the dynamic import; every
+// subsequent caller awaits the same resolved promise — no double-imports, no
+// races.
+type SupabaseClientModule = typeof import("@/integrations/supabase/client");
+let supabasePromise: Promise<SupabaseClientModule["supabase"]> | null = null;
+function getSupabase() {
+  if (!supabasePromise) {
+    supabasePromise = import("@/integrations/supabase/client").then((m) => m.supabase);
+  }
+  return supabasePromise;
+}
 // wave-18 (2026-06-04): SessionWarningDialog lazy-loaded. It uses radix
 // AlertDialog — the single eager edge that dragged the entire vendor-radix
 // chunk onto every cold landing visit because useAuth is AuthProvider's
@@ -65,25 +88,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const currentUserIdRef = useRef<string | null>(null);
 
   const fetchProfile = useCallback(async (userId: string, authEmail?: string) => {
+    const supabase = await getSupabase();
     const { data } = await supabase
       .from("profiles")
       .select("*")
       .eq("user_id", userId)
       .maybeSingle();
-    
+
     if (data && authEmail && data.email !== authEmail) {
       if (import.meta.env.DEV) console.log("Syncing profile email with auth email:", authEmail);
       await supabase
         .from("profiles")
         .update({ email: authEmail })
         .eq("user_id", userId);
-      
+
       const { data: updatedData } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", userId)
         .maybeSingle();
-      
+
       setProfile(updatedData);
     } else {
       setProfile(data);
@@ -92,11 +116,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchRoles = useCallback(async (userId: string) => {
     setRolesLoading(true);
+    const supabase = await getSupabase();
     const { data } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
-    
+
     setRoles(data || []);
     setRolesLoading(false);
   }, []);
@@ -145,60 +170,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
     const mounted = () => isMounted;
+    let unsubscribe: (() => void) | undefined;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!isMounted) return;
+    (async () => {
+      const supabase = await getSupabase();
+      if (!isMounted) return;
 
-        // Telemetry: capture lifecycle events (excluding noisy refreshes)
-        if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "PASSWORD_RECOVERY" || event === "USER_UPDATED") {
-          setTelemetryUser(session?.user?.id ?? null);
-          track(`auth.${event.toLowerCase()}`, "auth", { hasSession: !!session });
-        }
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (!isMounted) return;
 
-        // Handle password recovery event - redirect to settings
-        if (event === "PASSWORD_RECOVERY") {
-          if (import.meta.env.DEV) console.log("PASSWORD_RECOVERY event detected, redirecting to settings");
-          window.location.href = "/dashboard/settings?recovery=true";
-          return;
-        }
-
-        // On token refresh, just update the session object — no refetches needed
-        if (event === "TOKEN_REFRESHED") {
-          if (session) {
-            setSession(session);
-          } else {
-            // Token refresh failed (e.g. refresh_token_not_found) — clear stale state
-            console.warn("Token refresh failed, clearing session");
-            currentUserIdRef.current = null;
-            lastFetchedUserId.current = null;
-            setUser(null);
-            setSession(null);
-            setProfile(null);
-            setRoles([]);
-            setRolesLoading(false);
-            setIsLoading(false);
-            supabase.auth.signOut().catch(() => {});
+          // Telemetry: capture lifecycle events (excluding noisy refreshes)
+          if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "PASSWORD_RECOVERY" || event === "USER_UPDATED") {
+            setTelemetryUser(session?.user?.id ?? null);
+            track(`auth.${event.toLowerCase()}`, "auth", { hasSession: !!session });
           }
-          return;
-        }
-        
-        // Use setTimeout(0) to avoid Supabase deadlock warning
-        setTimeout(() => handleSession(session, mounted, "onAuthStateChange"), 0);
-      }
-    );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session, mounted, "getSession");
-    });
+          // Handle password recovery event - redirect to settings
+          if (event === "PASSWORD_RECOVERY") {
+            if (import.meta.env.DEV) console.log("PASSWORD_RECOVERY event detected, redirecting to settings");
+            window.location.href = "/dashboard/settings?recovery=true";
+            return;
+          }
+
+          // On token refresh, just update the session object — no refetches needed
+          if (event === "TOKEN_REFRESHED") {
+            if (session) {
+              setSession(session);
+            } else {
+              // Token refresh failed (e.g. refresh_token_not_found) — clear stale state
+              console.warn("Token refresh failed, clearing session");
+              currentUserIdRef.current = null;
+              lastFetchedUserId.current = null;
+              setUser(null);
+              setSession(null);
+              setProfile(null);
+              setRoles([]);
+              setRolesLoading(false);
+              setIsLoading(false);
+              supabase.auth.signOut().catch(() => {});
+            }
+            return;
+          }
+
+          // Use setTimeout(0) to avoid Supabase deadlock warning
+          setTimeout(() => handleSession(session, mounted, "onAuthStateChange"), 0);
+        }
+      );
+
+      unsubscribe = () => subscription.unsubscribe();
+
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!isMounted) return;
+        handleSession(session, mounted, "getSession");
+      });
+    })();
 
     return () => {
       isMounted = false;
-      subscription.unsubscribe();
+      unsubscribe?.();
     };
   }, [handleSession]);
 
   const signUp = useCallback(async (email: string, password: string, fullName?: string) => {
+    const supabase = await getSupabase();
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -213,6 +248,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
+    const supabase = await getSupabase();
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -221,6 +257,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    const supabase = await getSupabase();
     const { error } = await supabase.auth.signOut();
     return { error };
   }, []);

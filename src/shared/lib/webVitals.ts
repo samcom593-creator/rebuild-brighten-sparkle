@@ -1,4 +1,7 @@
-import { supabase } from "@/integrations/supabase/client";
+// wave-19 (2026-06-04): supabase pulled out of module-scope static graph.
+// flush() only runs >=5s after the first observed vital (LCP/CLS/INP). Lazy-
+// loading the supabase chunk inside flush() removes this edge from the eager
+// landing graph.
 
 interface VitalEntry {
   name: string;
@@ -9,24 +12,29 @@ interface VitalEntry {
 const queue: VitalEntry[] = [];
 let flushTimer: number | undefined;
 
-function flush() {
+async function flush() {
   if (queue.length === 0) return;
   const batch = queue.splice(0);
-  supabase.from("analytics_events").insert(
-    batch.map((v) => ({
-      event_name: `web_vital.${v.name}`,
-      event_category: "performance",
-      properties: { value: v.value, rating: v.rating },
-      url: typeof window !== "undefined" ? window.location.pathname : null,
-      user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-    }))
-  ).then(() => {}, () => {});
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    await supabase.from("analytics_events").insert(
+      batch.map((v) => ({
+        event_name: `web_vital.${v.name}`,
+        event_category: "performance",
+        properties: { value: v.value, rating: v.rating },
+        url: typeof window !== "undefined" ? window.location.pathname : null,
+        user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+      }))
+    );
+  } catch {
+    // swallow — vitals telemetry must not break the app
+  }
 }
 
 function enqueue(entry: VitalEntry) {
   queue.push(entry);
   if (flushTimer) window.clearTimeout(flushTimer);
-  flushTimer = window.setTimeout(flush, 5000);
+  flushTimer = window.setTimeout(() => void flush(), 5000);
 }
 
 export function initWebVitals() {
@@ -64,7 +72,7 @@ export function initWebVitals() {
   } catch {}
 
   window.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") flush();
+    if (document.visibilityState === "hidden") void flush();
   });
-  window.addEventListener("pagehide", flush);
+  window.addEventListener("pagehide", () => void flush());
 }

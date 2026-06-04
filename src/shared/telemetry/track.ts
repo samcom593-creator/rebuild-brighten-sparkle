@@ -1,4 +1,8 @@
-import { supabase } from "@/integrations/supabase/client";
+// wave-19 (2026-06-04): supabase pulled out of module-scope static graph.
+// track() is a fire-and-queue fast path; flush() runs only after >=5s
+// (FLUSH_INTERVAL_MS) or 20 queued events or visibility-change. Lazy-loading
+// the supabase chunk at flush-time removes this edge from the eager landing
+// graph, which dropped vendor-supabase out of cold modulepreload.
 
 /**
  * Centralized analytics emitter.
@@ -47,6 +51,7 @@ async function flush() {
   const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : null;
 
   try {
+    const { supabase } = await import("@/integrations/supabase/client");
     await supabase.from("analytics_events").insert(
       batch.map((evt) => ({
         event_name: evt.event_name,

@@ -1,6 +1,10 @@
 import { QueryCache, MutationCache, QueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+
+// wave-19 (2026-06-04): supabase pulled out of module-scope static graph.
+// queryClient is one of App.tsx's eager imports; the supabase client was only
+// used inside the error-handler path (logClientError). Lazy-loading at the
+// error site means vendor-supabase no longer gets preloaded via this edge.
 
 /**
  * Smart retry: never retry on 4xx (client errors), retry up to 2x on 5xx/network.
@@ -20,6 +24,7 @@ async function logClientError(scope: "query" | "mutation", key: string, error: u
   try {
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
+    const { supabase } = await import("@/integrations/supabase/client");
     await supabase.from("function_errors").insert({
       function_name: `client:${scope}:${key}`,
       error_message: message,

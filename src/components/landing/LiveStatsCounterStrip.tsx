@@ -1,8 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { Users, FileText, Building2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+
+// wave-19 (2026-06-04): supabase deferred to queryFn. LiveStatsCounterStrip
+// renders eagerly under HeroSection — the static import was the second of
+// two anchor edges pulling vendor-supabase into the cold landing modulepreload
+// chain (the other was RecentHiresTicker, also detached this wave). The
+// HARDCODED_FLOOR + localStorage cache below means the numbers render real-
+// looking before the dynamic import even resolves — no above-fold zero.
 
 interface LiveStats {
   active_agents: number;
@@ -51,6 +57,7 @@ export function LiveStatsCounterStrip() {
   const { data } = useQuery({
     queryKey: ["landing_live_stats"],
     queryFn: async (): Promise<LiveStats | null> => {
+      const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.rpc("landing_live_stats");
       if (error) throw error;
       return data as unknown as LiveStats;

@@ -1,6 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+
+// wave-19 (2026-06-04): supabase deferred to queryFn. RecentHiresTicker is
+// rendered eagerly by HeroSection — its static import of supabase used to
+// drag vendor-supabase onto every cold landing visit. queryFn is async by
+// react-query convention, so dynamic-importing the client costs nothing
+// observable: the data fetch was already async.
 
 interface HireRow {
   first_name: string | null;
@@ -21,6 +26,7 @@ export function RecentHiresTicker() {
   const { data, isLoading } = useQuery({
     queryKey: ["landing_recent_hires"],
     queryFn: async (): Promise<HireRow[]> => {
+      const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.rpc("landing_recent_hires");
       if (error) throw error;
       return (data as HireRow[]) ?? [];

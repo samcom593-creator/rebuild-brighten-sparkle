@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
-import { supabase } from "@/integrations/supabase/client";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -50,26 +49,27 @@ export function ProtectedRoute({
 
     setPresenterLoading(true);
     setPresenterCheckedUserId(null);
-    supabase
-      .from("agents")
-      .select("is_presenting")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
+    (async () => {
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data } = await supabase
+          .from("agents")
+          .select("is_presenting")
+          .eq("user_id", user.id)
+          .maybeSingle();
         if (!cancelled) {
           setIsPresenter(Boolean(data?.is_presenting));
           setPresenterCheckedUserId(user.id);
         }
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) {
           setIsPresenter(false);
           setPresenterCheckedUserId(user.id);
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setPresenterLoading(false);
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;

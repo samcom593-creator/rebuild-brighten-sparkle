@@ -1,6 +1,16 @@
-import { Suspense, lazy } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Suspense, lazy, useEffect } from "react";
+// wave-17 (2026-06-04): Toaster + Sonner moved off the eager entry static
+// graph. Together they pulled @radix-ui/react-toast (vendor-radix slice)
+// + sonner + next-themes (vendor-ui slice) into landing's critical path
+// even though `/` never fires a toast — only post-navigation routes do.
+// Lazy-loading + idle-prefetch keeps user-fired toasts working without
+// the cold-landing CSS/JS cost.
+const ToasterShadcn = lazy(() =>
+  import("@/components/ui/toaster").then((m) => ({ default: m.Toaster })),
+);
+const SonnerToaster = lazy(() =>
+  import("@/components/ui/sonner").then((m) => ({ default: m.Toaster })),
+);
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/shared/api/queryClient";
@@ -176,6 +186,35 @@ const ContentCommand = lazy(() => import("./pages/admin/ContentCommand"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
+// wave-17: Toasters mount on first idle so any post-LCP toast() call
+// from a navigated route finds the listener already in place. Returns
+// null on the cold landing render — visible cost = 0 bytes pre-LCP.
+function DeferredToasters() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const fire = () => {
+      void import("@/components/ui/toaster");
+      void import("@/components/ui/sonner");
+    };
+    const w = window as typeof window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback === "function") {
+      const handle = w.requestIdleCallback(fire, { timeout: 2000 });
+      return () => w.cancelIdleCallback?.(handle);
+    }
+    const t = window.setTimeout(fire, 1000);
+    return () => window.clearTimeout(t);
+  }, []);
+  return (
+    <Suspense fallback={null}>
+      <ToasterShadcn />
+      <SonnerToaster />
+    </Suspense>
+  );
+}
+
 // Page loading fallback
 function PageLoader() {
   return (
@@ -195,8 +234,7 @@ const App = () => (
       <AuthProvider>
         <TooltipProvider>
           <SidebarProvider>
-            <Toaster />
-            <Sonner />
+            <DeferredToasters />
             <Suspense fallback={null}>
               <SupabaseHealthBanner />
             </Suspense>

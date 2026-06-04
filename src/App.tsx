@@ -22,7 +22,15 @@ const AuthenticatedShell = lazy(() =>
   })),
 );
 import { RouteTelemetry } from "@/shared/telemetry/useRouteTelemetry";
-import { SupabaseHealthBanner } from "@/components/SupabaseHealthBanner";
+// SupabaseHealthBanner is lazy: it renders null 99% of the time (only shows when
+// Postgres data plane is slow/down). Eager-loading it pulled @/integrations/supabase/client
+// + its 60s probe into the entry chunk. Deferring until 1s after LCP is invisible to
+// users — outages are not first-paint events.
+const SupabaseHealthBanner = lazy(() =>
+  import("@/components/SupabaseHealthBanner").then((m) => ({
+    default: m.SupabaseHealthBanner,
+  })),
+);
 import { initTelemetry } from "@/shared/telemetry/track";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -189,7 +197,9 @@ const App = () => (
           <SidebarProvider>
             <Toaster />
             <Sonner />
-            <SupabaseHealthBanner />
+            <Suspense fallback={null}>
+              <SupabaseHealthBanner />
+            </Suspense>
             <AuroraBackground />
             <BrowserRouter>
               <ScrollToTop />

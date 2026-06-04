@@ -1,7 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   children: ReactNode;
@@ -51,6 +50,7 @@ export class ComponentErrorBoundary extends Component<Props, State> {
 
   private async logErrorToDb(error: Error, errorInfo: ErrorInfo) {
     try {
+      const { supabase } = await import("@/integrations/supabase/client");
       const { data: { user } } = await supabase.auth.getUser();
       await supabase.from("error_logs" as any).insert({
         user_id: user?.id || null,

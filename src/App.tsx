@@ -51,6 +51,7 @@ const AgentSignup = lazy(() => import("./pages/AgentSignup"));
 const AgentNumbersLogin = lazy(() => import("./pages/AgentNumbersLogin"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ApexControl = lazy(() => import("./pages/ApexControl"));
+const BuildersDashboard = lazy(() => import("./pages/BuildersDashboard"));
 const DashboardApplicants = lazy(() => import("./pages/DashboardApplicants"));
 const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
 const DashboardAccounts = lazy(() => import("./pages/DashboardAccounts"));
@@ -252,6 +253,10 @@ const App = () => (
                         The old command center stays available below. */}
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/dashboard/apex-control" element={<ProtectedRoute requireAdmin><ApexControl /></ProtectedRoute>} />
+                    <Route path="/dashboard/builders" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="builders" /></ProtectedRoute>} />
+                    <Route path="/dashboard/builders/:builderId" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="builders" /></ProtectedRoute>} />
+                    <Route path="/dashboard/managers" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="managers" /></ProtectedRoute>} />
+                    <Route path="/dashboard/agency-owners" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="agencyOwners" /></ProtectedRoute>} />
                     <Route path="/dashboard/legacy" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
                     {/* Manager self-serve: view their referrals + drop new ones (Sam 2026-06-03) */}

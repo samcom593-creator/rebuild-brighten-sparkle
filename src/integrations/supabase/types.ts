@@ -1407,10 +1407,12 @@ export type Database = {
       }
       agents: {
         Row: {
+          agency_owner_qualified_at: string | null
           agent_code: string | null
           attendance_status:
             | Database["public"]["Enums"]["attendance_status"]
             | null
+          builder_track: "agent" | "manager_track" | "agency_owner_track"
           contract_percentage: number | null
           contracted_at: string | null
           created_at: string
@@ -1469,10 +1471,12 @@ export type Database = {
           weekly_10k_badges: number | null
         }
         Insert: {
+          agency_owner_qualified_at?: string | null
           agent_code?: string | null
           attendance_status?:
             | Database["public"]["Enums"]["attendance_status"]
             | null
+          builder_track?: "agent" | "manager_track" | "agency_owner_track"
           contract_percentage?: number | null
           contracted_at?: string | null
           created_at?: string
@@ -1531,10 +1535,12 @@ export type Database = {
           weekly_10k_badges?: number | null
         }
         Update: {
+          agency_owner_qualified_at?: string | null
           agent_code?: string | null
           attendance_status?:
             | Database["public"]["Enums"]["attendance_status"]
             | null
+          builder_track?: "agent" | "manager_track" | "agency_owner_track"
           contract_percentage?: number | null
           contracted_at?: string | null
           created_at?: string

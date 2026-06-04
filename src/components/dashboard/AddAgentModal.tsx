@@ -1,5 +1,5 @@
-import { useState, useEffect, type ReactNode } from "react";
-import { UserPlus, Loader2 } from "lucide-react";
+import { useCallback, useState, useEffect, type ReactNode } from "react";
+import { Crown, Loader2, User, UserPlus, Users, type LucideIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -34,8 +34,29 @@ interface AddAgentModalProps {
   trigger?: ReactNode;
 }
 
+type BuilderTrack = "agent" | "manager_track" | "agency_owner_track";
+type FunctionErrorContext = {
+  json?: () => Promise<unknown>;
+  text?: () => Promise<string>;
+};
+type FunctionError = Error & { context?: FunctionErrorContext };
+
+const BUILDER_TRACK_OPTIONS: Array<{
+  value: BuilderTrack;
+  label: string;
+  icon: LucideIcon;
+}> = [
+  { value: "agent", label: "Agent", icon: User },
+  { value: "manager_track", label: "Manager Track", icon: Users },
+  { value: "agency_owner_track", label: "Agency Owner Track", icon: Crown },
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { playSound } = useSoundEffects();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -51,6 +72,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const [managerId, setManagerId] = useState("");
   const [instagramHandle, setInstagramHandle] = useState("");
   const [licenseStatus, setLicenseStatus] = useState<"licensed" | "unlicensed">("unlicensed");
+  const [builderTrack, setBuilderTrack] = useState<BuilderTrack>("agent");
   // Sam-feedback 2026-06-03: Transfer needed = ON → collect carriers,
   // writing numbers, previous upline. Otherwise skip those entirely.
   const [transferNeeded, setTransferNeeded] = useState(false);
@@ -58,13 +80,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const [writingNumbers, setWritingNumbers] = useState("");
   const [previousUpline, setPreviousUpline] = useState("");
 
-  useEffect(() => {
-    if (open) {
-      fetchManagers();
-    }
-  }, [open]);
-
-  const fetchManagers = async () => {
+  const fetchManagers = useCallback(async () => {
     setLoadingManagers(true);
     try {
       const { data, error } = await supabase.functions.invoke("get-active-managers");
@@ -104,7 +120,13 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     } finally {
       setLoadingManagers(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (open) {
+      fetchManagers();
+    }
+  }, [open, fetchManagers]);
 
   const formatPhoneNumber = (value: string) => {
     const cleaned = value.replace(/\D/g, "");
@@ -152,6 +174,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           phone,
           managerId,
           licenseStatus,
+          builderTrack: isAdmin ? builderTrack : undefined,
           instagramHandle: instagramHandle.trim() || undefined,
           // Sam-feedback 2026-06-03: Transfer block — only sent when ON
           transferNeeded,
@@ -173,14 +196,14 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
         // non-2xx status code".
         let realMessage = error.message || "Add Agent failed";
         try {
-          const ctx = (error as any)?.context;
+          const ctx = (error as FunctionError).context;
           if (ctx && typeof ctx.json === "function") {
             const body = await ctx.json();
-            if (body?.error) {
+            if (isRecord(body) && body.error) {
               realMessage = typeof body.error === "string"
                 ? body.error
-                : `${body.error}${body.stage ? ` (at ${body.stage})` : ""}`;
-            } else if (body?.message) {
+                : `${String(body.error)}${body.stage ? ` (at ${String(body.stage)})` : ""}`;
+            } else if (isRecord(body) && typeof body.message === "string") {
               realMessage = body.message;
             }
           } else if (ctx && typeof ctx.text === "function") {
@@ -215,6 +238,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
       queryClient.invalidateQueries({ queryKey: ["recruiting-quick-view"] });
       queryClient.invalidateQueries({ queryKey: ["onboarding-pipeline"] });
       queryClient.invalidateQueries({ queryKey: ["team-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["builder-operating-dashboard"] });
 
       setOpen(false);
       resetForm();
@@ -236,6 +260,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     setManagerId("");
     setInstagramHandle("");
     setLicenseStatus("unlicensed");
+    setBuilderTrack("agent");
     setTransferNeeded(false);
     setCarriers("");
     setWritingNumbers("");
@@ -347,6 +372,41 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
               </SelectContent>
             </Select>
           </div>
+
+          {isAdmin ? (
+            <div className="space-y-2 rounded-lg border border-border/40 bg-muted/20 p-3">
+              <Label className="text-sm font-medium">Builder track</Label>
+              <div className="grid grid-cols-3 gap-3">
+                {BUILDER_TRACK_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  const selected = builderTrack === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setBuilderTrack(option.value)}
+                      className="group flex flex-col items-center gap-2 text-center"
+                      aria-pressed={selected}
+                    >
+                      <span
+                        className={[
+                          "flex h-14 w-14 items-center justify-center rounded-full border transition",
+                          selected
+                            ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                            : "border-border bg-background text-muted-foreground group-hover:border-primary/60 group-hover:text-foreground",
+                        ].join(" ")}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <span className="text-[11px] font-medium leading-tight text-muted-foreground">
+                        {option.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           {/* Instagram (Optional) */}
           <div className="space-y-1.5">

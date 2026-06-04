@@ -14,6 +14,7 @@ interface AddAgentRequest {
   phone: string;
   managerId: string;
   licenseStatus?: "licensed" | "unlicensed" | "in_progress";
+  builderTrack?: "agent" | "manager_track" | "agency_owner_track";
   notes?: string;
   startDate?: string;
   city?: string;
@@ -81,6 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
       phone,
       managerId,
       licenseStatus = "unlicensed",
+      builderTrack: requestedBuilderTrack = "agent",
       notes,
       startDate,
       city,
@@ -90,6 +92,23 @@ const handler = async (req: Request): Promise<Response> => {
       licenseProgress,
       hasTrainingCourse = false,
     } = body;
+
+    const allowedBuilderTracks = new Set(["agent", "manager_track", "agency_owner_track"]);
+    if (!allowedBuilderTracks.has(requestedBuilderTrack)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid builder track." }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (!isAdmin && requestedBuilderTrack !== "agent") {
+      return new Response(
+        JSON.stringify({ error: "Only admins can assign Manager Track or Agency Owner Track." }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const builderTrack = isAdmin ? requestedBuilderTrack : "agent";
 
     // Validate required fields
     if (!firstName || !lastName || !email || !phone || !managerId) {
@@ -221,6 +240,7 @@ const handler = async (req: Request): Promise<Response> => {
       onboarding_stage: hasTrainingCourse ? "training_online" : "onboarding",
       has_training_course: hasTrainingCourse || false,
       start_date: startDate || null,
+      builder_track: builderTrack,
     };
 
     if (crmSetupLink) {
@@ -327,6 +347,7 @@ const handler = async (req: Request): Promise<Response> => {
         success: true,
         agentId: newAgent.id,
         userId: userId,
+        builderTrack,
         message: `Agent ${firstName} ${lastName} added successfully`,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -342,4 +363,3 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 serve(handler);
-

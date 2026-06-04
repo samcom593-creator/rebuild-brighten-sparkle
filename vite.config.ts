@@ -126,42 +126,77 @@ export default defineConfig(({ mode }) => ({
     },
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          const normalized = id.replace(/\\/g, "/");
-          if (!normalized.includes("node_modules")) return;
-          // Shared shadcn utils — pin to vendor-react so they aren't duplicated
-          // into vendor-charts via the recharts subgraph. cva + tailwind-merge
-          // confirmed moved by 2026-06-03 wave-12; clsx + react-is may still
-          // get hoisted into vendor-charts by rolldown's first-touch chunking
-          // heuristic when recharts reaches them first (~80KB residual on the
-          // landing static import graph). Tracked for follow-up.
-          if (
-            /\/node_modules\/clsx(\/|$|\?)/.test(normalized) ||
-            /\/node_modules\/class-variance-authority(\/|$|\?)/.test(normalized) ||
-            /\/node_modules\/tailwind-merge(\/|$|\?)/.test(normalized) ||
-            /\/node_modules\/react-is(\/|$|\?)/.test(normalized)
-          ) return "vendor-react";
-          if (
-            normalized.includes("/node_modules/react/") ||
-            normalized.includes("/node_modules/react-dom/") ||
-            normalized.includes("/node_modules/react-router-dom/") ||
-            normalized.includes("/node_modules/scheduler/") ||
-            normalized.includes("/node_modules/.vite/deps/react.js") ||
-            normalized.includes("/node_modules/.vite/deps/react-dom") ||
-            normalized.includes("/node_modules/.vite/deps/react-router-dom") ||
-            normalized.includes("/node_modules/.vite/deps/jsx-runtime") ||
-            normalized.includes("react/jsx-runtime") ||
-            normalized.includes("react_jsx-runtime") ||
-            normalized.includes("jsx-runtime-")
-          ) return "vendor-react";
-          if (normalized.includes("@supabase/supabase-js")) return "vendor-supabase";
-          if (normalized.includes("@tanstack/react-query")) return "vendor-query";
-          if (normalized.includes("recharts") || normalized.includes("victory-vendor") || normalized.includes("/node_modules/d3-")) return "vendor-charts";
-          if (normalized.includes("lucide-react")) return "vendor-icons";
-          if (normalized.includes("react-hook-form") || normalized.includes("@hookform/resolvers") || normalized.includes("zod")) return "vendor-forms";
-          if (normalized.includes("date-fns")) return "vendor-dates";
-          if (normalized.includes("@radix-ui")) return "vendor-radix";
-          if (normalized.includes("cmdk") || normalized.includes("sonner") || normalized.includes("vaul") || normalized.includes("embla-carousel-react")) return "vendor-ui";
+        // wave-14 (2026-06-04): rolldown 1.0.0-rc.17's manualChunks function
+        // return is silently ignored for tiny leaf-modules shared across
+        // chunks (clsx, react-is, tiny-invariant). Its first-touch chunking
+        // heuristic hoists them into vendor-charts via the recharts subgraph,
+        // creating 6 `import { p } from './vendor-charts'` edges from eager
+        // chunks (entry, vendor-react, vendor-radix, vendor-ui, vendor-icons,
+        // vendor-query) that drag the full 396KB recharts chunk onto every
+        // cold landing visit (Lighthouse: 83KB / 79% unused on /). Switching
+        // to advancedChunks.groups — rolldown-native, pattern-based, and
+        // authoritative — moves clsx + react-is + tiny-invariant into a
+        // ~5-10KB vendor-utils chunk so vendor-charts becomes truly lazy.
+        // All other groupings are ported 1:1 from the prior manualChunks fn.
+        advancedChunks: {
+          groups: [
+            // Highest priority: small shared utils that rolldown otherwise
+            // hoists into vendor-charts. Splitting them out is the entire
+            // point of wave-14.
+            {
+              name: "vendor-utils",
+              priority: 100,
+              test: "[\\\\/]node_modules[\\\\/](clsx|react-is|tiny-invariant)[\\\\/]",
+            },
+            // React runtime + router + scheduler + small shadcn helpers
+            // (cva + tailwind-merge are widely consumed by shadcn variants
+            // and belong with React-tier code, not pulled into vendor-charts).
+            {
+              name: "vendor-react",
+              priority: 90,
+              test: "[\\\\/]node_modules[\\\\/](react|react-dom|react-router-dom|scheduler|class-variance-authority|tailwind-merge)[\\\\/]",
+            },
+            {
+              name: "vendor-supabase",
+              priority: 80,
+              test: "[\\\\/]node_modules[\\\\/]@supabase[\\\\/]supabase-js[\\\\/]",
+            },
+            {
+              name: "vendor-query",
+              priority: 80,
+              test: "[\\\\/]node_modules[\\\\/]@tanstack[\\\\/]react-query[\\\\/]",
+            },
+            {
+              name: "vendor-charts",
+              priority: 70,
+              test: "[\\\\/]node_modules[\\\\/](recharts|victory-vendor|d3-[^\\\\/]+)[\\\\/]",
+            },
+            {
+              name: "vendor-icons",
+              priority: 70,
+              test: "[\\\\/]node_modules[\\\\/]lucide-react[\\\\/]",
+            },
+            {
+              name: "vendor-forms",
+              priority: 70,
+              test: "[\\\\/]node_modules[\\\\/](react-hook-form|@hookform[\\\\/]resolvers|zod)[\\\\/]",
+            },
+            {
+              name: "vendor-dates",
+              priority: 70,
+              test: "[\\\\/]node_modules[\\\\/]date-fns[\\\\/]",
+            },
+            {
+              name: "vendor-radix",
+              priority: 60,
+              test: "[\\\\/]node_modules[\\\\/]@radix-ui[\\\\/]",
+            },
+            {
+              name: "vendor-ui",
+              priority: 60,
+              test: "[\\\\/]node_modules[\\\\/](cmdk|sonner|vaul|embla-carousel-react)[\\\\/]",
+            },
+          ],
         },
       },
     },

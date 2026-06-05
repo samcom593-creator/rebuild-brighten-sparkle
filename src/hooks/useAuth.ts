@@ -172,7 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const mounted = () => isMounted;
     let unsubscribe: (() => void) | undefined;
 
-    (async () => {
+    const init = async () => {
       const supabase = await getSupabase();
       if (!isMounted) return;
 
@@ -224,10 +224,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isMounted) return;
         handleSession(session, mounted, "getSession");
       });
-    })();
+    };
+
+    // wave-20 (2026-06-04): vendor-supabase (170 KB raw / 44.6 KB gz) was off
+    // the cold-landing modulepreload manifest after wave-19, but Lighthouse
+    // still measured 35.7 KB of it as loaded on `/` because AuthProvider's
+    // useEffect fired `getSupabase()` synchronously on first paint. React
+    // useEffect runs after commit but the dynamic-import resolves during the
+    // ~1.85s window between FCP (3.52s) and LCP (5.37s) — the supabase chunk
+    // competes with the video poster fetch for bandwidth.
+    //
+    // Fix: route the FIRST init through requestIdleCallback (timeout: 800ms).
+    // The browser yields supabase fetch until after LCP fires. For
+    // authenticated users hitting `/`, Navbar already gates on isLoading=true
+    // so the auth-tag swap waits ~100-200ms longer post-LCP — invisible. For
+    // anonymous landing visitors, vendor-supabase never downloads unless they
+    // click Login/Apply (both lazy routes that pull the chunk themselves).
+    // 800ms hard cap protects authenticated dashboard navigation from RIC
+    // starvation on a heavy main thread.
+    let idleHandle: number | null = null;
+    let timeoutHandle: number | null = null;
+    const w = window as typeof window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback === "function") {
+      idleHandle = w.requestIdleCallback(() => { void init(); }, { timeout: 800 });
+    } else {
+      timeoutHandle = window.setTimeout(() => { void init(); }, 0);
+    }
 
     return () => {
       isMounted = false;
+      if (idleHandle !== null) w.cancelIdleCallback?.(idleHandle);
+      if (timeoutHandle !== null) window.clearTimeout(timeoutHandle);
       unsubscribe?.();
     };
   }, [handleSession]);

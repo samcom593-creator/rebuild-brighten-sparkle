@@ -171,6 +171,21 @@ export default defineConfig(({ mode }) => ({
               priority: 70,
               test: "[\\\\/]node_modules[\\\\/](recharts|victory-vendor|d3-[^\\\\/]+)[\\\\/]",
             },
+            // wave-22 (2026-06-06): split lucide-react into landing-eager subset
+            // vs everything-else. Landing-eager components (Navbar, HeroSection,
+            // Footer, StickyMobileCTA) statically import 13 icons. vendor-icons
+            // currently bundles all 150 app-wide icons into 50.92KB raw / 15.5KB
+            // gz that's in the cold-landing modulepreload chain. Isolating the
+            // 13 landing icons into vendor-icons-landing (~4.5KB raw / ~1.5KB gz
+            // est) means cold-landing preload drops the other 137 icons. Lazy
+            // dashboard/admin chunks still load full vendor-icons-extra on
+            // demand. Icon files live at lucide-react/dist/esm/icons/<name>.js
+            // (Vite tree-shakes the barrel — final module IDs are per-icon).
+            {
+              name: "vendor-icons-landing",
+              priority: 75,
+              test: "[\\\\/]node_modules[\\\\/]lucide-react[\\\\/]dist[\\\\/]esm[\\\\/]icons[\\\\/](menu|x|crown|search|arrow-right|shield|trending-up|users|sparkles|play|mail|phone|map-pin)\\.js$",
+            },
             {
               name: "vendor-icons",
               priority: 70,

@@ -16,9 +16,16 @@ const SonnerToaster = lazy(() =>
 // dashboard routes (already wrapped in AuthenticatedShell) — App-level provider
 // was the sole static-import edge dragging vendor-radix's tooltip slice + popper
 // transitive graph onto every cold landing visit.
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "@/shared/api/queryClient";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+// wave-23 (2026-06-06): QueryClientProvider + queryClient eager imports retired.
+// They were the sole module-graph edges anchoring vendor-query (28 KB raw / 7.95 KB gz)
+// to the cold-landing modulepreload chain — zero eager-landing components reference
+// react-query directly. The shared lazy wrapper `LazyQueryRoot` mounts QCP via a
+// React.lazy chunk, used by (1) HeroSection's LiveStats+RecentHires Suspense block,
+// (2) Index's lower lazy Suspense block, and (3) the App-level `QueryShell` layout
+// route that wraps every non-landing path. The shared singleton queryClient still
+// lives in `@/shared/api/queryClient` so every QCP mount points at the same cache.
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { LazyQueryRoot } from "@/shared/api/LazyQueryRoot";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuroraBackground } from "@/components/layout/AuroraBackground";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
@@ -219,6 +226,19 @@ function DeferredToasters() {
   );
 }
 
+// wave-23: Layout route wrapping every non-landing path with the lazy
+// QueryClientProvider. Landing (`/`) is intentionally a sibling — Index.tsx +
+// HeroSection.tsx wrap their own lazy Suspense blocks with LazyQueryRoot, so
+// landing renders eager content (h1 + video poster + carrier marquee) without
+// waiting for vendor-query to download.
+function QueryShell() {
+  return (
+    <LazyQueryRoot>
+      <Outlet />
+    </LazyQueryRoot>
+  );
+}
+
 // Page loading fallback
 function PageLoader() {
   return (
@@ -234,22 +254,29 @@ function PageLoader() {
 
 const App = () => (
   <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SidebarProvider>
-          <DeferredToasters />
-            <Suspense fallback={null}>
-              <SupabaseHealthBanner />
-            </Suspense>
-            <AuroraBackground />
-            <BrowserRouter>
-              <ScrollToTop />
-              <RouteTelemetry />
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/" element={<Index />} />
-                  <Route path="/careers/:state" element={<StateCareerLanding />} />
+    <AuthProvider>
+      <SidebarProvider>
+        <DeferredToasters />
+          <Suspense fallback={null}>
+            <SupabaseHealthBanner />
+          </Suspense>
+          <AuroraBackground />
+          <BrowserRouter>
+            <ScrollToTop />
+            <RouteTelemetry />
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* Landing route — bare. No QCP wrapper at this level.
+                    Index.tsx + HeroSection.tsx wrap their own lazy Suspense blocks
+                    with LazyQueryRoot so the eager render path (h1 + video poster +
+                    carrier marquee) does NOT pull vendor-query into the cold-landing
+                    preload chain. wave-23 (2026-06-06). */}
+                <Route path="/" element={<Index />} />
+                {/* QueryShell layout — every non-landing path inherits the lazy
+                    QueryClientProvider. log-numbers redirect + NotFound stay outside
+                    because they make zero useQuery calls. */}
+                <Route element={<QueryShell />}>
+                <Route path="/careers/:state" element={<StateCareerLanding />} />
                   <Route path="/apply" element={<Apply />} />
                   <Route path="/apply/success" element={<ApplySuccess />} />
                   <Route path="/apply/success/licensed" element={<ApplySuccessLicensed />} />
@@ -449,18 +476,18 @@ const App = () => (
                            {/* Commission Recovery — ghost AP stays out of real AP until policy data is recovered */}
                            <Route path="/dashboard/admin/commission-recovery" element={<ProtectedRoute requireAdmin><CommissionRecovery /></ProtectedRoute>} />
                   </Route>
+                </Route>
 
-                  {/* Legacy redirect */}
-                  <Route path="/log-numbers" element={<Navigate to="/apex-daily-numbers" replace />} />
+                {/* Legacy redirect — outside QueryShell (no useQuery) */}
+                <Route path="/log-numbers" element={<Navigate to="/apex-daily-numbers" replace />} />
 
-                  {/* Catch-all */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-            </BrowserRouter>
-        </SidebarProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+                {/* Catch-all — outside QueryShell (NotFound is static) */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+      </SidebarProvider>
+    </AuthProvider>
   </ErrorBoundary>
 );
 

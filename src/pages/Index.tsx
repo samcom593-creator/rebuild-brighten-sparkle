@@ -5,6 +5,12 @@ import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { Footer } from "@/components/landing/Footer";
 import { DealsTicker } from "@/components/landing/DealsTicker";
+// wave-23 (2026-06-06): vendor-query out of cold-landing modulepreload.
+// Wrapping the below-fold lazy Suspense block in LazyQueryRoot keeps QueryClientProvider
+// (and the 28 KB raw / 7.95 KB gz vendor-query chunk it pulls) off the entry static graph.
+// Of the eight lazy children below, CareerPathwaySection + CTASection call useQuery — they
+// need a provider in context when their chunks resolve.
+import { LazyQueryRoot } from "@/shared/api/LazyQueryRoot";
 
 const BenefitsSection = lazy(() => import("@/components/landing/BenefitsSection").then((mod) => ({ default: mod.BenefitsSection })));
 const EarningsSection = lazy(() => import("@/components/landing/EarningsSection").then((mod) => ({ default: mod.EarningsSection })));
@@ -35,14 +41,16 @@ const Index = () => {
       <main>
         <HeroSection />
         <Suspense fallback={<SectionFallback />}>
-          <Testimonials />
-          <BenefitsSection />
-          <EarningsSection />
-          <CareerPathwaySection />
-          <ApexLeadsSection />
-          <InstagramGrowthSection />
-          <RecruitFAQ />
-          <CTASection />
+          <LazyQueryRoot>
+            <Testimonials />
+            <BenefitsSection />
+            <EarningsSection />
+            <CareerPathwaySection />
+            <ApexLeadsSection />
+            <InstagramGrowthSection />
+            <RecruitFAQ />
+            <CTASection />
+          </LazyQueryRoot>
         </Suspense>
       </main>
       <Footer />

@@ -2,6 +2,10 @@ import { Link } from "react-router-dom";
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { ArrowRight, Shield, TrendingUp, Users, Sparkles, Play } from "lucide-react";
 import { track, getVariant } from "@/lib/analytics";
+// wave-23 (2026-06-06): wraps the below-LCP-fold proof Suspense blocks so
+// QueryClientProvider arrives via a lazy chunk alongside LiveStats + RecentHires
+// rather than being pulled into the eager entry static graph.
+import { LazyQueryRoot } from "@/shared/api/LazyQueryRoot";
 
 // wave-21 (2026-06-05): below-LCP-fold proof widgets (LiveStats counter strip +
 // RecentHires ticker) lazy-loaded so their useQuery + lucide-icons + supabase
@@ -291,16 +295,16 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* Live counter strip — real numbers from landing_live_stats().
-              Lazy-loaded below the LCP fold (wave-21). */}
+          {/* Live counter strip + recent hires ticker — real numbers from
+              landing_live_stats() and v_recent_hires. Lazy-loaded below the LCP
+              fold (wave-21). Single Suspense + LazyQueryRoot wraps both: their
+              useQuery callers share one QueryClientProvider via the same lazy
+              chunk (wave-23). */}
           <Suspense fallback={null}>
-            <LiveStatsCounterStrip />
-          </Suspense>
-
-          {/* Recent hires ticker — proof the engine is firing right now.
-              Lazy-loaded below the LCP fold (wave-21). */}
-          <Suspense fallback={null}>
-            <RecentHiresTicker />
+            <LazyQueryRoot>
+              <LiveStatsCounterStrip />
+              <RecentHiresTicker />
+            </LazyQueryRoot>
           </Suspense>
 
           {/* 3 Stat pills — glass */}

@@ -1,9 +1,19 @@
 import { Link } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { ArrowRight, Shield, TrendingUp, Users, Sparkles, Play } from "lucide-react";
-import { LiveStatsCounterStrip } from "./LiveStatsCounterStrip";
-import { RecentHiresTicker } from "./RecentHiresTicker";
 import { track, getVariant } from "@/lib/analytics";
+
+// wave-21 (2026-06-05): below-LCP-fold proof widgets (LiveStats counter strip +
+// RecentHires ticker) lazy-loaded so their useQuery + lucide-icons + supabase
+// dynamic-import promise + AnimatedCounter dependency tree never lands in the
+// eager entry chunk. Both already render `null` when data hasn't arrived, so a
+// `null` Suspense fallback below the hero CTA is a no-op visually.
+const LiveStatsCounterStrip = lazy(() =>
+  import("./LiveStatsCounterStrip").then((m) => ({ default: m.LiveStatsCounterStrip })),
+);
+const RecentHiresTicker = lazy(() =>
+  import("./RecentHiresTicker").then((m) => ({ default: m.RecentHiresTicker })),
+);
 
 // LazyYouTube — render a static poster image as the LCP element, only
 // mount the iframe (and pull the YouTube SDK) when the user clicks.
@@ -281,11 +291,17 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* Live counter strip — real numbers from landing_live_stats() */}
-          <LiveStatsCounterStrip />
+          {/* Live counter strip — real numbers from landing_live_stats().
+              Lazy-loaded below the LCP fold (wave-21). */}
+          <Suspense fallback={null}>
+            <LiveStatsCounterStrip />
+          </Suspense>
 
-          {/* Recent hires ticker — proof the engine is firing right now */}
-          <RecentHiresTicker />
+          {/* Recent hires ticker — proof the engine is firing right now.
+              Lazy-loaded below the LCP fold (wave-21). */}
+          <Suspense fallback={null}>
+            <RecentHiresTicker />
+          </Suspense>
 
           {/* 3 Stat pills — glass */}
           <div className="landing-fade-up landing-delay-500 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5 max-w-3xl mx-auto mb-10">

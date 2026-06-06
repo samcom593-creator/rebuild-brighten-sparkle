@@ -140,21 +140,24 @@ export default defineConfig(({ mode }) => ({
         // All other groupings are ported 1:1 from the prior manualChunks fn.
         advancedChunks: {
           groups: [
-            // Highest priority: small shared utils that rolldown otherwise
-            // hoists into vendor-charts. Splitting them out is the entire
-            // point of wave-14.
-            {
-              name: "vendor-utils",
-              priority: 100,
-              test: "[\\\\/]node_modules[\\\\/](clsx|react-is|tiny-invariant)[\\\\/]",
-            },
-            // React runtime + router + scheduler + small shadcn helpers
-            // (cva + tailwind-merge are widely consumed by shadcn variants
-            // and belong with React-tier code, not pulled into vendor-charts).
+            // wave-24 (2026-06-06): merge clsx + react-is + tiny-invariant into
+            // vendor-react (was a separate 1.4KB vendor-utils chunk per wave-14).
+            // They are React-tier utilities consumed by both eager landing
+            // (entry chunk) and lazy chunks (vendor-charts, vendor-radix); the
+            // wave-14 split prevented rolldown from hoisting them into
+            // vendor-charts and dragging recharts onto cold landing. Promoting
+            // them straight into vendor-react keeps vendor-charts lazy (its
+            // edges now point at vendor-react, which is already cold-landing
+            // eager) AND drops one modulepreload entry + one HTTP request from
+            // the critical path. vendor-react grows ~1.4 KB raw / ~0.6 KB gz
+            // (negligible vs its 162 KB raw footprint). React runtime + router
+            // + scheduler + small shadcn helpers (cva + tailwind-merge are
+            // widely consumed by shadcn variants and belong with React-tier
+            // code, not pulled into vendor-charts).
             {
               name: "vendor-react",
-              priority: 90,
-              test: "[\\\\/]node_modules[\\\\/](react|react-dom|react-router-dom|scheduler|class-variance-authority|tailwind-merge)[\\\\/]",
+              priority: 100,
+              test: "[\\\\/]node_modules[\\\\/](react|react-dom|react-router-dom|scheduler|class-variance-authority|tailwind-merge|clsx|react-is|tiny-invariant)[\\\\/]",
             },
             {
               name: "vendor-supabase",

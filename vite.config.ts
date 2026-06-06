@@ -184,7 +184,7 @@ export default defineConfig(({ mode }) => ({
             {
               name: "vendor-icons-landing",
               priority: 75,
-              test: "[\\\\/]node_modules[\\\\/]lucide-react[\\\\/]dist[\\\\/]esm[\\\\/]icons[\\\\/](menu|x|crown|search|arrow-right|shield|trending-up|users|sparkles|play|mail|phone|map-pin)\\.js$",
+              test: "[\\\\/]node_modules[\\\\/]lucide-react[\\\\/]dist[\\\\/]esm[\\\\/]icons[\\\\/](menu|x|crown|search|arrow-right|shield|trending-up|users|sparkles|play|mail|phone|map-pin|chevron-up|triangle-alert|refresh-cw|compass)\\.js$",
             },
             {
               name: "vendor-icons",

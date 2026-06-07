@@ -10,8 +10,19 @@
       // copy with the old "assigned_manager_id only" filter still in it,
       // making admins (Sam) see zero leads even after the fix shipped.
       // BUMP_VERSION below — increment whenever a cache-eviction is needed.
+      //
+      // wave-27 (2026-06-07) CONVENTION: BUMP_VERSION MUST contain the
+      // current HeroSection.tsx LazyYouTube videoId as a substring. Enforced
+      // by vite.config.ts `vslSyncCheckPlugin` at buildStart — any build
+      // where BUMP_VERSION drifts from the canonical videoId will fail.
+      // This is the third drift surface that wave-25's preload drift
+      // exposed: if Sam swaps the VSL but only updates HeroSection +
+      // preload + JSON-LD (wave-26 covers those), pinned service workers
+      // on returning visitors continue serving the prior bundle's view —
+      // so BUMP_VERSION must also change. Embedding the videoId makes
+      // that mechanical: the build can't ship without a bump.
       (function() {
-        var BUMP_VERSION = "2026-06-07-phases-5-6-7-8";
+        var BUMP_VERSION = "2026-06-07-phases-5-6-7-8-vsl-E2VJ1v85IRE";
         try {
           var staleKeys = [];
           for (var i = 0; i < localStorage.length; i++) {

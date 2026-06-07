@@ -108,9 +108,12 @@
     <!-- LCP preload — hero YouTube poster image is the largest above-the-fold
          paint target on the landing. Preloading drops LCP another ~500ms
          per Lighthouse Critical-Path. The poster is i.ytimg.com so we also
-         preconnect to that origin. -->
+         preconnect to that origin. Video id must stay in sync with
+         HeroSection.tsx LazyYouTube `videoId` — commit 76f46fe5 swapped
+         the VSL to E2VJ1v85IRE; the old v4Fp3FL9ITo preload was wasting
+         ~25 KB and forcing a late-discovery fetch of the real LCP target. -->
     <link rel="preconnect" href="https://i.ytimg.com" crossorigin />
-    <link rel="preload" as="image" href="https://i.ytimg.com/vi/v4Fp3FL9ITo/hqdefault.jpg" fetchpriority="high" />
+    <link rel="preload" as="image" href="https://i.ytimg.com/vi/E2VJ1v85IRE/hqdefault.jpg" fetchpriority="high" />
 
     <!-- Analytics: GA4 + PostHog + Meta Pixel are all env-gated in src/lib/analyticsBoot.ts
          (imported from main.tsx). If a vendor's env var is missing at build,
@@ -118,7 +121,7 @@
 
     <!-- Structured data: Organization + VideoObject for SERP + AI Overview eligibility -->
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"APEX Financial","url":"https://apex-financial.org","logo":"https://apex-financial.org/apex-logo.png","sameAs":["https://instagram.com/theprincejamez","https://youtube.com/@samueljameshq","https://tiktok.com/@theprincejamez"],"founder":{"@type":"Person","name":"Samuel James"}}</script>
-    <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoObject","name":"APEX Financial — Build Your Financial Empire","description":"Samuel James, founder of APEX Financial, walks through the opportunity. Earn 70%–145% commission selling life insurance, warm leads, paid weekly.","thumbnailUrl":"https://i.ytimg.com/vi/v4Fp3FL9ITo/hqdefault.jpg","uploadDate":"2026-04-15","contentUrl":"https://www.youtube.com/watch?v=v4Fp3FL9ITo","embedUrl":"https://www.youtube-nocookie.com/embed/v4Fp3FL9ITo"}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoObject","name":"20 Years Old, $12 Million in Revenue — Samuel James","description":"Samuel James, founder of APEX Financial, walks through how he built a $12M-revenue life-insurance agency before age 21. Earn 70%–145% commission, warm leads, paid weekly.","thumbnailUrl":"https://i.ytimg.com/vi/E2VJ1v85IRE/hqdefault.jpg","uploadDate":"2026-06-05","contentUrl":"https://www.youtube.com/watch?v=E2VJ1v85IRE","embedUrl":"https://www.youtube-nocookie.com/embed/E2VJ1v85IRE"}</script>
 </head>
 
   <body>

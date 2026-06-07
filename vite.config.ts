@@ -1,8 +1,63 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import fs from "fs";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+
+// wave-26 (2026-06-07): build-time sync invariant. Wave-25 found index.html's
+// LCP preload + VideoObject JSON-LD still pointed at the OLD VSL for 2 days
+// after HeroSection.tsx LazyYouTube videoId was swapped. Cold-landing browser
+// was eagerly fetching ~25KB of an unused poster while the real LCP element
+// got late-discovered via <img src> — projected +400-600ms mobile LCP. AND
+// Google/Bing/AI-overview surfaced the wrong video. This plugin makes that
+// class of bug fail the build instead of silently shipping.
+function vslSyncCheckPlugin() {
+  return {
+    name: "apex-vsl-sync-check",
+    buildStart() {
+      const heroPath = path.resolve(__dirname, "src/components/landing/HeroSection.tsx");
+      const indexPath = path.resolve(__dirname, "index.html");
+      const hero = fs.readFileSync(heroPath, "utf8");
+      const index = fs.readFileSync(indexPath, "utf8");
+
+      const heroMatch = hero.match(/<LazyYouTube\s+videoId="([A-Za-z0-9_-]{8,15})"/);
+      if (!heroMatch) {
+        throw new Error(
+          "[apex-vsl-sync-check] could not find <LazyYouTube videoId=\"...\"> in src/components/landing/HeroSection.tsx — has the hero VSL component been renamed? Update vite.config.ts vslSyncCheckPlugin regex."
+        );
+      }
+      const heroId = heroMatch[1];
+
+      const checks: Array<{ label: string; pattern: RegExp }> = [
+        { label: "<link rel=\"preload\"> i.ytimg.com poster", pattern: /i\.ytimg\.com\/vi\/([A-Za-z0-9_-]{8,15})\/hqdefault\.jpg/g },
+        { label: "VideoObject thumbnailUrl", pattern: /"thumbnailUrl":"https:\/\/i\.ytimg\.com\/vi\/([A-Za-z0-9_-]{8,15})\/hqdefault\.jpg"/g },
+        { label: "VideoObject contentUrl", pattern: /"contentUrl":"https:\/\/www\.youtube\.com\/watch\?v=([A-Za-z0-9_-]{8,15})"/g },
+        { label: "VideoObject embedUrl", pattern: /"embedUrl":"https:\/\/www\.youtube-nocookie\.com\/embed\/([A-Za-z0-9_-]{8,15})"/g },
+      ];
+
+      const drift: string[] = [];
+      for (const { label, pattern } of checks) {
+        const ids = Array.from(index.matchAll(pattern), (m) => m[1]);
+        if (ids.length === 0) {
+          drift.push(`  - ${label}: no match found in index.html (expected ${heroId})`);
+          continue;
+        }
+        for (const id of ids) {
+          if (id !== heroId) {
+            drift.push(`  - ${label}: index.html=${id} but HeroSection.tsx=${heroId}`);
+          }
+        }
+      }
+
+      if (drift.length > 0) {
+        throw new Error(
+          `[apex-vsl-sync-check] index.html VSL references DRIFTED from HeroSection.tsx LazyYouTube videoId="${heroId}":\n${drift.join("\n")}\n\nFix: update every i.ytimg.com / youtube.com / youtube-nocookie.com URL in index.html to videoId ${heroId}. The wave-25 regression (commit 2da7ddc7) is exactly what this guard prevents.`
+        );
+      }
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -11,6 +66,7 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
   },
   plugins: [
+    vslSyncCheckPlugin(),
     react(),
     mode === "development" && componentTagger(),
     VitePWA({

@@ -50,9 +50,25 @@ function vslSyncCheckPlugin() {
         }
       }
 
+      // wave-27 (2026-06-07): BUMP_VERSION drift surface. The cache-bust
+      // script at index.html:14 carries a versioned string used to evict
+      // stale service workers + localStorage + Cache Storage on the first
+      // visit after a deploy. After a VSL swap, BUMP_VERSION MUST change
+      // or the new poster gets served to users whose SW is still pinned
+      // to the old asset graph. Convention: BUMP_VERSION embeds the
+      // current videoId so the bump fires automatically on any VSL swap.
+      // Without this third guard, the wave-25 class of bug can still
+      // re-emerge via "I updated the VSL but kept the old BUMP_VERSION."
+      const bumpMatch = index.match(/var\s+BUMP_VERSION\s*=\s*"([^"]+)"/);
+      if (!bumpMatch) {
+        drift.push("  - BUMP_VERSION: could not locate `var BUMP_VERSION = \"...\"` in index.html cache-bust script");
+      } else if (!bumpMatch[1].includes(heroId)) {
+        drift.push(`  - BUMP_VERSION: "${bumpMatch[1]}" does not contain current videoId ${heroId} — caches will not evict on this swap`);
+      }
+
       if (drift.length > 0) {
         throw new Error(
-          `[apex-vsl-sync-check] index.html VSL references DRIFTED from HeroSection.tsx LazyYouTube videoId="${heroId}":\n${drift.join("\n")}\n\nFix: update every i.ytimg.com / youtube.com / youtube-nocookie.com URL in index.html to videoId ${heroId}. The wave-25 regression (commit 2da7ddc7) is exactly what this guard prevents.`
+          `[apex-vsl-sync-check] index.html VSL references DRIFTED from HeroSection.tsx LazyYouTube videoId="${heroId}":\n${drift.join("\n")}\n\nFix: update every i.ytimg.com / youtube.com / youtube-nocookie.com URL in index.html to videoId ${heroId}, AND bump the BUMP_VERSION string in the cache-bust script at index.html:14 to include "${heroId}" (e.g. "2026-MM-DD-new-vsl-${heroId}"). The wave-25 regression (commit 2da7ddc7) is exactly what this guard prevents.`
         );
       }
     },

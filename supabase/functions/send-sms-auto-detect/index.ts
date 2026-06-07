@@ -88,6 +88,13 @@ const handler = async (req: Request): Promise<Response> => {
     // Initial delay to avoid cold-start burst hitting rate limits
     await delay(500);
 
+    // Sam-feedback 2026-06-07 — Phase 8 spam: previously this loop wrote
+    // ONE notification_log row per carrier attempt (8 rows per SMS), so the
+    // Notification Hub showed "8x welcome SMS to Michael" when only ONE
+    // SMS actually delivered. Collapsed: send to all carrier gateways
+    // (recipient still only sees the one their carrier accepts), but log
+    // EXACTLY ONE row per outbound. Carrier-by-carrier detail goes into
+    // metadata.attempts so debugging is unchanged.
     for (const carrier of CARRIER_KEYS) {
       const gateway = CARRIER_GATEWAYS[carrier];
       const smsEmail = `${cleaned}@${gateway}`;
@@ -109,22 +116,6 @@ const handler = async (req: Request): Promise<Response> => {
         } else {
           carrierFailures.push(carrier);
         }
-
-        await logNotification(supabase, {
-          recipient_phone: phone,
-          channel: "sms-auto",
-          title: "SMS Auto-Detect",
-          message: message.substring(0, 160),
-          status: success ? "sent" : "failed",
-          error_message: sendError?.message || null,
-          metadata: {
-            trigger: "sms-auto-detect",
-            carrier,
-            gateway: smsEmail,
-            applicationId: applicationId || null,
-            agedLeadId: agedLeadId || null,
-          },
-        });
       } catch (err: any) {
         results.push({ carrier, success: false, error: err.message });
         carrierFailures.push(carrier);
@@ -132,6 +123,27 @@ const handler = async (req: Request): Promise<Response> => {
 
       await delay(1500);
     }
+
+    // ONE consolidated notification_log row per outbound SMS.
+    await logNotification(supabase, {
+      recipient_phone: phone,
+      channel: "sms-auto",
+      title: "SMS Auto-Detect",
+      message: message.substring(0, 160),
+      status: successCount > 0 ? "sent" : "failed",
+      error_message: successCount === 0
+        ? `All ${CARRIER_KEYS.length} carrier gateways failed`
+        : null,
+      metadata: {
+        trigger: "sms-auto-detect",
+        gatewaysAttempted: CARRIER_KEYS.length,
+        carrierSuccesses,
+        carrierFailures,
+        attempts: results,
+        applicationId: applicationId || null,
+        agedLeadId: agedLeadId || null,
+      },
+    });
 
     // Auto-save best-guess carrier
     let carrierSelected: string | null = null;

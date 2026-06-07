@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect, type ElementType, ty
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import {
+  Archive,
   BarChart3,
   Briefcase,
   ChevronLeft,
@@ -118,6 +119,12 @@ export function GlobalSidebar({
         { icon: Crown, label: "Agency Owners", href: "/dashboard/agency-owners" },
         { icon: Users, label: "Agents", href: "/dashboard/agent-management" },
         { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },
+        // Sam-feedback 2026-06-07 — old applicants split into 2 surfaces.
+        // Manager-owned: stuck pool (admin pulls every aged manager-owned app).
+        // Licensed recruits: stale recovery (managers see their own dormant
+        // licensed-but-never-activated pipeline).
+        { icon: Archive, label: "Old Manager Apps", href: "/admin/next-step/stuck" },
+        { icon: Archive, label: "Old Licensed Recruits", href: "/dashboard/stale-recovery" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
         { icon: Library, label: "Content", href: "/dashboard/admin/content-command" },
@@ -127,6 +134,7 @@ export function GlobalSidebar({
       operations.push(
         { icon: Users, label: "Agents", href: "/dashboard/my-team" },
         { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },
+        { icon: Archive, label: "Old Licensed Recruits", href: "/dashboard/stale-recovery" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );

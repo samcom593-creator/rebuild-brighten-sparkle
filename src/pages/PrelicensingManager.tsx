@@ -41,6 +41,28 @@ const STAGES = [
 
 type StageKey = typeof STAGES[number]["key"];
 
+function producerType(app: any): string {
+  const hay = [app.hiring_scope_at_intake, app.referral_source, app.notes]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  if (hay.includes("owner")) return "Agency owner";
+  if (hay.includes("licensed")) return "Licensed recruiter";
+  return "Solo producer";
+}
+
+function nextStep(app: any): string {
+  const stage = app.license_progress || "unlicensed";
+  if (stage === "licensed") return "Contract and activate";
+  if (stage === "waiting_on_license") return "Check state approval";
+  if (stage === "fingerprints_done") return "Confirm license issue";
+  if (stage === "passed_test") return "Fingerprints / application";
+  if (stage === "test_scheduled") return "Exam prep follow-up";
+  if (stage === "finished_course") return "Schedule exam";
+  if (stage === "course_purchased") return "Finish course";
+  return "Send licensing instructions";
+}
+
 export default function PrelicensingManager() {
   const { user, isAdmin, isManager } = useAuth();
   const qc = useQueryClient();
@@ -49,26 +71,43 @@ export default function PrelicensingManager() {
   const [stuckOnly, setStuckOnly] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  const { data: currentAgentId, isLoading: currentAgentLoading } = useQuery({
+    queryKey: ["prelicensing-current-agent", user?.id],
+    enabled: !!user?.id && !isAdmin && isManager,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.id ?? null;
+    },
+  });
+
   const { data: apps = [], isLoading, refetch } = useQuery({
-    queryKey: ["prelicensing-apps", user?.id, isAdmin, isManager],
+    queryKey: ["prelicensing-apps", user?.id, currentAgentId, isAdmin, isManager],
     queryFn: async () => {
       let q = supabase
         .from("applications")
-        .select("*")
+        .select("id, first_name, last_name, email, phone, state, status, license_status, license_progress, hiring_scope_at_intake, referral_source, assigned_agent_id, referral_manager_id, recruiter_id, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, last_response_at, last_contacted_at, created_at, updated_at")
         .is("terminated_at", null)
         .neq("license_status", "licensed")
-        .order("created_at", { ascending: false });
+        .order("updated_at", { ascending: false })
+        .limit(500);
 
       if (!isAdmin && isManager) {
-        q = q.eq("assigned_agent_id", user!.id);
+        if (!currentAgentId) return [];
+        q = q.or(`assigned_agent_id.eq.${currentAgentId},referral_manager_id.eq.${currentAgentId},recruiter_id.eq.${currentAgentId}`);
       }
 
       const { data, error } = await q;
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user && (isAdmin || isManager),
-    staleTime: 30_000,
+    enabled: !!user && (isAdmin || (isManager && !currentAgentLoading)),
+    staleTime: 60_000,
   });
 
   const filtered = useMemo(() => {
@@ -76,7 +115,7 @@ export default function PrelicensingManager() {
     return apps.filter((a: any) => {
       if (stageFilter !== "all" && (a.license_progress || "unlicensed") !== stageFilter) return false;
       if (q) {
-        const hay = `${a.first_name} ${a.last_name} ${a.email} ${a.phone || ""} ${a.state || ""}`.toLowerCase();
+        const hay = `${a.first_name} ${a.last_name} ${a.email} ${a.phone || ""} ${a.state || ""} ${producerType(a)} ${nextStep(a)}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (stuckOnly) {
@@ -179,6 +218,8 @@ export default function PrelicensingManager() {
       name: `${a.first_name} ${a.last_name}`,
       email: a.email, phone: a.phone || "",
       state: a.state || "", stage: a.license_progress || "unlicensed",
+      producer_type: producerType(a),
+      next_step: nextStep(a),
       days_since_start: differenceInDays(new Date(), new Date(a.created_at)),
       last_update: a.last_response_at || a.updated_at,
     }));
@@ -348,9 +389,15 @@ export default function PrelicensingManager() {
                       {a.state && (
                         <span className="text-xs text-muted-foreground">{a.state}</span>
                       )}
+                      <Badge variant="outline" className="text-xs bg-background/70">
+                        {producerType(a)}
+                      </Badge>
                     </div>
                     <div className="text-xs text-muted-foreground truncate mt-0.5">
                       {a.email}{a.phone ? ` · ${a.phone}` : ""} · Applied {format(new Date(a.created_at), "MMM d")}
+                    </div>
+                    <div className="mt-1 text-xs font-medium text-foreground/80">
+                      Next: {nextStep(a)}
                     </div>
                   </div>
 

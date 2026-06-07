@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  DollarSign,
   GraduationCap,
   LayoutDashboard,
   Library,
@@ -111,6 +112,8 @@ export function GlobalSidebar({
     const operations: NavItem[] = [
       { icon: LayoutDashboard, label: "Command Center", href: "/dashboard", special: true },
     ];
+    const oldApplicants: NavItem[] = [];
+    const finance: NavItem[] = [];
 
     if (isAdmin) {
       operations.push(
@@ -119,24 +122,28 @@ export function GlobalSidebar({
         { icon: Crown, label: "Agency Owners", href: "/dashboard/agency-owners" },
         { icon: Users, label: "Agents", href: "/dashboard/agent-management" },
         { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },
-        // Sam-feedback 2026-06-07 — old applicants split into 2 surfaces.
-        // Manager-owned: stuck pool (admin pulls every aged manager-owned app).
-        // Licensed recruits: stale recovery (managers see their own dormant
-        // licensed-but-never-activated pipeline).
-        { icon: Archive, label: "Old Manager Apps", href: "/admin/next-step/stuck" },
-        { icon: Archive, label: "Old Licensed Recruits", href: "/dashboard/stale-recovery" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
         { icon: Library, label: "Content", href: "/dashboard/admin/content-command" },
         { icon: Settings, label: "Admin", href: "/dashboard/admin" },
       );
+      finance.push(
+        { icon: DollarSign, label: "Lead Payments", href: "/dashboard/lead-payments", special: true },
+      );
+      oldApplicants.push(
+        { icon: Archive, label: "Old Managers", href: "/dashboard/old-applicants/managers" },
+        { icon: Archive, label: "Old Licensed Recruiters", href: "/dashboard/old-applicants/licensed-recruiters" },
+      );
     } else if (isManager) {
       operations.push(
         { icon: Users, label: "Agents", href: "/dashboard/my-team" },
         { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },
-        { icon: Archive, label: "Old Licensed Recruits", href: "/dashboard/stale-recovery" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
+      );
+      oldApplicants.push(
+        { icon: Archive, label: "Old Managers", href: "/dashboard/old-applicants/managers" },
+        { icon: Archive, label: "Old Licensed Recruiters", href: "/dashboard/old-applicants/licensed-recruiters" },
       );
     } else {
       operations.push(
@@ -146,7 +153,11 @@ export function GlobalSidebar({
       );
     }
 
-    return [{ label: "OPERATIONS", items: operations }];
+    return [
+      { label: "OPERATIONS", items: operations },
+      ...(finance.length ? [{ label: "LEAD PAYMENTS", items: finance }] : []),
+      ...(oldApplicants.length ? [{ label: "OLD APPLICANTS", items: oldApplicants }] : []),
+    ];
   }, [isAdmin, isManager]);
 
   const handleLogout = useCallback(async () => {

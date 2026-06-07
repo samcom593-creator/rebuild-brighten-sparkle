@@ -21,6 +21,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { cn } from "@/lib/utils";
+import { filterActionableNotifications } from "@/lib/notificationFilters";
 import confetti from "canvas-confetti";
 
 // ─── Summary Stats ───
@@ -1433,7 +1434,7 @@ export default function NotificationHub() {
         .limit(500);
       if (error) throw error;
       setLastRefreshed(new Date());
-      return data || [];
+      return filterActionableNotifications((data || []) as any[]);
     },
   });
 

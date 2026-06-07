@@ -98,6 +98,29 @@ function fmtHours(min: number | null): string {
   return `${h}h ${m}m`;
 }
 
+function producerTypeLabel(s: XcelStudent): string {
+  const hay = [
+    s.course_name,
+    s.application_status,
+    s.application_license_progress,
+    s.hiring_manager_name,
+  ].filter(Boolean).join(" ").toLowerCase();
+  if (hay.includes("agency owner") || hay.includes("owner")) return "Agency owner";
+  if (hay.includes("solo")) return "Solo producer";
+  if (s.assigned_agent_name || s.hiring_manager_name) return "Solo producer";
+  return "Producer";
+}
+
+function nextStepLabel(s: XcelStudent): string {
+  const pct = Number(s.pct_complete ?? 0);
+  if (s.date_completed || pct >= 100) return "Confirm exam/licensing";
+  if (s.health_bucket === "stalled") return "Manager follow-up today";
+  if (pct >= 80) return "Finish course + schedule exam";
+  if (pct >= 40) return "Keep course pace";
+  if (pct > 0) return "Push next module";
+  return "Get first login";
+}
+
 export default function PreLicensing() {
   usePageTitle("Pre-Licensing · APEX");
 
@@ -113,7 +136,8 @@ export default function PreLicensing() {
 
   const reportQ = useQuery({
     queryKey: ["xcel-report-latest"],
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
+    staleTime: 90_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("xcel_pre_licensing_reports" as any)
@@ -128,12 +152,14 @@ export default function PreLicensing() {
 
   const studentsQ = useQuery({
     queryKey: ["xcel-students-latest"],
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
+    staleTime: 90_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_xcel_latest" as any)
-        .select("*")
-        .order("pct_complete", { ascending: false });
+        .select("id, course_section, course_name, first_name, last_name, email, phone, date_enrolled, last_log_in, time_spent_minutes, pct_complete, date_completed, hiring_manager_name, application_id, matched_at, application_status, application_license_progress, assigned_agent_name, days_since_login, health_bucket")
+        .order("pct_complete", { ascending: false })
+        .limit(600);
       if (error) throw error;
       return (data ?? []) as unknown as XcelStudent[];
     },
@@ -417,6 +443,9 @@ export default function PreLicensing() {
                         <Badge variant="outline" className={`text-[10px] gap-1 ${health.color}`}>
                           <HealthIcon className="h-2.5 w-2.5" /> {health.label}
                         </Badge>
+                        <Badge variant="outline" className="text-[10px] bg-background/70">
+                          {producerTypeLabel(s)}
+                        </Badge>
                         {s.course_name && (
                           <span className="text-[11px] text-muted-foreground truncate">{s.course_name}</span>
                         )}
@@ -450,6 +479,7 @@ export default function PreLicensing() {
                         {s.assigned_agent_name && (
                           <span>Hiring mgr: {s.assigned_agent_name}</span>
                         )}
+                        <span className="font-medium text-foreground/80">Next: {nextStepLabel(s)}</span>
                       </div>
                     </div>
 

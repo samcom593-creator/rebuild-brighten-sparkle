@@ -203,8 +203,8 @@ export default function DashboardCommandCenter() {
   // Fetch all agents with production stats using server-side aggregation
   const { data: agentsData, isLoading, refetch } = useQuery({
     queryKey: ["command-center-agents", dateRange],
-    staleTime: 60_000,
-    refetchInterval: 60_000,
+    staleTime: 120_000,
+    refetchInterval: 120_000,
     gcTime: 600_000,
     queryFn: async () => {
       // Compute week start outside the parallel block so it's stable
@@ -231,7 +231,8 @@ export default function DashboardCommandCenter() {
               phone
             )
           `)
-          .order("created_at", { ascending: false }),
+          .order("created_at", { ascending: false })
+          .limit(900),
         supabase.rpc("get_agent_production_stats", {
           start_date: dateRange.start,
           end_date: dateRange.end,
@@ -523,13 +524,14 @@ export default function DashboardCommandCenter() {
   // Returns string[] so TanStack Query can serialize the cache correctly (Set is not JSON-serializable)
   const { data: activeProducerIds } = useQuery({
     queryKey: ["live-agent-set-v2", LIVE_AGENT_DEAL_WINDOW_DAYS],
-    staleTime: 60_000,
-    refetchInterval: 60_000,
+    staleTime: 120_000,
+    refetchInterval: 120_000,
     queryFn: async () => {
       const dealsRes = await supabase.from("deals")
         .select("agent_id")
         .or(liveDealWindowOr(getLiveAgentCutoffIso()))
-        .in("status", DEAL_TRUTH_STATUS_FILTER);
+        .in("status", DEAL_TRUTH_STATUS_FILTER)
+        .limit(2500);
 
       const ids = new Set<string>();
       for (const r of (dealsRes.data || []) as any[]) {

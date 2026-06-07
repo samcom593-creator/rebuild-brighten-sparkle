@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { DollarSign, Check, RefreshCw, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { DollarSign, Check, RefreshCw, Loader2, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
@@ -159,10 +160,17 @@ export function LeadPaymentTracker() {
             </p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchAgents} disabled={loading}>
-          <RefreshCw className={cn("h-4 w-4 mr-1", loading && "animate-spin")} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={fetchAgents} disabled={loading}>
+            <RefreshCw className={cn("h-4 w-4 mr-1", loading && "animate-spin")} />
+            Refresh
+          </Button>
+          <Button asChild size="sm">
+            <Link to="/dashboard/lead-payments">
+              Venmo ledger <ArrowRight className="h-4 w-4 ml-1" />
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {loading ? (

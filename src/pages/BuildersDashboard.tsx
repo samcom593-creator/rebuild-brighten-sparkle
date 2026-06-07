@@ -194,6 +194,16 @@ interface ApplicationDetailClient {
   };
 }
 
+interface LeadPaymentRow {
+  agent_id: string;
+  paid: boolean | null;
+  tier: string;
+  payment_status?: string | null;
+  lead_type?: string | null;
+  amount?: number | string | null;
+  marked_at?: string | null;
+}
+
 const TRACK_LABEL: Record<BuilderTrack, string> = {
   agent: "Agent",
   manager_track: "Manager Track",
@@ -247,6 +257,16 @@ function fmtDate(value: string | null | undefined): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Insufficient data";
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
+}
+
+function paymentLabel(rows: LeadPaymentRow[] | undefined): string {
+  if (!rows || rows.length === 0) return "No lead payment";
+  const latest = [...rows].sort((a, b) => String(b.marked_at ?? "").localeCompare(String(a.marked_at ?? "")))[0];
+  const status = latest.payment_status || (latest.paid ? "confirmed" : "pending");
+  const type = latest.lead_type || latest.tier || "lead";
+  const amount = Number(latest.amount ?? 0);
+  const amountLabel = Number.isFinite(amount) && amount > 0 ? ` · ${fmtMoney(amount)}` : "";
+  return `${type} · ${status}${amountLabel}`;
 }
 
 function daysAgo(value: string | null | undefined): string {
@@ -391,7 +411,7 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
 
   const buildersQ = useQuery({
     queryKey: ["builder-operating-dashboard"],
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await (supabase as unknown as BuilderViewClient)
         .from("v_builder_operating_dashboard")
@@ -402,30 +422,47 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
   });
 
   const agentsQ = useQuery({
-    queryKey: ["builder-detail-agents"],
-    staleTime: 60_000,
+    queryKey: ["builder-detail-agents", mode],
+    enabled: mode !== "agencyOwners" || Boolean(params.builderId),
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await (supabase as unknown as AgentDetailClient)
         .from("agents")
         .select("id, display_name, status, license_status, onboarding_stage, invited_by_manager_id, manager_id, builder_track, created_at, updated_at, profile:profiles(full_name,email,phone,state)")
         .order("created_at", { ascending: false })
-        .limit(2500);
+        .limit(1200);
       if (error) throw error;
       return data ?? [];
     },
   });
 
   const applicationsQ = useQuery({
-    queryKey: ["builder-detail-applications"],
-    staleTime: 60_000,
+    queryKey: ["builder-detail-applications", mode],
+    enabled: mode !== "agencyOwners" || Boolean(params.builderId),
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await (supabase as unknown as ApplicationDetailClient)
         .from("applications")
         .select("id, first_name, last_name, email, phone, state, status, license_status, license_progress, created_at, updated_at, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, license_approved_at, contracted_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, next_step_due_at, is_ghosted, assigned_agent_id, referral_manager_id, recruiter_id, referrer_agent_id, referral_source")
         .order("created_at", { ascending: false })
-        .limit(2500);
+        .limit(1200);
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  const paymentsQ = useQuery({
+    queryKey: ["builder-lead-payments", mode],
+    enabled: mode === "agencyOwners",
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<LeadPaymentRow[]> => {
+      const { data, error } = await (supabase as any)
+        .from("lead_payment_tracking")
+        .select("agent_id, paid, tier, payment_status, lead_type, amount, marked_at")
+        .order("marked_at", { ascending: false, nullsFirst: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as LeadPaymentRow[];
     },
   });
 
@@ -538,6 +575,16 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
       return ids.some((id) => selectedDownlineIds.has(id));
     });
   }, [applications, selected, selectedDownlineIds]);
+
+  const paymentsByAgent = useMemo(() => {
+    const map = new Map<string, LeadPaymentRow[]>();
+    for (const row of paymentsQ.data ?? []) {
+      const current = map.get(row.agent_id) ?? [];
+      current.push(row);
+      map.set(row.agent_id, current);
+    }
+    return map;
+  }, [paymentsQ.data]);
 
   const recentActivityCount = useMemo(() => {
     const weekAgo = Date.now() - 7 * 86_400_000;
@@ -800,6 +847,9 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
                 <MiniStat label="Activation" value={fmtPct(selected.activation_rate)} />
                 <MiniStat label="Stuck" value={fmtInt(selected.stuck_applicants)} />
                 <MiniStat label="Last 7 days" value={fmtInt(recentActivityCount)} />
+                {mode === "agencyOwners" ? (
+                  <MiniStat label="Lead/payment" value={paymentLabel(paymentsByAgent.get(selected.agent_id))} />
+                ) : null}
               </div>
 
               <div className="rounded-md border border-border/50 bg-background/60 p-3">

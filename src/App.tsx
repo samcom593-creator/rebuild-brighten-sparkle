@@ -194,6 +194,8 @@ const ReadyModeIntegration = lazy(() => import("./pages/ReadyModeIntegration"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ContentWheel = lazy(() => import("./pages/ContentWheel"));
 const ContentCommand = lazy(() => import("./pages/admin/ContentCommand"));
+const LeadPayments = lazy(() => import("./pages/LeadPayments"));
+const OldApplicants = lazy(() => import("./pages/OldApplicants"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
@@ -453,6 +455,9 @@ const App = () => (
                            <Route path="/dashboard/my-strikes" element={<ProtectedRoute><MyStrikes /></ProtectedRoute>} />
                            {/* Finance: Stripe charge anomaly inspector (Jordan/$167 incident). */}
                            <Route path="/dashboard/charges-audit" element={<ProtectedRoute requireAdmin><ChargesAudit /></ProtectedRoute>} />
+                           <Route path="/dashboard/lead-payments" element={<ProtectedRoute requireAdmin><LeadPayments /></ProtectedRoute>} />
+                           <Route path="/dashboard/old-applicants/managers" element={<ProtectedRoute requireAdmin allowManagers><OldApplicants kind="managers" /></ProtectedRoute>} />
+                           <Route path="/dashboard/old-applicants/licensed-recruiters" element={<ProtectedRoute requireAdmin allowManagers><OldApplicants kind="licensedRecruiters" /></ProtectedRoute>} />
                            {/* Conduct war room: real-time view across strikes + charges + agent standing. */}
                            <Route path="/dashboard/conduct" element={<ProtectedRoute requireAdmin><ConductCommandCenter /></ProtectedRoute>} />
                            {/* XCEL Solutions daily pre-licensing report viewer */}

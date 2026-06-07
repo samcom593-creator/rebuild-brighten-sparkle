@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { formatDistanceToNow } from "date-fns";
+import { filterActionableNotifications } from "@/lib/notificationFilters";
 
 interface NotifRow {
   id: string;
@@ -17,10 +18,9 @@ interface NotifRow {
   title: string | null;
   body: string | null;
   type: string | null;
-  action_url: string | null;
-  read: boolean | null;
+  link: string | null;
   read_at: string | null;
-  created_at: string;
+  created_at: string | null;
 }
 
 export default function MyNotifications() {
@@ -38,20 +38,20 @@ export default function MyNotifications() {
         .select("*")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false })
-        .limit(100);
+        .limit(150);
       if (error) throw error;
-      return (data ?? []) as unknown as NotifRow[];
+      return filterActionableNotifications((data ?? []) as any[]) as NotifRow[];
     },
   });
 
   // Mark visible notifications as read on mount (no spam if already read)
   useEffect(() => {
     if (!user?.id) return;
-    const unread = (data ?? []).filter((n) => !n.read).map((n) => n.id);
+    const unread = (data ?? []).filter((n) => !n.read_at).map((n) => n.id);
     if (unread.length === 0) return;
     supabase
       .from("notifications")
-      .update({ read: true, read_at: new Date().toISOString() })
+      .update({ read_at: new Date().toISOString() })
       .in("id", unread)
       .then(() => qc.invalidateQueries({ queryKey: ["my-notifications"] }));
   }, [data, user?.id, qc]);
@@ -59,7 +59,7 @@ export default function MyNotifications() {
   if (isLoading) return <PageLoadingSkeleton />;
   if (!user) return <div className="p-6">Sign in to view notifications.</div>;
 
-  const unreadCount = (data ?? []).filter((n) => !n.read).length;
+  const unreadCount = (data ?? []).filter((n) => !n.read_at).length;
 
   return (
     <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-4">
@@ -95,19 +95,19 @@ export default function MyNotifications() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium">{n.title ?? "Notification"}</span>
-                    {!n.read && <Badge variant="default" className="text-[10px]">new</Badge>}
+                    {!n.read_at && <Badge variant="default" className="text-[10px]">new</Badge>}
                     {n.type && <Badge variant="outline" className="text-[10px]">{n.type}</Badge>}
                   </div>
                   {n.body && (
                     <p className="text-sm text-muted-foreground mt-1">{n.body}</p>
                   )}
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                    {n.created_at ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true }) : "recently"}
                   </p>
                 </div>
-                {n.action_url && (
+                {n.link && (
                   <Button asChild size="sm" variant="ghost">
-                    <a href={n.action_url}>Open</a>
+                    <a href={n.link}>Open</a>
                   </Button>
                 )}
               </div>

@@ -675,3 +675,6 @@ verify_jwt = false
 
 [functions.applicant-self-report]
 verify_jwt = false
+
+[functions.poke-webhook]
+verify_jwt = false

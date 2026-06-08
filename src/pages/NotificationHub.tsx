@@ -1424,8 +1424,11 @@ export default function NotificationHub() {
     }
   }, []);
 
+  // P8: showArchived toggle reveals the spam-filtered rows so Sam can audit
+  // what the filter is hiding. Default false = only actionable notifications.
+  const [showArchived, setShowArchived] = useState(false);
   const { data: logs = [], isLoading } = useQuery({
-    queryKey: ["notification-logs"],
+    queryKey: ["notification-logs", showArchived],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("notification_log")
@@ -1434,7 +1437,8 @@ export default function NotificationHub() {
         .limit(500);
       if (error) throw error;
       setLastRefreshed(new Date());
-      return filterActionableNotifications((data || []) as any[]);
+      const rows = (data || []) as any[];
+      return showArchived ? rows : filterActionableNotifications(rows);
     },
   });
 
@@ -1505,10 +1509,20 @@ export default function NotificationHub() {
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw className={cn("h-4 w-4 mr-1", refreshing && "animate-spin")} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showArchived ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowArchived((v) => !v)}
+              aria-pressed={showArchived}
+            >
+              {showArchived ? "Hide archived" : "Show archived"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw className={cn("h-4 w-4 mr-1", refreshing && "animate-spin")} />
+              Refresh
+            </Button>
+          </div>
         </div>
         <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary opacity-5 blur-3xl" />
       </motion.div>

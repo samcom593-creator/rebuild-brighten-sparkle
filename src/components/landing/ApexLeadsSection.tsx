@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Check, Shield, TrendingUp, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+// wave-42 (2026-06-08): supabase dynamic-imported inside the click handler. Lazy chunk
+// fetches during cold landing, top-level `import { supabase }` dragged vendor-supabase
+// (45 KB gz) in as a static dep — same disease as wave-37 vendor-ui leak via toast.
 // wave-37 (2026-06-08): lazy-loaded sonner — was the sole static edge dragging
 // vendor-ui (22 KB gz) + vendor-radix (47 KB gz) onto cold landing via this
 // lazy chunk's static-import graph. `toast` only fires post-click; loading
@@ -39,6 +41,7 @@ export function ApexLeadsSection() {
   const handlePurchase = async (tier: string) => {
     setCheckingOut(tier);
     try {
+      const { supabase } = await import("@/integrations/supabase/client");
       // Visitors hit a hard auth gate on `create-lead-checkout` (requireAuth=true).
       // Pre-check session before invoking; if not logged in, send them to the
       // signup flow with a deep-link back to checkout. PL-004: previously the

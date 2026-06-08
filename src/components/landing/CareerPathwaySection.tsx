@@ -28,7 +28,10 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { GlassCard } from "@/components/ui/glass-card";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+// wave-42 (2026-06-08): supabase dynamic-imported inside queryFn. Same story as
+// CTASection — rendered eagerly inside Index.tsx's Suspense block, chunk fetches during
+// cold landing, top-level `import { supabase }` dragged vendor-supabase (45 KB gz) in
+// as a static dep. Pushing into the async queryFn body keeps the chunk graph clean.
 
 interface LandingLiveStats {
   active_agents: number;
@@ -250,6 +253,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
   const { data: liveStats } = useQuery({
     queryKey: ["landing_live_stats"],
     queryFn: async (): Promise<LandingLiveStats | null> => {
+      const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.rpc("landing_live_stats");
       if (error) throw error;
       return data as unknown as LandingLiveStats;

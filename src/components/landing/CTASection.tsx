@@ -2,7 +2,12 @@ import { forwardRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+// wave-42 (2026-06-08): supabase dynamic-imported inside queryFn. CTASection is a lazy
+// chunk that Index.tsx renders eagerly inside a Suspense boundary, so the chunk fetches
+// during cold landing. A top-level `import { supabase }` dragged vendor-supabase (45 KB
+// gz) into the cold-landing modulepreload graph as a static dep of this chunk. Pushing
+// the import into the async queryFn body means CTASection's chunk has zero static edge
+// to vendor-supabase — supabase only loads if React Query actually fires the queryFn.
 
 const benefits = [
   "No experience required",
@@ -22,6 +27,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
   const { data: liveStats } = useQuery({
     queryKey: ["landing_live_stats"],
     queryFn: async (): Promise<LandingLiveStats | null> => {
+      const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.rpc("landing_live_stats");
       if (error) throw error;
       return data as unknown as LandingLiveStats;

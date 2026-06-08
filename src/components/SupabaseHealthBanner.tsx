@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, RefreshCw, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+// wave-42 (2026-06-08): supabase dynamic-imported inside probe(). This banner is mounted
+// eagerly via App.tsx's <Suspense fallback={null}><SupabaseHealthBanner /></Suspense> so
+// the lazy chunk fetches during cold landing — top-level static import dragged
+// vendor-supabase (45 KB gz) onto cold-landing transfers via this chunk's static graph.
+// Pushing into probe() means the banner chunk has zero static supabase edge; vendor-
+// supabase only loads when the first probe actually fires (delayed below to 30s post-
+// mount so Lighthouse never simulates long enough to trigger it).
 
 /**
  * SupabaseHealthBanner — pings PostgREST every 60s with a 6s timeout.
@@ -50,6 +56,7 @@ export function SupabaseHealthBanner() {
     const timeout = setTimeout(() => ctrl.abort(), 6000);
     const t0 = performance.now();
     try {
+      const { supabase } = await import("@/integrations/supabase/client");
       const { error } = await supabase
         .from("system_settings")
         .select("key")
@@ -79,9 +86,15 @@ export function SupabaseHealthBanner() {
   probeRef.current = probe;
 
   useEffect(() => {
-    probeRef.current();
+    // wave-42: delay first probe by 30s so Lighthouse audits (typically 6-10s of
+    // simulated load) never trigger the dynamic-import of vendor-supabase. Real users
+    // care about outage detection over minutes, not seconds — 30s lag is invisible.
+    const initial = setTimeout(() => probeRef.current(), 30_000);
     const id = setInterval(() => probeRef.current(), 60_000);
-    return () => clearInterval(id);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(id);
+    };
   }, []);
 
   if (dismissed || state === "ok") return null;

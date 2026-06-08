@@ -2,7 +2,9 @@ import { Instagram, Zap, MessageCircle, Cloud, Repeat2, MousePointerClick, Bot, 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+// wave-42 (2026-06-08): supabase dynamic-imported inside the click handler. Lazy chunk
+// fetches during cold landing, top-level static import dragged vendor-supabase (45 KB
+// gz) in as a static dep — same disease as ApexLeadsSection vendor-ui leak wave-37.
 // wave-37 (2026-06-08): lazy-loaded sonner — same defense as ApexLeadsSection.
 // vendor-ui + vendor-radix were landing on cold-landing transfers via this
 // chunk's static edge. `toast` only fires inside handlePurchase post-click.
@@ -49,6 +51,7 @@ export function InstagramGrowthSection() {
   const handlePurchase = async () => {
     setCheckingOut(true);
     try {
+      const { supabase } = await import("@/integrations/supabase/client");
       const { data: session } = await supabase.auth.getSession();
       if (!session?.session) {
         navigate(`/signup?next=/leads&pkg=social_growth`);

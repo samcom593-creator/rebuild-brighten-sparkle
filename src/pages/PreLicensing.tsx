@@ -12,7 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   GraduationCap, Clock, Mail, Phone, CheckCircle2, Flame,
-  AlertCircle, Calendar, TrendingUp, Filter, Search, ExternalLink,
+  AlertCircle, AlertTriangle, Calendar, TrendingUp, Filter, Search, ExternalLink,
   RefreshCw, BookOpen, FileText, Sparkles, CalendarRange, XCircle,
 } from "lucide-react";
 import { format, parseISO, differenceInDays } from "date-fns";
@@ -253,18 +253,46 @@ export default function PreLicensing() {
           </>
         }
         accent="purple"
-        actions={
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/40">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> Live
-            </Badge>
-            <Button onClick={() => { reportQ.refetch(); studentsQ.refetch(); }} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
-            </Button>
-            <XcelIngestDialog />
-          </div>
-        }
+        actions={(() => {
+          const lastReportDate = report?.report_date ? parseISO(report.report_date) : null;
+          const isStale = lastReportDate ? differenceInDays(new Date(), lastReportDate) > 2 : false;
+          return (
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={isStale
+                ? "bg-amber-500/10 text-amber-400 border-amber-500/40"
+                : "bg-emerald-500/10 text-emerald-400 border-emerald-500/40"
+              }>
+                <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${isStale ? "bg-amber-500" : "bg-emerald-500 animate-pulse"}`} />
+                {isStale ? "Stale" : "Live"}
+              </Badge>
+              <Button onClick={() => { reportQ.refetch(); studentsQ.refetch(); }} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
+              </Button>
+              <XcelIngestDialog />
+            </div>
+          );
+        })()}
       />
+
+      {/* P2: stale-feed banner — surfaces the known-dead XCEL Gmail pull
+          so Sam doesn't mistake the page's stale data for fresh data. */}
+      {(() => {
+        const lastReportDate = report?.report_date ? parseISO(report.report_date) : null;
+        const staleDays = lastReportDate ? differenceInDays(new Date(), lastReportDate) : null;
+        if (staleDays == null || staleDays <= 2) return null;
+        return (
+          <div className="flex items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <div className="flex-1">
+              <div className="font-semibold">Data lagging — last refresh {staleDays} days ago</div>
+              <div className="text-xs text-amber-200/80">
+                XCEL Gmail pull awaiting OAuth seed (system_settings.gmail_xcel_oauth).
+                Numbers below are accurate as of last sync, not real-time.
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Summary tiles */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">

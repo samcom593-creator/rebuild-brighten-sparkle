@@ -404,6 +404,8 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("rank");
+  // P5: $50K+ Watchlist filter — surface high-value leaders by monthly production
+  const [watchlist50k, setWatchlist50k] = useState(false);
 
   const modeTitle =
     mode === "agencyOwners" ? "Agency Owners" : mode === "managers" ? "Managers" : "Builders";
@@ -486,8 +488,17 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
           .some((value) => String(value).toLowerCase().includes(q)),
       );
     }
+    if (watchlist50k) {
+      // P5: $50K+ Watchlist — keep only builders with monthly_production above 50000.
+      // String/number coercion is safe because monthly_production is the only
+      // numeric-ish field surfaced in the BuilderRow shape.
+      base = base.filter((row) => {
+        const v = numberValue(row.monthly_production);
+        return v !== null && v >= 50000;
+      });
+    }
     return base;
-  }, [mode, rows, search]);
+  }, [mode, rows, search, watchlist50k]);
 
   const rankedRows = useMemo(
     () => [...filteredBase].sort((a, b) => compareRows(a, b, sortKey)),
@@ -672,6 +683,15 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  variant={watchlist50k ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setWatchlist50k((v) => !v)}
+                  className="h-9 shrink-0"
+                  aria-pressed={watchlist50k}
+                >
+                  $50K+ Watchlist
+                </Button>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input

@@ -1,0 +1,57 @@
+name: Verify core checks
+
+# Wave-30 (2026-06-08): server-side mirror of the 5 pre-commit checks +
+# tsc + build. Closes the `--no-verify` / parallel-worktree / fresh-clone
+# bypass that wave-28 + wave-29 cannot reach.
+#
+# Why this exists: between wave-29's ship at 03:25Z and wave-30's pickup
+# at 04:13Z, 8 commits (e9e37f8a..c9429b77) landed on main without
+# triggering the local `.husky/pre-commit` hook — either via different
+# worktrees that hadn't run `npm install` (so `prepare` hadn't set
+# `core.hooksPath`), or via `git commit --no-verify`. The Vite plugin
+# (wave-26/27) catches VSL drift on Vercel build, but the other 4
+# guardrails (forbidden-language, metric-truth, sync-reliability,
+# unsafe-supabase-catch) had no server-side equivalent.
+#
+# This workflow re-runs `npm run verify:core` (the same chain wired
+# into `.husky/pre-commit`) on every push to main + every PR + every
+# manual dispatch. Failure surfaces in GitHub's Actions UI + mobile-app
+# notifications, so even a `--no-verify` bypass triggers a visible
+# alarm within ~1 minute of push.
+#
+# Total cost: ~50s on warm cache (npm ci ~30s + verify:core ~18s).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: verify-core-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Run verify:core (5 checks + tsc + build)
+        # Mirrors the local pre-commit hook chain so a --no-verify or
+        # fresh-clone-without-prepare push still gets caught on origin.
+        run: npm run verify:core
+
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::error::verify:core FAILED on ${{ github.sha }}. One of the 5 guardrails (forbidden-language / metric-truth / sync-reliability / unsafe-supabase-catch / vsl-sync) or tsc / build broke on main. The .husky/pre-commit hook would have caught this BEFORE push if it had been active — confirm `core.hooksPath` is set to `.husky` (run `npm install` once after clone to auto-activate via the `prepare` script). Then re-run the failing check locally to see the violation."

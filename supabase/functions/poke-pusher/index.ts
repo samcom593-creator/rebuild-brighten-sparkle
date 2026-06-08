@@ -9,6 +9,26 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const POKE_TOKEN = Deno.env.get("POKE_TOKEN") ?? "";
 const POKE_ENDPOINT = Deno.env.get("POKE_ENDPOINT") ?? "https://api.poke.app/v1/messages";
 const POKE_RECIPIENT = Deno.env.get("POKE_RECIPIENT") ?? "sam";
+// Telegram fallback — used when POKE_TOKEN is absent OR Poke API returns 4xx/5xx.
+// 2026-06-08: api.poke.app DNS doesn't resolve; Telegram is the actual delivery
+// channel until Poke has a working public API.
+const TG_TOKEN = Deno.env.get("APEX_TELEGRAM_BOT_TOKEN") ?? Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+const TG_CHAT  = Deno.env.get("APEX_TELEGRAM_CHAT_ID") ?? "6018839640";
+
+async function sendTelegram(text: string): Promise<{ ok: boolean; status?: number; error?: string }> {
+  if (!TG_TOKEN) return { ok: false, error: "no TG_TOKEN" };
+  try {
+    const resp = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TG_CHAT, text }),
+    });
+    if (!resp.ok) return { ok: false, status: resp.status, error: (await resp.text()).slice(0, 120) };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,57 +83,46 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
-    if (!POKE_TOKEN) {
-      // Credential gate — mark as deferred (set error, leave sent_at null) so
-      // they're not retried in a tight loop. They'll go out the moment Sam
-      // drops the token at ~/.config/apex-creds/poke.token (or POKE_TOKEN env).
-      return new Response(JSON.stringify({
-        drained: 0,
-        queued: queue.length,
-        note: "POKE_TOKEN absent — queue holds messages until token lands",
-      }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
-    }
-
     let sent = 0;
     let failed = 0;
+    let viaTelegram = 0;
     for (const row of queue) {
       const message = shortMessage(row);
-      try {
-        const resp = await fetch(POKE_ENDPOINT, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${POKE_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            recipient: POKE_RECIPIENT,
-            message,
-            metadata: { kind: row.kind, queue_id: row.id, ...row.payload },
-          }),
-        });
-        if (!resp.ok) {
-          const errText = await resp.text();
-          await sb.from("poke_queue").update({
-            error: `${resp.status}: ${errText.slice(0, 200)}`,
-          }).eq("id", row.id);
-          failed++;
-          continue;
+      let delivered = false;
+      let lastErr = "";
+      // Try Poke first if token present
+      if (POKE_TOKEN) {
+        try {
+          const resp = await fetch(POKE_ENDPOINT, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${POKE_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              recipient: POKE_RECIPIENT, message,
+              metadata: { kind: row.kind, queue_id: row.id, ...row.payload },
+            }),
+          });
+          if (resp.ok) delivered = true;
+          else lastErr = `poke ${resp.status}: ${(await resp.text()).slice(0, 100)}`;
+        } catch (err) {
+          lastErr = `poke ${err instanceof Error ? err.message : String(err)}`;
         }
-        await sb.from("poke_queue").update({
-          sent_at: new Date().toISOString(),
-          error: null,
-        }).eq("id", row.id);
+      }
+      // Telegram fallback (or primary if POKE_TOKEN absent)
+      if (!delivered) {
+        const tg = await sendTelegram(message);
+        if (tg.ok) { delivered = true; viaTelegram++; }
+        else lastErr = `${lastErr} | tg ${tg.error ?? tg.status}`.trim();
+      }
+      if (delivered) {
+        await sb.from("poke_queue").update({ sent_at: new Date().toISOString(), error: null }).eq("id", row.id);
         sent++;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        await sb.from("poke_queue").update({
-          error: msg.slice(0, 200),
-        }).eq("id", row.id);
+      } else {
+        await sb.from("poke_queue").update({ error: lastErr.slice(0, 200) }).eq("id", row.id);
         failed++;
       }
     }
 
-    return new Response(JSON.stringify({ drained: sent, failed, examined: queue.length }),
+    return new Response(JSON.stringify({ drained: sent, failed, via_telegram: viaTelegram, examined: queue.length }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";

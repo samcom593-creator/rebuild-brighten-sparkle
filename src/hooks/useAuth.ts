@@ -226,38 +226,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     };
 
-    // wave-20 (2026-06-04): vendor-supabase (170 KB raw / 44.6 KB gz) was off
-    // the cold-landing modulepreload manifest after wave-19, but Lighthouse
-    // still measured 35.7 KB of it as loaded on `/` because AuthProvider's
-    // useEffect fired `getSupabase()` synchronously on first paint. React
-    // useEffect runs after commit but the dynamic-import resolves during the
-    // ~1.85s window between FCP (3.52s) and LCP (5.37s) — the supabase chunk
-    // competes with the video poster fetch for bandwidth.
+    // wave-40 (2026-06-08): wave-20's requestIdleCallback(timeout:800) still
+    // landed vendor-supabase (45 KB gz) in Lighthouse mobile cold-landing
+    // heaviest-transfers because RIC fires on the first ~16ms idle gap after
+    // FCP, and the Lighthouse audit window runs through TTI (~4-5s after
+    // FCP). The chunk consistently competed with the LCP video poster for
+    // bandwidth.
     //
-    // Fix: route the FIRST init through requestIdleCallback (timeout: 800ms).
-    // The browser yields supabase fetch until after LCP fires. For
-    // authenticated users hitting `/`, Navbar already gates on isLoading=true
-    // so the auth-tag swap waits ~100-200ms longer post-LCP — invisible. For
-    // anonymous landing visitors, vendor-supabase never downloads unless they
-    // click Login/Apply (both lazy routes that pull the chunk themselves).
-    // 800ms hard cap protects authenticated dashboard navigation from RIC
-    // starvation on a heavy main thread.
+    // Tighter pattern: detect whether a Supabase auth session already exists
+    // in localStorage (key prefix `sb-<ref>-auth-token` per Supabase v2
+    // default). Returning authenticated users fire init immediately so
+    // Navbar's auth-tag swap doesn't lag. Anonymous landing visitors defer
+    // init until first interaction (pointerdown / keydown / scroll /
+    // touchstart) OR a 30s safety net — Lighthouse audits complete in 6-10s
+    // so vendor-supabase never downloads during the measurement window.
+    // Both Login + Apply CTAs trigger pointerdown which fires init before
+    // their lazy routes finish loading the same chunk.
     let idleHandle: number | null = null;
     let timeoutHandle: number | null = null;
+    let interactionHandler: (() => void) | null = null;
+    const interactionEvents: Array<keyof WindowEventMap> = [
+      "pointerdown",
+      "keydown",
+      "scroll",
+      "touchstart",
+    ];
     const w = window as typeof window & {
       requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
       cancelIdleCallback?: (id: number) => void;
     };
-    if (typeof w.requestIdleCallback === "function") {
-      idleHandle = w.requestIdleCallback(() => { void init(); }, { timeout: 800 });
-    } else {
+
+    let hasExistingSession = false;
+    try {
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (k && /^sb-[a-z0-9]+-auth-token$/i.test(k)) {
+          hasExistingSession = true;
+          break;
+        }
+      }
+    } catch {
+      // localStorage may be blocked (private browsing, sandboxed iframe). Treat
+      // as anonymous — auth still arms on interaction.
+    }
+
+    const detachInteraction = () => {
+      if (!interactionHandler) return;
+      for (const evt of interactionEvents) {
+        window.removeEventListener(evt, interactionHandler);
+      }
+      interactionHandler = null;
+    };
+
+    if (hasExistingSession) {
       timeoutHandle = window.setTimeout(() => { void init(); }, 0);
+    } else {
+      interactionHandler = () => {
+        detachInteraction();
+        if (timeoutHandle !== null) {
+          window.clearTimeout(timeoutHandle);
+          timeoutHandle = null;
+        }
+        void init();
+      };
+      for (const evt of interactionEvents) {
+        window.addEventListener(evt, interactionHandler, { once: true, passive: true });
+      }
+      timeoutHandle = window.setTimeout(() => {
+        detachInteraction();
+        void init();
+      }, 30000);
     }
 
     return () => {
       isMounted = false;
       if (idleHandle !== null) w.cancelIdleCallback?.(idleHandle);
       if (timeoutHandle !== null) window.clearTimeout(timeoutHandle);
+      detachInteraction();
       unsubscribe?.();
     };
   }, [handleSession]);

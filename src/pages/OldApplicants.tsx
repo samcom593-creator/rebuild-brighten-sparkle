@@ -33,6 +33,8 @@ import { looseSupabase } from "@/lib/looseSupabase";
 
 type OldApplicantKind = "managers" | "licensedRecruiters";
 
+const PAGE_SIZE = 50;
+
 interface OldApplicantRow {
   id: string;
   first_name: string;
@@ -43,18 +45,15 @@ interface OldApplicantRow {
   status: string | null;
   license_status: string | null;
   license_progress: string | null;
-  hiring_scope_at_intake: string | null;
   referral_source: string | null;
   assigned_agent_id: string | null;
   referral_manager_id: string | null;
   recruiter_id: string | null;
-  is_ghosted: boolean | null;
   created_at: string;
   updated_at: string | null;
-  closed_at: string | null;
-  terminated_at: string | null;
-  termination_reason: string | null;
+  last_contacted_at: string | null;
   notes: string | null;
+  days_dormant: number;
 }
 
 interface AgentName {
@@ -66,123 +65,88 @@ function fullName(row: OldApplicantRow): string {
   return `${row.first_name ?? ""} ${row.last_name ?? ""}`.trim() || row.email;
 }
 
-function stringOrNull(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value : null;
-}
-
-function boolOrNull(value: unknown): boolean | null {
-  return typeof value === "boolean" ? value : null;
-}
-
-function profileName(profile: unknown): string | null {
-  if (!profile || typeof profile !== "object") return null;
-  const value = (profile as Record<string, unknown>).full_name;
-  return stringOrNull(value);
-}
-
-function toOldApplicant(row: Record<string, unknown>): OldApplicantRow {
-  return {
-    id: String(row.id),
-    first_name: String(row.first_name ?? ""),
-    last_name: String(row.last_name ?? ""),
-    email: String(row.email ?? ""),
-    phone: stringOrNull(row.phone),
-    state: stringOrNull(row.state),
-    status: stringOrNull(row.status),
-    license_status: stringOrNull(row.license_status),
-    license_progress: stringOrNull(row.license_progress),
-    hiring_scope_at_intake: stringOrNull(row.hiring_scope_at_intake),
-    referral_source: stringOrNull(row.referral_source),
-    assigned_agent_id: stringOrNull(row.assigned_agent_id),
-    referral_manager_id: stringOrNull(row.referral_manager_id),
-    recruiter_id: stringOrNull(row.recruiter_id),
-    is_ghosted: boolOrNull(row.is_ghosted),
-    created_at: String(row.created_at),
-    updated_at: stringOrNull(row.updated_at),
-    closed_at: stringOrNull(row.closed_at),
-    terminated_at: stringOrNull(row.terminated_at),
-    termination_reason: stringOrNull(row.termination_reason),
-    notes: stringOrNull(row.notes),
-  };
-}
-
-function isOld(row: OldApplicantRow): boolean {
-  const status = String(row.status ?? "").toLowerCase();
-  return Boolean(
-    row.terminated_at ||
-      row.closed_at ||
-      row.is_ghosted ||
-      ["rejected", "disqualified", "lapsed", "closed", "ghosted", "not_interested"].includes(status),
-  );
-}
-
-function isManagerApplicant(row: OldApplicantRow): boolean {
-  const hay = [
-    row.referral_source,
-    row.termination_reason,
-    row.notes,
-    row.status,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  return Boolean(row.referral_manager_id || row.assigned_agent_id || hay.includes("manager"));
-}
-
-function isLicensedRecruiterApplicant(row: OldApplicantRow): boolean {
-  const hay = [
-    row.hiring_scope_at_intake,
-    row.license_status,
-    row.license_progress,
-    row.referral_source,
-    row.termination_reason,
-    row.notes,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-  return hay.includes("licensed") || hay.includes("recruiter");
-}
-
-function displayStatus(row: OldApplicantRow): string {
-  if (row.terminated_at) return "Archived";
-  if (row.closed_at) return "Closed";
-  return row.status || "Old";
-}
-
 function lastActivity(row: OldApplicantRow): string {
-  const value = row.terminated_at || row.closed_at || row.updated_at || row.created_at;
+  const value = row.last_contacted_at || row.updated_at || row.created_at;
   return formatDistanceToNow(new Date(value), { addSuffix: true });
 }
 
+function dormancyChip(days: number): { label: string; cls: string } {
+  if (days >= 60) return { label: `${days}d`, cls: "border-red-500/40 bg-red-500/10 text-red-300" };
+  if (days >= 30) return { label: `${days}d`, cls: "border-amber-500/40 bg-amber-500/10 text-amber-300" };
+  return { label: `${days}d`, cls: "border-yellow-500/40 bg-yellow-500/10 text-yellow-300" };
+}
+
 export default function OldApplicants({ kind }: { kind: OldApplicantKind }) {
-  const title = kind === "managers" ? "Old Manager Applicants" : "Old Licensed Recruiter Applicants";
+  const title = kind === "managers" ? "Old Manager Applicants" : "Old Licensed Applicants";
   usePageTitle(`${title} · APEX`);
+
   const [search, setSearch] = useState("");
+  const [dormantMin, setDormantMin] = useState<14 | 30 | 60>(14);
+  const [page, setPage] = useState(0);
+
+  const viewName = kind === "managers" ? "v_old_manager_applicants" : "v_old_licensed_applicants";
 
   const appsQ = useQuery({
-    queryKey: ["old-applicants", kind],
-    staleTime: 2 * 60_000,
-    queryFn: async (): Promise<OldApplicantRow[]> => {
-      const { data, error } = await looseSupabase
-        .from<Record<string, unknown>>("applications")
-        .select("id, first_name, last_name, email, phone, state, status, license_status, license_progress, hiring_scope_at_intake, referral_source, assigned_agent_id, referral_manager_id, recruiter_id, is_ghosted, created_at, updated_at, closed_at, terminated_at, termination_reason, notes")
-        .order("updated_at", { ascending: false })
-        .limit(700);
+    queryKey: ["old-applicants", kind, dormantMin, page, search],
+    staleTime: 60_000,
+    queryFn: async (): Promise<{ rows: OldApplicantRow[]; total: number }> => {
+      let q = looseSupabase
+        .from<Record<string, unknown>>(viewName)
+        .select(
+          "id, first_name, last_name, email, phone, state, status, license_status, license_progress, referral_source, assigned_agent_id, referral_manager_id, recruiter_id, created_at, updated_at, last_contacted_at, notes, days_dormant",
+          { count: "exact" },
+        )
+        .gte("days_dormant", dormantMin)
+        .order("days_dormant", { ascending: false });
+
+      if (search.trim()) {
+        const s = search.trim().replace(/[%_]/g, "");
+        q = q.or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%,email.ilike.%${s}%,phone.ilike.%${s}%`);
+      }
+
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      const { data, error, count } = await q.range(from, to);
       if (error) throw error;
-      return (data ?? []).map(toOldApplicant).filter(isOld);
+      return {
+        rows: (data ?? []).map((row) => ({
+          id: String(row.id),
+          first_name: String(row.first_name ?? ""),
+          last_name: String(row.last_name ?? ""),
+          email: String(row.email ?? ""),
+          phone: row.phone != null ? String(row.phone) : null,
+          state: row.state != null ? String(row.state) : null,
+          status: row.status != null ? String(row.status) : null,
+          license_status: row.license_status != null ? String(row.license_status) : null,
+          license_progress: row.license_progress != null ? String(row.license_progress) : null,
+          referral_source: row.referral_source != null ? String(row.referral_source) : null,
+          assigned_agent_id: row.assigned_agent_id != null ? String(row.assigned_agent_id) : null,
+          referral_manager_id: row.referral_manager_id != null ? String(row.referral_manager_id) : null,
+          recruiter_id: row.recruiter_id != null ? String(row.recruiter_id) : null,
+          created_at: String(row.created_at),
+          updated_at: row.updated_at != null ? String(row.updated_at) : null,
+          last_contacted_at: row.last_contacted_at != null ? String(row.last_contacted_at) : null,
+          notes: row.notes != null ? String(row.notes) : null,
+          days_dormant: typeof row.days_dormant === "number" ? row.days_dormant : 0,
+        })),
+        total: count ?? 0,
+      };
     },
   });
 
+  const rows = appsQ.data?.rows ?? [];
+  const total = appsQ.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   const agentIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const app of appsQ.data ?? []) {
+    for (const app of rows) {
       if (app.assigned_agent_id) ids.add(app.assigned_agent_id);
       if (app.referral_manager_id) ids.add(app.referral_manager_id);
       if (app.recruiter_id) ids.add(app.recruiter_id);
     }
     return Array.from(ids);
-  }, [appsQ.data]);
+  }, [rows]);
 
   const agentsQ = useQuery({
     queryKey: ["old-applicant-agent-names", agentIds],
@@ -194,82 +158,72 @@ export default function OldApplicants({ kind }: { kind: OldApplicantKind }) {
         .select("id, display_name, profile:profiles!agents_profile_id_fkey(full_name)")
         .in("id", agentIds);
       if (error) throw error;
-      return (data ?? []).map((agent) => ({
-        id: String(agent.id),
-        name: profileName(agent.profile) || String(agent.display_name || "Unknown"),
-      }));
+      return (data ?? []).map((agent) => {
+        const profile = (agent.profile as { full_name?: string } | null) ?? null;
+        return {
+          id: String(agent.id),
+          name: profile?.full_name || String(agent.display_name || "Unknown"),
+        };
+      });
     },
   });
 
-  const agentMap = useMemo(() => {
-    return new Map((agentsQ.data ?? []).map((agent) => [agent.id, agent.name]));
-  }, [agentsQ.data]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const base = (appsQ.data ?? []).filter((row) =>
-      kind === "managers" ? isManagerApplicant(row) : isLicensedRecruiterApplicant(row),
-    );
-    if (!q) return base;
-    return base.filter((row) => {
-      const hay = [
-        fullName(row),
-        row.email,
-        row.phone,
-        row.state,
-        row.status,
-        row.license_status,
-        row.license_progress,
-        row.termination_reason,
-        row.assigned_agent_id ? agentMap.get(row.assigned_agent_id) : "",
-        row.referral_manager_id ? agentMap.get(row.referral_manager_id) : "",
-        row.recruiter_id ? agentMap.get(row.recruiter_id) : "",
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
-    });
-  }, [agentMap, appsQ.data, kind, search]);
+  const agentMap = useMemo(
+    () => new Map((agentsQ.data ?? []).map((agent) => [agent.id, agent.name])),
+    [agentsQ.data],
+  );
 
   const stats = useMemo(() => {
-    const licensed = filtered.filter((row) => row.license_status === "licensed" || row.license_progress === "licensed").length;
-    const archived = filtered.filter((row) => row.terminated_at).length;
-    return { total: filtered.length, licensed, archived };
-  }, [filtered]);
+    const licensedCount = rows.filter((r) => r.license_status === "licensed").length;
+    return { shown: rows.length, totalInLane: total, licensed: licensedCount };
+  }, [rows, total]);
 
   return (
     <div className="page-enter px-4 pb-24 sm:px-6">
       <PageHeader
-        eyebrow="Applicants · Archive"
+        eyebrow="Applicants · Recovery"
         eyebrowIcon={<Archive className="h-3 w-3" />}
         title={title}
         subtitle={
           kind === "managers"
-            ? "Old applicants tied to manager ownership or manager-track language. Unrelated old applicant categories stay out of this view."
-            : "Old applicants with licensed or recruiter signals, kept separate from general applicant archives."
+            ? "Manager-track / agency-owner applicants who've gone dormant. Tagged via qualified_role, hiring_scope_at_intake, previous_team_size, or manager_track_flagged_at."
+            : "Licensed applicants who've gone dormant. Recovery lane — call before they re-apply elsewhere."
         }
         accent={kind === "managers" ? "blue" : "emerald"}
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Stat icon={Briefcase} label="Shown" value={stats.total} />
+        <Stat icon={Briefcase} label="On this page" value={stats.shown} />
+        <Stat icon={Archive} label={`Total dormant ≥${dormantMin}d`} value={stats.totalInLane} />
         <Stat icon={CheckCircle2} label="Licensed signals" value={stats.licensed} />
-        <Stat icon={Archive} label="Archived" value={stats.archived} />
       </div>
 
       <Card className="mt-5 border-border/60 bg-card/80">
         <CardHeader className="gap-3 border-b border-border/50">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <CardTitle className="text-base">Clean Archive</CardTitle>
-            <div className="relative md:w-80">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search old applicants..."
-                className="pl-8"
-              />
+            <CardTitle className="text-base">Recovery Lane</CardTitle>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-1 rounded-lg border border-border/40 p-1">
+                {([14, 30, 60] as const).map((d) => (
+                  <Button
+                    key={d}
+                    variant={dormantMin === d ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => { setDormantMin(d); setPage(0); }}
+                  >
+                    ≥{d}d
+                  </Button>
+                ))}
+              </div>
+              <div className="relative md:w-72">
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(event) => { setSearch(event.target.value); setPage(0); }}
+                  placeholder="Search name, email, phone..."
+                  className="pl-8"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -278,31 +232,39 @@ export default function OldApplicants({ kind }: { kind: OldApplicantKind }) {
             <div className="p-10 text-center text-sm text-muted-foreground">Loading old applicants...</div>
           ) : appsQ.error ? (
             <div className="p-5 text-sm text-destructive">
-              Old applicants could not load: {appsQ.error instanceof Error ? appsQ.error.message : "Unknown error"}
+              View {viewName} could not load: {appsQ.error instanceof Error ? appsQ.error.message : "Unknown error"}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : rows.length === 0 ? (
             <EmptyState
               icon={<Archive className="h-6 w-6" />}
-              title="No old applicants in this lane"
-              description="This view intentionally excludes unrelated archived applicant categories."
+              title={
+                kind === "managers"
+                  ? `No manager-track applicants dormant ≥${dormantMin}d match this search`
+                  : `No licensed applicants dormant ≥${dormantMin}d match this search`
+              }
+              description={
+                kind === "managers"
+                  ? "Tag manager-track candidates during intake (previous_team_size > 0, qualified_role 'manager'/'agency', or manager_track_flagged_at) to surface them here."
+                  : "Lower the dormancy threshold or clear search to widen the lane."
+              }
             />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead>Applicant</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Dormant</TableHead>
                   <TableHead>License</TableHead>
-                  <TableHead>Owner / recruiter</TableHead>
+                  <TableHead>Owner</TableHead>
                   <TableHead>Last activity</TableHead>
-                  <TableHead>Reason</TableHead>
                   <TableHead className="text-right">Contact</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((row) => {
+                {rows.map((row) => {
                   const ownerId = row.referral_manager_id || row.assigned_agent_id || row.recruiter_id;
                   const owner = ownerId ? agentMap.get(ownerId) : null;
+                  const chip = dormancyChip(row.days_dormant);
                   return (
                     <TableRow key={row.id}>
                       <TableCell>
@@ -310,7 +272,10 @@ export default function OldApplicants({ kind }: { kind: OldApplicantKind }) {
                         <div className="text-xs text-muted-foreground">{row.email}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{displayStatus(row)}</Badge>
+                        <Badge variant="outline" className={chip.cls}>
+                          <Clock3 className="mr-1 h-3 w-3" />
+                          {chip.label}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -328,23 +293,15 @@ export default function OldApplicants({ kind }: { kind: OldApplicantKind }) {
                           <span>{owner || "Unassigned"}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Clock3 className="h-4 w-4" />
-                          {lastActivity(row)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[260px] truncate text-sm text-muted-foreground">
-                        {row.termination_reason || row.referral_source || row.status || "—"}
-                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{lastActivity(row)}</TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
                           {row.phone ? (
-                            <Button asChild variant="ghost" size="icon" title="Call">
+                            <Button asChild variant="ghost" size="icon" aria-label="Call">
                               <a href={`tel:${row.phone}`}><Phone className="h-4 w-4" /></a>
                             </Button>
                           ) : null}
-                          <Button asChild variant="ghost" size="icon" title="Email">
+                          <Button asChild variant="ghost" size="icon" aria-label="Email">
                             <a href={`mailto:${row.email}`}><Mail className="h-4 w-4" /></a>
                           </Button>
                         </div>
@@ -356,6 +313,21 @@ export default function OldApplicants({ kind }: { kind: OldApplicantKind }) {
             </Table>
           )}
         </CardContent>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-border/40 p-3 text-sm">
+            <div className="text-muted-foreground">
+              Page {page + 1} of {totalPages} · {total} total
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+                Previous
+              </Button>
+              <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

@@ -61,7 +61,16 @@ function getBounds(period: Period, customFrom: string, customTo: string): Metric
 }
 
 function pickOwner(row: any): string | null {
-  return row.referral_manager_id || row.recruiter_id || row.assigned_agent_id || row.agent_id || null;
+  // P3/P4: referral_recruiter_id is the canonical credit field; fall back to
+  // the legacy referral_manager_id chain.
+  return (
+    row.referral_recruiter_id ||
+    row.referral_manager_id ||
+    row.recruiter_id ||
+    row.assigned_agent_id ||
+    row.agent_id ||
+    null
+  );
 }
 
 export default function Leaderboard() {
@@ -164,7 +173,7 @@ export default function Leaderboard() {
       if (board === "recruiting") {
         const { data } = await supabase
           .from("applications")
-          .select("assigned_agent_id, referral_manager_id, recruiter_id, status, license_status, contracted_at, first_deal_at, created_at")
+          .select("assigned_agent_id, referral_recruiter_id, referral_manager_id, recruiter_id, status, license_status, contracted_at, first_deal_at, created_at")
           .gte("created_at", bounds.startIso)
           .lt("created_at", bounds.endIso)
           .is("terminated_at", null);

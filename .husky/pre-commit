@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# wave-28 (2026-06-07): pre-commit guard for VSL videoId sync invariant.
+#
+# Activated via `git config core.hooksPath .husky` (set by `npm run prepare`).
+# No husky dependency required — we use git's built-in hooksPath.
+#
+# Why pre-commit instead of just relying on the vite plugin:
+#   The wave-27 cross-session race (commits e24adf69 -> 2ec9b695 -> 2b21d6df)
+#   proved the Vite plugin only catches drift AFTER the bad commit is pushed
+#   to Vercel. A parallel Claude session bumped BUMP_VERSION without the
+#   videoId and broke the Vercel build of its own ratchet. Pre-commit catches
+#   it locally before push.
+#
+# Fast-fail: only runs the check when files that could affect the sync
+# invariant are staged. Saves ~120ms on unrelated commits.
+set -e
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+
+if echo "$STAGED" | grep -qE '^(index\.html|src/components/landing/HeroSection\.tsx|scripts/check-vsl-sync\.mjs|vite\.config\.ts)$'; then
+  echo "[pre-commit] VSL-affecting file staged — running check-vsl-sync…"
+  node scripts/check-vsl-sync.mjs
+fi

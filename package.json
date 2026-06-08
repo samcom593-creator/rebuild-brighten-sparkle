@@ -16,13 +16,15 @@
     "check:sync-reliability": "node scripts/check-sync-reliability.mjs",
     "check:forbidden-language": "node scripts/check-forbidden-language.mjs",
     "check:unsafe-supabase-catch": "node scripts/check-unsafe-supabase-catch.mjs",
+    "check:vsl-sync": "node scripts/check-vsl-sync.mjs",
     "smoke": "node scripts/route-smoke.mjs",
     "smoke:prod": "BASE=https://apex-financial.org node scripts/route-smoke.mjs",
     "lighthouse:prod": "node scripts/lighthouse-prod.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "verify:core": "npm run check:forbidden-language && npm run check:metric-truth && npm run check:sync-reliability && npm run check:unsafe-supabase-catch && npx tsc --noEmit && npm run build"
+    "prepare": "git config core.hooksPath .husky 2>/dev/null || true",
+    "verify:core": "npm run check:forbidden-language && npm run check:metric-truth && npm run check:sync-reliability && npm run check:unsafe-supabase-catch && npm run check:vsl-sync && npx tsc --noEmit && npm run build"
   },
   "dependencies": {
     "@alloc/quick-lru": "5.2.0",

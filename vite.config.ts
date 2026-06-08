@@ -233,10 +233,26 @@ export default defineConfig(({ mode }) => ({
             // + scheduler + small shadcn helpers (cva + tailwind-merge are
             // widely consumed by shadcn variants and belong with React-tier
             // code, not pulled into vendor-charts).
+            //
+            // wave-36 (2026-06-08): add @radix-ui/react-slot to vendor-react.
+            // src/components/ui/button.tsx is the ONLY landing-eager radix
+            // consumer (verified via `grep -rE "from ['\"]@radix-ui" src/
+            // components/landing src/components/ui/button.tsx src/components/
+            // ui/glass-card.tsx src/components/ui/section-heading.tsx src/
+            // components/ui/gradient-button.tsx src/components/ui/animated-
+            // counter.tsx` returning only Button.tsx + Slot). With Slot in
+            // vendor-radix, the 47 KB gz vendor-radix chunk gets pulled onto
+            // cold landing via the Button → Slot edge. Promoting Slot into
+            // vendor-react breaks that edge — vendor-radix becomes truly lazy
+            // (only Testimonials, BenefitsSection, EarningsSection, etc. pull
+            // it via lazy() chunks). vendor-react grows ~1 KB raw / ~0.5 KB gz
+            // (the Slot module is tiny); cold-landing HTTP requests drop by
+            // 1 chunk; cold-landing bytes drop by 47 KB gz. The vendor-radix
+            // chunk hash will change, but its consumers are all already lazy.
             {
               name: "vendor-react",
               priority: 100,
-              test: "[\\\\/]node_modules[\\\\/](react|react-dom|react-router-dom|scheduler|class-variance-authority|tailwind-merge|clsx|react-is|tiny-invariant)[\\\\/]",
+              test: "[\\\\/]node_modules[\\\\/](react|react-dom|react-router-dom|scheduler|class-variance-authority|tailwind-merge|clsx|react-is|tiny-invariant|@radix-ui[\\\\/]react-slot)[\\\\/]",
             },
             {
               name: "vendor-supabase",

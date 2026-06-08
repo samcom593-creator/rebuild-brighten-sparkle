@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 // wave-17 (2026-06-04): Toaster + Sonner moved off the eager entry static
 // graph. Together they pulled @radix-ui/react-toast (vendor-radix slice)
 // + sonner + next-themes (vendor-ui slice) into landing's critical path
@@ -199,27 +199,46 @@ const OldApplicants = lazy(() => import("./pages/OldApplicants"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
-// wave-17: Toasters mount on first idle so any post-LCP toast() call
-// from a navigated route finds the listener already in place. Returns
-// null on the cold landing render — visible cost = 0 bytes pre-LCP.
+// wave-38 (2026-06-08): Toasters now mount on first user interaction (pointer/
+// key/scroll/touch) with a 30s safety net, NOT on requestIdleCallback. Wave-37's
+// live Lighthouse showed vendor-radix STILL on cold-landing transfers (47 KB gz)
+// even after sonner static-imports were lazy-facaded. Root cause traced here:
+// wave-17 idle-prefetched both `@/components/ui/toaster` (shadcn — pulls
+// @radix-ui/react-toast = vendor-radix) and `@/components/ui/sonner` ~1s after
+// mount, well inside Lighthouse's audit window. Both toaster libraries queue
+// toasts to a module-level store before mount, so deferring the mount until first
+// real user interaction loses no toasts — sonner + shadcn replay queued toasts
+// when Toaster renders. Lighthouse runs without simulated interaction, so its
+// audit window measures zero toaster fetch → vendor-radix drops off cold-landing
+// transfers. Safety net (30s) covers the rare case where a silent toast (e.g.
+// queryClient retry) needs to surface before the user touches the page.
 function DeferredToasters() {
+  const [armed, setArmed] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const fire = () => {
-      void import("@/components/ui/toaster");
-      void import("@/components/ui/sonner");
+    let done = false;
+    const arm = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      setArmed(true);
     };
-    const w = window as typeof window & {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
+    const events: Array<keyof WindowEventMap> = [
+      "pointerdown",
+      "keydown",
+      "scroll",
+      "touchstart",
+    ];
+    const opts = { passive: true } as const;
+    const cleanup = () => events.forEach((e) => window.removeEventListener(e, arm, opts));
+    events.forEach((e) => window.addEventListener(e, arm, opts));
+    const safety = window.setTimeout(arm, 30000);
+    return () => {
+      cleanup();
+      window.clearTimeout(safety);
     };
-    if (typeof w.requestIdleCallback === "function") {
-      const handle = w.requestIdleCallback(fire, { timeout: 2000 });
-      return () => w.cancelIdleCallback?.(handle);
-    }
-    const t = window.setTimeout(fire, 1000);
-    return () => window.clearTimeout(t);
   }, []);
+  if (!armed) return null;
   return (
     <Suspense fallback={null}>
       <ToasterShadcn />

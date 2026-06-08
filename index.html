@@ -103,14 +103,40 @@
     <link rel="canonical" href="https://apex-financial.org" />
     <link rel="icon" type="image/png" href="https://storage.googleapis.com/gpt-engineer-file-uploads/VdcG1SqfUFTigN8tdIEC0A3rtMr2/uploads/1769193440683-6882deee13d64_ApexLogo.png" />
     
-    <!-- Elite Typography: Syne (display) + DM Sans (body) — trimmed weights
-         to slash font-CSS size: was 4 weights × Syne + 3 × DM Sans = 7
-         downloads, now 2 × Syne + 2 × DM Sans = 4. Saves ~250ms on
-         mobile per Lighthouse 2026-05-18. font-display:swap keeps
-         text visible during load. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
+    <!-- wave-33 (2026-06-08): Self-hosted variable fonts. Was: external Google
+         Fonts CSS at fonts.googleapis.com + woff2 files at fonts.gstatic.com.
+         That setup forced (1) two cross-origin DNS+TLS handshakes even with
+         preconnect, (2) a render-blocking external stylesheet fetch before
+         FCP could fire, (3) chained-request waterfall (CSS → discover font URL
+         → fetch font). Now: 2 same-origin variable-font woff2 files (DM Sans
+         covers weights 400+500 from a single 36 KB woff2; Syne covers 700+800
+         from a single 34 KB woff2 — both are variable fonts on the weight
+         axis, so one file serves both weights). @font-face rules inline below
+         so the browser can parse them as part of the HTML stream without a
+         second roundtrip. Preload tags discover the woff2 URLs before the
+         <style> block parses. Projected: -150-300ms FCP, -100-250ms LCP on
+         mobile per Lighthouse Critical-Path (eliminates the render-blocking
+         external stylesheet from the critical path). -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/dm-sans.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/syne.woff2" crossorigin />
+    <style>
+      @font-face {
+        font-family: 'DM Sans';
+        font-style: normal;
+        font-weight: 400 500;
+        font-display: swap;
+        src: url('/fonts/dm-sans.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: 'Syne';
+        font-style: normal;
+        font-weight: 700 800;
+        font-display: swap;
+        src: url('/fonts/syne.woff2') format('woff2');
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+    </style>
     
     <!-- Supabase Preconnect -->
     <link rel="preconnect" href="https://xrzweoneiieddzxogewk.supabase.co" />

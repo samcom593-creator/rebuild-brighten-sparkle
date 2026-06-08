@@ -29,8 +29,15 @@ function vslSyncCheckPlugin() {
       }
       const heroId = heroMatch[1];
 
+      // wave-35 (2026-06-08): surface #1 (preload) moved to a same-origin
+      // path under public/img/hero-poster-<videoId>.jpg to kill the cross-
+      // origin DNS+TCP+TLS handshake on the LCP element. Surface #2
+      // (VideoObject thumbnailUrl) intentionally keeps i.ytimg.com because
+      // Google/Bing/AI-overview prefer canonical YouTube CDN URLs for
+      // VideoObject schema attribution — the two surfaces now check
+      // different URL shapes, but both still rotate on a VSL swap.
       const checks: Array<{ label: string; pattern: RegExp }> = [
-        { label: "<link rel=\"preload\"> i.ytimg.com poster", pattern: /i\.ytimg\.com\/vi\/([A-Za-z0-9_-]{8,15})\/hqdefault\.jpg/g },
+        { label: "<link rel=\"preload\"> self-hosted hero poster", pattern: /href="\/img\/hero-poster-([A-Za-z0-9_-]{8,15})\.jpg"/g },
         { label: "VideoObject thumbnailUrl", pattern: /"thumbnailUrl":"https:\/\/i\.ytimg\.com\/vi\/([A-Za-z0-9_-]{8,15})\/hqdefault\.jpg"/g },
         { label: "VideoObject contentUrl", pattern: /"contentUrl":"https:\/\/www\.youtube\.com\/watch\?v=([A-Za-z0-9_-]{8,15})"/g },
         { label: "VideoObject embedUrl", pattern: /"embedUrl":"https:\/\/www\.youtube-nocookie\.com\/embed\/([A-Za-z0-9_-]{8,15})"/g },
@@ -68,7 +75,7 @@ function vslSyncCheckPlugin() {
 
       if (drift.length > 0) {
         throw new Error(
-          `[apex-vsl-sync-check] index.html VSL references DRIFTED from HeroSection.tsx LazyYouTube videoId="${heroId}":\n${drift.join("\n")}\n\nFix: update every i.ytimg.com / youtube.com / youtube-nocookie.com URL in index.html to videoId ${heroId}, AND bump the BUMP_VERSION string in the cache-bust script at index.html:14 to include "${heroId}" (e.g. "2026-MM-DD-new-vsl-${heroId}"). The wave-25 regression (commit 2da7ddc7) is exactly what this guard prevents.`
+          `[apex-vsl-sync-check] index.html VSL references DRIFTED from HeroSection.tsx LazyYouTube videoId="${heroId}":\n${drift.join("\n")}\n\nFix: update the /img/hero-poster-<id>.jpg preload + every i.ytimg.com / youtube.com / youtube-nocookie.com URL in index.html to videoId ${heroId}; also commit a fresh public/img/hero-poster-${heroId}.jpg (curl https://i.ytimg.com/vi/${heroId}/hqdefault.jpg -o public/img/hero-poster-${heroId}.jpg); AND bump the BUMP_VERSION string in the cache-bust script at index.html:14 to include "${heroId}" (e.g. "2026-MM-DD-new-vsl-${heroId}"). The wave-25 regression (commit 2da7ddc7) is exactly what this guard prevents.`
         );
       }
     },

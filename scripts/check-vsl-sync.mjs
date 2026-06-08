@@ -10,9 +10,12 @@
  * before push, so a parallel session can't ship a state that fails the rule it
  * just enforced.
  *
- * Same 5 drift surfaces as the Vite plugin:
- *   1. <link rel="preload"> i.ytimg.com hqdefault.jpg
- *   2. VideoObject thumbnailUrl
+ * Same 5 drift surfaces as the Vite plugin (wave-35: surface #1 moved
+ * same-origin to public/img/hero-poster-<videoId>.jpg; the VideoObject
+ * thumbnailUrl at surface #2 still references i.ytimg.com for canonical
+ * SERP/AI-overview attribution — they are intentionally split now):
+ *   1. <link rel="preload"> /img/hero-poster-<videoId>.jpg (self-hosted)
+ *   2. VideoObject thumbnailUrl i.ytimg.com hqdefault.jpg (SEO metadata)
  *   3. VideoObject contentUrl
  *   4. VideoObject embedUrl
  *   5. BUMP_VERSION must contain current videoId
@@ -53,10 +56,10 @@ if (!heroMatch) {
 const heroId = heroMatch[1];
 
 const checks = [
-  { label: '<link rel="preload"> i.ytimg.com poster', pattern: /i\.ytimg\.com\/vi\/([A-Za-z0-9_-]{8,15})\/hqdefault\.jpg/g },
-  { label: 'VideoObject thumbnailUrl',                pattern: /"thumbnailUrl":"https:\/\/i\.ytimg\.com\/vi\/([A-Za-z0-9_-]{8,15})\/hqdefault\.jpg"/g },
-  { label: 'VideoObject contentUrl',                  pattern: /"contentUrl":"https:\/\/www\.youtube\.com\/watch\?v=([A-Za-z0-9_-]{8,15})"/g },
-  { label: 'VideoObject embedUrl',                    pattern: /"embedUrl":"https:\/\/www\.youtube-nocookie\.com\/embed\/([A-Za-z0-9_-]{8,15})"/g },
+  { label: '<link rel="preload"> self-hosted hero poster', pattern: /href="\/img\/hero-poster-([A-Za-z0-9_-]{8,15})\.jpg"/g },
+  { label: 'VideoObject thumbnailUrl',                     pattern: /"thumbnailUrl":"https:\/\/i\.ytimg\.com\/vi\/([A-Za-z0-9_-]{8,15})\/hqdefault\.jpg"/g },
+  { label: 'VideoObject contentUrl',                       pattern: /"contentUrl":"https:\/\/www\.youtube\.com\/watch\?v=([A-Za-z0-9_-]{8,15})"/g },
+  { label: 'VideoObject embedUrl',                         pattern: /"embedUrl":"https:\/\/www\.youtube-nocookie\.com\/embed\/([A-Za-z0-9_-]{8,15})"/g },
 ];
 
 const drift = [];
@@ -83,7 +86,7 @@ if (!bumpMatch) {
 if (drift.length > 0) {
   console.error(`[check-vsl-sync] index.html VSL references DRIFTED from HeroSection.tsx LazyYouTube videoId="${heroId}":`);
   console.error(drift.join("\n"));
-  console.error(`\nFix: update every i.ytimg.com / youtube.com / youtube-nocookie.com URL in index.html to videoId ${heroId}, AND bump the BUMP_VERSION string in the cache-bust script at index.html:14 to include "${heroId}" (e.g. "2026-MM-DD-new-vsl-${heroId}"). The wave-25 regression (commit 2da7ddc7) is exactly what this guard prevents.`);
+  console.error(`\nFix: update the /img/hero-poster-<id>.jpg preload + every i.ytimg.com / youtube.com / youtube-nocookie.com URL in index.html to videoId ${heroId}; also commit a fresh public/img/hero-poster-${heroId}.jpg (curl https://i.ytimg.com/vi/${heroId}/hqdefault.jpg -o public/img/hero-poster-${heroId}.jpg); AND bump the BUMP_VERSION string in the cache-bust script at index.html:14 to include "${heroId}" (e.g. "2026-MM-DD-new-vsl-${heroId}"). The wave-25 regression (commit 2da7ddc7) is exactly what this guard prevents.`);
   process.exit(1);
 }
 

@@ -144,13 +144,16 @@
 
     <!-- LCP preload — hero YouTube poster image is the largest above-the-fold
          paint target on the landing. Preloading drops LCP another ~500ms
-         per Lighthouse Critical-Path. The poster is i.ytimg.com so we also
-         preconnect to that origin. Video id must stay in sync with
+         per Lighthouse Critical-Path. Video id must stay in sync with
          HeroSection.tsx LazyYouTube `videoId` — commit 76f46fe5 swapped
          the VSL to E2VJ1v85IRE; the old v4Fp3FL9ITo preload was wasting
-         ~25 KB and forcing a late-discovery fetch of the real LCP target. -->
-    <link rel="preconnect" href="https://i.ytimg.com" crossorigin />
-    <link rel="preload" as="image" href="https://i.ytimg.com/vi/E2VJ1v85IRE/hqdefault.jpg" fetchpriority="high" />
+         ~25 KB and forcing a late-discovery fetch of the real LCP target.
+         wave-35 (2026-06-08): poster self-hosted under public/img/. The
+         i.ytimg.com preconnect is GONE — no more cross-origin DNS+TCP+TLS
+         handshake on cold-landing LCP. Vercel edge-caches the JPG. The
+         VideoObject thumbnailUrl below keeps i.ytimg.com for SERP/AI-overview
+         canonical attribution. -->
+    <link rel="preload" as="image" href="/img/hero-poster-E2VJ1v85IRE.jpg" fetchpriority="high" />
 
     <!-- Analytics: GA4 + PostHog + Meta Pixel are all env-gated in src/lib/analyticsBoot.ts
          (imported from main.tsx). If a vendor's env var is missing at build,

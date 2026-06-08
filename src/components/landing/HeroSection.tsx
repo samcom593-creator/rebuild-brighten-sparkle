@@ -44,9 +44,14 @@ function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
           {/* hqdefault is 480x360 native — explicit dims + fetchpriority=high
               match the <link rel="preload"> in index.html, telling the browser
               "this is the LCP candidate, paint it first." Drops mobile LCP
-              another ~600ms per Lighthouse 2026-06-03. */}
+              another ~600ms per Lighthouse 2026-06-03.
+              wave-35 (2026-06-08): poster now served same-origin from
+              public/img/hero-poster-<videoId>.jpg instead of i.ytimg.com.
+              Eliminates the cross-origin DNS+TCP+TLS handshake on the LCP
+              fetch (was ~100-200ms cold). Vercel edge-caches it; the woff2
+              preconnect is gone (no longer needed). */}
           <img
-            src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+            src={`/img/hero-poster-${videoId}.jpg`}
             alt={title}
             width={480}
             height={360}

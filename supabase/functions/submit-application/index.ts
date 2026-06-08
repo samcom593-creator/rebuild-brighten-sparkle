@@ -969,6 +969,12 @@ async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): 
   const resolvedAssigned = data.selectedReferralAgentId || data.recruiterId || SAM_DEFAULT_AGENT_ID;
   const resolvedRecruiter = data.recruiterId || SAM_DEFAULT_AGENT_ID;
   const resolvedReferralManager = data.selectedReferralAgentId || data.recruiterId || SAM_DEFAULT_AGENT_ID;
+  // P3 (2026-06-08): referral_recruiter_id is the canonical CREDIT column.
+  // Always populate it from the explicit recruiterId, or the selected
+  // referral agent. Falls back to NULL (not Sam) so the recruiting
+  // leaderboard doesn't credit Sam by default — only when someone is
+  // actually attributed.
+  const resolvedReferralRecruiter = data.recruiterId || data.selectedReferralAgentId || null;
   const consent = data.consent;
 
   const { data: existingApp } = await supabaseAdmin
@@ -1006,6 +1012,9 @@ async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): 
     update.assigned_agent_id = resolvedAssigned;
     update.recruiter_id = resolvedRecruiter;
     update.referral_manager_id = resolvedReferralManager;
+    if (resolvedReferralRecruiter) {
+      update.referral_recruiter_id = resolvedReferralRecruiter;
+    }
     update.qualified_at = new Date().toISOString();
     update.referral_source = data.utmMedium === "paid_social" ? "paid_social" : (data.source ?? "paid_social");
     update.referral_source_detail = data.utmCampaign ?? data.utmSource ?? data.source ?? null;
@@ -1049,6 +1058,7 @@ async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): 
     assigned_agent_id: resolvedAssigned,
     recruiter_id: resolvedRecruiter,
     referral_manager_id: resolvedReferralManager,
+    referral_recruiter_id: resolvedReferralRecruiter,
     status: "quick_qualified",
     qualified_at: new Date().toISOString(),
     sms_consent_given: consent?.smsConsentGiven ?? false,
@@ -1193,6 +1203,9 @@ const handler = async (req: Request): Promise<Response> => {
     const resolvedAssigned = data.selectedReferralAgentId || data.recruiterId || fallbackAgentId;
     const resolvedRecruiter = data.recruiterId || fallbackAgentId;
     const resolvedReferralManager = data.selectedReferralAgentId || data.recruiterId || fallbackAgentId;
+    // P3 (2026-06-08): canonical CREDIT column — NULL when no explicit referrer
+    // so the recruiting leaderboard doesn't auto-credit Sam.
+    const resolvedReferralRecruiter = data.recruiterId || data.selectedReferralAgentId || null;
 
     const buildApplicationPayload = (includeRawId: boolean) => ({
       ...(includeRawId && raw?.id && typeof raw.id === "string" && uuidRegex.test(raw.id)
@@ -1238,6 +1251,7 @@ const handler = async (req: Request): Promise<Response> => {
       assigned_agent_id: resolvedAssigned,
       recruiter_id: resolvedRecruiter,
       referral_manager_id: resolvedReferralManager,
+      referral_recruiter_id: resolvedReferralRecruiter,
 
       status: "new",
       reviewed_at: null,

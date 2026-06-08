@@ -678,3 +678,6 @@ verify_jwt = false
 
 [functions.poke-webhook]
 verify_jwt = false
+
+[functions.poke-pusher]
+verify_jwt = false

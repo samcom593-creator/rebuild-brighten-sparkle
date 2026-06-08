@@ -60,7 +60,7 @@ export function MyReferralLinkCard() {
       const { data, error } = await looseSupabase
         .from<Record<string, unknown>>("manager_invite_links")
         .select("invite_code")
-        .eq("agent_id", agentQ.data!.id)
+        .eq("manager_agent_id", agentQ.data!.id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -78,7 +78,7 @@ export function MyReferralLinkCard() {
       const { error } = await looseSupabase
         .from<Record<string, unknown>>("manager_invite_links")
         .insert({
-          agent_id: agentQ.data!.id,
+          manager_agent_id: agentQ.data!.id,
           invite_code: code,
           referrer_role: "agent",
           is_active: true,

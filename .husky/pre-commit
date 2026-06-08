@@ -62,3 +62,17 @@ if match '\.(tsx?|jsx?|md|html)$'; then
   echo "[pre-commit] Copy-affecting file staged — running check:forbidden-language…"
   node scripts/check-forbidden-language.mjs
 fi
+
+# ---------- check-cold-landing-sonner (wave-37) ----------
+# Trigger: any src/ tsx|ts|jsx|js change, the lazyToast wrapper, or the script
+# itself. The script walks the cold-landing static-import graph (~22 files
+# today), so any new edge into sonner from a landing-reachable file fails
+# the commit. Cost: <300ms when fired. Why this matters: sonner is grouped
+# into vendor-ui by vite.config.ts advancedChunks, and vendor-ui statically
+# imports vendor-radix — so one static `from "sonner"` in any cold-landing
+# file drags 22 KB gz vendor-ui + 47 KB gz vendor-radix onto every visitor's
+# first paint (Lighthouse: heaviest-transfers list, wave-32+ surfaces this).
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-cold-landing-sonner\.mjs$)'; then
+  echo "[pre-commit] Cold-landing-reachable file staged — running check:cold-landing-sonner…"
+  node scripts/check-cold-landing-sonner.mjs
+fi

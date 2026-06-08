@@ -3,7 +3,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+// wave-37 (2026-06-08): lazy-loaded sonner — same defense as ApexLeadsSection.
+// vendor-ui + vendor-radix were landing on cold-landing transfers via this
+// chunk's static edge. `toast` only fires inside handlePurchase post-click.
+import { toast } from "@/shared/ui/lazyToast";
 
 const features = [
   {

@@ -2,7 +2,11 @@ import { useState } from "react";
 import { Check, Shield, TrendingUp, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+// wave-37 (2026-06-08): lazy-loaded sonner — was the sole static edge dragging
+// vendor-ui (22 KB gz) + vendor-radix (47 KB gz) onto cold landing via this
+// lazy chunk's static-import graph. `toast` only fires post-click; loading
+// sonner on-demand is invisible to users. See src/shared/ui/lazyToast.ts.
+import { toast } from "@/shared/ui/lazyToast";
 import { useNavigate } from "react-router-dom";
 
 const packages = [

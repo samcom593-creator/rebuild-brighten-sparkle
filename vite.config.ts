@@ -249,10 +249,33 @@ export default defineConfig(({ mode }) => ({
             // (the Slot module is tiny); cold-landing HTTP requests drop by
             // 1 chunk; cold-landing bytes drop by 47 KB gz. The vendor-radix
             // chunk hash will change, but its consumers are all already lazy.
+            //
+            // wave-39 (2026-06-08): split react-router-dom OUT of vendor-react
+            // into its own vendor-router chunk. Live Lighthouse for wave-38
+            // (5112a9e5, 17:38Z) surfaced 4 sequential long tasks on the same
+            // vendor-react URL: 267ms + 145ms + 142ms + 113ms = ~670ms of
+            // single-chunk evaluation blocking the main thread (TBT 88 → 483ms
+            // because once vendor-radix was off-graph, vendor-react became the
+            // dominant cost surface). react-router-dom (+ its @remix-run/router
+            // dependency) is ~40 KB raw / ~12-15 KB gz of router code that the
+            // browser can fetch + parse + compile in parallel with the react
+            // runtime when it lives in a sibling chunk. Splitting expectations:
+            // vendor-react ~165 → ~125 KB raw / 54 → ~42 KB gz; vendor-router
+            // emerges at ~40 KB raw / ~13 KB gz. Long-task count expected to
+            // drop from 4 hits on vendor-react to ~2 hits on vendor-react +
+            // ~2 hits on vendor-router with each individual task significantly
+            // shorter (browser parallelizes script eval across chunks). Higher
+            // priority (110) ensures router modules win over the broader
+            // vendor-react regex.
+            {
+              name: "vendor-router",
+              priority: 110,
+              test: "[\\\\/]node_modules[\\\\/](react-router-dom|react-router|@remix-run[\\\\/]router)[\\\\/]",
+            },
             {
               name: "vendor-react",
               priority: 100,
-              test: "[\\\\/]node_modules[\\\\/](react|react-dom|react-router-dom|scheduler|class-variance-authority|tailwind-merge|clsx|react-is|tiny-invariant|@radix-ui[\\\\/]react-slot)[\\\\/]",
+              test: "[\\\\/]node_modules[\\\\/](react|react-dom|scheduler|class-variance-authority|tailwind-merge|clsx|react-is|tiny-invariant|@radix-ui[\\\\/]react-slot)[\\\\/]",
             },
             {
               name: "vendor-supabase",

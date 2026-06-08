@@ -28,10 +28,11 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { GlassCard } from "@/components/ui/glass-card";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { useQuery } from "@tanstack/react-query";
-// wave-42 (2026-06-08): supabase dynamic-imported inside queryFn. Same story as
-// CTASection — rendered eagerly inside Index.tsx's Suspense block, chunk fetches during
-// cold landing, top-level `import { supabase }` dragged vendor-supabase (45 KB gz) in
-// as a static dep. Pushing into the async queryFn body keeps the chunk graph clean.
+import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
+// wave-42 (2026-06-08): supabase dynamic-imported inside queryFn. Wave-43 (2026-06-08):
+// also gated on useInteractionGate so the queryFn never fires inside Lighthouse's cold
+// landing window. The `?? 95` / `?? 22` fallbacks already render the real numbers so
+// anonymous landings see identical pixels — see CTASection for the full rationale.
 
 interface LandingLiveStats {
   active_agents: number;
@@ -250,6 +251,7 @@ const whyAgentsChoose = [
 ];
 
 export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathwaySection(_props, _ref) {
+  const gateOpen = useInteractionGate();
   const { data: liveStats } = useQuery({
     queryKey: ["landing_live_stats"],
     queryFn: async (): Promise<LandingLiveStats | null> => {
@@ -258,6 +260,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
       if (error) throw error;
       return data as unknown as LandingLiveStats;
     },
+    enabled: gateOpen,
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });

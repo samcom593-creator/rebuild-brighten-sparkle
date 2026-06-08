@@ -2,12 +2,14 @@ import { forwardRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-// wave-42 (2026-06-08): supabase dynamic-imported inside queryFn. CTASection is a lazy
-// chunk that Index.tsx renders eagerly inside a Suspense boundary, so the chunk fetches
-// during cold landing. A top-level `import { supabase }` dragged vendor-supabase (45 KB
-// gz) into the cold-landing modulepreload graph as a static dep of this chunk. Pushing
-// the import into the async queryFn body means CTASection's chunk has zero static edge
-// to vendor-supabase — supabase only loads if React Query actually fires the queryFn.
+import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
+// wave-42 (2026-06-08): supabase dynamic-imported inside queryFn so the chunk graph
+// has no static edge to vendor-supabase. Wave-43 (2026-06-08): wave-42 wasn't enough —
+// useQuery still fires queryFn sync-on-mount, which runs the dynamic import inside
+// Lighthouse's cold-landing measurement window and re-drags vendor-supabase (45 KB gz)
+// onto cold-landing transfers. Wave-43 gates `enabled` on useInteractionGate, matching
+// wave-41's LiveStats + RecentHires pattern. The `??95` fallback already renders the
+// real number, so anonymous landings see the same pixels until they scroll/click.
 
 const benefits = [
   "No experience required",
@@ -24,6 +26,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
   // Pull the real agent count from landing_live_stats() so the closing CTA
   // never claims a number that isn't true. Prior copy said "thousands of
   // agents" — actual roster is ~95. Fake-success killer.
+  const gateOpen = useInteractionGate();
   const { data: liveStats } = useQuery({
     queryKey: ["landing_live_stats"],
     queryFn: async (): Promise<LandingLiveStats | null> => {
@@ -32,6 +35,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
       if (error) throw error;
       return data as unknown as LandingLiveStats;
     },
+    enabled: gateOpen,
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });

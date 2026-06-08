@@ -76,3 +76,17 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-cold-landing-sonner\.mjs$)'; then
   echo "[pre-commit] Cold-landing-reachable file staged — running check:cold-landing-sonner…"
   node scripts/check-cold-landing-sonner.mjs
 fi
+
+# ---------- check-cold-landing-supabase-queryFn (wave-44) ----------
+# Trigger: any src/ tsx|ts change. Walks cold-landing static-import graph and
+# fails on any reachable file that calls useQuery+supabase-dynamic-import
+# without useInteractionGate. Why this matters: even after wave-42 killed all
+# static cold-landing supabase edges, queryFn-on-mount still pulled
+# vendor-supabase (45 KB gz) into Lighthouse's cold-landing transfer log via
+# dynamic import resolved during the audit window. Wave-43 fixed CTASection +
+# CareerPathwaySection; this guard prevents the next eager landing component
+# from re-opening the leak. Opt-out marker: `cold-landing-supabase-queryFn-allow`.
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-cold-landing-supabase-queryFn\.mjs$)'; then
+  echo "[pre-commit] Cold-landing-reachable file staged — running check:cold-landing-supabase-queryFn…"
+  node scripts/check-cold-landing-supabase-queryFn.mjs
+fi

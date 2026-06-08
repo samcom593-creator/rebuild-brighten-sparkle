@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { looseSupabase } from "@/lib/looseSupabase";
 
 type OldApplicantKind = "managers" | "licensedRecruiters";
 
@@ -62,10 +62,48 @@ interface AgentName {
   name: string;
 }
 
-const db = supabase as any;
-
 function fullName(row: OldApplicantRow): string {
   return `${row.first_name ?? ""} ${row.last_name ?? ""}`.trim() || row.email;
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function boolOrNull(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+function profileName(profile: unknown): string | null {
+  if (!profile || typeof profile !== "object") return null;
+  const value = (profile as Record<string, unknown>).full_name;
+  return stringOrNull(value);
+}
+
+function toOldApplicant(row: Record<string, unknown>): OldApplicantRow {
+  return {
+    id: String(row.id),
+    first_name: String(row.first_name ?? ""),
+    last_name: String(row.last_name ?? ""),
+    email: String(row.email ?? ""),
+    phone: stringOrNull(row.phone),
+    state: stringOrNull(row.state),
+    status: stringOrNull(row.status),
+    license_status: stringOrNull(row.license_status),
+    license_progress: stringOrNull(row.license_progress),
+    hiring_scope_at_intake: stringOrNull(row.hiring_scope_at_intake),
+    referral_source: stringOrNull(row.referral_source),
+    assigned_agent_id: stringOrNull(row.assigned_agent_id),
+    referral_manager_id: stringOrNull(row.referral_manager_id),
+    recruiter_id: stringOrNull(row.recruiter_id),
+    is_ghosted: boolOrNull(row.is_ghosted),
+    created_at: String(row.created_at),
+    updated_at: stringOrNull(row.updated_at),
+    closed_at: stringOrNull(row.closed_at),
+    terminated_at: stringOrNull(row.terminated_at),
+    termination_reason: stringOrNull(row.termination_reason),
+    notes: stringOrNull(row.notes),
+  };
 }
 
 function isOld(row: OldApplicantRow): boolean {
@@ -126,13 +164,13 @@ export default function OldApplicants({ kind }: { kind: OldApplicantKind }) {
     queryKey: ["old-applicants", kind],
     staleTime: 2 * 60_000,
     queryFn: async (): Promise<OldApplicantRow[]> => {
-      const { data, error } = await db
-        .from("applications")
+      const { data, error } = await looseSupabase
+        .from<Record<string, unknown>>("applications")
         .select("id, first_name, last_name, email, phone, state, status, license_status, license_progress, hiring_scope_at_intake, referral_source, assigned_agent_id, referral_manager_id, recruiter_id, is_ghosted, created_at, updated_at, closed_at, terminated_at, termination_reason, notes")
         .order("updated_at", { ascending: false })
         .limit(700);
       if (error) throw error;
-      return ((data ?? []) as OldApplicantRow[]).filter(isOld);
+      return (data ?? []).map(toOldApplicant).filter(isOld);
     },
   });
 
@@ -151,14 +189,14 @@ export default function OldApplicants({ kind }: { kind: OldApplicantKind }) {
     enabled: agentIds.length > 0,
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<AgentName[]> => {
-      const { data, error } = await db
-        .from("agents")
+      const { data, error } = await looseSupabase
+        .from<Record<string, unknown>>("agents")
         .select("id, display_name, profile:profiles!agents_profile_id_fkey(full_name)")
         .in("id", agentIds);
       if (error) throw error;
-      return ((data ?? []) as any[]).map((agent) => ({
-        id: agent.id,
-        name: agent.profile?.full_name || agent.display_name || "Unknown",
+      return (data ?? []).map((agent) => ({
+        id: String(agent.id),
+        name: profileName(agent.profile) || String(agent.display_name || "Unknown"),
       }));
     },
   });

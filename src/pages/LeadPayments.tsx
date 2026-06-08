@@ -14,7 +14,6 @@ import {
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
@@ -40,6 +39,7 @@ import {
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
+import { looseSupabase } from "@/lib/looseSupabase";
 
 type LeadType = "A" | "B" | "C" | "Free";
 type PaymentStatus = "pending" | "confirmed" | "waived" | "issue";
@@ -68,7 +68,6 @@ interface PaymentRow {
   payer_name?: string | null;
 }
 
-const db = supabase as any;
 const LEAD_TYPES: LeadType[] = ["A", "B", "C", "Free"];
 const STATUSES: PaymentStatus[] = ["pending", "confirmed", "waived", "issue"];
 
@@ -84,8 +83,44 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function profileName(profile: unknown): string | null {
+  if (!profile || typeof profile !== "object") return null;
+  const value = (profile as Record<string, unknown>).full_name;
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function profileEmail(profile: unknown): string | null {
+  if (!profile || typeof profile !== "object") return null;
+  const value = (profile as Record<string, unknown>).email;
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
 function money(value: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function toPaymentRow(row: Record<string, unknown>): PaymentRow {
+  return {
+    id: String(row.id),
+    agent_id: String(row.agent_id),
+    week_start: String(row.week_start),
+    tier: String(row.tier ?? ""),
+    paid: typeof row.paid === "boolean" ? row.paid : null,
+    marked_at: stringOrNull(row.marked_at),
+    payment_method: stringOrNull(row.payment_method),
+    amount: typeof row.amount === "number" || typeof row.amount === "string" ? row.amount : null,
+    payment_date: stringOrNull(row.payment_date),
+    venmo_reference: stringOrNull(row.venmo_reference),
+    lead_type: stringOrNull(row.lead_type),
+    assigned_rep: stringOrNull(row.assigned_rep),
+    notes: stringOrNull(row.notes),
+    payment_status: stringOrNull(row.payment_status),
+    payer_name: stringOrNull(row.payer_name),
+  };
 }
 
 function rowAmount(row: PaymentRow): number {
@@ -133,18 +168,18 @@ export default function LeadPayments() {
     enabled: !!user && isAdmin,
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<AgentOption[]> => {
-      const { data, error } = await db
-        .from("agents")
+      const { data, error } = await looseSupabase
+        .from<Record<string, unknown>>("agents")
         .select("id, display_name, user_id, profile:profiles!agents_profile_id_fkey(full_name,email)")
         .eq("is_deactivated", false)
         .order("display_name", { ascending: true })
         .limit(800);
       if (error) throw error;
-      return ((data ?? []) as any[])
+      return (data ?? [])
         .map((agent) => ({
-          id: agent.id,
-          name: agent.profile?.full_name || agent.display_name || "Unnamed agent",
-          email: agent.profile?.email || null,
+          id: String(agent.id),
+          name: profileName(agent.profile) || String(agent.display_name || "Unnamed agent"),
+          email: profileEmail(agent.profile),
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
     },
@@ -155,13 +190,13 @@ export default function LeadPayments() {
     enabled: !!user && isAdmin,
     staleTime: 60_000,
     queryFn: async (): Promise<PaymentRow[]> => {
-      const { data, error } = await db
-        .from("lead_payment_tracking")
+      const { data, error } = await looseSupabase
+        .from<Record<string, unknown>>("lead_payment_tracking")
         .select("*")
         .order("marked_at", { ascending: false, nullsFirst: false })
         .limit(500);
       if (error) throw error;
-      return (data ?? []) as PaymentRow[];
+      return (data ?? []).map(toPaymentRow);
     },
   });
 
@@ -237,7 +272,7 @@ export default function LeadPayments() {
         payment_status: form.leadType === "Free" ? "waived" : form.status,
         payer_name: agent?.name ?? null,
       };
-      const { error } = await db
+      const { error } = await looseSupabase
         .from("lead_payment_tracking")
         .upsert(payload, { onConflict: "agent_id,week_start,tier" });
       if (error) throw error;
@@ -259,7 +294,7 @@ export default function LeadPayments() {
   const updateStatus = useMutation({
     mutationFn: async ({ row, status }: { row: PaymentRow; status: PaymentStatus }) => {
       const paid = status === "confirmed" || status === "waived";
-      const { error } = await db
+      const { error } = await looseSupabase
         .from("lead_payment_tracking")
         .update({
           paid,

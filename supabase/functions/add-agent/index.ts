@@ -284,9 +284,15 @@ const handler = async (req: Request): Promise<Response> => {
     const tCarriers = (body as any).transferCarriers as string | undefined;
     const tWriting = (body as any).transferWritingNumbers as string | undefined;
     const tUpline = (body as any).transferPreviousUpline as string | undefined;
-    if (transferNeeded && newAgent && (tCarriers || tWriting || tUpline)) {
+    if (transferNeeded && newAgent) {
+      const nowIso = new Date().toISOString();
       const blockLines = [
         "TRANSFER REQUEST (from Add Agent form)",
+        "",
+        `Owner: ${managerId}`,
+        `State: Needs Transfer`,
+        `Created: ${nowIso}`,
+        `Next action: Confirm carrier releases and writing-number transfer requirements`,
         "",
         `Carriers: ${tCarriers ?? "(not provided)"}`,
         `Writing numbers: ${tWriting ?? "(not provided)"}`,
@@ -299,7 +305,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
       // Stamp the agent row so dashboards can flag transfer agents
       await supabaseAdmin.from("agents").update({
-        notes: `[TRANSFER PENDING] ${tCarriers ?? ""}`.slice(0, 500),
+        notes: `[NEEDS TRANSFER] owner=${managerId} created=${nowIso} next=Confirm carrier releases ${tCarriers ?? ""}`.slice(0, 500),
       }).eq("id", newAgent.id);
       console.log(`Added transfer block note for agent ${newAgent.id}`);
     }

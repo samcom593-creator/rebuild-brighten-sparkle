@@ -40,7 +40,7 @@ export default function MyNotifications() {
         .order("created_at", { ascending: false })
         .limit(150);
       if (error) throw error;
-      return filterActionableNotifications((data ?? []) as any[]) as NotifRow[];
+      return filterActionableNotifications((data ?? []) as Array<NotifRow & Record<string, unknown>>) as NotifRow[];
     },
   });
 

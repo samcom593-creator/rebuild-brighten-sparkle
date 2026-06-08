@@ -681,7 +681,7 @@ function ExecutiveDashboard({
         eyebrow={role === "admin" ? "Apex Financial · CEO Command" : "Manager · Command"}
         eyebrowIcon={<ShieldCheck className="h-3 w-3" />}
         title={title}
-        subtitle="Production, recruiting, lead inventory, Stripe, and integration state — every number sourced from live tables, with explicit unavailable states instead of filler."
+        subtitle="Production, recruiting, lead inventory, Venmo lead payments, and integration state — every number sourced from live tables, with explicit unavailable states instead of filler."
         actions={
           <>
             <Badge variant="outline" className="text-xs">{snapshot.scopeLabel}</Badge>
@@ -738,11 +738,11 @@ function ExecutiveDashboard({
         />
         <IntegrationCard
           icon={CreditCard}
-          title="Stripe Lead Purchases"
+          title="Lead Payments"
           value={money(snapshot.stripe.revenueCents / 100)}
-          detail={`${number(snapshot.stripe.confirmedPurchases)} confirmed · ${number(snapshot.stripe.pendingRequests)} pending · last charge ${ageLabel(snapshot.stripe.lastChargeAt)}`}
+          detail={`${number(snapshot.stripe.confirmedPurchases)} confirmed historical records · ${number(snapshot.stripe.pendingRequests)} pending requests · latest record ${ageLabel(snapshot.stripe.lastChargeAt)}`}
           state={snapshot.stripe.pendingRequests > 0 ? "warning" : "ok"}
-          href="/purchase-leads"
+          href="/dashboard/lead-payments"
         />
         <IntegrationCard
           icon={ShieldCheck}

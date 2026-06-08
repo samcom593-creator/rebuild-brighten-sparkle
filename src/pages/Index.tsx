@@ -3,7 +3,6 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { Footer } from "@/components/landing/Footer";
 import { DealsTicker } from "@/components/landing/DealsTicker";
 // wave-23 (2026-06-06): vendor-query out of cold-landing modulepreload.
 // Wrapping the below-fold lazy Suspense block in LazyQueryRoot keeps QueryClientProvider
@@ -18,7 +17,13 @@ const CareerPathwaySection = lazy(() => import("@/components/landing/CareerPathw
 const CTASection = lazy(() => import("@/components/landing/CTASection").then((mod) => ({ default: mod.CTASection })));
 const Testimonials = lazy(() => import("@/components/landing/Testimonials").then((mod) => ({ default: mod.Testimonials })));
 const RecruitFAQ = lazy(() => import("@/components/landing/RecruitFAQ").then((mod) => ({ default: mod.RecruitFAQ })));
-import { StickyMobileCTA } from "@/components/landing/StickyMobileCTA";
+// wave-34 (2026-06-08): Footer + StickyMobileCTA off the eager entry static graph.
+// Both are below-LCP-fold (Footer renders after <main>; StickyMobileCTA is fixed bottom
+// bar, md:hidden). Eager-importing them dragged Footer's 4 lucide icons (Crown/Mail/Phone/
+// MapPin) + ~94 LOC into the entry chunk's 342ms long task surfaced by wave-33's Lighthouse.
+// Lazy + null Suspense preserves visual order — Footer hydrates after the proof block.
+const Footer = lazy(() => import("@/components/landing/Footer").then((mod) => ({ default: mod.Footer })));
+const StickyMobileCTA = lazy(() => import("@/components/landing/StickyMobileCTA").then((mod) => ({ default: mod.StickyMobileCTA })));
 const ApexLeadsSection = lazy(() => import("@/components/landing/ApexLeadsSection").then((mod) => ({ default: mod.ApexLeadsSection })));
 const InstagramGrowthSection = lazy(() => import("@/components/landing/InstagramGrowthSection").then((mod) => ({ default: mod.InstagramGrowthSection })));
 
@@ -53,8 +58,12 @@ const Index = () => {
           </LazyQueryRoot>
         </Suspense>
       </main>
-      <Footer />
-      <StickyMobileCTA />
+      <Suspense fallback={null}>
+        <Footer />
+      </Suspense>
+      <Suspense fallback={null}>
+        <StickyMobileCTA />
+      </Suspense>
     </div>
   );
 };

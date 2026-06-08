@@ -63,14 +63,75 @@ const result = {
   cls:            a["cumulative-layout-shift"]?.numericValue ?? null,
   tbt:            ms("total-blocking-time"),
   tti:            ms("interactive"),
+  si:             ms("speed-index"),
+  bootupMs:       ms("bootup-time"),
+  mainThreadMs:   ms("mainthread-work-breakdown"),
+  serverRespMs:   ms("server-response-time"),
+  longTasksMs:    a["long-tasks"]?.numericValue ?? null,
+  unusedJsKB:     a["unused-javascript"]?.details?.overallSavingsBytes != null
+                    ? Math.round(a["unused-javascript"].details.overallSavingsBytes / 1024) : null,
+  unusedCssKB:    a["unused-css-rules"]?.details?.overallSavingsBytes != null
+                    ? Math.round(a["unused-css-rules"].details.overallSavingsBytes / 1024) : null,
+  renderBlockKB:  a["render-blocking-resources"]?.details?.overallSavingsBytes != null
+                    ? Math.round(a["render-blocking-resources"].details.overallSavingsBytes / 1024) : null,
+  thirdPartyMs:   a["third-party-summary"]?.details?.summary?.wastedMs ?? null,
 };
 
 console.log();
 console.log("=== LIGHTHOUSE MOBILE RESULT ===");
+const isScore = (k) => ["performance","accessibility","best-practices","seo"].includes(k);
+const isMs = (k) => /Ms$|^lcp$|^fcp$|^tbt$|^tti$|^si$/.test(k);
+const isKB = (k) => /KB$/.test(k);
 for (const [k, v] of Object.entries(result)) {
-  console.log(`  ${k.padEnd(16)}  ${v}${typeof v === "number" && k !== "cls" && !["performance","accessibility","best-practices","seo"].includes(k) ? "ms" : ""}`);
+  let unit = "";
+  if (typeof v === "number") {
+    if (isScore(k)) unit = "";
+    else if (k === "cls") unit = "";
+    else if (isMs(k)) unit = "ms";
+    else if (isKB(k)) unit = "KB";
+  }
+  const display = typeof v === "number" && (isMs(k) || isKB(k) || isScore(k)) ? Math.round(v) : v;
+  console.log(`  ${k.padEnd(16)}  ${display}${unit}`);
 }
 console.log();
+
+// Top main-thread offenders — surfaces the actual JS work eating TBT
+const mt = a["mainthread-work-breakdown"]?.details?.items;
+if (Array.isArray(mt) && mt.length) {
+  console.log("=== MAIN-THREAD WORK (top 5) ===");
+  mt.slice(0, 5).forEach((it) => {
+    console.log(`  ${String(it.groupLabel ?? it.group ?? "?").padEnd(28)}  ${Math.round(it.duration)}ms`);
+  });
+  console.log();
+}
+
+// Top long tasks — the 50ms+ blocks that compound to TBT
+const lt = a["long-tasks"]?.details?.items;
+if (Array.isArray(lt) && lt.length) {
+  console.log(`=== LONG TASKS (${lt.length} > 50ms, top 5) ===`);
+  lt.slice(0, 5).forEach((it) => {
+    const url = String(it.url ?? "?").replace(/^https?:\/\/[^/]+/, "").slice(0, 60);
+    console.log(`  ${url.padEnd(60)}  ${Math.round(it.duration)}ms`);
+  });
+  console.log();
+}
+
+// Top JS bundles by transfer size — surfaces what's actually shipped
+const nr = a["network-requests"]?.details?.items;
+if (Array.isArray(nr) && nr.length) {
+  const scripts = nr
+    .filter((i) => /script/i.test(i.resourceType ?? "") && (i.transferSize ?? 0) > 0)
+    .sort((a, b) => (b.transferSize ?? 0) - (a.transferSize ?? 0))
+    .slice(0, 5);
+  if (scripts.length) {
+    console.log("=== HEAVIEST SCRIPT TRANSFERS (top 5) ===");
+    scripts.forEach((it) => {
+      const url = String(it.url ?? "?").replace(/^https?:\/\/[^/]+/, "").slice(0, 60);
+      console.log(`  ${url.padEnd(60)}  ${Math.round((it.transferSize ?? 0) / 1024)}KB`);
+    });
+    console.log();
+  }
+}
 
 const fails = [];
 if (result.performance    < BUDGETS.performance)    fails.push(`Perf ${result.performance} < ${BUDGETS.performance}`);

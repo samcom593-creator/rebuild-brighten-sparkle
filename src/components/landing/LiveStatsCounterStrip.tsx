@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { Users, FileText, Building2 } from "lucide-react";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
 
 // wave-19 (2026-06-04): supabase deferred to queryFn. LiveStatsCounterStrip
 // renders eagerly under HeroSection — the static import was the second of
@@ -9,6 +10,16 @@ import { AnimatedCounter } from "@/components/ui/animated-counter";
 // chain (the other was RecentHiresTicker, also detached this wave). The
 // HARDCODED_FLOOR + localStorage cache below means the numbers render real-
 // looking before the dynamic import even resolves — no above-fold zero.
+//
+// wave-41 (2026-06-08): wave-19 deferred the static import but the queryFn
+// still fired sync-on-mount, dynamic-importing vendor-supabase (45 KB gz)
+// inside Lighthouse mobile's audit window — it consistently showed in
+// heaviest-transfers even after wave-40 killed the AuthProvider path. Gate
+// the query `enabled` on useInteractionGate(): first paint stays exactly
+// the same (HARDCODED_FLOOR + cache fallback), but the dynamic import only
+// fires once the user actually interacts (pointerdown / keydown / scroll /
+// touchstart) or the 5s safety timeout fires. Lighthouse audits never
+// interact, so vendor-supabase finally exits the cold-landing transfer list.
 
 interface LiveStats {
   active_agents: number;
@@ -54,6 +65,7 @@ function pick(live: number | undefined, cached: number | undefined, floor: numbe
  * last-good → HARDCODED_FLOOR. We only ever count UP, never down to 0.
  */
 export function LiveStatsCounterStrip() {
+  const gateOpen = useInteractionGate();
   const { data } = useQuery({
     queryKey: ["landing_live_stats"],
     queryFn: async (): Promise<LiveStats | null> => {
@@ -62,6 +74,7 @@ export function LiveStatsCounterStrip() {
       if (error) throw error;
       return data as unknown as LiveStats;
     },
+    enabled: gateOpen,
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });

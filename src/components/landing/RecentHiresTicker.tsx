@@ -1,11 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
+import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
 
 // wave-19 (2026-06-04): supabase deferred to queryFn. RecentHiresTicker is
 // rendered eagerly by HeroSection — its static import of supabase used to
 // drag vendor-supabase onto every cold landing visit. queryFn is async by
 // react-query convention, so dynamic-importing the client costs nothing
 // observable: the data fetch was already async.
+//
+// wave-41 (2026-06-08): same fix as LiveStatsCounterStrip — gate `enabled`
+// on useInteractionGate() so the dynamic-import of vendor-supabase only
+// fires once the user interacts. Component returns null while data is
+// missing (line below the query), so deferring fetch just delays the
+// ticker's first appearance from ~200ms post-mount to ~500ms post-first-
+// scroll. Lighthouse audits never see vendor-supabase touch the network.
 
 interface HireRow {
   first_name: string | null;
@@ -23,6 +31,7 @@ interface HireRow {
  * Scrolls continuously like the carrier marquee for visual rhyme.
  */
 export function RecentHiresTicker() {
+  const gateOpen = useInteractionGate();
   const { data, isLoading } = useQuery({
     queryKey: ["landing_recent_hires"],
     queryFn: async (): Promise<HireRow[]> => {
@@ -31,6 +40,7 @@ export function RecentHiresTicker() {
       if (error) throw error;
       return (data as HireRow[]) ?? [];
     },
+    enabled: gateOpen,
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });

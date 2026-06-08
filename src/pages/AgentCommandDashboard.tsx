@@ -39,6 +39,7 @@ import { NextStepCard } from "@/components/dashboard/NextStepCard";
 import { RegionPeerCard, UpcomingChargebackCard } from "@/components/dashboard/AgentPeerAndChargebackCards";
 import { LapsesDrilldownModal } from "@/components/dashboard/LapsesDrilldownModal";
 import { RecentActivationsPanel } from "@/components/dashboard/RecentActivationsPanel";
+import { MyReferralLinkCard } from "@/components/agent/MyReferralLinkCard";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, getDealTruthTimestamp } from "@/lib/dealTruth";
 
 // ─── Formatters ─────────────────────────────────────────────────────────────
@@ -353,6 +354,9 @@ export default function AgentCommandDashboard() {
 
       {/* ── NEXT STEP CARD — what's the next concrete move ───── */}
       {agentId && <NextStepCard agent_id={agentId} />}
+
+      {/* ── P3: MY REFERRAL LINK ─────────────────────────────────── */}
+      <MyReferralLinkCard />
 
       {/* ── 4 KPI TILES ───────────────────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

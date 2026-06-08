@@ -1,23 +1,64 @@
 #!/usr/bin/env bash
 # wave-28 (2026-06-07): pre-commit guard for VSL videoId sync invariant.
+# wave-29 (2026-06-08): extended to also gate check:metric-truth,
+#                       check:sync-reliability, check:unsafe-supabase-catch,
+#                       and check:forbidden-language behind staged-file filters.
 #
 # Activated via `git config core.hooksPath .husky` (set by `npm run prepare`).
 # No husky dependency required — we use git's built-in hooksPath.
 #
-# Why pre-commit instead of just relying on the vite plugin:
+# Why pre-commit instead of just relying on the Vite plugin / CI:
 #   The wave-27 cross-session race (commits e24adf69 -> 2ec9b695 -> 2b21d6df)
 #   proved the Vite plugin only catches drift AFTER the bad commit is pushed
-#   to Vercel. A parallel Claude session bumped BUMP_VERSION without the
-#   videoId and broke the Vercel build of its own ratchet. Pre-commit catches
-#   it locally before push.
+#   to Vercel. Same wave-25-class drift window exists for the other 4 checks
+#   today — they only fail at `npm run verify:core` (CI), never at commit
+#   time. Pre-commit closes that window on Sam's laptop before push.
 #
-# Fast-fail: only runs the check when files that could affect the sync
-# invariant are staged. Saves ~120ms on unrelated commits.
+# Fast-fail: each check only runs when files that could affect its rules are
+# staged. Saves ~2s on unrelated commits; full sweep ~2s when all fire.
 set -e
 
 STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
 
-if echo "$STAGED" | grep -qE '^(index\.html|src/components/landing/HeroSection\.tsx|scripts/check-vsl-sync\.mjs|vite\.config\.ts)$'; then
-  echo "[pre-commit] VSL-affecting file staged — running check-vsl-sync…"
+# Helper: returns 0 if any staged file matches the given regex
+match() {
+  echo "$STAGED" | grep -qE "$1"
+}
+
+# ---------- check-vsl-sync (wave-28) ----------
+# Trigger: index.html / HeroSection.tsx / the script itself / vite.config.ts
+if match '^(index\.html|src/components/landing/HeroSection\.tsx|scripts/check-vsl-sync\.mjs|vite\.config\.ts)$'; then
+  echo "[pre-commit] VSL-affecting file staged — running check:vsl-sync…"
   node scripts/check-vsl-sync.mjs
+fi
+
+# ---------- check-metric-truth (wave-29) ----------
+# Trigger: any src/ tsx|ts|jsx|js, supabase/functions/ or supabase/migrations/,
+# api/ ts|tsx|js|mjs, or the script itself.
+if match '^(src/.*\.(tsx?|jsx?)$|supabase/(functions|migrations)/|api/.*\.(tsx?|jsx?|mjs)$|scripts/check-metric-truth\.mjs$)'; then
+  echo "[pre-commit] Metric-truth-affecting file staged — running check:metric-truth…"
+  node scripts/check-metric-truth.mjs
+fi
+
+# ---------- check-sync-reliability (wave-29) ----------
+# Trigger: deploy/cron workflows, edge functions, migrations, dashboard
+# pages/components, the InsuraCloud sync API route, or the script itself.
+if match '^(\.github/workflows/(deploy-supabase|external-cron-backup)\.yml$|supabase/(functions|migrations)/|src/pages/|src/components/dashboard/|api/sync-insuracloud\.ts$|scripts/check-sync-reliability\.mjs$)'; then
+  echo "[pre-commit] Sync-reliability-affecting file staged — running check:sync-reliability…"
+  node scripts/check-sync-reliability.mjs
+fi
+
+# ---------- check-unsafe-supabase-catch (wave-29) ----------
+# Trigger: any edge function ts/tsx or the script itself.
+if match '^(supabase/functions/.*\.(ts|tsx)$|scripts/check-unsafe-supabase-catch\.mjs$)'; then
+  echo "[pre-commit] Edge-function file staged — running check:unsafe-supabase-catch…"
+  node scripts/check-unsafe-supabase-catch.mjs
+fi
+
+# ---------- check-forbidden-language (wave-29) ----------
+# Trigger: any user-facing text file. Script walks whole repo, so any new copy
+# anywhere should be scanned. ~1s when fired.
+if match '\.(tsx?|jsx?|md|html)$'; then
+  echo "[pre-commit] Copy-affecting file staged — running check:forbidden-language…"
+  node scripts/check-forbidden-language.mjs
 fi

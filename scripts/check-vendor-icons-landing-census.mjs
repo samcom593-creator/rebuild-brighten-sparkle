@@ -103,6 +103,57 @@ function pascalToKebab(name) {
     .toLowerCase();
 }
 
+// ---------- step 3b (wave-49): resolve lucide re-export shims ----------
+// lucide-react v0.462 ships SHIM icon files for legacy names that re-export
+// from a different underlying file (e.g. check-circle-2.js → circle-check.js,
+// file-signature.js → file-pen-line.js, home.js → house.js, alert-triangle.js
+// → triangle-alert.js). Rollup's manualChunks `test` runs against the
+// resolved module path — so listing only the shim name in the regex makes
+// the SHIM module land in vendor-icons-landing but the icon BODY lands in
+// vendor-icons. Wave-48 found this the hard way via live Lighthouse 3 days
+// after wave-46 shipped. This step walks every regex entry, reads the icon
+// file, and if it's a re-export shim asserts the target is ALSO in the
+// regex. Same check runs for any imported kebab name as a belt-and-braces.
+const ICON_DIR = path.join(
+  repoRoot,
+  "node_modules",
+  "lucide-react",
+  "dist",
+  "esm",
+  "icons",
+);
+const REEXPORT_RE = /export\s*\{\s*default\s*\}\s*from\s*['"]\.\/([a-z0-9-]+)\.js['"]/;
+function resolveShim(kebab) {
+  const p = path.join(ICON_DIR, `${kebab}.js`);
+  if (!existsSync(p)) return null;
+  const m = readFileSync(p, "utf-8").match(REEXPORT_RE);
+  return m ? m[1] : null;
+}
+
+// Walk the existing regex set: any shim → require its target is also in the set.
+const shimOffenders = []; // [{shim, target}]
+for (const ic of regexIcons) {
+  const target = resolveShim(ic);
+  if (target && !regexIcons.has(target)) {
+    shimOffenders.push({ shim: ic, target });
+  }
+}
+if (shimOffenders.length > 0) {
+  console.error(
+    "✗ check-vendor-icons-landing-census FAILED — vendor-icons-landing regex contains lucide shim name(s) without their re-export targets.",
+  );
+  console.error(
+    "  Rollup's manualChunks test runs against the RESOLVED module path, not the import specifier. The shim file lands in vendor-icons-landing but the actual icon body lands in vendor-icons. Add the target to the regex.",
+  );
+  console.error("");
+  for (const { shim, target } of shimOffenders) {
+    console.error(`  shim "${shim}" → target "${target}" (missing from regex)`);
+  }
+  console.error("");
+  console.error("  Fix: add the missing target(s) to the vendor-icons-landing regex in vite.config.ts.");
+  process.exit(1);
+}
+
 // ---------- step 4: extract lucide imports + diff ----------
 const LUCIDE_IMPORT_RE = /import\s*\{([^}]+)\}\s*from\s*['"]lucide-react['"]/g;
 const offenders = []; // [{file, missing: [icon, ...]}]
@@ -126,9 +177,17 @@ for (const rel of LANDING_FILES) {
       .filter(Boolean);
     for (const name of names) {
       const kebab = pascalToKebab(name);
-      if (!regexIcons.has(kebab)) {
-        const optOut = text.includes(`vendor-icons-landing-census-allow:${kebab}`);
-        if (!optOut) fileMissing.push({ name, kebab });
+      // Names to require in the regex: the kebab itself, plus its shim
+      // target if it's a re-export. Both must be present so neither the
+      // shim nor the body falls into vendor-icons.
+      const required = [kebab];
+      const target = resolveShim(kebab);
+      if (target) required.push(target);
+      for (const req of required) {
+        if (!regexIcons.has(req)) {
+          const optOut = text.includes(`vendor-icons-landing-census-allow:${req}`);
+          if (!optOut) fileMissing.push({ name, kebab: req });
+        }
       }
     }
   }

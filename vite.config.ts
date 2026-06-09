@@ -305,19 +305,43 @@ export default defineConfig(({ mode }) => ({
               test: "[\\\\/]node_modules[\\\\/](recharts|victory-vendor|d3-[^\\\\/]+)[\\\\/]",
             },
             // wave-22 (2026-06-06): split lucide-react into landing-eager subset
-            // vs everything-else. Landing-eager components (Navbar, HeroSection,
-            // Footer, StickyMobileCTA) statically import 13 icons. vendor-icons
-            // currently bundles all 150 app-wide icons into 50.92KB raw / 15.5KB
-            // gz that's in the cold-landing modulepreload chain. Isolating the
-            // 13 landing icons into vendor-icons-landing (~4.5KB raw / ~1.5KB gz
-            // est) means cold-landing preload drops the other 137 icons. Lazy
-            // dashboard/admin chunks still load full vendor-icons-extra on
-            // demand. Icon files live at lucide-react/dist/esm/icons/<name>.js
-            // (Vite tree-shakes the barrel — final module IDs are per-icon).
+            // vs everything-else.
+            // wave-46 (2026-06-09): live mobile Lighthouse for f35ef658 showed
+            // vendor-icons 14KB gz STILL on cold-landing transfers (not in
+            // modulepreload but pulled by lazy Suspense children during the
+            // audit window). Audited every landing-reachable file (Index.tsx
+            // eager + lazy Suspense children + Footer + StickyMobileCTA +
+            // LiveStats + RecentHires + SupabaseHealthBanner): 48 unique icons.
+            // Expanded vendor-icons-landing regex from 17 → 48 names so the
+            // lazy-children Suspense fire resolves to vendor-icons-landing
+            // (already preloaded) instead of pulling vendor-icons. Net cold-
+            // landing transfer: +~2KB gz preload, −14KB gz dyn-fetch = −12KB
+            // gz. vendor-icons still holds the other ~100 app-wide icons used
+            // only on dashboard/admin routes. Source-of-truth icon census:
+            //   - eager: Navbar (menu,x,crown,search), HeroSection (arrow-
+            //     right,shield,trending-up,users,sparkles,play), DealsTicker
+            //     (none), LiveStatsCounterStrip (users,file-text,building-2),
+            //     RecentHiresTicker (sparkles)
+            //   - lazy Suspense kids: Testimonials (quote), BenefitsSection
+            //     (dollar-sign,graduation-cap,calendar,target,trophy,zap,heart-
+            //     handshake), EarningsSection (award,clock), CareerPathway
+            //     (book-open,clipboard-check,file-check,file-signature,
+            //     smartphone,headphones,home,message-circle,user-plus,users-
+            //     round,building-2,chevron-up), ApexLeadsSection (check),
+            //     InstagramGrowthSection (instagram,cloud,repeat-2,mouse-
+            //     pointer-click,bot,heart), RecruitFAQ (chevron-down),
+            //     CTASection (check-circle-2), Footer (mail,phone,map-pin),
+            //     StickyMobileCTA (arrow-right)
+            //   - lazy app-shell helpers: SupabaseHealthBanner (triangle-alert,
+            //     refresh-cw,x), wave-22 carryover (compass)
+            // If a new landing-reachable component imports an icon NOT in this
+            // regex, vendor-icons 14KB will silently regress onto cold landing.
+            // Defense: wave-47 queue should add a pre-commit guard that diffs
+            // landing-reachable lucide imports vs this regex.
             {
               name: "vendor-icons-landing",
               priority: 75,
-              test: "[\\\\/]node_modules[\\\\/]lucide-react[\\\\/]dist[\\\\/]esm[\\\\/]icons[\\\\/](menu|x|crown|search|arrow-right|shield|trending-up|users|sparkles|play|mail|phone|map-pin|chevron-up|triangle-alert|refresh-cw|compass)\\.js$",
+              test: "[\\\\/]node_modules[\\\\/]lucide-react[\\\\/]dist[\\\\/]esm[\\\\/]icons[\\\\/](arrow-right|award|book-open|bot|building-2|calendar|check|check-circle-2|chevron-down|chevron-up|clipboard-check|clock|cloud|compass|crown|dollar-sign|file-check|file-signature|file-text|graduation-cap|headphones|heart|heart-handshake|home|instagram|mail|map-pin|menu|message-circle|mouse-pointer-click|phone|play|quote|refresh-cw|repeat-2|search|shield|smartphone|sparkles|target|trending-up|triangle-alert|trophy|user-plus|users|users-round|x|zap)\\.js$",
             },
             {
               name: "vendor-icons",

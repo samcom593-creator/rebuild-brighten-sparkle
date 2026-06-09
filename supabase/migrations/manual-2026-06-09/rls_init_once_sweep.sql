@@ -1,0 +1,6 @@
+-- 2026-06-09: RLS init-once sweep on 5 hottest tables (deals/applications/agents/user_roles/lead_purchases)
+-- Wraps every auth.uid() / auth.jwt() call in (SELECT ...) so planner evaluates
+-- ONCE per query instead of per row. Cut /dashboard/production planning time
+-- from 19,727ms → 95ms (200x). Applied via bot-sql 2026-06-09 03:14 UTC.
+-- Reference policies stored: see pg_policies for live values.
+-- This is a metadata record; live policies were applied via DROP+CREATE.

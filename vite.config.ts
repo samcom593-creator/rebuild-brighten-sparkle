@@ -284,10 +284,37 @@ export default defineConfig(({ mode }) => ({
               priority: 110,
               test: "[\\\\/]node_modules[\\\\/](react-router-dom|react-router|@remix-run[\\\\/]router)[\\\\/]",
             },
+            // wave-51 (2026-06-09): split react-dom OUT of vendor-react. Live mobile
+            // Lighthouse for wave-50 commit 24a8914b measured vendor-react at 52 KB gz
+            // / 156 KB raw — the dominant cold-landing transfer and the surface
+            // driving the top 5 cold-landing long tasks: vendor-react 139ms + 83ms +
+            // 83ms + 57ms + 55ms = 417ms of single-chunk eval blocking the main
+            // thread (TBT 83ms post-wave-46, but vendor-react eval is still the
+            // ceiling on further TBT reduction). react-dom is ~37 KB gz / ~115 KB raw
+            // of DOM renderer code (createRoot + reconciler + event system); the
+            // browser can fetch + parse + compile it in parallel with the react
+            // runtime when it lives in a sibling chunk, and the browser yields
+            // between sequential eval tasks so two 30-50ms tasks beat one 100ms+
+            // monolithic eval. Splitting expectations: vendor-react ~156 → ~40-50 KB
+            // raw / 52 → ~14-17 KB gz; vendor-react-dom emerges at ~110-115 KB raw /
+            // ~35-37 KB gz. Long-task count expected to drop from 5 hits on vendor-
+            // react to ~2-3 hits on vendor-react + ~2-3 hits on vendor-react-dom,
+            // each individual task significantly shorter. Higher priority (105)
+            // ensures react-dom modules win over the broader vendor-react regex
+            // below. scheduler is kept in vendor-react because it's used by both
+            // react (concurrent mode) and react-dom (renderer) — duplicating it
+            // would bloat both chunks, and the small react-dom -> vendor-react edge
+            // for scheduler doesn't force sequential fetch (modulepreload still
+            // parallelizes the HTTP fetches; only eval order is constrained).
+            {
+              name: "vendor-react-dom",
+              priority: 105,
+              test: "[\\\\/]node_modules[\\\\/]react-dom[\\\\/]",
+            },
             {
               name: "vendor-react",
               priority: 100,
-              test: "[\\\\/]node_modules[\\\\/](react|react-dom|scheduler|class-variance-authority|tailwind-merge|clsx|react-is|tiny-invariant|@radix-ui[\\\\/]react-slot)[\\\\/]",
+              test: "[\\\\/]node_modules[\\\\/](react|scheduler|class-variance-authority|tailwind-merge|clsx|react-is|tiny-invariant|@radix-ui[\\\\/]react-slot)[\\\\/]",
             },
             {
               name: "vendor-supabase",

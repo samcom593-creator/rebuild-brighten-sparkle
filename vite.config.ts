@@ -94,6 +94,18 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      // wave-45 (2026-06-09): live mobile Lighthouse for e1530c22 (HEAD) found
+      // registerSW.js as the #3 cold-landing long task (112ms) on the main
+      // thread — vite-plugin-pwa's default `injectRegister: 'auto'` injects
+      // <script id="vite-plugin-pwa:register-sw" src="/registerSW.js"> into
+      // <head>, which fetches + parses + executes during the LCP window.
+      // Disabling the auto-injection and registering manually inside
+      // src/main.tsx wrapped in requestIdleCallback moves the SW registration
+      // OUT of the TBT/blocking window into idle time AFTER LCP+TTI.
+      // SW autoUpdate behavior is preserved (workbox config still uses
+      // skipWaiting + clientsClaim, and the controllerchange handler in
+      // main.tsx still hard-reloads on update).
+      injectRegister: false,
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
       manifest: {
         name: "APEX Financial - Daily Numbers",

@@ -314,10 +314,23 @@ export default defineConfig(({ mode }) => ({
             // LiveStats + RecentHires + SupabaseHealthBanner): 48 unique icons.
             // Expanded vendor-icons-landing regex from 17 → 48 names so the
             // lazy-children Suspense fire resolves to vendor-icons-landing
-            // (already preloaded) instead of pulling vendor-icons. Net cold-
-            // landing transfer: +~2KB gz preload, −14KB gz dyn-fetch = −12KB
-            // gz. vendor-icons still holds the other ~100 app-wide icons used
-            // only on dashboard/admin routes. Source-of-truth icon census:
+            // (already preloaded) instead of pulling vendor-icons.
+            // wave-48 (2026-06-09): live mobile Lighthouse for 3a03b0b9 STILL
+            // showed vendor-icons 12.4KB gz on cold-landing transfers because
+            // lucide-react v0.462 re-exports CheckCircle2, FileSignature, and
+            // Home through SHIM files that themselves re-export from a
+            // different underlying icon file (check-circle-2.js → circle-
+            // check.js, file-signature.js → file-pen-line.js, home.js →
+            // house.js). Rollup's manualChunks test runs against the resolved
+            // module path, NOT the import specifier — so the 3 shim names
+            // matched but the actual icon body landed in vendor-icons. Wave-48
+            // adds the 3 resolved targets (circle-check, file-pen-line, house)
+            // to the regex so the actual icon bodies live in vendor-icons-
+            // landing alongside their shims. Net projected: vendor-icons drops
+            // off cold-landing transfers entirely, TBT 140 → 100-130ms.
+            // Defense: wave-49 should extend check-vendor-icons-landing-census
+            // to follow lucide re-export shims so the next shim-renamed icon
+            // fails the build at commit time.
             //   - eager: Navbar (menu,x,crown,search), HeroSection (arrow-
             //     right,shield,trending-up,users,sparkles,play), DealsTicker
             //     (none), LiveStatsCounterStrip (users,file-text,building-2),
@@ -325,23 +338,24 @@ export default defineConfig(({ mode }) => ({
             //   - lazy Suspense kids: Testimonials (quote), BenefitsSection
             //     (dollar-sign,graduation-cap,calendar,target,trophy,zap,heart-
             //     handshake), EarningsSection (award,clock), CareerPathway
-            //     (book-open,clipboard-check,file-check,file-signature,
-            //     smartphone,headphones,home,message-circle,user-plus,users-
-            //     round,building-2,chevron-up), ApexLeadsSection (check),
-            //     InstagramGrowthSection (instagram,cloud,repeat-2,mouse-
-            //     pointer-click,bot,heart), RecruitFAQ (chevron-down),
-            //     CTASection (check-circle-2), Footer (mail,phone,map-pin),
-            //     StickyMobileCTA (arrow-right)
+            //     (book-open,clipboard-check,file-check,file-signature→file-
+            //     pen-line, smartphone,headphones,home→house,message-circle,
+            //     user-plus,users-round,building-2,chevron-up), ApexLeadsSection
+            //     (check), InstagramGrowthSection (instagram,cloud,repeat-2,
+            //     mouse-pointer-click,bot,heart), RecruitFAQ (chevron-down),
+            //     CTASection (check-circle-2→circle-check), Footer (mail,phone,
+            //     map-pin), StickyMobileCTA (arrow-right)
             //   - lazy app-shell helpers: SupabaseHealthBanner (triangle-alert,
             //     refresh-cw,x), wave-22 carryover (compass)
             // If a new landing-reachable component imports an icon NOT in this
             // regex, vendor-icons 14KB will silently regress onto cold landing.
-            // Defense: wave-47 queue should add a pre-commit guard that diffs
-            // landing-reachable lucide imports vs this regex.
+            // Defense: wave-47 pre-commit guard catches direct lucide imports
+            // but doesn't follow re-export shims — wave-48 manually adds the
+            // 3 known shims; wave-49 will automate shim resolution.
             {
               name: "vendor-icons-landing",
               priority: 75,
-              test: "[\\\\/]node_modules[\\\\/]lucide-react[\\\\/]dist[\\\\/]esm[\\\\/]icons[\\\\/](arrow-right|award|book-open|bot|building-2|calendar|check|check-circle-2|chevron-down|chevron-up|clipboard-check|clock|cloud|compass|crown|dollar-sign|file-check|file-signature|file-text|graduation-cap|headphones|heart|heart-handshake|home|instagram|mail|map-pin|menu|message-circle|mouse-pointer-click|phone|play|quote|refresh-cw|repeat-2|search|shield|smartphone|sparkles|target|trending-up|triangle-alert|trophy|user-plus|users|users-round|x|zap)\\.js$",
+              test: "[\\\\/]node_modules[\\\\/]lucide-react[\\\\/]dist[\\\\/]esm[\\\\/]icons[\\\\/](arrow-right|award|book-open|bot|building-2|calendar|check|check-circle-2|chevron-down|chevron-up|circle-check|clipboard-check|clock|cloud|compass|crown|dollar-sign|file-check|file-pen-line|file-signature|file-text|graduation-cap|headphones|heart|heart-handshake|home|house|instagram|mail|map-pin|menu|message-circle|mouse-pointer-click|phone|play|quote|refresh-cw|repeat-2|search|shield|smartphone|sparkles|target|trending-up|triangle-alert|trophy|user-plus|users|users-round|x|zap)\\.js$",
             },
             {
               name: "vendor-icons",

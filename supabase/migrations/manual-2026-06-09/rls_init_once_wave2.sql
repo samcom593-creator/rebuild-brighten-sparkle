@@ -1,0 +1,5 @@
+-- 2026-06-09 wave 2: init-once RLS on 6 more hot tables.
+-- profiles (9 policies) + daily_production (3) + agent_metrics (3) +
+-- carrier_policies (3) + onboarding_progress (6). Pattern: wrap auth.uid()
+-- in (SELECT ...) so planner evaluates once per query, not per row.
+-- Applied via bot-sql 2026-06-09. Live policies in pg_policies.

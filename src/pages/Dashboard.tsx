@@ -40,6 +40,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { useRolePreview, type RolePreview } from "@/hooks/useRolePreview";
 import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
+import { AgentLinkBookTruthCard } from "@/components/dashboard/AgentLinkBookTruthCard";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
 import { getCloseRate, getLiveAgentCutoffIso, LIVE_AGENT_DEAL_WINDOW_DAYS, sumAnnualPremium } from "@/lib/metricTruth";
 import { cn } from "@/lib/utils";
@@ -768,6 +769,8 @@ function ExecutiveDashboard({
       {/* Just-hired-direct-to-Sam feed — surfaces last-30d hires routed to Sam
           (no manager). Sam's 2026-05-22 ask: "Just-hired direct-to-Sam feed". */}
       <JustHiredPanel />
+
+      <AgentLinkBookTruthCard />
 
       <WeekProductionCard snapshot={snapshot} />
 

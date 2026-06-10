@@ -1154,13 +1154,10 @@ function AgencyCommandView() {
         <BookTrendCard />
       </div>
 
-      {/* PL-018: Agency Command top widget redesign — Sam said the box
-          was "bare" and hard to read. Boosted contrast, added gradient
-          frame + scanline animation, bumped title size, swapped the
-          green-on-green live indicator to amber-pulse for visibility. */}
-      <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/[0.03] to-transparent p-5 sm:p-6 shadow-[0_0_60px_hsl(168_80%_50%/0.12)]">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
-        <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-primary/[0.08] blur-3xl pointer-events-none" />
+      {/* v13 Wave E (2026-06-10): killed the inline gradient + blur-3xl +
+          glow shadow. Sam: "all that bullshit gradient/glow stuff looks
+          buggy." Restraint mirrors AgentLink — solid card + 1px border. */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-sm">
         <PageHeader
           eyebrow="Agency · Owner Mode"
           eyebrowIcon={<Crown className="h-3 w-3" />}

@@ -415,7 +415,11 @@ export default function Apply() {
         fieldsToValidate = ["licenseStatus"];
         break;
       case 4:
-        fieldsToValidate = ["availability", "smsConsent", "motivation"];
+        // v26 audit fix: smsConsent removed from validation — schema makes
+        // it optional (line 80: z.boolean().default(false)), label now
+        // says "(optional)". Was a UI/schema contradiction (asterisk +
+        // validation + always-pass schema).
+        fieldsToValidate = ["availability", "motivation"];
         break;
     }
     
@@ -1230,7 +1234,7 @@ export default function Apply() {
                               className="mt-0.5"
                             />
                             <Label htmlFor="smsConsent" className="text-sm text-foreground cursor-pointer leading-relaxed font-medium">
-                              I agree to receive SMS/text messages from Apex Financial. *
+                              I agree to receive SMS/text messages from Apex Financial. <span className="text-muted-foreground font-normal">(optional)</span>
                             </Label>
                           </div>
                           {errors.smsConsent && (

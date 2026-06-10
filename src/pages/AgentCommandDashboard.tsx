@@ -1145,7 +1145,7 @@ function AgencyCommandView() {
         if (r.agent_id) ids.add(r.agent_id);
       }
       return {
-        active30d: ids.size,
+        active10d: ids.size,
         licensedMtd: licensedMtdRes.count ?? 0,
         contractedMtd: contractedMtdRes.count ?? 0,
         pleInCourse: inCourseRes.count ?? 0,
@@ -1288,7 +1288,7 @@ function AgencyCommandView() {
           icon={Users}
           label={`Producers · ${periodBounds.label}`}
           value={fmtNum(periodSummary.producingAgents)}
-          subValue={`${fmtNum(tight.data?.active30d ?? 0)} agents have any deal or production log in last 10d`}
+          subValue={`${fmtNum(tight.data?.active10d ?? 0)} agents have any deal or production log in last 10d`}
           color="text-primary"
           loading={periodDeals.isLoading || tight.isLoading}
         />

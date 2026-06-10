@@ -376,16 +376,35 @@ async function loadDashboardSnapshot(
     ["pending", "requested", "processing"].includes(String(row.status ?? "pending").toLowerCase()),
   );
 
+  // v9 audit fix 2026-06-10: Dashboard StatTiles were summing the apex `deals`
+  // table which has been stale since AgentLink sync went dark 20+ days ago.
+  // Read the AgentLink truth view first; fall back to legacy computed values
+  // only if the view is unavailable. Source of truth: agentlink_deals_snapshot
+  // refreshed every 30 min by com.samjames.apex.agentlink-sync launchd.
+  const { data: alTruth } = await q
+    .from("v_agentlink_book_truth")
+    .select("deals_today, premium_today, deals_this_week, premium_this_week, deals_this_month, premium_this_month")
+    .maybeSingle();
+  const alTodayAlp = Number(alTruth?.premium_today ?? 0);
+  const alTodayDeals = Number(alTruth?.deals_today ?? 0);
+  const alWeekAlp = Number(alTruth?.premium_this_week ?? 0);
+  const alWeekDeals = Number(alTruth?.deals_this_week ?? 0);
+  const alMonthAlp = Number(alTruth?.premium_this_month ?? 0);
+  const alMonthDeals = Number(alTruth?.deals_this_month ?? 0);
+  const legacyTodayAlp = sumAnnualPremium(todayDeals);
+  const legacyMonthAlp = sumAnnualPremium(monthDeals);
+
   return {
     scopeLabel,
     sourceGeneratedAt: new Date().toISOString(),
     production: {
-      todayAlp: sumAnnualPremium(todayDeals),
-      todayDeals: todayDeals.length,
-      weekAlp: sumAnnualPremium(weekDeals),
-      weekDeals: weekDeals.length,
-      monthAlp: sumAnnualPremium(monthDeals),
-      monthDeals: monthDeals.length,
+      // Prefer AgentLink truth; legacy values only as fallback when view is empty.
+      todayAlp: alTodayAlp > 0 ? alTodayAlp : legacyTodayAlp,
+      todayDeals: alTodayDeals > 0 ? alTodayDeals : todayDeals.length,
+      weekAlp: alWeekAlp > 0 ? alWeekAlp : sumAnnualPremium(weekDeals),
+      weekDeals: alWeekDeals > 0 ? alWeekDeals : weekDeals.length,
+      monthAlp: alMonthAlp > 0 ? alMonthAlp : legacyMonthAlp,
+      monthDeals: alMonthDeals > 0 ? alMonthDeals : monthDeals.length,
       previousWeekAlp: sumAnnualPremium(priorWeekDeals),
       liveAgents: new Set((liveDeals as any[]).map((row) => row.agent_id).filter(Boolean)).size,
       presentationsWeek: weekProduction.reduce((sum, row) => sum + Number(row.presentations ?? 0), 0),

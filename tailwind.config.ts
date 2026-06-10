@@ -51,7 +51,41 @@ export default {
       '96': '24rem',     // 384px (48 units)
     },
     extend: {
+      // v9 Wave 0: APEX design tokens. AgentLink/Agent Cloud-class restraint.
+      // One accent. Three surfaces. Six type sizes. Use these instead of
+      // creating new tokens or hard-coded colors.
+      fontSize: {
+        '11': ['11px', { lineHeight: '14px' }],
+        '12': ['12px', { lineHeight: '16px' }],
+        '14': ['14px', { lineHeight: '20px' }],
+        '16': ['16px', { lineHeight: '22px' }],
+        '20': ['20px', { lineHeight: '28px' }],
+        '28': ['28px', { lineHeight: '34px', letterSpacing: '-0.01em' }],
+      },
+      transitionDuration: {
+        'fast': '120ms',
+        'base': '180ms',
+        'slow': '240ms',
+      },
       colors: {
+        apex: {
+          bg:           "hsl(var(--apex-bg))",
+          card:         "hsl(var(--apex-card))",
+          hover:        "hsl(var(--apex-hover))",
+          border:       "hsl(var(--apex-border))",
+          'border-strong': "hsl(var(--apex-border-strong))",
+          text:         "hsl(var(--apex-text))",
+          mute:         "hsl(var(--apex-text-mute))",
+          dim:          "hsl(var(--apex-text-dim))",
+          accent:       "hsl(var(--apex-accent))",
+          'accent-soft':   "hsl(var(--apex-accent-soft))",
+          'accent-strong': "hsl(var(--apex-accent-strong))",
+          success:      "hsl(var(--apex-success))",
+          warning:      "hsl(var(--apex-warning))",
+          danger:       "hsl(var(--apex-danger))",
+          info:         "hsl(var(--apex-info))",
+          neutral:      "hsl(var(--apex-neutral))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

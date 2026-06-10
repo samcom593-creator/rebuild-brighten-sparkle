@@ -1,3 +1,6 @@
+/* APEX design tokens — single source of truth for color/type/motion/radii.
+ * Loaded BEFORE tailwind base so utilities can reference --apex-* vars. */
+@import "./styles/apex-tokens.css";
 @tailwind base;
 /* Safe area for mobile bottom nav */
 .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }

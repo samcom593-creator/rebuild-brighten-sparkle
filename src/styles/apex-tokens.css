@@ -1,0 +1,61 @@
+/* APEX Design Tokens — v9 Wave 0 · 2026-06-10
+ * Single source of truth for color/type/motion/radius/shadow.
+ * All other components consume these via Tailwind arbitrary values or className.
+ * Goal: AgentLink/Agent Cloud-class restraint. One accent. Three surfaces. */
+
+:root {
+  /* Surfaces — 3 only */
+  --apex-bg:             220 30% 7%;
+  --apex-card:           220 25% 11%;
+  --apex-hover:          220 22% 14%;
+
+  /* Borders — 2 only */
+  --apex-border:         220 18% 18%;
+  --apex-border-strong:  220 16% 28%;
+
+  /* Text — 3 ramps */
+  --apex-text:           220 15% 96%;
+  --apex-text-mute:      220 10% 65%;
+  --apex-text-dim:       220 8%  45%;
+
+  /* Accent — emerald, used ONLY for primary action affordances */
+  --apex-accent:         160 84% 45%;
+  --apex-accent-soft:    160 84% 45% / 0.08;
+  --apex-accent-strong:  160 84% 38%;
+
+  /* Status — 5 colors, paired with icon */
+  --apex-success:        150 70% 50%;
+  --apex-warning:        38  92% 55%;
+  --apex-danger:         0   75% 55%;
+  --apex-info:           220 80% 65%;
+  --apex-neutral:        220 12% 50%;
+
+  /* Type ramps — only these sizes exist */
+  --type-11: 11px;
+  --type-12: 12px;
+  --type-14: 14px;
+  --type-16: 16px;
+  --type-20: 20px;
+  --type-28: 28px;
+
+  /* Motion budget — nothing slower than 250ms anywhere */
+  --motion-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-base: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-slow: 240ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Radii */
+  --apex-r-sm: 6px;
+  --apex-r-md: 10px;
+  --apex-r-lg: 14px;
+
+  /* Shadows — 2 only */
+  --apex-shadow-1: 0 1px 2px hsl(220 50% 2% / 0.6);
+  --apex-shadow-2: 0 8px 24px hsl(220 50% 2% / 0.55);
+}
+
+/* Tabular nums on every number across the app (without per-component opt-in) */
+*,
+*::before,
+*::after {
+  font-feature-settings: "tnum" 1, "ss01" 1;
+}

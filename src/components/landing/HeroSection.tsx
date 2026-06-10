@@ -284,14 +284,29 @@ export function HeroSection() {
             </a>
           </div>
 
-          {/* Founder credit — Brand Bible: "the face IS the brand" */}
+          {/* Founder credit — Brand Bible: "the face IS the brand".
+              wave-56: was a 75,587-byte Supabase storage JPG with cache-control:
+              no-cache that re-downloaded on every cold landing. Now a 88x88
+              WebP (1,878 bytes) baked into /public/img/ + 132x132 retina
+              source + jpg fallback. width/height set explicitly so the
+              landing-fade-up animation can't induce CLS. */}
           <div className="landing-fade-up landing-delay-400 flex items-center justify-center gap-3 mb-10">
-            <img
-              src="https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/avatars/4491dc82-a056-4fb3-ab38-b132afffb700/avatar-1777285677901.jpg"
-              alt="Samuel James, Founder of APEX Financial"
-              loading="lazy"
-              className="h-11 w-11 rounded-full ring-2 ring-primary/40 object-cover shadow-[0_0_24px_hsl(168_80%_50%/0.25)]"
-            />
+            <picture>
+              <source
+                type="image/webp"
+                srcSet="/img/founder-headshot-88.webp 1x, /img/founder-headshot-132.webp 1.5x"
+              />
+              <img
+                src="/img/founder-headshot-88.jpg"
+                alt="Samuel James, Founder of APEX Financial"
+                width={44}
+                height={44}
+                loading="lazy"
+                decoding="async"
+                fetchPriority="low"
+                className="h-11 w-11 rounded-full ring-2 ring-primary/40 object-cover shadow-[0_0_24px_hsl(168_80%_50%/0.25)]"
+              />
+            </picture>
             <div className="text-left">
               <p className="text-sm font-bold leading-tight">Samuel James</p>
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider">

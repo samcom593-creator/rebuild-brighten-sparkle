@@ -22,8 +22,16 @@ interface SocialSnapshot {
   engagement_rate: number | null;
   growth_7d: number | null;
   views_7d: number | null;
+  reach_7d: number | null;
   taken_at: string;
   source: string;
+  payload?: {
+    total_likes?: number;
+    total_comments?: number;
+    total_shares?: number;
+    top_post?: { permalink?: string; reach?: number; likes?: number };
+    window_days?: number;
+  };
 }
 
 const PLATFORMS = [
@@ -107,9 +115,23 @@ export default function SocialDashboard() {
                     </Badge>
                   )}
                 </div>
-                <p className="text-28 font-bold tabular-nums">{fmt(s?.followers ?? null)}</p>
+                {/* When Metricool brings real engagement, show the headline number
+                    that matters per platform. Otherwise fall back to follower count
+                    or empty state. */}
+                <p className="text-28 font-bold tabular-nums">
+                  {connected && (s?.reach_7d ?? 0) > 0
+                    ? fmt(s?.reach_7d ?? null)
+                    : connected && (s?.views_7d ?? 0) > 0
+                    ? fmt(s?.views_7d ?? null)
+                    : fmt(s?.followers ?? null)}
+                </p>
                 <p className="text-12 text-slate-500">
-                  followers ·{" "}
+                  {connected && (s?.reach_7d ?? 0) > 0
+                    ? "reach · 30d"
+                    : connected && (s?.views_7d ?? 0) > 0
+                    ? "views · 30d"
+                    : "followers"}
+                  {" · "}
                   {link ? (
                     <a href={link} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600">
                       @{handle}
@@ -118,6 +140,11 @@ export default function SocialDashboard() {
                     <span>@{handle}</span>
                   )}
                 </p>
+                {connected && (s?.posts_total ?? 0) > 0 && (
+                  <p className="text-11 text-slate-500 mt-1">
+                    {s?.posts_total} posts · {fmt(s?.payload?.total_likes ?? null)} likes · {fmt(s?.payload?.total_comments ?? null)} comments
+                  </p>
+                )}
                 {s?.growth_7d != null && (
                   <p className={`mt-1 text-12 ${s.growth_7d >= 0 ? "text-emerald-600" : "text-rose-500"}`}>
                     {s.growth_7d >= 0 ? "+" : ""}{fmt(s.growth_7d)} this week

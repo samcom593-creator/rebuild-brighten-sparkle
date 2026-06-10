@@ -162,8 +162,8 @@ export function CallCenterLeadCard({
       animate="visible"
       exit="exit"
       className={cn(
-        "relative overflow-hidden rounded-2xl",
-        "bg-gradient-to-br from-card/95 via-card/90 to-card/85",
+        "relative overflow-hidden rounded-md",
+        "bg-white dark:bg-slate-900",
         "backdrop-blur-xl border border-border/50",
         "shadow-2xl shadow-black/20",
         "transition-all duration-300",
@@ -172,12 +172,12 @@ export function CallCenterLeadCard({
       )}
     >
       {/* Ambient glow effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none opacity-40" />
+      <div className="absolute inset-0 bg-white dark:bg-slate-900 pointer-events-none opacity-40" />
 
       {/* Recording indicator overlay */}
       {isRecording && (
         <motion.div
-          className="absolute inset-0 border-2 border-red-500/40 rounded-2xl pointer-events-none z-10"
+          className="absolute inset-0 border-2 border-red-500/40 rounded-md pointer-events-none z-10"
           animate={{
             opacity: [0.4, 0.8, 0.4],
             boxShadow: [
@@ -350,8 +350,8 @@ export function CallCenterLeadCard({
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
               className={cn(
-                "relative flex items-center gap-4 p-4 rounded-xl w-full text-left transition-all overflow-hidden min-h-[60px]",
-                "bg-gradient-to-r from-green-500/10 to-emerald-500/10",
+                "relative flex items-center gap-4 p-4 rounded-md w-full text-left transition-all overflow-hidden min-h-[60px]",
+                "bg-white dark:bg-slate-900",
                 "border border-green-500/30 hover:border-green-500/50",
                 "hover:from-green-500/20 hover:to-emerald-500/20",
                 "group"
@@ -360,7 +360,7 @@ export function CallCenterLeadCard({
               {/* Ripple effect */}
               {showRipple && (
                 <motion.div
-                  className="absolute inset-0 bg-green-500/30 rounded-xl"
+                  className="absolute inset-0 bg-green-500/30 rounded-md"
                   initial={{ scale: 0, opacity: 1 }}
                   animate={{ scale: 2.5, opacity: 0 }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
@@ -389,7 +389,7 @@ export function CallCenterLeadCard({
             <motion.a
               href={`sms:${lead.phone}`}
               whileHover={{ scale: 1.01, x: 2 }}
-              className="flex items-center gap-4 p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 transition-colors"
+              className="flex items-center gap-4 p-3 rounded-md bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 transition-colors"
             >
               <div className="p-2.5 rounded-full bg-blue-500/20">
                 <Phone className="h-4 w-4 text-blue-400" />
@@ -408,7 +408,7 @@ export function CallCenterLeadCard({
           <motion.a
             href={`mailto:${lead.email}`}
             whileHover={{ scale: 1.01, x: 2 }}
-            className="flex items-center gap-4 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
+            className="flex items-center gap-4 p-3 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors"
           >
             <div className="p-2.5 rounded-full bg-primary/10">
               <Mail className="h-4 w-4 text-primary" />
@@ -422,7 +422,7 @@ export function CallCenterLeadCard({
               href={`https://instagram.com/${lead.instagramHandle.replace("@", "")}`}
               target="_blank" rel="noopener noreferrer"
               whileHover={{ scale: 1.01, x: 2 }}
-              className="flex items-center gap-4 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
+              className="flex items-center gap-4 p-3 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors"
             >
               <div className="p-2.5 rounded-full bg-pink-500/10">
                 <Instagram className="h-4 w-4 text-pink-400" />
@@ -436,7 +436,7 @@ export function CallCenterLeadCard({
         {(lead.notes || lead.motivation) && (
           <motion.div
             variants={itemVariants}
-            className="p-4 rounded-xl bg-muted/20 border border-border/30"
+            className="p-4 rounded-md bg-muted/20 border border-border/30"
           >
             <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
               <User className="h-3.5 w-3.5" />
@@ -454,7 +454,7 @@ export function CallCenterLeadCard({
             {/* Mobile: collapsible */}
             <motion.div variants={itemVariants} className="md:hidden">
               <details className="group">
-                <summary className="p-4 rounded-xl bg-muted/20 border border-border/30 cursor-pointer list-none flex items-center justify-between">
+                <summary className="p-4 rounded-md bg-muted/20 border border-border/30 cursor-pointer list-none flex items-center justify-between">
                   <div className="text-xs font-medium text-muted-foreground flex items-center gap-2">
                     <FileText className="h-3.5 w-3.5" />
                     Applicant Details
@@ -504,7 +504,7 @@ export function CallCenterLeadCard({
             {/* Desktop: always visible */}
             <motion.div
               variants={itemVariants}
-              className="hidden md:block p-4 rounded-xl bg-muted/20 border border-border/30 space-y-2"
+              className="hidden md:block p-4 rounded-md bg-muted/20 border border-border/30 space-y-2"
             >
               <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
                 <FileText className="h-3.5 w-3.5" />

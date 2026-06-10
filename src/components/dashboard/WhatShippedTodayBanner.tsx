@@ -741,9 +741,9 @@ export function WhatShippedTodayBanner() {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="relative overflow-hidden rounded-2xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/12 via-primary/5 to-transparent p-4 sm:p-5 shadow-[0_0_60px_hsl(168_80%_50%/0.12)]"
+      className="relative overflow-hidden rounded-md border border-emerald-500/40 bg-white dark:bg-slate-900 p-4 sm:p-5 "
     >
-      <div aria-hidden className="pointer-events-none absolute -top-12 -right-12 h-56 w-56 rounded-full bg-emerald-500/15 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -top-12 -right-12 h-56 w-56 rounded-full bg-emerald-500/15 " />
 
       <button
         type="button"
@@ -751,7 +751,7 @@ export function WhatShippedTodayBanner() {
         className="relative w-full flex items-center gap-3 text-left"
         aria-expanded={expanded}
       >
-        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-400 to-primary flex items-center justify-center shadow-[0_0_30px_hsl(168_80%_50%/0.4)] flex-shrink-0">
+        <div className="h-10 w-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center  flex-shrink-0">
           <Rocket className="h-5 w-5 text-zinc-950" />
         </div>
         <div className="flex-1 min-w-0">
@@ -780,7 +780,7 @@ export function WhatShippedTodayBanner() {
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.03 }}
-                className="flex items-start gap-3 rounded-xl border border-emerald-500/15 bg-white dark:bg-zinc-900/40 px-3 py-2"
+                className="flex items-start gap-3 rounded-md border border-emerald-500/15 bg-white dark:bg-zinc-900/40 px-3 py-2"
               >
                 <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">

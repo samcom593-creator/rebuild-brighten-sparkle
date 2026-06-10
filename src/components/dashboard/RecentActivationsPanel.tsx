@@ -42,7 +42,7 @@ export function RecentActivationsPanel() {
   });
 
   return (
-    <Card className="rounded-lg border-amber-500/20 bg-gradient-to-br from-amber-500/[0.04] via-card to-card">
+    <Card className="rounded-lg border-amber-500/20 bg-white dark:bg-slate-900">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Rocket className="h-4 w-4 text-amber-400" />

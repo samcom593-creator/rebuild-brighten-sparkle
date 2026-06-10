@@ -282,7 +282,7 @@ export function RecognitionQueue() {
             <DialogTitle>Plaque Preview</DialogTitle>
           </DialogHeader>
           {previewCandidate && (
-            <div className="bg-gradient-to-b from-gray-900 to-black p-6 rounded-lg text-center space-y-4">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg text-center space-y-4">
               <p className="text-xs uppercase tracking-widest text-gray-400">
                 {achievementConfig[previewCandidate.achievement].label}
               </p>

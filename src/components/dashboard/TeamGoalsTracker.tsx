@@ -175,7 +175,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
     <GlassCard className={`p-6 ${className}`}>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-md bg-primary/15 flex items-center justify-center">
             <Target className="h-5 w-5 text-primary" />
           </div>
           <div>
@@ -208,7 +208,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div
-                      className={`h-7 w-7 rounded-lg bg-gradient-to-br ${goal.color} flex items-center justify-center text-white`}
+                      className={`h-7 w-7 rounded-lg  ${goal.color} flex items-center justify-center text-white`}
                     >
                       {isComplete ? <CheckCircle2 className="h-4 w-4" /> : goal.icon}
                     </div>
@@ -244,7 +244,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
                       initial={{ width: 0 }}
                       animate={{ width: `${percentage}%` }}
                       transition={{ duration: 1, delay: index * 0.1, ease: "easeOut" }}
-                      className={`h-full bg-gradient-to-r ${goal.color} relative`}
+                      className={`h-full  ${goal.color} relative`}
                     >
                       {percentage > 10 && (
                         <div className="absolute inset-0 bg-white/20 animate-pulse" />

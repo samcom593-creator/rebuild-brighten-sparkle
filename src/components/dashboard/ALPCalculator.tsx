@@ -127,7 +127,7 @@ export function ALPCalculator({ onALPChange, onDealsChange, initialALP = 0, init
                 }}
                 className={cn(
                   "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold",
-                  "bg-gradient-to-r from-primary/20 to-accent/20",
+                  "bg-white dark:bg-slate-900",
                   "border border-primary/30 shadow-sm"
                 )}
               >
@@ -240,7 +240,7 @@ export function ALPCalculator({ onALPChange, onDealsChange, initialALP = 0, init
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20"
+          className="flex items-center justify-between p-4 rounded-md bg-white dark:bg-slate-900 border border-primary/20"
         >
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">

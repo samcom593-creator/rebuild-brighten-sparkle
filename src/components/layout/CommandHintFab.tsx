@@ -29,7 +29,7 @@ export function CommandHintFab() {
       className="
         fixed z-30 bottom-4 right-4 lg:bottom-6 lg:right-6
         flex items-center gap-2 px-3 py-2 rounded-full
-        bg-gradient-to-br from-primary/30 via-primary/15 to-transparent
+        bg-white dark:bg-slate-900
         border border-primary/40
         backdrop-blur-md
         text-foreground text-xs font-semibold

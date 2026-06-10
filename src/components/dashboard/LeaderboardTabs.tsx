@@ -340,21 +340,21 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
   const renderRankBadge = (rank: number, isCurrentUser: boolean) => {
     if (rank === 1) {
       return (
-        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 animate-rank-glow">
+        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-white dark:bg-slate-900 animate-rank-glow">
           <span className="text-[10px] font-bold text-white">1</span>
         </div>
       );
     }
     if (rank === 2) {
       return (
-        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-br from-slate-300 to-slate-400">
+        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-white dark:bg-slate-900">
           <span className="text-[10px] font-bold text-slate-700">2</span>
         </div>
       );
     }
     if (rank === 3) {
       return (
-        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-br from-amber-600 to-amber-800">
+        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-white dark:bg-slate-900">
           <span className="text-[10px] font-bold text-white">3</span>
         </div>
       );
@@ -414,7 +414,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                   onClick={() => setLeaderboardMode(mode => mode === "production" ? "building" : "production")}
                   className={cn(
                     "relative px-2 sm:px-3 py-1 rounded-full text-[10px] font-bold transition-all shrink-0",
-                    "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600",
+                    "bg-white dark:bg-slate-900",
                     "text-black shadow-md shadow-amber-500/20",
                     "hover:shadow-amber-500/40 active:scale-95",
                     "border border-amber-300/50"
@@ -525,7 +525,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                   <div className="space-y-2 max-h-[400px] overflow-y-auto scrollbar-custom">
                     {loading ? (
                       Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="animate-pulse p-4 rounded-xl bg-muted/30">
+                        <div key={i} className="animate-pulse p-4 rounded-md bg-muted/30">
                           <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-full bg-muted" />
                             <div className="h-10 w-10 rounded-full bg-muted" />
@@ -680,7 +680,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                               {/* Agent */}
                               <div className="col-span-3 flex items-center gap-1.5 min-w-0">
                                 <div className={cn(
-                                  "h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold text-primary-foreground shrink-0 bg-gradient-to-br",
+                                  "h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold text-primary-foreground shrink-0 ",
                                   entry.avatarUrl ? "" : getAvatarColor(entry.name)
                                 )}>
                                   {entry.avatarUrl ? (

@@ -56,9 +56,9 @@ export function RecruitFAQ() {
             return (
               <div
                 key={i}
-                className={`landing-fade-up rounded-2xl border bg-apex-card backdrop-blur-xl overflow-hidden transition-all duration-300 ${
+                className={`landing-fade-up rounded-md border bg-apex-card backdrop-blur-xl overflow-hidden transition-all duration-300 ${
                   isOpen
-                    ? "border-apex-accent/50 shadow-[0_0_0_1px_rgba(20,184,166,0.15),0_20px_60px_-20px_rgba(20,184,166,0.20)]"
+                    ? "border-apex-accent/50 "
                     : "border-apex-border hover:border-apex-accent/30 hover:shadow-lg"
                 }`}
               >

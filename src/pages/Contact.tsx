@@ -21,7 +21,7 @@ export default function Contact() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <GlassCard className="border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/70 p-5">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-300">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-teal-500/15 text-teal-300">
               <Calendar className="h-5 w-5" />
             </div>
             <h2 className="text-xl font-semibold">Book a Call</h2>
@@ -34,7 +34,7 @@ export default function Contact() {
           </GlassCard>
 
           <GlassCard className="border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/70 p-5">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-300">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-blue-500/15 text-blue-300">
               <Mail className="h-5 w-5" />
             </div>
             <h2 className="text-xl font-semibold">Email</h2>
@@ -50,7 +50,7 @@ export default function Contact() {
           </GlassCard>
 
           <GlassCard className="border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/70 p-5">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-300">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-amber-500/15 text-amber-300">
               <Phone className="h-5 w-5" />
             </div>
             <h2 className="text-xl font-semibold">Call or Text</h2>

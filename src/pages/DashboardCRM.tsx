@@ -510,7 +510,7 @@ function InlineNotesButton({ agent }: { agent: AgentCRM }) {
         {showSuccess ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 animate-in zoom-in-50 duration-300" /> : <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />}
       </Button>
       {open && (
-        <div className="absolute right-0 top-8 z-50 w-[320px] bg-card border border-border rounded-xl shadow-xl p-3 animate-in fade-in-0 slide-in-from-top-2 duration-150">
+        <div className="absolute right-0 top-8 z-50 w-[320px] bg-card border border-border rounded-md shadow-xl p-3 animate-in fade-in-0 slide-in-from-top-2 duration-150">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold">Notes — {agent.name}</span>
             <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setOpen(false)}>
@@ -1326,7 +1326,7 @@ export default function DashboardCRM() {
           {...surfaceMotion}
           className="relative overflow-hidden rounded-lg border border-slate-900/10 bg-white dark:bg-slate-950 px-4 py-4 text-white shadow-xl shadow-slate-950/10 dark:border-white/10 md:px-5"
         >
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400" />
+          <div className="absolute inset-x-0 top-0 h-1 bg-white dark:bg-slate-900" />
           <PageHeader
             accent="cyan"
             eyebrow="CRM · Agents"

@@ -214,7 +214,7 @@ function DroppableColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col rounded-xl border-2 transition-all duration-150 min-h-[300px]",
+        "flex flex-col rounded-md border-2 transition-all duration-150 min-h-[300px]",
         column.color,
         isOver && "border-primary/60 bg-primary/5 scale-[1.01]"
       )}
@@ -348,7 +348,7 @@ export function KanbanBoard({
 
         <DragOverlay>
           {activeApp && (
-            <div className="bg-card border border-primary/40 rounded-xl p-3 shadow-2xl opacity-95 w-52 rotate-2">
+            <div className="bg-card border border-primary/40 rounded-md p-3 shadow-2xl opacity-95 w-52 rotate-2">
               <p className="font-semibold text-sm">{activeApp.first_name} {activeApp.last_name}</p>
               <p className="text-xs text-muted-foreground truncate">{activeApp.email}</p>
             </div>

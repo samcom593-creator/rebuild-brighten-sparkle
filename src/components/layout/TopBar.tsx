@@ -187,7 +187,7 @@ export function TopBar() {
         </Button>
 
         <Avatar className="h-8 w-8 ring-1 ring-primary/40">
-          <AvatarFallback className="text-[11px] font-bold bg-gradient-to-br from-primary/30 to-primary/10">
+          <AvatarFallback className="text-[11px] font-bold bg-white dark:bg-slate-900">
             {initials}
           </AvatarFallback>
         </Avatar>

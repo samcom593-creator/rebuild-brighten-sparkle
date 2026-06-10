@@ -385,7 +385,7 @@ export function CallCenterVoiceRecorder({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="rounded-xl bg-gradient-to-br from-primary/5 via-card to-primary/5 border border-primary/20 overflow-hidden"
+            className="rounded-md bg-white dark:bg-slate-900 border border-primary/20 overflow-hidden"
           >
             {/* Summary Header */}
             <div className="p-4 border-b border-border/30 bg-primary/5">

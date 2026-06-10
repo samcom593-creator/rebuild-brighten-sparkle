@@ -312,7 +312,7 @@ export default function HallOfFame() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05 * idx, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                   className={cn(
-                    "relative rounded-2xl border border-border/60 p-5 text-center bg-gradient-to-b to-transparent overflow-hidden",
+                    "relative rounded-md border border-border/60 p-5 text-center  to-transparent overflow-hidden",
                     medal.bg,
                     isFirst && "sm:scale-[1.04] shadow-[0_8px_40px_hsl(45_95%_55%/0.25)] border-amber-500/50",
                   )}
@@ -498,9 +498,9 @@ function PlaqueCard({ plaque, onClick, delay }: PlaqueCardProps) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(delay, 0.25), duration: 0.3 }}
-      className="group relative text-left rounded-xl overflow-hidden border border-border/60 bg-card/95 hover:border-primary/50 hover:shadow-[0_8px_30px_hsl(168_80%_50%/0.12)] transition-all"
+      className="group relative text-left rounded-md overflow-hidden border border-border/60 bg-card/95 hover:border-primary/50 hover:shadow-[0_8px_30px_hsl(168_80%_50%/0.12)] transition-all"
     >
-      <div className="aspect-[3/4] relative bg-gradient-to-br from-muted to-background overflow-hidden">
+      <div className="aspect-[3/4] relative bg-white dark:bg-slate-900 overflow-hidden">
         {img ? (
           <img
             src={img}
@@ -525,7 +525,7 @@ function PlaqueCard({ plaque, onClick, delay }: PlaqueCardProps) {
             </Badge>
           </div>
         )}
-        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-white dark:bg-slate-900" />
       </div>
       <div className="p-2.5 space-y-1">
         <div className="flex items-center gap-2 min-w-0">
@@ -563,7 +563,7 @@ function PlaqueDetail({ plaque, onClose }: PlaqueDetailProps) {
 
   return (
     <div className="flex flex-col">
-      <div className="aspect-[3/4] sm:aspect-square relative bg-gradient-to-br from-muted to-background">
+      <div className="aspect-[3/4] sm:aspect-square relative bg-white dark:bg-slate-900">
         {img ? (
           <img src={img} alt={plaque.badge_label ?? plaque.milestone_type} className="w-full h-full object-cover" />
         ) : (

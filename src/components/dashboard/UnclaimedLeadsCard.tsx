@@ -78,7 +78,7 @@ export function UnclaimedLeadsCard() {
       <Card className={cn("p-5 sm:p-6 transition-colors", borderClass[tone])}>
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="rounded-xl bg-rose-500/15 p-3 border border-rose-500/30 shrink-0">
+            <div className="rounded-md bg-rose-500/15 p-3 border border-rose-500/30 shrink-0">
               <AlertOctagon className="h-6 w-6 text-rose-400" />
             </div>
             <div className="min-w-0">

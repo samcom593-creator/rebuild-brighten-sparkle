@@ -66,7 +66,7 @@ export function PageHeader({
         className,
       )}
     >
-      <span aria-hidden className={cn("absolute inset-x-0 top-0 h-1 bg-gradient-to-r", ACCENT_BARS[accent])} />
+      <span aria-hidden className={cn("absolute inset-x-0 top-0 h-1 ", ACCENT_BARS[accent])} />
       <span
         aria-hidden
         className={cn(
@@ -76,7 +76,7 @@ export function PageHeader({
       />
       <span
         aria-hidden
-        className="apex-header-scan pointer-events-none absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent"
+        className="apex-header-scan pointer-events-none absolute inset-x-8 bottom-0 h-px bg-white dark:bg-slate-900"
       />
 
       <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

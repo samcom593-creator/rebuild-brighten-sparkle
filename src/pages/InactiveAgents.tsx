@@ -305,7 +305,7 @@ export default function InactiveAgents() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <button
           onClick={() => setSeverityFilter(severityFilter === "warning" ? "all" : "warning")}
-          className={`p-4 rounded-xl border text-left transition ${SEVERITY_META.warning.color} ${
+          className={`p-4 rounded-md border text-left transition ${SEVERITY_META.warning.color} ${
             severityFilter === "warning" ? "ring-2 ring-primary" : ""
           }`}
         >
@@ -317,7 +317,7 @@ export default function InactiveAgents() {
         </button>
         <button
           onClick={() => setSeverityFilter(severityFilter === "critical" ? "all" : "critical")}
-          className={`p-4 rounded-xl border text-left transition ${SEVERITY_META.critical.color} ${
+          className={`p-4 rounded-md border text-left transition ${SEVERITY_META.critical.color} ${
             severityFilter === "critical" ? "ring-2 ring-primary" : ""
           }`}
         >
@@ -329,7 +329,7 @@ export default function InactiveAgents() {
         </button>
         <button
           onClick={() => setSeverityFilter(severityFilter === "abandoned" ? "all" : "abandoned")}
-          className={`p-4 rounded-xl border text-left transition ${SEVERITY_META.abandoned.color} ${
+          className={`p-4 rounded-md border text-left transition ${SEVERITY_META.abandoned.color} ${
             severityFilter === "abandoned" ? "ring-2 ring-primary" : ""
           }`}
         >
@@ -339,7 +339,7 @@ export default function InactiveAgents() {
           <p className="text-2xl font-bold">{stats.abandoned}</p>
           <p className="text-[10px] opacity-70">30+ days inactive</p>
         </button>
-        <div className="p-4 rounded-xl border bg-muted/30 text-left">
+        <div className="p-4 rounded-md border bg-muted/30 text-left">
           <p className="text-xs uppercase text-muted-foreground">Total in Queue</p>
           <p className="text-2xl font-bold">{stats.total}</p>
           <p className="text-[10px] text-muted-foreground">Showing: {statusFilter}</p>
@@ -347,7 +347,7 @@ export default function InactiveAgents() {
       </div>
 
       {/* PL-063: Producer segment tabs. Each group needs different outreach. */}
-      <div className="flex items-center gap-1 rounded-xl border border-border/40 bg-muted/30 p-1 flex-wrap">
+      <div className="flex items-center gap-1 rounded-md border border-border/40 bg-muted/30 p-1 flex-wrap">
         {([
           { key: "all" as ProducerSegment,                label: "All",                  count: entries.length },
           { key: "never_sold" as ProducerSegment,         label: "Never sold",           count: segmentCounts.neverSold },
@@ -394,7 +394,7 @@ export default function InactiveAgents() {
       </div>
 
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3 flex-wrap">
+        <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 flex-wrap">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           <div className="h-4 w-px bg-border mx-1" />
           <Button

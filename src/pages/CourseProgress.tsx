@@ -458,7 +458,7 @@ export default function CourseProgress() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
+            <div className="p-2 rounded-md bg-white dark:bg-slate-900 border border-primary/20">
               <GraduationCap className="h-4 w-4 text-primary" />
             </div>
             <div>
@@ -522,8 +522,8 @@ export default function CourseProgress() {
         <div className="grid grid-cols-3 gap-2">
           <button 
             className={cn(
-              "p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md text-left",
-              "bg-gradient-to-br from-blue-500/15 to-blue-500/5 border-blue-500/20",
+              "p-3 rounded-md border cursor-pointer transition-all hover:shadow-md text-left",
+              "bg-white dark:bg-slate-900 border-blue-500/20",
               filter === "in_progress" && "ring-2 ring-blue-500 shadow-md shadow-blue-500/20"
             )}
             onClick={() => setFilter("in_progress")}
@@ -541,8 +541,8 @@ export default function CourseProgress() {
 
           <button 
             className={cn(
-              "p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md text-left",
-              "bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border-emerald-500/20",
+              "p-3 rounded-md border cursor-pointer transition-all hover:shadow-md text-left",
+              "bg-white dark:bg-slate-900 border-emerald-500/20",
               filter === "complete" && "ring-2 ring-emerald-500 shadow-md shadow-emerald-500/20"
             )}
             onClick={() => setFilter("complete")}
@@ -560,8 +560,8 @@ export default function CourseProgress() {
 
           <button 
             className={cn(
-              "p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md text-left",
-              "bg-gradient-to-br from-muted/30 to-muted/10 border-border",
+              "p-3 rounded-md border cursor-pointer transition-all hover:shadow-md text-left",
+              "bg-white dark:bg-slate-900 border-border",
               filter === "not_started" && "ring-2 ring-muted-foreground shadow-md"
             )}
             onClick={() => setFilter("not_started")}

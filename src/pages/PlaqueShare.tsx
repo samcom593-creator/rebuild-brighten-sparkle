@@ -155,7 +155,7 @@ export default function PlaqueShare() {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="animate-pulse w-full max-w-2xl px-4">
-          <div className="aspect-[4/5] rounded-xl bg-[#111]" />
+          <div className="aspect-[4/5] rounded-md bg-[#111]" />
         </div>
       </div>
     );
@@ -194,7 +194,7 @@ export default function PlaqueShare() {
           )}
         </div>
 
-        <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#111]">
+        <div className="rounded-md overflow-hidden border border-white/10 bg-[#111]">
           {(plaque.image_png_url || plaque.image_svg_url) ? (
             <img
               src={plaque.image_png_url || plaque.image_svg_url!}
@@ -226,7 +226,7 @@ export default function PlaqueShare() {
           </Button>
         </div>
 
-        <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-4 flex items-start gap-3">
+        <div className="rounded-md border border-pink-500/20 bg-pink-500/5 p-4 flex items-start gap-3">
           <Instagram className="h-5 w-5 text-pink-400 shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm font-medium mb-1">Post to Instagram</p>

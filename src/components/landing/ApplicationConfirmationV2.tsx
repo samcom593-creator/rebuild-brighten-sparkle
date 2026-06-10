@@ -98,7 +98,7 @@ function UnlicensedBody({ firstName, email, tgDeepLink }: { firstName: string; e
   return (
     <div className="space-y-6">
       {/* The three-step path */}
-      <div className="rounded-xl border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
+      <div className="rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Your 3-step path</p>
         <Step done label="Application received" />
         <Step current label="Start your prelicensing course" detail="~$120, refundable when you produce. 3 days to license." />
@@ -145,7 +145,7 @@ function LicensedBody({
   return (
     <div className="space-y-6">
       {/* The path */}
-      <div className="rounded-xl border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
+      <div className="rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Activation path</p>
         <Step done label="Application received" />
         <Step current label="Book your hire call" detail="The fastest path to your first check." />
@@ -160,7 +160,7 @@ function LicensedBody({
 
       {/* Primary CTA: Calendly */}
       {showCalendly ? (
-        <section className="rounded-xl overflow-hidden border border-border/50 bg-background/50">
+        <section className="rounded-md overflow-hidden border border-border/50 bg-background/50">
           <CalendlyEmbed url={SCHEDULING_LINKS.licensed} />
         </section>
       ) : (

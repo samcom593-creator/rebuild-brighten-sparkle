@@ -148,9 +148,9 @@ export default function MyPlaques() {
           {cards.map(c => (
             <div key={c.id} className="space-y-2 group">
               {c.imageUrl ? (
-                <img src={c.imageUrl} alt={c.achievement} className="w-full rounded-2xl shadow-2xl" />
+                <img src={c.imageUrl} alt={c.achievement} className="w-full rounded-md shadow-2xl" />
               ) : (
-                <div className="w-full overflow-hidden rounded-2xl shadow-2xl group-hover:scale-[1.01] transition-transform">
+                <div className="w-full overflow-hidden rounded-md shadow-2xl group-hover:scale-[1.01] transition-transform">
                   <Plaque
                     agentName={c.agentName}
                     achievement={c.achievement}

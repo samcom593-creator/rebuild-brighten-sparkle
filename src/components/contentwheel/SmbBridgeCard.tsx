@@ -47,7 +47,7 @@ export function SmbBridgeCard({ smb }: Props) {
   const blockerTone = (b?.hot_blockers ?? 0) > 0 ? "alert" : (b?.open_blockers ?? 0) > 0 ? "warn" : "ok";
 
   return (
-    <Card className="p-5 border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card">
+    <Card className="p-5 border border-primary/20 bg-white dark:bg-slate-900">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex items-start gap-3 min-w-0">
           <div className="rounded-lg bg-primary/10 p-2 border border-primary/20 shrink-0">

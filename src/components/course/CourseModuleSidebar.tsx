@@ -22,7 +22,7 @@ export function CourseModuleSidebar({
   overallProgress
 }: CourseModuleSidebarProps) {
   return (
-    <div className="w-full lg:w-80 bg-card border rounded-xl p-4">
+    <div className="w-full lg:w-80 bg-card border rounded-md p-4">
       {/* Overall Progress */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">

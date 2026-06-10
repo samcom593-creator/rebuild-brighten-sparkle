@@ -129,7 +129,7 @@ function AtRiskBanner({ count, onClick }: { count: number; onClick: () => void }
     >
       <button
         onClick={onClick}
-        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm hover:bg-red-500/15 transition-colors text-left"
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-md bg-red-500/10 border border-red-500/30 text-sm hover:bg-red-500/15 transition-colors text-left"
       >
         <Flame className="h-4 w-4 text-red-400 shrink-0 animate-pulse" />
         <span className="font-medium text-red-300">
@@ -165,7 +165,7 @@ function BulkToolbar({
       exit={{ opacity: 0, y: 8 }}
       className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
     >
-      <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-card border border-border shadow-2xl shadow-black/40">
+      <div className="flex items-center gap-2 px-4 py-3 rounded-md bg-card border border-border shadow-2xl shadow-black/40">
         <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
           {selectedIds.size} selected
         </Badge>
@@ -613,7 +613,7 @@ export default function AgentPipeline() {
       <div className="mb-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/10">
+            <div className="p-2 rounded-md bg-primary/10">
               <Users className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -726,7 +726,7 @@ export default function AgentPipeline() {
         {loading ? (
           <div className="space-y-3">
             {[1,2,3].map((i) => (
-              <div key={i} className="h-16 rounded-xl bg-muted/40 animate-pulse" />
+              <div key={i} className="h-16 rounded-md bg-muted/40 animate-pulse" />
             ))}
           </div>
         ) : filteredApps.length === 0 ? (
@@ -770,7 +770,7 @@ export default function AgentPipeline() {
               return (
                 <div key={col.id}>
                   <div className={cn(
-                    "rounded-xl border-2 overflow-hidden transition-all",
+                    "rounded-md border-2 overflow-hidden transition-all",
                     col.color, isOpen && "shadow-lg"
                   )}>
                     <button

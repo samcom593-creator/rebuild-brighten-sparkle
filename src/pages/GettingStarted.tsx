@@ -215,7 +215,7 @@ export default function GettingStarted() {
     return (
       <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4 page-enter">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-emerald-500/20 border border-primary/30">
+          <div className="p-2.5 rounded-md bg-white dark:bg-slate-900 border border-primary/30">
             <Rocket className="h-6 w-6 text-primary" />
           </div>
           <div>

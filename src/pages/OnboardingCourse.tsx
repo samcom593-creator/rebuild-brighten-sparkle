@@ -220,7 +220,7 @@ export default function OnboardingCourse() {
         <motion.div
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-card to-primary/5 p-6"
+          className="relative overflow-hidden rounded-md border border-primary/20 bg-white dark:bg-slate-900 p-6"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">

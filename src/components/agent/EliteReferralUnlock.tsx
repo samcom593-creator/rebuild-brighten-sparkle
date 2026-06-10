@@ -111,7 +111,7 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
     return (
       <GlassCard className="p-4 relative overflow-hidden border border-dashed border-muted/50">
         <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-xl bg-muted/30 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-md bg-muted/30 flex items-center justify-center shrink-0">
             <Lock className="h-5 w-5 text-muted-foreground" />
           </div>
           <div className="flex-1 min-w-0">
@@ -125,7 +125,7 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
             <div className="mt-3">
               <div className="h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-primary to-amber-500 transition-all"
+                  className="h-full bg-white dark:bg-slate-900 transition-all"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -148,7 +148,7 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
     >
       <GlassCard className={cn(
         "p-5 relative overflow-hidden",
-        "bg-gradient-to-br from-amber-500/10 via-primary/10 to-violet-500/10",
+        "bg-white dark:bg-slate-900",
         "border border-amber-500/40 shadow-lg shadow-amber-500/10",
       )}>
         <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-amber-500/20 blur-2xl pointer-events-none" />

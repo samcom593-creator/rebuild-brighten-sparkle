@@ -22,7 +22,7 @@ function AuroraBackgroundImpl() {
       }}
     >
       {/* Single scanline at top — pure CSS, no animation */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-px bg-white dark:bg-slate-900" />
     </div>
   );
 }

@@ -424,12 +424,12 @@ export default function CalendarPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-blue-500/5 to-background p-6 backdrop-blur-sm"
+        className="relative overflow-hidden rounded-md border border-primary/20 bg-white dark:bg-slate-900 p-6 backdrop-blur-sm"
       >
         <BackgroundGlow accent="blue" intensity="subtle" />
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/20">
+            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/20">
               <Calendar className="h-6 w-6 text-primary" />
             </div>
             <div>
@@ -511,7 +511,7 @@ export default function CalendarPage() {
 
       {/* Week View */}
       {viewMode === "week" ? (
-        <div className="border border-border rounded-xl overflow-hidden">
+        <div className="border border-border rounded-md overflow-hidden">
           <div className="grid grid-cols-7 border-b border-border bg-muted/50">
             {weekDays.map((day) => (
               <div
@@ -575,7 +575,7 @@ export default function CalendarPage() {
           {/* Interview List */}
           {isLoading ? (
             <div className="space-y-3">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-md" />)}
             </div>
           ) : Object.keys(grouped).length === 0 ? (
             <Card>

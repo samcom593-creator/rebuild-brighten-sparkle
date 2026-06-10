@@ -78,7 +78,7 @@ export function XcelStalledCard() {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-purple-500/30 bg-purple-500/[0.05] p-5 animate-pulse">
+      <div className="rounded-md border border-purple-500/30 bg-purple-500/[0.05] p-5 animate-pulse">
         <div className="text-xs text-muted-foreground">Loading XCEL pipeline…</div>
       </div>
     );
@@ -93,13 +93,13 @@ export function XcelStalledCard() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.05 }}
-      className="relative overflow-hidden rounded-2xl border border-purple-500/40 bg-purple-500/[0.06] p-5 shadow-[0_0_80px_hsl(280_80%_55%/0.12)]"
+      className="relative overflow-hidden rounded-md border border-purple-500/40 bg-purple-500/[0.06] p-5 "
     >
-      <div aria-hidden className="pointer-events-none absolute -top-12 -right-12 h-56 w-56 rounded-full bg-purple-500/20 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -top-12 -right-12 h-56 w-56 rounded-full bg-purple-500/20 " />
 
       <div className="relative flex items-start justify-between gap-3 flex-wrap mb-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-400 to-fuchsia-500 flex items-center justify-center shadow-[0_0_30px_hsl(280_80%_55%/0.35)]">
+          <div className="h-10 w-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center ">
             <GraduationCap className="h-5 w-5 text-zinc-950" />
           </div>
           <div>
@@ -136,7 +136,7 @@ export function XcelStalledCard() {
           return (
             <div
               key={row.student_email}
-              className="flex items-center gap-3 rounded-xl border border-zinc-800/80 bg-white dark:bg-zinc-900/60 p-3 hover:border-purple-400/40 hover:bg-white dark:bg-zinc-900/80 transition-colors"
+              className="flex items-center gap-3 rounded-md border border-zinc-800/80 bg-white dark:bg-zinc-900/60 p-3 hover:border-purple-400/40 hover:bg-white dark:bg-zinc-900/80 transition-colors"
             >
               <span className={cn(
                 "h-2.5 w-2.5 rounded-full flex-shrink-0",
@@ -204,7 +204,7 @@ function BreakdownPill({
     amber: "border-amber-500/40 bg-amber-500/10 text-amber-200",
   } as const;
   return (
-    <div className={cn("rounded-xl border px-3 py-2 flex items-center gap-2", toneClasses[tone])}>
+    <div className={cn("rounded-md border px-3 py-2 flex items-center gap-2", toneClasses[tone])}>
       <Icon className="h-4 w-4 flex-shrink-0" />
       <div className="flex-1">
         <div className="text-[10px] uppercase tracking-wider opacity-80">{label}</div>

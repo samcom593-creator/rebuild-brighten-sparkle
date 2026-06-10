@@ -424,7 +424,7 @@ export default function AgentManagement() {
       {/* Views */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[...Array(9)].map((_, i) => <div key={i} className="h-32 rounded-xl bg-muted/20 animate-pulse" />)}
+          {[...Array(9)].map((_, i) => <div key={i} className="h-32 rounded-md bg-muted/20 animate-pulse" />)}
         </div>
       ) : filtered.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
@@ -513,7 +513,7 @@ function StatPill({ label, value, color = "primary", icon, onClick }: {
     <button
       onClick={onClick}
       disabled={!onClick}
-      className={`p-3 rounded-xl border text-left transition ${colors[color]} ${onClick ? "hover:ring-2 ring-current/30 cursor-pointer" : "cursor-default"}`}
+      className={`p-3 rounded-md border text-left transition ${colors[color]} ${onClick ? "hover:ring-2 ring-current/30 cursor-pointer" : "cursor-default"}`}
     >
       <div className="flex items-center gap-1.5 mb-0.5 opacity-80">{icon}<span className="text-[10px] uppercase tracking-wide font-semibold">{label}</span></div>
       <p className="text-2xl font-bold">{value}</p>
@@ -635,7 +635,7 @@ function TableView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
   onQuickEdit: (id: string) => void;
 }) {
   return (
-    <div className="rounded-xl border border-border overflow-hidden">
+    <div className="rounded-md border border-border overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">

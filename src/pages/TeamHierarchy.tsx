@@ -40,7 +40,7 @@ const roleConfig = {
   admin: {
     ring: "ring-2 ring-amber-400/60",
     badge: "bg-amber-400/15 text-amber-400 border-amber-400/30",
-    fallbackBg: "bg-gradient-to-br from-amber-500/30 to-amber-600/20 text-amber-300",
+    fallbackBg: "bg-white dark:bg-slate-900 text-amber-300",
     icon: Crown,
     label: "Admin",
     nodeBg: "#f59e0b",
@@ -48,7 +48,7 @@ const roleConfig = {
   manager: {
     ring: "ring-2 ring-emerald-400/60",
     badge: "bg-emerald-400/15 text-emerald-400 border-emerald-400/30",
-    fallbackBg: "bg-gradient-to-br from-emerald-500/30 to-emerald-600/20 text-emerald-300",
+    fallbackBg: "bg-white dark:bg-slate-900 text-emerald-300",
     icon: Shield,
     label: "Manager",
     nodeBg: "#22c55e",
@@ -56,7 +56,7 @@ const roleConfig = {
   agent: {
     ring: "ring-1 ring-border/50",
     badge: "bg-muted/50 text-muted-foreground border-border/50",
-    fallbackBg: "bg-gradient-to-br from-muted/50 to-muted/30 text-muted-foreground",
+    fallbackBg: "bg-white dark:bg-slate-900 text-muted-foreground",
     icon: User,
     label: "Agent",
     nodeBg: "#64748b",
@@ -529,7 +529,7 @@ function ListView({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card">
+    <div className="rounded-md border border-border bg-card">
       {roots.map((root) => renderNode(root, 0))}
     </div>
   );
@@ -605,7 +605,7 @@ function ChartView({ roots, childrenOf }: {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 overflow-auto">
+    <div className="rounded-md border border-border bg-card p-4 overflow-auto">
       <svg
         width={maxX + 40}
         height={maxY + 40}

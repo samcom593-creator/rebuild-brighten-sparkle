@@ -152,7 +152,7 @@ export function AgentRankBadge({
               "inline-flex items-center justify-center rounded-full font-bold shadow-sm",
               sizeClasses[size],
               isTop3 
-                ? `bg-gradient-to-r ${getRankGradient()} text-white shadow-md`
+                ? ` ${getRankGradient()} text-white shadow-md`
                 : "bg-muted/80 text-muted-foreground border border-border/50",
               className
             )}

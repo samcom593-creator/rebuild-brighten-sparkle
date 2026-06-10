@@ -262,10 +262,10 @@ export default function PurchaseLeads() {
         {/* Live Counter + Timer Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Live Lead Counter */}
-          <Card className="p-6 bg-gradient-to-br from-primary/10 via-background to-background border-primary/20">
+          <Card className="p-6 bg-white dark:bg-slate-900 border-primary/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-primary/20">
+                <div className="p-3 rounded-md bg-primary/20">
                   <Users className="h-6 w-6 text-primary" />
                 </div>
                 <div>
@@ -322,9 +322,9 @@ export default function PurchaseLeads() {
           </Card>
 
           {/* Timer */}
-          <Card className="p-6 bg-gradient-to-br from-amber-500/10 via-background to-background border-amber-500/20">
+          <Card className="p-6 bg-white dark:bg-slate-900 border-amber-500/20">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-amber-500/20">
+              <div className="p-3 rounded-md bg-amber-500/20">
                 <Clock className="h-6 w-6 text-amber-500" />
               </div>
               <div>
@@ -360,7 +360,7 @@ export default function PurchaseLeads() {
               className={cn(
                 "relative overflow-hidden transition-all duration-300 hover:scale-[1.02]",
                 pkg.popular
-                  ? "border-primary/40 bg-gradient-to-br from-primary/5 via-background to-background"
+                  ? "border-primary/40 bg-white dark:bg-slate-900"
                   : "border-border/50"
               )}
             >
@@ -378,7 +378,7 @@ export default function PurchaseLeads() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
                     <div className={cn(
-                      "p-3 rounded-xl",
+                      "p-3 rounded-md",
                       pkg.popular ? "bg-primary/20" : "bg-muted"
                     )}>
                       <Package className={cn(

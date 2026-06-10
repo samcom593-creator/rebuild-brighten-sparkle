@@ -397,7 +397,7 @@ export default function DashboardAccounts() {
             key={stat.label}
           >
             <div className={cn(
-              "relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg",
+              "relative overflow-hidden rounded-md border  p-4 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg",
               stat.gradient
             )}>
               <div className="flex items-center gap-3">

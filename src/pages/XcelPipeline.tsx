@@ -96,7 +96,7 @@ export default function XcelPipeline() {
         <button
           onClick={() => setFilter("all")}
           className={cn(
-            "rounded-xl border bg-card p-4 text-left transition",
+            "rounded-md border bg-card p-4 text-left transition",
             filter === "all" && "ring-2 ring-primary/40"
           )}
         >
@@ -112,12 +112,12 @@ export default function XcelPipeline() {
               key={s}
               onClick={() => setFilter(s)}
               className={cn(
-                "rounded-xl border p-4 text-left transition relative overflow-hidden",
+                "rounded-md border p-4 text-left transition relative overflow-hidden",
                 m.color,
                 filter === s && "ring-2 ring-primary/40"
               )}
             >
-              <div className={cn("absolute inset-0 bg-gradient-to-br opacity-50", m.tint)} />
+              <div className={cn("absolute inset-0  opacity-50", m.tint)} />
               <div className="relative">
                 <div className="text-xs uppercase tracking-wide opacity-80">{m.label}</div>
                 <div className="text-2xl font-bold tabular-nums mt-0.5">{n}</div>
@@ -157,7 +157,7 @@ export default function XcelPipeline() {
               .join("");
             return (
               <div key={r.student_email} className="p-4 flex items-start gap-3 hover:bg-muted/30 transition">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/30 to-violet-500/20 flex items-center justify-center font-bold text-sm text-white shrink-0">
+                <div className="h-10 w-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center font-bold text-sm text-white shrink-0">
                   {initials || "?"}
                 </div>
                 <div className="flex-1 min-w-0">

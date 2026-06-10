@@ -29,7 +29,7 @@ function SectionFallback() {
   // Dark glass placeholder while lazy chunks load. Was `bg-white/[0.03]` —
   // technically a 3% tint but read as "white shimmer" on slow connections.
   return (
-    <div className="mx-auto h-24 max-w-5xl rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/5 via-zinc-900/40 to-transparent animate-pulse" />
+    <div className="mx-auto h-24 max-w-5xl rounded-md border border-primary/15 bg-white dark:bg-slate-900 animate-pulse" />
   );
 }
 

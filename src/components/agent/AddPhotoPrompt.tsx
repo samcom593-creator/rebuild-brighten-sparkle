@@ -45,7 +45,7 @@ export function AddPhotoPrompt() {
   };
 
   return (
-    <GlassCard className="relative overflow-hidden p-4 md:p-5 border border-primary/40 bg-gradient-to-r from-primary/15 via-violet-500/10 to-amber-500/10 win-glow">
+    <GlassCard className="relative overflow-hidden p-4 md:p-5 border border-primary/40 bg-white dark:bg-slate-900 win-glow">
       <button
         onClick={dismiss}
         className="absolute top-2 right-2 h-7 w-7 rounded-full hover:bg-background/40 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
@@ -55,7 +55,7 @@ export function AddPhotoPrompt() {
       </button>
 
       <div className="flex flex-wrap items-center gap-4">
-        <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center shrink-0 shadow-lg shadow-primary/30">
+        <div className="h-14 w-14 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center shrink-0 shadow-lg shadow-primary/30">
           <Camera className="h-6 w-6 text-white" />
         </div>
         <div className="flex-1 min-w-0">

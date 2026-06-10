@@ -11,11 +11,11 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 export default function LeadsLanding() {
   usePageTitle("APEX Leads & Dialer · Daily Warm Leads");
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-white dark:bg-slate-900">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-blue-400 bg-clip-text text-transparent">
+          <Link to="/" className="text-2xl font-bold bg-white dark:bg-slate-900 bg-clip-text text-transparent">
             APEX FINANCIAL
           </Link>
           <Button asChild variant="outline">
@@ -28,7 +28,7 @@ export default function LeadsLanding() {
       <section className="relative overflow-hidden pt-20 pb-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           {/* Animated background gradient */}
-          <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-blue-500/10 blur-3xl" />
+          <div className="absolute inset-0 bg-white dark:bg-slate-900 " />
           
           <div className="relative space-y-8 text-center">
             <div className="inline-block">
@@ -38,7 +38,7 @@ export default function LeadsLanding() {
             </div>
             
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight">
-              Get <span className="bg-gradient-to-r from-teal-400 to-blue-400 bg-clip-text text-transparent">Qualified Leads</span> Delivered Daily
+              Get <span className="bg-white dark:bg-slate-900 bg-clip-text text-transparent">Qualified Leads</span> Delivered Daily
             </h1>
             
             <p className="text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
@@ -46,7 +46,7 @@ export default function LeadsLanding() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
-              <Button asChild size="lg" className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white border-0">
+              <Button asChild size="lg" className="bg-white dark:bg-slate-900 hover:from-teal-600 hover:to-teal-700 text-white border-0">
                 <Link to="/get-licensed" className="gap-2">
                   Get Started <ArrowRight className="h-5 w-5" />
                 </Link>
@@ -117,7 +117,7 @@ export default function LeadsLanding() {
             </h2>
           </div>
 
-          <div className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 rounded-2xl p-12 border border-slate-600">
+          <div className="bg-white dark:bg-slate-900 rounded-md p-12 border border-slate-600">
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 {features.slice(0, 5).map((feature, idx) => (
@@ -181,7 +181,7 @@ export default function LeadsLanding() {
 
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, idx) => (
-              <Card key={idx} className="bg-gradient-to-br from-slate-700/50 to-slate-800/50 border-slate-600">
+              <Card key={idx} className="bg-white dark:bg-slate-900 border-slate-600">
                 <CardHeader>
                   <div className="flex gap-1 mb-3">
                     {[...Array(5)].map((_, i) => (
@@ -201,7 +201,7 @@ export default function LeadsLanding() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-teal-600/20 to-blue-600/20">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-900">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-4xl font-bold text-white mb-6">
             Ready to Build Your First $10K Month?
@@ -209,7 +209,7 @@ export default function LeadsLanding() {
           <p className="text-xl text-slate-600 dark:text-slate-300 mb-8">
             Join our community of successful agents and start receiving qualified leads today. Limited spots available this month.
           </p>
-          <Button asChild size="lg" className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white border-0">
+          <Button asChild size="lg" className="bg-white dark:bg-slate-900 hover:from-teal-600 hover:to-teal-700 text-white border-0">
             <Link to="/get-licensed" className="gap-2">
               Apply Now <ArrowRight className="h-5 w-5" />
             </Link>

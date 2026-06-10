@@ -51,7 +51,7 @@ export function PushNotificationPrompt() {
 
   return (
     <div className="animate-fade-in fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-black/70 backdrop-blur-sm">
-      <div className="landing-scale-in mx-4 w-full max-w-md rounded-2xl border border-primary/30 bg-card shadow-2xl">
+      <div className="landing-scale-in mx-4 w-full max-w-md rounded-md border border-primary/30 bg-card shadow-2xl">
         {/* Header */}
         <div className="flex flex-col items-center gap-3 p-6 pb-2 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -67,7 +67,7 @@ export function PushNotificationPrompt() {
 
         {/* Benefits */}
         <div className="px-6 py-3">
-          <div className="space-y-2 rounded-xl bg-muted/50 p-4">
+          <div className="space-y-2 rounded-md bg-muted/50 p-4">
             {[
               "📥 New lead assignments",
               "🔥 Deal alerts from your team",

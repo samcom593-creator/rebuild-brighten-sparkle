@@ -24,9 +24,9 @@ const waitlistSchema = z.object({
 });
 
 const socialLinks = [
-  { icon: Instagram, label: "Instagram", href: "https://instagram.com/theprincejamez", gradient: "from-pink-500 to-purple-600", hoverGlow: "hover:shadow-[0_0_30px_hsl(330_80%_50%/0.3)]" },
-  { icon: Video, label: "TikTok", href: "https://tiktok.com/@theprincejamez", gradient: "from-cyan-400 to-pink-500", hoverGlow: "hover:shadow-[0_0_30px_hsl(180_80%_50%/0.3)]" },
-  { icon: MessageCircle, label: "Snapchat", href: "https://snapchat.com/add/theprincejamez", gradient: "from-yellow-400 to-yellow-500", hoverGlow: "hover:shadow-[0_0_30px_hsl(50_90%_55%/0.3)]" },
+  { icon: Instagram, label: "Instagram", href: "https://instagram.com/theprincejamez", gradient: "from-pink-500 to-purple-600", hoverGlow: "hover:" },
+  { icon: Video, label: "TikTok", href: "https://tiktok.com/@theprincejamez", gradient: "from-cyan-400 to-pink-500", hoverGlow: "hover:" },
+  { icon: MessageCircle, label: "Snapchat", href: "https://snapchat.com/add/theprincejamez", gradient: "from-yellow-400 to-yellow-500", hoverGlow: "hover:" },
 ];
 
 const offerCards = [
@@ -39,7 +39,7 @@ const offerCards = [
     border: "border-primary/30",
     iconBg: "bg-primary",
     iconColor: "text-primary-foreground",
-    glow: "hover:shadow-[0_0_30px_hsl(168_84%_42%/0.3)]",
+    glow: "hover:",
     accentColor: "text-primary",
   },
   {
@@ -49,9 +49,9 @@ const offerCards = [
     action: "waitlist",
     gradient: "from-amber-500/15 to-orange-500/10",
     border: "border-amber-500/30",
-    iconBg: "bg-gradient-to-br from-amber-500 to-orange-600",
+    iconBg: "bg-white dark:bg-slate-900",
     iconColor: "text-white",
-    glow: "hover:shadow-[0_0_30px_hsl(38_90%_55%/0.25)]",
+    glow: "hover:",
     accentColor: "text-amber-500",
   },
   {
@@ -61,9 +61,9 @@ const offerCards = [
     href: "/seminar",
     gradient: "from-blue-500/15 to-indigo-500/10",
     border: "border-blue-500/30",
-    iconBg: "bg-gradient-to-br from-blue-500 to-indigo-600",
+    iconBg: "bg-white dark:bg-slate-900",
     iconColor: "text-white",
-    glow: "hover:shadow-[0_0_30px_hsl(220_80%_55%/0.25)]",
+    glow: "hover:",
     accentColor: "text-blue-500",
   },
   {
@@ -73,9 +73,9 @@ const offerCards = [
     href: "/schedule-call",
     gradient: "from-rose-500/15 to-pink-500/10",
     border: "border-rose-500/30",
-    iconBg: "bg-gradient-to-br from-rose-500 to-pink-600",
+    iconBg: "bg-white dark:bg-slate-900",
     iconColor: "text-white",
-    glow: "hover:shadow-[0_0_30px_hsl(350_80%_55%/0.25)]",
+    glow: "hover:",
     accentColor: "text-rose-500",
   },
 ];
@@ -125,7 +125,7 @@ export default function LinksPage() {
       <div className="relative z-10 flex flex-col items-center px-4 py-12 max-w-md mx-auto min-h-screen">
         {/* Avatar / Brand */}
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5 }} className="mb-6 text-center">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-accent mx-auto mb-4 flex items-center justify-center shadow-lg glow-teal">
+          <div className="w-24 h-24 rounded-full bg-white dark:bg-slate-900 mx-auto mb-4 flex items-center justify-center shadow-lg glow-teal">
             <Crown className="h-12 w-12 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold gradient-text">APEX Financial</h1>
@@ -137,9 +137,9 @@ export default function LinksPage() {
           {socialLinks.map((link, i) => (
             <motion.a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.1 }}
-              className={`flex items-center gap-4 w-full p-4 rounded-xl bg-card border border-border transition-all duration-300 hover:-translate-y-1 ${link.hoverGlow} group`}
+              className={`flex items-center gap-4 w-full p-4 rounded-md bg-card border border-border transition-all duration-300 hover:-translate-y-1 ${link.hoverGlow} group`}
             >
-              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${link.gradient} flex items-center justify-center flex-shrink-0`}>
+              <div className={`w-10 h-10 rounded-lg  ${link.gradient} flex items-center justify-center flex-shrink-0`}>
                 <link.icon className="h-5 w-5 text-white" />
               </div>
               <span className="font-semibold text-foreground">{link.label}</span>
@@ -158,7 +158,7 @@ export default function LinksPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 + i * 0.1 }}
-                className={`flex items-center gap-4 w-full p-4 rounded-xl bg-gradient-to-r ${card.gradient} border ${card.border} transition-all duration-300 hover:-translate-y-1 ${card.glow} group cursor-pointer`}
+                className={`flex items-center gap-4 w-full p-4 rounded-md  ${card.gradient} border ${card.border} transition-all duration-300 hover:-translate-y-1 ${card.glow} group cursor-pointer`}
                 onClick={card.action ? () => handleOfferClick(card) : undefined}
               >
                 <div className={`w-10 h-10 rounded-lg ${card.iconBg} flex items-center justify-center flex-shrink-0`}>
@@ -196,7 +196,7 @@ export default function LinksPage() {
                       <h3 className="text-lg font-bold gradient-text">Elite Circle Waitlist</h3>
                       <button onClick={() => setShowEliteForm(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
                     </div>
-                    <div className="p-3 rounded-lg bg-gradient-to-r from-amber-500/10 to-orange-500/5 border border-amber-500/20 mb-5">
+                    <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-amber-500/20 mb-5">
                       <p className="text-sm text-muted-foreground leading-relaxed">
                         <span className="font-semibold text-foreground">An overall life makeover</span> — from out of shape and financially stuck to highly successful, in peak fitness, and financially free.
                       </p>

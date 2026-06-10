@@ -79,7 +79,7 @@ export default function Join() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
+    <div className="min-h-screen grid place-items-center bg-white dark:bg-slate-900 p-4">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -87,7 +87,7 @@ export default function Join() {
       >
         <GlassCard className="p-8 space-y-6">
           <div className="text-center space-y-2">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/30 to-violet-500/20">
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-md bg-white dark:bg-slate-900">
               <Crown className="h-7 w-7 text-primary" />
             </div>
             <h1 className="text-2xl font-bold">Welcome to APEX</h1>

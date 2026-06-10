@@ -40,7 +40,7 @@ export default function DataDeletion() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-2xl mx-auto px-6 py-16 space-y-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="h-12 w-12 rounded-xl bg-rose-500/15 flex items-center justify-center">
+          <div className="h-12 w-12 rounded-md bg-rose-500/15 flex items-center justify-center">
             <Trash2 className="h-6 w-6 text-rose-400" />
           </div>
           <div>
@@ -65,7 +65,7 @@ export default function DataDeletion() {
         </section>
 
         {submitted ? (
-          <div className="p-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-start gap-4">
+          <div className="p-6 rounded-md border border-emerald-500/30 bg-emerald-500/10 flex items-start gap-4">
             <CheckCircle2 className="h-6 w-6 text-emerald-400 shrink-0 mt-0.5" />
             <div>
               <h3 className="font-semibold mb-1">Request received</h3>
@@ -76,7 +76,7 @@ export default function DataDeletion() {
             </div>
           </div>
         ) : (
-          <form onSubmit={submit} className="space-y-4 p-6 rounded-xl border border-border/60 bg-card/40">
+          <form onSubmit={submit} className="space-y-4 p-6 rounded-md border border-border/60 bg-card/40">
             <div>
               <label className="text-sm font-medium mb-1.5 block">Email address</label>
               <Input

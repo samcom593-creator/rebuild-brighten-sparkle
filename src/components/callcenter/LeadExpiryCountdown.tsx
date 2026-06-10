@@ -24,7 +24,7 @@ export function LeadExpiryCountdown({ createdAt, contactedAt, lastContactedAt }:
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        className="flex items-center gap-3 p-3 rounded-xl border bg-muted/20 border-border/30"
+        className="flex items-center gap-3 p-3 rounded-md border bg-muted/20 border-border/30"
       >
         <Clock className="h-4 w-4 text-muted-foreground" />
         <div className="text-sm">
@@ -54,7 +54,7 @@ export function LeadExpiryCountdown({ createdAt, contactedAt, lastContactedAt }:
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
       className={cn(
-        "space-y-2 p-3 rounded-xl border transition-all duration-300",
+        "space-y-2 p-3 rounded-md border transition-all duration-300",
         isExpired
           ? "bg-red-500/10 border-red-500/30"
           : isUrgent
@@ -107,10 +107,10 @@ export function LeadExpiryCountdown({ createdAt, contactedAt, lastContactedAt }:
           className={cn(
             "absolute inset-y-0 left-0 rounded-full",
             isExpired
-              ? "bg-gradient-to-r from-red-500 to-red-400"
+              ? "bg-white dark:bg-slate-900"
               : isUrgent
-              ? "bg-gradient-to-r from-amber-500 to-amber-400"
-              : "bg-gradient-to-r from-primary to-primary/80"
+              ? "bg-white dark:bg-slate-900"
+              : "bg-white dark:bg-slate-900"
           )}
           initial={{ width: 0 }}
           animate={{ width: mounted ? `${progress}%` : 0 }}

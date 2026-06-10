@@ -80,7 +80,7 @@ export function Navbar() {
               </button>
 
               {searchOpen && (
-                <div className="landing-panel-enter absolute right-0 top-full mt-2 w-[220px] bg-white dark:bg-[#0f172a] border border-[#1e293b] rounded-xl shadow-2xl overflow-hidden">
+                <div className="landing-panel-enter absolute right-0 top-full mt-2 w-[220px] bg-white dark:bg-[#0f172a] border border-[#1e293b] rounded-md shadow-2xl overflow-hidden">
                   <input
                     ref={inputRef}
                     value={searchTerm}
@@ -111,7 +111,7 @@ export function Navbar() {
               </button>
             </Link>
             <Link to="/apply">
-              <button className="px-6 py-2.5 text-sm font-bold font-display bg-[#22d3a5] text-[#030712] rounded-lg hover:shadow-[0_0_20px_hsl(168_84%_42%/0.3)] transition-all duration-200">
+              <button className="px-6 py-2.5 text-sm font-bold font-display bg-[#22d3a5] text-[#030712] rounded-lg hover: transition-all duration-200">
                 Apply Now
               </button>
             </Link>

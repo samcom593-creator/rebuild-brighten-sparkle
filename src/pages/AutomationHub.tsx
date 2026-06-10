@@ -108,8 +108,8 @@ export default function AutomationHub() {
 
       {isAdmin && (
         <Collapsible open={outboxOpen} onOpenChange={setOutboxOpen}>
-          <div className="bg-card border border-border rounded-xl">
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/30 rounded-xl transition-colors">
+          <div className="bg-card border border-border rounded-md">
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/30 rounded-md transition-colors">
               <div className="flex items-center gap-2">
                 <Cloud className="h-4 w-4 text-primary" />
                 <span className="font-semibold text-sm" style={{ fontFamily: "Syne" }}>InsuraCloud Outbox</span>
@@ -126,8 +126,8 @@ export default function AutomationHub() {
 
       {isAdmin && (
         <Collapsible open={cronOpen} onOpenChange={setCronOpen}>
-          <div className="bg-card border border-border rounded-xl">
-            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/30 rounded-xl transition-colors">
+          <div className="bg-card border border-border rounded-md">
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/30 rounded-md transition-colors">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" />
                 <span className="font-semibold text-sm" style={{ fontFamily: "Syne" }}>Cron Jobs</span>
@@ -144,15 +144,15 @@ export default function AutomationHub() {
 
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <div className="bg-card border border-border rounded-xl p-3">
+        <div className="bg-card border border-border rounded-md p-3">
           <p className="text-2xl font-bold text-primary" style={{ fontFamily: "Syne" }}>{automations.filter(a => a.enabled).length}</p>
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Active</p>
         </div>
-        <div className="bg-card border border-border rounded-xl p-3">
+        <div className="bg-card border border-border rounded-md p-3">
           <p className="text-2xl font-bold" style={{ fontFamily: "Syne" }}>{automations.filter(a => a.last_status === "success").length}</p>
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Last Succeeded</p>
         </div>
-        <div className="bg-card border border-border rounded-xl p-3">
+        <div className="bg-card border border-border rounded-md p-3">
           <p className="text-2xl font-bold text-destructive" style={{ fontFamily: "Syne" }}>{automations.filter(a => a.last_status === "failed").length}</p>
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Last Failed</p>
         </div>
@@ -162,7 +162,7 @@ export default function AutomationHub() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {automations.map(auto => (
           <div key={auto.id} className={cn(
-            "bg-card border rounded-xl p-4 space-y-3 transition-all",
+            "bg-card border rounded-md p-4 space-y-3 transition-all",
             auto.enabled ? "border-border" : "border-border/50 opacity-60"
           )}>
             <div className="flex items-start justify-between">

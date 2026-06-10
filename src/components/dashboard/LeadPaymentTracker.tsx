@@ -150,7 +150,7 @@ export function LeadPaymentTracker() {
     <GlassCard className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30">
+          <div className="p-2.5 rounded-md bg-emerald-500/15 border border-emerald-500/30">
             <DollarSign className="h-5 w-5 text-emerald-500" />
           </div>
           <div>

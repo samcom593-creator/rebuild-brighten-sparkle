@@ -1034,7 +1034,7 @@ export default function LeadCenter() {
             exit={{ opacity: 0, y: 20 }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
           >
-            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-card border shadow-lg flex-wrap max-w-[95vw]">
+            <div className="flex items-center gap-2 px-4 py-3 rounded-md bg-card border shadow-lg flex-wrap max-w-[95vw]">
               <span className="text-sm font-medium">
                 {selectedLeads.size} selected
               </span>

@@ -45,7 +45,7 @@ function FeatureCard({ icon: Icon, title, description, color, onClick, delay = 0
       <button
         onClick={onClick}
         className={cn(
-          "w-full text-left p-4 rounded-xl border transition-all",
+          "w-full text-left p-4 rounded-md border transition-all",
           "hover:shadow-lg hover:shadow-current/10 focus:outline-none focus:ring-2 focus:ring-primary/50",
           colorClasses[color]
         )}
@@ -97,7 +97,7 @@ export function PerformanceDashboardSection({
         <div className="relative">
           {/* Header - Larger */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet-500 text-white shadow-lg shadow-primary/25">
+            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-white dark:bg-slate-900 text-white shadow-lg shadow-primary/25">
               <Zap className="h-6 w-6" />
             </div>
             <div>
@@ -147,7 +147,7 @@ export function PerformanceDashboardSection({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="mt-6 p-4 rounded-xl bg-primary/5 border border-primary/10 text-center"
+            className="mt-6 p-4 rounded-md bg-primary/5 border border-primary/10 text-center"
           >
             <p className="text-sm text-muted-foreground">
               <span className="font-semibold text-primary">Pro Tip:</span> Log your numbers daily to unlock personalized income projections and coaching insights

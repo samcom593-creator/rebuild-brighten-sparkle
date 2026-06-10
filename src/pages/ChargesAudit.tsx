@@ -467,7 +467,7 @@ export default function ChargesAudit() {
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-xl skeleton-shimmer" />
+            <div key={i} className="h-24 rounded-md skeleton-shimmer" />
           ))}
         </div>
       ) : filtered.length === 0 ? (

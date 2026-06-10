@@ -22,7 +22,7 @@ function InnerPageLoader() {
     <div className="flex items-center justify-center p-8 w-full min-h-[50vh]">
       <div className="w-full max-w-md space-y-4">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-48 w-full rounded-xl" />
+        <Skeleton className="h-48 w-full rounded-md" />
         <Skeleton className="h-10 w-full" />
       </div>
     </div>

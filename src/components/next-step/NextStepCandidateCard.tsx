@@ -26,7 +26,7 @@ interface Props {
 export function NextStepCandidateCard({ applicationId, agentId, compact = false }: Props) {
   const { data, isLoading } = useMyNextStep(applicationId, agentId);
 
-  if (isLoading) return <Skeleton className={compact ? "h-20 rounded-lg" : "h-32 rounded-xl"} />;
+  if (isLoading) return <Skeleton className={compact ? "h-20 rounded-lg" : "h-32 rounded-md"} />;
   if (!data) return null;
 
   const stalled = data.is_stalled;
@@ -42,7 +42,7 @@ export function NextStepCandidateCard({ applicationId, agentId, compact = false 
   if (compact) {
     return (
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className={cn("p-3 border bg-gradient-to-br via-card to-card", t.border, t.bg)}>
+        <Card className={cn("p-3 border  via-card to-card", t.border, t.bg)}>
           <div className="flex items-center gap-3">
             <Compass className={cn("h-4 w-4 shrink-0", t.accent)} />
             <div className="min-w-0 flex-1">
@@ -63,10 +63,10 @@ export function NextStepCandidateCard({ applicationId, agentId, compact = false 
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <Card className={cn("p-5 sm:p-6 border bg-gradient-to-br via-card to-card", t.border, t.bg)}>
+      <Card className={cn("p-5 sm:p-6 border  via-card to-card", t.border, t.bg)}>
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-start gap-3 min-w-0">
-            <div className={cn("rounded-xl p-3 border shrink-0", t.border, "bg-card/60")}>
+            <div className={cn("rounded-md p-3 border shrink-0", t.border, "bg-card/60")}>
               <Compass className={cn("h-6 w-6", t.accent)} />
             </div>
             <div className="min-w-0">

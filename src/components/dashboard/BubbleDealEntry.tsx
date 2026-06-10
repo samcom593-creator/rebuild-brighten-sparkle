@@ -84,7 +84,7 @@ export function BubbleDealEntry({ onALPChange, initialDeals }: BubbleDealEntryPr
       )}
 
       {/* Inline Input + Add Button */}
-      <div className="flex border-2 border-border rounded-xl overflow-hidden focus-within:border-primary transition-colors">
+      <div className="flex border-2 border-border rounded-md overflow-hidden focus-within:border-primary transition-colors">
         <div className="flex-1 flex items-center px-4 bg-background">
           <DollarSign className="h-5 w-5 text-muted-foreground shrink-0" />
           <input

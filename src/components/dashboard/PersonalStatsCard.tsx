@@ -317,7 +317,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
         {loading ? (
           <div className="grid grid-cols-2 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-24 bg-muted/50 rounded-xl animate-pulse" />
+              <div key={i} className="h-24 bg-muted/50 rounded-md animate-pulse" />
             ))}
           </div>
         ) : (
@@ -331,7 +331,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.1 }}
                   className={cn(
-                    "relative p-4 rounded-xl border transition-all duration-300",
+                    "relative p-4 rounded-md border transition-all duration-300",
                     stat.isAbove || stat.highlight || stat.isPersonalBest
                       ? "bg-primary/5 border-primary/30"
                       : "bg-muted/30 border-border/50"

@@ -259,7 +259,7 @@ export function ControlTerminal() {
         </TabsList>
 
         <TabsContent value="operator" className="space-y-4">
-          <div className="rounded-xl border border-emerald-500/20 bg-white dark:bg-slate-950/60 p-4">
+          <div className="rounded-md border border-emerald-500/20 bg-white dark:bg-slate-950/60 p-4">
             <p className="mb-2 text-xs uppercase tracking-[0.2em] text-emerald-200">Type what you want done</p>
             <textarea
               value={command}
@@ -290,7 +290,7 @@ export function ControlTerminal() {
           </div>
 
           {pendingConfirmation && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
+            <div className="rounded-md border border-amber-500/30 bg-amber-950/20 p-4">
               <div className="mb-2 flex items-center gap-2 text-amber-300">
                 <AlertTriangle className="h-4 w-4" />
                 <span className="font-semibold">Confirmation required</span>
@@ -321,12 +321,12 @@ export function ControlTerminal() {
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Recent results</p>
             </div>
             {history.length === 0 ? (
-              <div className="rounded-xl border border-border/40 bg-background/40 p-4 text-sm text-muted-foreground">
+              <div className="rounded-md border border-border/40 bg-background/40 p-4 text-sm text-muted-foreground">
                 No operator actions yet. Run a sync, open a workflow, or queue a website change prompt.
               </div>
             ) : (
               history.map((item) => (
-                <div key={`${item.createdAt}-${item.command}`} className="rounded-xl border border-border/40 bg-background/40 p-4">
+                <div key={`${item.createdAt}-${item.command}`} className="rounded-md border border-border/40 bg-background/40 p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline">{item.executionType}</Badge>
                     {item.taskId && <Badge variant="secondary">Task {item.taskId}</Badge>}

@@ -89,7 +89,7 @@ function BadgeIcon({ badge, compact }: { badge: WeeklyBadge; compact?: boolean }
             whileHover={{ scale: 1.1, rotate: 5 }}
             className={cn(
               "relative flex items-center justify-center rounded-full",
-              "bg-gradient-to-br border backdrop-blur-sm",
+              " border backdrop-blur-sm",
               "transition-all cursor-pointer",
               colors.bg,
               colors.border,
@@ -106,7 +106,7 @@ function BadgeIcon({ badge, compact }: { badge: WeeklyBadge; compact?: boolean }
             )} />
             {/* Shimmer effect */}
             <div className="absolute inset-0 rounded-full overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+              <div className="absolute inset-0 bg-white dark:bg-slate-900 -translate-x-full animate-[shimmer_2s_infinite]" />
             </div>
           </motion.div>
         </TooltipTrigger>
@@ -182,15 +182,15 @@ export function WeeklyBadgesCard({ agentId }: { agentId: string | null }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-card via-card to-primary/5 p-6"
+      className="relative overflow-hidden rounded-md border border-border/50 bg-white dark:bg-slate-900 p-6"
     >
       {/* Background decoration */}
-      <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
+      <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/10 " />
       <div className="absolute -left-8 -bottom-8 h-24 w-24 rounded-full bg-violet-500/10 blur-2xl" />
       
       <div className="relative">
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet-500 shadow-lg shadow-primary/20">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white dark:bg-slate-900 shadow-lg shadow-primary/20">
             <Trophy className="h-5 w-5 text-white" />
           </div>
           <div>

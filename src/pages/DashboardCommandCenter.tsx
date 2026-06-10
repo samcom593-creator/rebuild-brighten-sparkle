@@ -600,7 +600,7 @@ export default function DashboardCommandCenter() {
           {...surfaceMotion}
           className="relative overflow-hidden rounded-lg border border-slate-900/10 bg-white dark:bg-slate-950 px-4 py-4 text-white shadow-xl shadow-slate-950/10 dark:border-white/10 md:px-5"
         >
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400 via-cyan-400 to-emerald-400" />
+          <div className="absolute inset-x-0 top-0 h-1 bg-white dark:bg-slate-900" />
           <PageHeader
             accent="primary"
             eyebrow="Admin · Command"

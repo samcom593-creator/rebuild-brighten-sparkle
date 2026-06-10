@@ -719,7 +719,7 @@ export default function DashboardAgedLeads() {
           <div key={stat.label}>
             <GlassCard variant="subtle" className="p-3.5">
               <div className="flex items-center gap-3">
-                <div className={cn("p-2 rounded-lg bg-gradient-to-br", stat.gradient)}>
+                <div className={cn("p-2 rounded-lg ", stat.gradient)}>
                   <stat.icon className="h-4 w-4 text-foreground/80" />
                 </div>
                 <div>
@@ -737,7 +737,7 @@ export default function DashboardAgedLeads() {
         {duplicateMap.size > 0 ? (
           <button
             onClick={handleAutoMergeDuplicates}
-            className="w-full flex items-center justify-between gap-4 p-4 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/15 to-orange-500/10 hover:from-amber-500/25 hover:to-orange-500/20 transition-all duration-200 group cursor-pointer"
+            className="w-full flex items-center justify-between gap-4 p-4 rounded-md border border-amber-500/30 bg-white dark:bg-slate-900 hover:from-amber-500/25 hover:to-orange-500/20 transition-all duration-200 group cursor-pointer"
           >
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-lg bg-amber-500/20">
@@ -756,7 +756,7 @@ export default function DashboardAgedLeads() {
             </div>
           </button>
         ) : (
-          <div className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-border/50 bg-card/30">
+          <div className="w-full flex items-center gap-3 p-3.5 rounded-md border border-border/50 bg-card/30">
             <div className="p-2 rounded-lg bg-emerald-500/15">
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             </div>
@@ -1009,7 +1009,7 @@ export default function DashboardAgedLeads() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-white dark:bg-slate-900 border border-primary/20 flex items-center justify-center shrink-0">
                             <span className="text-[10px] font-semibold text-primary">
                               {getInitials(lead.firstName, lead.lastName)}
                             </span>

@@ -317,11 +317,11 @@ export default function AgentNumbersLogin() {
             transition={{ type: "spring", delay: 0.2 }}
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-xl" />
+              <div className="absolute inset-0 bg-primary/20 rounded-md blur-xl" />
               <img 
                 src={apexIcon} 
                 alt="Apex" 
-                className="h-16 w-16 rounded-2xl relative z-10 shadow-lg shadow-primary/20" 
+                className="h-16 w-16 rounded-md relative z-10 shadow-lg shadow-primary/20" 
               />
             </div>
           </motion.div>
@@ -331,7 +331,7 @@ export default function AgentNumbersLogin() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary via-violet-400 to-amber-400 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold mb-2 bg-white dark:bg-slate-900 bg-clip-text text-transparent">
               Apex Daily Numbers
             </h1>
             <p className="text-muted-foreground">{getStepTitle()}</p>
@@ -520,7 +520,7 @@ export default function AgentNumbersLogin() {
                 <form onSubmit={setPasswordForm.handleSubmit(handleSetPasswordSubmit)} className="space-y-5">
                   {/* Welcome banner with name */}
                   {agentName && (
-                    <div className="p-4 rounded-lg bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/20 text-center">
+                    <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-primary/20 text-center">
                       <CheckCircle className="h-5 w-5 inline mr-2 text-primary" />
                       <span className="font-medium">We found you, {agentName}!</span>
                     </div>

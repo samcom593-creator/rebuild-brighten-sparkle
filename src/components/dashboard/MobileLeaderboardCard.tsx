@@ -48,21 +48,21 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
   const renderRankBadge = () => {
     if (entry.rank === 1) {
       return (
-        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 animate-rank-glow shadow-lg">
+        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-slate-900 animate-rank-glow shadow-lg">
           <Trophy className="h-4 w-4 text-white" />
         </div>
       );
     }
     if (entry.rank === 2) {
       return (
-        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 shadow">
+        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-slate-900 shadow">
           <Medal className="h-4 w-4 text-slate-700" />
         </div>
       );
     }
     if (entry.rank === 3) {
       return (
-        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 shadow">
+        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-slate-900 shadow">
           <Award className="h-4 w-4 text-white" />
         </div>
       );
@@ -93,11 +93,11 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
       transition={{ delay: index * 0.03 }}
       onClick={onClick}
       className={cn(
-        "p-4 rounded-xl transition-all active:scale-[0.98] cursor-pointer",
+        "p-4 rounded-md transition-all active:scale-[0.98] cursor-pointer",
         entry.isCurrentUser
           ? "bg-primary/10 border-2 border-primary/30 shadow-md"
           : entry.rank <= 3
-            ? "bg-gradient-to-r from-amber-500/5 to-transparent border border-amber-500/20"
+            ? "bg-white dark:bg-slate-900 border border-amber-500/20"
             : "bg-muted/30 border border-border/50",
         "hover:shadow-lg"
       )}
@@ -108,7 +108,7 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
 
         {/* Avatar */}
         <div className={cn(
-          "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 bg-gradient-to-br shadow-md",
+          "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0  shadow-md",
           entry.avatarUrl ? "" : getAvatarColor(entry.name)
         )}>
           {entry.avatarUrl ? (

@@ -106,7 +106,7 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
           <div className="h-6 bg-muted rounded w-48" />
           <div className="grid grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 bg-muted rounded-xl" />
+              <div key={i} className="h-24 bg-muted rounded-md" />
             ))}
           </div>
         </div>
@@ -149,7 +149,7 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary/15 border border-primary/20">
+          <div className="flex items-center justify-center h-10 w-10 rounded-md bg-primary/15 border border-primary/20">
             {isAdmin ? <Users className="h-5 w-5 text-primary" /> : <CalendarDays className="h-5 w-5 text-primary" />}
           </div>
           <div>
@@ -176,7 +176,7 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             className={cn(
-              "relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 text-center",
+              "relative overflow-hidden rounded-md border  p-4 text-center",
               stat.color
             )}
           >

@@ -104,7 +104,7 @@ export function IdeationRolodexModule() {
 
   return (
     <div className="space-y-4">
-      <Card className="p-5 bg-gradient-to-br from-amber-500/[0.03] via-card to-card border-amber-500/20">
+      <Card className="p-5 bg-white dark:bg-slate-900 border-amber-500/20">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-amber-400/80">Module 02 · the BRAIN ideating</p>

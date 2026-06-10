@@ -374,7 +374,7 @@ export default function HiringPipeline() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-lg border border-cyan-500/25 bg-gradient-to-r from-cyan-500/10 via-card to-card shadow-sm"
+        className="rounded-lg border border-cyan-500/25 bg-white dark:bg-slate-900 shadow-sm"
       >
         <div className="grid gap-3 p-3 md:grid-cols-[1fr_auto] md:items-center">
           <div className="flex flex-wrap items-center gap-2 text-sm">

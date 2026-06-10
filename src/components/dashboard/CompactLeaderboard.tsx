@@ -82,8 +82,8 @@ function PodiumCard({ entry, position, maxALP }: { entry: LeaderboardEntry; posi
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: position === 1 ? 0.1 : position === 2 ? 0 : 0.2, duration: 0.4 }}
       className={cn(
-        "flex flex-col items-center justify-end pb-3 px-2 rounded-xl",
-        "bg-gradient-to-b from-card/80 to-card/40 backdrop-blur-sm border border-border/30",
+        "flex flex-col items-center justify-end pb-3 px-2 rounded-md",
+        "bg-white dark:bg-slate-900 backdrop-blur-sm border border-border/30",
         config.height, config.ring, config.glow,
         position === 1 && "animate-rank-glow",
         entry.isCurrentUser && "ring-primary ring-2"
@@ -92,7 +92,7 @@ function PodiumCard({ entry, position, maxALP }: { entry: LeaderboardEntry; posi
       {/* Rank badge */}
       <div className={cn(
         "absolute -top-2 px-2 py-0.5 rounded-full text-[9px] font-black",
-        `bg-gradient-to-r ${config.gradient} text-white shadow-sm`
+        ` ${config.gradient} text-white shadow-sm`
       )}>
         {config.label}
       </div>
@@ -100,7 +100,7 @@ function PodiumCard({ entry, position, maxALP }: { entry: LeaderboardEntry; posi
       {/* Avatar */}
       <div className={cn(
         "h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold text-white mb-1.5 shadow-md",
-        `bg-gradient-to-br ${getAvatarColor(entry.name)}`,
+        ` ${getAvatarColor(entry.name)}`,
         position === 1 && "h-12 w-12"
       )}>
         {entry.avatarUrl ? (
@@ -150,7 +150,7 @@ function LeaderboardRow({ entry, index, maxALP }: { entry: LeaderboardEntry; ind
       className={cn(
         "grid grid-cols-12 gap-2 items-center px-3 py-2 rounded-lg transition-all group",
         entry.isCurrentUser
-          ? "bg-primary/10 border border-primary/30 shadow-[0_0_15px_rgba(20,184,166,0.15)]"
+          ? "bg-primary/10 border border-primary/30 "
           : "hover:bg-muted/40"
       )}
     >
@@ -163,7 +163,7 @@ function LeaderboardRow({ entry, index, maxALP }: { entry: LeaderboardEntry; ind
       <div className="col-span-5 flex items-center gap-2 min-w-0">
         <div className={cn(
           "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0",
-          `bg-gradient-to-br ${getAvatarColor(entry.name)}`
+          ` ${getAvatarColor(entry.name)}`
         )}>
           {entry.avatarUrl ? (
             <img src={entry.avatarUrl} alt={entry.name} className="h-full w-full rounded-full object-cover" />
@@ -334,7 +334,7 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
   return (
     <motion.div 
       className={cn(
-        "bg-card/60 backdrop-blur-md rounded-2xl border border-border/40 p-4 shadow-lg",
+        "bg-card/60 backdrop-blur-md rounded-md border border-border/40 p-4 shadow-lg",
         className
       )}
       initial={{ opacity: 0, y: 10 }}

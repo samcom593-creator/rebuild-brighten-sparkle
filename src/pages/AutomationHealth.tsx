@@ -193,7 +193,7 @@ export default function AutomationHealth() {
             <button
               key={s}
               onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
-              className={`p-4 rounded-xl border text-left transition ${meta.color} ${statusFilter === s ? "ring-2 ring-primary" : ""}`}
+              className={`p-4 rounded-md border text-left transition ${meta.color} ${statusFilter === s ? "ring-2 ring-primary" : ""}`}
             >
               <div className="flex items-center gap-1.5 mb-1">
                 <Icon className="h-3.5 w-3.5" />

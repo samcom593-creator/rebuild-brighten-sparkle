@@ -21,10 +21,10 @@ export function DashboardModule() {
       <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32 rounded-xl" />
+            <Skeleton key={i} className="h-32 rounded-md" />
           ))}
         </div>
-        <Skeleton className="h-40 rounded-xl" />
+        <Skeleton className="h-40 rounded-md" />
       </div>
     );
   }

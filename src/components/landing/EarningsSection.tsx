@@ -65,7 +65,7 @@ export function EarningsSection() {
           key={selected}
           className="landing-scale-in max-w-4xl mx-auto"
         >
-          <div className="p-8 md:p-12 rounded-xl bg-gradient-to-br from-[#0f172a] to-[#070d1b] border border-[#1e293b] shadow-[0_0_40px_hsl(168_84%_42%/0.1)]">
+          <div className="p-8 md:p-12 rounded-md bg-white dark:bg-slate-900 border border-[#1e293b] ">
             <div className="text-center mb-8">
               <p className="text-[#94a3b8] mb-2">{data.description}</p>
               <div className="text-4xl md:text-6xl font-extrabold text-[#22d3a5] text-glow mb-2 font-display">
@@ -89,7 +89,7 @@ export function EarningsSection() {
           {milestones.map((milestone, index) => (
             <div
               key={index}
-              className="reveal p-4 text-center rounded-xl bg-white dark:bg-[#0f172a]/80 border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
+              className="reveal p-4 text-center rounded-md bg-white dark:bg-[#0f172a]/80 border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
               style={{ transitionDelay: `${index * 80}ms` }}
             >
               <milestone.icon className="h-6 w-6 text-[#22d3a5] mx-auto mb-2" />

@@ -224,7 +224,7 @@ export default function ApplicantCheckin() {
 
           {submitted ? (
             <div className="space-y-6">
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
+              <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
                 <CheckCircle2 className="h-10 w-10 text-emerald-400 mx-auto mb-3" />
                 <h2 className="text-xl font-bold mb-2">Update Received</h2>
                 <p className="text-muted-foreground">
@@ -284,7 +284,7 @@ export default function ApplicantCheckin() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
+              <div className="rounded-md border border-border/60 bg-muted/20 p-4 space-y-4">
                 <div className="flex items-start gap-3">
                   <Checkbox
                     id="needsHelp"
@@ -311,7 +311,7 @@ export default function ApplicantCheckin() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
+              <div className="rounded-md border border-border/60 bg-muted/20 p-4 space-y-4">
                 <div className="flex items-start gap-3">
                   <Checkbox
                     id="testScheduled"

@@ -424,7 +424,7 @@ export default function Leaderboard() {
                     // the podium scans cleanly even on small viewports.
                     const podiumStyle =
                       row.rank === 1
-                        ? "bg-amber-500/15 ring-1 ring-amber-400/60 shadow-[0_0_12px_-2px_rgba(245,158,11,0.45)]"
+                        ? "bg-amber-500/15 ring-1 ring-amber-400/60 "
                         : row.rank === 2
                         ? "bg-slate-300/10 ring-1 ring-slate-300/40"
                         : row.rank === 3

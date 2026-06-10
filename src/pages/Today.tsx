@@ -280,7 +280,7 @@ export default function Today() {
   if (isLoading || !data) {
     return (
       <div className="mx-auto max-w-6xl p-6">
-        <div className="h-32 animate-pulse rounded-xl bg-muted/30" />
+        <div className="h-32 animate-pulse rounded-md bg-muted/30" />
       </div>
     );
   }
@@ -373,7 +373,7 @@ export default function Today() {
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-4">
+            <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Profile not activated</p>
               <p className="mt-1 text-2xl font-bold text-orange-300">{data.newAgentsProfileNotSet.length}</p>
               {data.newAgentsProfileNotSet.length === 0 ? (
@@ -391,7 +391,7 @@ export default function Today() {
                 </ul>
               )}
             </div>
-            <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4">
+            <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Live 7d · no sale</p>
               <p className="mt-1 text-2xl font-bold text-rose-300">{data.liveSevenDayNoSale.length}</p>
               {data.liveSevenDayNoSale.length === 0 ? (
@@ -428,7 +428,7 @@ export default function Today() {
       <div className="grid gap-4 lg:grid-cols-2">
         <GlassCard className="p-5">
           <div className="mb-3 flex items-center gap-2"><Target className="h-5 w-5 text-violet-400" /><h2 className="text-lg font-bold">Prior Week Comparison</h2></div>
-          <div className="rounded-xl border border-border/40 p-4">
+          <div className="rounded-md border border-border/40 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Matched weekdays</p>
             <p className="mt-1 text-2xl font-bold">{data.weekDelta >= 0 ? "+" : ""}{data.weekDelta.toFixed(0)}%</p>
             <p className="text-sm text-muted-foreground">{fmt$(data.weekAlp)} this week vs {fmt$(data.priorWeekAlp)} over the same weekdays last week.</p>

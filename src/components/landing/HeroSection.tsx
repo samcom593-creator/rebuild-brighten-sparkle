@@ -25,7 +25,7 @@ const RecentHiresTicker = lazy(() =>
 function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
   const [loaded, setLoaded] = useState(false);
   return (
-    <div className="relative aspect-video rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_40px_hsl(168_80%_50%/0.2)] bg-white dark:bg-black group">
+    <div className="relative aspect-video rounded-md overflow-hidden border border-border/60 shadow-[0_8px_40px_hsl(168_80%_50%/0.2)] bg-white dark:bg-black group">
       {loaded ? (
         <iframe
           src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
@@ -64,7 +64,7 @@ function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
             className="absolute inset-0 w-full h-full object-cover"
           />
           <span className="absolute inset-0 bg-white dark:bg-black/30 group-hover:bg-white dark:bg-black/45 transition-colors" />
-          <span className="relative h-20 w-20 rounded-full bg-primary/95 flex items-center justify-center shadow-[0_0_50px_hsl(168_80%_50%/0.6)] group-hover:scale-110 transition-transform">
+          <span className="relative h-20 w-20 rounded-full bg-primary/95 flex items-center justify-center  group-hover:scale-110 transition-transform">
             <Play className="h-10 w-10 text-primary-foreground fill-primary-foreground ml-1" />
           </span>
         </button>
@@ -167,7 +167,7 @@ export function HeroSection() {
       <div className="container mx-auto px-4 sm:px-6 relative z-10 w-full">
         <div className="max-w-5xl mx-auto text-center w-full">
           {/* Eyebrow pill */}
-          <div className="landing-fade-up inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card/40 border border-primary/30 mb-8 backdrop-blur-xl shadow-[0_0_30px_hsl(168_80%_50%/0.15)]">
+          <div className="landing-fade-up inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card/40 border border-primary/30 mb-8 backdrop-blur-xl ">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
@@ -253,7 +253,7 @@ export function HeroSection() {
             >
               <span
                 aria-hidden
-                className="absolute inset-0 rounded-2xl blur-xl opacity-60 group-hover:opacity-100 transition-opacity duration-300"
+                className="absolute inset-0 rounded-md blur-xl opacity-60 group-hover:opacity-100 transition-opacity duration-300"
                 style={{
                   background:
                     "linear-gradient(135deg, hsl(168 80% 50%), hsl(265 80% 65%))",
@@ -262,8 +262,8 @@ export function HeroSection() {
               <button
                 className="
                   relative inline-flex items-center justify-center gap-2
-                  px-10 py-5 text-lg sm:text-xl rounded-2xl font-bold font-display
-                  bg-gradient-to-br from-primary via-primary to-emerald-600 text-primary-foreground
+                  px-10 py-5 text-lg sm:text-xl rounded-md font-bold font-display
+                  bg-white dark:bg-slate-900 text-primary-foreground
                   shadow-[0_10px_40px_hsl(168_80%_50%/0.4)]
                   group-hover:scale-105 transition-transform duration-200
                 "
@@ -304,7 +304,7 @@ export function HeroSection() {
                 loading="lazy"
                 decoding="async"
                 fetchPriority="low"
-                className="h-11 w-11 rounded-full ring-2 ring-primary/40 object-cover shadow-[0_0_24px_hsl(168_80%_50%/0.25)]"
+                className="h-11 w-11 rounded-full ring-2 ring-primary/40 object-cover "
               />
             </picture>
             <div className="text-left">
@@ -333,7 +333,7 @@ export function HeroSection() {
               <div
                 key={index}
                 className="
-                  group relative rounded-2xl p-5 text-center
+                  group relative rounded-md p-5 text-center
                   bg-card/90 backdrop-blur-xl border border-border/60
                   hover:border-primary/40
                   shadow-md
@@ -355,7 +355,7 @@ export function HeroSection() {
           </div>
 
           {/* Carrier marquee — continuous scroll instead of single-cycle */}
-          <div className="landing-fade-up landing-delay-600 rounded-2xl p-4 max-w-2xl mx-auto bg-card/90 backdrop-blur-xl border border-border/60 overflow-hidden shadow-md">
+          <div className="landing-fade-up landing-delay-600 rounded-md p-4 max-w-2xl mx-auto bg-card/90 backdrop-blur-xl border border-border/60 overflow-hidden shadow-md">
             <p className="text-[10px] text-muted-foreground mb-3 uppercase tracking-[0.25em] font-display font-semibold">
               Partnered with top carriers
             </p>
@@ -374,8 +374,8 @@ export function HeroSection() {
                 ))}
               </div>
               {/* Fade edges */}
-              <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-card/90 to-transparent" />
-              <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-card/90 to-transparent" />
+              <div className="absolute inset-y-0 left-0 w-12 bg-white dark:bg-slate-900" />
+              <div className="absolute inset-y-0 right-0 w-12 bg-white dark:bg-slate-900" />
             </div>
             <p className="text-[11px] text-muted-foreground mt-3 font-medium font-display">
               Carrier access varies by market and licensing status

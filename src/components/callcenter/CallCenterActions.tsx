@@ -140,8 +140,8 @@ export function CallCenterActions({
                 boxShadow: activeKey === action.key ? `0 0 20px ${action.glowColor}` : "none",
               }}
               className={cn(
-                "w-full h-24 md:h-20 relative overflow-hidden rounded-xl transition-all duration-200",
-                "bg-gradient-to-br border",
+                "w-full h-24 md:h-20 relative overflow-hidden rounded-md transition-all duration-200",
+                " border",
                 action.gradient,
                 action.color,
                 "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -170,7 +170,7 @@ export function CallCenterActions({
 
               {/* Shimmer effect on hover */}
               <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full"
+                className="absolute inset-0 bg-white dark:bg-slate-900 -translate-x-full"
                 whileHover={{ translateX: "100%" }}
                 transition={{ duration: 0.6 }}
               />
@@ -220,8 +220,8 @@ export function CallCenterActions({
                 boxShadow: activeKey === action.key ? `0 0 15px ${action.glowColor}` : "none",
               }}
               className={cn(
-                "w-full h-20 md:h-16 relative overflow-hidden rounded-xl transition-all duration-200",
-                "bg-gradient-to-br border",
+                "w-full h-20 md:h-16 relative overflow-hidden rounded-md transition-all duration-200",
+                " border",
                 action.gradient,
                 action.color,
                 "disabled:opacity-50 disabled:cursor-not-allowed",

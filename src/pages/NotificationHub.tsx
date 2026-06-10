@@ -59,7 +59,7 @@ function NotificationStats({ logs, onFilterChannel }: { logs: any[]; onFilterCha
                 onFilterChannel(s.filter === "failed" ? "all" : s.filter);
               }}
               className={cn(
-                "relative w-full overflow-hidden rounded-xl border bg-gradient-to-br p-4 backdrop-blur-sm transition-all hover:scale-[1.03] hover:shadow-lg text-left",
+                "relative w-full overflow-hidden rounded-md border  p-4 backdrop-blur-sm transition-all hover:scale-[1.03] hover:shadow-lg text-left",
                 s.gradient
               )}
             >
@@ -176,7 +176,7 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRef
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-border overflow-hidden">
+      <div className="rounded-md border border-border overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -411,7 +411,7 @@ function CarrierAssignmentTool() {
   return (
     <div>
       <div className={cn(
-        "relative overflow-hidden rounded-xl border bg-gradient-to-br p-6 backdrop-blur-sm",
+        "relative overflow-hidden rounded-md border  p-6 backdrop-blur-sm",
         "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20"
       )}>
         <div className="flex items-center gap-3 mb-4">
@@ -956,7 +956,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             className={cn(
-              "rounded-xl border p-4 flex items-center justify-between gap-3",
+              "rounded-md border p-4 flex items-center justify-between gap-3",
               lastRetryResult.type === "success" && "bg-emerald-500/10 border-emerald-500/30 text-emerald-300",
               lastRetryResult.type === "warning" && "bg-amber-500/10 border-amber-500/30 text-amber-300",
               lastRetryResult.type === "info" && "bg-sky-500/10 border-sky-500/30 text-sky-300"
@@ -990,14 +990,14 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
               <button
                 disabled={action.loading || boostLocked}
                 className={cn(
-                  "relative w-full overflow-hidden rounded-xl border bg-gradient-to-br p-5 backdrop-blur-sm transition-all text-left",
+                  "relative w-full overflow-hidden rounded-md border  p-5 backdrop-blur-sm transition-all text-left",
                   boostLocked ? "opacity-50 cursor-not-allowed" : "hover:scale-[1.03] hover:shadow-lg",
                   action.gradient
                 )}
                 title={boostLocked ? "Finish or discard the current boost first" : undefined}
               >
                 <div className="flex flex-col items-center gap-2 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-background/50">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-md bg-background/50">
                     {action.loading ? (
                       <RefreshCw className={cn("h-6 w-6 animate-spin", action.color)} />
                     ) : (
@@ -1229,7 +1229,7 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
       {savedProgress && !blasting && (
         <div>
           <div className={cn(
-            "relative overflow-hidden rounded-xl border bg-gradient-to-br p-6 backdrop-blur-sm",
+            "relative overflow-hidden rounded-md border  p-6 backdrop-blur-sm",
             "from-blue-500/10 to-blue-500/5 border-blue-500/20"
           )}>
             <div className="flex items-center gap-3 mb-4">
@@ -1280,7 +1280,7 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
 
       <div>
         <div className={cn(
-          "relative overflow-hidden rounded-xl border bg-gradient-to-br p-6 backdrop-blur-sm",
+          "relative overflow-hidden rounded-md border  p-6 backdrop-blur-sm",
           "from-amber-500/10 to-amber-500/5 border-amber-500/20"
         )}>
           <div className="flex items-center gap-3 mb-4">
@@ -1294,11 +1294,11 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className={cn("rounded-xl border p-4 bg-blue-500/[0.06] border-blue-500/20")}>
+            <div className={cn("rounded-md border p-4 bg-blue-500/[0.06] border-blue-500/20")}>
               <p className="text-2xl font-bold text-blue-400"><AnimatedCounter value={counts?.applicants || 0} /></p>
               <p className="text-xs text-muted-foreground">Active Applicants</p>
             </div>
-            <div className={cn("rounded-xl border p-4 bg-purple-500/[0.06] border-purple-500/20")}>
+            <div className={cn("rounded-md border p-4 bg-purple-500/[0.06] border-purple-500/20")}>
               <p className="text-2xl font-bold text-purple-400"><AnimatedCounter value={counts?.agedLeads || 0} /></p>
               <p className="text-xs text-muted-foreground">Aged Leads</p>
             </div>
@@ -1315,7 +1315,7 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mb-4 space-y-3 p-4 rounded-xl bg-muted/30 border border-border"
+                className="mb-4 space-y-3 p-4 rounded-md bg-muted/30 border border-border"
               >
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium">
@@ -1492,12 +1492,12 @@ export default function NotificationHub() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-blue-500/5 to-background p-6 backdrop-blur-sm"
+        className="relative overflow-hidden rounded-md border border-primary/20 bg-white dark:bg-slate-900 p-6 backdrop-blur-sm"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/20">
+              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/20">
                 <Bell className="h-6 w-6 text-primary" />
               </div>
               <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-background animate-pulse" />
@@ -1524,7 +1524,7 @@ export default function NotificationHub() {
             </Button>
           </div>
         </div>
-        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary opacity-5 blur-3xl" />
+        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary opacity-5 " />
       </motion.div>
 
       <NotificationStats logs={logs} onFilterChannel={(ch) => {
@@ -1606,7 +1606,7 @@ export default function NotificationHub() {
         <TabsContent value="history">
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground">Recent Blast Activity (Last 14 Days)</h3>
-            <div className="rounded-xl border border-border overflow-hidden">
+            <div className="rounded-md border border-border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>

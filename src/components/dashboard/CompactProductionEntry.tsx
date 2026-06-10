@@ -295,7 +295,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
       />
       
       <motion.div 
-        className="relative bg-card/80 backdrop-blur-md rounded-2xl border border-border/50 shadow-xl overflow-hidden"
+        className="relative bg-card/80 backdrop-blur-md rounded-md border border-border/50 shadow-xl overflow-hidden"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
@@ -313,10 +313,10 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
         </AnimatePresence>
 
         {/* Header */}
-        <div className="px-5 py-4 border-b border-border/30 bg-gradient-to-r from-primary/5 to-transparent">
+        <div className="px-5 py-4 border-b border-border/30 bg-white dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-lg shadow-primary/10">
+              <div className="h-10 w-10 rounded-md bg-white dark:bg-slate-900 flex items-center justify-center shadow-lg shadow-primary/10">
                 <Sparkles className="h-5 w-5 text-primary" />
               </div>
               <div>
@@ -332,7 +332,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.8, opacity: 0 }}
-                  className="px-4 py-2 bg-gradient-to-r from-primary/20 to-emerald-500/20 border border-primary/30 rounded-xl font-bold text-primary shadow-lg"
+                  className="px-4 py-2 bg-white dark:bg-slate-900 border border-primary/30 rounded-md font-bold text-primary shadow-lg"
                 >
                   ${totalALP.toLocaleString()}
                 </motion.div>
@@ -398,7 +398,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
               {/* Deal Entry Section - Premium Bubble System */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500/20 to-primary/20 flex items-center justify-center">
+                  <div className="h-7 w-7 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center">
                     <TrendingUp className="h-4 w-4 text-primary" />
                   </div>
                   <h3 className="text-sm font-bold">💰 Deal Amounts</h3>
@@ -415,7 +415,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
               {/* Activity Stats - Bubble Format */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
+                  <div className="h-7 w-7 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center">
                     <Target className="h-4 w-4 text-blue-500" />
                   </div>
                   <div>
@@ -447,8 +447,8 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                 <Button 
                   type="submit" 
                   className={cn(
-                    "w-full gap-3 h-14 text-base font-bold rounded-xl transition-all duration-300",
-                    "bg-gradient-to-r from-primary via-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90",
+                    "w-full gap-3 h-14 text-base font-bold rounded-md transition-all duration-300",
+                    "bg-white dark:bg-slate-900 hover:from-primary/90 hover:to-emerald-500/90",
                     "shadow-lg hover:shadow-xl",
                     hasData && "shadow-primary/30 hover:shadow-primary/40"
                   )} 

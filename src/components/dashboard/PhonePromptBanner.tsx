@@ -27,7 +27,7 @@ export function PhonePromptBanner() {
   if (!shouldShow) return null;
 
   return (
-    <div className="animate-fade-in mb-6 relative overflow-hidden rounded-xl bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-transparent border border-amber-500/30">
+    <div className="animate-fade-in mb-6 relative overflow-hidden rounded-md bg-white dark:bg-slate-900 border border-amber-500/30">
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-4">
           <div className="p-2 rounded-full bg-amber-500/20">

@@ -119,10 +119,10 @@ export function InstagramGrowthSection() {
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="group relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 hover:border-[#E1306C]/30 transition-all duration-300"
+              className="group relative bg-white/[0.03] border border-white/[0.06] rounded-md p-6 hover:border-[#E1306C]/30 transition-all duration-300"
             >
               <div className="flex items-start gap-4">
-                <div className="h-11 w-11 rounded-xl bg-[#E1306C]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#E1306C]/20 transition-colors">
+                <div className="h-11 w-11 rounded-md bg-[#E1306C]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#E1306C]/20 transition-colors">
                   <feature.icon className="h-5 w-5 text-[#E1306C]" />
                 </div>
                 <div>
@@ -150,7 +150,7 @@ export function InstagramGrowthSection() {
         </div>
 
         {/* Bottom callout + buy CTA (PL-003: section had zero purchase path) */}
-        <div className="relative text-center bg-gradient-to-r from-[#E1306C]/10 via-[#E1306C]/5 to-transparent border border-[#E1306C]/20 rounded-2xl p-8">
+        <div className="relative text-center bg-white dark:bg-slate-900 border border-[#E1306C]/20 rounded-md p-8">
           <h3 className="text-xl font-bold text-white mb-3" style={{ fontFamily: "Syne" }}>
             Reactions Pro
           </h3>

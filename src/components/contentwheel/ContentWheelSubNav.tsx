@@ -12,7 +12,7 @@ interface Props {
  */
 export function ContentWheelSubNav({ active, onSelect }: Props) {
   return (
-    <nav className="rounded-xl border border-border bg-card/40 backdrop-blur-sm p-2 sticky top-4">
+    <nav className="rounded-md border border-border bg-card/40 backdrop-blur-sm p-2 sticky top-4">
       <div className="px-3 py-2 border-b border-border/60 mb-2">
         <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">The Wheel</p>
         <p className="text-sm font-semibold text-foreground">12 Modules</p>

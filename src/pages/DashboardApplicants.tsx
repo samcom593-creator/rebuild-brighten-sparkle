@@ -1120,7 +1120,7 @@ export default function DashboardApplicants() {
           {/* Applicants Table */}
           <div>
             {filteredApplications.length > 0 ? (
-              <div className="relative w-full overflow-auto border border-border rounded-xl max-h-[calc(100vh-280px)] overflow-y-auto">
+              <div className="relative w-full overflow-auto border border-border rounded-md max-h-[calc(100vh-280px)] overflow-y-auto">
                 <table className="w-full caption-bottom text-sm min-w-[1100px]">
                   <thead className="[&_tr]:border-b">
                     <tr className="border-b bg-muted/50">
@@ -1327,7 +1327,7 @@ export default function DashboardApplicants() {
                 </table>
               </div>
             ) : (
-              <div className="border border-border rounded-xl p-12 text-center">
+              <div className="border border-border rounded-md p-12 text-center">
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No applicants found</h3>
                 <p className="text-muted-foreground">

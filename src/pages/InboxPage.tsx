@@ -567,7 +567,7 @@ export default function InboxPage() {
         <button
           onClick={() => { setFilter("email"); setSearch(""); }}
           className={cn(
-            "rounded-xl border bg-card p-3 text-left transition hover:border-primary/50",
+            "rounded-md border bg-card p-3 text-left transition hover:border-primary/50",
             filter === "email" ? "border-primary ring-2 ring-primary/20" : "border-border",
           )}
         >
@@ -584,7 +584,7 @@ export default function InboxPage() {
         <button
           onClick={() => { setFilter("sms"); setSearch(""); }}
           className={cn(
-            "rounded-xl border bg-card p-3 text-left transition hover:border-primary/50",
+            "rounded-md border bg-card p-3 text-left transition hover:border-primary/50",
             filter === "sms" ? "border-primary ring-2 ring-primary/20" : "border-border",
           )}
         >
@@ -598,7 +598,7 @@ export default function InboxPage() {
             </div>
           </div>
         </button>
-        <div className="rounded-xl border border-border bg-card p-3">
+        <div className="rounded-md border border-border bg-card p-3">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Bell className="h-4 w-4" />
@@ -612,7 +612,7 @@ export default function InboxPage() {
         <button
           onClick={() => { setFilter("failed"); setSearch(""); }}
           className={cn(
-            "rounded-xl border bg-card p-3 text-left transition hover:border-destructive/50",
+            "rounded-md border bg-card p-3 text-left transition hover:border-destructive/50",
             filter === "failed" ? "border-destructive ring-2 ring-destructive/20" : "border-border",
           )}
         >
@@ -629,7 +629,7 @@ export default function InboxPage() {
         <button
           onClick={() => { setFilter("all"); setSearch(""); }}
           className={cn(
-            "rounded-xl border bg-card p-3 text-left transition hover:border-primary/50",
+            "rounded-md border bg-card p-3 text-left transition hover:border-primary/50",
             filter === "all" && !search ? "border-primary ring-2 ring-primary/20" : "border-border",
           )}
         >
@@ -647,7 +647,7 @@ export default function InboxPage() {
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2 flex-wrap">
+        <div className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 flex-wrap">
           <span className="text-sm font-medium">{selected.size} selected</span>
           <div className="h-4 w-px bg-border mx-1" />
           <Button size="sm" variant="outline" onClick={bulkRetry} disabled={resending}>
@@ -664,7 +664,7 @@ export default function InboxPage() {
 
       <div className="grid min-h-[60vh] grid-cols-1 gap-4 lg:grid-cols-[380px_1fr]">
         {/* Message list */}
-        <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card">
+        <div className="flex flex-col overflow-hidden rounded-md border border-border bg-card">
           <div className="space-y-2 border-b border-border p-3">
             <Tabs value={filter} onValueChange={(v) => setFilter(v as InboxFilter)}>
               <TabsList className="grid h-8 grid-cols-5">
@@ -743,7 +743,7 @@ export default function InboxPage() {
         </div>
 
         {/* Detail pane */}
-        <div className="rounded-xl border border-border bg-card p-4 lg:p-6">
+        <div className="rounded-md border border-border bg-card p-4 lg:p-6">
           {!selectedMessage ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
               <Mail className="h-10 w-10 opacity-30" />

@@ -86,7 +86,7 @@ export function ApexLeadsSection() {
         {/* Packages */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
           {packages.map(pkg => (
-            <div key={pkg.name} className={`relative bg-white/[0.03] border rounded-2xl p-6 ${pkg.popular ? "border-primary/50 ring-1 ring-primary/20" : "border-white/10"}`}>
+            <div key={pkg.name} className={`relative bg-white/[0.03] border rounded-md p-6 ${pkg.popular ? "border-primary/50 ring-1 ring-primary/20" : "border-white/10"}`}>
               {pkg.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full" style={{ fontFamily: "Syne" }}>
                   MOST POPULAR

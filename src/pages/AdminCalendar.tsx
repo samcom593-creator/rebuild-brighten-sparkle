@@ -533,7 +533,7 @@ export default function AdminCalendar() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between gap-3"
+            className="mb-4 bg-primary/10 border border-primary/20 rounded-md p-4 flex items-center justify-between gap-3"
           >
             <div className="flex items-center gap-2 min-w-0">
               <RefreshCw className="h-4 w-4 text-primary flex-shrink-0" />
@@ -549,7 +549,7 @@ export default function AdminCalendar() {
         )}
 
         {/* Day Progress */}
-        <div className="mb-6 bg-card border border-border rounded-xl p-4">
+        <div className="mb-6 bg-card border border-border rounded-md p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Day Completion</span>
             <span className="text-sm text-muted-foreground">{completedCount}/{blocks.length} blocks</span>
@@ -570,7 +570,7 @@ export default function AdminCalendar() {
 
         {/* Hour Grid with DnD */}
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="bg-card border border-border rounded-md overflow-hidden">
             {HOURS.map(hour => {
               const hourBlocks = blocks.filter(b => b.start_hour === hour);
               const occupied = blocks.some(b => b.start_hour <= hour && b.end_hour > hour);

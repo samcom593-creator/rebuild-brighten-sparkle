@@ -91,7 +91,7 @@ export default function GetLicensed() {
               <h2 className="text-xl font-bold">Step 1: Watch This Video</h2>
             </div>
             
-            <div className="relative aspect-video rounded-xl overflow-hidden mb-4">
+            <div className="relative aspect-video rounded-md overflow-hidden mb-4">
               <iframe
                 src={videoUrl}
                 title="Getting Licensed with APEX"

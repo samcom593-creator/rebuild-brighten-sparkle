@@ -239,7 +239,7 @@ export default function Login() {
             <motion.span
               animate={{ rotate: [0, 5, -5, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              className="relative h-12 w-12 rounded-2xl flex items-center justify-center bg-gradient-to-br from-primary/30 via-primary/20 to-primary/5 border border-primary/40 backdrop-blur-md shadow-[0_0_30px_hsl(168_80%_50%/0.35)]"
+              className="relative h-12 w-12 rounded-md flex items-center justify-center bg-white dark:bg-slate-900 border border-primary/40 backdrop-blur-md "
             >
               <Crown className="h-6 w-6 text-primary" />
               <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />

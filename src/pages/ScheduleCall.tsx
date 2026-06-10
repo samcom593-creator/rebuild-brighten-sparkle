@@ -95,7 +95,7 @@ export default function ScheduleCall() {
           <div className="max-w-xl mx-auto">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
               <GlassCard className="p-8 text-center">
-                <div className="h-16 w-16 mx-auto rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-4 animate-pulse-glow">
+                <div className="h-16 w-16 mx-auto rounded-full bg-white dark:bg-slate-900 flex items-center justify-center mb-4 animate-pulse-glow">
                   <Calendar className="h-8 w-8 text-primary-foreground" />
                 </div>
                 <h1 className="text-2xl font-bold mb-3">Who are we booking you with?</h1>
@@ -165,7 +165,7 @@ export default function ScheduleCall() {
                 </div>
               </GlassCard>
               <GlassCard className="overflow-hidden">
-                <CalendlyEmbed url={calendlyUrl} className="rounded-xl" />
+                <CalendlyEmbed url={calendlyUrl} className="rounded-md" />
               </GlassCard>
             </motion.div>
           </div>
@@ -192,7 +192,7 @@ export default function ScheduleCall() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <GlassCard className="p-8 text-center">
               <div className="mb-6">
-                <div className="h-16 w-16 mx-auto rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-4 animate-pulse-glow">
+                <div className="h-16 w-16 mx-auto rounded-full bg-white dark:bg-slate-900 flex items-center justify-center mb-4 animate-pulse-glow">
                   <Calendar className="h-8 w-8 text-primary-foreground" />
                 </div>
                 <h1 className="text-2xl font-bold mb-2">Schedule Your Call</h1>

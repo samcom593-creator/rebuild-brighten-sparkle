@@ -44,7 +44,7 @@ export default function Storefront() {
   }, [paid]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div className="min-h-screen bg-white dark:bg-slate-900 text-white">
       <header className="border-b border-slate-200 dark:border-slate-800/60">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 font-bold">
@@ -58,7 +58,7 @@ export default function Storefront() {
 
       <main className="max-w-3xl mx-auto px-4 py-12 md:py-16">
         {paid ? (
-          <Card className="border-emerald-500/40 bg-gradient-to-br from-emerald-950/40 to-slate-900 reveal">
+          <Card className="border-emerald-500/40 bg-white dark:bg-slate-900 reveal">
             <CardHeader className="text-center">
               <div className="mx-auto h-16 w-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-3">
                 <CheckCircle2 className="h-9 w-9 text-emerald-400" />

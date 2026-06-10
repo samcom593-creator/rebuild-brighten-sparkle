@@ -77,9 +77,9 @@ export function OffersTiles() {
             key={sku.id}
             onClick={() => buy(sku)}
             disabled={busy !== null}
-            className={`group relative text-left p-3 rounded-xl bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700 hover:border-emerald-400/60 transition-all overflow-hidden disabled:opacity-50`}
+            className={`group relative text-left p-3 rounded-md bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700 hover:border-emerald-400/60 transition-all overflow-hidden disabled:opacity-50`}
           >
-            <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br ${sku.accent} opacity-20 blur-2xl group-hover:opacity-40 transition-opacity`} />
+            <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full  ${sku.accent} opacity-20 blur-2xl group-hover:opacity-40 transition-opacity`} />
             <div className="relative space-y-2">
               <div className="flex items-center gap-2">
                 <sku.Icon className="h-5 w-5 text-emerald-400" />

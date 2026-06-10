@@ -107,7 +107,7 @@ function ManagerAvatar({ name, src }: { name: string; src?: string | null }) {
     .map(w => w[0]?.toUpperCase() ?? "")
     .join("");
   return (
-    <span className="h-7 w-7 rounded-full overflow-hidden bg-gradient-to-br from-primary/60 to-accent/60 ring-1 ring-primary/40 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+    <span className="h-7 w-7 rounded-full overflow-hidden bg-white dark:bg-slate-900 ring-1 ring-primary/40 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
       {src ? (
         <img src={src} alt={name} className="h-full w-full object-cover" loading="lazy" />
       ) : (
@@ -694,7 +694,7 @@ export default function Apply() {
     <div className="min-h-screen overflow-x-hidden bg-background ops-surface ops-fade-in">
       {/* Live trust ribbon — top of every Apply load so visitors immediately
           see the engine is firing. Real counts driven by landing_live_stats(). */}
-      <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-transparent border-b border-primary/30">
+      <div className="bg-white dark:bg-slate-900 border-b border-primary/30">
         <div className="container mx-auto px-4 py-2 flex items-center justify-center gap-3 text-[11px] uppercase tracking-[0.18em] font-display font-semibold">
           <span className="relative flex h-2 w-2">
             <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
@@ -730,7 +730,7 @@ export default function Apply() {
               src="https://xrzweoneiieddzxogewk.supabase.co/storage/v1/object/public/avatars/4491dc82-a056-4fb3-ab38-b132afffb700/avatar-1777285677901.jpg"
               alt="Samuel James, Founder of APEX Financial"
               loading="lazy"
-              className="h-12 w-12 shrink-0 rounded-full ring-2 ring-primary/40 object-cover shadow-[0_0_24px_hsl(168_80%_50%/0.25)]"
+              className="h-12 w-12 shrink-0 rounded-full ring-2 ring-primary/40 object-cover "
             />
             <div className="text-left min-w-0">
               <p className="text-sm font-bold leading-tight">You're applying directly to Samuel James</p>
@@ -1100,7 +1100,7 @@ export default function Apply() {
 
                       {/* SMS Consent Error Banner */}
                       {smsConsentError && (
-                        <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive">
+                        <div className="p-4 rounded-md border border-destructive/30 bg-destructive/10 text-destructive">
                           <p className="font-semibold text-sm">⚠️ SMS Consent Required</p>
                           <p className="text-xs mt-1">Please scroll down and check the SMS consent checkbox to submit your application.</p>
                         </div>

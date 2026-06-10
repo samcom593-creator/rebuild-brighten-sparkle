@@ -15,8 +15,8 @@ const accentColors: Record<string, { blob1: string; blob2: string }> = {
 };
 
 const intensityScale: Record<string, { size1: string; size2: string; blur: string }> = {
-  subtle: { size1: "h-48 w-48", size2: "h-32 w-32", blur: "blur-3xl" },
-  medium: { size1: "h-64 w-64", size2: "h-48 w-48", blur: "blur-3xl" },
+  subtle: { size1: "h-48 w-48", size2: "h-32 w-32", blur: "" },
+  medium: { size1: "h-64 w-64", size2: "h-48 w-48", blur: "" },
   strong: { size1: "h-80 w-80", size2: "h-64 w-64", blur: "blur-[80px]" },
 };
 

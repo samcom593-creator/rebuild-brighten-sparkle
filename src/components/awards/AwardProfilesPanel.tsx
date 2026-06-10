@@ -191,7 +191,7 @@ export default function AwardProfilesPanel() {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-border/30 bg-card/40 backdrop-blur-md p-10">
+      <div className="rounded-md border border-border/30 bg-card/40 backdrop-blur-md p-10">
         <div className="flex items-center justify-center gap-3 text-muted-foreground">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           Loading producers...
@@ -202,12 +202,12 @@ export default function AwardProfilesPanel() {
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className="rounded-2xl border border-border/30 bg-gradient-to-br from-card/90 via-card/70 to-card/50 backdrop-blur-xl overflow-hidden shadow-xl shadow-black/5">
+      <div className="rounded-md border border-border/30 bg-white dark:bg-slate-900 backdrop-blur-xl overflow-hidden shadow-xl shadow-black/5">
         {/* Header */}
         <CollapsibleTrigger asChild>
           <button className="w-full flex items-center justify-between px-6 py-5 hover:bg-accent/5 transition-colors group">
             <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500/25 to-orange-600/25 flex items-center justify-center ring-1 ring-amber-500/20">
+              <div className="h-10 w-10 rounded-md bg-white dark:bg-slate-900 flex items-center justify-center ring-1 ring-amber-500/20">
                 <Crown className="h-5 w-5 text-amber-500" />
               </div>
               <div className="text-left">
@@ -287,13 +287,13 @@ export default function AwardProfilesPanel() {
                     exit={{ opacity: 0, y: -12 }}
                     transition={{ duration: 0.25, delay: index * 0.03 }}
                     className={cn(
-                      "relative rounded-xl border p-4 transition-all duration-300",
-                      "bg-gradient-to-b from-card/95 to-card/70 backdrop-blur-sm",
+                      "relative rounded-md border p-4 transition-all duration-300",
+                      "bg-white dark:bg-slate-900 backdrop-blur-sm",
                       "hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-0.5",
                       isEditMode
                         ? "ring-2 ring-primary/40 shadow-xl shadow-primary/10 border-primary/30"
                         : "hover:border-primary/20",
-                      index === 0 && "border-amber-400/30 bg-gradient-to-b from-amber-500/5 to-card/70"
+                      index === 0 && "border-amber-400/30 bg-white dark:bg-slate-900"
                     )}
                   >
                     {/* Rank badge for top 3 */}
@@ -325,7 +325,7 @@ export default function AwardProfilesPanel() {
                           agent.award_photo_url ? getRankBorder(index) : "ring-border/40"
                         )}>
                           <AvatarImage src={photoUrl || undefined} className="object-cover" />
-                          <AvatarFallback className="bg-gradient-to-br from-muted to-muted/60 text-base font-bold">
+                          <AvatarFallback className="bg-white dark:bg-slate-900 text-base font-bold">
                             {name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>

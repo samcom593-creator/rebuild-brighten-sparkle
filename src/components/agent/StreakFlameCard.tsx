@@ -81,9 +81,9 @@ export function StreakFlameCard({ agentId }: Props) {
     :                 { label: "START TODAY", color: "#64748b", bg: "from-muted/20 to-transparent" };
 
   return (
-    <GlassCard className={cn("p-5 card-tilt reveal bg-gradient-to-br", tier.bg, streak >= 5 && "win-glow")}>
+    <GlassCard className={cn("p-5 card-tilt reveal ", tier.bg, streak >= 5 && "win-glow")}>
       <div className="flex items-center gap-4">
-        <div className={cn("h-16 w-16 rounded-2xl flex items-center justify-center shrink-0", streak >= 5 ? "streak-flame" : "")}
+        <div className={cn("h-16 w-16 rounded-md flex items-center justify-center shrink-0", streak >= 5 ? "streak-flame" : "")}
              style={{ background: `${tier.color}22`, border: `2px solid ${tier.color}66` }}>
           <Flame className="h-8 w-8" style={{ color: tier.color }} />
         </div>

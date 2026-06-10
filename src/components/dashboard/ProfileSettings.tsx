@@ -506,7 +506,7 @@ export function ProfileSettings() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 mb-4"
+          className="p-4 rounded-md bg-amber-500/10 border border-amber-500/30 mb-4"
         >
           <h3 className="font-bold text-amber-400 flex items-center gap-2 mb-1">
             🔐 Change Your Password

@@ -208,9 +208,9 @@ export function GlobalSidebar({
           "flex items-center gap-3 px-3 py-2.5 transition-all duration-200 min-h-[44px] lg:min-h-[40px]",
           "touch-action-manipulation select-none group/nav",
           isActive
-            ? "text-[#22d3a5] bg-gradient-to-r from-[#22d3a5]/15 via-[#22d3a5]/5 to-transparent border-l-[3px] border-[#22d3a5] shadow-[inset_0_0_20px_hsl(168_80%_50%/0.08)]"
+            ? "text-[#22d3a5] bg-white dark:bg-slate-900 border-l-[3px] border-[#22d3a5] shadow-[inset_0_0_20px_hsl(168_80%_50%/0.08)]"
             : item.special
-              ? "bg-gradient-to-r from-[#22d3a5]/10 to-transparent text-[#22d3a5] border border-[#22d3a5]/20 hover:from-[#22d3a5]/25 hover:border-[#22d3a5]/50 hover:shadow-[0_0_20px_hsl(168_80%_50%/0.15)] rounded-lg mx-1"
+              ? "bg-white dark:bg-slate-900 text-[#22d3a5] border border-[#22d3a5]/20 hover:from-[#22d3a5]/25 hover:border-[#22d3a5]/50 hover: rounded-lg mx-1"
               : "text-[#8395ab] hover:text-[#e2e8f0] hover:bg-white/[0.04] hover:translate-x-0.5",
           isCollapsed && "justify-center px-2",
         )}
@@ -440,7 +440,7 @@ export function GlobalSidebar({
                 </div>
               </div>
             ))}
-            <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[#030712] to-transparent" />
+            <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-6 bg-white dark:bg-slate-900" />
           </nav>
 
           <div className="border-t border-[#1e293b] p-2">

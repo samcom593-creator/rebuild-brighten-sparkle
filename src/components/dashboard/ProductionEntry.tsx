@@ -406,7 +406,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
             <div className="flex flex-col gap-4 mb-6">
               {/* Title Row */}
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/15 border border-primary/20 shadow-lg shadow-primary/10 shrink-0">
+                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-md bg-primary/15 border border-primary/20 shadow-lg shadow-primary/10 shrink-0">
                   <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
                 <div className="min-w-0">
@@ -420,7 +420,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="ml-auto px-3 py-1.5 bg-gradient-to-r from-primary/20 to-emerald-500/20 border border-primary/30 rounded-xl font-bold text-primary text-sm shadow-lg shadow-primary/10 shrink-0"
+                    className="ml-auto px-3 py-1.5 bg-white dark:bg-slate-900 border border-primary/30 rounded-md font-bold text-primary text-sm shadow-lg shadow-primary/10 shrink-0"
                   >
                     ${totalValue.toLocaleString()}
                   </motion.div>
@@ -587,7 +587,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                       >
                         <div 
                           className={cn(
-                            "relative p-4 rounded-xl border-2 transition-all duration-300",
+                            "relative p-4 rounded-md border-2 transition-all duration-300",
                             "bg-card",
                             "hover:border-primary/30 hover:shadow-md",
                             hasValue && "border-primary/50 bg-primary/5 shadow-lg shadow-primary/10",
@@ -645,8 +645,8 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
               <Button 
                 type="submit" 
                 className={cn(
-                  "w-full gap-3 h-14 text-lg font-bold rounded-xl transition-all duration-300",
-                  "bg-gradient-to-r from-primary via-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90",
+                  "w-full gap-3 h-14 text-lg font-bold rounded-md transition-all duration-300",
+                  "bg-white dark:bg-slate-900 hover:from-primary/90 hover:to-emerald-500/90",
                   "shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30",
                   hasProduction && "animate-pulse"
                 )}

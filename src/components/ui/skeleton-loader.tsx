@@ -15,7 +15,7 @@ export function SkeletonLoader({ className, variant = "card" }: SkeletonLoaderPr
             <img 
               src={apexIcon} 
               alt="Apex" 
-              className="h-12 w-12 mx-auto mb-4 animate-pulse rounded-xl"
+              className="h-12 w-12 mx-auto mb-4 animate-pulse rounded-md"
             />
             <div className="absolute inset-0 h-12 w-12 mx-auto rounded-full bg-primary/20 blur-xl animate-pulse" />
           </div>
@@ -62,7 +62,7 @@ export function SkeletonLoader({ className, variant = "card" }: SkeletonLoaderPr
 // Card skeleton with consistent styling
 export function CardSkeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("p-6 rounded-xl glass space-y-4", className)}>
+    <div className={cn("p-6 rounded-md glass space-y-4", className)}>
       <div className="flex items-center gap-3">
         <SkeletonLoader variant="circle" className="h-10 w-10" />
         <div className="space-y-2 flex-1">
@@ -87,7 +87,7 @@ export function DashboardSkeleton() {
       {/* Stats row skeleton */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="p-4 rounded-xl bg-muted/30 space-y-2">
+          <div key={i} className="p-4 rounded-md bg-muted/30 space-y-2">
             <SkeletonLoader variant="text" className="w-16 h-3" />
             <SkeletonLoader variant="text" className="w-24 h-8" />
           </div>

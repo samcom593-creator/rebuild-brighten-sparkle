@@ -46,8 +46,8 @@ export function NextStepCard({ application_id, agent_id, compact = false }: Prop
     : "No deadline";
 
   const borderClass = isUrgent
-    ? "border-rose-500/40 bg-gradient-to-br from-rose-500/10 via-card to-card"
-    : "border-blue-500/40 bg-gradient-to-br from-blue-500/8 via-card to-card";
+    ? "border-rose-500/40 bg-white dark:bg-slate-900"
+    : "border-blue-500/40 bg-white dark:bg-slate-900";
 
   const accent = isUrgent ? "text-rose-300" : "text-blue-300";
 
@@ -56,7 +56,7 @@ export function NextStepCard({ application_id, agent_id, compact = false }: Prop
       <Card className={cn("p-5 sm:p-6 transition-colors", borderClass)}>
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-start gap-3 min-w-0">
-            <div className={cn("rounded-xl p-3 border shrink-0", isUrgent ? "bg-rose-500/15 border-rose-500/30" : "bg-blue-500/15 border-blue-500/30")}>
+            <div className={cn("rounded-md p-3 border shrink-0", isUrgent ? "bg-rose-500/15 border-rose-500/30" : "bg-blue-500/15 border-blue-500/30")}>
               <Compass className={cn("h-6 w-6", accent)} />
             </div>
             <div className="min-w-0">

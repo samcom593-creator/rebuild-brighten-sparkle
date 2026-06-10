@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 export function NextStepFunnelStrip() {
   const { data, isLoading } = useNextStepFunnel();
 
-  if (isLoading) return <Skeleton className="h-32 rounded-xl" />;
+  if (isLoading) return <Skeleton className="h-32 rounded-md" />;
   if (!data || data.length === 0) return null;
 
   const maxInStage = Math.max(...data.map((d) => d.in_stage || 0), 1);

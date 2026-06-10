@@ -1180,10 +1180,10 @@ function AgencyCommandView() {
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
-      {/* v13 Wave E (2026-06-10): killed the inline gradient + blur-3xl +
+      {/* v13 Wave E (2026-06-10): killed the inline gradient +  +
           glow shadow. Sam: "all that bullshit gradient/glow stuff looks
           buggy." Restraint mirrors AgentLink — solid card + 1px border. */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-sm">
+      <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-sm">
         <PageHeader
           eyebrow="Agency · Owner Mode"
           eyebrowIcon={<Crown className="h-3 w-3" />}

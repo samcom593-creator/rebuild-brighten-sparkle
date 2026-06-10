@@ -86,7 +86,7 @@ export function CallCenterFilters({
       {/* Header */}
       <motion.div variants={itemVariants} className="text-center mb-8">
         <motion.div
-          className="relative inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 mb-4"
+          className="relative inline-flex items-center justify-center w-20 h-20 rounded-md bg-white dark:bg-slate-900 border border-primary/30 mb-4"
           whileHover={{ scale: 1.05, rotate: 5 }}
           transition={{ type: "spring", stiffness: 400, damping: 20 }}
         >
@@ -100,7 +100,7 @@ export function CallCenterFilters({
 
         <motion.h1
           variants={itemVariants}
-          className="text-3xl font-bold mb-2 bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text"
+          className="text-3xl font-bold mb-2 bg-white dark:bg-slate-900 bg-clip-text"
         >
           Call Center
         </motion.h1>
@@ -114,7 +114,7 @@ export function CallCenterFilters({
         <GlassCard className="p-6 space-y-6 relative overflow-hidden group">
           {/* Hover glow effect */}
           <motion.div
-            className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+            className="absolute inset-0 bg-white dark:bg-slate-900 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
           />
 
           <motion.div
@@ -223,7 +223,7 @@ export function CallCenterFilters({
                 onClick={onStart}
                 disabled={disabled}
                 size="lg"
-                className="w-full relative overflow-hidden bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 group"
+                className="w-full relative overflow-hidden bg-white dark:bg-slate-900 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 group"
               >
 
                 <Phone className="h-5 w-5 mr-2 group-hover:rotate-12 transition-transform" />

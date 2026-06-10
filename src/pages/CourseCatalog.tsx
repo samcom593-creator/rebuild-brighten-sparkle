@@ -231,9 +231,9 @@ export default function CourseCatalog() {
       <motion.div
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl glass-card p-6 md:p-8"
+        className="relative overflow-hidden rounded-md glass-card p-6 md:p-8"
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/5 pointer-events-none" />
+        <div className="absolute inset-0 bg-white dark:bg-slate-900 pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-2">
             <Badge variant="outline" className="border-primary/40 text-primary text-xs" style={{ fontFamily: "Syne" }}>
@@ -287,7 +287,7 @@ export default function CourseCatalog() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className={`group relative rounded-xl overflow-hidden border transition-all cursor-pointer ${
+                    className={`group relative rounded-md overflow-hidden border transition-all cursor-pointer ${
                       completed ? "border-primary/40" :
                       inProgress ? "border-primary/60 ring-1 ring-primary/30 animate-pulse-subtle" :
                       unlocked ? "border-border hover:border-primary/40" :
@@ -452,7 +452,7 @@ export default function CourseCatalog() {
           </div>
 
           {CALL_LIBRARY.length === 0 ? (
-            <div className="p-12 text-center space-y-3 border border-dashed border-border rounded-xl">
+            <div className="p-12 text-center space-y-3 border border-dashed border-border rounded-md">
               <Headphones className="h-10 w-10 text-muted-foreground mx-auto opacity-50" />
               <h3 className="text-lg font-semibold" style={{ fontFamily: "Syne" }}>No recorded calls yet</h3>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
@@ -462,7 +462,7 @@ export default function CourseCatalog() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredCalls.map(call => (
-                <motion.div key={call.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card rounded-xl p-4 space-y-3 hover:border-primary/30 transition-all cursor-pointer group">
+                <motion.div key={call.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card rounded-md p-4 space-y-3 hover:border-primary/30 transition-all cursor-pointer group">
                   <div className="flex items-start justify-between">
                     <Badge variant="outline" className="text-xs">{call.category}</Badge>
                     <span className="text-xs text-muted-foreground">{call.duration}</span>

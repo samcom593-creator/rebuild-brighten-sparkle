@@ -525,7 +525,7 @@ function StatTile({
         ? "bg-amber-500/15 text-amber-400 ring-amber-500/30"
         : "bg-primary/15 text-primary ring-primary/30";
   return (
-    <Card className={cn("rounded-xl overflow-hidden bg-gradient-to-br border", gradient)}>
+    <Card className={cn("rounded-md overflow-hidden  border", gradient)}>
       <CardContent className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

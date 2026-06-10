@@ -183,7 +183,7 @@ export default function SeminarPage() {
               </a>
             ) : null}
             {success.isNew ? (
-              <div className="border border-primary/30 bg-primary/5 rounded-xl p-4 text-left">
+              <div className="border border-primary/30 bg-primary/5 rounded-md p-4 text-left">
                 <p className="text-sm font-semibold mb-1">Finish your application while you wait</p>
                 <p className="text-xs text-muted-foreground mb-3">
                   We started an application from your registration — finish it in 90 seconds so you're ready on day one.

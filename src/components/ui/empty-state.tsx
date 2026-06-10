@@ -31,8 +31,8 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-border/40 px-6 py-14 text-center backdrop-blur-md",
-        "bg-gradient-to-b from-card/60 to-card/30",
+        "relative overflow-hidden rounded-md border border-border/40 px-6 py-14 text-center backdrop-blur-md",
+        "bg-white dark:bg-slate-900",
         "animate-fade-in",
         className,
       )}
@@ -41,13 +41,13 @@ export function EmptyState({
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b blur-xl opacity-60",
+          "pointer-events-none absolute inset-x-0 top-0 h-40  blur-xl opacity-60",
           ICON_RING[variant],
         )}
       />
       <div className="relative z-10 flex flex-col items-center gap-3">
         <div className={cn(
-          "h-16 w-16 rounded-2xl border border-border/40 flex items-center justify-center bg-background/60",
+          "h-16 w-16 rounded-md border border-border/40 flex items-center justify-center bg-background/60",
           ICON_RING[variant],
         )}>
           {icon}

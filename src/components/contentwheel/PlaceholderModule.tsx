@@ -15,7 +15,7 @@ export function PlaceholderModule({ module }: Props) {
   return (
     <Card className="p-8 border-dashed border-2 border-border/60 bg-card/30">
       <div className="flex items-start gap-4">
-        <div className="rounded-xl bg-primary/10 p-4 border border-primary/20">
+        <div className="rounded-md bg-primary/10 p-4 border border-primary/20">
           <Icon className="h-8 w-8 text-primary" />
         </div>
         <div className="flex-1 min-w-0">

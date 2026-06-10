@@ -118,7 +118,7 @@ export function UnclaimedLeadsCommandCard() {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-rose-500/5 to-transparent p-5 animate-pulse">
+      <div className="rounded-md border border-amber-500/30 bg-white dark:bg-slate-900 p-5 animate-pulse">
         <div className="text-xs text-muted-foreground">Loading unclaimed leads…</div>
       </div>
     );
@@ -126,7 +126,7 @@ export function UnclaimedLeadsCommandCard() {
 
   if (!data || counts.total === 0) {
     return (
-      <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/12 to-transparent p-5 flex items-center gap-3">
+      <div className="rounded-md border border-emerald-500/30 bg-white dark:bg-slate-900 p-5 flex items-center gap-3">
         <CheckCircle2 className="h-5 w-5 text-emerald-300" />
         <div className="flex-1">
           <div className="text-sm font-semibold text-emerald-200">Inbox zero — every new applicant is claimed</div>
@@ -141,17 +141,17 @@ export function UnclaimedLeadsCommandCard() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-br from-amber-500/15 via-rose-500/8 to-transparent p-5 shadow-[0_0_80px_hsl(40_90%_50%/0.12)]"
+      className="relative overflow-hidden rounded-md border border-amber-500/40 bg-white dark:bg-slate-900 p-5 "
     >
       {/* corner glow */}
-      <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-amber-500/20 blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-rose-500/15 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-amber-500/20 " />
+      <div aria-hidden className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-rose-500/15 " />
 
       <div className="relative flex items-start justify-between gap-3 flex-wrap mb-4">
         <div className="flex items-center gap-3">
           <div className="relative">
             <div className="absolute inset-0 rounded-full bg-amber-400/40 animate-ping" />
-            <div className="relative h-10 w-10 rounded-full bg-gradient-to-br from-amber-400 to-rose-500 flex items-center justify-center shadow-[0_0_30px_hsl(40_90%_50%/0.4)]">
+            <div className="relative h-10 w-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center ">
               <AlertOctagon className="h-5 w-5 text-zinc-950" />
             </div>
           </div>
@@ -193,7 +193,7 @@ export function UnclaimedLeadsCommandCard() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 8 }}
                 transition={{ duration: 0.2 }}
-                className="flex items-center gap-3 rounded-xl border border-zinc-800/80 bg-white dark:bg-zinc-900/60 p-3 hover:border-amber-400/40 hover:bg-white dark:bg-zinc-900/80 transition-colors"
+                className="flex items-center gap-3 rounded-md border border-zinc-800/80 bg-white dark:bg-zinc-900/60 p-3 hover:border-amber-400/40 hover:bg-white dark:bg-zinc-900/80 transition-colors"
               >
                 <span className={cn("relative flex h-2.5 w-2.5", row.heat === "urgent" ? "" : "")}>
                   <span className={cn("absolute inset-0 rounded-full opacity-60", heatStyle.dot, row.heat === "urgent" && "animate-ping")} />
@@ -231,7 +231,7 @@ export function UnclaimedLeadsCommandCard() {
                   size="sm"
                   onClick={() => claim(row)}
                   disabled={claimingId === row.id}
-                  className="bg-gradient-to-br from-amber-400 to-amber-500 text-zinc-950 hover:from-amber-300 hover:to-amber-400 font-bold"
+                  className="bg-white dark:bg-slate-900 text-zinc-950 hover:from-amber-300 hover:to-amber-400 font-bold"
                 >
                   {claimingId === row.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -280,7 +280,7 @@ function HeatPill({
     emerald: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
   };
   return (
-    <div className={cn("rounded-xl border px-3 py-2 flex items-center gap-2", toneClasses[tone])}>
+    <div className={cn("rounded-md border px-3 py-2 flex items-center gap-2", toneClasses[tone])}>
       <Icon className="h-4 w-4 flex-shrink-0" />
       <div className="flex-1">
         <div className="text-[10px] uppercase tracking-wider opacity-80">{label}</div>

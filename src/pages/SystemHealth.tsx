@@ -149,7 +149,7 @@ export default function SystemHealth() {
       />
 
       {/* Status Banner */}
-      <div className={`p-4 rounded-xl flex items-center gap-3 border ${
+      <div className={`p-4 rounded-md flex items-center gap-3 border ${
         criticalCount > 0 ? "bg-red-500/10 border-red-500/30" :
         warningCount > 0 ? "bg-yellow-500/10 border-yellow-500/30" :
         "bg-emerald-500/10 border-emerald-500/30"

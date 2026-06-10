@@ -105,7 +105,7 @@ function QuickStat({
 
   return (
     <div className={cn(
-      "relative overflow-hidden rounded-xl border p-4 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg",
+      "relative overflow-hidden rounded-md border p-4 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg",
       colorClasses[color]
     )}>
       <div className="flex items-center gap-3">
@@ -419,7 +419,7 @@ export default function AgentPortal() {
   // Show login screen for unauthenticated users
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -477,7 +477,7 @@ export default function AgentPortal() {
           {/* Agent Info Bar */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-3">
-              <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
+              <div className="relative h-12 w-12 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
                 {profile?.full_name?.charAt(0).toUpperCase() || "A"}
               </div>
               <div>
@@ -750,7 +750,7 @@ export default function AgentPortal() {
             {/* Direct Portal Link */}
             <GlassCard className="p-4 overflow-hidden">
               <div className="flex items-center gap-3 mb-4">
-                <img src={apexIcon} alt="Apex" className="h-10 w-10 rounded-xl shadow-lg shrink-0" />
+                <img src={apexIcon} alt="Apex" className="h-10 w-10 rounded-md shadow-lg shrink-0" />
                 <div className="min-w-0">
                   <h3 className="font-semibold">Agent Portal</h3>
                   <p className="text-xs text-muted-foreground truncate">
@@ -760,7 +760,7 @@ export default function AgentPortal() {
               </div>
               
               {/* Branded Preview Card */}
-              <div className="bg-primary/[0.06] border border-border/50 rounded-xl p-4 mb-4">
+              <div className="bg-primary/[0.06] border border-border/50 rounded-md p-4 mb-4">
                 <div className="flex items-center gap-3">
                   <img src={apexIcon} alt="Apex" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shrink-0" />
                   <div className="flex-1 min-w-0">

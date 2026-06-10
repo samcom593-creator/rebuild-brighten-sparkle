@@ -256,7 +256,7 @@ function XPBar({ xp }: { xp: number }) {
         </div>
         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-pink-500 to-purple-500 rounded-full"
+            className="h-full bg-white dark:bg-slate-900 rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${pct}%` }}
             transition={{ duration: 0.8, ease: "easeOut" }}
@@ -286,7 +286,7 @@ function StatBubble({
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay, type: "spring", stiffness: 300, damping: 25 }}
       className={cn(
-        "flex items-center gap-1.5 rounded-xl border px-2 py-1 cursor-default",
+        "flex items-center gap-1.5 rounded-md border px-2 py-1 cursor-default",
         color
       )}
     >
@@ -445,7 +445,7 @@ const LeadCard = memo(function LeadCard({
         exit={{ opacity: 0, scale: 0.95 }}
         whileHover={disableHover ? undefined : { y: -1 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        className="bg-card border border-border rounded-xl overflow-hidden shadow-sm"
+        className="bg-card border border-border rounded-md overflow-hidden shadow-sm"
       >
         <div className="p-1.5 space-y-0.5">
           {/* ── Row 1: Name + score ── */}
@@ -1102,12 +1102,12 @@ function RecruiterDashboardInner() {
   if (loading) {
     return (
       <div className="p-6 space-y-6">
-        <div className="h-32 bg-muted animate-pulse rounded-2xl" />
+        <div className="h-32 bg-muted animate-pulse rounded-md" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <div key={i} className="h-24 bg-muted animate-pulse rounded-2xl" />)}
+          {[1,2,3,4].map(i => <div key={i} className="h-24 bg-muted animate-pulse rounded-md" />)}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {[1,2,3,4,5].map(i => <div key={i} className="h-64 bg-muted animate-pulse rounded-2xl" />)}
+          {[1,2,3,4,5].map(i => <div key={i} className="h-64 bg-muted animate-pulse rounded-md" />)}
         </div>
       </div>
     );
@@ -1122,7 +1122,7 @@ function RecruiterDashboardInner() {
             initial={{ opacity: 0, y: -20, x: "-50%" }}
             animate={{ opacity: 1, y: 0, x: "-50%" }}
             exit={{ opacity: 0, y: -20, x: "-50%" }}
-            className="fixed top-20 left-1/2 z-50 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg pointer-events-none"
+            className="fixed top-20 left-1/2 z-50 bg-white dark:bg-slate-900 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg pointer-events-none"
           >
             {xpToast}
           </motion.div>
@@ -1130,12 +1130,12 @@ function RecruiterDashboardInner() {
       </AnimatePresence>
 
       {/* ── Header ── */}
-      <div className="relative overflow-hidden rounded-xl border border-pink-500/20 bg-gradient-to-br from-pink-500/10 via-purple-500/5 to-transparent p-3">
+      <div className="relative overflow-hidden rounded-md border border-pink-500/20 bg-white dark:bg-slate-900 p-3">
         <div className="flex flex-col md:flex-row md:items-center gap-2">
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-pink-400" />
-              <h1 className="text-xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+              <h1 className="text-xl font-bold bg-white dark:bg-slate-900 bg-clip-text text-transparent">
                 Recruiter HQ
               </h1>
               {advancedToday > 0 && (
@@ -1152,7 +1152,7 @@ function RecruiterDashboardInner() {
 
           {/* XP Bar */}
           {isFeatureEnabled("xpSystem") && (
-            <div className="md:w-48 bg-background/60 rounded-xl p-2 border border-border/50">
+            <div className="md:w-48 bg-background/60 rounded-md p-2 border border-border/50">
               <XPBar xp={xp} />
             </div>
           )}
@@ -1301,7 +1301,7 @@ function RecruiterDashboardInner() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2"
+          className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-2"
         >
           <Target className="h-4 w-4 text-amber-400 shrink-0" />
           <span className="text-sm font-medium text-amber-400">
@@ -1318,7 +1318,7 @@ function RecruiterDashboardInner() {
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5"
+            className="flex items-center justify-between gap-3 rounded-md border border-rose-500/30 bg-rose-500/10 px-4 py-2.5"
           >
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
@@ -1410,7 +1410,7 @@ function RecruiterDashboardInner() {
         </div>
       ) : (
         // Desktop: full-width sortable table
-        <div className="rounded-xl border border-border overflow-x-auto">
+        <div className="rounded-md border border-border overflow-x-auto">
           <table className="w-full text-sm min-w-[1200px]">
             <thead>
               <tr className="border-b bg-muted/30">

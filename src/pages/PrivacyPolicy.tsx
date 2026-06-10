@@ -6,7 +6,7 @@ export default function PrivacyPolicy() {
     <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-3xl mx-auto px-6 py-16 space-y-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="h-12 w-12 rounded-xl bg-primary/15 flex items-center justify-center">
+          <div className="h-12 w-12 rounded-md bg-primary/15 flex items-center justify-center">
             <Shield className="h-6 w-6 text-primary" />
           </div>
           <div>

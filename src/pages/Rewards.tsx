@@ -114,7 +114,7 @@ export default function Rewards() {
                         <div key={r.id}
                           className={cn(
                             "flex items-center gap-3 px-4 py-3",
-                            r.rank === 1 && "bg-gradient-to-r from-amber-500/10 to-transparent",
+                            r.rank === 1 && "bg-white dark:bg-slate-900",
                           )}>
                           <Icon className={cn("h-5 w-5", rankColor(r.rank))} />
                           {r.avatar_url

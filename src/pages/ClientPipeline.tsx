@@ -426,7 +426,7 @@ export default function ClientPipeline() {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <Badge variant="outline" className={`text-[10px] bg-gradient-to-br ${stage.tint}`}>
+                      <Badge variant="outline" className={`text-[10px]  ${stage.tint}`}>
                         {stage.label}
                       </Badge>
                       <p className="text-[11px] text-muted-foreground mt-1">
@@ -529,7 +529,7 @@ export default function ClientPipeline() {
                       <p className="font-semibold truncate">
                         {[c.first_name, c.last_name].filter(Boolean).join(" ") || "(no name)"}
                       </p>
-                      <Badge variant="outline" className={`text-[10px] bg-gradient-to-br ${stage.tint}`}>
+                      <Badge variant="outline" className={`text-[10px]  ${stage.tint}`}>
                         {stage.label}
                       </Badge>
                       {c.do_not_call && (

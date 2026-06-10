@@ -745,7 +745,7 @@ export default function ContentLibrary() {
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 className={cn(
-                  "min-h-[200px] rounded-xl transition-colors",
+                  "min-h-[200px] rounded-md transition-colors",
                   isDragging && "border-2 border-dashed border-primary bg-primary/5"
                 )}
               >
@@ -973,7 +973,7 @@ export default function ContentLibrary() {
               </div>
               <div className="space-y-2">
                 <Label>Preview</Label>
-                <div className="border rounded-xl overflow-hidden bg-muted aspect-square">
+                <div className="border rounded-md overflow-hidden bg-muted aspect-square">
                   <canvas ref={canvasRef} className="w-full h-full" style={{ imageRendering: "auto" }} />
                 </div>
               </div>
@@ -989,7 +989,7 @@ export default function ContentLibrary() {
             </DialogHeader>
             <div className="space-y-4">
               <div
-                className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                className="border-2 border-dashed rounded-md p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
                 onClick={() => {
                   const input = document.createElement("input");
                   input.type = "file";

@@ -52,7 +52,7 @@ export function RecentHiresTicker() {
   const doubled = [...rows, ...rows];
 
   return (
-    <div className="landing-fade-up landing-delay-500 rounded-2xl px-4 py-3 max-w-2xl mx-auto mb-10 bg-card/90 backdrop-blur-xl border border-amber-500/30 overflow-hidden shadow-md">
+    <div className="landing-fade-up landing-delay-500 rounded-md px-4 py-3 max-w-2xl mx-auto mb-10 bg-card/90 backdrop-blur-xl border border-amber-500/30 overflow-hidden shadow-md">
       <div className="flex items-center gap-2 mb-2">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
@@ -74,8 +74,8 @@ export function RecentHiresTicker() {
             </span>
           ))}
         </div>
-        <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-card/90 to-transparent" />
-        <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-card/90 to-transparent" />
+        <div className="absolute inset-y-0 left-0 w-12 bg-white dark:bg-slate-900" />
+        <div className="absolute inset-y-0 right-0 w-12 bg-white dark:bg-slate-900" />
       </div>
     </div>
   );

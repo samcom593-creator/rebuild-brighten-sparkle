@@ -140,7 +140,7 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
       <GlassCard className="p-6 animate-pulse">
         <div className="h-4 w-40 bg-muted/40 rounded mb-4" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[0,1,2,3].map(i => <div key={i} className="h-20 bg-muted/20 rounded-xl" />)}
+          {[0,1,2,3].map(i => <div key={i} className="h-20 bg-muted/20 rounded-md" />)}
         </div>
       </GlassCard>
     );
@@ -151,7 +151,7 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
 
   return (
     <GlassCard className="p-4 md:p-6 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-amber-500/5 pointer-events-none" />
+      <div className="absolute inset-0 bg-white dark:bg-slate-900 pointer-events-none" />
       <div className="relative space-y-5">
         <div className="flex items-center justify-between">
           <div>
@@ -225,7 +225,7 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
                       isMe
-                        ? "bg-gradient-to-r from-primary/20 to-violet-500/10 border border-primary/40 font-semibold"
+                        ? "bg-white dark:bg-slate-900 border border-primary/40 font-semibold"
                         : "hover:bg-muted/30",
                     )}
                   >
@@ -247,7 +247,7 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
               })}
               {/* Show agent's position if outside top 10 */}
               {snap.productionRank && snap.productionRank > 10 && (
-                <div className="mt-2 px-3 py-2 rounded-lg bg-gradient-to-r from-primary/15 to-violet-500/10 border border-primary/30 text-sm">
+                <div className="mt-2 px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-primary/30 text-sm">
                   <span className="w-6 inline-block text-center text-xs text-muted-foreground mr-2">
                     {snap.productionRank}.
                   </span>
@@ -269,7 +269,7 @@ function StatTile({
 }) {
   return (
     <div className={cn(
-      "rounded-xl border border-border/50 bg-gradient-to-br p-3 transition-all hover:scale-[1.02]",
+      "rounded-md border border-border/50  p-3 transition-all hover:scale-[1.02]",
       tint,
     )}>
       <div className="flex items-center gap-2 mb-1">

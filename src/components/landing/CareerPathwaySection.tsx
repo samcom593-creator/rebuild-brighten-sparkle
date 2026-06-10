@@ -383,7 +383,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
               
               {/* Progress line */}
               <div
-                className="absolute top-2 left-1/2 -translate-x-1/2 w-0.5 bg-gradient-to-b from-orange-500 via-blue-500 to-purple-500 -z-10 origin-top transition-all duration-300"
+                className="absolute top-2 left-1/2 -translate-x-1/2 w-0.5 bg-white dark:bg-slate-900 -z-10 origin-top transition-all duration-300"
                 style={{
                   height: `${((activePhase + 1) / phases.length) * 100}%`,
                 }}
@@ -409,8 +409,8 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(168_84%_42%/0.08)_0%,transparent_60%)]" />
       
       {/* Floating orbs */}
-      <div className="absolute top-40 left-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl opacity-30" />
-      <div className="absolute bottom-60 right-10 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl opacity-25" />
+      <div className="absolute top-40 left-10 w-40 h-40 bg-primary/10 rounded-full  opacity-30" />
+      <div className="absolute bottom-60 right-10 w-56 h-56 bg-purple-500/10 rounded-full  opacity-25" />
 
       <div className="container mx-auto px-4 relative z-10">
         {/* Stats Banner */}
@@ -482,7 +482,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                         >
                           <div className="flex gap-4">
                             {/* Step Number Circle */}
-                            <div className={`flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br ${phase.bgColor} flex items-center justify-center border border-white/10`}>
+                            <div className={`flex-shrink-0 w-10 h-10 rounded-full  ${phase.bgColor} flex items-center justify-center border border-white/10`}>
                               <span className={`text-sm font-bold ${phase.color}`}>
                                 {stepNumber}
                               </span>
@@ -517,9 +517,9 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                   <div className="relative flex flex-col items-center">
                     {/* Animated gradient line */}
                     <div className="relative w-1 h-16 rounded-full overflow-hidden bg-border/30">
-                      <div className={`landing-connector-fill absolute inset-0 w-full bg-gradient-to-b ${phaseConnectorColors[phaseIndex]}`} />
+                      <div className={`landing-connector-fill absolute inset-0 w-full  ${phaseConnectorColors[phaseIndex]}`} />
                       {/* Static pulse accent */}
-                      <div className={`absolute inset-0 w-full bg-gradient-to-b ${phaseConnectorColors[phaseIndex]} opacity-30`} />
+                      <div className={`absolute inset-0 w-full  ${phaseConnectorColors[phaseIndex]} opacity-30`} />
                     </div>
                     
                     {/* Arrow */}
@@ -545,7 +545,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
 
                     {/* Dot at transition */}
                     <div
-                      className={`absolute top-0 w-3 h-3 rounded-full bg-gradient-to-r ${phaseConnectorColors[phaseIndex]} shadow-lg`}
+                      className={`absolute top-0 w-3 h-3 rounded-full  ${phaseConnectorColors[phaseIndex]} shadow-lg`}
                     />
                   </div>
                 </div>

@@ -329,7 +329,7 @@ export default function LogNumbers() {
           <motion.img 
             src={apexIcon} 
             alt="Apex" 
-            className="h-16 w-16 mx-auto mb-3 rounded-xl shadow-lg"
+            className="h-16 w-16 mx-auto mb-3 rounded-md shadow-lg"
             initial={{ scale: 0, rotate: -10 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
@@ -565,7 +565,7 @@ export default function LogNumbers() {
                     {/* Deal Amounts - Primary Action */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500/20 to-primary/20 flex items-center justify-center">
+                        <div className="h-7 w-7 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center">
                           <DollarSign className="h-4 w-4 text-primary" />
                         </div>
                         <div>
@@ -579,7 +579,7 @@ export default function LogNumbers() {
                     {/* Activity Stats */}
                     <div className="space-y-3 mt-6 pt-4 border-t border-border/50">
                       <div className="flex items-center gap-2 mb-1">
-                        <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                        <div className="h-7 w-7 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center">
                           <Target className="h-4 w-4 text-primary" />
                         </div>
                         <div>
@@ -646,7 +646,7 @@ export default function LogNumbers() {
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.4 }}
-                    className="bg-primary/10 rounded-xl p-4 mb-4"
+                    className="bg-primary/10 rounded-md p-4 mb-4"
                   >
                     <div className="text-4xl font-bold text-primary mb-1">
                       #{agentRank}

@@ -764,7 +764,7 @@ export default function CallCenter() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30">
+          <div className="p-2.5 rounded-md bg-white dark:bg-slate-900 border border-primary/30">
             <Phone className="h-5 w-5 text-primary" />
           </div>
           <div>
@@ -790,7 +790,7 @@ export default function CallCenter() {
       {loading ? (
         <div className="flex-1 flex flex-col gap-6 p-6">
           {/* Skeleton loader */}
-          <div className="space-y-4 rounded-2xl border border-border/50 p-6">
+          <div className="space-y-4 rounded-md border border-border/50 p-6">
             <div className="flex gap-2">
               <Skeleton className="h-6 w-24 rounded-full" />
               <Skeleton className="h-6 w-20 rounded-full" />
@@ -798,16 +798,16 @@ export default function CallCenter() {
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-4 w-32" />
             <div className="space-y-3 pt-4">
-              <Skeleton className="h-16 w-full rounded-xl" />
-              <Skeleton className="h-12 w-full rounded-xl" />
-              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-16 w-full rounded-md" />
+              <Skeleton className="h-12 w-full rounded-md" />
+              <Skeleton className="h-12 w-full rounded-md" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Skeleton className="h-20 rounded-xl" />
-            <Skeleton className="h-20 rounded-xl" />
+            <Skeleton className="h-20 rounded-md" />
+            <Skeleton className="h-20 rounded-md" />
           </div>
-          <Skeleton className="h-14 w-full rounded-xl" />
+          <Skeleton className="h-14 w-full rounded-md" />
         </div>
       ) : !currentLead ? (
         <motion.div
@@ -815,7 +815,7 @@ export default function CallCenter() {
           animate={{ scale: 1, opacity: 1 }}
           className="flex-1 flex flex-col items-center justify-center text-center"
         >
-          <div className="p-6 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 mb-6">
+          <div className="p-6 rounded-full bg-white dark:bg-slate-900 mb-6">
             <CheckCircle2 className="h-16 w-16 text-primary" />
           </div>
           <h3 className="text-2xl font-bold mb-2 text-foreground">All Done!</h3>

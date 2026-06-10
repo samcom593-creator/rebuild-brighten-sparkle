@@ -245,21 +245,21 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
   const renderRankBadge = (rank: number, isCurrentUser: boolean) => {
     if (rank === 1) {
       return (
-        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg shadow-amber-500/30">
+        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-slate-900 shadow-lg shadow-amber-500/30">
           <span className="text-xs font-bold text-white">1</span>
         </div>
       );
     }
     if (rank === 2) {
       return (
-        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-gradient-to-br from-slate-300 to-slate-400">
+        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-slate-900">
           <span className="text-xs font-bold text-slate-700">2</span>
         </div>
       );
     }
     if (rank === 3) {
       return (
-        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-gradient-to-br from-amber-600 to-amber-800">
+        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-slate-900">
           <span className="text-xs font-bold text-white">3</span>
         </div>
       );
@@ -334,7 +334,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ delay: index * 0.03 }}
                 className={cn(
-                  "grid grid-cols-12 gap-2 items-center px-3 py-2.5 rounded-xl transition-all cursor-pointer",
+                  "grid grid-cols-12 gap-2 items-center px-3 py-2.5 rounded-md transition-all cursor-pointer",
                   entry.isCurrentUser
                     ? "bg-primary/10 border border-primary/30 shadow-sm"
                     : index < 3
@@ -350,7 +350,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
                 <div className="col-span-3 flex items-center gap-2 min-w-0">
                   {renderRankBadge(entry.rank, entry.isCurrentUser)}
                   <div className={cn(
-                    "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-gradient-to-br",
+                    "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ",
                     entry.avatarUrl ? "" : getAvatarColor(entry.name)
                   )}>
                     {entry.avatarUrl ? (

@@ -44,7 +44,7 @@ export function Plaque({
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl shadow-2xl select-none"
+      className="relative overflow-hidden rounded-md shadow-2xl select-none"
       style={{ width, height, background: "#000" }}
       data-plaque="wolfpack"
     >
@@ -77,7 +77,7 @@ export function Plaque({
       <div className="absolute inset-0 flex items-start justify-center pt-20">
         <div className="relative">
           <div
-            className="absolute inset-0 rounded-full blur-3xl opacity-60"
+            className="absolute inset-0 rounded-full  opacity-60"
             style={{ background: accentColor, transform: "scale(1.2)" }}
           />
           {avatarUrl ? (
@@ -90,7 +90,7 @@ export function Plaque({
             />
           ) : (
             <div
-              className="relative z-10 rounded-full flex items-center justify-center font-black text-white bg-gradient-to-br from-zinc-700 to-zinc-900"
+              className="relative z-10 rounded-full flex items-center justify-center font-black text-white bg-white dark:bg-slate-900"
               style={{ width: 560, height: 560, fontSize: 200 }}
             >
               {initials}
@@ -102,7 +102,7 @@ export function Plaque({
       {/* 4. Bottom-left info chip (dark rounded card with agent handle + product/amount) */}
       <div className="absolute" style={{ left: 48, bottom: 96, maxWidth: 600 }}>
         <div
-          className="flex items-center gap-4 px-6 py-5 rounded-2xl"
+          className="flex items-center gap-4 px-6 py-5 rounded-md"
           style={{ background: "rgba(12,12,14,0.85)", backdropFilter: "blur(8px)" }}
         >
           <div
@@ -125,7 +125,7 @@ export function Plaque({
       <div className="absolute" style={{ right: 36, bottom: 40 }}>
         {/* Logo tile */}
         <div
-          className="ml-auto mb-3 flex items-center justify-center rounded-xl font-black"
+          className="ml-auto mb-3 flex items-center justify-center rounded-md font-black"
           style={{
             width: 120, height: 120, background: "#0a0a0a",
             boxShadow: `0 0 22px ${accentColor}aa, 0 0 44px ${accentColor}55`,

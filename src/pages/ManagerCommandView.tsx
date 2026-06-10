@@ -155,8 +155,7 @@ export default function ManagerCommandView() {
             ? "No agents in your downline yet."
             : `${downlineIds.length} agents · live production from AgentLink`
         }
-        accent="emerald"
-      />
+              />
 
       {/* Top tile row — production / top producers / stuck */}
       <div className="grid gap-3 sm:grid-cols-3">

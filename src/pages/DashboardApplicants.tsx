@@ -110,7 +110,7 @@ interface Application {
 const statusColors: Record<string, string> = {
   new: "bg-blue-500/20 text-blue-400 border-blue-500/30",
   hired: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  contracted: "bg-violet-500/20 text-violet-400 border-violet-500/30",
+  contracted: "bg-violet-500/20 text-primary border-violet-500/30",
   terminated: "bg-red-500/20 text-red-400 border-red-500/30",
 };
 
@@ -693,7 +693,7 @@ export default function DashboardApplicants() {
 
                 {/* Manager Assignment Badge */}
                 {app.assigned_agent_id ? (
-                  <Badge variant="outline" className="bg-violet-500/10 text-violet-400 border-violet-500/30 text-[10px]">
+                  <Badge variant="outline" className="bg-violet-500/10 text-primary border-violet-500/30 text-[10px]">
                     <Users className="h-3 w-3 mr-1" />
                     Under {managerNames.get(app.assigned_agent_id) || "Manager"}
                   </Badge>
@@ -708,7 +708,7 @@ export default function DashboardApplicants() {
             {/* Previous Experience Row */}
             {app.has_insurance_experience && app.previous_company && (
               <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/50 w-fit">
-                <Building2 className="h-4 w-4 text-orange-400" />
+                <Building2 className="h-4 w-4 text-amber-500" />
                 <span className="text-sm text-muted-foreground">
                   Previously at <span className="text-foreground font-medium">{app.previous_company}</span>
                   {app.years_experience && app.years_experience > 0 && (
@@ -911,7 +911,7 @@ export default function DashboardApplicants() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 shrink-0 text-violet-400 hover:bg-violet-500/10"
+                      className="h-8 w-8 shrink-0 text-primary hover:bg-violet-500/10"
                       onClick={() => setContractedApp(app)}
                       title="Contract"
                       aria-label="Contracted"
@@ -1001,7 +1001,7 @@ export default function DashboardApplicants() {
         {[
           { label: "Total Leads", value: totalLeads, icon: Users, color: "text-primary", filter: "all" },
           { label: "Hired", value: hired, icon: UserCheck, color: "text-emerald-400", filter: "hired" },
-          { label: "Contracted", value: contracted, icon: FileCheck, color: "text-violet-400", filter: "contracted" },
+          { label: "Contracted", value: contracted, icon: FileCheck, color: "text-primary", filter: "contracted" },
           { label: "Course Purchased", value: coursePurchased, icon: GraduationCap, color: "text-blue-400", filter: "all" },
         ].map((stat) => (
           <GlassCard 
@@ -1169,7 +1169,7 @@ export default function DashboardApplicants() {
                           <td className="p-3 align-middle">
                             {app.ai_score_tier ? (
                               <Badge variant="outline" className={cn("text-[10px] font-bold uppercase",
-                                app.ai_score_tier === "hot" && "bg-orange-500/20 text-orange-400 border-orange-500/30",
+                                app.ai_score_tier === "hot" && "bg-orange-500/20 text-amber-500 border-orange-500/30",
                                 app.ai_score_tier === "warm" && "bg-amber-500/20 text-amber-400 border-amber-500/30",
                                 app.ai_score_tier === "cool" && "bg-blue-500/20 text-blue-400 border-blue-500/30",
                                 app.ai_score_tier === "cold" && "bg-slate-500/20 text-slate-400 border-slate-500/30",
@@ -1213,7 +1213,7 @@ export default function DashboardApplicants() {
                           </td>
                           <td className="p-3 align-middle text-xs">
                             {app.assigned_agent_id ? (
-                              <Badge variant="outline" className="bg-violet-500/10 text-violet-400 border-violet-500/30 text-[10px]">
+                              <Badge variant="outline" className="bg-violet-500/10 text-primary border-violet-500/30 text-[10px]">
                                 {managerNames.get(app.assigned_agent_id) || "Manager"}
                               </Badge>
                             ) : (

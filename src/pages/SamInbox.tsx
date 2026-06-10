@@ -89,8 +89,7 @@ export default function SamInbox() {
   return (
     <div className="min-h-screen bg-background p-4 sm:p-6 space-y-5">
       <PageHeader
-        accent="emerald"
-        eyebrow="Recruiting triage"
+                eyebrow="Recruiting triage"
         eyebrowIcon={<UserCheck className="h-3 w-3" />}
         title="Sam's applicant inbox"
         subtitle="Paid, stale, and uncontacted applicants pulled straight from the live funnel."

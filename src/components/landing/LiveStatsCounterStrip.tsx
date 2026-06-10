@@ -137,7 +137,7 @@ const COLOR_CLASSES: Record<CardProps["color"], { text: string; ring: string; gl
 function CounterCard({ icon: Icon, value, label, color }: CardProps) {
   const c = COLOR_CLASSES[color];
   return (
-    <div className={`relative rounded-md p-4 sm:p-5 text-center bg-card/90 backdrop-blur-xl border ${c.ring} shadow-md overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:scale-[1.02]`}>
+    <div className={`relative rounded-md p-4 sm:p-5 text-center bg-card/90 backdrop-blur-xl border ${c.ring} shadow-md overflow-hidden transition-base  hover:scale-[1.02]`}>
       <div className={`absolute inset-0  ${c.glow} via-transparent to-transparent pointer-events-none`} />
       <Icon className={`relative h-6 w-6 ${c.text} mx-auto mb-2`} />
       <div className={`relative font-display font-extrabold tabular-nums ${c.text}`}

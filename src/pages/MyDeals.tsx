@@ -90,8 +90,7 @@ export default function MyDeals() {
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter max-w-5xl">
       <PageHeader
-        accent="emerald"
-        eyebrow="Production · My Deals"
+                eyebrow="Production · My Deals"
         eyebrowIcon={<DollarSign className="h-3 w-3" />}
         title="My Deals"
         subtitle={

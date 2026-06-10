@@ -385,8 +385,7 @@ export default function BookOfBusiness() {
   return (
     <div className="space-y-4 p-4 md:p-6 max-w-[1400px] mx-auto">
       <PageHeader
-        accent="emerald"
-        eyebrow="Production · Book of Business"
+                eyebrow="Production · Book of Business"
         eyebrowIcon={<Book className="h-3 w-3" />}
         title="Book of Business"
         subtitle={

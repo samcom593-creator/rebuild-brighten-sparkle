@@ -184,7 +184,7 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
             label="Recruit Rank"
             value={snap.recruitRank ? `${rankSuffix(snap.recruitRank)} / ${snap.recruitTotal}` : "—"}
             sub={snap.recruitsThisWeek ? `${snap.recruitsThisWeek} this week` : "No recruits yet"}
-            tint="from-violet-500/20 to-violet-500/5 text-violet-400"
+            tint="from-violet-500/20 to-violet-500/5 text-primary"
           />
           <StatTile
             icon={Target}

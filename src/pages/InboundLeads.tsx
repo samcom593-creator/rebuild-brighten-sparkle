@@ -584,9 +584,11 @@ export default function InboundLeads() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric icon={PhoneCall} label="Inbound clients" value={stats.total} sub={loading ? "Syncing..." : "Saved intake records"} />
-        <Metric icon={Zap} label="Hot right now" value={stats.hot} sub="Urgent or same-day need" tone="text-amber-300" />
-        <Metric icon={CalendarClock} label="Follow-ups" value={stats.followUps} sub="Needs next touch" tone="text-blue-300" />
-        <Metric icon={ShieldCheck} label="Solved" value={stats.solved} sub="Moved to won/solution" tone="text-emerald-300" />
+        {/* v24 audit fix: dropped colored tone on KPI values. Icon at
+            opacity-60 carries any state hint; values stay text-foreground. */}
+        <Metric icon={Zap} label="Hot right now" value={stats.hot} sub="Urgent or same-day need" />
+        <Metric icon={CalendarClock} label="Follow-ups" value={stats.followUps} sub="Needs next touch" />
+        <Metric icon={ShieldCheck} label="Solved" value={stats.solved} sub="Moved to won/solution" />
       </div>
 
       <GlassCard className="p-4">
@@ -958,7 +960,10 @@ function CallSnapshot({ form }: { form: typeof EMPTY_FORM }) {
   }
 
   return (
-    <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
+    {/* v24 audit fix: CallSnapshot panel was 5th green inside the dialog
+        (border-emerald-500/40 bg-emerald-500/5). Mono now · emerald only
+        on the small count badge inside. */}
+    <div className="rounded-lg border border-border bg-muted/40 p-3">
       <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-300 mb-2">
         Call snapshot · {bullets.length} {bullets.length === 1 ? "detail" : "details"} captured
       </p>

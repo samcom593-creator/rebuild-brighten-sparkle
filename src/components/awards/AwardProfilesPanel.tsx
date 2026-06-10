@@ -191,7 +191,7 @@ export default function AwardProfilesPanel() {
 
   if (isLoading) {
     return (
-      <div className="rounded-md border border-border/30 bg-card/40 backdrop-blur-md p-10">
+      <div className="rounded-md border border-border/30 bg-card/40  p-10">
         <div className="flex items-center justify-center gap-3 text-muted-foreground">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           Loading producers...
@@ -202,7 +202,7 @@ export default function AwardProfilesPanel() {
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className="rounded-md border border-border/30 bg-white dark:bg-slate-900 backdrop-blur-xl overflow-hidden shadow-xl shadow-black/5">
+      <div className="rounded-md border border-border/30 bg-white dark:bg-slate-900  overflow-hidden shadow-xl shadow-black/5">
         {/* Header */}
         <CollapsibleTrigger asChild>
           <button className="w-full flex items-center justify-between px-6 py-5 hover:bg-accent/5 transition-colors group">
@@ -224,7 +224,7 @@ export default function AwardProfilesPanel() {
               </div>
             </div>
             <ChevronDown className={cn(
-              "h-5 w-5 text-muted-foreground transition-transform duration-300",
+              "h-5 w-5 text-muted-foreground transition-base",
               isOpen && "rotate-180"
             )} />
           </button>
@@ -288,8 +288,8 @@ export default function AwardProfilesPanel() {
                     transition={{ duration: 0.25, delay: index * 0.03 }}
                     className={cn(
                       "relative rounded-md border p-4 transition-all duration-300",
-                      "bg-white dark:bg-slate-900 backdrop-blur-sm",
-                      "hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-0.5",
+                      "bg-white dark:bg-slate-900 ",
+                      "hover:shadow-xl hover:shadow-primary/5 .5",
                       isEditMode
                         ? "ring-2 ring-primary/40 shadow-xl shadow-primary/10 border-primary/30"
                         : "hover:border-primary/20",
@@ -329,7 +329,7 @@ export default function AwardProfilesPanel() {
                             {name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="absolute inset-0 rounded-full bg-white dark:bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 scale-90 group-hover:scale-100">
+                        <div className="absolute inset-0 rounded-full bg-white dark:bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 scale-90 group-hover:bg-slate-50 dark:hover:bg-slate-800/50">
                           <Camera className="h-5 w-5 text-white" />
                         </div>
                         {!agent.award_photo_url && (

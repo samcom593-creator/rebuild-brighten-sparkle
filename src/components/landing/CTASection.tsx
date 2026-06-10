@@ -81,7 +81,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
             <Link to="/apply">
               <button className="inline-flex items-center justify-center gap-2 px-10 py-5 text-xl rounded-lg font-bold font-display bg-[#22d3a5] text-[#030712] hover: transition-all duration-200 animate-pulse-glow group">
                 Start Your Application
-                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="h-5 w-5 transition-base group-hover:translate-x-1" />
               </button>
             </Link>
             <Link to="/schedule-call">

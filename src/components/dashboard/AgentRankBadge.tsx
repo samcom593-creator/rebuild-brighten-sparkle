@@ -129,7 +129,7 @@ export function AgentRankBadge({
   const getRankIcon = () => {
     if (currentRank === 1) return <Crown className={cn(iconSizes[size], "text-yellow-300")} />;
     if (currentRank === 2) return <Medal className={cn(iconSizes[size], "text-gray-300")} />;
-    if (currentRank === 3) return <Medal className={cn(iconSizes[size], "text-orange-600")} />;
+    if (currentRank === 3) return <Medal className={cn(iconSizes[size], "text-amber-500")} />;
     return null;
   };
 

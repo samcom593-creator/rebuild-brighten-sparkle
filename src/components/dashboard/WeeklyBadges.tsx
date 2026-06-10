@@ -42,7 +42,7 @@ const colorMap = {
   violet: {
     bg: "from-violet-500/20 to-violet-600/10",
     border: "border-violet-500/30",
-    text: "text-violet-400",
+    text: "text-primary",
     glow: "shadow-violet-500/20",
     ring: "ring-violet-500/30",
   },
@@ -89,7 +89,7 @@ function BadgeIcon({ badge, compact }: { badge: WeeklyBadge; compact?: boolean }
             whileHover={{ scale: 1.1, rotate: 5 }}
             className={cn(
               "relative flex items-center justify-center rounded-full",
-              " border backdrop-blur-sm",
+              " border ",
               "transition-all cursor-pointer",
               colors.bg,
               colors.border,
@@ -112,7 +112,7 @@ function BadgeIcon({ badge, compact }: { badge: WeeklyBadge; compact?: boolean }
         </TooltipTrigger>
         <TooltipContent 
           side="bottom" 
-          className="bg-card/95 backdrop-blur-sm border-border"
+          className="bg-card/95  border-border"
         >
           <div className="text-center">
             <p className={cn("font-bold", colors.text)}>{badge.name}</p>

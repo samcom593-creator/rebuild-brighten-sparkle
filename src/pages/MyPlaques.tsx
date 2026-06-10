@@ -150,7 +150,7 @@ export default function MyPlaques() {
               {c.imageUrl ? (
                 <img src={c.imageUrl} alt={c.achievement} className="w-full rounded-md shadow-2xl" />
               ) : (
-                <div className="w-full overflow-hidden rounded-md shadow-2xl group-hover:scale-[1.01] transition-transform">
+                <div className="w-full overflow-hidden rounded-md shadow-2xl group-hover:scale-[1.01] transition-base">
                   <Plaque
                     agentName={c.agentName}
                     achievement={c.achievement}

@@ -31,10 +31,10 @@ export function CommandHintFab() {
         flex items-center gap-2 px-3 py-2 rounded-full
         bg-white dark:bg-slate-900
         border border-primary/40
-        backdrop-blur-md
+        
         text-foreground text-xs font-semibold
         shadow-[0_8px_24px_hsl(168_80%_50%/0.25),inset_0_1px_0_hsl(0_0%_100%/0.08)]
-        hover:scale-105 hover:border-primary/60
+        hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-primary/60
         transition-all
         safe-area-bottom
       "

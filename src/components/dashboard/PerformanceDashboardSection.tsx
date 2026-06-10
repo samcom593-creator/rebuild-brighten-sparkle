@@ -31,7 +31,7 @@ function FeatureCard({ icon: Icon, title, description, color, onClick, delay = 0
     primary: "bg-primary/[0.06] border-primary/30 text-primary",
     amber: "bg-amber-500/[0.06] border-amber-500/30 text-amber-500",
     emerald: "bg-emerald-500/[0.06] border-emerald-500/30 text-emerald-500",
-    violet: "bg-violet-500/[0.06] border-violet-500/30 text-violet-500",
+    violet: "bg-violet-500/[0.06] border-violet-500/30 text-primary",
   };
 
   return (
@@ -53,7 +53,7 @@ function FeatureCard({ icon: Icon, title, description, color, onClick, delay = 0
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm",
+              "flex h-10 w-10 items-center justify-center rounded-lg bg-background/60 ",
               colorClasses[color]
             )}>
               <Icon className="h-5 w-5" />

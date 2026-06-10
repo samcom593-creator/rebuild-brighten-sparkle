@@ -341,7 +341,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                 <button
                   key={phase.id}
                   onClick={() => scrollToPhase(index)}
-                  className="relative group transition-transform duration-200 hover:scale-110 active:scale-95"
+                  className="relative group transition-base hover:bg-slate-50 dark:hover:bg-slate-800/50 active:scale-95"
                 >
                   {/* Phase dot */}
                   <div
@@ -398,7 +398,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                   section.scrollIntoView({ behavior: "smooth" });
                 }
               }}
-              className="glass-strong p-2 rounded-full hover:bg-primary/20 transition-all duration-200 hover:scale-110 active:scale-95 group"
+              className="glass-strong p-2 rounded-full hover:bg-primary/20 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:scale-95 group"
             >
               <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
             </button>
@@ -477,7 +477,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                         style={{ transitionDelay: `${stepIndex * 50}ms` }}
                       >
                         <GlassCard
-                          className="h-full p-5 group hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300"
+                          className="h-full p-5 group  hover:shadow-lg hover:shadow-primary/10 transition-all duration-300"
                           hoverEffect={false}
                         >
                           <div className="flex gap-4">
@@ -569,7 +569,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
                 style={{ transitionDelay: `${index * 70}ms` }}
               >
                 <GlassCard className="p-6 group" hoverEffect>
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 group-hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-300">
                     <item.icon className="h-6 w-6 text-primary" />
                   </div>
                   <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">

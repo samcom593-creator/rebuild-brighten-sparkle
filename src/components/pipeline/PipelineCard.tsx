@@ -143,7 +143,7 @@ export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedul
       <div
         className={cn(
           "bg-card border rounded-md p-3 shadow-sm transition-all duration-150 group",
-          "hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5",
+          "hover:shadow-md hover:border-primary/30 .5",
           isDragging && "opacity-40 rotate-1",
           isAtRisk && !isLicensed && "border-red-500/30",
           isLicensed && "border-emerald-500/30"

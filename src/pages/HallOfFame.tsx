@@ -506,7 +506,7 @@ function PlaqueCard({ plaque, onClick, delay }: PlaqueCardProps) {
             src={img}
             alt={plaque.badge_label || plaque.milestone_type}
             loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.05]"
+            className="w-full h-full object-cover transition-base group-hover:scale-[1.05]"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/30">
@@ -520,7 +520,7 @@ function PlaqueCard({ plaque, onClick, delay }: PlaqueCardProps) {
         )}
         {catMeta && (
           <div className="absolute top-2 left-2">
-            <Badge variant="outline" className={cn("text-[10px] gap-1", catMeta.chipClass, "backdrop-blur-md")}>
+            <Badge variant="outline" className={cn("text-[10px] gap-1", catMeta.chipClass, "")}>
               <catMeta.icon className="h-2.5 w-2.5" /> {catMeta.label}
             </Badge>
           </div>
@@ -573,13 +573,13 @@ function PlaqueDetail({ plaque, onClose }: PlaqueDetailProps) {
         )}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 h-9 w-9 rounded-full bg-white dark:bg-black/50 backdrop-blur-md text-white flex items-center justify-center hover:bg-white dark:bg-black/70 transition-colors"
+          className="absolute top-3 right-3 h-9 w-9 rounded-full bg-white dark:bg-black/50  text-white flex items-center justify-center hover:bg-white dark:bg-black/70 transition-colors"
         >
           <X className="h-4 w-4" />
         </button>
         {catMeta && (
           <div className="absolute top-3 left-3">
-            <Badge variant="outline" className={cn("text-xs gap-1 backdrop-blur-md", catMeta.chipClass)}>
+            <Badge variant="outline" className={cn("text-xs gap-1 ", catMeta.chipClass)}>
               <catMeta.icon className="h-3 w-3" /> {catMeta.label}
             </Badge>
           </div>

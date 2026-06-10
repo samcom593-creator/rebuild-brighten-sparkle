@@ -600,7 +600,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+                  className="h-8 w-8 border-violet-500/30 text-primary hover:bg-violet-500/10"
                 >
                   <Bell className="h-4 w-4" />
                 </Button>
@@ -619,7 +619,7 @@ const LeadCard = memo(function LeadCard({
                   }}
                   className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded-md hover:bg-accent transition-colors"
                 >
-                  <Bell className="h-3 w-3 text-violet-400" />
+                  <Bell className="h-3 w-3 text-primary" />
                   <span>Send Push</span>
                 </button>
                 {lead.phone && (
@@ -1356,7 +1356,7 @@ function RecruiterDashboardInner() {
 
       {/* ── Mobile Column Picker (segmented tabs) ── */}
       {isMobile && (
-        <div className="flex gap-1.5 overflow-x-auto pb-1 sticky top-0 z-10 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 sticky top-0 z-10 bg-background/80  py-2 -mx-4 px-4">
           {columnLeads.map((col) => (
             <button
               key={col.id}

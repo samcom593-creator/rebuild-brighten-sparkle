@@ -164,7 +164,7 @@ export function CallCenterLeadCard({
       className={cn(
         "relative overflow-hidden rounded-md",
         "bg-white dark:bg-slate-900",
-        "backdrop-blur-xl border border-border/50",
+        " border border-border/50",
         "shadow-2xl shadow-black/20",
         "transition-all duration-300",
         "hover:border-primary/40 hover:shadow-primary/10",
@@ -459,7 +459,7 @@ export function CallCenterLeadCard({
                     <FileText className="h-3.5 w-3.5" />
                     Applicant Details
                   </div>
-                  <span className="text-xs text-muted-foreground group-open:rotate-180 transition-transform">▼</span>
+                  <span className="text-xs text-muted-foreground group-open:rotate-180 transition-base">▼</span>
                 </summary>
                 <div className="p-4 rounded-b-xl bg-muted/20 border border-t-0 border-border/30 space-y-2">
                   <div className="grid grid-cols-1 gap-2 text-sm">

@@ -205,8 +205,7 @@ export default function BulkDeals() {
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
       <PageHeader
-        accent="emerald"
-        eyebrow="Admin · Import"
+                eyebrow="Admin · Import"
         eyebrowIcon={<Upload className="h-3 w-3" />}
         title="Bulk Deal Import"
         subtitle="Paste raw deal text, click Insert. Upserts by policy number — duplicates are merged automatically."

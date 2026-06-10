@@ -267,8 +267,7 @@ export default function GettingStarted() {
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter">
       <PageHeader
-        accent="emerald"
-        eyebrow="Onboarding · Getting Started"
+                eyebrow="Onboarding · Getting Started"
         eyebrowIcon={<Rocket className="h-3 w-3" />}
         title="Getting Started Tracker"
         subtitle="Post-signup onboarding progress for every agent — from signed-up through field-training and into producing."

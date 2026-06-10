@@ -50,7 +50,7 @@ export function PushNotificationPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="animate-fade-in fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-black/70 backdrop-blur-sm">
+    <div className="animate-fade-in fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-black/70 ">
       <div className="landing-scale-in mx-4 w-full max-w-md rounded-md border border-primary/30 bg-card shadow-2xl">
         {/* Header */}
         <div className="flex flex-col items-center gap-3 p-6 pb-2 text-center">

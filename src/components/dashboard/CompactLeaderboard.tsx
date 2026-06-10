@@ -83,7 +83,7 @@ function PodiumCard({ entry, position, maxALP }: { entry: LeaderboardEntry; posi
       transition={{ delay: position === 1 ? 0.1 : position === 2 ? 0 : 0.2, duration: 0.4 }}
       className={cn(
         "flex flex-col items-center justify-end pb-3 px-2 rounded-md",
-        "bg-white dark:bg-slate-900 backdrop-blur-sm border border-border/30",
+        "bg-white dark:bg-slate-900  border border-border/30",
         config.height, config.ring, config.glow,
         position === 1 && "animate-rank-glow",
         entry.isCurrentUser && "ring-primary ring-2"
@@ -334,7 +334,7 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
   return (
     <motion.div 
       className={cn(
-        "bg-card/60 backdrop-blur-md rounded-md border border-border/40 p-4 shadow-lg",
+        "bg-card/60  rounded-md border border-border/40 p-4 shadow-lg",
         className
       )}
       initial={{ opacity: 0, y: 10 }}

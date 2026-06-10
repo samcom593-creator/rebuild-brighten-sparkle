@@ -44,7 +44,7 @@ type InterviewType = "video" | "phone" | "in_person";
 const interviewTypeConfig = {
   video: { label: "Video Call", icon: Video, color: "text-blue-400" },
   phone: { label: "Phone Call", icon: Phone, color: "text-emerald-400" },
-  in_person: { label: "In Person", icon: MapPin, color: "text-violet-400" },
+  in_person: { label: "In Person", icon: MapPin, color: "text-primary" },
 };
 
 // Build a Google Calendar "add to calendar" URL (no OAuth required)

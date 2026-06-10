@@ -469,7 +469,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                 {/* Admin: All agents grouped by manager with FULL NAMES */}
                 {isAdmin && allAgentsGrouped.length > 0 && (
                   <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                    <SelectTrigger className="w-full sm:w-[220px] h-10 text-sm border-2 border-primary/20 bg-background/80 backdrop-blur-sm">
+                    <SelectTrigger className="w-full sm:w-[220px] h-10 text-sm border-2 border-primary/20 bg-background/80 ">
                       <SelectValue placeholder="Select agent" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[400px] min-w-[280px]">
@@ -482,7 +482,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                       </SelectItem>
                       {allAgentsGrouped.map((group) => (
                         <div key={group.managerId || "unassigned"}>
-                          <div className="px-3 py-2 text-xs font-bold text-primary bg-primary/5 border-y border-primary/10 sticky top-0 backdrop-blur-sm">
+                          <div className="px-3 py-2 text-xs font-bold text-primary bg-primary/5 border-y border-primary/10 sticky top-0 ">
                             📋 Manager: {group.managerName}
                           </div>
                           {group.agents.map((agent) => (

@@ -126,7 +126,7 @@ export function TopBar() {
       className={cn(
         "sticky top-0 z-20 hidden lg:flex items-center justify-between gap-4",
         "px-4 sm:px-6 lg:px-8 py-2.5",
-        "bg-background/85 backdrop-blur-xl border-b border-border/60 shadow-sm",
+        "bg-background/85  border-b border-border/60 shadow-sm",
       )}
     >
       {/* Breadcrumb */}
@@ -164,7 +164,7 @@ export function TopBar() {
             text-xs text-muted-foreground
             bg-card/60 border border-border/40
             hover:border-primary/40 hover:text-foreground transition-colors
-            backdrop-blur-sm
+            
           "
         >
           <Search className="h-3.5 w-3.5" />

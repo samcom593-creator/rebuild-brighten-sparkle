@@ -193,7 +193,7 @@ export default function MagicLogin() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-md p-8 shadow-2xl">
+        <div className="bg-card/80  border border-border/50 rounded-md p-8 shadow-2xl">
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-foreground mb-2">

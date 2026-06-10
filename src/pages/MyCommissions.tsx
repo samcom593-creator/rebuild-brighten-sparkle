@@ -130,8 +130,7 @@ export default function MyCommissions() {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto page-enter">
       <PageHeader
-        accent="emerald"
-        eyebrow="Production · Earnings"
+                eyebrow="Production · Earnings"
         eyebrowIcon={<Wallet className="h-3 w-3" />}
         title="My Commissions"
         subtitle={

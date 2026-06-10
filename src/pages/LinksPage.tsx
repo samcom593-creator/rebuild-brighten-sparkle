@@ -137,7 +137,7 @@ export default function LinksPage() {
           {socialLinks.map((link, i) => (
             <motion.a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.1 }}
-              className={`flex items-center gap-4 w-full p-4 rounded-md bg-card border border-border transition-all duration-300 hover:-translate-y-1 ${link.hoverGlow} group`}
+              className={`flex items-center gap-4 w-full p-4 rounded-md bg-card border border-border transition-all duration-300  ${link.hoverGlow} group`}
             >
               <div className={`w-10 h-10 rounded-lg  ${link.gradient} flex items-center justify-center flex-shrink-0`}>
                 <link.icon className="h-5 w-5 text-white" />
@@ -158,7 +158,7 @@ export default function LinksPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 + i * 0.1 }}
-                className={`flex items-center gap-4 w-full p-4 rounded-md  ${card.gradient} border ${card.border} transition-all duration-300 hover:-translate-y-1 ${card.glow} group cursor-pointer`}
+                className={`flex items-center gap-4 w-full p-4 rounded-md  ${card.gradient} border ${card.border} transition-all duration-300  ${card.glow} group cursor-pointer`}
                 onClick={card.action ? () => handleOfferClick(card) : undefined}
               >
                 <div className={`w-10 h-10 rounded-lg ${card.iconBg} flex items-center justify-center flex-shrink-0`}>
@@ -168,7 +168,7 @@ export default function LinksPage() {
                   <span className="font-bold text-foreground block">{card.title}</span>
                   <span className="text-xs text-muted-foreground">{card.subtitle}</span>
                 </div>
-                <ArrowRight className={`h-4 w-4 ml-auto ${card.accentColor} group-hover:translate-x-1 transition-transform ${card.action === "waitlist" && showEliteForm ? "rotate-90" : ""}`} />
+                <ArrowRight className={`h-4 w-4 ml-auto ${card.accentColor} group-hover:translate-x-1 transition-base ${card.action === "waitlist" && showEliteForm ? "rotate-90" : ""}`} />
               </motion.div>
             );
 

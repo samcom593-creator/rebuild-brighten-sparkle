@@ -35,10 +35,13 @@ interface SocialSnapshot {
 }
 
 const PLATFORMS = [
-  { key: "instagram", label: "Instagram", icon: Instagram, color: "text-pink-500", handle: "theprincejames" },
-  { key: "tiktok",    label: "TikTok",    icon: Music2,    color: "text-slate-700 dark:text-slate-200", handle: "theprincejames" },
-  { key: "youtube",   label: "YouTube",   icon: Youtube,   color: "text-red-500", handle: "@SamuelJamesHQ" },
-  { key: "snapchat",  label: "Snapchat",  icon: Camera,    color: "text-yellow-500", handle: "theprincejames" },
+  // v24 palette restraint: desaturate platform brand colors. Was 4
+  // brand colors (pink/red/yellow/slate) competing on every tile. Now
+  // muted slate-400 by default · text-emerald only when Metricool-connected.
+  { key: "instagram", label: "Instagram", icon: Instagram, color: "text-slate-400", handle: "theprincejames" },
+  { key: "tiktok",    label: "TikTok",    icon: Music2,    color: "text-slate-400", handle: "theprincejames" },
+  { key: "youtube",   label: "YouTube",   icon: Youtube,   color: "text-slate-400", handle: "@SamuelJamesHQ" },
+  { key: "snapchat",  label: "Snapchat",  icon: Camera,    color: "text-slate-400", handle: "theprincejames" },
 ] as const;
 
 function fmt(n: number | null | undefined): string {
@@ -87,8 +90,7 @@ export default function SocialDashboard() {
             ? `${metricoolConnected} platforms wired to Metricool · auto-syncs every 6h`
             : "Drop a Metricool token + run metricool-sync to wire follower auto-pull."
         }
-        accent="emerald"
-      />
+              />
 
       {/* Top-line summary across platforms */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -146,9 +148,15 @@ export default function SocialDashboard() {
                   </p>
                 )}
                 {s?.growth_7d != null && (
-                  <p className={`mt-1 text-12 ${s.growth_7d >= 0 ? "text-emerald-600" : "text-rose-500"}`}>
+                  // v24 audit fix: wrap delta in a Badge chip · was raw colored number
+                  <Badge
+                    variant="outline"
+                    className={`mt-1 text-11 ${s.growth_7d >= 0
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800"
+                      : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-800"}`}
+                  >
                     {s.growth_7d >= 0 ? "+" : ""}{fmt(s.growth_7d)} this week
-                  </p>
+                  </Badge>
                 )}
                 {!connected && s == null && (
                   <p className="text-11 text-slate-400 mt-1">No data yet — paste your weekly numbers below.</p>
@@ -161,7 +169,8 @@ export default function SocialDashboard() {
 
       {/* Per-platform tabs */}
       <Tabs defaultValue="instagram" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-3 bg-slate-100 dark:bg-slate-800">
+        {/* v24 audit fix: borderless segmented control · was chunky bg-slate-100 toolbar */}
+        <TabsList className="inline-flex h-9 mb-3 bg-transparent border-b border-border w-full justify-start gap-1 rounded-none p-0">
           {PLATFORMS.map(({ key, label, icon: Icon }) => (
             <TabsTrigger key={key} value={key} className="text-12 gap-1.5">
               <Icon className="h-3.5 w-3.5" />

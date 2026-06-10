@@ -418,7 +418,7 @@ export default function AwardGraphics() {
                       <img
                         src={generatedResult.files.top_producer_story}
                         alt="Award"
-                        className="max-h-[500px] w-auto mx-auto hover:scale-[1.01] transition-transform duration-500"
+                        className="max-h-[500px] w-auto mx-auto hover:scale-[1.01] transition-base"
                       />
                     </div>
                     <Button
@@ -443,7 +443,7 @@ export default function AwardGraphics() {
                       <img
                         src={generatedResult.files.leaderboard_story}
                         alt="Leaderboard"
-                        className="max-h-[500px] w-auto mx-auto hover:scale-[1.01] transition-transform duration-500"
+                        className="max-h-[500px] w-auto mx-auto hover:scale-[1.01] transition-base"
                       />
                     </div>
                     <Button

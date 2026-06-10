@@ -266,8 +266,7 @@ export default function ClientPipeline() {
             Source: AgentLink mirror (1,600+ clients across the team).
           </>
         }
-        accent="emerald"
-        actions={
+                actions={
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> AgentLink sync live

@@ -276,7 +276,7 @@ export function CallCenterActions({
               activeKey === "p" && "bg-muted/50"
             )}
           >
-            <ChevronLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+            <ChevronLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-base" />
             <span>Previous</span>
             <span className="text-[10px] opacity-40 ml-4 hidden sm:inline">[P]</span>
           </Button>
@@ -296,7 +296,7 @@ export function CallCenterActions({
             animate={activeKey === "n" ? { x: [0, 4, 0] } : {}}
             transition={{ duration: 0.3 }}
           >
-            <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-base" />
           </motion.div>
           <span className="text-[10px] opacity-40 ml-4 hidden sm:inline">[N]</span>
         </Button>

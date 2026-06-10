@@ -230,7 +230,7 @@ export function GlobalSidebar({
       >
         <item.icon
           className={cn(
-            "h-[18px] w-[18px] flex-shrink-0 transition-transform duration-150",
+            "h-[18px] w-[18px] flex-shrink-0 transition-base",
             item.special && !isActive && "text-[#22d3a5]",
             isCollapsed && "group-hover/nav:scale-110",
           )}

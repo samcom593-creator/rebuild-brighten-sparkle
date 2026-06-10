@@ -327,8 +327,7 @@ export default function LeadPayments() {
         eyebrowIcon={<Wallet className="h-3 w-3" />}
         title="Lead Payments"
         subtitle="Venmo-only payment ledger for A, B, C, and Free lead packs. Stripe is intentionally not an active path here."
-        accent="emerald"
-        actions={
+                actions={
           <Button
             variant="outline"
             size="sm"

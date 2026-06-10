@@ -61,7 +61,7 @@ export function ProductionAnalyticsCard() {
     : `$${Math.round(n).toLocaleString()}`;
 
   return (
-    <Card className="stat-card group overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md">
+    <Card className="stat-card group overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all .5 hover:border-foreground/20 hover:shadow-md">
       <CardContent className="p-4">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">

@@ -9,8 +9,7 @@ export default function OffersPage() {
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
       <PageHeader
-        accent="emerald"
-        eyebrow="Admin · Storefront"
+                eyebrow="Admin · Storefront"
         eyebrowIcon={<ShoppingCart className="h-3 w-3" />}
         title="Offers"
         subtitle="All 7 live SKUs · click any tile to open a Stripe Checkout in a new tab."

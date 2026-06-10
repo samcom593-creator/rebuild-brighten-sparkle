@@ -33,9 +33,9 @@ const progressSteps: { value: LicenseProgress; label: string; icon: React.Elemen
   { value: "course_purchased", label: "Course Started", icon: BookOpen, color: "text-blue-400" },
   { value: "finished_course", label: "Finished Course", icon: BookCheck, color: "text-indigo-400" },
   { value: "test_scheduled", label: "Test Scheduled", icon: CalendarClock, color: "text-purple-400" },
-  { value: "passed_test", label: "Passed Test", icon: FileCheck, color: "text-violet-400" },
+  { value: "passed_test", label: "Passed Test", icon: FileCheck, color: "text-primary" },
   { value: "fingerprints_done", label: "Fingerprints", icon: Fingerprint, color: "text-teal-400" },
-  { value: "waiting_on_license", label: "Waiting on License", icon: Clock, color: "text-orange-400" },
+  { value: "waiting_on_license", label: "Waiting on License", icon: Clock, color: "text-amber-500" },
   { value: "licensed", label: "Licensed", icon: Award, color: "text-emerald-400" },
 ];
 
@@ -44,9 +44,9 @@ const progressColors: Record<LicenseProgress, string> = {
   course_purchased: "bg-blue-500/20 text-blue-400 border-blue-500/30",
   finished_course: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30",
   test_scheduled: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-  passed_test: "bg-violet-500/20 text-violet-400 border-violet-500/30",
+  passed_test: "bg-violet-500/20 text-primary border-violet-500/30",
   fingerprints_done: "bg-teal-500/20 text-teal-400 border-teal-500/30",
-  waiting_on_license: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  waiting_on_license: "bg-orange-500/20 text-amber-500 border-orange-500/30",
   licensed: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
 };
 

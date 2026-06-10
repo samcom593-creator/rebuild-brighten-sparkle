@@ -115,7 +115,7 @@ export default function AutomationHub() {
                 <span className="font-semibold text-sm" style={{ fontFamily: "Syne" }}>InsuraCloud Outbox</span>
                 <span className="text-xs text-muted-foreground">— deal sync, mapping, retries</span>
               </div>
-              <ChevronDown className={cn("h-4 w-4 transition-transform", outboxOpen && "rotate-180")} />
+              <ChevronDown className={cn("h-4 w-4 transition-base", outboxOpen && "rotate-180")} />
             </CollapsibleTrigger>
             <CollapsibleContent className="p-4 pt-0">
               <InsuraCloudOutbox />
@@ -133,7 +133,7 @@ export default function AutomationHub() {
                 <span className="font-semibold text-sm" style={{ fontFamily: "Syne" }}>Cron Jobs</span>
                 <span className="text-xs text-muted-foreground">— scheduled tasks running on the database</span>
               </div>
-              <ChevronDown className={cn("h-4 w-4 transition-transform", cronOpen && "rotate-180")} />
+              <ChevronDown className={cn("h-4 w-4 transition-base", cronOpen && "rotate-180")} />
             </CollapsibleTrigger>
             <CollapsibleContent className="p-4 pt-0">
               <CronJobsPanel />

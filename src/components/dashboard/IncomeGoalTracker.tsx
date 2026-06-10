@@ -338,7 +338,7 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
                   <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Goal</p>
                 </div>
                 <div className="text-center p-3 rounded-md bg-white dark:bg-slate-900 border border-violet-500/10">
-                  <p className="text-xl sm:text-2xl font-bold text-violet-400">
+                  <p className="text-xl sm:text-2xl font-bold text-primary">
                     ${requiredALP.toLocaleString()}
                   </p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">ALP Needed</p>

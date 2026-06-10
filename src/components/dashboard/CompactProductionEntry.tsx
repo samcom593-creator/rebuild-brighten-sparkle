@@ -291,7 +291,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
       />
       
       <motion.div 
-        className="relative bg-card/80 backdrop-blur-md rounded-md border border-border/50 shadow-xl overflow-hidden"
+        className="relative bg-card/80  rounded-md border border-border/50 shadow-xl overflow-hidden"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}

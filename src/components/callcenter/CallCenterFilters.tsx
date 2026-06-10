@@ -226,7 +226,7 @@ export function CallCenterFilters({
                 className="w-full relative overflow-hidden bg-white dark:bg-slate-900 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 group"
               >
 
-                <Phone className="h-5 w-5 mr-2 group-hover:rotate-12 transition-transform" />
+                <Phone className="h-5 w-5 mr-2 group-hover:rotate-12 transition-base" />
                 Start Calling
               </Button>
             </motion.div>

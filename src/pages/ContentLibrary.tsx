@@ -1112,12 +1112,12 @@ function ContentCard({
         {/* Badges overlay */}
         <div className="absolute top-1.5 left-1.5 flex gap-1">
           {item.ai_analyzed && (
-            <span className="bg-primary/80 text-primary-foreground text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 backdrop-blur-sm">
+            <span className="bg-primary/80 text-primary-foreground text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ">
               <Sparkles className="h-2 w-2" /> AI
             </span>
           )}
           {item.duplicate_flagged && (
-            <span className="bg-destructive/80 text-destructive-foreground text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 backdrop-blur-sm">
+            <span className="bg-destructive/80 text-destructive-foreground text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ">
               <AlertTriangle className="h-2 w-2" /> Dup
             </span>
           )}
@@ -1204,7 +1204,7 @@ function SensitiveContentCard({
 
         {/* Flag badge */}
         <div className="absolute top-1.5 left-1.5">
-          <span className="bg-red-600/90 text-white text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 backdrop-blur-sm">
+          <span className="bg-red-600/90 text-white text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ">
             <ShieldAlert className="h-2 w-2" /> Flagged
           </span>
         </div>

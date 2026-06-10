@@ -269,9 +269,11 @@ function WhaleRow({ row, agent }: { row: WhaleRow & { stage: string; heat: Heat 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
           <p className="text-14 font-semibold truncate">{name}</p>
-          <Badge variant="outline" className={`text-11 ${HEAT_TINT[row.heat]}`}>{row.heat}</Badge>
+          {/* v24 audit fix: heat already shown in HeatTile count at top.
+              Redundant badge per row removed. */}
           <Badge variant="outline" className="text-11">{STAGE_LABEL[row.stage] ?? row.stage}</Badge>
-          {row.state && <Badge variant="outline" className="text-11">{row.state}</Badge>}
+          {/* v24 audit fix: state was a Badge — downgraded to plain meta text */}
+          {row.state && <span className="text-11 text-muted-foreground">· {row.state}</span>}
         </div>
         <div className="flex flex-wrap items-center gap-3 text-12 text-slate-500">
           {formattedPhone && (

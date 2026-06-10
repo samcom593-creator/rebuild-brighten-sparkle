@@ -105,7 +105,7 @@ function QuickStat({
 
   return (
     <div className={cn(
-      "relative overflow-hidden rounded-md border p-4 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg",
+      "relative overflow-hidden rounded-md border p-4  transition-all hover:scale-[1.02] hover:shadow-lg",
       colorClasses[color]
     )}>
       <div className="flex items-center gap-3">

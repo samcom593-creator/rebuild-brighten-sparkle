@@ -59,7 +59,7 @@ function NotificationStats({ logs, onFilterChannel }: { logs: any[]; onFilterCha
                 onFilterChannel(s.filter === "failed" ? "all" : s.filter);
               }}
               className={cn(
-                "relative w-full overflow-hidden rounded-md border  p-4 backdrop-blur-sm transition-all hover:scale-[1.03] hover:shadow-lg text-left",
+                "relative w-full overflow-hidden rounded-md border  p-4  transition-all hover:scale-[1.03] hover:shadow-lg text-left",
                 s.gradient
               )}
             >
@@ -411,7 +411,7 @@ function CarrierAssignmentTool() {
   return (
     <div>
       <div className={cn(
-        "relative overflow-hidden rounded-md border  p-6 backdrop-blur-sm",
+        "relative overflow-hidden rounded-md border  p-6 ",
         "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20"
       )}>
         <div className="flex items-center gap-3 mb-4">
@@ -990,7 +990,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
               <button
                 disabled={action.loading || boostLocked}
                 className={cn(
-                  "relative w-full overflow-hidden rounded-md border  p-5 backdrop-blur-sm transition-all text-left",
+                  "relative w-full overflow-hidden rounded-md border  p-5  transition-all text-left",
                   boostLocked ? "opacity-50 cursor-not-allowed" : "hover:scale-[1.03] hover:shadow-lg",
                   action.gradient
                 )}
@@ -1229,7 +1229,7 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
       {savedProgress && !blasting && (
         <div>
           <div className={cn(
-            "relative overflow-hidden rounded-md border  p-6 backdrop-blur-sm",
+            "relative overflow-hidden rounded-md border  p-6 ",
             "from-blue-500/10 to-blue-500/5 border-blue-500/20"
           )}>
             <div className="flex items-center gap-3 mb-4">
@@ -1280,7 +1280,7 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
 
       <div>
         <div className={cn(
-          "relative overflow-hidden rounded-md border  p-6 backdrop-blur-sm",
+          "relative overflow-hidden rounded-md border  p-6 ",
           "from-amber-500/10 to-amber-500/5 border-amber-500/20"
         )}>
           <div className="flex items-center gap-3 mb-4">
@@ -1492,7 +1492,7 @@ export default function NotificationHub() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-md border border-primary/20 bg-white dark:bg-slate-900 p-6 backdrop-blur-sm"
+        className="relative overflow-hidden rounded-md border border-primary/20 bg-white dark:bg-slate-900 p-6 "
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

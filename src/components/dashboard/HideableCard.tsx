@@ -48,7 +48,7 @@ export function HideableCard({
             },
           });
         }}
-        className="absolute top-2 right-2 z-10 h-7 w-7 opacity-0 group-hover/hideable:opacity-100 focus:opacity-100 transition-opacity bg-background/60 hover:bg-background/90 backdrop-blur-sm"
+        className="absolute top-2 right-2 z-10 h-7 w-7 opacity-0 group-hover/hideable:opacity-100 focus:opacity-100 transition-opacity bg-background/60 hover:bg-background/90 "
       >
         <EyeOff className="h-3.5 w-3.5" />
       </Button>

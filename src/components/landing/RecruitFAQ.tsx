@@ -74,7 +74,7 @@ export function RecruitFAQ() {
                     }`}>{String(i + 1).padStart(2, "0")}</span>
                     <span className="font-display font-bold text-base sm:text-lg leading-snug text-apex-text">{item.q}</span>
                   </span>
-                  <ChevronDown className={`h-5 w-5 flex-shrink-0 mt-1 text-apex-mute transition-transform duration-300 ${isOpen ? "rotate-180 text-apex-accent" : "group-hover:text-apex-accent"}`} />
+                  <ChevronDown className={`h-5 w-5 flex-shrink-0 mt-1 text-apex-mute transition-base ${isOpen ? "rotate-180 text-apex-accent" : "group-hover:text-apex-accent"}`} />
                 </button>
                 <div
                   className={`grid transition-all duration-300 ease-out ${

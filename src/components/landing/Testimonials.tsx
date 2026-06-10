@@ -46,7 +46,7 @@ export function Testimonials() {
           {TESTIMONIALS.map((t, i) => (
             <div
               key={t.name}
-              className="landing-fade-up relative rounded-md border border-primary/20 bg-card/60 backdrop-blur-xl p-6 sm:p-7 hover:border-primary/40 hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-[0_20px_50px_hsl(168_80%_50%/0.15)]"
+              className="landing-fade-up relative rounded-md border border-primary/20 bg-card/60 backdrop-blur-xl p-6 sm:p-7 hover:border-primary/40  transition-all duration-300 shadow-lg hover:shadow-[0_20px_50px_hsl(168_80%_50%/0.15)]"
               style={{ animationDelay: `${i * 100}ms` }}
             >
               <Quote className="h-7 w-7 text-primary/40 mb-4" />

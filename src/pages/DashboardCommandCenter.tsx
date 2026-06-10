@@ -669,7 +669,7 @@ export default function DashboardCommandCenter() {
 
           <HideableCard cardKey="admin.stat.activeAgents" label="Live Agents">
             <Card
-              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
+              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all .5 hover:border-foreground/20 hover:shadow-md"
               onClick={() => setStatPopup({ type: "activeAgents", open: true })}
             >
               <CardContent className="p-4">
@@ -690,7 +690,7 @@ export default function DashboardCommandCenter() {
 
           <HideableCard cardKey="admin.stat.producers" label="Producers">
             <Card
-              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
+              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all .5 hover:border-foreground/20 hover:shadow-md"
               onClick={() => setStatPopup({ type: "producers", open: true })}
             >
               <CardContent className="p-4">
@@ -710,7 +710,7 @@ export default function DashboardCommandCenter() {
 
           <HideableCard cardKey="admin.stat.needsAttention" label="Needs Attention">
             <Card
-              className="stat-card group cursor-pointer overflow-hidden border-destructive/30 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-destructive/60 hover:shadow-md"
+              className="stat-card group cursor-pointer overflow-hidden border-destructive/30 bg-card/95 shadow-sm transition-all .5 hover:border-destructive/60 hover:shadow-md"
               onClick={() => setStatPopup({ type: "needsAttention", open: true })}
             >
               <CardContent className="p-4">
@@ -730,7 +730,7 @@ export default function DashboardCommandCenter() {
 
           <HideableCard cardKey="admin.stat.totalDeals" label="Total Deals">
             <Card
-              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
+              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all .5 hover:border-foreground/20 hover:shadow-md"
               onClick={() => setStatPopup({ type: "totalDeals", open: true })}
             >
               <CardContent className="p-4">
@@ -1110,7 +1110,7 @@ export default function DashboardCommandCenter() {
               <CardHeader className="py-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base font-medium">Manager Links & Lead Reassignment</CardTitle>
-                  <ChevronDown className={cn("h-4 w-4 transition-transform", showInviteLinks && "rotate-180")} />
+                  <ChevronDown className={cn("h-4 w-4 transition-base", showInviteLinks && "rotate-180")} />
                 </div>
               </CardHeader>
             </Card>
@@ -1133,7 +1133,7 @@ export default function DashboardCommandCenter() {
                     <CardTitle className="text-base font-medium flex items-center gap-2">
                       Terminated Agent Leads
                     </CardTitle>
-                    <ChevronDown className={cn("h-4 w-4 transition-transform", showTerminated && "rotate-180")} />
+                    <ChevronDown className={cn("h-4 w-4 transition-base", showTerminated && "rotate-180")} />
                   </div>
                 </CardHeader>
               </Card>
@@ -1151,7 +1151,7 @@ export default function DashboardCommandCenter() {
                     <CardTitle className="text-base font-medium flex items-center gap-2">
                       Abandoned Applications
                     </CardTitle>
-                    <ChevronDown className={cn("h-4 w-4 transition-transform", showAbandoned && "rotate-180")} />
+                    <ChevronDown className={cn("h-4 w-4 transition-base", showAbandoned && "rotate-180")} />
                   </div>
                 </CardHeader>
               </Card>
@@ -1169,7 +1169,7 @@ export default function DashboardCommandCenter() {
                     <CardTitle className="text-base font-medium flex items-center gap-2">
                       All Leads
                     </CardTitle>
-                    <ChevronDown className={cn("h-4 w-4 transition-transform", showAllLeads && "rotate-180")} />
+                    <ChevronDown className={cn("h-4 w-4 transition-base", showAllLeads && "rotate-180")} />
                   </div>
                 </CardHeader>
               </Card>

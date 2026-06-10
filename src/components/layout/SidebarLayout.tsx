@@ -110,7 +110,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       {/* Mobile Sidebar Overlay */}
       <div
         className={cn(
-          "fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden",
+          "fixed inset-0 z-30 bg-background/80  lg:hidden",
           mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
         style={{ transition: "opacity 100ms ease-out" }}

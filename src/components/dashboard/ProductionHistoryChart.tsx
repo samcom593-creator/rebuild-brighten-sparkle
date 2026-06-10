@@ -23,7 +23,7 @@ import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 const CustomTooltip = memo(({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
+      <div className="bg-background/95  border border-border rounded-lg p-3 shadow-lg">
         <p className="font-medium text-sm mb-1">{label}</p>
         <p className="text-primary font-bold">
           ${payload[0]?.value?.toLocaleString() || 0}

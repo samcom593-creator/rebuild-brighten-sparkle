@@ -270,7 +270,7 @@ export function InterviewRecorder({
     return (
       <AnimatePresence>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={onClose}>
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 " onClick={onClose}>
           <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-md">
             <GlassCard className="p-6 text-center">
               <MicOff className="h-12 w-12 text-destructive mx-auto mb-4" />
@@ -287,7 +287,7 @@ export function InterviewRecorder({
   return (
     <AnimatePresence>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm" onClick={onClose}>
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 " onClick={onClose}>
         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
           onClick={(e) => e.stopPropagation()} className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <GlassCard className="p-6">

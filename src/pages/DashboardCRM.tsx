@@ -190,7 +190,7 @@ const SECTIONS = [
   { key: "applied", bucket: "unlicensed" as PipelineBucket, label: "Applied", icon: Users, stages: ["applied"] as OnboardingStage[], accent: "border-l-blue-500", headerBg: "bg-blue-500/5", iconColor: "text-blue-500" },
   { key: "meeting_attendance", bucket: "unlicensed" as PipelineBucket, label: "Meeting Attendance", icon: ClipboardCheck, stages: ["meeting_attendance"] as OnboardingStage[], accent: "border-l-purple-500", headerBg: "bg-purple-500/5", iconColor: "text-purple-500" },
   { key: "pre_licensed", bucket: "unlicensed" as PipelineBucket, label: "Pre-Licensed", icon: GraduationCap, stages: ["pre_licensed", "onboarding", "training_online"] as OnboardingStage[], accent: "border-l-yellow-500", headerBg: "bg-yellow-500/5", iconColor: "text-yellow-500" },
-  { key: "transfer", bucket: "licensed" as PipelineBucket, label: "Transfer", icon: Users, stages: ["transfer"] as OnboardingStage[], accent: "border-l-orange-500", headerBg: "bg-orange-500/5", iconColor: "text-orange-500" },
+  { key: "transfer", bucket: "licensed" as PipelineBucket, label: "Transfer", icon: Users, stages: ["transfer"] as OnboardingStage[], accent: "border-l-orange-500", headerBg: "bg-orange-500/5", iconColor: "text-amber-500" },
   { key: "in_training", bucket: "licensed" as PipelineBucket, label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-teal-500", headerBg: "bg-teal-500/5", iconColor: "text-teal-500" },
   { key: "below_10k", bucket: "licensed" as PipelineBucket, label: "Below $20K (last 30d)", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
   { key: "live", bucket: "licensed" as PipelineBucket, label: "Live", icon: Briefcase, stages: ["live", "evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
@@ -286,7 +286,7 @@ function ContactActions({ agent, onViewApp, onRecord, onEditLogin, onDeactivate,
 function OnboardingExpandedRow({ agent, onRefresh, onStageUpdate, onGoLive, onDeactivate, onViewApp, onRecord, onEditLogin, onAgentUpdate, playSound, sendingCourseLogin, setSendingCourseLogin, currentAgentId }: any) {
   return (
     <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
-      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80 backdrop-blur-sm shadow-inner border-l-2 border-l-primary">
+      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80  shadow-inner border-l-2 border-l-primary">
         <ContactActions agent={agent} onViewApp={onViewApp} onRecord={onRecord} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} currentAgentId={currentAgentId} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-3">
@@ -365,7 +365,7 @@ function OnboardingExpandedRow({ agent, onRefresh, onStageUpdate, onGoLive, onDe
 function TrainingExpandedRow({ agent, onRefresh, onStageUpdate, onGoLive, onDeactivate, onViewApp, onRecord, onEditLogin, onAgentUpdate, currentAgentId }: any) {
   return (
     <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
-      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80 backdrop-blur-sm shadow-inner border-l-2 border-l-amber-500">
+      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80  shadow-inner border-l-2 border-l-amber-500">
         <ContactActions agent={agent} onViewApp={onViewApp} onRecord={onRecord} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} currentAgentId={currentAgentId} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-2">
@@ -390,7 +390,7 @@ function TrainingExpandedRow({ agent, onRefresh, onStageUpdate, onGoLive, onDeac
 function LiveExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onRecord, onEditLogin, onAgentUpdate, currentAgentId }: any) {
   return (
     <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
-      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80 backdrop-blur-sm shadow-inner border-l-2 border-l-emerald-500">
+      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80  shadow-inner border-l-2 border-l-emerald-500">
         <ContactActions agent={agent} onViewApp={onViewApp} onRecord={onRecord} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} currentAgentId={currentAgentId} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-2">
@@ -429,7 +429,7 @@ function FollowUpExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onReco
   const daysSinceContact = agent.lastContactedAt ? Math.floor((Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
   return (
     <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
-      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80 backdrop-blur-sm shadow-inner border-l-2 border-l-red-500">
+      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80  shadow-inner border-l-2 border-l-red-500">
         <ContactActions agent={agent} onViewApp={onViewApp} onRecord={onRecord} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} currentAgentId={currentAgentId} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-2">
@@ -1179,7 +1179,7 @@ export default function DashboardCRM() {
             <span className="text-xs text-muted-foreground">{agent.managerName?.split(" ")[0] || "—"}</span>
           </TableCell>
           <TableCell className="py-3 text-center" onClick={e => e.stopPropagation()}>
-            <button onClick={() => toggleMeetingAttendance(agent.id)} className="focus:outline-none transition-transform hover:scale-110">
+            <button onClick={() => toggleMeetingAttendance(agent.id)} className="focus:outline-none transition-base hover:bg-slate-50 dark:hover:bg-slate-800/50">
               {isPresent ? (
                 <CircleCheck className="h-6 w-6 text-emerald-500 fill-emerald-500/20" />
               ) : (
@@ -1224,7 +1224,7 @@ export default function DashboardCRM() {
         };
         return (<>
           <TableCell className="py-2">
-            <Badge variant="outline" className="text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20">
+            <Badge variant="outline" className="text-[10px] bg-violet-500/10 text-primary dark:text-primary border-violet-500/20">
               {progressLabels[agent.licenseProgress || "unlicensed"] || "—"}
             </Badge>
           </TableCell>
@@ -1409,15 +1409,15 @@ export default function DashboardCRM() {
           {[
             { label: "Present", count: meetingPresentCount, icon: ClipboardCheck, color: "text-sky-500", borderColor: "border-t-sky-500", bgGlow: "bg-sky-500/5" },
             { label: "Onboarding", count: onboardingCount, icon: BookOpen, color: "text-primary", borderColor: "border-t-primary", bgGlow: "bg-primary/5" },
-            { label: "Pre-Licensed", count: preLicensedCount, icon: GraduationCap, color: "text-violet-500", borderColor: "border-t-violet-500", bgGlow: "bg-violet-500/5" },
-            { label: "Transfer", count: transferCount, icon: Users, color: "text-orange-500", borderColor: "border-t-orange-500", bgGlow: "bg-orange-500/5" },
+            { label: "Pre-Licensed", count: preLicensedCount, icon: GraduationCap, color: "text-primary", borderColor: "border-t-violet-500", bgGlow: "bg-violet-500/5" },
+            { label: "Transfer", count: transferCount, icon: Users, color: "text-amber-500", borderColor: "border-t-orange-500", bgGlow: "bg-orange-500/5" },
             { label: "Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500", borderColor: "border-t-amber-500", bgGlow: "bg-amber-500/5" },
             { label: "Below $40K/mo", count: below10kCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
             { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
             { label: "Needs F/U", count: needsFollowUpCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
           ].map(s => (
-            <div key={s.label} className={cn("group flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/70 bg-card/95 shadow-sm border-t-2 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md cursor-default", s.borderColor, s.bgGlow)}>
-              <div className="p-1.5 rounded-md bg-background/80 ring-1 ring-border/60 transition-transform group-hover:scale-105"><s.icon className={cn("h-4 w-4", s.color)} /></div>
+            <div key={s.label} className={cn("group flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/70 bg-card/95 shadow-sm border-t-2 transition-all .5 hover:border-foreground/20 hover:shadow-md cursor-default", s.borderColor, s.bgGlow)}>
+              <div className="p-1.5 rounded-md bg-background/80 ring-1 ring-border/60 transition-base group-hover:bg-slate-50 dark:hover:bg-slate-800/50"><s.icon className={cn("h-4 w-4", s.color)} /></div>
               <div>
                 <p className="text-xl font-extrabold leading-none tabular-nums">{s.count}</p>
                 <p className="text-[10px] text-muted-foreground font-semibold mt-0.5 uppercase tracking-wide">{s.label}</p>
@@ -1574,7 +1574,7 @@ export default function DashboardCRM() {
                                           {agent.aiScoreTier && (
                                             <Badge variant="outline" className={cn("text-[10px] h-3.5 px-1", {
                                               "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
-                                              "bg-orange-500/10 text-orange-500 border-orange-500/20": agent.aiScoreTier === "warm",
+                                              "bg-orange-500/10 text-amber-500 border-orange-500/20": agent.aiScoreTier === "warm",
                                               "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
                                               "bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20": agent.aiScoreTier === "cold",
                                             })}>
@@ -1643,7 +1643,7 @@ export default function DashboardCRM() {
                                             </Badge>
                                           )}
                                           {agent.recruit.referralSource && (
-                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20" title="Referral source">
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-violet-500/10 text-primary dark:text-primary border-violet-500/20" title="Referral source">
                                               📣 {agent.recruit.referralSource.slice(0, 16)}
                                             </Badge>
                                           )}
@@ -1757,7 +1757,7 @@ export default function DashboardCRM() {
                                           {agent.aiScoreTier && (
                                             <Badge variant="outline" className={cn("text-[10px] h-3.5 px-1", {
                                               "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
-                                              "bg-orange-500/10 text-orange-500 border-orange-500/20": agent.aiScoreTier === "warm",
+                                              "bg-orange-500/10 text-amber-500 border-orange-500/20": agent.aiScoreTier === "warm",
                                               "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
                                               "bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20": agent.aiScoreTier === "cold",
                                             })}>
@@ -1775,7 +1775,7 @@ export default function DashboardCRM() {
                                   </TableCell>
                                   {getTableCells(section.key, agent)}
                                   <TableCell className="py-2">
-                                    <div className={`transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`}>
+                                    <div className={`transition-base ${isExpanded ? 'rotate-90' : ''}`}>
                                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                     </div>
                                   </TableCell>

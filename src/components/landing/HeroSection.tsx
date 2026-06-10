@@ -64,7 +64,7 @@ function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
             className="absolute inset-0 w-full h-full object-cover"
           />
           <span className="absolute inset-0 bg-white dark:bg-black/30 group-hover:bg-white dark:bg-black/45 transition-colors" />
-          <span className="relative h-20 w-20 rounded-full bg-primary/95 flex items-center justify-center  group-hover:scale-110 transition-transform">
+          <span className="relative h-20 w-20 rounded-full bg-primary/95 flex items-center justify-center  group-hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-base">
             <Play className="h-10 w-10 text-primary-foreground fill-primary-foreground ml-1" />
           </span>
         </button>
@@ -265,11 +265,11 @@ export function HeroSection() {
                   px-10 py-5 text-lg sm:text-xl rounded-md font-bold font-display
                   bg-white dark:bg-slate-900 text-primary-foreground
                   shadow-[0_10px_40px_hsl(168_80%_50%/0.4)]
-                  group-hover:scale-105 transition-transform duration-200
+                  group-hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-base
                 "
               >
                 Start My Application
-                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="h-5 w-5 transition-base group-hover:translate-x-1" />
               </button>
             </Link>
             <p className="text-xs sm:text-sm text-muted-foreground text-center max-w-md">
@@ -337,7 +337,7 @@ export function HeroSection() {
                   bg-card/90 backdrop-blur-xl border border-border/60
                   hover:border-primary/40
                   shadow-md
-                  transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02]
+                  transition-all duration-300  hover:scale-[1.02]
                 "
               >
                 <span

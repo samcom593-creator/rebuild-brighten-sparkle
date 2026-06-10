@@ -310,7 +310,7 @@ export default function CourseCatalog() {
 
                       {/* Overlays */}
                       {!unlocked && (
-                        <div className="absolute inset-0 bg-background/80 flex items-center justify-center backdrop-blur-sm">
+                        <div className="absolute inset-0 bg-background/80 flex items-center justify-center ">
                           <Lock className="h-8 w-8 text-muted-foreground" />
                         </div>
                       )}

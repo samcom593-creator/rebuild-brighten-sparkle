@@ -72,7 +72,7 @@ export default function ResetPassword() {
       >
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-4 mb-6">
-            <span className="relative h-12 w-12 rounded-md flex items-center justify-center bg-white dark:bg-slate-900 border border-primary/40 backdrop-blur-md ">
+            <span className="relative h-12 w-12 rounded-md flex items-center justify-center bg-white dark:bg-slate-900 border border-primary/40  ">
               <Crown className="h-6 w-6 text-primary" />
             </span>
             <div className="flex flex-col items-start leading-none">

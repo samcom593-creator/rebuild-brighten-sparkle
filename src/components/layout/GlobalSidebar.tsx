@@ -16,10 +16,12 @@ import {
   Menu,
   Minimize2,
   Network,
+  PhoneCall,
   PhoneIncoming,
   Plus,
   Search,
   Settings,
+  TrendingUp,
   UserCog,
   Users,
   X,
@@ -117,14 +119,18 @@ export function GlobalSidebar({
     if (isAdmin) {
       operations.push(
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
+        { icon: PhoneCall, label: "Calls Today", href: "/dashboard/calls-today", special: true },
         { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
+        { icon: Users, label: "Clients", href: "/dashboard/clients" },
         { icon: Network, label: "Builders", href: "/dashboard/builders", special: true },
         { icon: UserCog, label: "Managers", href: "/dashboard/managers" },
         { icon: Crown, label: "Agency Owners", href: "/dashboard/agency-owners" },
         { icon: Users, label: "Agents", href: "/dashboard/agent-management" },
         { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },
+        { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
+        { icon: TrendingUp, label: "Social", href: "/dashboard/social" },
         { icon: Library, label: "Content", href: "/dashboard/admin/content-command" },
         { icon: Settings, label: "Admin", href: "/dashboard/admin" },
       );
@@ -135,9 +141,12 @@ export function GlobalSidebar({
     } else if (isManager) {
       operations.push(
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
+        { icon: PhoneCall, label: "Calls Today", href: "/dashboard/calls-today", special: true },
         { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
+        { icon: Users, label: "Clients", href: "/dashboard/clients" },
         { icon: Users, label: "Agents", href: "/dashboard/my-team" },
         { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },
+        { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );

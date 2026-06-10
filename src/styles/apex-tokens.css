@@ -1,45 +1,48 @@
-/* APEX Design Tokens — v9 Wave 0 + light theme · 2026-06-10
- * Single source of truth for color/type/motion/radius/shadow.
- * Goal: AgentLink/Agent Cloud-class restraint. One accent. Three surfaces.
+/* APEX Design Tokens — 2026-06-10 redesign
  *
- * 2026-06-10: re-enabled light theme as the DEFAULT. Sam said "I always
- * would like the light version more than the dark version." Prior light
- * was broken because legacy tokens (apex.navy/teal/etc) only had dark
- * values defined. This file provides BOTH light + dark with parity. */
+ * Sam: "all white everywhere looks ugly" — the prior light theme used a
+ * pure-white page bg which made cards invisible (white on white).
+ *
+ * This rewrite mirrors AgentLink: soft gray page bg with white cards
+ * floating on top + real shadows. Real visual hierarchy, not flat. */
 
 :root,
 :root.light {
-  /* Surfaces — paper-white feel, like AgentLink. Subtle warmth. */
-  --apex-bg:             220 20% 99%;   /* page background — near-white */
-  --apex-card:           0   0% 100%;   /* card surface — pure white */
-  --apex-hover:          220 15% 96%;   /* hover bg — light gray */
+  /* Page bg → soft warm gray (matches AgentLink #eaeaea, slightly warmer) */
+  --apex-bg:             220 16% 95%;
+  /* Cards → pure white. With the gray bg, they POP. */
+  --apex-card:           0   0% 100%;
+  /* Hover → very light gray */
+  --apex-hover:          220 14% 92%;
+  /* Secondary surface (sub-cards inside cards) */
+  --apex-surface-alt:    220 18% 97%;
 
-  /* Borders — soft slate gray */
-  --apex-border:         220 15% 90%;
-  --apex-border-strong:  220 12% 78%;
+  /* Borders — barely visible slate */
+  --apex-border:         220 14% 88%;
+  --apex-border-strong:  220 14% 78%;
 
-  /* Text — high contrast on white */
-  --apex-text:           220 22% 14%;
-  --apex-text-mute:      220 12% 38%;
-  --apex-text-dim:       220 10% 55%;
+  /* Text — high contrast on white cards */
+  --apex-text:           220 25% 15%;       /* near-black for headings */
+  --apex-text-mute:      220 12% 40%;       /* mid for body */
+  --apex-text-dim:       220 10% 55%;       /* low for captions */
 
-  /* Accent — emerald (stays the same on both themes for brand consistency) */
-  --apex-accent:         160 84% 38%;
-  --apex-accent-soft:    160 84% 38% / 0.08;
-  --apex-accent-strong:  160 84% 30%;
+  /* Accent — emerald, slightly deeper for white-bg contrast */
+  --apex-accent:         160 84% 36%;
+  --apex-accent-soft:    160 84% 36% / 0.10;
+  --apex-accent-strong:  160 84% 28%;
 
-  /* Status — slightly darker on light bg so contrast holds */
-  --apex-success:        150 70% 38%;
+  /* Status — darkened for white-bg contrast */
+  --apex-success:        150 70% 36%;
   --apex-warning:        38  92% 45%;
   --apex-danger:         0   75% 48%;
-  --apex-info:           220 80% 50%;
+  --apex-info:           220 80% 48%;
   --apex-neutral:        220 12% 45%;
 
   /* Type ramps */
   --type-11: 11px; --type-12: 12px; --type-14: 14px;
   --type-16: 16px; --type-20: 20px; --type-28: 28px;
 
-  /* Motion budget — nothing slower than 250ms anywhere */
+  /* Motion budget */
   --motion-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
   --motion-base: 180ms cubic-bezier(0.4, 0, 0.2, 1);
   --motion-slow: 240ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -47,16 +50,21 @@
   /* Radii */
   --apex-r-sm: 6px; --apex-r-md: 10px; --apex-r-lg: 14px;
 
-  /* Shadows — visible on white surfaces */
-  --apex-shadow-1: 0 1px 2px hsl(220 30% 40% / 0.08);
-  --apex-shadow-2: 0 8px 24px hsl(220 30% 30% / 0.12);
+  /* Shadows — visible on the gray bg, makes cards lift */
+  --apex-shadow-1: 0 1px 2px hsl(220 30% 30% / 0.04),
+                   0 1px 3px hsl(220 30% 30% / 0.06);
+  --apex-shadow-2: 0 4px 6px hsl(220 30% 30% / 0.05),
+                   0 10px 15px hsl(220 30% 30% / 0.08);
+  --apex-shadow-3: 0 20px 25px hsl(220 30% 30% / 0.10),
+                   0 8px 10px hsl(220 30% 30% / 0.04);
 }
 
-/* Dark theme override — kept for users who want it via the toggle. */
+/* Dark theme override */
 :root.dark {
   --apex-bg:             220 30% 7%;
   --apex-card:           220 25% 11%;
   --apex-hover:          220 22% 14%;
+  --apex-surface-alt:    220 22% 13%;
 
   --apex-border:         220 18% 18%;
   --apex-border-strong:  220 16% 28%;
@@ -77,6 +85,14 @@
 
   --apex-shadow-1: 0 1px 2px hsl(220 50% 2% / 0.6);
   --apex-shadow-2: 0 8px 24px hsl(220 50% 2% / 0.55);
+  --apex-shadow-3: 0 20px 30px hsl(220 50% 2% / 0.6);
+}
+
+/* Global body bg switches with theme */
+body {
+  background-color: hsl(var(--apex-bg));
+  color: hsl(var(--apex-text));
+  transition: background-color 180ms, color 180ms;
 }
 
 /* Tabular nums on every number across the app */
@@ -87,22 +103,9 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────
- * LIGHT-THEME RESCUE LAYER (2026-06-10)
- *
- * 270+ components shipped with hardcoded `bg-slate-900` / `text-white`
- * / `bg-[#1e293b]` etc. that worked fine when light was force-locked
- * to dark. Once light became the default, those elements stayed dark
- * while the page bg went white — the "horrible, illegible" result
- * Sam complained about.
- *
- * Refactoring 270 components by hand is too risky overnight. This
- * override layer intercepts the most common hardcoded dark color
- * classes when light theme is active and redirects them to the
- * proper apex.* token. Dark-theme mode (.dark) keeps the originals.
- *
- * Higher specificity (:root.light .class) beats single-class Tailwind
- * utilities. !important is used sparingly only for arbitrary-value
- * brackets which can't be over-ridden by specificity alone.
+ * LIGHT-THEME RESCUE LAYER (kept as belt-and-suspenders)
+ * Intercepts the hardcoded dark utility classes that didn't get
+ * `dark:` prefixed by the codemod sweep.
  * ───────────────────────────────────────────────────────────────── */
 
 :root.light .bg-slate-900,
@@ -115,6 +118,7 @@
 :root.light .bg-neutral-900,
 :root.light .bg-neutral-950 {
   background-color: hsl(var(--apex-card)) !important;
+  box-shadow: var(--apex-shadow-1);
 }
 
 :root.light .bg-slate-800,
@@ -155,29 +159,22 @@
   border-color: hsl(var(--apex-border));
 }
 
-/* Arbitrary-value Tailwind classes — must use attribute selectors + !important */
 :root.light [class*="bg-[#0f172a]"],
 :root.light [class*="bg-[#1e293b]"],
 :root.light [class*="bg-[#050b16]"],
 :root.light [class*="bg-[#030712]"],
 :root.light [class*="bg-[#0a0a0a]"] {
   background-color: hsl(var(--apex-card)) !important;
+  box-shadow: var(--apex-shadow-1);
 }
 
-/* Buttons whose `text-white` is intentional (primary emerald CTA) should
- * keep white text. The accent button class is set to ensure this. Tailwind's
- * `bg-primary text-primary-foreground` already handles that path. */
+/* Primary CTA stays white-on-emerald in both themes */
 :root.light .bg-primary,
 :root.light [class*="bg-emerald-"]:not([class*="text-emerald-"]) {
   color: white;
 }
-:root.light .bg-primary > *,
-:root.light .bg-primary .text-white {
-  color: white !important;
-}
 
-/* Glass cards used a backdrop-filter that looked grimy on light bg.
- * Override to a clean white card with subtle shadow. */
+/* Glass cards on light bg = opaque white card with shadow (no smoky filter) */
 :root.light .bg-card\/40,
 :root.light .bg-card\/50,
 :root.light .bg-card\/60,
@@ -187,4 +184,14 @@
 :root.light .bg-background\/60 {
   background-color: hsl(var(--apex-card));
   backdrop-filter: none;
+  box-shadow: var(--apex-shadow-1);
+}
+
+/* Card hover gives a subtle lift, real visual feedback */
+:root.light .bg-card,
+:root.light .bg-white {
+  transition: box-shadow 180ms ease;
+}
+:root.light .bg-white:hover {
+  box-shadow: var(--apex-shadow-2);
 }

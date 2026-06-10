@@ -155,6 +155,7 @@ const AgentLinkVault = lazy(() => import("./pages/AgentLinkVault"));
 const ClientPipeline = lazy(() => import("./pages/ClientPipeline"));
 const InboundLeads = lazy(() => import("./pages/InboundLeads"));
 const SocialDashboard = lazy(() => import("./pages/SocialDashboard"));
+const CallsTodayCockpit = lazy(() => import("./pages/CallsTodayCockpit"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
 const SamHQ = lazy(() => import("./pages/admin/SamHQ"));
 const UnclaimedLeads = lazy(() => import("./pages/admin/UnclaimedLeads"));
@@ -416,6 +417,8 @@ const App = () => (
                      <Route path="/dashboard/leads" element={<Navigate to="/dashboard/inbound-leads" replace />} />
                      {/* v9 social dashboard: cross-platform IG / TikTok / YT / Snap analytics */}
                      <Route path="/dashboard/social" element={<ProtectedRoute requireAdmin><SocialDashboard /></ProtectedRoute>} />
+                     {/* v9 calls cockpit: Google Calendar → apex_scheduled_calls → pre-filled inbound */}
+                     <Route path="/dashboard/calls-today" element={<ProtectedRoute><CallsTodayCockpit /></ProtectedRoute>} />
                      <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
                      {/* Recruit pipeline — applicants/license/contracting flow. Was /agent-pipeline. */}
                      <Route path="/recruit-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />

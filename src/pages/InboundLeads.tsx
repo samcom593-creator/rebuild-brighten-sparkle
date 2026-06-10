@@ -318,6 +318,9 @@ export default function InboundLeads() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartRef = useRef<number | null>(null);
 
   const mergeLeads = useCallback((incoming: InboundLead[]) => {
     setLeads((prev) => {
@@ -396,11 +399,33 @@ export default function InboundLeads() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const startListening = () => {
+  const startListening = async () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       toast.error("Voice dictation is not available in this browser.");
       return;
+    }
+
+    // v16 Wave A: start audio recording in parallel with transcript dictation.
+    // Sam: "Save the audio recording. That'd be ideal."
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+        ? "audio/mp4"
+        : "";
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.start(1000); // emit chunks every 1s so we don't lose data on crash
+      mediaRecorderRef.current = recorder;
+      recordingStartRef.current = Date.now();
+    } catch (err) {
+      // Mic permission denied — keep going with transcript only
+      console.warn("audio recording unavailable", err);
     }
 
     const recognition = new SpeechRecognition();
@@ -426,7 +451,25 @@ export default function InboundLeads() {
 
   const stopListening = () => {
     recognitionRef.current?.stop?.();
+    mediaRecorderRef.current?.stop?.();
+    mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
     setListening(false);
+  };
+
+  /**
+   * Returns the recorded audio Blob (webm/mp4) or null if no recording was made.
+   * Used by saveLead to upload the audio after persisting the lead row.
+   */
+  const harvestAudio = (): { blob: Blob; durationSec: number } | null => {
+    const chunks = audioChunksRef.current;
+    if (chunks.length === 0) return null;
+    const blob = new Blob(chunks, { type: chunks[0].type || "audio/webm" });
+    const durationSec = recordingStartRef.current
+      ? Math.round((Date.now() - recordingStartRef.current) / 1000)
+      : 0;
+    audioChunksRef.current = [];
+    recordingStartRef.current = null;
+    return { blob, durationSec };
   };
 
   const resetForm = () => {
@@ -485,8 +528,35 @@ export default function InboundLeads() {
 
       if (error) throw error;
       const saved = { ...(data ?? draft), saved_to_supabase: true } as InboundLead;
+
+      // v16 Wave A: upload audio recording if one was captured
+      const audio = harvestAudio();
+      if (audio && audio.blob.size > 0) {
+        const ext = audio.blob.type.includes("mp4") ? "mp4" : "webm";
+        const path = `inbound_leads/${saved.id}/${Date.now()}.${ext}`;
+        const { error: upErr } = await (supabase as any).storage
+          .from("call-recordings")
+          .upload(path, audio.blob, { contentType: audio.blob.type, upsert: false });
+        if (!upErr) {
+          const { data: signed } = await (supabase as any).storage
+            .from("call-recordings")
+            .createSignedUrl(path, 60 * 60 * 24 * 365); // 1-year signed URL
+          await (supabase as any)
+            .from("inbound_leads")
+            .update({
+              recording_url: signed?.signedUrl ?? path,
+              recording_duration_sec: audio.durationSec,
+              recording_started_at: new Date(Date.now() - audio.durationSec * 1000).toISOString(),
+            })
+            .eq("id", saved.id);
+          toast.success(`Lead saved + audio (${audio.durationSec}s) attached.`);
+        } else {
+          toast.success("Lead saved. Audio upload failed — try the mic again next call.");
+        }
+      } else {
+        toast.success("Inbound lead saved.");
+      }
       mergeLeads([saved]);
-      toast.success("Inbound lead saved.");
     } catch (error) {
       console.warn("[inbound-leads] local save only", error);
       mergeLeads([draft]);

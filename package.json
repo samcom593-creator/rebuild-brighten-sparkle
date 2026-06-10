@@ -25,6 +25,7 @@
     "check:bg-gradient-areas": "node scripts/check-bg-gradient-areas.mjs",
     "check:shadow-areas": "node scripts/check-shadow-areas.mjs",
     "check:motion-areas": "node scripts/check-motion-areas.mjs",
+    "check:focus-ring-areas": "node scripts/check-focus-ring-areas.mjs",
     "smoke": "node scripts/route-smoke.mjs",
     "smoke:prod": "BASE=https://apex-financial.org node scripts/route-smoke.mjs",
     "lighthouse:prod": "node scripts/lighthouse-prod.mjs",
@@ -32,7 +33,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "prepare": "git config core.hooksPath .husky 2>/dev/null || true",
-    "verify:core": "npm run check:forbidden-language && npm run check:metric-truth && npm run check:sync-reliability && npm run check:unsafe-supabase-catch && npm run check:vsl-sync && npm run check:cold-landing-sonner && npm run check:cold-landing-supabase-queryFn && npm run check:vendor-icons-landing-census && npm run check:landing-css-size && npm run check:bg-gradient-cards && npm run check:bg-gradient-areas && npm run check:shadow-areas && npm run check:motion-areas && npx tsc --noEmit && npm run build"
+    "verify:core": "npm run check:forbidden-language && npm run check:metric-truth && npm run check:sync-reliability && npm run check:unsafe-supabase-catch && npm run check:vsl-sync && npm run check:cold-landing-sonner && npm run check:cold-landing-supabase-queryFn && npm run check:vendor-icons-landing-census && npm run check:landing-css-size && npm run check:bg-gradient-cards && npm run check:bg-gradient-areas && npm run check:shadow-areas && npm run check:motion-areas && npm run check:focus-ring-areas && npx tsc --noEmit && npm run build"
   },
   "dependencies": {
     "@alloc/quick-lru": "5.2.0",

@@ -203,3 +203,25 @@ if match '^(src/(pages|components/(dashboard|landing|recruiter|admin|agent|award
   echo "[pre-commit] Tracked component-tree change — running check:motion-areas…"
   node scripts/check-motion-areas.mjs
 fi
+
+# ---------- check-focus-ring-areas (wave-68) ----------
+# Trigger: any change in the 22 wave-65-tracked component trees, or the script
+# itself. Same tracked-area set as wave-65/67 by design.
+# Mechanic: ratchets the v22 multi-utility focus-ring halo pattern per area at
+# the measured floor at lock time (HEAD d2b68020). Counts
+# `focus-visible:ring-1`/`focus-visible:ring-2`, `focus:ring-1`/`focus:ring-2`,
+# `(focus|focus-visible):ring-offset-1`/`-2`, and arbitrary `ring-[...]`
+# color halos. The canonical token `focus-visible:shadow-[var(--apex-focus-ring)]`
+# is NOT counted (it's the wave-58 Button discipline).
+# Why this matters: wave-58 routed Button to the --apex-focus-ring token, but
+# shadcn primitive defaults (input/textarea/select/dialog/sheet/sidebar/etc)
+# still carry the multi-utility halo. The 23-instance floor in src/components/ui
+# locks them; every other tree locks at the surgical-defer or 0 floor so no new
+# shadcn-style halo silently re-introduces the v22-banned aesthetic outside
+# those locked surfaces. Cost when fired: ~120ms (linear in tracked-area files).
+# Opt-in marker per line for shadcn-primitive extensions or deliberate halos:
+# `focus-ring-allow:<reason>` same-line or line directly above.
+if match '^(src/(pages|components/(dashboard|landing|recruiter|admin|agent|awards|callcenter|celebrations|command|contentwheel|course|crm|deals|finances|layout|next-step|pipeline|plaque|profile|system-health|ui))/.+\.(tsx?|jsx?)$|scripts/check-focus-ring-areas\.mjs$)'; then
+  echo "[pre-commit] Tracked component-tree change — running check:focus-ring-areas…"
+  node scripts/check-focus-ring-areas.mjs
+fi

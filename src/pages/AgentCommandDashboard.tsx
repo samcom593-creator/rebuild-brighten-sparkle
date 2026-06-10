@@ -40,9 +40,10 @@ import { RegionPeerCard, UpcomingChargebackCard } from "@/components/dashboard/A
 import { LapsesDrilldownModal } from "@/components/dashboard/LapsesDrilldownModal";
 import { RecentActivationsPanel } from "@/components/dashboard/RecentActivationsPanel";
 import { MyReferralLinkCard } from "@/components/agent/MyReferralLinkCard";
-import { AgentLinkBookTruthCard } from "@/components/dashboard/AgentLinkBookTruthCard";
-import { CarrierBreakdownCard } from "@/components/dashboard/CarrierBreakdownCard";
-import { BookTrendCard } from "@/components/dashboard/CarrierProductionCard";
+// v26 audit fix: AgentLinkBookTruthCard + CarrierBreakdownCard + BookTrendCard
+// imports removed. They lived in the deleted whole-book footer. KPIs now
+// truth-sourced from agentlink_deals_snapshot, so the redundant footer was
+// just visual debt.
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, getDealTruthTimestamp } from "@/lib/dealTruth";
 
 // ─── Formatters ─────────────────────────────────────────────────────────────
@@ -1523,62 +1524,55 @@ function AgencyCommandView() {
         )}
       </GlassCard>
 
-      {/* PL-023: Recent Activations leaderboard — replaces the empty
-          "last-8-deals second stat" with a real first-30d ALP picture
-          of the new producers. */}
+      {/* v26 audit fix · zone collapse: PL-023 RecentActivations was a
+          standalone zone. Now lives in the same row as the 4 health stats
+          below, sharing one bottom section. */}
+
+      {/* ── Footer · health stats + quick actions in ONE section ───
+          v26 audit fix: was 4 separate stacked zones (Recent Activations
+          + 4-stat health grid + 5-col Quick Actions + AgentLink summary
+          footer). Now ONE 2-col footer: stats left, actions right.
+          AgentLink summary footer DELETED — KPIs are truth-sourced now
+          (since $117K Part 2 fix), so the redundant whole-book summary
+          at the bottom was just visual debt. */}
       <RecentActivationsPanel />
 
-      {/* ── System health + Referrals + Underperformers ─────────────── */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatRowCard
-          icon={Activity}
-          label="Chargebacks · 30d"
-          value={fmtNum(c?.chargebacks_30d ?? 0)}
-          color={(c?.chargebacks_30d ?? 0) > 0 ? "text-rose-500 dark:text-rose-400" : "text-emerald-500 dark:text-emerald-400"}
-        />
-        <StatRowCard
-          icon={Activity}
-          label="Lapses · 30d"
-          value={fmtNum(c?.lapses_30d ?? 0)}
-          color={(c?.lapses_30d ?? 0) > 10 ? "text-rose-500 dark:text-rose-400" : "text-amber-500 dark:text-amber-400"}
-          onClick={() => setLapsesOpen(true)}
-        />
-        <StatRowCard
-          icon={Users}
-          label="Referrals · 30d"
-          value={fmtNum(c?.ref_30d ?? 0)}
-          color="text-primary"
-        />
-        <StatRowCard
-          icon={Crown}
-          label="Referrals · won"
-          value={fmtNum(c?.ref_won ?? 0)}
-          color="text-emerald-500 dark:text-emerald-400"
-        />
-      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <StatRowCard
+            icon={Activity}
+            label="Chargebacks · 30d"
+            value={fmtNum(c?.chargebacks_30d ?? 0)}
+            color={(c?.chargebacks_30d ?? 0) > 0 ? "text-rose-500 dark:text-rose-400" : "text-emerald-500 dark:text-emerald-400"}
+          />
+          <StatRowCard
+            icon={Activity}
+            label="Lapses · 30d"
+            value={fmtNum(c?.lapses_30d ?? 0)}
+            color={(c?.lapses_30d ?? 0) > 10 ? "text-rose-500 dark:text-rose-400" : "text-amber-500 dark:text-amber-400"}
+            onClick={() => setLapsesOpen(true)}
+          />
+          <StatRowCard
+            icon={Users}
+            label="Referrals · 30d"
+            value={fmtNum(c?.ref_30d ?? 0)}
+            color="text-primary"
+          />
+          <StatRowCard
+            icon={Crown}
+            label="Referrals · won"
+            value={fmtNum(c?.ref_won ?? 0)}
+            color="text-emerald-500 dark:text-emerald-400"
+          />
+        </div>
 
-      {/* ── Quick admin actions ─────────────────────────────────────── */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <QuickAction icon={Users}      to="/dashboard/applicants"      label="Applicants" desc="Review + assign" />
-        <QuickAction icon={Briefcase}  to="/dashboard/recruit-pipeline" label="Recruit pipeline" desc="Kanban board" />
-        <QuickAction icon={Trophy}     to="/dashboard/leaderboard"     label="Leaderboard" desc="Top producers" />
-        {/* v24 Phase 13: Charges audit + Conduct center routes deleted
-            (orphaned). Use /dashboard/strikes for conduct + strikes. */}
-        <QuickAction icon={Sparkles}   to="/dashboard/strikes"         label="Strikes" desc="Conduct + strikes log" />
-      </div>
-
-      {/* v18 2026-06-10: Sam asked AgentLink summary moved to the BOTTOM
-          (admin-only). Period switcher up top drives daily/weekly/monthly
-          decisions; this footer summarizes the whole book + 12-month trend
-          for context after he's reviewed the live grid. */}
-      <div className="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
-        <p className="text-11 font-semibold uppercase tracking-widest text-slate-500">
-          AgentLink summary · admin only · whole book
-        </p>
-        <AgentLinkBookTruthCard />
-        <div className="grid gap-4 lg:grid-cols-2">
-          <CarrierBreakdownCard />
-          <BookTrendCard />
+        {/* v26 audit fix: was 5-col grid (asymmetric · 4 items in 5 slots).
+            Now 2-col grid matching the stats panel beside it. */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <QuickAction icon={Users}      to="/dashboard/applicants"       label="Applicants"        desc="Review + assign" />
+          <QuickAction icon={Briefcase}  to="/dashboard/recruit-pipeline" label="Recruit pipeline"  desc="Kanban board" />
+          <QuickAction icon={Trophy}     to="/dashboard/leaderboard"      label="Leaderboard"       desc="Top producers" />
+          <QuickAction icon={Sparkles}   to="/dashboard/strikes"          label="Strikes"           desc="Conduct + strikes log" />
         </div>
       </div>
 

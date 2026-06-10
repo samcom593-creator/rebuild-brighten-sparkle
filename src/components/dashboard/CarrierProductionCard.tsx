@@ -53,20 +53,25 @@ export function BookTrendCard() {
       <CardContent className="pt-0">
         {q.isLoading ? (
           <Skeleton className="h-32 w-full" />
+        ) : (q.data ?? []).length === 0 ? (
+          <p className="text-12 text-slate-500 py-8 text-center">
+            No monthly history yet — view refreshes every 30 min.
+          </p>
         ) : (
-          <div className="flex items-end gap-1.5 h-32">
+          <div className="flex items-end gap-1.5 h-40 pt-5">
             {(q.data ?? []).map((row) => {
               const h = max > 0 ? Math.max(4, (Number(row.premium ?? 0) / max) * 100) : 4;
               const dt = parseISO(row.month);
               return (
                 <div key={row.month} className="flex-1 flex flex-col items-center gap-1 min-w-0 group">
                   <div className="w-full flex flex-col items-center">
-                    <span className="text-11 text-slate-500 mb-0.5 opacity-0 group-hover:opacity-100 whitespace-nowrap">
+                    <span className="text-11 text-slate-700 dark:text-slate-200 mb-0.5 font-semibold whitespace-nowrap tabular-nums">
                       {money(row.premium)}
                     </span>
                     <div
                       className="w-full bg-emerald-500 rounded-t transition-base"
                       style={{ height: `${h}%`, minHeight: 4 }}
+                      title={`${format(dt, "MMM yyyy")} · ${row.deals} deals · ${money(row.premium)}`}
                     />
                   </div>
                   <span className="text-11 text-slate-500">{format(dt, "MMM")}</span>

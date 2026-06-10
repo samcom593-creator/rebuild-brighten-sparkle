@@ -1108,6 +1108,32 @@ function AgencyCommandView() {
     },
   });
 
+  // Wave B v9: apex_dashboard_summary() — single round-trip truth source for
+  // today/week/month $ and deals. Reads v_agentlink_book_truth, NOT the
+  // stale apex deals table. Per v9 §12 check 9: every $ must come from
+  // AgentLink. Rendered as the hero row above the period-aware KPI grid.
+  const summary = useQuery({
+    queryKey: ["apex-dashboard-summary"],
+    refetchInterval: 60_000,
+    staleTime: 55_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("apex_dashboard_summary" as any);
+      if (error) throw error;
+      return data as {
+        today: { deals: number; premium: number };
+        this_week: { deals: number; premium: number };
+        this_month: { deals: number; premium: number };
+        total: { deals: number; premium: number };
+        last_sync_at: string | null;
+        new_apps_today: number;
+        new_agents_today: number;
+        just_hired_7d: number;
+        stale_apps_14d: number;
+        inbound_open: number;
+      };
+    },
+  });
+
   const c = ceo.data;
   const ap30 = Number(c?.ap_30d ?? 0);
 
@@ -1188,6 +1214,37 @@ function AgencyCommandView() {
           </div>
         </div>
       </GlassCard>
+
+      {/* ── Wave B v9: AgentLink TRUTH row (today / week / month) ────
+          Single round-trip via apex_dashboard_summary(). Mirrors v9 §3
+          mockup: TODAY · THIS WEEK · THIS MONTH. Every $ here comes from
+          v_agentlink_book_truth, not the stale apex deals table. */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <KpiTile
+          icon={DollarSign}
+          label="Today · AgentLink"
+          value={fmtUsd(Number(summary.data?.today.premium ?? 0))}
+          subValue={`${fmtNum(Number(summary.data?.today.deals ?? 0))} deals posted today · book ${fmtUsd(Number(summary.data?.total.premium ?? 0), true)}`}
+          color="text-emerald-500 dark:text-emerald-400"
+          loading={summary.isLoading}
+        />
+        <KpiTile
+          icon={TrendingUp}
+          label="This Week · AgentLink"
+          value={fmtUsd(Number(summary.data?.this_week.premium ?? 0))}
+          subValue={`${fmtNum(Number(summary.data?.this_week.deals ?? 0))} deals this week · sync ${summary.data?.last_sync_at ? format(new Date(summary.data.last_sync_at), "MMM d, h:mm a") : "—"}`}
+          color="text-amber-500 dark:text-amber-400"
+          loading={summary.isLoading}
+        />
+        <KpiTile
+          icon={Trophy}
+          label="This Month · AgentLink"
+          value={fmtUsd(Number(summary.data?.this_month.premium ?? 0))}
+          subValue={`${fmtNum(Number(summary.data?.this_month.deals ?? 0))} deals MTD · ${fmtNum(summary.data?.just_hired_7d ?? 0)} just hired (7d) · ${fmtNum(summary.data?.stale_apps_14d ?? 0)} stale`}
+          color="text-primary"
+          loading={summary.isLoading}
+        />
+      </div>
 
       {/* ── 4 KPI TILES (real verified numbers) ─────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

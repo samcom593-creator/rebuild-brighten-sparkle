@@ -14,6 +14,10 @@ import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr } from "@/lib/dealTruth";
 
 type Period = "daily" | "weekly" | "monthly" | "custom";
 type Board = "production" | "recruiting" | "referrals" | "activity";
+// Wave B v9 §3/§12 check 8: Top Producing Leg sub-view EXCLUDES Sam James'
+// leg (so it surfaces actual downline managers, not Sam swallowing every
+// agency-wide deal). Toggled inside the Production board only.
+type ProductionMode = "individuals" | "top_legs";
 type Row = {
   rank: number;
   agent_id: string;
@@ -22,6 +26,8 @@ type Row = {
   tertiary: number;
   agent_name: string | null;
   avatar_url: string | null;
+  // top_legs mode only — number of agents inside the leg
+  leg_size?: number;
 };
 
 const RANK_ICONS: Record<number, { icon: typeof Crown; color: string }> = {
@@ -76,6 +82,7 @@ function pickOwner(row: any): string | null {
 export default function Leaderboard() {
   const [period, setPeriod] = useState<Period>("weekly");
   const [board, setBoard] = useState<Board>("production");
+  const [productionMode, setProductionMode] = useState<ProductionMode>("individuals");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
@@ -138,6 +145,38 @@ export default function Leaderboard() {
     try {
       const grouped = new Map<string, { primary: number; secondary: number; tertiary: number }>();
       let syncAt: string | null = null;
+
+      if (board === "production" && productionMode === "top_legs") {
+        // Wave B v9: read v_top_legs_excl_sam — manager-rolled-up book from
+        // agentlink_deals_snapshot, excluding Sam's leg. RPC-level guard:
+        // the view itself excludes Sam (agent.id 7c3c5581…) so the client
+        // can't accidentally include him by forgetting a filter.
+        const { data: legs } = await supabase
+          .from("v_top_legs_excl_sam" as any)
+          .select("manager_id, manager_name, deals, premium, leg_size")
+          .order("premium", { ascending: false })
+          .limit(50);
+        const built: Row[] = ((legs ?? []) as Array<{
+          manager_id: string;
+          manager_name: string | null;
+          deals: number | string;
+          premium: number | string;
+          leg_size: number | string;
+        }>).map((leg, index) => ({
+          rank: index + 1,
+          agent_id: leg.manager_id,
+          primary: Number(leg.premium ?? 0),
+          secondary: Number(leg.deals ?? 0),
+          tertiary: Number(leg.leg_size ?? 0),
+          agent_name: leg.manager_name,
+          avatar_url: null,
+          leg_size: Number(leg.leg_size ?? 0),
+        }));
+        setRows(built);
+        setLastUpdatedAt(new Date().toISOString());
+        setLoading(false);
+        return;
+      }
 
       if (board === "production") {
         const [{ data: dealRows }, { data: syncRow }] = await Promise.all([
@@ -256,7 +295,7 @@ export default function Leaderboard() {
     } finally {
       setLoading(false);
     }
-  }, [board, bounds.endIso, bounds.startIso, buildRows]);
+  }, [board, productionMode, bounds.endIso, bounds.startIso, buildRows]);
 
   useEffect(() => {
     load();
@@ -281,6 +320,14 @@ export default function Leaderboard() {
   // managers can see whether a leader is winning on volume or on premium
   // size. Other boards keep their existing breakdown shape.
   function subValue(row: Row): string {
+    if (board === "production" && productionMode === "top_legs") {
+      const deals = row.secondary;
+      const size = row.leg_size ?? 0;
+      const sizeLabel = `${size} agent${size === 1 ? "" : "s"} in leg`;
+      if (deals === 0) return `${sizeLabel} · 0 deals via AgentLink yet`;
+      const avg = row.primary / deals;
+      return `${sizeLabel} · ${deals} deal${deals === 1 ? "" : "s"} · avg ${formatMoney(avg)}`;
+    }
     if (board === "production") {
       const deals = row.secondary;
       if (deals === 0) return "0 deals";
@@ -308,7 +355,12 @@ export default function Leaderboard() {
         )}
       />
 
-      <p className="text-xs text-muted-foreground">{sourceHint}</p>
+      <p className="text-xs text-muted-foreground">
+        {sourceHint}
+        {board === "production" && productionMode === "top_legs" && (
+          <> · Top Producing Leg sources v_top_legs_excl_sam (AgentLink book, excludes Sam's leg).</>
+        )}
+      </p>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <Tabs value={board} onValueChange={(value) => setBoard(value as Board)}>
@@ -319,6 +371,14 @@ export default function Leaderboard() {
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
         </Tabs>
+        {board === "production" && (
+          <Tabs value={productionMode} onValueChange={(value) => setProductionMode(value as ProductionMode)}>
+            <TabsList>
+              <TabsTrigger value="individuals">Individuals</TabsTrigger>
+              <TabsTrigger value="top_legs">Top Producing Leg (excl. Sam)</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <Tabs value={period} onValueChange={(value) => setPeriod(value as Period)}>
             <TabsList>

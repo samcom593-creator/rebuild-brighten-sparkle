@@ -98,7 +98,7 @@ export function AbandonedLeadsPanel() {
   const getStepBadge = (step: number) => {
     const colors = [
       "bg-red-500/20 text-red-400 border-red-500/30",
-      "bg-orange-500/20 text-amber-500 border-orange-500/30",
+      "bg-rose-500/20 text-amber-500 border-rose-500/30",
       "bg-amber-500/20 text-amber-400 border-amber-500/30",
       "bg-yellow-500/20 text-amber-500 border-yellow-500/30",
       "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",

@@ -46,7 +46,7 @@ const progressColors: Record<LicenseProgress, string> = {
   test_scheduled: "bg-purple-500/20 text-purple-400 border-purple-500/30",
   passed_test: "bg-violet-500/20 text-primary border-violet-500/30",
   fingerprints_done: "bg-teal-500/20 text-teal-400 border-teal-500/30",
-  waiting_on_license: "bg-orange-500/20 text-amber-500 border-orange-500/30",
+  waiting_on_license: "bg-rose-500/20 text-amber-500 border-rose-500/30",
   licensed: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
 };
 

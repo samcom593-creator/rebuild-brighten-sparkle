@@ -33,7 +33,7 @@ type Row = {
 const RANK_ICONS: Record<number, { icon: typeof Crown; color: string }> = {
   1: { icon: Crown, color: "text-amber-400" },
   2: { icon: Medal, color: "text-slate-600 dark:text-slate-300" },
-  3: { icon: Medal, color: "text-orange-400" },
+  3: { icon: Medal, color: "text-rose-500" },
 };
 
 const BOARD_META: Record<Board, { label: string; icon: typeof Crown; source: string }> = {
@@ -428,7 +428,7 @@ export default function Leaderboard() {
                         : row.rank === 2
                         ? "bg-slate-300/10 ring-1 ring-slate-300/40"
                         : row.rank === 3
-                        ? "bg-orange-400/10 ring-1 ring-orange-300/40"
+                        ? "bg-rose-500/10 ring-1 ring-orange-300/40"
                         : "";
                     return (
                       <div

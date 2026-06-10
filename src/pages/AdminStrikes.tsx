@@ -30,11 +30,14 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
+// v26 audit fix: severity was 5-color rainbow (amber/orange/rose/red-600).
+// Collapsed to AgentLink 2-color palette · amber (lighter severities) +
+// rose (heavier severities). Same visual hierarchy, no rainbow.
 const SEVERITY_LABEL: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  warning:  { label: "Warning",  color: "bg-amber-500/15 text-amber-400 border-amber-500/40",   icon: AlertTriangle },
-  minor:    { label: "Minor",    color: "bg-orange-500/15 text-orange-400 border-orange-500/40", icon: ShieldAlert },
-  major:    { label: "Major",    color: "bg-rose-500/15 text-rose-400 border-rose-500/40",      icon: Flame },
-  terminal: { label: "Terminal", color: "bg-red-600/20 text-red-300 border-red-600/50",         icon: Skull },
+  warning:  { label: "Warning",  color: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30", icon: AlertTriangle },
+  minor:    { label: "Minor",    color: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30", icon: ShieldAlert },
+  major:    { label: "Major",    color: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30",     icon: Flame },
+  terminal: { label: "Terminal", color: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30",     icon: Skull },
 };
 
 const REASON_OPTIONS = [

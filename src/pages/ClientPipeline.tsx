@@ -13,6 +13,7 @@
 //   7. Full client list — search, stage filter, sort
 
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -103,6 +104,7 @@ function fmtPhone(p: string | null): string {
 
 export default function ClientPipeline() {
   usePageTitle("Client Pipeline · APEX");
+  const navigate = useNavigate();
   const { user, isAdmin, isManager } = useAuth();
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("__all__");
@@ -283,7 +285,8 @@ export default function ClientPipeline() {
         <Kpi icon={Users}        label="Total clients"      value={stats.total}    sub={`+${stats.new7d} new this week`}                      color="text-foreground" loading={isLoading} />
         <Kpi icon={ShieldCheck}  label="Sold policies"      value={stats.sold}     sub={`${stats.total ? ((stats.sold / stats.total) * 100).toFixed(0) : 0}% of book`} color="text-emerald-500 dark:text-emerald-400" loading={isLoading} />
         <Kpi icon={Flame}        label="Working on it"      value={stats.inFlight} sub="working + pitched + almost"                            color="text-amber-500 dark:text-amber-400" loading={isLoading} />
-        <Kpi icon={CalendarClock} label="Chargebacks · 7d"   value={stats.callbacksDue} sub="watch list (wiring period filter next)"            color="text-rose-500 dark:text-rose-400" loading={isLoading} />
+        {/* v26 audit fix: label said 'Chargebacks · 7d' but value was wired to callbacksDue (callback_date in next 24h). Label corrected. */}
+        <Kpi icon={CalendarClock} label="Callbacks · 24h"   value={stats.callbacksDue} sub="upcoming callback windows"            color="text-rose-500 dark:text-rose-400" loading={isLoading} />
       </div>
 
       {/* Stage funnel + state distribution */}
@@ -520,10 +523,10 @@ export default function ClientPipeline() {
                 <div
                   key={c.id}
                   className="flex items-center gap-3 rounded-lg border border-border/40 px-3 py-2.5 hover:border-primary/40 hover:bg-primary/[0.03] transition-base cursor-pointer"
-                  onClick={() => { window.location.href = `/dashboard/clients/${c.id}`; }}
+                  onClick={() => navigate(`/dashboard/clients/${c.id}`)}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === "Enter") window.location.href = `/dashboard/clients/${c.id}`; }}
+                  onKeyDown={(e) => { if (e.key === "Enter") navigate(`/dashboard/clients/${c.id}`); }}
                 >
                   <div className="h-9 w-9 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold shrink-0">
                     {(c.first_name?.[0] ?? "?") + (c.last_name?.[0] ?? "")}

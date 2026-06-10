@@ -1028,8 +1028,12 @@ function AgencyCommandView() {
     };
   }, [periodDeals.data]);
 
+  // v26 audit fix: was querying LEGACY deals table while the headline KPI
+  // uses agentlink_deals_snapshot. The delta % was dividing snapshot-truth
+  // current AP by legacy-stale prior AP — wrong baseline. Now both sides
+  // read from agentlink_deals_snapshot via effective_date.
   const priorPeriodDeals = useQuery({
-    queryKey: ["agency-prior-period-deals", periodBounds.startIso, periodBounds.endIso],
+    queryKey: ["agency-prior-period-deals-truth", periodBounds.startIso, periodBounds.endIso],
     refetchInterval: 120_000,
     staleTime: 115_000,
     queryFn: async () => {
@@ -1039,10 +1043,10 @@ function AgencyCommandView() {
       const priorStart = new Date(start.getTime() - lengthMs);
       const priorEnd = new Date(start.getTime());
       const { data, error } = await supabase
-        .from("deals" as any)
+        .from("agentlink_deals_snapshot" as any)
         .select("annual_premium")
-        .or(dealTruthWindowOr(priorStart.toISOString(), priorEnd.toISOString()))
-        .in("status", DEAL_TRUTH_STATUS_FILTER);
+        .gte("effective_date", priorStart.toISOString().slice(0, 10))
+        .lt("effective_date", priorEnd.toISOString().slice(0, 10));
       if (error) throw error;
       return (data ?? []).reduce((sum: number, row: any) => sum + Number(row.annual_premium ?? 0), 0);
     },
@@ -1078,15 +1082,17 @@ function AgencyCommandView() {
   });
 
   // ── 30-day production trend (real daily AP + deals) ──────────────────
+  // v26 audit fix: was querying LEGACY deals table. Headline KPI uses
+  // agentlink_deals_snapshot · the chart should match. Now reads truth.
   const trend = useQuery({
-    queryKey: ["agency-trend", periodBounds.startIso, periodBounds.endIso],
+    queryKey: ["agency-trend-truth", periodBounds.startIso, periodBounds.endIso],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("deals")
-        .select("posted_at, created_at, annual_premium, status")
-        .or(dealTruthWindowOr(periodBounds.startIso, periodBounds.endIso))
-        .in("status", DEAL_TRUTH_STATUS_FILTER)
-        .order("posted_at", { ascending: true });
+        .from("agentlink_deals_snapshot" as any)
+        .select("effective_date, annual_premium")
+        .gte("effective_date", periodBounds.startIso.slice(0, 10))
+        .lte("effective_date", periodBounds.endIso.slice(0, 10))
+        .order("effective_date", { ascending: true });
       if (error) throw error;
       // Bucket days between start and end (cap at 90)
       const startMs = new Date(periodBounds.startIso).getTime();
@@ -1097,10 +1103,10 @@ function AgencyCommandView() {
         const k = new Date(startMs + i * 86_400_000).toISOString().slice(0, 10);
         map.set(k, { deals: 0, ap: 0 });
       }
-      for (const d of (data ?? []) as Array<{ posted_at: string | null; created_at: string | null; annual_premium: number | string }>) {
-        const ts = getDealTruthTimestamp(d);
-        if (!ts) continue;
-        const k = ts.slice(0, 10);
+      // v26 audit fix: agentlink_deals_snapshot uses effective_date directly
+      for (const d of (data ?? []) as Array<{ effective_date: string | null; annual_premium: number | string }>) {
+        if (!d.effective_date) continue;
+        const k = d.effective_date.slice(0, 10);
         const bucket = map.get(k);
         if (bucket) {
           bucket.deals += 1;

@@ -154,7 +154,7 @@ export function TerminatedAgentLeadsPanel() {
 
   if (loading) {
     return (
-      <GlassCard className="p-6 border border-orange-500/30 bg-orange-500/5">
+      <GlassCard className="p-6 border border-rose-500/30 bg-rose-500/5">
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
         </div>
@@ -163,14 +163,14 @@ export function TerminatedAgentLeadsPanel() {
   }
 
   return (
-    <GlassCard className="p-6 border border-orange-500/30 bg-orange-500/5">
+    <GlassCard className="p-6 border border-rose-500/30 bg-rose-500/5">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div className="flex items-center justify-between mb-4">
           <CollapsibleTrigger asChild>
             <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <UserX className="h-5 w-5 text-amber-500" />
               <h3 className="text-lg font-semibold">Terminated Agent Leads</h3>
-              <Badge variant="outline" className="bg-orange-500/20 text-amber-500 border-orange-500/30 ml-2">
+              <Badge variant="outline" className="bg-rose-500/20 text-amber-500 border-rose-500/30 ml-2">
                 {leads.length} Orphaned
               </Badge>
             </button>
@@ -255,7 +255,7 @@ export function TerminatedAgentLeadsPanel() {
                           currentAgentId={lead.formerAgentId}
                           onAssigned={handleLeadReassigned}
                           displayMode="icon"
-                          className="text-amber-500 hover:text-orange-300 hover:bg-orange-500/10"
+                          className="text-amber-500 hover:text-rose-500 hover:bg-rose-500/10"
                         />
                       </TableCell>
                     </TableRow>

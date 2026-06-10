@@ -178,3 +178,28 @@ if match '^(src/(pages|components/(dashboard|landing|recruiter|admin|agent|award
   echo "[pre-commit] Tracked component-tree change — running check:shadow-areas…"
   node scripts/check-shadow-areas.mjs
 fi
+
+# ---------- check-motion-areas (wave-67) ----------
+# Trigger: any change in the 22 wave-67-tracked component trees (same set as
+# wave-65's shadow ratchet — pages + dashboard + landing + recruiter + 18
+# v24/v25-cleaned sibling trees), or the script itself.
+# Mechanic: ratchets v22 §10 motion-fast budget violations per area at the
+# measured floor at lock time (HEAD 85ec4826). Counts arbitrary
+# `duration-[Xms]` where X > 200 + Tailwind defaults
+# `duration-(300|500|700|1000|1500|2000)`. The budget is 120ms (--motion-fast
+# token); --motion-base ceiling is 200ms. `duration-75/100/150/200` are inside
+# the budget and not counted. Default `transition-colors` (no duration class)
+# is not counted either — Tailwind's 150ms default is inside the budget.
+# Why this matters: AgentLink/Cursor/Linear all sit at 120-180ms because
+# that's the perceptual ceiling for "instant response". Sam's site has dozens
+# of `transition-all duration-300` reaches because that's Tailwind's first
+# suggested ladder beyond `duration-100`. No gate watched motion until now.
+# Same persistence-mandate drift class as the bg-gradient + shadow ratchets.
+# Cost when fired: ~120ms (linear in tracked-area file count).
+# Opt-in marker per line for legitimate progress-bar fills, animation timing,
+# or brand-decor stroke draws: `motion-budget-allow:<reason>` same-line or
+# line directly above.
+if match '^(src/(pages|components/(dashboard|landing|recruiter|admin|agent|awards|callcenter|celebrations|command|contentwheel|course|crm|deals|finances|layout|next-step|pipeline|plaque|profile|system-health|ui))/.+\.(tsx?|jsx?)$|scripts/check-motion-areas\.mjs$)'; then
+  echo "[pre-commit] Tracked component-tree change — running check:motion-areas…"
+  node scripts/check-motion-areas.mjs
+fi

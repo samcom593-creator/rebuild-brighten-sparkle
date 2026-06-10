@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ScheduledCall {
   id: number;
@@ -205,7 +206,7 @@ function CallRow({ call, onStart }: { call: ScheduledCall; onStart: (c: Schedule
               {CALL_TYPE_LABEL[call.call_type] ?? "Call"}
             </Badge>
             {imminent && (
-              <Badge className="bg-emerald-500 text-white text-11 animate-pulse">
+              <Badge className="bg-emerald-500 text-white text-11">
                 in {minutesAway}m
               </Badge>
             )}

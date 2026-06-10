@@ -277,7 +277,12 @@ export default function AgentCommandDashboard() {
   const dayOfMonth = today.getDate();
   const monthProgressPct = (dayOfMonth / daysInMonth) * 100;
   const incomeGoal = Number(goal.data?.income_goal ?? 0);
-  const compPct = Number(goal.data?.comp_percentage ?? revenue.data?.contract_pct ?? 100) / 100;
+  // v26 audit fix: was falling back to 100% comp when contract not set,
+  // wildly inflating projected commission. Default to 35% (typical agent
+  // contract floor) and show a "not set" indicator instead.
+  const rawCompPct = goal.data?.comp_percentage ?? revenue.data?.contract_pct;
+  const hasCompSet = rawCompPct !== null && rawCompPct !== undefined;
+  const compPct = (hasCompSet ? Number(rawCompPct) : 35) / 100;
   const monthApProjected = dayOfMonth > 0 ? (apMtd / dayOfMonth) * daysInMonth : 0;
   const monthCommissionProjected = monthApProjected * compPct;
   const goalProgressPct = incomeGoal > 0

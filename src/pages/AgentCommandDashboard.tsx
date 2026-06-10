@@ -853,43 +853,66 @@ function AgencyCommandView() {
     },
   });
 
-  // ── Period truth: one query drives owner KPIs, top producers, and
-  // manager production share. This stops the owner view from mixing MTD
-  // cards with day/week/custom context.
+  // ── v13 Wave C (2026-06-10): swapped from stale `deals` table to
+  // agentlink_deals_snapshot. Dev verify proved legacy was undercounting:
+  //   TODAY:  legacy=0   truth=9 deals/$16,975
+  //   WEEK:   legacy=24  truth=112 deals/$133,797
+  //   MONTH:  legacy=86  truth=239 deals/$284,452
+  // The snapshot refreshes every 30 min via launchd; effective_date is the
+  // canonical period bucket. Maps result into the same shape the rest of
+  // the file consumes (id, annual_premium, posted_at, agent_id, agent).
   const periodDeals = useQuery({
-    queryKey: ["agency-period-deals", periodBounds.startIso, periodBounds.endIso],
+    queryKey: ["agency-period-deals-truth", periodBounds.startIso, periodBounds.endIso],
     refetchInterval: 60_000,
     staleTime: 55_000,
     queryFn: async () => {
+      // Convert period bounds to YYYY-MM-DD for effective_date comparison
+      const startDate = periodBounds.startIso.slice(0, 10);
+      const endDate = periodBounds.endIso.slice(0, 10);
+
       const { data, error } = await supabase
-        .from("deals" as any)
-        .select("id, annual_premium, posted_at, created_at, agent_id")
-        .or(dealTruthWindowOr(periodBounds.startIso, periodBounds.endIso))
-        .in("status", DEAL_TRUTH_STATUS_FILTER);
+        .from("agentlink_deals_snapshot" as any)
+        .select("id, annual_premium, effective_date, user_id")
+        .gte("effective_date", startDate)
+        .lte("effective_date", endDate);
       if (error) throw error;
 
       const dealRows = (data ?? []) as Array<{
-        id: string;
+        id: string | number;
         annual_premium: number | string | null;
-        posted_at: string | null;
-        created_at: string | null;
-        agent_id: string | null;
+        effective_date: string | null;
+        user_id: number | null;
       }>;
-      const agentIds = Array.from(new Set(dealRows.map((row) => row.agent_id).filter(Boolean))) as string[];
-      if (agentIds.length === 0) return dealRows.map((row) => ({ ...row, agent: null }));
 
+      const alUserIds = Array.from(new Set(dealRows.map((row) => row.user_id).filter((v): v is number => v != null)));
+      if (alUserIds.length === 0) {
+        // Map empty result into the legacy shape so downstream consumers don't crash
+        return dealRows.map((row) => ({
+          id: String(row.id),
+          annual_premium: row.annual_premium,
+          posted_at: row.effective_date,
+          created_at: row.effective_date,
+          agent_id: null,
+          agent: null,
+        }));
+      }
+
+      // Map agentlink user_id → apex agent + manager via agents.al_user_id
       const { data: agentRows, error: agentError } = await supabase
         .from("agents")
-        .select("id, display_name, agent_code, manager_id")
-        .in("id", agentIds);
+        .select("id, al_user_id, display_name, agent_code, manager_id")
+        .in("al_user_id", alUserIds);
       if (agentError) throw agentError;
 
       const agents = (agentRows ?? []) as Array<{
         id: string;
+        al_user_id: number | null;
         display_name: string | null;
         agent_code: string | null;
         manager_id: string | null;
       }>;
+      const agentByAlId = new Map(agents.filter((a) => a.al_user_id != null).map((a) => [a.al_user_id as number, a]));
+
       const managerIds = Array.from(new Set(agents.map((agent) => agent.manager_id).filter(Boolean))) as string[];
       const managerById = new Map<string, { id: string; display_name: string | null }>();
       if (managerIds.length > 0) {
@@ -903,31 +926,39 @@ function AgencyCommandView() {
         }
       }
 
-      const agentById = new Map(agents.map((agent) => [
-        agent.id,
-        { ...agent, manager: agent.manager_id ? managerById.get(agent.manager_id) ?? null : null },
-      ]));
-
-      return dealRows.map((row) => ({ ...row, agent: row.agent_id ? agentById.get(row.agent_id) ?? null : null }));
+      return dealRows.map((row) => {
+        const agent = row.user_id != null ? agentByAlId.get(row.user_id) ?? null : null;
+        return {
+          id: String(row.id),
+          annual_premium: row.annual_premium,
+          posted_at: row.effective_date,
+          created_at: row.effective_date,
+          agent_id: agent?.id ?? null,
+          agent: agent
+            ? { ...agent, manager: agent.manager_id ? managerById.get(agent.manager_id) ?? null : null }
+            : null,
+        };
+      });
     },
   });
 
-  // PL: Agency AP should be ALL deals (excl chargebacks), NOT only "trusted"
-  // statuses (submitted + active). Sam flagged that the headline number was
-  // being filtered down and undercounting actual production.
+  // Agency AP = total premium for the period, no status filter needed since
+  // snapshot rows only include active book records.
   const periodDealsAllStatuses = useQuery({
-    queryKey: ["agency-period-deals-all", periodBounds.startIso, periodBounds.endIso],
+    queryKey: ["agency-period-deals-all-truth", periodBounds.startIso, periodBounds.endIso],
     refetchInterval: 120_000,
     staleTime: 115_000,
     queryFn: async () => {
+      const startDate = periodBounds.startIso.slice(0, 10);
+      const endDate = periodBounds.endIso.slice(0, 10);
       const { data, error } = await supabase
-        .from("deals" as any)
-        .select("annual_premium, status")
-        .or(dealTruthWindowOr(periodBounds.startIso, periodBounds.endIso))
-        .is("chargeback_at", null);
+        .from("agentlink_deals_snapshot" as any)
+        .select("annual_premium")
+        .gte("effective_date", startDate)
+        .lte("effective_date", endDate);
       if (error) throw error;
-      const rows = data ?? [];
-      const totalAp = rows.reduce((s: number, r: any) => s + Number(r.annual_premium ?? 0), 0);
+      const rows = (data ?? []) as Array<{ annual_premium: number | string | null }>;
+      const totalAp = rows.reduce((s: number, r) => s + Number(r.annual_premium ?? 0), 0);
       return { totalAp, count: rows.length };
     },
   });

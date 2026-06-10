@@ -127,6 +127,36 @@ function fmtCallTimer(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+// v25 SWITCH CENTER SCRIPT · Sam's live call playbook (provided 2026-06-10)
+// Shown in the New Client dialog so Sam sees the next prompt + has
+// one-tap-to-notes cheat-sheet rebuttals for the 7 common situations.
+const SWITCH_CENTER_SCRIPT: Array<{ step: string; prompt: string }> = [
+  { step: "Open",          prompt: "This is Samuel with the policy adjustment center · who I have the pleasure of speaking with today?" },
+  { step: "Product",       prompt: "Is it a whole life policy or term?" },
+  { step: "Reason",        prompt: "How can I assist you today?" },
+  { step: "Pull profile",  prompt: "Okay perfect · let me pull up your profile · can you confirm the spelling of your first and last name?" },
+  { step: "DOB",           prompt: "And then perfect · what's your DOB?" },
+  { step: "Monthly",       prompt: "Approximately how much were they charging you a month?" },
+  { step: "Address",       prompt: "And the address on file?" },
+];
+
+const SWITCH_CENTER_REBUTTALS: Array<{ trigger: string; response: string }> = [
+  { trigger: "Missed payment",
+    response: "Yes I see that and we sent you over a lapse notice in the mail · good news is we can get this updated for you and I see a note here that you were eligible for the preferred option which should drop down the payment · I'll have the billing department explain that to you." },
+  { trigger: "Is this {Carrier}?",
+    response: "This is the switch center to help you avoid long wait times. (NOW GO BACK TO THE QUESTIONS)" },
+  { trigger: "Policy packet missing",
+    response: "Okay · I do see here that for beneficiary there's nothing here, we do need to get you one so we don't have to do a lost policy statement · but also I see that you were marked as standard health not preferred but on my end it shows you're eligible · let's get all this fixed. Let me transfer you over." },
+  { trigger: "Cancellation",
+    response: "Okay and what was the reason for the cancellation · well that makes sense you have been overpaying · you were supposed to be in the preferred option · let's reduce that payment so you can keep the cash value." },
+  { trigger: "Change address",
+    response: "Okay perfect · I see here that we do need to update this because we've been sending letters in the mail · have you not received them? You were supposed to be in the preferred option and it should've saved you some money · I'm going to have the correct department fix the address and put you on the preferred option. One moment let me transfer you." },
+  { trigger: "Change banking",
+    response: "Yes I see here that it looks like you're not on automatic draft · we're going to switch it to automatic billing and it should drop down your payment as well · but give me one moment let me transfer you to the billing department." },
+  { trigger: "Change beneficiary",
+    response: "Yes let me get you to the right department but before I do that I see a note that we've been sending you letters in the mail that you were supposed to be in the preferred option. Did you receive those letters? Well let me get this transferred out to the right department to put you in the preferred option and change the beneficiary as well as we get you a new policy packet in the mail so you see the change." },
+];
+
 // v25 area-code → state hint table (top 200 NANP area codes).
 // Used to suggest a state when Sam types the phone number and the
 // state slot is still empty. Compact map — not authoritative, just a
@@ -482,6 +512,59 @@ export default function InboundLeads() {
   const updateForm = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
+
+  // v25 GOOGLE VOICE INSTANT FILL
+  // When the New Client dialog opens, try to read the clipboard. If the
+  // clipboard contains a US phone number (Sam copies it from Google Voice
+  // when the call rings — Cmd+C on the caller ID), pre-fill the phone
+  // field, infer state from area code, and open TruePeopleSearch in a
+  // background tab automatically. Zero manual typing for the most common
+  // workflow.
+  const pullFromClipboard = useCallback(async () => {
+    if (typeof navigator === "undefined" || !navigator.clipboard?.readText) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      // Match 10-digit US phone in any common format (with or without country code)
+      const m = text.match(/(?:\+?1[\s.-]?)?\(?([2-9]\d{2})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/);
+      if (!m) return;
+      const fullPhone = `(${m[1]}) ${m[2]}-${m[3]}`;
+      const inferred = inferStateFromPhone(fullPhone);
+      setForm((prev) => ({
+        ...prev,
+        phone: prev.phone.trim() ? prev.phone : fullPhone,
+        state: prev.state.trim() ? prev.state : (inferred ?? prev.state),
+      }));
+      toast.success(`📋 Pulled ${fullPhone} from clipboard${inferred ? ` · ${inferred}` : ""}`);
+      // Auto-open TPS in background tab so by the time Sam looks, results are loaded
+      const digits = fullPhone.replace(/\D/g, "");
+      window.open(`https://www.truepeoplesearch.com/results?phoneno=${digits}`, "_blank", "noopener,noreferrer");
+    } catch {
+      // permission denied, private mode, etc — silent
+    }
+  }, []);
+
+  // Trigger clipboard pull whenever the New Client dialog opens
+  useEffect(() => {
+    if (!newClientOpen) return;
+    // Tiny delay so the dialog has time to grant focus first
+    const t = setTimeout(() => { void pullFromClipboard(); }, 150);
+    return () => clearTimeout(t);
+  }, [newClientOpen, pullFromClipboard]);
+
+  // v25 GLOBAL HOTKEY: Cmd+Shift+N (or Ctrl+Shift+N) opens New Client +
+  // pulls clipboard in one shot. Sam's GV rings → Cmd+C the number →
+  // Cmd+Shift+N → form is filled + TPS tab opens.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (isMod && e.shiftKey && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        setNewClientOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const startListening = async () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -862,6 +945,18 @@ export default function InboundLeads() {
             <DialogDescription>
               Capture the caller while they are live, then move them through the client solution board.
             </DialogDescription>
+            {/* v25 Google Voice instant-fill banner · runs auto on open · button is the manual fallback */}
+            <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-900/10 px-3 py-2">
+              <p className="text-12 text-amber-700 dark:text-amber-300">
+                <span className="font-semibold">📋 Google Voice tip:</span>{" "}
+                Cmd+C the caller number from GV, then{" "}
+                <kbd className="rounded border border-amber-500/40 bg-amber-100 dark:bg-amber-900/30 px-1 font-mono text-11">Cmd+Shift+N</kbd>{" "}
+                opens this dialog with phone + state pre-filled and TPS already loaded.
+              </p>
+              <Button type="button" size="sm" variant="outline" onClick={() => void pullFromClipboard()}>
+                Paste from clipboard
+              </Button>
+            </div>
           </DialogHeader>
 
           <form onSubmit={saveLead} className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
@@ -1037,22 +1132,58 @@ export default function InboundLeads() {
                 />
               </GlassCard>
 
+              {/* v25 SWITCH CENTER SCRIPT — Sam's exact opening flow,
+                  visible mid-call. Each prompt is a tap-to-copy button
+                  in case Sam wants to log what he asked verbatim. */}
               <GlassCard className="p-4" variant="subtle">
-                <p className="text-sm font-bold mb-3">Call path</p>
-                <div className="space-y-3 text-sm">
-                  {[
-                    "Identify problem and urgency",
-                    "Confirm state, budget, household, current coverage",
-                    "Pick solution lane",
-                    "Set next action before hanging up",
-                  ].map((item, index) => (
-                    <div key={item} className="flex items-center gap-3 text-muted-foreground">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                        {index + 1}
+                <p className="text-sm font-bold mb-3 flex items-center justify-between">
+                  <span>Switch Center · script</span>
+                  <span className="text-11 text-muted-foreground font-normal">tap to copy</span>
+                </p>
+                <ol className="space-y-2 text-13">
+                  {SWITCH_CENTER_SCRIPT.map((step, idx) => (
+                    <li key={step.step} className="flex items-start gap-2">
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-11 font-bold text-primary tabular-nums">
+                        {idx + 1}
                       </span>
-                      <span>{item}</span>
-                      {index < 3 && <ArrowRight className="ml-auto h-3.5 w-3.5 text-muted-foreground/60" />}
-                    </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(step.prompt).then(
+                            () => toast.success(`Copied "${step.step}"`),
+                            () => {}
+                          );
+                        }}
+                        className="text-left text-foreground/90 hover:text-primary transition-base"
+                      >
+                        <span className="font-semibold">{step.step}:</span> {step.prompt}
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </GlassCard>
+
+              {/* v25 SWITCH CENTER REBUTTAL CHEAT SHEET — 7 common situations
+                  each one tap to append the full rebuttal to the Notes field
+                  so Sam captures the exact framing he used. */}
+              <GlassCard className="p-4" variant="subtle">
+                <p className="text-sm font-bold mb-3 flex items-center justify-between">
+                  <span>Cheat sheet · tap to add rebuttal to notes</span>
+                </p>
+                <div className="space-y-1.5">
+                  {SWITCH_CENTER_REBUTTALS.map((cs) => (
+                    <button
+                      key={cs.trigger}
+                      type="button"
+                      onClick={() => {
+                        updateForm("notes", appendNote(form.notes, `[${cs.trigger}] ${cs.response}`));
+                        toast.success(`Added: ${cs.trigger}`);
+                      }}
+                      className="w-full text-left rounded-md border border-border/60 px-2.5 py-2 hover:border-primary/40 hover:bg-primary/[0.04] transition-base"
+                    >
+                      <span className="text-12 font-semibold text-foreground">{cs.trigger}</span>
+                      <span className="block text-11 text-muted-foreground line-clamp-2 mt-0.5">{cs.response}</span>
+                    </button>
                   ))}
                 </div>
               </GlassCard>

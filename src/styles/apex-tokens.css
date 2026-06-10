@@ -85,3 +85,106 @@
 *::after {
   font-feature-settings: "tnum" 1, "ss01" 1;
 }
+
+/* ─────────────────────────────────────────────────────────────────
+ * LIGHT-THEME RESCUE LAYER (2026-06-10)
+ *
+ * 270+ components shipped with hardcoded `bg-slate-900` / `text-white`
+ * / `bg-[#1e293b]` etc. that worked fine when light was force-locked
+ * to dark. Once light became the default, those elements stayed dark
+ * while the page bg went white — the "horrible, illegible" result
+ * Sam complained about.
+ *
+ * Refactoring 270 components by hand is too risky overnight. This
+ * override layer intercepts the most common hardcoded dark color
+ * classes when light theme is active and redirects them to the
+ * proper apex.* token. Dark-theme mode (.dark) keeps the originals.
+ *
+ * Higher specificity (:root.light .class) beats single-class Tailwind
+ * utilities. !important is used sparingly only for arbitrary-value
+ * brackets which can't be over-ridden by specificity alone.
+ * ───────────────────────────────────────────────────────────────── */
+
+:root.light .bg-slate-900,
+:root.light .bg-slate-950,
+:root.light .bg-zinc-900,
+:root.light .bg-zinc-950,
+:root.light .bg-gray-900,
+:root.light .bg-gray-950,
+:root.light .bg-black,
+:root.light .bg-neutral-900,
+:root.light .bg-neutral-950 {
+  background-color: hsl(var(--apex-card)) !important;
+}
+
+:root.light .bg-slate-800,
+:root.light .bg-slate-850,
+:root.light .bg-zinc-800,
+:root.light .bg-gray-800 {
+  background-color: hsl(var(--apex-hover)) !important;
+}
+
+:root.light .text-white,
+:root.light .text-slate-100,
+:root.light .text-slate-50,
+:root.light .text-zinc-100,
+:root.light .text-gray-100 {
+  color: hsl(var(--apex-text));
+}
+
+:root.light .text-slate-200,
+:root.light .text-slate-300,
+:root.light .text-zinc-300,
+:root.light .text-gray-300 {
+  color: hsl(var(--apex-text-mute));
+}
+
+:root.light .text-slate-400,
+:root.light .text-zinc-400,
+:root.light .text-gray-400,
+:root.light .text-slate-500 {
+  color: hsl(var(--apex-text-dim));
+}
+
+:root.light .border-slate-700,
+:root.light .border-slate-800,
+:root.light .border-zinc-700,
+:root.light .border-gray-700,
+:root.light .border-white\/10,
+:root.light .border-white\/20 {
+  border-color: hsl(var(--apex-border));
+}
+
+/* Arbitrary-value Tailwind classes — must use attribute selectors + !important */
+:root.light [class*="bg-[#0f172a]"],
+:root.light [class*="bg-[#1e293b]"],
+:root.light [class*="bg-[#050b16]"],
+:root.light [class*="bg-[#030712]"],
+:root.light [class*="bg-[#0a0a0a]"] {
+  background-color: hsl(var(--apex-card)) !important;
+}
+
+/* Buttons whose `text-white` is intentional (primary emerald CTA) should
+ * keep white text. The accent button class is set to ensure this. Tailwind's
+ * `bg-primary text-primary-foreground` already handles that path. */
+:root.light .bg-primary,
+:root.light [class*="bg-emerald-"]:not([class*="text-emerald-"]) {
+  color: white;
+}
+:root.light .bg-primary > *,
+:root.light .bg-primary .text-white {
+  color: white !important;
+}
+
+/* Glass cards used a backdrop-filter that looked grimy on light bg.
+ * Override to a clean white card with subtle shadow. */
+:root.light .bg-card\/40,
+:root.light .bg-card\/50,
+:root.light .bg-card\/60,
+:root.light .bg-card\/70,
+:root.light .bg-card\/80,
+:root.light .bg-background\/45,
+:root.light .bg-background\/60 {
+  background-color: hsl(var(--apex-card));
+  backdrop-filter: none;
+}

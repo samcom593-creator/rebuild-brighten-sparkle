@@ -156,6 +156,8 @@ const ClientPipeline = lazy(() => import("./pages/ClientPipeline"));
 const InboundLeads = lazy(() => import("./pages/InboundLeads"));
 const SocialDashboard = lazy(() => import("./pages/SocialDashboard"));
 const CallsTodayCockpit = lazy(() => import("./pages/CallsTodayCockpit"));
+const ManagerCommandView = lazy(() => import("./pages/ManagerCommandView"));
+const WhaleRecruiting = lazy(() => import("./pages/WhaleRecruiting"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
 const SamHQ = lazy(() => import("./pages/admin/SamHQ"));
 const UnclaimedLeads = lazy(() => import("./pages/admin/UnclaimedLeads"));
@@ -419,6 +421,8 @@ const App = () => (
                      <Route path="/dashboard/social" element={<ProtectedRoute requireAdmin><SocialDashboard /></ProtectedRoute>} />
                      {/* v9 calls cockpit: Google Calendar → apex_scheduled_calls → pre-filled inbound */}
                      <Route path="/dashboard/calls-today" element={<ProtectedRoute><CallsTodayCockpit /></ProtectedRoute>} />
+                     {/* v18 admin-only whale recruiting tracker */}
+                     <Route path="/dashboard/whales" element={<ProtectedRoute requireAdmin><WhaleRecruiting /></ProtectedRoute>} />
                      <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
                      {/* Recruit pipeline — applicants/license/contracting flow. Was /agent-pipeline. */}
                      <Route path="/recruit-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />

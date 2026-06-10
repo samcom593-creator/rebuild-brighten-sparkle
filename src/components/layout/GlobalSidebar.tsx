@@ -120,6 +120,7 @@ export function GlobalSidebar({
       operations.push(
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
         { icon: PhoneCall, label: "Calls Today", href: "/dashboard/calls-today", special: true },
+        { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
         { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
         { icon: Users, label: "Clients", href: "/dashboard/clients" },
         { icon: Network, label: "Builders", href: "/dashboard/builders", special: true },

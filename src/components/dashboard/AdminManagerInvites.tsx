@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
+import { Skeleton } from "@/components/ui/skeleton";
 interface SignupToken {
   id: string;
   token: string;
@@ -189,7 +190,7 @@ export function AdminManagerInvites() {
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground text-sm">Loading...</p>
+        <div className="space-y-2"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
       ) : tokens.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           No invite links yet. Create one to add a new manager.

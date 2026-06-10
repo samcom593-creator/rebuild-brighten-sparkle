@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -198,7 +199,7 @@ export function LeadReassignment() {
         </h3>
 
         {isLoading ? (
-          <p className="text-muted-foreground text-sm">Loading...</p>
+          <div className="space-y-2"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>
         ) : applications.length === 0 ? (
           <p className="text-muted-foreground text-sm">No applications found.</p>
         ) : (

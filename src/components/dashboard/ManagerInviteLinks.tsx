@@ -277,7 +277,11 @@ export function ManagerInviteLinks() {
       </div>
 
       {isLoading ? (
-        <p className="text-muted-foreground text-sm">Loading...</p>
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
       ) : inviteLinks.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           No invite links yet. Create one to start tracking referrals.

@@ -126,3 +126,18 @@ if match '^(src/index\.css$|tailwind\.config\.(ts|landing\.cjs)$|src/(App|main)\
   echo "[pre-commit] Landing-CSS-affecting file staged — running check:landing-css-size…"
   node scripts/check-landing-css-size.mjs
 fi
+
+# ---------- check-bg-gradient-cards (wave-60) ----------
+# Trigger: any src/components/dashboard/ tsx|ts change, or the script itself.
+# Walks the dashboard folder and ratchets total bg-gradient-to-* instances at
+# the post-wave-59 baseline (73). Wave-59 (commit 136afa81) killed 28 muddy
+# multi-stop gradients across 18 dashboard components per v22 §10 banned-pattern;
+# without this ratchet the next dashboard component reaches for the Tailwind-
+# default `bg-gradient-to-br from-X via-Y to-Z` on a Card outer wrapper and the
+# AgentLink-crisp flat-fill discipline silently decays. Cost when fired: ~50ms.
+# Opt-in marker for legitimate medals/avatars/hero/CTA/alerts/decor:
+# `bg-gradient-card-allow:<reason>` on the same line or the line directly above.
+if match '^(src/components/dashboard/.+\.(tsx?|jsx?)$|scripts/check-bg-gradient-cards\.mjs$)'; then
+  echo "[pre-commit] Dashboard component staged — running check:bg-gradient-cards…"
+  node scripts/check-bg-gradient-cards.mjs
+fi

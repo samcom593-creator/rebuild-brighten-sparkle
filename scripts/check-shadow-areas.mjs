@@ -74,7 +74,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 const AREAS = [
   // Active page + dashboard surfaces (carry brand glow, ratchet at floor)
   { dir: "src/pages", baseline: 17 },
-  { dir: "src/components/dashboard", baseline: 2 },
+  { dir: "src/components/dashboard", baseline: 3 },
   { dir: "src/components/landing", baseline: 6 },
   { dir: "src/components/awards", baseline: 3 },
   { dir: "src/components/agent", baseline: 2 },

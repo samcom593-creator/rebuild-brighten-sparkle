@@ -137,8 +137,7 @@ export default function ReadyModeIntegration() {
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_readymode_today" as any)
-        .select("*")
+        .from("v_readymode_today" as any).select("id, agent_name, campaign_name, lead_phone, lead_first_name, lead_last_name, disposition, duration_seconds, recording_url, call_started_at, matched_application_id")
         .limit(200);
       if (error) throw error;
       return (data ?? []) as unknown as CallRow[];
@@ -150,8 +149,7 @@ export default function ReadyModeIntegration() {
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_readymode_agent_today" as any)
-        .select("*")
+        .from("v_readymode_agent_today" as any).select("agent_id, agent_name, calls_today, connects, voicemails, no_answers, hours_called")
         .order("calls_today", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as AgentRow[];
@@ -163,8 +161,7 @@ export default function ReadyModeIntegration() {
     refetchInterval: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("readymode_sync_log" as any)
-        .select("*")
+        .from("readymode_sync_log" as any).select("id, started_at, finished_at, status, pulled_count, inserted_count, matched_count, error_message")
         .order("started_at", { ascending: false })
         .limit(10);
       if (error) throw error;
@@ -177,8 +174,7 @@ export default function ReadyModeIntegration() {
     refetchInterval: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_readymode_ingest_health" as any)
-        .select("*")
+        .from("v_readymode_ingest_health" as any).select("current_mode, webhook_enabled, ingest_24h, ingest_total, last_ingest_at, status")
         .maybeSingle();
       if (error) throw error;
       return (data ?? null) as unknown as IngestHealth | null;
@@ -190,8 +186,7 @@ export default function ReadyModeIntegration() {
     refetchInterval: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_dormant_dialer_seats" as any)
-        .select("*");
+        .from("v_dormant_dialer_seats" as any).select("agent_id, agent_name, email, status, is_inactive, is_deactivated, calls_last_30d, last_call_at");
       if (error) throw error;
       return (data ?? []) as unknown as DormantSeat[];
     },

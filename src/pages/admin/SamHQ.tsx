@@ -70,8 +70,7 @@ function TodaySection({ today }: { today: string }) {
     queryKey: ["sam_today_tasks", today],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sam_daily_tasks")
-        .select("*")
+        .from("sam_daily_tasks").select("id,bucket,task_text,block_time,status,goal_tag,position")
         .eq("date", today)
         .order("position", { ascending: true });
       if (error) throw error;
@@ -249,7 +248,7 @@ function ThisWeekSection({ today }: { today: string }) {
   const { data: week } = useQuery({
     queryKey: ["sam_week_tasks"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_sam_week_tasks").select("*");
+      const { data, error } = await supabase.from("v_sam_week_tasks").select("date,done_count,total_count");
       if (error) throw error;
       return data as WeekDay[];
     },
@@ -311,8 +310,7 @@ function ShippedSection() {
     queryKey: ["sam_hq_recent_hires"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_recent_hires")
-        .select("*")
+        .from("v_recent_hires").select("first_name,full_name,hired_at,created_at")
         .limit(5);
       if (error) throw error;
       return data as Array<{ first_name?: string; full_name?: string; hired_at?: string; created_at?: string }>;
@@ -491,7 +489,7 @@ function LeaksSection() {
         supabase.from("v_unclaimed_new_apps").select("*", { count: "exact", head: true }),
         supabase.from("v_carrier_premium_data_gap").select("*", { count: "exact", head: true }),
         supabase.from("v_carrier_reconciliation").select("*", { count: "exact", head: true }).eq("status", "unreconciled"),
-        supabase.from("v_insuracloud_auth_health").select("*").limit(1),
+        supabase.from("v_insuracloud_auth_health").select("status").limit(1),
       ]);
       return {
         unclaimed: unclaimed.count ?? null,

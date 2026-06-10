@@ -106,8 +106,7 @@ export default function AdminStrikes() {
     queryKey: ["admin-strikes", statusFilter, severityFilter],
     queryFn: async () => {
       let q: any = supabase
-        .from("v_agent_strikes" as any)
-        .select("*")
+        .from("v_agent_strikes" as any).select("id,agent_id,agent_name,agent_code,reason_code,severity,description,evidence_urls,status,issued_at,expires_at,resolved_at,resolution_note,issued_by_name,resolved_by_name")
         .order("issued_at", { ascending: false })
         .limit(500);
       if (statusFilter !== "__all__") q = q.eq("status", statusFilter);
@@ -122,8 +121,7 @@ export default function AdminStrikes() {
     queryKey: ["strike-summary"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_strike_summary" as any)
-        .select("*")
+        .from("v_strike_summary" as any).select("agent_id,agent_name,agent_code,active_count,active_major,active_terminal,resolved_count,total_count,standing")
         .order("active_count", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as SummaryRow[];
@@ -134,8 +132,7 @@ export default function AdminStrikes() {
     queryKey: ["strike-trend"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_strike_trend" as any)
-        .select("*")
+        .from("v_strike_trend" as any).select("day,warnings,minor,major,terminal")
         .order("day", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as TrendRow[];
@@ -526,8 +523,7 @@ function IssueStrikeDialog({ open, onOpenChange }: IssueDialogProps) {
     enabled: open,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("strike_templates" as any)
-        .select("*")
+        .from("strike_templates" as any).select("id,slug,reason_code,severity,title,description,default_expires_days")
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
       if (error) throw error;
@@ -771,8 +767,7 @@ function AgentDrillSheet({ agentId, summary, onClose }: DrillProps) {
     enabled: !!agentId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_agent_strikes" as any)
-        .select("*")
+        .from("v_agent_strikes" as any).select("id,agent_id,reason_code,severity,description,status,issued_at,resolution_note")
         .eq("agent_id", agentId!)
         .order("issued_at", { ascending: false });
       if (error) throw error;

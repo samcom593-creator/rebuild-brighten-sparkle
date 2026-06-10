@@ -131,7 +131,7 @@ export default function TelegramBot() {
     refetchInterval: 30_000,
     staleTime: 25_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_telegram_dashboard").select("*").maybeSingle();
+      const { data, error } = await supabase.from("v_telegram_dashboard").select("total_users,dau,wau,lobby,applied_unpaid,applied_paid,call_scheduled,studying,exam_scheduled,licensed_unhired,hired,onboarding,active_agents,stale_7d,open_escalations,upcoming_nudges_24h,inbound_24h,outbound_24h").maybeSingle();
       if (error) throw error;
       return data as Dashboard | null;
     },
@@ -142,7 +142,7 @@ export default function TelegramBot() {
     refetchInterval: 60_000,
     staleTime: 55_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_telegram_funnel").select("*");
+      const { data, error } = await supabase.from("v_telegram_funnel").select("stage,count,pct");
       if (error) throw error;
       return (data as any[]) ?? [];
     },
@@ -153,7 +153,7 @@ export default function TelegramBot() {
     refetchInterval: 60_000,
     staleTime: 55_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_telegram_stuck_users").select("*").limit(50);
+      const { data, error } = await supabase.from("v_telegram_stuck_users").select("chat_id,first_name,username,stage,days_stale,already_escalated").limit(50);
       if (error) throw error;
       return (data as any[]) ?? [];
     },

@@ -161,8 +161,7 @@ export default function AgentCommandDashboard() {
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_agent_command_center" as any)
-        .select("*")
+        .from("v_agent_command_center" as any).select("agent_id,agent_code,display_name,full_name,license_status,manager_name,onboarding_stage,activity_state,next_action,deals_mtd,deals_wtd,deals_30d,ap_mtd,ap_wtd,ap_30d,commission_lifetime_cents,chargebacks,lapses,presentations_mtd,presentations_wtd,hours_called_mtd,hours_called_wtd,last_production_date,apps_assigned,apps_open,apps_new_7d,apps_needing_contact,close_rate_mtd_pct,ap_trend_pct,rank_agency_mtd,rank_agency_wtd,rank_team_mtd")
         .eq("agent_id", agentId!)
         .maybeSingle();
       if (error) throw error;
@@ -191,8 +190,7 @@ export default function AgentCommandDashboard() {
     enabled: !!agentId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("agent_lifetime_production" as any)
-        .select("*")
+        .from("agent_lifetime_production" as any).select("lifetime_alp,lifetime_deals")
         .eq("agent_id", agentId!)
         .maybeSingle();
       if (error) throw error;
@@ -205,8 +203,7 @@ export default function AgentCommandDashboard() {
     enabled: !!agentId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("agent_revenue_estimate" as any)
-        .select("*")
+        .from("agent_revenue_estimate" as any).select("contract_pct")
         .eq("agent_id", agentId!)
         .maybeSingle();
       if (error) throw error;
@@ -220,8 +217,7 @@ export default function AgentCommandDashboard() {
     enabled: !!agentId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("agent_goals")
-        .select("*")
+        .from("agent_goals").select("income_goal,comp_percentage")
         .eq("agent_id", agentId!)
         .eq("month_year", monthYear)
         .maybeSingle();
@@ -845,8 +841,7 @@ function AgencyCommandView() {
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_ceo_command_center" as any)
-        .select("*")
+        .from("v_ceo_command_center" as any).select("as_of,ap_30d,chargebacks_30d,lapses_30d,ref_30d,ref_won,total_applications,paid_mtd,apps_wtd,uncontacted_24h,stale_new_3d,unassigned_open")
         .maybeSingle();
       if (error) throw error;
       return data as unknown as CeoRow | null;

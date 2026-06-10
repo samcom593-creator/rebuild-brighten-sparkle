@@ -129,8 +129,7 @@ export default function BookReconciliation() {
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_carrier_book_summary" as any)
-        .select("*").maybeSingle();
+        .from("v_carrier_book_summary" as any).select("total_policies,distinct_carriers,missing_policy_num,on_unsupported_carrier,live_premium,total_lost_commission_usd").maybeSingle();
       if (error) throw error;
       return data as unknown as Summary | null;
     },
@@ -140,8 +139,7 @@ export default function BookReconciliation() {
     queryKey: ["book-recon-rows"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_carrier_book_recon" as any)
-        .select("*")
+        .from("v_carrier_book_recon" as any).select("id,carrier_name,policy_number,policy_status,client_first_name,client_last_name,effective_date,annual_premium,agent_name,agent_raw,carrier_is_supported,carrier_short_code,flag_no_policy_num,flag_unsupported_carrier,flag_dead_policy,flag_no_internal_deal")
         .order("annual_premium", { ascending: false, nullsFirst: false })
         .limit(500);
       if (error) throw error;
@@ -153,8 +151,7 @@ export default function BookReconciliation() {
     queryKey: ["book-recon-lapsed"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_lapsed_recovery" as any)
-        .select("*")
+        .from("v_lapsed_recovery" as any).select("id,client_first_name,client_last_name,carrier_name,policy_number,policy_status,effective_date,agent_name,approx_walked_commission_usd")
         .order("approx_walked_commission_usd", { ascending: false })
         .limit(200);
       if (error) throw error;
@@ -166,8 +163,7 @@ export default function BookReconciliation() {
     queryKey: ["book-recon-dups"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_duplicate_policies" as any)
-        .select("*")
+        .from("v_duplicate_policies" as any).select("fn_lc,ln_lc,carrier_name,dup_count,policy_nums,live_premium_tied_up")
         .order("dup_count", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -179,8 +175,7 @@ export default function BookReconciliation() {
     queryKey: ["book-recon-ghosts"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_ghost_deals" as any)
-        .select("*")
+        .from("v_ghost_deals" as any).select("deal_id,client_first_name,client_last_name,product_sold,annual_premium,posted_at,carrier_name,agent_name,flag_no_policy_num,flag_ghost")
         .eq("flag_ghost", true)
         .order("annual_premium", { ascending: false, nullsFirst: false })
         .limit(200);
@@ -193,8 +188,7 @@ export default function BookReconciliation() {
     queryKey: ["book-recon-falloff"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_falloff_watch" as any)
-        .select("*")
+        .from("v_falloff_watch" as any).select("id,client_first_name,client_last_name,carrier_name,policy_number,effective_date,agent_name,agent_raw,approx_save_commission_usd")
         .order("approx_save_commission_usd", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -206,8 +200,7 @@ export default function BookReconciliation() {
     queryKey: ["book-recon-quality"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_agent_quality_score" as any)
-        .select("*")
+        .from("v_agent_quality_score" as any).select("agent_id,agent_name,agent_code,deal_count,no_policy_num_count,ghost_deal_count,dead_deal_count,quality_score")
         .order("quality_score", { ascending: true })
         .limit(100);
       if (error) throw error;
@@ -219,8 +212,7 @@ export default function BookReconciliation() {
     queryKey: ["book-recon-leaks"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_carrier_money_leak" as any)
-        .select("*")
+        .from("v_carrier_money_leak" as any).select("agent_key,carrier_name,agent_name,policy_count,approx_lost_commission_usd,carrier_is_supported")
         .eq("carrier_is_supported", false)
         .order("approx_lost_commission_usd", { ascending: false })
         .limit(50);

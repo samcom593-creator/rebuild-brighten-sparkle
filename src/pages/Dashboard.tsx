@@ -202,11 +202,11 @@ function isContractedApplication(app: any): boolean {
 async function loadApplications(role: RolePreview, userId: string, scopedAgentIds: string[]): Promise<any[]> {
   const q: any = supabase;
   if (role === "admin") {
-    return getRows(q.from("applications").select("*").is("terminated_at", null).limit(2_000), "applications-admin");
+    return getRows(q.from("applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").is("terminated_at", null).limit(2_000), "applications-admin");
   }
 
   const visibleViaView = await getRows(
-    q.from("v_my_applications").select("*").is("terminated_at", null).limit(2_000),
+    q.from("v_my_applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").is("terminated_at", null).limit(2_000),
     "visible-applications-view",
   );
   if (visibleViaView.length > 0) return visibleViaView;
@@ -220,7 +220,7 @@ async function loadApplications(role: RolePreview, userId: string, scopedAgentId
   filters.push(`hiring_manager_user_id.eq.${userId}`);
 
   return getRows(
-    q.from("applications").select("*").is("terminated_at", null).or(filters.join(",")).limit(2_000),
+    q.from("applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").is("terminated_at", null).or(filters.join(",")).limit(2_000),
     "applications-scoped-fallback",
   );
 }
@@ -264,8 +264,7 @@ async function loadDashboardSnapshot(
   );
 
   const interviewQuery = role === "admin" || applicationIds.size > 0
-    ? q.from("scheduled_interviews")
-        .select("*")
+    ? q.from("scheduled_interviews").select("status, application_id, interview_date")
         .gte("interview_date", week.startIso)
         .limit(2_000)
     : null;
@@ -306,17 +305,17 @@ async function loadDashboardSnapshot(
     ),
     getRows(productionQuery, "daily-production-week"),
     getRows(scopedInterviewQuery, "scheduled-interviews"),
-    getRows(q.from("seminar_registrations").select("*").limit(2_000), "seminar-registrations"),
+    getRows(q.from("seminar_registrations").select("email, attended").limit(2_000), "seminar-registrations"),
     getRows(
       applyAgentScope(
-        q.from("lead_purchase_requests").select("*").order("requested_at", { ascending: false }).limit(500),
+        q.from("lead_purchase_requests").select("status, requested_at").order("requested_at", { ascending: false }).limit(500),
         agentScope,
       ),
       "lead-purchase-requests",
     ),
     getRows(
       applyAgentScope(
-        q.from("lead_purchases").select("*").gte("charged_at", month.startIso).order("charged_at", { ascending: false }).limit(500),
+        q.from("lead_purchases").select("amount_cents, charged_at").gte("charged_at", month.startIso).order("charged_at", { ascending: false }).limit(500),
         agentScope,
       ),
       "lead-purchases",

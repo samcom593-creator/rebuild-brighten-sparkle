@@ -174,8 +174,7 @@ export default function SocialMediaBot() {
     queryKey: ["social-bot-dashboard"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
-        .from("v_social_bot_dashboard")
-        .select("*")
+        .from("v_social_bot_dashboard").select("drafts_today,drafts_approved_today,drafts_shipped_today,drafts_pending_today,inbound_7d_count,inbound_7d_paid,inbound_7d_revenue_usd,open_blockers,critical_blockers,total_followers,today_pack,analytics,blockers,inbound,goals,scoreboard,recent_runs,top_hooks,generated_at,as_of")
         .maybeSingle();
       if (error) throw error;
       return data as DashboardRow;
@@ -188,7 +187,7 @@ export default function SocialMediaBot() {
   const { data: pillars } = useQuery({
     queryKey: ["cw_pillars"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("cw_pillars").select("*").order("display_order");
+      const { data, error } = await (supabase as any).from("cw_pillars").select("id,code,name,description,monetization_tie").order("display_order");
       if (error) throw error;
       return data as CwPillar[];
     },
@@ -197,7 +196,7 @@ export default function SocialMediaBot() {
   const { data: dogmas } = useQuery({
     queryKey: ["cw_dogmas"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("cw_dogmas").select("*").order("number");
+      const { data, error } = await (supabase as any).from("cw_dogmas").select("id,number,text").order("number");
       if (error) throw error;
       return data as CwDogma[];
     },
@@ -1045,7 +1044,7 @@ function SandcastlesAutonomous() {
     queryKey: ["sandcastles_queue"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
-        .from("sandcastles_queue").select("*")
+        .from("sandcastles_queue").select("id,requested_at,topic,hint,status,completed_at,ideas_inserted,hooks_inserted,mines_inserted,error_text")
         .order("requested_at", { ascending: false }).limit(20);
       if (error) throw error;
       return (data ?? []) as SandcastlesQueueRow[];

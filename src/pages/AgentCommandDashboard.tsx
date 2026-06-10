@@ -1173,18 +1173,6 @@ function AgencyCommandView() {
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
-      {/* v11 audit 2026-06-10: AgencyCommandView is what Sam (admin) actually
-          sees on /dashboard. The previous Dashboard.tsx mounted AgentLink
-          truth widgets, but they only rendered for non-admin users — Sam
-          saw the stale-deals-table view instead. Now mount the truth
-          widgets AT THE TOP so the real $ numbers paint first. */}
-      <AgentLinkBookTruthCard />
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <CarrierBreakdownCard />
-        <BookTrendCard />
-      </div>
-
       {/* v13 Wave E (2026-06-10): killed the inline gradient + blur-3xl +
           glow shadow. Sam: "all that bullshit gradient/glow stuff looks
           buggy." Restraint mirrors AgentLink — solid card + 1px border. */}
@@ -1588,6 +1576,21 @@ function AgencyCommandView() {
         <QuickAction icon={Trophy}     to="/dashboard/leaderboard"     label="Leaderboard" desc="Top producers" />
         <QuickAction icon={Wallet}     to="/dashboard/charges-audit"   label="Charges audit" desc="Stripe anomalies" />
         <QuickAction icon={Sparkles}   to="/dashboard/conduct"         label="Conduct center" desc="Strikes + audit" />
+      </div>
+
+      {/* v18 2026-06-10: Sam asked AgentLink summary moved to the BOTTOM
+          (admin-only). Period switcher up top drives daily/weekly/monthly
+          decisions; this footer summarizes the whole book + 12-month trend
+          for context after he's reviewed the live grid. */}
+      <div className="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
+        <p className="text-11 font-semibold uppercase tracking-widest text-slate-500">
+          AgentLink summary · admin only · whole book
+        </p>
+        <AgentLinkBookTruthCard />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <CarrierBreakdownCard />
+          <BookTrendCard />
+        </div>
       </div>
 
       <LapsesDrilldownModal open={lapsesOpen} onOpenChange={setLapsesOpen} />

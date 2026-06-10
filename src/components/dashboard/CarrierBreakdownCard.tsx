@@ -72,7 +72,7 @@ export function CarrierBreakdownCard() {
               <div key={row.carrier_id} className="space-y-1">
                 <div className="flex items-center gap-2 text-12">
                   <span className="text-slate-400 w-4 tabular-nums">{i + 1}</span>
-                  <span className="font-medium truncate flex-1">{row.carrier_name ?? "Unknown"}</span>
+                  <span className="font-medium truncate flex-1">{row.carrier_name ?? "—"}</span>
                   <span className="tabular-nums text-slate-600 dark:text-slate-400">{row.deal_count}</span>
                   <span className="tabular-nums font-semibold w-16 text-right">{money(row.total_premium)}</span>
                 </div>

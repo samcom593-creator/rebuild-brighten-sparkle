@@ -157,3 +157,24 @@ if match '^(src/(pages|components/(landing|recruiter|admin|agent|awards|callcent
   echo "[pre-commit] Tracked component-tree change — running check:bg-gradient-areas…"
   node scripts/check-bg-gradient-areas.mjs
 fi
+
+# ---------- check-shadow-areas (wave-65) ----------
+# Trigger: any change in the 22 wave-65-tracked component trees (same set as
+# wave-64's bg-gradient ratchet — pages + dashboard + landing + recruiter + 18
+# v24/v25-cleaned sibling trees), or the script itself.
+# Mechanic: ratchets v22 §10.7 banned-shadow instances per area at the
+# measured floor at lock time (HEAD e69cefd5). Counts arbitrary `shadow-[...]`
+# glow shadows + chunky+colored 2-layer `shadow-(lg|xl|2xl) shadow-COLOR/N`.
+# Default-tier `shadow-lg` alone on popovers/sheets/dialogs is NOT counted.
+# Why this matters: wave-58 reset Card.tsx's own shadow to --apex-shadow-1
+# but inline shadow strings on non-Card boxes still re-introduce the chunky
+# colored-glow aesthetic v22 buried. Same persistence-mandate drift class as
+# the bg-gradient ratchet wave-64 broadcast — without a gate every new
+# component reaches for `shadow-lg shadow-primary/20` and the AgentLink-crisp
+# discipline decays. Cost when fired: ~120ms (linear in tracked-area files).
+# Opt-in marker per line for legitimate hero/CTA/trophy/brand-decor/modal
+# elevation: `shadow-glow-allow:<reason>` same-line or line directly above.
+if match '^(src/(pages|components/(dashboard|landing|recruiter|admin|agent|awards|callcenter|celebrations|command|contentwheel|course|crm|deals|finances|layout|next-step|pipeline|plaque|profile|system-health|ui))/.+\.(tsx?|jsx?)$|scripts/check-shadow-areas\.mjs$)'; then
+  echo "[pre-commit] Tracked component-tree change — running check:shadow-areas…"
+  node scripts/check-shadow-areas.mjs
+fi

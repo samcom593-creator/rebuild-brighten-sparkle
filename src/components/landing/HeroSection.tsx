@@ -263,9 +263,9 @@ export function HeroSection() {
                 className="
                   relative inline-flex items-center justify-center gap-2
                   px-10 py-5 text-lg sm:text-xl rounded-md font-bold font-display
-                  bg-white dark:bg-slate-900 text-primary-foreground
+                  bg-primary text-primary-foreground
                   shadow-[0_10px_40px_hsl(168_80%_50%/0.4)]
-                  group-hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-base
+                  group-hover:bg-primary/90 transition-base
                 "
               >
                 Start My Application

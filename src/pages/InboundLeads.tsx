@@ -204,6 +204,8 @@ const PROBLEM_OPTIONS = [
   "Debt protection",
   "Existing policy issue",
   "Business protection",
+  "Change bank",
+  "Add beneficiary",
   "Other",
 ];
 
@@ -637,26 +639,74 @@ export default function InboundLeads() {
       return;
     }
 
-    // v16 Wave A: start audio recording in parallel with transcript dictation.
-    // Sam: "Save the audio recording. That'd be ideal."
+    // v25 BOTH-SIDES AUDIO · capture Sam's mic + the client's voice
+    // coming through the speakers. The flow:
+    //   1. Always grab the mic (echoCancellation/noiseSuppression OFF so
+    //      we can pick up the speaker audio that mixes through).
+    //   2. ALSO try to capture tab/system audio via getDisplayMedia.
+    //      Browser pops a "choose tab to share" dialog · Sam picks the
+    //      Google Voice tab and the page audio gets mixed in.
+    //   3. If display-media is declined or not supported, fall back to
+    //      mic-only · Sam can still rely on speakerphone bleed-through.
+    //   4. Both streams are mixed in an AudioContext + recorded by a
+    //      single MediaRecorder so the saved file is one merged track.
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const destination = ctx.createMediaStreamDestination();
+
+      // 1. Mic (always)
+      const micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: true,
+        } as MediaTrackConstraints,
+      });
+      ctx.createMediaStreamSource(micStream).connect(destination);
+
+      // 2. Tab audio (best-effort) — pops a picker; Sam selects Google Voice tab
+      let displayStream: MediaStream | null = null;
+      try {
+        if (navigator.mediaDevices.getDisplayMedia) {
+          displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true, // browsers require video=true to ask for audio
+            audio: true,
+          });
+          // Throw away the video tracks immediately — we only want the audio
+          displayStream.getVideoTracks().forEach((t) => t.stop());
+          if (displayStream.getAudioTracks().length > 0) {
+            ctx.createMediaStreamSource(displayStream).connect(destination);
+            toast.success("🎧 Both-sides audio active · capturing tab + mic");
+          } else {
+            toast.info("🎤 Mic only · tab audio share was declined");
+          }
+        }
+      } catch {
+        // user dismissed the screen-share prompt; keep mic only — silent
+      }
+
+      const mixedStream = destination.stream;
+      // Save references to all streams so we can stop them on Save
+      mediaRecorderRef.current = null;
+      audioChunksRef.current = [];
       const mimeType = MediaRecorder.isTypeSupported("audio/webm")
         ? "audio/webm"
         : MediaRecorder.isTypeSupported("audio/mp4")
         ? "audio/mp4"
         : "";
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      audioChunksRef.current = [];
+      const recorder = new MediaRecorder(mixedStream, mimeType ? { mimeType } : undefined);
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
       };
-      recorder.start(1000); // emit chunks every 1s so we don't lose data on crash
+      recorder.start(1000); // 1s chunks so a crash never loses more than a second
       mediaRecorderRef.current = recorder;
       recordingStartRef.current = Date.now();
-    } catch (err) {
-      // Mic permission denied — keep going with transcript only
 
+      // Stash mic + display streams on the recorder so stop can close them
+      (recorder as any)._sourceStreams = [micStream, displayStream].filter(Boolean);
+      (recorder as any)._audioCtx = ctx;
+    } catch (err) {
+      // Mic permission denied — keep going with transcript-only flow
     }
 
     const recognition = new SpeechRecognition();
@@ -682,8 +732,14 @@ export default function InboundLeads() {
 
   const stopListening = () => {
     recognitionRef.current?.stop?.();
-    mediaRecorderRef.current?.stop?.();
-    mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
+    const recorder = mediaRecorderRef.current as any;
+    recorder?.stop?.();
+    // close mic stream + display stream + AudioContext (v25 both-sides audio)
+    recorder?.stream?.getTracks?.().forEach((t: MediaStreamTrack) => t.stop());
+    recorder?._sourceStreams?.forEach((s: MediaStream | null) => {
+      s?.getTracks().forEach((t) => t.stop());
+    });
+    try { recorder?._audioCtx?.close?.(); } catch { /* already closed */ }
     setListening(false);
   };
 
@@ -1193,60 +1249,22 @@ export default function InboundLeads() {
                 />
               </GlassCard>
 
-              {/* v25 SWITCH CENTER SCRIPT — Sam's exact opening flow,
-                  visible mid-call. Each prompt is a tap-to-copy button
-                  in case Sam wants to log what he asked verbatim. */}
+              {/* Switch Center script — read-only reference panel.
+                  Sam asked tap-to-copy + cheat-sheet REMOVED · just show the flow. */}
               <GlassCard className="p-4" variant="subtle">
-                <p className="text-sm font-bold mb-3 flex items-center justify-between">
-                  <span>Switch Center · script</span>
-                  <span className="text-11 text-muted-foreground font-normal">tap to copy</span>
-                </p>
+                <p className="text-sm font-bold mb-3">Switch Center · script</p>
                 <ol className="space-y-2 text-13">
                   {SWITCH_CENTER_SCRIPT.map((step, idx) => (
                     <li key={step.step} className="flex items-start gap-2">
                       <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-11 font-bold text-primary tabular-nums">
                         {idx + 1}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard?.writeText(step.prompt).then(
-                            () => toast.success(`Copied "${step.step}"`),
-                            () => {}
-                          );
-                        }}
-                        className="text-left text-foreground/90 hover:text-primary transition-base"
-                      >
+                      <span className="text-foreground/90">
                         <span className="font-semibold">{step.step}:</span> {step.prompt}
-                      </button>
+                      </span>
                     </li>
                   ))}
                 </ol>
-              </GlassCard>
-
-              {/* v25 SWITCH CENTER REBUTTAL CHEAT SHEET — 7 common situations
-                  each one tap to append the full rebuttal to the Notes field
-                  so Sam captures the exact framing he used. */}
-              <GlassCard className="p-4" variant="subtle">
-                <p className="text-sm font-bold mb-3 flex items-center justify-between">
-                  <span>Cheat sheet · tap to add rebuttal to notes</span>
-                </p>
-                <div className="space-y-1.5">
-                  {SWITCH_CENTER_REBUTTALS.map((cs) => (
-                    <button
-                      key={cs.trigger}
-                      type="button"
-                      onClick={() => {
-                        updateForm("notes", appendNote(form.notes, `[${cs.trigger}] ${cs.response}`));
-                        toast.success(`Added: ${cs.trigger}`);
-                      }}
-                      className="w-full text-left rounded-md border border-border/60 px-2.5 py-2 hover:border-primary/40 hover:bg-primary/[0.04] transition-base"
-                    >
-                      <span className="text-12 font-semibold text-foreground">{cs.trigger}</span>
-                      <span className="block text-11 text-muted-foreground line-clamp-2 mt-0.5">{cs.response}</span>
-                    </button>
-                  ))}
-                </div>
               </GlassCard>
 
               <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">

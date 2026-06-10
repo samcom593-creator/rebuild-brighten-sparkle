@@ -978,8 +978,15 @@ function AgencyCommandView() {
     for (const deal of (periodDeals.data ?? []) as any[]) {
       const ap = Number(deal.annual_premium ?? 0);
       const agent = deal.agent;
-      const agentId = deal.agent_id ?? agent?.id ?? "unknown";
-      const agentName = agent?.display_name ?? "Unknown";
+      // v18 Sam: "never put anyone on any dashboard that shows Unknown."
+      // If we can't resolve the agent, the deal counts toward totalAp but
+      // does NOT appear in the per-agent leaderboard (skipped below).
+      if (!agent?.display_name) {
+        totalAp += ap;
+        continue;
+      }
+      const agentId = deal.agent_id ?? agent.id;
+      const agentName = agent.display_name;
       totalAp += ap;
 
       const existingAgent = byAgent.get(agentId) ?? {
@@ -1426,7 +1433,7 @@ function AgencyCommandView() {
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold truncate">{a.display_name ?? "Unknown"}</p>
+                    <p className="text-sm font-semibold truncate">{a.display_name ?? "—"}</p>
                     <p className="text-[11px] text-muted-foreground">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
                   </div>
                   <p className="text-sm font-bold tabular-nums text-emerald-500 dark:text-emerald-400 shrink-0">

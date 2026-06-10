@@ -139,28 +139,23 @@ const EMPTY_FORM: Omit<InboundLead, "id" | "created_at" | "updated_at" | "source
   next_action_at: "",
 };
 
+// All 50 US states, full names and common phrasings.
 const STATE_ALIASES: Record<string, string> = {
-  alabama: "AL",
-  alaska: "AK",
-  arizona: "AZ",
-  arkansas: "AR",
-  california: "CA",
-  colorado: "CO",
-  florida: "FL",
-  georgia: "GA",
-  illinois: "IL",
-  michigan: "MI",
-  nevada: "NV",
-  "new york": "NY",
-  "north carolina": "NC",
-  ohio: "OH",
-  oregon: "OR",
-  pennsylvania: "PA",
-  texas: "TX",
-  utah: "UT",
-  virginia: "VA",
-  washington: "WA",
+  alabama:"AL", alaska:"AK", arizona:"AZ", arkansas:"AR", california:"CA",
+  colorado:"CO", connecticut:"CT", delaware:"DE", florida:"FL", georgia:"GA",
+  hawaii:"HI", idaho:"ID", illinois:"IL", indiana:"IN", iowa:"IA", kansas:"KS",
+  kentucky:"KY", louisiana:"LA", maine:"ME", maryland:"MD", massachusetts:"MA",
+  michigan:"MI", minnesota:"MN", mississippi:"MS", missouri:"MO", montana:"MT",
+  nebraska:"NE", nevada:"NV", "new hampshire":"NH", "new jersey":"NJ",
+  "new mexico":"NM", "new york":"NY", "north carolina":"NC", "north dakota":"ND",
+  ohio:"OH", oklahoma:"OK", oregon:"OR", pennsylvania:"PA", "rhode island":"RI",
+  "south carolina":"SC", "south dakota":"SD", tennessee:"TN", texas:"TX",
+  utah:"UT", vermont:"VT", virginia:"VA", washington:"WA", "west virginia":"WV",
+  wisconsin:"WI", wyoming:"WY",
 };
+
+const ALL_STATE_ABBR =
+  "AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY";
 
 function formatPhone(value: string): string {
   const digits = value.replace(/\D/g, "");
@@ -197,6 +192,14 @@ function leadName(lead: Pick<InboundLead, "client_first_name" | "client_last_nam
   return [lead.client_first_name, lead.client_last_name].filter(Boolean).join(" ") || "Unnamed caller";
 }
 
+/**
+ * Local transcript parser. Extracts caller info from a freeform note or
+ * voice transcript and auto-fills the form. No LLM needed; pure regex +
+ * keyword scoring tuned for Apex's typical inbound call vocabulary.
+ *
+ * Filled fields override only when the form slot is empty (won't clobber
+ * something Sam already typed). Always rewrites `transcript`.
+ */
 function applyTranscriptHints(
   transcript: string,
   current: Omit<InboundLead, "id" | "created_at" | "updated_at" | "source" | "saved_to_supabase">,
@@ -204,47 +207,101 @@ function applyTranscriptHints(
   const text = transcript.toLowerCase();
   const next = { ...current, transcript };
 
+  // EMAIL
   const email = transcript.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
   if (email && !next.email) next.email = email.toLowerCase();
 
+  // PHONE — 10-digit US, tolerant of separators
   const phone = transcript.match(/(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}/)?.[0];
   if (phone && !next.phone) next.phone = formatPhone(phone);
 
-  const nameMatch =
-    transcript.match(/(?:my name is|name is|this is|client is|caller is)\s+([A-Z][a-z]+)(?:\s+([A-Z][a-z]+))?/);
-  if (nameMatch) {
-    if (!next.client_first_name) next.client_first_name = nameMatch[1] || "";
-    if (!next.client_last_name) next.client_last_name = nameMatch[2] || "";
-  }
-
-  for (const [name, abbr] of Object.entries(STATE_ALIASES)) {
-    if (!next.state && text.includes(name)) next.state = abbr;
-  }
-  const stateAbbr = transcript.match(/\b(AL|AK|AZ|AR|CA|CO|FL|GA|IL|MI|NV|NY|NC|OH|OR|PA|TX|UT|VA|WA)\b/);
-  if (stateAbbr && !next.state) next.state = stateAbbr[1];
-
-  const budget = transcript.match(/\$?\b(\d{2,4})(?:\s*(?:dollars|bucks))?\s*(?:a month|monthly|per month)?/i)?.[1];
-  if (budget && !next.budget) next.budget = `$${budget}/mo`;
-
-  if (!next.problem_type) {
-    if (text.includes("mortgage")) next.problem_type = "Mortgage protection";
-    else if (text.includes("final expense") || text.includes("burial")) next.problem_type = "Final expense";
-    else if (text.includes("retirement") || text.includes("iul")) next.problem_type = "Retirement / IUL";
-    else if (text.includes("policy") || text.includes("coverage")) next.problem_type = "Life insurance review";
-    else if (text.includes("child") || text.includes("kid")) next.problem_type = "Child coverage";
-    else if (text.includes("business")) next.problem_type = "Business protection";
-  }
-
-  if (!next.current_coverage) {
-    if (text.includes("no coverage") || text.includes("do not have coverage") || text.includes("don't have coverage")) {
-      next.current_coverage = "No current coverage";
-    } else if (text.includes("already have") || text.includes("existing policy")) {
-      next.current_coverage = "Has existing coverage";
+  // NAME — multiple intro patterns
+  const namePatterns = [
+    /(?:my\s+name\s+is|name\s+is|this\s+is|client\s+is|caller\s+is|i'?m|it'?s)\s+([A-Z][a-z]+)(?:\s+([A-Z][a-z]+))?/,
+    /(?:calling\s+for|for)\s+([A-Z][a-z]+)(?:\s+([A-Z][a-z]+))?/,
+  ];
+  for (const pat of namePatterns) {
+    const m = transcript.match(pat);
+    if (m) {
+      if (!next.client_first_name) next.client_first_name = m[1] || "";
+      if (!next.client_last_name && m[2]) next.client_last_name = m[2];
+      if (m[1]) break;
     }
   }
 
-  if (text.includes("urgent") || text.includes("as soon as possible") || text.includes("today")) next.urgency = "hot";
-  else if (text.includes("this week") || text.includes("soon")) next.urgency = "warm";
+  // STATE — full names first (more reliable)
+  for (const [name, abbr] of Object.entries(STATE_ALIASES)) {
+    if (!next.state && text.includes(name)) { next.state = abbr; break; }
+  }
+  // Then 2-letter abbreviations (all 50)
+  if (!next.state) {
+    const stateAbbr = transcript.match(new RegExp(`\\b(${ALL_STATE_ABBR})\\b`));
+    if (stateAbbr) next.state = stateAbbr[1];
+  }
+
+  // CITY — "in <City>" pattern, plus city-comma-state
+  if (!next.city) {
+    const cityMatch =
+      transcript.match(/(?:in|from|live\s+in|based\s+in)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)(?:,|\s|\.|$)/) ||
+      transcript.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),\s*(?:[A-Z]{2}|\w+)/);
+    if (cityMatch?.[1] && cityMatch[1].length < 30) next.city = cityMatch[1];
+  }
+
+  // BUDGET — both monthly and lump-sum
+  if (!next.budget) {
+    const monthly = transcript.match(/\$?\b(\d{2,4})\b\s*(?:dollars|bucks)?\s*(?:a\s+month|monthly|per\s+month|\/mo|\/month)/i);
+    const lumpSum = transcript.match(/(?:budget|spend|afford|paying)\s+(?:up\s+to\s+|around\s+|about\s+)?\$?(\d{2,5})/i);
+    if (monthly) next.budget = `$${monthly[1]}/mo`;
+    else if (lumpSum) next.budget = `$${lumpSum[1]}`;
+  }
+
+  // PROBLEM TYPE — scoring across multiple keywords for each category
+  if (!next.problem_type) {
+    const scores: Record<string, number> = {};
+    const cat = (k: string, n = 1) => { scores[k] = (scores[k] || 0) + n; };
+    if (/\b(mortgage|home\s*loan|house\s*payment)\b/.test(text)) cat("Mortgage protection", 2);
+    if (/\b(final\s*expense|burial|funeral|cremation|cover\s+my\s+funeral)\b/.test(text)) cat("Final expense", 2);
+    if (/\b(retirement|iul|index(ed)?\s*universal|401\s*k|roth|ira|annuity)\b/.test(text)) cat("Retirement / IUL", 2);
+    if (/\b(child|children|kid|kids|grandkid|grandchild)\b/.test(text)) cat("Child coverage", 1);
+    if (/\b(business|llc|s-?corp|company|partner)\b/.test(text)) cat("Business protection", 1);
+    if (/\b(policy|coverage|insur\w+)\b/.test(text)) cat("Life insurance review", 1);
+    if (/\b(debt|credit\s*card|loan|owe)\b/.test(text)) cat("Debt protection", 1);
+    if (/\b(existing|already\s+have|current\s+policy|review\s+my\s+policy|cancel)\b/.test(text)) cat("Existing policy issue", 1);
+    const top = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+    if (top && top[1] > 0) next.problem_type = top[0];
+  }
+
+  // CURRENT COVERAGE
+  if (!next.current_coverage) {
+    if (/\b(no\s+coverage|no\s+insurance|don'?t\s+have\s+(?:any\s+)?(?:coverage|insurance|policy)|never\s+had\s+(?:coverage|insurance))\b/.test(text)) {
+      next.current_coverage = "No current coverage";
+    } else if (/\b(already\s+have|existing\s+policy|got\s+a\s+policy|currently\s+covered|with\s+\w+(?:\s+insurance|\s+life))\b/.test(text)) {
+      next.current_coverage = "Has existing coverage";
+    } else if (/\b(group\s+(?:life|coverage)|through\s+work|employer\s+plan|company\s+plan)\b/.test(text)) {
+      next.current_coverage = "Group/employer plan only";
+    }
+  }
+
+  // HOUSEHOLD — marital + kids
+  if (!next.household) {
+    const bits: string[] = [];
+    if (/\b(married|wife|husband|spouse)\b/.test(text)) bits.push("married");
+    else if (/\b(single|divorced|widow(?:ed|er)?)\b/.test(text)) bits.push(text.match(/\b(single|divorced|widow(?:ed|er)?)\b/)![1]);
+    const kidMatch = text.match(/\b(\d+|one|two|three|four|five)\s+(?:kid|kids|child|children|grandkid)/);
+    if (kidMatch) bits.push(`${kidMatch[1]} ${kidMatch[1] === "1" || kidMatch[1] === "one" ? "kid" : "kids"}`);
+    if (bits.length) next.household = bits.join(", ");
+  }
+
+  // NEXT ACTION — "call back <day>", "follow up <time>"
+  if (!next.next_action_at) {
+    const followup = transcript.match(/(?:call\s+(?:me\s+)?back|follow(?:\s+up)?|reach\s+out)\s+(?:on\s+|by\s+|next\s+)?(\w+(?:\s+at\s+[\d:]+\s*(?:am|pm)?)?)/i);
+    if (followup?.[1]) next.next_action_at = followup[1].slice(0, 60);
+  }
+
+  // URGENCY — graded
+  if (/\b(urgent|asap|right\s+away|today|tonight|emergency|immediately)\b/.test(text)) next.urgency = "hot";
+  else if (/\b(this\s+week|soon|few\s+days|by\s+(?:monday|tuesday|wednesday|thursday|friday)|in\s+the\s+next\s+(?:couple|few)\s+days)\b/.test(text)) next.urgency = "warm";
+  else if (next.urgency === undefined as unknown as string) next.urgency = "normal";
 
   return next;
 }
@@ -516,124 +573,101 @@ export default function InboundLeads() {
         </div>
       </GlassCard>
 
-      <div className="grid gap-3 xl:grid-cols-6">
-        {STAGE_ORDER.map((stage) => {
-          const meta = STAGE_META[stage];
-          const Icon = meta.icon;
-          const rows = columns[stage];
-          return (
-            <GlassCard key={stage} className="min-h-[240px] p-3 xl:col-span-1">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className={cn("h-2.5 w-2.5 rounded-full", meta.dot)} />
-                  <h2 className="text-sm font-bold truncate">{meta.label}</h2>
-                </div>
-                <Badge variant="outline" className={cn("text-[10px]", meta.tint)}>
-                  {rows.length}
-                </Badge>
-              </div>
+      {/* v9 audit fix 2026-06-10: replaced 6-col kanban with single-column list.
+          Sam said "very old style ugly, very clunky compared to AgentLink".
+          New layout: one list, stage = chip on each row, urgency = dot,
+          newest first. Stage column-by-column kanban removed entirely. */}
+      {filteredLeads.length === 0 ? (
+        <GlassCard className="p-10">
+          <EmptyState
+            icon={<PhoneCall className="h-6 w-6" />}
+            title="No inbound calls yet"
+            description="When a call comes in, hit New Client. The transcript box auto-fills name, phone, state, problem, urgency, household, and follow-up time."
+          />
+        </GlassCard>
+      ) : (
+        <GlassCard className="overflow-hidden p-0">
+          <div className="divide-y divide-border/30">
+            {filteredLeads.map((lead) => {
+              const meta = STAGE_META[lead.stage];
+              const StageIcon = meta.icon;
+              const urgencyDot =
+                lead.urgency === "hot"
+                  ? "bg-rose-400"
+                  : lead.urgency === "warm"
+                    ? "bg-amber-400"
+                    : "bg-slate-500";
+              return (
+                <div
+                  key={lead.id}
+                  className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-white/[0.025]"
+                >
+                  {/* Urgency dot */}
+                  <span
+                    title={lead.urgency}
+                    className={cn("mt-1 h-2.5 w-2.5 shrink-0 rounded-full", urgencyDot)}
+                  />
 
-              {rows.length === 0 ? (
-                <EmptyState
-                  icon={<Icon className="h-5 w-5" />}
-                  title="No clients"
-                  description="New calls will stack here as you work them."
-                  className="py-8"
-                />
-              ) : (
-                <div className="space-y-2">
-                  {rows.map((lead, index) => (
-                    <motion.div
-                      key={lead.id}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: Math.min(index * 0.02, 0.15) }}
-                      className="rounded-lg border border-border/50 bg-background/45 p-3 hover:border-primary/35 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-semibold truncate">{leadName(lead)}</p>
-                          <p className="text-xs text-muted-foreground truncate">{lead.problem_type || "No problem type"}</p>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-[10px] shrink-0",
-                            lead.urgency === "hot"
-                              ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
-                              : lead.urgency === "warm"
-                                ? "border-blue-500/40 bg-blue-500/10 text-blue-300"
-                                : "border-slate-500/40 bg-slate-500/10 text-slate-300",
-                          )}
-                        >
-                          {lead.urgency}
-                        </Badge>
-                      </div>
-
-                      <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                        {lead.phone && (
-                          <a href={`tel:${lead.phone}`} className="flex items-center gap-1.5 hover:text-primary">
-                            <PhoneCall className="h-3 w-3" />
-                            {lead.phone}
-                          </a>
-                        )}
-                        {lead.email && (
-                          <a href={`mailto:${lead.email}`} className="flex items-center gap-1.5 hover:text-primary truncate">
-                            <Mail className="h-3 w-3" />
-                            {lead.email}
-                          </a>
-                        )}
-                        {(lead.city || lead.state) && (
-                          <p className="flex items-center gap-1.5">
-                            <MapPin className="h-3 w-3" />
-                            {[lead.city, lead.state].filter(Boolean).join(", ")}
-                          </p>
-                        )}
-                      </div>
-
-                      {lead.notes && (
-                        <p className="mt-3 line-clamp-3 rounded-md bg-white/[0.03] p-2 text-xs text-foreground/80">
-                          {lead.notes}
-                        </p>
+                  {/* Name + meta */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-14 font-semibold">{leadName(lead)}</p>
+                      {lead.phone && (
+                        <a href={`tel:${lead.phone}`} className="text-12 text-muted-foreground hover:text-primary">
+                          {lead.phone}
+                        </a>
                       )}
+                    </div>
+                    <p className="truncate text-12 text-muted-foreground">
+                      {[
+                        lead.problem_type || "No problem type",
+                        [lead.city, lead.state].filter(Boolean).join(", "),
+                        lead.budget,
+                        lead.household,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </div>
 
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <span className="text-[10px] text-muted-foreground">
-                          {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Select value={lead.stage} onValueChange={(value) => updateStage(lead, value as InboundStage)}>
-                            <SelectTrigger className="h-7 w-[112px] text-[11px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {STAGE_ORDER.map((nextStage) => (
-                                <SelectItem key={nextStage} value={nextStage}>
-                                  {STAGE_META[nextStage].label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteLead(lead)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                  {/* Stage chip */}
+                  <div className="hidden sm:flex shrink-0">
+                    <Select value={lead.stage} onValueChange={(value) => updateStage(lead, value as InboundStage)}>
+                      <SelectTrigger className="h-8 w-[130px] text-12">
+                        <div className="flex items-center gap-2">
+                          <StageIcon className="h-3 w-3" />
+                          <SelectValue />
                         </div>
-                      </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STAGE_ORDER.map((nextStage) => (
+                          <SelectItem key={nextStage} value={nextStage}>
+                            {STAGE_META[nextStage].label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                      {!lead.saved_to_supabase && (
-                        <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-300">
-                          <AlertCircle className="h-3 w-3" />
-                          Local save
-                        </div>
-                      )}
-                    </motion.div>
-                  ))}
+                  {/* Time + delete */}
+                  <span className="hidden md:inline text-12 text-muted-foreground shrink-0 w-20 text-right">
+                    {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-rose-400"
+                    onClick={() => deleteLead(lead)}
+                    aria-label="Delete lead"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
-              )}
-            </GlassCard>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </GlassCard>
+      )}
 
       <Dialog open={newClientOpen} onOpenChange={(open) => { setNewClientOpen(open); if (!open) resetForm(); }}>
         <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto border-[#1e293b] bg-[#050b16]">

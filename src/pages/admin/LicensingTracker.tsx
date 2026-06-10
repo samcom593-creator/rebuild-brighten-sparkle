@@ -57,8 +57,7 @@ function KanbanTab() {
     queryKey: ["licensing_kanban"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_licensing_kanban")
-        .select("*")
+        .from("v_licensing_kanban").select("id,current_stage,state,days_in_stage,first_name,last_name")
         .order("days_in_stage", { ascending: false });
       if (error) throw error;
       return data as StudentRow[];
@@ -136,8 +135,7 @@ function StalledTab() {
     queryKey: ["licensing_stalled"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_licensing_stalled")
-        .select("*")
+        .from("v_licensing_stalled").select("id,current_stage,state,days_in_stage,first_name,last_name,email,phone,stall_reason")
         .order("days_in_stage", { ascending: false });
       if (error) throw error;
       return data as StalledRow[];

@@ -79,7 +79,7 @@ export default function AutomationHealth() {
   const { data: health = [], isLoading: healthLoading } = useQuery({
     queryKey: ["automation-health"],
     queryFn: async (): Promise<HealthRow[]> => {
-      const { data } = await supabase.from("automation_health" as any).select("*");
+      const { data } = await supabase.from("automation_health" as any).select("job_name,last_run,success_count_24h,error_count_24h,total_24h,avg_duration_ms,last_error,health_status");
       return (data as any) ?? [];
     },
     enabled: isAdmin,
@@ -90,8 +90,7 @@ export default function AutomationHealth() {
     queryKey: ["automation-runs"],
     queryFn: async (): Promise<RunLogRow[]> => {
       const { data } = await supabase
-        .from("automation_run_log" as any)
-        .select("*")
+        .from("automation_run_log" as any).select("id,job_name,triggered_at,status,http_status,error,duration_ms,completed_at")
         .order("triggered_at", { ascending: false })
         .limit(100);
       return (data as any) ?? [];

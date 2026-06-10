@@ -204,13 +204,11 @@ export default function InboxPage() {
 
     const [notificationRes, emailRes] = await Promise.all([
       supabase
-        .from("notification_log")
-        .select("*")
+        .from("notification_log").select("id,channel,title,message,subject,body,notification_type,status,recipient_email,recipient_phone,recipient_user_id,agent_id,created_at,opened_at,error_message")
         .order("created_at", { ascending: false })
         .limit(MAX_ROWS_PER_SOURCE),
       supabase
-        .from("email_tracking")
-        .select("*")
+        .from("email_tracking").select("id,agent_id,created_at,email_type,metadata,open_count,opened_at,recipient_email,sent_at")
         .order("sent_at", { ascending: false })
         .limit(MAX_ROWS_PER_SOURCE),
     ]);

@@ -76,10 +76,8 @@ export default function InstagramInbox() {
         supabase.from("instagram_connections" as any)
           .select("access_token, instagram_user_id, instagram_username, token_expires_at")
           .eq("user_id", user.id).order("connected_at", { ascending: false }).limit(1).maybeSingle(),
-        supabase.from("instagram_dm_threads" as any)
-          .select("*").eq("user_id", user.id).order("last_msg_at", { ascending: false }).limit(500),
-        supabase.from("instagram_dm_templates" as any)
-          .select("*").eq("user_id", user.id).order("updated_at", { ascending: false }),
+        supabase.from("instagram_dm_threads" as any).select("ig_user_id, username, last_msg_at, last_sender, last_msg_preview, outreach_status, last_sent_at").eq("user_id", user.id).order("last_msg_at", { ascending: false }).limit(500),
+        supabase.from("instagram_dm_templates" as any).select("id, name, body, updated_at").eq("user_id", user.id).order("updated_at", { ascending: false }),
       ]);
       setConnection((conn as any) ?? null);
       setThreads(((thr as any) ?? []).map((t: any) => ({ ...t, bucket: bucketOf(t.last_msg_at, t.last_sender) })));

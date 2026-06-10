@@ -170,8 +170,7 @@ export default function LeadCenter() {
     try {
       // Fetch applications
       const { data: applications, error: appError } = await supabase
-        .from("applications")
-        .select("*")
+        .from("applications").select("id, first_name, last_name, email, phone, city, state, status, license_status, assigned_agent_id, created_at, referral_source, contacted_at, contracted_at, closed_at, terminated_at, notes, license_progress")
         .is("terminated_at", null)
         .order("created_at", { ascending: false });
 
@@ -179,8 +178,7 @@ export default function LeadCenter() {
 
       // Fetch aged leads
       const { data: agedLeads, error: agedError } = await supabase
-        .from("aged_leads")
-        .select("*")
+        .from("aged_leads").select("id, first_name, last_name, email, phone, status, license_status, assigned_manager_id, created_at, contacted_at, notes, motivation")
         .order("created_at", { ascending: false });
 
       if (agedError) throw agedError;

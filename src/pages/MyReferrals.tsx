@@ -68,8 +68,7 @@ export default function MyReferrals() {
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_agent_referrals" as any)
-        .select("*")
+        .from("v_agent_referrals" as any).select("referral_id,referrer_agent_id,referred_name,referred_email,referred_phone,status,created_at,bonus_owed_cents,bonus_paid_cents,lifecycle")
         .eq("referrer_agent_id", myAgentId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -85,8 +84,7 @@ export default function MyReferrals() {
     refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_referral_earnings_pending" as any)
-        .select("*")
+        .from("v_referral_earnings_pending" as any).select("agent_id,total_referrals,open_count,won_count,bonus_owed_cents,bonus_paid_cents,bonus_pending_cents")
         .eq("agent_id", myAgentId)
         .maybeSingle();
       if (error) throw error;

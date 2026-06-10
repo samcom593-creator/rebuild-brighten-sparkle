@@ -74,8 +74,7 @@ export default function Challenges() {
     staleTime: 10 * 60_000,
     queryFn: async (): Promise<ChallengeRow[]> => {
       const { data, error } = await supabase
-        .from("apex_challenges" as any)
-        .select("*")
+        .from("apex_challenges" as any).select("id,slug,title,description,tier,icon,reward_credits,sort_order")
         .order("sort_order", { ascending: true });
       if (error) throw error;
       return ((data ?? []) as unknown) as ChallengeRow[];
@@ -87,8 +86,7 @@ export default function Challenges() {
     enabled: !!user?.id,
     queryFn: async (): Promise<UnlockRow[]> => {
       const { data, error } = await supabase
-        .from("apex_challenge_unlocks" as any)
-        .select("*")
+        .from("apex_challenge_unlocks" as any).select("challenge_id,unlocked_at")
         .order("unlocked_at", { ascending: false });
       if (error) throw error;
       return ((data ?? []) as unknown) as UnlockRow[];

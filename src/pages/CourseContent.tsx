@@ -35,8 +35,7 @@ export default function CourseContent() {
     queryKey: ["course-modules-full-page"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("onboarding_modules")
-        .select("*")
+        .from("onboarding_modules").select("id, title, description, video_url, order_index, pass_threshold, is_active")
         .eq("is_active", true)
         .order("order_index");
       return (data || []) as CourseModule[];
@@ -48,8 +47,7 @@ export default function CourseContent() {
     queryKey: ["course-questions-full-page"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("onboarding_questions")
-        .select("*")
+        .from("onboarding_questions").select("id, module_id, question, options, correct_answer, explanation, order_index")
         .order("order_index");
       return (data || []) as CourseQuestion[];
     },

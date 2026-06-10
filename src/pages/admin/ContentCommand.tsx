@@ -250,8 +250,7 @@ export default function ContentCommand() {
     refetchInterval: 30_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
-        .from("social_bot_drafts")
-        .select("*")
+        .from("social_bot_drafts").select("id, draft_date, platform, slot, pillar, title, hook, body, cta, caption, hashtags, file_path, status, created_at")
         .order("draft_date", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(200);

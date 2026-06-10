@@ -77,8 +77,7 @@ export default function SystemHealth() {
 
   const loadLastCheck = async () => {
     const { data } = await supabase
-      .from("system_health_logs")
-      .select("*")
+      .from("system_health_logs").select("id,checked_at,overall_status,critical_count,warning_count,auto_fixed,results")
       .order("checked_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -92,8 +91,7 @@ export default function SystemHealth() {
 
   const loadRecentLogs = async () => {
     const { data } = await supabase
-      .from("system_health_logs")
-      .select("*")
+      .from("system_health_logs").select("id,checked_at,overall_status,critical_count,warning_count,auto_fixed")
       .order("checked_at", { ascending: false })
       .limit(24);
     if (data) setRecentLogs(data as unknown as HealthLog[]);

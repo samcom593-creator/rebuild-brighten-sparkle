@@ -66,6 +66,66 @@ interface InboundLead {
 }
 
 const STORAGE_KEY = "apex:inbound-leads:v1";
+const DRAFT_KEY = "apex:inbound-leads:active-draft:v1";
+
+// v25 hot-fix advantages for live calls:
+//   - Auto-save form draft to localStorage on every change (survive reload)
+//   - Restore draft on mount (don't lose mid-call work)
+//   - Quick fact chips append to notes ("Married", "Has kids", etc)
+//   - Live call duration timer
+//   - Age inference from "I'm 56" type voice clues
+const QUICK_FACTS = [
+  "Married", "Has kids", "Owns home", "Mortgage payment",
+  "Recent health event", "Pre-existing condition", "Smoker",
+  "Already has policy", "Beneficiary set", "Wants no exam",
+  "Needs IUL", "Sole income earner", "Veteran", "Self-employed",
+] as const;
+
+function loadDraft(): typeof EMPTY_FORM | null {
+  if (typeof window === "undefined" || !window.localStorage) return null;
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // sanity check — must have the EMPTY_FORM shape keys
+    if (typeof parsed === "object" && parsed && "client_first_name" in parsed) return parsed;
+    return null;
+  } catch { return null; }
+}
+
+function saveDraft(form: typeof EMPTY_FORM) {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    // Only persist if there's at least one populated field — empty drafts
+    // get a clear (so a saved+reset cycle doesn't leak the prior draft)
+    const hasContent = Object.values(form).some((v) => typeof v === "string" ? v.trim().length > 0 : false);
+    if (hasContent) {
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
+    } else {
+      window.localStorage.removeItem(DRAFT_KEY);
+    }
+  } catch { /* private mode etc */ }
+}
+
+function clearDraft() {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try { window.localStorage.removeItem(DRAFT_KEY); } catch {}
+}
+
+function appendNote(notes: string, fact: string): string {
+  // Idempotent: if fact already in notes, remove it (toggle off)
+  const existing = notes.split(/[·\n]/).map((s) => s.trim()).filter(Boolean);
+  if (existing.includes(fact)) {
+    return existing.filter((s) => s !== fact).join(" · ");
+  }
+  return existing.length === 0 ? fact : `${existing.join(" · ")} · ${fact}`;
+}
+
+function fmtCallTimer(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 // v24 palette restraint: kill the 6-color rainbow (cyan/violet/amber/blue/
 // emerald/slate). Stage chips read MONO via shared neutral tint; the dot
@@ -289,12 +349,39 @@ export default function InboundLeads() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<InboundStage | "__all__">("__all__");
   const [newClientOpen, setNewClientOpen] = useState(false);
-  const [form, setForm] = useState({ ...EMPTY_FORM });
+  // v25 hot-fix: restore draft from localStorage on mount so a page
+  // reload mid-call doesn't lose Sam's typed/transcribed data.
+  const [form, setForm] = useState(() => loadDraft() ?? { ...EMPTY_FORM });
   const [listening, setListening] = useState(false);
+  const [callElapsed, setCallElapsed] = useState(0); // live timer (sec)
   const recognitionRef = useRef<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartRef = useRef<number | null>(null);
+  const draftRestored = !!loadDraft();
+
+  // v25 hot-fix: auto-save draft to localStorage on every form change so
+  // a tab reload/crash doesn't lose live work mid-call.
+  useEffect(() => {
+    const t = setTimeout(() => saveDraft(form), 400); // debounce 400ms
+    return () => clearTimeout(t);
+  }, [form]);
+
+  // v25 hot-fix: live call timer · ticks while mic is recording
+  useEffect(() => {
+    if (!listening || !recordingStartRef.current) {
+      setCallElapsed(0);
+      return;
+    }
+    const tick = () => {
+      const startedAt = recordingStartRef.current;
+      if (!startedAt) return;
+      setCallElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [listening]);
 
   const mergeLeads = useCallback((incoming: InboundLead[]) => {
     setLeads((prev) => {
@@ -449,6 +536,9 @@ export default function InboundLeads() {
   const resetForm = () => {
     stopListening();
     setForm({ ...EMPTY_FORM });
+    // v25 hot-fix: wipe the autosave draft so a future page reload
+    // doesn't restore stale data after a clean save/cancel.
+    clearDraft();
   };
 
   const saveLead = async (event: React.FormEvent) => {
@@ -575,10 +665,19 @@ export default function InboundLeads() {
         title="Inbound Leads"
         subtitle="Fast call capture for people calling live with different problems. Log the situation, identify the solution lane, and push the client through the follow-up board."
         actions={
-          <Button className="gap-2" onClick={() => setNewClientOpen(true)}>
-            <Plus className="h-4 w-4" />
-            New Client
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* v25 hot-fix: draft restored banner — Sam sees instantly if
+                a page reload restored prior work without him touching anything */}
+            {draftRestored && !newClientOpen && (
+              <Badge variant="outline" className="text-11 border-amber-500/40 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
+                Draft restored — open New Client to resume
+              </Badge>
+            )}
+            <Button className="gap-2" onClick={() => setNewClientOpen(true)}>
+              <Plus className="h-4 w-4" />
+              New Client
+            </Button>
+          </div>
         }
       />
 
@@ -819,6 +918,29 @@ export default function InboundLeads() {
               </Field>
 
               <Field label="Notes">
+                {/* v25 hot-fix quick-fact chips · one tap appends to notes
+                    (or removes if already there). Saves 15-20 sec typing
+                    on common boolean facts mid-call. */}
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {QUICK_FACTS.map((fact) => {
+                    const active = form.notes.toLowerCase().includes(fact.toLowerCase());
+                    return (
+                      <button
+                        key={fact}
+                        type="button"
+                        onClick={() => updateForm("notes", appendNote(form.notes, fact))}
+                        className={cn(
+                          "rounded-full border px-2.5 py-1 text-11 font-medium transition-base",
+                          active
+                            ? "border-emerald-500/40 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
+                            : "border-border bg-muted text-muted-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
+                        )}
+                      >
+                        {active ? "✓ " : ""}{fact}
+                      </button>
+                    );
+                  })}
+                </div>
                 <Textarea value={form.notes} onChange={(event) => updateForm("notes", event.target.value)} placeholder="Decision makers, objections, health notes, callback promise, carrier fit..." className="min-h-[120px]" />
               </Field>
             </div>
@@ -832,15 +954,24 @@ export default function InboundLeads() {
                       Tap the mic during a call. It will capture transcript text and auto-fill obvious fields.
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant={listening ? "destructive" : "outline"}
-                    className="gap-2 shrink-0"
-                    onClick={listening ? stopListening : startListening}
-                  >
-                    {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                    {listening ? "Stop" : "Mic"}
-                  </Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* v25 live call timer · visible only while mic recording */}
+                    {listening && (
+                      <span className="flex items-center gap-1.5 text-12 font-semibold tabular-nums text-rose-600 dark:text-rose-400">
+                        <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                        {fmtCallTimer(callElapsed)}
+                      </span>
+                    )}
+                    <Button
+                      type="button"
+                      variant={listening ? "destructive" : "outline"}
+                      className="gap-2"
+                      onClick={listening ? stopListening : startListening}
+                    >
+                      {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                      {listening ? "Stop" : "Mic"}
+                    </Button>
+                  </div>
                 </div>
                 <Textarea
                   value={form.transcript}

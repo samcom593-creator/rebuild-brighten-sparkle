@@ -4,20 +4,20 @@ import { track } from "@/lib/analytics";
 
 const FAQ = [
   {
-    q: "How is APEX different from Family First Life or Symmetry?",
-    a: "FFL and Symmetry charge you for leads. APEX doesn't. You write deals, you keep getting leads. We pay weekly — most agencies make you wait a month.",
+    q: "Who should book directly with Samuel James?",
+    a: "Samuel's calendar is reserved for licensed leaders with five or more agents, or at least $50,000 in monthly production. Everyone else gets routed to the right onboarding strategist first.",
   },
   {
-    q: "What if I'm already licensed at another agency?",
-    a: "Bring your book. We contract you with our carriers and you can write through both during transition. No exclusivity trap.",
+    q: "What if I'm already licensed?",
+    a: "Licensed agents move faster. We verify your license, review your carrier fit, and map out the cleanest path to write business through APEX.",
   },
   {
     q: "Do I really not pay for leads?",
-    a: "Zero upfront. The harder you work, the warmer your next leads get. Top producers eat first. Slackers get cold lists. That's the deal.",
+    a: "There is no upfront lead bill in the recruiting flow. Lead access is tied to activity, follow-up, and production so serious agents get prioritized.",
   },
   {
     q: "What's my realistic income in month 1, 6, 12?",
-    a: "Median full-time: ~$3K month 1, ~$8K month 6, ~$12K month 12. Top quartile: 2–3× those numbers. Real receipts in agent dashboard.",
+    a: "Income depends on licensing speed, calls, appointments, and consistency. The dashboard tracks production so expectations stay tied to real activity instead of hype.",
   },
   {
     q: "Can I keep my job while I get licensed?",
@@ -47,7 +47,7 @@ export function RecruitFAQ() {
             Real <span className="brand-gradient">questions</span>, real answers
           </h2>
           <p className="mt-4 text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
-            The questions every recruit calls Sam about at 10pm. Answered like he'd answer his brother.
+            The questions recruits ask before they commit time, money, and reputation.
           </p>
         </div>
         <div className="space-y-3">
@@ -56,10 +56,10 @@ export function RecruitFAQ() {
             return (
               <div
                 key={i}
-                className={`landing-fade-up rounded-2xl border bg-card/60 backdrop-blur-xl overflow-hidden transition-all duration-300 ${
+                className={`landing-fade-up rounded-2xl border bg-[#07111f]/90 backdrop-blur-xl overflow-hidden transition-all duration-300 ${
                   isOpen
                     ? "border-primary/50 shadow-[0_0_0_1px_rgba(20,184,166,0.15),0_20px_60px_-20px_rgba(20,184,166,0.20)]"
-                    : "border-border/60 hover:border-primary/30 hover:shadow-lg hover:-translate-y-0.5"
+                    : "border-[#1e293b] hover:border-primary/30 hover:shadow-lg hover:-translate-y-0.5"
                 }`}
               >
                 <button
@@ -72,7 +72,7 @@ export function RecruitFAQ() {
                     <span className={`mt-0.5 flex-shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-display font-bold transition-colors ${
                       isOpen ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"
                     }`}>{String(i + 1).padStart(2, "0")}</span>
-                    <span className="font-display font-bold text-base sm:text-lg leading-snug">{item.q}</span>
+                    <span className="font-display font-bold text-base sm:text-lg leading-snug text-[#f8fafc]">{item.q}</span>
                   </span>
                   <ChevronDown className={`h-5 w-5 flex-shrink-0 mt-1 text-muted-foreground transition-transform duration-300 ${isOpen ? "rotate-180 text-primary" : "group-hover:text-primary"}`} />
                 </button>
@@ -82,7 +82,7 @@ export function RecruitFAQ() {
                   }`}
                 >
                   <div className="overflow-hidden">
-                    <div className="px-5 sm:px-6 pb-6 pl-[60px] text-base text-foreground/85 leading-relaxed">
+                    <div className="px-5 sm:px-6 pb-6 pl-[60px] text-base text-[#cbd5e1] leading-relaxed">
                       {item.a}
                     </div>
                   </div>

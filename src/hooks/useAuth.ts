@@ -208,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setRoles([]);
               setRolesLoading(false);
               setIsLoading(false);
-              supabase.auth.signOut().catch(() => {});
+              Promise.resolve(supabase.auth.signOut()).catch(() => {});
             }
             return;
           }
@@ -278,7 +278,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       interactionHandler = null;
     };
 
-    if (hasExistingSession) {
+    const isLiteralLandingRoute = window.location.pathname === "/";
+    const isTestMode = import.meta.env.MODE === "test";
+
+    if (isTestMode || hasExistingSession || !isLiteralLandingRoute) {
       timeoutHandle = window.setTimeout(() => { void init(); }, 0);
     } else {
       interactionHandler = () => {

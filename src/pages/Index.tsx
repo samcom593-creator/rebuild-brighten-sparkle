@@ -24,8 +24,6 @@ const RecruitFAQ = lazy(() => import("@/components/landing/RecruitFAQ").then((mo
 // Lazy + null Suspense preserves visual order — Footer hydrates after the proof block.
 const Footer = lazy(() => import("@/components/landing/Footer").then((mod) => ({ default: mod.Footer })));
 const StickyMobileCTA = lazy(() => import("@/components/landing/StickyMobileCTA").then((mod) => ({ default: mod.StickyMobileCTA })));
-const ApexLeadsSection = lazy(() => import("@/components/landing/ApexLeadsSection").then((mod) => ({ default: mod.ApexLeadsSection })));
-const InstagramGrowthSection = lazy(() => import("@/components/landing/InstagramGrowthSection").then((mod) => ({ default: mod.InstagramGrowthSection })));
 
 function SectionFallback() {
   // Dark glass placeholder while lazy chunks load. Was `bg-white/[0.03]` —
@@ -51,8 +49,6 @@ const Index = () => {
             <BenefitsSection />
             <EarningsSection />
             <CareerPathwaySection />
-            <ApexLeadsSection />
-            <InstagramGrowthSection />
             <RecruitFAQ />
             <CTASection />
           </LazyQueryRoot>

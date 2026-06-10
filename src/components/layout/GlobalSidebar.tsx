@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
-  DollarSign,
   GraduationCap,
   LayoutDashboard,
   Library,
@@ -17,6 +16,7 @@ import {
   Menu,
   Minimize2,
   Network,
+  PhoneIncoming,
   Plus,
   Search,
   Settings,
@@ -113,10 +113,11 @@ export function GlobalSidebar({
       { icon: LayoutDashboard, label: "Command Center", href: "/dashboard", special: true },
     ];
     const oldApplicants: NavItem[] = [];
-    const finance: NavItem[] = [];
 
     if (isAdmin) {
       operations.push(
+        { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
+        { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
         { icon: Network, label: "Builders", href: "/dashboard/builders", special: true },
         { icon: UserCog, label: "Managers", href: "/dashboard/managers" },
         { icon: Crown, label: "Agency Owners", href: "/dashboard/agency-owners" },
@@ -127,15 +128,14 @@ export function GlobalSidebar({
         { icon: Library, label: "Content", href: "/dashboard/admin/content-command" },
         { icon: Settings, label: "Admin", href: "/dashboard/admin" },
       );
-      finance.push(
-        { icon: DollarSign, label: "Lead Payments", href: "/dashboard/lead-payments", special: true },
-      );
       oldApplicants.push(
         { icon: Archive, label: "Old Managers", href: "/dashboard/old-applicants/managers" },
         { icon: Archive, label: "Old Licensed Recruiters", href: "/dashboard/old-applicants/licensed-recruiters" },
       );
     } else if (isManager) {
       operations.push(
+        { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
+        { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
         { icon: Users, label: "Agents", href: "/dashboard/my-team" },
         { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
@@ -155,7 +155,6 @@ export function GlobalSidebar({
 
     return [
       { label: "OPERATIONS", items: operations },
-      ...(finance.length ? [{ label: "LEAD PAYMENTS", items: finance }] : []),
       ...(oldApplicants.length ? [{ label: "OLD APPLICANTS", items: oldApplicants }] : []),
     ];
   }, [isAdmin, isManager]);
@@ -442,6 +441,24 @@ export function GlobalSidebar({
           </nav>
 
           <div className="border-t border-[#1e293b] p-2">
+            {user && !isCollapsed && (isAdmin || isManager) && (
+              <div className="mb-2 px-2">
+                <AddAgentModal
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start gap-2 border-[#22d3a5]/25 bg-[#22d3a5]/10 text-[#22d3a5] hover:bg-[#22d3a5]/15"
+                      style={{ touchAction: "manipulation" }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Agent
+                    </Button>
+                  }
+                />
+              </div>
+            )}
+
             {user && !isCollapsed && (
               <div className="mb-2 px-3 py-2">
                 <p className="text-sm font-medium truncate text-[#e2e8f0]">

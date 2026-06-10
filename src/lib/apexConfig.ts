@@ -103,6 +103,7 @@ export const PROGRESS_COLUMNS = [
 export const SCHEDULING_LINKS = {
   unlicensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
   licensed: "https://calendly.com/apexfinancialempire/1on1-call-clone",
+  kjLicensed: "",
 } as const;
 
 // ─── Call Outcomes ────────────────────────────────────────────────────────────

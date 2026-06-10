@@ -681,3 +681,6 @@ verify_jwt = false
 
 [functions.poke-pusher]
 verify_jwt = false
+
+[functions.apex-mcp]
+verify_jwt = false

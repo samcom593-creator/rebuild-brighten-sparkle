@@ -57,9 +57,19 @@ const TOOLS = [
   {
     name: "status",
     description:
-      "Get current Apex command-center status: pending command count, last AgentLink sync, " +
-      "last commit SHA, agentlink book truth ($M + deal count), poke queue depth. Use this " +
-      "to ask 'what's running?'.",
+      "LIVE Apex production numbers — call this FIRST whenever the user asks 'how am I doing', " +
+      "'what's my production', 'how much did my team do today/this week/this month', 'any sales', " +
+      "'any deals', 'what's running', 'apex status'. Returns: today/week/month/full-book deal " +
+      "counts + annual premium ($), new applicants today, new agents hired today, last AgentLink " +
+      "sync recency, pending command queue depth. Source of truth = AgentLink (Sam's real book), " +
+      "auto-synced every 30 min via launchd. Use this INSTEAD of guessing or saying 'I don't know'.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "production_today",
+    description:
+      "Alias for status — explicitly returns TODAY's production breakdown. Same response as " +
+      "status. Use when the user specifically asks about today only.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -115,18 +125,28 @@ const handler = async (req: Request): Promise<Response> => {
       const toolName = params.name ?? "";
       const args = params.arguments ?? {};
 
-      if (toolName === "status") {
-        const [{ data: bookTruth }, { data: pendingCmds }, { data: lastCmd }] = await Promise.all([
+      if (toolName === "status" || toolName === "production_today") {
+        const [{ data: bookTruth }, { data: pendingCmds }, { data: lastCmd }, { count: appsToday }, { count: agentsToday }] = await Promise.all([
           sb.from("v_agentlink_book_truth").select("*").maybeSingle(),
           sb.from("apex_commands").select("id", { count: "exact" }).is("completed_at", null),
           sb.from("apex_commands").select("id, kind, status, created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+          sb.from("applications").select("id", { count: "exact", head: true }).gte("created_at", new Date().toISOString().slice(0, 10) + "T00:00:00Z"),
+          sb.from("agents").select("id", { count: "exact", head: true }).gte("created_at", new Date().toISOString().slice(0, 10) + "T00:00:00Z"),
         ]);
         const truth = bookTruth as Record<string, unknown> | null;
+        const money = (n: unknown) => "$" + Math.round(Number(n ?? 0)).toLocaleString();
+        const dt = truth?.last_synced_at ? new Date(String(truth.last_synced_at)) : null;
+        const minutesAgo = dt ? Math.round((Date.now() - dt.getTime()) / 60000) : null;
         const text = [
-          `🏛️ APEX Command Center`,
-          truth ? `Book: ${truth.total_deals} deals · $${Number(truth.total_annual_premium ?? 0).toLocaleString()}` : "Book: unknown",
-          truth ? `This month: ${truth.deals_this_month} deals · $${Number(truth.premium_this_month ?? 0).toLocaleString()}` : "",
-          `Pending commands: ${pendingCmds?.length ?? 0}`,
+          `🏛️ APEX TODAY (${new Date().toISOString().slice(0,10)})`,
+          truth ? `Today: ${truth.deals_today ?? 0} deals · ${money(truth.premium_today)} premium` : "Today: data not loaded",
+          truth ? `This week: ${truth.deals_this_week ?? 0} deals · ${money(truth.premium_this_week)}` : "",
+          truth ? `This month: ${truth.deals_this_month ?? 0} deals · ${money(truth.premium_this_month)}` : "",
+          truth ? `Full book: ${truth.total_deals ?? 0} deals · ${money(truth.total_annual_premium)}` : "",
+          `New applicants today: ${appsToday ?? 0}`,
+          `New agents hired today: ${agentsToday ?? 0}`,
+          minutesAgo !== null ? `Last AgentLink sync: ${minutesAgo} min ago` : "",
+          `Pending agent commands: ${pendingCmds?.length ?? 0}`,
           lastCmd ? `Last command: ${(lastCmd as Record<string, unknown>).kind} (${(lastCmd as Record<string, unknown>).status})` : "",
         ].filter(Boolean).join("\n");
         return rpcResult(rpc.id, { content: [{ type: "text", text }] });

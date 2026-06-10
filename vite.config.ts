@@ -4,6 +4,11 @@ import path from "path";
 import fs from "fs";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import {
+  buildLandingCss,
+  fmtBytes,
+  LANDING_CSS_CEILING_GZ,
+} from "./scripts/build-landing-css.mjs";
 
 // wave-26 (2026-06-07): build-time sync invariant. Wave-25 found index.html's
 // LCP preload + VideoObject JSON-LD still pointed at the OLD VSL for 2 days
@@ -82,6 +87,39 @@ function vslSyncCheckPlugin() {
   };
 }
 
+// wave-54b (2026-06-10): build-time emit of public/landing.css from
+// tailwind.config.landing.cjs + src/index.css via the shared buildLandingCss()
+// lib. ADDITIVE — index.html still loads dist/assets/index-*.css (wave-54c
+// owns the link swap). Purpose: validate the build pipeline works end-to-end
+// (config exists, CLI invocation succeeds, output stays under the wave-54a
+// 20 KB gz ceiling) BEFORE wave-54c makes landing.css the production cold-
+// landing CSS. If wave-54b ships green for a build cycle without anyone
+// noticing, wave-54c is purely a link swap on de-risked ground.
+//
+// Why buildStart not closeBundle: buildStart fires before any chunk emission,
+// so a Tailwind config drift fails the build at the FIRST hook with a clear
+// error message instead of surfacing 30 seconds later inside a Rollup error
+// trace. The emit ALSO fires on `vite dev` so the dev server reflects the
+// landing.css that prod will ship (~1.5-1.8s startup cost — acceptable).
+function landingCssBuildPlugin() {
+  return {
+    name: "apex-landing-css-build",
+    buildStart() {
+      const out = path.resolve(__dirname, "public/landing.css");
+      const { raw, gz, elapsed } = buildLandingCss(out);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[apex-landing-css-build] public/landing.css emitted: raw ${fmtBytes(raw)} / gz ${fmtBytes(gz)} in ${elapsed}ms (ceiling ${fmtBytes(LANDING_CSS_CEILING_GZ)} gz)`,
+      );
+      if (gz > LANDING_CSS_CEILING_GZ) {
+        throw new Error(
+          `[apex-landing-css-build] landing.css gzipped ${fmtBytes(gz)} exceeds ${fmtBytes(LANDING_CSS_CEILING_GZ)} ceiling — narrow tailwind config drifted. See scripts/check-landing-css-size.mjs triage steps.`,
+        );
+      }
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -90,6 +128,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     vslSyncCheckPlugin(),
+    landingCssBuildPlugin(),
     react(),
     mode === "development" && componentTagger(),
     VitePWA({

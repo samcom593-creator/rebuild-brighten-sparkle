@@ -8,8 +8,6 @@ const NAV_LINKS = [
   { href: "#benefits", label: "Benefits" },
   { href: "#earnings", label: "Earnings" },
   { href: "#career", label: "Career Path" },
-  { href: "#leads", label: "Leads" },
-  { href: "#ig-growth", label: "IG Growth" },
 ];
 
 export function Navbar() {

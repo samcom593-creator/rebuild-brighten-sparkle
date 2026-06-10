@@ -33,3 +33,9 @@ apex-bot-credentials.md
 .vercel
 supabase/.temp/
 .env*.local
+
+# wave-54b (2026-06-10): build-time emit by landingCssBuildPlugin() in
+# vite.config.ts. Built fresh on every `vite build` / `vite dev` from
+# tailwind.config.landing.cjs + src/index.css via scripts/build-landing-css.mjs.
+# Not a source file — gitignored so `git status` stays clean post-build.
+public/landing.css

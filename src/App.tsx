@@ -152,6 +152,7 @@ const BulkDeals = lazy(() => import("./pages/BulkDeals"));
 const AgentLinkSync = lazy(() => import("./pages/AgentLinkSync"));
 const AgentLinkVault = lazy(() => import("./pages/AgentLinkVault"));
 const ClientPipeline = lazy(() => import("./pages/ClientPipeline"));
+const InboundLeads = lazy(() => import("./pages/InboundLeads"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
 const SamHQ = lazy(() => import("./pages/admin/SamHQ"));
 const UnclaimedLeads = lazy(() => import("./pages/admin/UnclaimedLeads"));
@@ -410,6 +411,8 @@ const App = () => (
                      <Route path="/agent-pipeline" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
                      <Route path="/dashboard/agent-pipeline" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
                      <Route path="/dashboard/client-pipeline" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
+                     <Route path="/dashboard/inbound-leads" element={<ProtectedRoute><InboundLeads /></ProtectedRoute>} />
+                     <Route path="/dashboard/inbound" element={<ProtectedRoute><InboundLeads /></ProtectedRoute>} />
                      <Route path="/dashboard/calendar" element={<CalendarPage />} />
                      <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />

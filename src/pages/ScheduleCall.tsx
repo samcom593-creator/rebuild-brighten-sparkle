@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Crown, CheckCircle2, Calendar, ArrowLeft } from "lucide-react";
+import { AlertCircle, Crown, CheckCircle2, Calendar, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
@@ -14,12 +14,13 @@ import { SCHEDULING_LINKS } from "@/lib/apexConfig";
  * Licensed → inline embed (keeps user on-site)
  * Unlicensed → inline embed (different calendar)
  */
-const LICENSED_CALENDLY = SCHEDULING_LINKS.licensed;
-const UNLICENSED_CALENDLY = SCHEDULING_LINKS.unlicensed;
+const SAMUEL_JAMES_CALENDLY = SCHEDULING_LINKS.licensed;
+const KJ_LICENSED_CALENDLY = SCHEDULING_LINKS.kjLicensed;
 
 export default function ScheduleCall() {
   usePageTitle("Schedule a Call · APEX Financial");
   const [hasLicense, setHasLicense] = useState<boolean | null>(null);
+  const [leaderQualified, setLeaderQualified] = useState<boolean | null>(null);
 
   // Unlicensed visitors are blocked from booking — they must enroll in
   // pre-licensing first. Sam (2026-05-18 punch list, PL-001): "make it so
@@ -35,7 +36,7 @@ export default function ScheduleCall() {
                 <Crown className="h-8 w-8 text-primary" />
                 <span className="text-xl font-bold gradient-text">APEX Financial</span>
               </Link>
-              <Button variant="ghost" size="sm" onClick={() => setHasLicense(null)} className="gap-2">
+              <Button variant="ghost" size="sm" onClick={() => { setHasLicense(null); setLeaderQualified(null); }} className="gap-2">
                 <ArrowLeft className="h-4 w-4" /> Back
               </Button>
             </div>
@@ -70,8 +71,7 @@ export default function ScheduleCall() {
       </div>
     );
   }
-  if (hasLicense === true) {
-    const calendlyUrl = LICENSED_CALENDLY;
+  if (hasLicense === true && leaderQualified === null) {
     return (
       <div className="min-h-screen bg-background">
         <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border">
@@ -81,7 +81,88 @@ export default function ScheduleCall() {
                 <Crown className="h-8 w-8 text-primary" />
                 <span className="text-xl font-bold gradient-text">APEX Financial</span>
               </Link>
-              <Button variant="ghost" size="sm" onClick={() => setHasLicense(null)} className="gap-2">
+              <Button variant="ghost" size="sm" onClick={() => { setHasLicense(null); setLeaderQualified(null); }} className="gap-2">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </Button>
+            </div>
+          </div>
+        </nav>
+
+        <main className="pt-24 pb-16 px-4">
+          <div className="max-w-xl mx-auto">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+              <GlassCard className="p-8 text-center">
+                <div className="h-16 w-16 mx-auto rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-4 animate-pulse-glow">
+                  <Calendar className="h-8 w-8 text-primary-foreground" />
+                </div>
+                <h1 className="text-2xl font-bold mb-3">Who are we booking you with?</h1>
+                <p className="text-muted-foreground mb-6">
+                  Samuel James calls are reserved for licensed leaders with at
+                  least five agents or $50,000+ in monthly production.
+                </p>
+                <div className="grid gap-3">
+                  <Button size="lg" className="w-full gap-2 btn-press" onClick={() => setLeaderQualified(true)}>
+                    Yes, I meet that threshold <CheckCircle2 className="h-5 w-5" />
+                  </Button>
+                  <Button size="lg" variant="outline" className="w-full gap-2 btn-press" onClick={() => setLeaderQualified(false)}>
+                    Not yet
+                  </Button>
+                </div>
+              </GlassCard>
+            </motion.div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (hasLicense === true) {
+    const calendlyUrl = leaderQualified ? SAMUEL_JAMES_CALENDLY : KJ_LICENSED_CALENDLY;
+    if (!leaderQualified && !calendlyUrl) {
+      return (
+        <div className="min-h-screen bg-background">
+          <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between items-center h-16">
+                <Link to="/" className="flex items-center gap-2">
+                  <Crown className="h-8 w-8 text-primary" />
+                  <span className="text-xl font-bold gradient-text">APEX Financial</span>
+                </Link>
+                <Button variant="ghost" size="sm" onClick={() => setLeaderQualified(null)} className="gap-2">
+                  <ArrowLeft className="h-4 w-4" /> Back
+                </Button>
+              </div>
+            </div>
+          </nav>
+          <main className="pt-24 pb-16 px-4">
+            <div className="max-w-xl mx-auto">
+              <GlassCard className="p-8 text-center">
+                <AlertCircle className="h-12 w-12 text-amber-400 mx-auto mb-4" />
+                <h1 className="text-2xl font-bold mb-3">Onboarding calendar is being connected</h1>
+                <p className="text-muted-foreground mb-6">
+                  You are licensed, but Samuel James' calendar is reserved for
+                  senior production calls. Submit your application and the team
+                  will route you to KJ's booking link.
+                </p>
+                <Link to="/apply">
+                  <Button size="lg" className="w-full">Start Application</Button>
+                </Link>
+              </GlassCard>
+            </div>
+          </main>
+        </div>
+      );
+    }
+    return (
+      <div className="min-h-screen bg-background">
+        <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <Link to="/" className="flex items-center gap-2">
+                <Crown className="h-8 w-8 text-primary" />
+                <span className="text-xl font-bold gradient-text">APEX Financial</span>
+              </Link>
+              <Button variant="ghost" size="sm" onClick={() => setLeaderQualified(null)} className="gap-2">
                 <ArrowLeft className="h-4 w-4" /> Back
               </Button>
             </div>
@@ -93,12 +174,16 @@ export default function ScheduleCall() {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
               <GlassCard className="p-4 mb-4">
                 <div className="flex items-center gap-3">
-                  <Calendar className="h-5 w-5 text-primary" />
+                    <Calendar className="h-5 w-5 text-primary" />
                   <div>
                     <h2 className="font-bold text-sm">
-                      {hasLicense ? "Licensed Agent Call" : "Getting Started Call"}
+                      {leaderQualified ? "Samuel James strategy call" : "Licensed onboarding call"}
                     </h2>
-                    <p className="text-xs text-muted-foreground">Pick a time that works for you</p>
+                    <p className="text-xs text-muted-foreground">
+                      {leaderQualified
+                        ? "Reserved for 5+ agents or $50K+ monthly production"
+                        : "Pick a time with the onboarding strategist"}
+                    </p>
                   </div>
                 </div>
               </GlassCard>

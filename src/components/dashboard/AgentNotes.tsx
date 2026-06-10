@@ -103,7 +103,8 @@ export function AgentNotes({ agentId, onNoteAdded, readOnly = false }: AgentNote
           body: { agentId, note: newNote.trim() },
         });
       } catch (notifyError) {
-        // }
+        /* swallow · notification fail shouldn't block UX */
+      }
     } catch (error) {
       console.error("Error adding note:", error);
       toast.error("Failed to add note");

@@ -99,7 +99,8 @@ export function CallCenterVoiceRecorder({
         try {
           recognition.start();
         } catch (e) {
-          // }
+          /* recognition start failed · swallow */
+        }
       }
     };
 

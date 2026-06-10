@@ -322,8 +322,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                 },
               }),
             ]);
-            
-            // } catch (notifyError) {
+          } catch (notifyError) {
             console.error("Failed to send notifications:", notifyError);
           }
         }, 2000);

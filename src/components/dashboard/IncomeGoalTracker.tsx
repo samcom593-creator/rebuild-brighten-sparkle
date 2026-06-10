@@ -125,7 +125,7 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
 
     setSaving(true);
     try {
-      // const { error } = await supabase
+      const { error } = await supabase
         .from("agent_goals")
         .upsert({
           agent_id: agentId,

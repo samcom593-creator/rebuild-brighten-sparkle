@@ -1278,9 +1278,9 @@ function CallSnapshot({ form }: { form: typeof EMPTY_FORM }) {
   }
 
   return (
-    {/* v24 audit fix: CallSnapshot panel was 5th green inside the dialog
-        (border-emerald-500/40 bg-emerald-500/5). Mono now · emerald only
-        on the small count badge inside. */}
+    // v24 audit fix: CallSnapshot panel was 5th green inside the dialog
+    // (border-emerald-500/40 bg-emerald-500/5). Mono now · emerald only
+    // on the small count badge inside.
     <div className="rounded-lg border border-border bg-muted/40 p-3">
       <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-300 mb-2">
         Call snapshot · {bullets.length} {bullets.length === 1 ? "detail" : "details"} captured

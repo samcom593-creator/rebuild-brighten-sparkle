@@ -533,7 +533,8 @@ export default function CallCenter() {
           .update({ started_training: true })
           .eq("id", currentLead.id)
           .then(({ error }) => {
-            if (error) });
+            if (error) { /* console.error stripped by v25 codemod */ }
+          });
       }
     }
   }, [executeAction, currentLead]);

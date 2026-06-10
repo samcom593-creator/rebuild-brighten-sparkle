@@ -154,7 +154,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
           });
           if (fallbackRes.error) throw fallbackRes.error;
           if (fallbackRes.data?.error) throw new Error(fallbackRes.data.error);
-          // } catch (fallbackErr: any) {
+        } catch (fallbackErr: any) {
           console.error("Edge function fallback also failed:", fallbackErr);
           toast.error("Failed to save numbers. Please try again or contact your manager.");
           setSaving(false);
@@ -246,8 +246,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                 },
               }),
             ]);
-            
-            // } catch (notifyError) {
+          } catch (notifyError) {
             console.error("Failed to send notifications:", notifyError);
           }
         }, 2000); // Wait for confetti animation to complete

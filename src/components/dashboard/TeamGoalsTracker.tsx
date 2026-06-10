@@ -175,7 +175,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
     <GlassCard className={`p-6 ${className}`}>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-emerald-500/20 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center">
             <Target className="h-5 w-5 text-primary" />
           </div>
           <div>

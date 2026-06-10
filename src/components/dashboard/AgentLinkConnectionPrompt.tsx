@@ -64,7 +64,7 @@ export function AgentLinkConnectionPrompt({ force, message, hideForNonAgents = t
   if (status === "not_an_agent" && hideForNonAgents) return null;
 
   return (
-    <GlassCard className={cn("p-4 border-blue-500/40 bg-gradient-to-r from-blue-500/10 via-primary/5 to-transparent", className)}>
+    <GlassCard className={cn("p-4 border-blue-500/40 bg-blue-500/[0.06]", className)}>
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <div className="rounded-lg p-2 bg-blue-500/15 border border-blue-500/30 shrink-0">

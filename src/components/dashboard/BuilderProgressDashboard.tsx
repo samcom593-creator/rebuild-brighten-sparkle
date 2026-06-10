@@ -142,7 +142,7 @@ export function BuilderProgressDashboard() {
   }
 
   return (
-    <Card className="border-yellow-500/30 bg-gradient-to-br from-zinc-950 via-zinc-950 to-yellow-950/10">
+    <Card className="border-yellow-500/30">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div>

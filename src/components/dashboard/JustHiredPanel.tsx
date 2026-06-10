@@ -51,7 +51,7 @@ export function JustHiredPanel() {
   const directToSamCount = (hires ?? []).filter(h => h.routed_to === "(direct to Sam)" || h.routed_to === "Samuel James").length;
 
   return (
-    <Card className="ops-card-depth border-amber-500/20 bg-gradient-to-br from-amber-500/[0.03] via-card to-card">
+    <Card className="ops-card-depth border-amber-500/20">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between gap-3 text-base">
           <span className="flex items-center gap-2">

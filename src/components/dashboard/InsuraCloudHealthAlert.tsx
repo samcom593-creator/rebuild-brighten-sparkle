@@ -51,7 +51,7 @@ export function InsuraCloudHealthAlert() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <Card className="p-5 sm:p-6 border-2 border-rose-500/60 bg-gradient-to-br from-rose-500/15 via-card to-card relative overflow-hidden">
+      <Card className="p-5 sm:p-6 border-2 border-rose-500/60 bg-rose-500/[0.06] relative overflow-hidden">
         <div className="absolute -top-12 -right-12 w-48 h-48 bg-rose-500/20 rounded-full blur-3xl pointer-events-none" />
         <div className="relative flex items-start justify-between gap-4 mb-3">
           <div className="flex items-start gap-3 min-w-0">

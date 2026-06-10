@@ -338,7 +338,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
                   entry.isCurrentUser
                     ? "bg-primary/10 border border-primary/30 shadow-sm"
                     : index < 3
-                      ? "bg-gradient-to-r from-amber-500/5 to-transparent border border-amber-500/10"
+                      ? "bg-amber-500/[0.03] border border-amber-500/10"
                       : "hover:bg-muted/40"
                 )}
                 onClick={() => {

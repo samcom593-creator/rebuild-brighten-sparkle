@@ -65,7 +65,7 @@ export function ManagerHierarchyMtdPanel() {
   }), [managers]);
 
   return (
-    <Card className="ops-card-depth border-[#22d3a5]/20 bg-gradient-to-br from-[#22d3a5]/[0.04] via-card to-card">
+    <Card className="ops-card-depth border-[#22d3a5]/20">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-2 text-base">

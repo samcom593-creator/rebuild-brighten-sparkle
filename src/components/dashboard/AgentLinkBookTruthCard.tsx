@@ -52,7 +52,7 @@ export function AgentLinkBookTruthCard() {
 
   if (q.isLoading) {
     return (
-      <Card className="border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent">
+      <Card className="border-amber-500/30 bg-amber-500/[0.03]">
         <CardContent className="p-4 space-y-2">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-9 w-44" />
@@ -68,7 +68,7 @@ export function AgentLinkBookTruthCard() {
   const stale = d.last_synced_at && (Date.now() - new Date(d.last_synced_at).getTime()) > 6 * 3600 * 1000;
 
   return (
-    <Card className="border-amber-500/40 bg-gradient-to-br from-amber-500/10 to-transparent">
+    <Card className="border-amber-500/40 bg-amber-500/[0.06]">
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>

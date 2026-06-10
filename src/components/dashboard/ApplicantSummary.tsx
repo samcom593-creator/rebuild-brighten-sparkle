@@ -110,7 +110,7 @@ export function ApplicantSummary({ applicant, className }: ApplicantSummaryProps
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="mt-2 p-3 rounded-lg bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20">
+            <div className="mt-2 p-3 rounded-lg bg-primary/[0.06] border border-primary/20">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2">
                   <User className="h-4 w-4 text-primary mt-0.5 shrink-0" />

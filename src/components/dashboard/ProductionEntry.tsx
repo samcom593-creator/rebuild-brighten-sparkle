@@ -401,21 +401,16 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
         animate={{ opacity: 1, y: 0 }}
       >
         <GlassCard className="p-5 sm:p-8 relative overflow-hidden">
-          {/* Premium background gradient when has production */}
-          {hasProduction && (
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-emerald-500/5 pointer-events-none" />
-          )}
-          
           <div className="relative">
             {/* Header with elite styling */}
             <div className="flex flex-col gap-4 mb-6">
               {/* Title Row */}
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 shadow-lg shadow-primary/10 shrink-0">
+                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/15 border border-primary/20 shadow-lg shadow-primary/10 shrink-0">
                   <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-primary via-violet-500 to-primary bg-clip-text text-transparent">
+                  <h2 className="text-lg sm:text-xl font-bold text-primary">
                     Log Production
                   </h2>
                   <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Enter numbers for the selected date</p>
@@ -548,7 +543,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
               {/* Deal Entry Section - Premium Bubble System */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-primary/20 flex items-center justify-center">
+                  <div className="h-8 w-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
                     <DollarSign className="h-4 w-4 text-primary" />
                   </div>
                   <div>
@@ -568,7 +563,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
               {/* Activity Metrics Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
+                  <div className="h-8 w-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
                     <Target className="h-4 w-4 text-blue-500" />
                   </div>
                   <div>
@@ -593,7 +588,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                         <div 
                           className={cn(
                             "relative p-4 rounded-xl border-2 transition-all duration-300",
-                            "bg-gradient-to-br from-background to-muted/30",
+                            "bg-card",
                             "hover:border-primary/30 hover:shadow-md",
                             hasValue && "border-primary/50 bg-primary/5 shadow-lg shadow-primary/10",
                             !hasValue && "border-border/50"

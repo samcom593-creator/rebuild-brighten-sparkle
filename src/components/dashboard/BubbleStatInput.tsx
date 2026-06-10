@@ -31,7 +31,7 @@ export function BubbleStatInput({
       <div 
         className={cn(
           "relative p-4 rounded-xl border-2 transition-all duration-300",
-          "bg-gradient-to-br from-background to-muted/20",
+          "bg-card",
           "hover:border-primary/30 hover:shadow-md",
           hasValue && "border-primary/40 bg-primary/5 shadow-lg shadow-primary/10",
           !hasValue && "border-border/40"

@@ -64,7 +64,7 @@ export function OffersTiles() {
   };
 
   return (
-    <GlassCard className="p-4 md:p-5 space-y-4 border-emerald-500/30 bg-gradient-to-br from-slate-900/80 to-emerald-950/30">
+    <GlassCard className="p-4 md:p-5 space-y-4 border-emerald-500/30">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h3 className="font-bold text-base text-white tracking-wide uppercase">Offers · click → pay</h3>

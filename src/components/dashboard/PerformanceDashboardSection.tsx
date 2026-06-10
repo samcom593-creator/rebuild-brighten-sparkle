@@ -28,10 +28,10 @@ interface FeatureCardProps {
 
 function FeatureCard({ icon: Icon, title, description, color, onClick, delay = 0 }: FeatureCardProps) {
   const colorClasses = {
-    primary: "from-primary/20 via-primary/10 to-transparent border-primary/30 text-primary",
-    amber: "from-amber-500/20 via-amber-500/10 to-transparent border-amber-500/30 text-amber-500",
-    emerald: "from-emerald-500/20 via-emerald-500/10 to-transparent border-emerald-500/30 text-emerald-500",
-    violet: "from-violet-500/20 via-violet-500/10 to-transparent border-violet-500/30 text-violet-500",
+    primary: "bg-primary/[0.06] border-primary/30 text-primary",
+    amber: "bg-amber-500/[0.06] border-amber-500/30 text-amber-500",
+    emerald: "bg-emerald-500/[0.06] border-emerald-500/30 text-emerald-500",
+    violet: "bg-violet-500/[0.06] border-violet-500/30 text-violet-500",
   };
 
   return (
@@ -45,7 +45,7 @@ function FeatureCard({ icon: Icon, title, description, color, onClick, delay = 0
       <button
         onClick={onClick}
         className={cn(
-          "w-full text-left p-4 rounded-xl border bg-gradient-to-br transition-all",
+          "w-full text-left p-4 rounded-xl border transition-all",
           "hover:shadow-lg hover:shadow-current/10 focus:outline-none focus:ring-2 focus:ring-primary/50",
           colorClasses[color]
         )}
@@ -89,9 +89,6 @@ export function PerformanceDashboardSection({
       transition={{ delay: 0.2 }}
     >
       <GlassCard className="p-8 relative overflow-hidden">
-        {/* Subtle background gradient for prominence */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5 pointer-events-none" />
-        
         {/* Powered by Apex - subtle branding */}
         <span className="absolute top-3 right-4 text-[10px] text-muted-foreground/40 font-medium tracking-wider uppercase">
           Powered by Apex

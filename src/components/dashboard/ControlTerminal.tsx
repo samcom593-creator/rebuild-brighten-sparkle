@@ -243,7 +243,7 @@ export function ControlTerminal() {
   ], []);
 
   return (
-    <GlassCard className="space-y-4 border-emerald-500/30 bg-gradient-to-br from-slate-900/80 to-emerald-950/40 p-4 md:p-5">
+    <GlassCard className="space-y-4 border-emerald-500/30 p-4 md:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Terminal className="h-5 w-5 text-emerald-400" />

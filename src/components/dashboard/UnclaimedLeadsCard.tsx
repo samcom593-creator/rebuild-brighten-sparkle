@@ -59,8 +59,8 @@ export function UnclaimedLeadsCard() {
 
   const tone = data.urgent_72h > 50 ? "alert" : data.urgent_72h > 0 ? "warn" : "neutral";
   const borderClass: Record<typeof tone, string> = {
-    alert:   "border-rose-500/40 bg-gradient-to-br from-rose-500/10 via-card to-card",
-    warn:    "border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-card to-card",
+    alert:   "border-rose-500/40 bg-rose-500/[0.06]",
+    warn:    "border-amber-500/30 bg-amber-500/[0.06]",
     neutral: "border-border bg-card",
   } as const;
   const valueClass: Record<typeof tone, string> = {

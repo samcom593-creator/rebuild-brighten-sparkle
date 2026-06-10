@@ -149,7 +149,7 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
+          <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary/15 border border-primary/20">
             {isAdmin ? <Users className="h-5 w-5 text-primary" /> : <CalendarDays className="h-5 w-5 text-primary" />}
           </div>
           <div>
@@ -207,8 +207,6 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
         </div>
       </div>
 
-      {/* Background decoration */}
-      <div className="absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-gradient-to-br from-primary/10 to-transparent blur-2xl" />
     </GlassCard>
   );
 }

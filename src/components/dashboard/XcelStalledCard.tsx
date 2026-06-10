@@ -78,7 +78,7 @@ export function XcelStalledCard() {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-transparent p-5 animate-pulse">
+      <div className="rounded-2xl border border-purple-500/30 bg-purple-500/[0.05] p-5 animate-pulse">
         <div className="text-xs text-muted-foreground">Loading XCEL pipeline…</div>
       </div>
     );
@@ -93,7 +93,7 @@ export function XcelStalledCard() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.05 }}
-      className="relative overflow-hidden rounded-2xl border border-purple-500/40 bg-gradient-to-br from-purple-500/12 via-fuchsia-500/8 to-transparent p-5 shadow-[0_0_80px_hsl(280_80%_55%/0.12)]"
+      className="relative overflow-hidden rounded-2xl border border-purple-500/40 bg-purple-500/[0.06] p-5 shadow-[0_0_80px_hsl(280_80%_55%/0.12)]"
     >
       <div aria-hidden className="pointer-events-none absolute -top-12 -right-12 h-56 w-56 rounded-full bg-purple-500/20 blur-3xl" />
 

@@ -3,11 +3,13 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import {
   Archive,
+  Award,
   BarChart3,
   Briefcase,
   ChevronLeft,
   ChevronRight,
   Crown,
+  Trophy,
   GraduationCap,
   LayoutDashboard,
   Library,
@@ -121,6 +123,8 @@ export function GlobalSidebar({
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
         { icon: PhoneCall, label: "Calls Today", href: "/dashboard/calls-today", special: true },
         { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
+        { icon: Award, label: "Contracts", href: "/dashboard/contracts", special: true },
+        { icon: Trophy, label: "Challenges", href: "/dashboard/challenges", special: true },
         { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
         { icon: Users, label: "Clients", href: "/dashboard/clients" },
         { icon: Network, label: "Builders", href: "/dashboard/builders", special: true },

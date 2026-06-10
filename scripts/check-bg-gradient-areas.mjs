@@ -37,19 +37,45 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-// Post-wave-63 ratchets. Wave-61/62 locked src/pages at 100 + landing at 18 +
-// recruiter at 0. Wave-2 codemod dae5773d (561-instance visual-noise sweep
-// across 161 files) + GlassCard flatten 3768d5c5 dropped src/pages from 100 →
-// 5 (all 5 remaining are admin: CompTiersSettings icon pill, IntegrationsSettings
-// winner glow, ContentCommand subtle wash, SocialMediaBot ×2 wash + progress
-// fill) and src/components/landing from 18 → 0 (full clean). Wave-63 ratchets
-// each floor down to its post-codemod count to lock those gains — without this
-// the gates allow ~113 muddy gradients to silently re-creep across pages+landing.
+// Post-wave-64 ratchets. Wave-63 (commits 7442401d+de70cd62) tightened the
+// existing pages/landing/recruiter floors after the wave-2 codemod (dae5773d
+// 561-instance visual-noise sweep across 161 files + fabb4fbc v24 phases
+// 1+2+3+7 + 3768d5c5 GlassCard flatten + palette restraint). Wave-64 audits
+// the rest of the component tree and discovers that the v24/v25 codemod
+// stack swept 18 sibling component trees down to 0 bg-gradient instances —
+// all currently UNPROTECTED from drift. Without ratchets here, the v24
+// AgentLink-crisp flat-fill discipline silently decays in every corner the
+// codemod cleaned but no gate watches. Wave-64 locks 18 more areas at
+// baseline 0 (74 .tsx/.ts files across admin, agent, awards, callcenter,
+// celebrations, command, contentwheel, course, crm, deals, finances, layout,
+// next-step, pipeline, plaque, profile, system-health, ui). Combined with
+// the existing 3 areas + wave-60's dashboard ratchet, that's 22 trees and
+// ~195 component files locked against bg-gradient drift forever.
 // Each baseline is the count of unmarked bg-gradient-to-* instances at lock time.
 const AREAS = [
+  // wave-61/62/63 (high-traffic page + branded surfaces)
   { dir: "src/pages", baseline: 5 },
   { dir: "src/components/landing", baseline: 0 },
   { dir: "src/components/recruiter", baseline: 0 },
+  // wave-64 (v24/v25 codemod-cleaned sibling component trees, all at 0)
+  { dir: "src/components/admin", baseline: 0 },
+  { dir: "src/components/agent", baseline: 0 },
+  { dir: "src/components/awards", baseline: 0 },
+  { dir: "src/components/callcenter", baseline: 0 },
+  { dir: "src/components/celebrations", baseline: 0 },
+  { dir: "src/components/command", baseline: 0 },
+  { dir: "src/components/contentwheel", baseline: 0 },
+  { dir: "src/components/course", baseline: 0 },
+  { dir: "src/components/crm", baseline: 0 },
+  { dir: "src/components/deals", baseline: 0 },
+  { dir: "src/components/finances", baseline: 0 },
+  { dir: "src/components/layout", baseline: 0 },
+  { dir: "src/components/next-step", baseline: 0 },
+  { dir: "src/components/pipeline", baseline: 0 },
+  { dir: "src/components/plaque", baseline: 0 },
+  { dir: "src/components/profile", baseline: 0 },
+  { dir: "src/components/system-health", baseline: 0 },
+  { dir: "src/components/ui", baseline: 0 },
 ];
 
 const GRADIENT_RX = /bg-gradient-to-/;

@@ -142,16 +142,18 @@ if match '^(src/components/dashboard/.+\.(tsx?|jsx?)$|scripts/check-bg-gradient-
   node scripts/check-bg-gradient-cards.mjs
 fi
 
-# ---------- check-bg-gradient-areas (wave-61 + wave-62) ----------
-# Trigger: any src/pages/ or src/components/{landing,recruiter}/ tsx|ts change,
-# or the script itself. Extends wave-60's ratchet to high-traffic surface trees:
-# src/pages (wave-62 baseline 100, lowered from wave-61's 106 via 6 surgical
-# kills in AgentPortal + NotificationHub), src/components/landing (baseline 18),
-# src/components/recruiter (wave-62 baseline 0 — folder clean, locked at floor
-# to reject any new bg-gradient hit). Cost when fired: ~80ms.
+# ---------- check-bg-gradient-areas (wave-61 → wave-64) ----------
+# Trigger: any src/pages/ or src/components/<tracked-area>/ tsx|ts change,
+# or the script itself. Wave-64 extends the ratchet to 18 v24/v25-cleaned
+# sibling component trees (admin/agent/awards/callcenter/celebrations/
+# command/contentwheel/course/crm/deals/finances/layout/next-step/pipeline/
+# plaque/profile/system-health/ui) all locked at baseline 0 alongside the
+# wave-61/62/63 floors (pages 5, landing 0, recruiter 0). Combined with
+# wave-60's dashboard ratchet that's 22 trees / ~195 files locked.
+# Cost when fired: ~120ms (linear in tracked-area file count).
 # Opt-in marker (same as wave-60 by design — one mental model):
 # `bg-gradient-card-allow:<reason>` on the same line or the line directly above.
-if match '^(src/(pages|components/(landing|recruiter))/.+\.(tsx?|jsx?)$|scripts/check-bg-gradient-areas\.mjs$)'; then
-  echo "[pre-commit] Pages/landing/recruiter component staged — running check:bg-gradient-areas…"
+if match '^(src/(pages|components/(landing|recruiter|admin|agent|awards|callcenter|celebrations|command|contentwheel|course|crm|deals|finances|layout|next-step|pipeline|plaque|profile|system-health|ui))/.+\.(tsx?|jsx?)$|scripts/check-bg-gradient-areas\.mjs$)'; then
+  echo "[pre-commit] Tracked component-tree change — running check:bg-gradient-areas…"
   node scripts/check-bg-gradient-areas.mjs
 fi

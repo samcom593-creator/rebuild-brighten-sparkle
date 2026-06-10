@@ -696,30 +696,26 @@ export default function Apply() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background ops-surface ops-fade-in">
-      {/* Live trust ribbon — top of every Apply load so visitors immediately
-          see the engine is firing. Real counts driven by landing_live_stats(). */}
-      <div className="bg-white dark:bg-slate-900 border-b border-primary/30">
-        <div className="container mx-auto px-4 py-2 flex items-center justify-center gap-3 text-[11px] uppercase tracking-[0.18em] font-display font-semibold">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
-            <span className="relative h-2 w-2 rounded-full bg-emerald-400" />
-          </span>
-          <span className="text-emerald-300">APEX is recruiting RIGHT NOW</span>
-          <span className="hidden sm:inline text-muted-foreground">·</span>
-          <span className="hidden sm:inline text-foreground/80">{liveCarriers} carriers · {liveActiveAgents} active agents · Sam reviews every application</span>
-        </div>
-      </div>
-      {/* Header */}
-      <header className="glass-strong border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+      {/* v26 audit fix: triple-stacked header collapsed into ONE bar.
+          Was: live ribbon (40px) + glass-strong header (64px) + (founder
+          credit rendered elsewhere). Now: single 56px bar with brand on
+          left + live stats inline + Back-to-Home on right. */}
+      <header className="border-b border-border bg-white dark:bg-slate-900">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between gap-4">
             <Link to="/" className="flex items-center gap-2">
-              <Crown className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold gradient-text">APEX Financial</span>
+              <Crown className="h-7 w-7 text-primary" />
+              <span className="text-lg font-bold">APEX Financial</span>
             </Link>
+            <div className="hidden md:flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] font-display font-semibold">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="text-emerald-700 dark:text-emerald-300">Recruiting now</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-foreground/80">{liveCarriers} carriers · {liveActiveAgents} active</span>
+            </div>
             <Link to="/" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
               <ArrowLeft className="h-4 w-4" />
-              Back to Home
+              <span className="hidden sm:inline">Back to Home</span>
             </Link>
           </div>
         </div>

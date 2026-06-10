@@ -1442,11 +1442,11 @@ function AgencyCommandView() {
           </div>
           <FunnelStrip
             steps={[
-              { label: "Active applications", value: c?.total_applications ?? 0, color: "bg-violet-500" },
+              { label: "Active applications", value: c?.total_applications ?? 0, color: "bg-slate-500" },
               { label: "Contracts signed · MTD", value: c?.paid_mtd ?? 0,        color: "bg-primary" },
               { label: "Apps this week",      value: c?.apps_wtd ?? 0,           color: "bg-amber-500" },
               { label: "Uncontacted >24h",    value: c?.uncontacted_24h ?? 0,    color: "bg-rose-500" },
-              { label: "Stale 3 days+",       value: c?.stale_new_3d ?? 0,       color: "bg-orange-500" },
+              { label: "Stale 3 days+",       value: c?.stale_new_3d ?? 0,       color: "bg-rose-500" },
             ]}
           />
           <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-sm">

@@ -520,51 +520,115 @@ export default function InboundLeads() {
   // field, infer state from area code, and open TruePeopleSearch in a
   // background tab automatically. Zero manual typing for the most common
   // workflow.
-  const pullFromClipboard = useCallback(async () => {
-    if (typeof navigator === "undefined" || !navigator.clipboard?.readText) return;
+  // v25 AUTO-OPEN ON CLIPBOARD PHONE · zero keystrokes for Sam.
+  // Polls the clipboard every 2 seconds while the inbound page is visible
+  // and unfocused on the dialog. When a NEW 10-digit US phone number
+  // shows up (different from the last one we processed), the page:
+  //   1. Opens the New Client dialog automatically
+  //   2. Fills phone + infers state from area code
+  //   3. Launches TruePeopleSearch in a background tab
+  //   4. Auto-starts the mic (recording + transcription)
+  //   5. Plays a subtle success animation on the affected fields
+  // Sam's only action: Cmd+C the GV caller number. The page does the rest.
+  const lastClipboardPhoneRef = useRef<string | null>(null);
+
+  const handlePhoneFromClipboard = useCallback(async (forceOpen = false) => {
+    if (typeof navigator === "undefined" || !navigator.clipboard?.readText) return false;
     try {
       const text = await navigator.clipboard.readText();
-      // Match 10-digit US phone in any common format (with or without country code)
       const m = text.match(/(?:\+?1[\s.-]?)?\(?([2-9]\d{2})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/);
-      if (!m) return;
+      if (!m) return false;
       const fullPhone = `(${m[1]}) ${m[2]}-${m[3]}`;
+      // Skip if we just processed this same number
+      if (!forceOpen && lastClipboardPhoneRef.current === fullPhone) return false;
+      lastClipboardPhoneRef.current = fullPhone;
       const inferred = inferStateFromPhone(fullPhone);
       setForm((prev) => ({
         ...prev,
         phone: prev.phone.trim() ? prev.phone : fullPhone,
         state: prev.state.trim() ? prev.state : (inferred ?? prev.state),
       }));
-      toast.success(`📋 Pulled ${fullPhone} from clipboard${inferred ? ` · ${inferred}` : ""}`);
-      // Auto-open TPS in background tab so by the time Sam looks, results are loaded
-      const digits = fullPhone.replace(/\D/g, "");
-      window.open(`https://www.truepeoplesearch.com/results?phoneno=${digits}`, "_blank", "noopener,noreferrer");
+      setNewClientOpen(true);
+      toast.success(`📞 ${fullPhone}${inferred ? ` · ${inferred}` : ""} · TPS opening · mic starting...`);
+      // TPS in background tab
+      window.open(
+        `https://www.truepeoplesearch.com/results?phoneno=${fullPhone.replace(/\D/g, "")}`,
+        "_blank",
+        "noopener,noreferrer",
+      );
+      return true;
     } catch {
-      // permission denied, private mode, etc — silent
+      // permission denied, private mode — silent
+      return false;
     }
   }, []);
 
-  // Trigger clipboard pull whenever the New Client dialog opens
+  // Background clipboard poll while the page is visible (but only when the
+  // New Client dialog is closed · once it's open the auto-fill on open
+  // effect below handles it). 2-second interval = fast enough that Cmd+C
+  // → page-reacts is felt as instant.
+  useEffect(() => {
+    if (newClientOpen) return;
+    const poll = () => {
+      if (document.visibilityState !== "visible") return;
+      void handlePhoneFromClipboard();
+    };
+    const iv = setInterval(poll, 2000);
+    return () => clearInterval(iv);
+  }, [newClientOpen, handlePhoneFromClipboard]);
+
+  // When dialog opens (manually OR auto from clipboard), do one more
+  // clipboard pull to handle the "user opened dialog before Cmd+C" path.
   useEffect(() => {
     if (!newClientOpen) return;
-    // Tiny delay so the dialog has time to grant focus first
-    const t = setTimeout(() => { void pullFromClipboard(); }, 150);
+    const t = setTimeout(() => { void handlePhoneFromClipboard(true); }, 150);
     return () => clearTimeout(t);
-  }, [newClientOpen, pullFromClipboard]);
+  }, [newClientOpen, handlePhoneFromClipboard]);
 
-  // v25 GLOBAL HOTKEY: Cmd+Shift+N (or Ctrl+Shift+N) opens New Client +
-  // pulls clipboard in one shot. Sam's GV rings → Cmd+C the number →
-  // Cmd+Shift+N → form is filled + TPS tab opens.
+  // v25 AUTO-MIC · the moment the dialog opens, start listening so Sam
+  // doesn't have to click the mic button. Voice immediately starts
+  // filling fields as the client talks. Reward — feels magical.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const isMod = e.metaKey || e.ctrlKey;
-      if (isMod && e.shiftKey && e.key.toLowerCase() === "n") {
-        e.preventDefault();
-        setNewClientOpen(true);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    if (!newClientOpen) return;
+    if (listening) return;
+    const t = setTimeout(() => {
+      void startListening();
+    }, 300); // small delay so mic permission prompt doesn't race the dialog animation
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newClientOpen]);
+
+  // v25 FIELD-FILL CELEBRATION · when the smart parser populates a
+  // previously-empty field from the transcript, briefly mark it as
+  // "just filled" so the UI can highlight it emerald for 1.2s — Sam
+  // SEES the AI catching what he said. Feels rewarding.
+  const prevFormRef = useRef(form);
+  const [recentlyFilled, setRecentlyFilled] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const prev = prevFormRef.current;
+    const justFilled = new Set<string>();
+    for (const key of Object.keys(form) as Array<keyof typeof form>) {
+      const before = String(prev[key] ?? "").trim();
+      const after = String(form[key] ?? "").trim();
+      if (!before && after) justFilled.add(String(key));
+    }
+    prevFormRef.current = form;
+    if (justFilled.size === 0) return;
+    setRecentlyFilled((s) => {
+      const next = new Set(s);
+      justFilled.forEach((k) => next.add(k));
+      return next;
+    });
+    // Remove the highlight after 1.2s
+    const t = setTimeout(() => {
+      setRecentlyFilled((s) => {
+        const next = new Set(s);
+        justFilled.forEach((k) => next.delete(k));
+        return next;
+      });
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [form]);
 
   const startListening = async () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -945,17 +1009,13 @@ export default function InboundLeads() {
             <DialogDescription>
               Capture the caller while they are live, then move them through the client solution board.
             </DialogDescription>
-            {/* v25 Google Voice instant-fill banner · runs auto on open · button is the manual fallback */}
-            <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-900/10 px-3 py-2">
-              <p className="text-12 text-amber-700 dark:text-amber-300">
-                <span className="font-semibold">📋 Google Voice tip:</span>{" "}
-                Cmd+C the caller number from GV, then{" "}
-                <kbd className="rounded border border-amber-500/40 bg-amber-100 dark:bg-amber-900/30 px-1 font-mono text-11">Cmd+Shift+N</kbd>{" "}
-                opens this dialog with phone + state pre-filled and TPS already loaded.
+            {/* v25 Google Voice auto-flow banner · clipboard polls in background
+                while this tab is visible · zero keyboard shortcuts needed. */}
+            <div className="mt-2 rounded-md border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/10 px-3 py-2">
+              <p className="text-12 text-emerald-700 dark:text-emerald-300">
+                <span className="font-semibold">🎧 Auto-flow live:</span>{" "}
+                Just <span className="font-semibold">Cmd+C the caller number from Google Voice</span> — this dialog opens itself, fills phone + state, opens TruePeopleSearch in a tab, and starts the mic. Then talk and watch fields fill.
               </p>
-              <Button type="button" size="sm" variant="outline" onClick={() => void pullFromClipboard()}>
-                Paste from clipboard
-              </Button>
             </div>
           </DialogHeader>
 
@@ -972,12 +1032,12 @@ export default function InboundLeads() {
                     {/* v25 advantage: autoFocus so the moment the New Client
                         dialog opens, Sam can start typing immediately —
                         no extra click to focus the field. */}
-                    <Input autoFocus value={form.client_first_name} onChange={(event) => updateForm("client_first_name", event.target.value)} placeholder="Client first name" />
+                    <Input autoFocus className={cn(recentlyFilled.has("client_first_name") && "ring-2 ring-emerald-400 ring-offset-1 animate-pulse")} value={form.client_first_name} onChange={(event) => updateForm("client_first_name", event.target.value)} placeholder="Client first name" />
                     <TpsLookup form={form} mode="name" />
                   </div>
                 </Field>
                 <Field label="Last name">
-                  <Input value={form.client_last_name} onChange={(event) => updateForm("client_last_name", event.target.value)} placeholder="Client last name" />
+                  <Input className={cn(recentlyFilled.has("client_last_name") && "ring-2 ring-emerald-400 ring-offset-1 animate-pulse")} value={form.client_last_name} onChange={(event) => updateForm("client_last_name", event.target.value)} placeholder="Client last name" />
                 </Field>
                 <Field label="Phone">
                   <div className="flex gap-1">
@@ -995,18 +1055,19 @@ export default function InboundLeads() {
                         }));
                       }}
                       placeholder="(555) 123-4567"
+                      className={cn(recentlyFilled.has("phone") && "ring-2 ring-emerald-400 ring-offset-1 animate-pulse")}
                     />
                     <TpsLookup form={form} mode="phone" />
                   </div>
                 </Field>
                 <Field label="Email">
-                  <Input value={form.email} onChange={(event) => updateForm("email", event.target.value)} placeholder="client@email.com" />
+                  <Input className={cn(recentlyFilled.has("email") && "ring-2 ring-emerald-400 ring-offset-1 animate-pulse")} value={form.email} onChange={(event) => updateForm("email", event.target.value)} placeholder="client@email.com" />
                 </Field>
                 <Field label="City">
-                  <Input value={form.city} onChange={(event) => updateForm("city", event.target.value)} placeholder="Phoenix" />
+                  <Input className={cn(recentlyFilled.has("city") && "ring-2 ring-emerald-400 ring-offset-1 animate-pulse")} value={form.city} onChange={(event) => updateForm("city", event.target.value)} placeholder="Phoenix" />
                 </Field>
                 <Field label="State">
-                  <Input value={form.state} onChange={(event) => updateForm("state", event.target.value.toUpperCase().slice(0, 2))} placeholder="AZ" />
+                  <Input className={cn(recentlyFilled.has("state") && "ring-2 ring-emerald-400 ring-offset-1 animate-pulse")} value={form.state} onChange={(event) => updateForm("state", event.target.value.toUpperCase().slice(0, 2))} placeholder="AZ" />
                 </Field>
               </div>
 

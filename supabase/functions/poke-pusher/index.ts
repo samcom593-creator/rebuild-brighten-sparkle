@@ -7,7 +7,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const POKE_TOKEN = Deno.env.get("POKE_TOKEN") ?? "";
-const POKE_ENDPOINT = Deno.env.get("POKE_ENDPOINT") ?? "https://api.poke.app/v1/messages";
+// 2026-06-09: Correct endpoint per poke.com/docs/api. Body shape:
+// {"message": "..."} — entire payload becomes the agent context for the
+// Poke conversation. v2 API keys required (legacy pk_* won't work).
+const POKE_ENDPOINT = Deno.env.get("POKE_ENDPOINT") ?? "https://poke.com/api/v1/inbound/api-message";
 const POKE_RECIPIENT = Deno.env.get("POKE_RECIPIENT") ?? "sam";
 // Telegram fallback — used when POKE_TOKEN is absent OR Poke API returns 4xx/5xx.
 // 2026-06-08: api.poke.app DNS doesn't resolve; Telegram is the actual delivery
@@ -96,10 +99,7 @@ const handler = async (req: Request): Promise<Response> => {
           const resp = await fetch(POKE_ENDPOINT, {
             method: "POST",
             headers: { "Authorization": `Bearer ${POKE_TOKEN}`, "Content-Type": "application/json" },
-            body: JSON.stringify({
-              recipient: POKE_RECIPIENT, message,
-              metadata: { kind: row.kind, queue_id: row.id, ...row.payload },
-            }),
+            body: JSON.stringify({ message }),
           });
           if (resp.ok) delivered = true;
           else lastErr = `poke ${resp.status}: ${(await resp.text()).slice(0, 100)}`;

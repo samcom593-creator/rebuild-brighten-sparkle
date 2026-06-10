@@ -114,7 +114,8 @@ const CourseContent = lazy(() => import("./pages/CourseContent"));
 const PurchaseLeads = lazy(() => import("./pages/PurchaseLeads"));
 const LeadsLanding = lazy(() => import("./pages/LeadsLanding"));
 const CallCenter = lazy(() => import("./pages/CallCenter"));
-const LeadCenter = lazy(() => import("./pages/LeadCenter"));
+// v9 Wave A complaint #2: LeadCenter no longer mounted; /dashboard/leads redirects.
+// const LeadCenter = lazy(() => import("./pages/LeadCenter"));
 const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard"));
 const AgentPipeline = lazy(() => import("./pages/AgentPipeline"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
@@ -185,10 +186,12 @@ const MyReferrals = lazy(() => import("./pages/MyReferrals"));
 const MyNotifications = lazy(() => import("./pages/MyNotifications"));
 const AdminStrikes = lazy(() => import("./pages/AdminStrikes"));
 const MyStrikes = lazy(() => import("./pages/MyStrikes"));
-const ChargesAudit = lazy(() => import("./pages/ChargesAudit"));
+// v9 Wave A complaint #19: ChargesAudit no longer mounted; route redirects.
+// const ChargesAudit = lazy(() => import("./pages/ChargesAudit"));
 const SocialMediaBot = lazy(() => import("./pages/admin/SocialMediaBot"));
 const TelegramBot = lazy(() => import("./pages/admin/TelegramBot"));
-const ConductCommandCenter = lazy(() => import("./pages/ConductCommandCenter"));
+// v9 Wave A complaint #20: ConductCommandCenter no longer mounted; route redirects.
+// const ConductCommandCenter = lazy(() => import("./pages/ConductCommandCenter"));
 const PreLicensing = lazy(() => import("./pages/PreLicensing"));
 const BookReconciliation = lazy(() => import("./pages/BookReconciliation"));
 const ReadyModeIntegration = lazy(() => import("./pages/ReadyModeIntegration"));
@@ -407,7 +410,9 @@ const App = () => (
                     <Route path="/numbers" element={<Numbers />} />
                     <Route path="/purchase-leads" element={<PurchaseLeads />} />
                     <Route path="/dashboard/call-center" element={<CallCenter />} />
-                     <Route path="/dashboard/leads" element={<ProtectedRoute requireAdmin><LeadCenter /></ProtectedRoute>} />
+                     {/* v9 Wave A complaint #2: /dashboard/leads removed.
+                         Inbound flow lives at /dashboard/inbound-leads now. */}
+                     <Route path="/dashboard/leads" element={<Navigate to="/dashboard/inbound-leads" replace />} />
                      <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
                      {/* Recruit pipeline — applicants/license/contracting flow. Was /agent-pipeline. */}
                      <Route path="/recruit-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />
@@ -480,13 +485,15 @@ const App = () => (
                            {/* Conduct: admin issues strikes; agents view their own record. */}
                            <Route path="/dashboard/strikes" element={<ProtectedRoute requireAdmin><AdminStrikes /></ProtectedRoute>} />
                            <Route path="/dashboard/my-strikes" element={<ProtectedRoute><MyStrikes /></ProtectedRoute>} />
-                           {/* Finance: Stripe charge anomaly inspector (Jordan/$167 incident). */}
-                           <Route path="/dashboard/charges-audit" element={<ProtectedRoute requireAdmin><ChargesAudit /></ProtectedRoute>} />
+                           {/* v9 Wave A complaint #19: charges-audit removed.
+                             Redirect kept so old bookmarks land somewhere sane. */}
+                           <Route path="/dashboard/charges-audit" element={<Navigate to="/dashboard" replace />} />
                            <Route path="/dashboard/lead-payments" element={<ProtectedRoute requireAdmin><LeadPayments /></ProtectedRoute>} />
                            <Route path="/dashboard/old-applicants/managers" element={<ProtectedRoute requireAdmin allowManagers><OldApplicants kind="managers" /></ProtectedRoute>} />
                            <Route path="/dashboard/old-applicants/licensed-recruiters" element={<ProtectedRoute requireAdmin allowManagers><OldApplicants kind="licensedRecruiters" /></ProtectedRoute>} />
-                           {/* Conduct war room: real-time view across strikes + charges + agent standing. */}
-                           <Route path="/dashboard/conduct" element={<ProtectedRoute requireAdmin><ConductCommandCenter /></ProtectedRoute>} />
+                           {/* v9 Wave A complaint #20: conduct command center removed.
+                             Strikes still at /dashboard/strikes for the actual use case. */}
+                           <Route path="/dashboard/conduct" element={<Navigate to="/dashboard/strikes" replace />} />
                            {/* XCEL Solutions daily pre-licensing report viewer */}
                            <Route path="/dashboard/pre-licensing" element={<ProtectedRoute requireAdmin allowManagers><PreLicensing /></ProtectedRoute>} />
                            {/* Book Quality Engine — carrier-direct vs internal recon */}

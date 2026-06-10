@@ -46,7 +46,7 @@ function FeatureCard({ icon: Icon, title, description, color, onClick, delay = 0
         onClick={onClick}
         className={cn(
           "w-full text-left p-4 rounded-md border transition-all",
-          "hover:shadow-sm hover:shadow-current/10 focus:outline-none focus:ring-2 focus:ring-primary/50",
+          "hover:shadow-sm hover:shadow-current/10 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
           colorClasses[color]
         )}
       >

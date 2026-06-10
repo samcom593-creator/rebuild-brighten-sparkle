@@ -407,7 +407,7 @@ export default function AgentPipelineSimple() {
                 value={switchReason}
                 onChange={(e) => setSwitchReason(e.target.value)}
                 placeholder="Why is this switch needed?"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
                 rows={3}
               />
             </div>

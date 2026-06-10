@@ -199,7 +199,7 @@ export function CallCenterFilters({
                   {filter.label}
                 </label>
                 <Select value={filter.value} onValueChange={filter.onChange as (v: string) => void}>
-                  <SelectTrigger className="bg-background/50 border-border/50 hover:border-primary/50 transition-colors focus:ring-2 focus:ring-primary/20">
+                  <SelectTrigger className="bg-background/50 border-border/50 hover:border-primary/50 transition-colors focus-visible:shadow-[var(--apex-focus-ring)]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

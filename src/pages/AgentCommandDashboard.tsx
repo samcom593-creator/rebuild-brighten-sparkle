@@ -35,6 +35,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NextStepCard } from "@/components/dashboard/NextStepCard";
 import { RegionPeerCard, UpcomingChargebackCard } from "@/components/dashboard/AgentPeerAndChargebackCards";
 import { LapsesDrilldownModal } from "@/components/dashboard/LapsesDrilldownModal";
@@ -1303,47 +1304,8 @@ function AgencyCommandView() {
         />
       </div>
 
-      {/* ── Manager hierarchy production share (selected period) ─── */}
-      {periodSummary.managers.length > 0 && (
-        <GlassCard className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Manager production share · {periodBounds.label}</p>
-              <h3 className="text-lg font-bold">
-                Hierarchy breakdown
-                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  {fmtUsd(periodSummary.totalAp, true)} total
-                </span>
-              </h3>
-            </div>
-            <Users className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <div className="space-y-2">
-            {periodSummary.managers.map((m, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-28 text-sm font-medium truncate shrink-0">{m.name}</div>
-                <div className="flex-1">
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary/70 transition-all"
-                      style={{ width: `${Math.min(m.pct, 100)}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="text-right shrink-0 min-w-[4rem]">
-                  <span className="text-sm font-bold tabular-nums text-emerald-500 dark:text-emerald-400">
-                    {fmtUsd(m.ap, true)}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground ml-1.5">{m.pct.toFixed(0)}%</span>
-                </div>
-                <div className="text-[10px] text-muted-foreground w-14 text-right tabular-nums shrink-0">
-                  {fmtNum(m.deals)} deal{m.deals !== 1 ? "s" : ""}
-                </div>
-              </div>
-            ))}
-          </div>
-        </GlassCard>
-      )}
+      {/* v26 L-effort refactor: Manager hierarchy share moved into the
+          tabbed strip below the trend+leaderboard grid. */}
 
       {/* ── Trend chart (period-aware) + Top producers leaderboard ── */}
       <div className="grid gap-3 lg:grid-cols-3">
@@ -1431,112 +1393,135 @@ function AgencyCommandView() {
         </GlassCard>
       </div>
 
-      {/* ── Pipeline funnel + period production stats ──────────────── */}
-      <div className="grid gap-3 lg:grid-cols-3">
-        <GlassCard className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Agency funnel</p>
-              <h3 className="text-lg font-bold">Pipeline state</h3>
-            </div>
-            <Briefcase className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <FunnelStrip
-            steps={[
-              { label: "Active applications", value: c?.total_applications ?? 0, color: "bg-slate-500" },
-              { label: "Contracts signed · MTD", value: c?.paid_mtd ?? 0,        color: "bg-primary" },
-              { label: "Apps this week",      value: c?.apps_wtd ?? 0,           color: "bg-amber-500" },
-              { label: "Uncontacted >24h",    value: c?.uncontacted_24h ?? 0,    color: "bg-rose-500" },
-              { label: "Stale 3 days+",       value: c?.stale_new_3d ?? 0,       color: "bg-rose-500" },
-            ]}
-          />
-          <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              {c?.unassigned_open ? `${c.unassigned_open} unassigned` : "All assigned"}
-            </span>
-            <Button asChild size="sm" variant="ghost">
-              <Link to="/dashboard/applicants">Open <ChevronRight className="h-3 w-3 ml-0.5" /></Link>
-            </Button>
-          </div>
-        </GlassCard>
-
-        <GlassCard className="p-4 lg:col-span-2">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Pipeline stats · {periodBounds.label}</p>
-              <h3 className="text-lg font-bold">Production and leakage snapshot</h3>
-            </div>
-            <Button asChild size="sm" variant="ghost">
-              <Link to="/dashboard/admin/content-command">Content loop <ArrowRight className="h-3 w-3 ml-1" /></Link>
-            </Button>
-          </div>
-          {periodDeals.isLoading ? (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
-            </div>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              <PipelineStat label="AP selected" value={fmtUsd(periodSummary.totalAp)} detail={`${fmtNum(periodSummary.dealCount)} trusted deals`} tone="success" />
-              <PipelineStat label="Producers selected" value={fmtNum(periodSummary.producingAgents)} detail="Unique agents with trusted deals" />
-              <PipelineStat label="Avg AP / deal" value={fmtUsd(periodSummary.dealCount ? periodSummary.totalAp / periodSummary.dealCount : 0, true)} detail="Selected period efficiency" />
-              <PipelineStat label="Managers producing" value={fmtNum(periodSummary.managers.filter((m) => m.name !== "Direct to Sam / no manager").length)} detail={`${fmtNum(periodSummary.managers.length)} total buckets`} />
-              <PipelineStat label="Direct to Sam / no manager" value={fmtUsd(periodSummary.managers.find((m) => m.name === "Direct to Sam / no manager")?.ap ?? 0, true)} detail={`${fmtNum(periodSummary.managers.find((m) => m.name === "Direct to Sam / no manager")?.deals ?? 0)} deals`} tone="warning" />
-              <PipelineStat label="Uncontacted >24h" value={fmtNum(c?.uncontacted_24h ?? 0)} detail={`${fmtNum(c?.stale_new_3d ?? 0)} stale 3d+`} tone={(c?.uncontacted_24h ?? 0) > 0 ? "warning" : "default"} />
-            </div>
-          )}
-        </GlassCard>
-      </div>
-
-      {/* ── Recent hires (last 14d) — PL-017 visibility fix ────────── */}
+      {/* ──────────────────────────────────────────────────────────────
+          v26 L-effort REFACTOR (audit wf_95394f71-484):
+          4 standalone zones collapsed into 1 tabbed strip:
+            • Manager hierarchy share
+            • Pipeline funnel + period stats
+            • Recent hires
+            • Recent activations
+          Tab strip pattern matches AgentLink's main content area.
+          Zone count: 9 → 6 (audit target was 4 · this gets meaningfully
+          closer without an unsafe full rewrite).
+          ────────────────────────────────────────────────────────────── */}
       <GlassCard className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Just hired · {periodBounds.label}</p>
-            <h3 className="text-lg font-bold">
-              Recent hires{recentHires.data ? ` (${recentHires.data.length})` : ""}
-            </h3>
-          </div>
-          <Button asChild size="sm" variant="ghost">
-            <Link to="/dashboard/team-hierarchy">All agents <ArrowRight className="h-3 w-3 ml-1" /></Link>
-          </Button>
-        </div>
-        {recentHires.isLoading ? (
-          <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : (recentHires.data ?? []).length === 0 ? (
-          <EmptyState icon={<UserPlus className="h-6 w-6" />} title={`No new hires in ${periodBounds.label}`} description="When a new agent is onboarded they'll surface here even before their first deal." />
-        ) : (
-          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {(recentHires.data ?? []).map((h) => (
-              <li key={h.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm truncate">{h.display_name}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    {h.agent_code ?? "—"}{h.manager_name ? ` · mgr ${h.manager_name}` : ""}
-                  </p>
+        <Tabs defaultValue="pipeline" className="w-full">
+          <TabsList className="inline-flex h-9 bg-transparent border-b border-border w-full justify-start gap-1 rounded-none p-0">
+            <TabsTrigger value="pipeline" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 py-2 text-12">Pipeline</TabsTrigger>
+            <TabsTrigger value="managers" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 py-2 text-12">Managers</TabsTrigger>
+            <TabsTrigger value="hires" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 py-2 text-12">Just hired{recentHires.data ? ` (${recentHires.data.length})` : ""}</TabsTrigger>
+            <TabsTrigger value="activations" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-3 py-2 text-12">Activations</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pipeline" className="mt-4 space-y-4">
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="lg:col-span-1">
+                <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">Agency funnel</p>
+                <FunnelStrip
+                  steps={[
+                    { label: "Active applications", value: c?.total_applications ?? 0, color: "bg-slate-500" },
+                    { label: "Contracts signed · MTD", value: c?.paid_mtd ?? 0,        color: "bg-emerald-500" },
+                    { label: "Apps this week",      value: c?.apps_wtd ?? 0,           color: "bg-amber-500" },
+                    { label: "Uncontacted >24h",    value: c?.uncontacted_24h ?? 0,    color: "bg-rose-500" },
+                    { label: "Stale 3 days+",       value: c?.stale_new_3d ?? 0,       color: "bg-rose-500" },
+                  ]}
+                />
+                <div className="mt-3 pt-2 border-t border-border/40 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{c?.unassigned_open ? `${c.unassigned_open} unassigned` : "All assigned"}</span>
+                  <Button asChild size="sm" variant="ghost">
+                    <Link to="/dashboard/applicants">Open <ChevronRight className="h-3 w-3 ml-0.5" /></Link>
+                  </Button>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-xs font-semibold text-primary tabular-nums">{h.days_on_team}d</p>
-                  <p className="text-[10px] text-muted-foreground truncate max-w-[8rem]">{h.onboarding_stage ?? "—"}</p>
+              </div>
+              <div className="lg:col-span-2">
+                <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">Production · {periodBounds.label}</p>
+                {periodDeals.isLoading ? (
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+                  </div>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <PipelineStat label="AP selected" value={fmtUsd(periodSummary.totalAp)} detail={`${fmtNum(periodSummary.dealCount)} trusted deals`} tone="success" />
+                    <PipelineStat label="Producers selected" value={fmtNum(periodSummary.producingAgents)} detail="Unique agents with trusted deals" />
+                    <PipelineStat label="Avg AP / deal" value={fmtUsd(periodSummary.dealCount ? periodSummary.totalAp / periodSummary.dealCount : 0, true)} detail="Selected period efficiency" />
+                    <PipelineStat label="Managers producing" value={fmtNum(periodSummary.managers.filter((m) => m.name !== "Direct to Sam / no manager").length)} detail={`${fmtNum(periodSummary.managers.length)} total buckets`} />
+                    <PipelineStat label="Direct to Sam" value={fmtUsd(periodSummary.managers.find((m) => m.name === "Direct to Sam / no manager")?.ap ?? 0, true)} detail={`${fmtNum(periodSummary.managers.find((m) => m.name === "Direct to Sam / no manager")?.deals ?? 0)} deals`} tone="warning" />
+                    <PipelineStat label="Uncontacted >24h" value={fmtNum(c?.uncontacted_24h ?? 0)} detail={`${fmtNum(c?.stale_new_3d ?? 0)} stale 3d+`} tone={(c?.uncontacted_24h ?? 0) > 0 ? "warning" : "default"} />
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="managers" className="mt-4">
+            {periodSummary.managers.length === 0 ? (
+              <EmptyState icon={<Users className="h-6 w-6" />} title={`No manager production in ${periodBounds.label.toLowerCase()}`} />
+            ) : (
+              <>
+                <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">Manager production share · {fmtUsd(periodSummary.totalAp, true)} total</p>
+                <div className="space-y-2">
+                  {periodSummary.managers.map((m, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-28 text-sm font-medium truncate shrink-0">{m.name}</div>
+                      <div className="flex-1">
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full bg-emerald-500/60" style={{ width: `${Math.min(m.pct, 100)}%` }} />
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0 min-w-[4rem]">
+                        <span className="text-sm font-bold tabular-nums text-emerald-500 dark:text-emerald-400">{fmtUsd(m.ap, true)}</span>
+                        <span className="text-[10px] text-muted-foreground ml-1.5">{m.pct.toFixed(0)}%</span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground w-14 text-right tabular-nums shrink-0">
+                        {fmtNum(m.deals)} deal{m.deals !== 1 ? "s" : ""}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </li>
-            ))}
-          </ul>
-        )}
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="hires" className="mt-4">
+            {recentHires.isLoading ? (
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : (recentHires.data ?? []).length === 0 ? (
+              <EmptyState icon={<UserPlus className="h-6 w-6" />} title={`No new hires in ${periodBounds.label}`} description="When a new agent is onboarded they'll surface here even before their first deal." />
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Hires · {periodBounds.label}</p>
+                  <Button asChild size="sm" variant="ghost">
+                    <Link to="/dashboard/team-hierarchy">All agents <ArrowRight className="h-3 w-3 ml-1" /></Link>
+                  </Button>
+                </div>
+                <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {(recentHires.data ?? []).map((h) => (
+                    <li key={h.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{h.display_name}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {h.agent_code ?? "—"}{h.manager_name ? ` · mgr ${h.manager_name}` : ""}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs font-semibold text-primary tabular-nums">{h.days_on_team}d</p>
+                        <p className="text-[10px] text-muted-foreground truncate max-w-[8rem]">{h.onboarding_stage ?? "—"}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="activations" className="mt-4">
+            <RecentActivationsPanel />
+          </TabsContent>
+        </Tabs>
       </GlassCard>
 
-      {/* v26 audit fix · zone collapse: PL-023 RecentActivations was a
-          standalone zone. Now lives in the same row as the 4 health stats
-          below, sharing one bottom section. */}
-
-      {/* ── Footer · health stats + quick actions in ONE section ───
-          v26 audit fix: was 4 separate stacked zones (Recent Activations
-          + 4-stat health grid + 5-col Quick Actions + AgentLink summary
-          footer). Now ONE 2-col footer: stats left, actions right.
-          AgentLink summary footer DELETED — KPIs are truth-sourced now
-          (since $117K Part 2 fix), so the redundant whole-book summary
-          at the bottom was just visual debt. */}
-      <RecentActivationsPanel />
-
+      {/* ── Footer · health stats + quick actions in ONE section ─── */}
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="grid gap-3 sm:grid-cols-2">
           <StatRowCard

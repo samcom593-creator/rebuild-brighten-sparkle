@@ -44,11 +44,11 @@
 //   focus-ring signal, subtract lines carrying an explicit allow marker, fail
 //   if total > baseline. ALL areas must pass; first failure exits 1.
 //
-// Baselines: measured floors at HEAD d2b68020.
+// Baselines: measured floors at HEAD 85ea470a, ratcheted wave-69 (2026-06-10).
 //   src/components/ui:        23  (shadcn primitive defaults — locked at floor)
-//   src/components/dashboard:  1  (PerformanceDashboardSection — surgical-defer)
-//   src/pages:                 1  (AgentPipelineSimple textarea — surgical-defer)
-//   src/components/callcenter: 1  (CallCenterFilters SelectTrigger — surgical-defer)
+//   src/components/dashboard:  0  (wave-69 migrated PerformanceDashboardSection to token)
+//   src/pages:                 0  (wave-69 migrated AgentPipelineSimple textarea to token)
+//   src/components/callcenter: 0  (wave-69 migrated CallCenterFilters SelectTrigger to token)
 //   18 other trees:            0  (v22/v24/v25 codemod-cleaned, locked at 0)
 //
 // Adding a legitimate focus-ring halo (modal close, hero CTA with custom focus,
@@ -68,16 +68,18 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-// Post-wave-68 baselines = exact measured floors at lock time (HEAD d2b68020).
-// Locks v22 multi-utility focus-ring halo pattern at the current floor across
-// all 22 trees.
+// Post-wave-69 baselines = exact measured floors at ratchet time (HEAD 85ea470a).
+// Wave-69 migrated the 3 surgical-defer floors (textarea + button + SelectTrigger)
+// to the canonical `focus-visible:shadow-[var(--apex-focus-ring)]` token, so the
+// 3 active-surface trees ratchet from 1 to 0. Only shadcn primitive defaults
+// remain as the locked floor.
 const AREAS = [
   // shadcn primitive defaults (intentional floor — Lovable doesn't auto-update)
   { dir: "src/components/ui", baseline: 23 },
-  // Active surfaces (surgical-defer candidates — migrate to --apex-focus-ring later)
-  { dir: "src/pages", baseline: 1 },
-  { dir: "src/components/dashboard", baseline: 1 },
-  { dir: "src/components/callcenter", baseline: 1 },
+  // Active surfaces (wave-69 ratcheted to 0 — all consumer code now on token)
+  { dir: "src/pages", baseline: 0 },
+  { dir: "src/components/dashboard", baseline: 0 },
+  { dir: "src/components/callcenter", baseline: 0 },
   // v22/v24/v25 codemod-cleaned trees (sweep verified at exactly 0)
   { dir: "src/components/landing", baseline: 0 },
   { dir: "src/components/awards", baseline: 0 },

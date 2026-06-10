@@ -96,6 +96,10 @@ export default function AdminStrikes() {
   const [issueOpen, setIssueOpen] = useState(false);
   const [resolveStrikeId, setResolveStrikeId] = useState<string | null>(null);
   const [resolveNote, setResolveNote] = useState("");
+  // v26 audit fix: window.prompt() for void reason → styled Dialog so the
+  // void flow doesn't break out of the UI shell + is keyboard-accessible.
+  const [voidStrikeId, setVoidStrikeId] = useState<string | null>(null);
+  const [voidReason, setVoidReason] = useState("");
   const [drillAgentId, setDrillAgentId] = useState<string | null>(null);
 
   // Real-time bumps invalidate everything
@@ -182,12 +186,21 @@ export default function AdminStrikes() {
     setResolveNote("");
   }
 
-  async function handleVoid(id: string) {
-    const reason = window.prompt("Reason for voiding this strike? (will be appended to notes)");
-    if (!reason || reason.trim().length < 3) return;
-    const { error } = await supabase.rpc("void_strike" as any, { p_strike_id: id, p_void_reason: reason.trim() });
+  function handleVoid(id: string) {
+    // v26 audit fix: open the styled Dialog instead of window.prompt
+    setVoidStrikeId(id);
+    setVoidReason("");
+  }
+  async function confirmVoid() {
+    if (!voidStrikeId || voidReason.trim().length < 3) {
+      toast.error("Reason must be at least 3 characters");
+      return;
+    }
+    const { error } = await supabase.rpc("void_strike" as any, { p_strike_id: voidStrikeId, p_void_reason: voidReason.trim() });
     if (error) { toast.error(`Void failed: ${error.message}`); return; }
     toast.success("Strike voided");
+    setVoidStrikeId(null);
+    setVoidReason("");
   }
 
   return (
@@ -474,6 +487,31 @@ export default function AdminStrikes() {
             <Button variant="ghost" onClick={() => setResolveStrikeId(null)}>Cancel</Button>
             <Button onClick={handleResolve}>
               <CheckCircle2 className="h-4 w-4 mr-1.5" /> Resolve strike
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* v26 audit fix: styled void dialog (was window.prompt) */}
+      <Dialog open={!!voidStrikeId} onOpenChange={(o) => !o && (setVoidStrikeId(null), setVoidReason(""))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Void strike</DialogTitle>
+          </DialogHeader>
+          <p className="text-12 text-muted-foreground -mt-2">
+            This will mark the strike as voided and append your reason to the agent's notes.
+          </p>
+          <Textarea
+            value={voidReason}
+            onChange={(e) => setVoidReason(e.target.value)}
+            placeholder="Reason for voiding (min 3 chars)..."
+            rows={3}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setVoidStrikeId(null); setVoidReason(""); }}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmVoid} disabled={voidReason.trim().length < 3}>
+              Void strike
             </Button>
           </DialogFooter>
         </DialogContent>

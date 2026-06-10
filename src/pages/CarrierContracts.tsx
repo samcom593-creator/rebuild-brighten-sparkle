@@ -101,16 +101,18 @@ export default function CarrierContracts() {
         subtitle="Mirrors AgentLink contracting · tile counts below"
       />
 
-      {/* v24 audit fix: loading state IN-PLACE (top, persistent). Was
-          bottom-pinned skeleton that caused layout collapse-then-expand. */}
+      {/* v26 audit fix: isError state was missing (silent failure). Added below. */}
       {contracts.isLoading ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-4">
-            <Skeleton className="h-24" /><Skeleton className="h-24" />
-            <Skeleton className="h-24" /><Skeleton className="h-24" />
-          </div>
+          <Skeleton className="h-10 w-full" />
           <Skeleton className="h-40" />
         </>
+      ) : contracts.isError ? (
+        <EmptyState
+          icon={<Award className="h-6 w-6" />}
+          title="Couldn't load contracts"
+          description={`Query failed: ${(contracts.error as any)?.message?.slice(0, 80) ?? "unknown error"}. Check Supabase RLS or v_apex_contracts_summary view.`}
+        />
       ) : (contracts.data?.length ?? 0) === 0 ? (
         <EmptyState
           icon={<Award className="h-6 w-6" />}
@@ -119,12 +121,22 @@ export default function CarrierContracts() {
         />
       ) : (
         <>
-          {/* Quick summary tiles — neutral white cards + colored dot */}
-          <div className="grid gap-3 sm:grid-cols-4">
-            <SummaryTile label="Active" count={totalActive} status="active" />
-            <SummaryTile label="Pending" count={grouped.pending_upline_assignment?.length ?? 0} status="pending_upline_assignment" />
-            <SummaryTile label="Submitted" count={grouped.submitted?.length ?? 0} status="submitted" />
-            <SummaryTile label="Rejected" count={grouped.rejected?.length ?? 0} status="rejected" />
+          {/* v26 audit fix: 4-up KPI tile grid → single inline summary strip.
+              Was: 4 tall tiles eating ~120px. Now: one chip row with same
+              counts but ~32px tall. Matches AgentLink restraint. */}
+          <div className="flex flex-wrap gap-2 text-12">
+            <Badge variant="outline" className="bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 px-2.5 py-1">
+              <span className="font-bold tabular-nums">{totalActive}</span> &nbsp;Active
+            </Badge>
+            <Badge variant="outline" className="bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300 px-2.5 py-1">
+              <span className="font-bold tabular-nums">{grouped.pending_upline_assignment?.length ?? 0}</span> &nbsp;Pending
+            </Badge>
+            <Badge variant="outline" className="bg-slate-500/10 border-slate-500/30 text-slate-700 dark:text-slate-300 px-2.5 py-1">
+              <span className="font-bold tabular-nums">{grouped.submitted?.length ?? 0}</span> &nbsp;Submitted
+            </Badge>
+            <Badge variant="outline" className="bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300 px-2.5 py-1">
+              <span className="font-bold tabular-nums">{grouped.rejected?.length ?? 0}</span> &nbsp;Rejected
+            </Badge>
           </div>
 
           {/* Status sections — rows hover directly against page bg

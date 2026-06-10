@@ -66,15 +66,20 @@ export default function CallsTodayCockpit() {
     },
   });
 
+  // v26 audit fix: isThisWeek silently dropped any call scheduled beyond
+  // this week. Calls on Monday next week vanished entirely. Now: today /
+  // tomorrow / later (any future call within next 14 days lands here).
   const grouped = useMemo(() => {
     const today: ScheduledCall[] = [];
     const tomorrow: ScheduledCall[] = [];
     const later: ScheduledCall[] = [];
+    const now = Date.now();
+    const horizon = now + 14 * 24 * 60 * 60 * 1000;
     for (const c of callsQ.data ?? []) {
       const d = new Date(c.start_at);
       if (isToday(d)) today.push(c);
       else if (isTomorrow(d)) tomorrow.push(c);
-      else if (isThisWeek(d, { weekStartsOn: 1 })) later.push(c);
+      else if (d.getTime() > now && d.getTime() < horizon) later.push(c);
     }
     return { today, tomorrow, later };
   }, [callsQ.data]);

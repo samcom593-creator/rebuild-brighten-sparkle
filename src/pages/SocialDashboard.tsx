@@ -92,6 +92,18 @@ export default function SocialDashboard() {
         }
               />
 
+      {/* v26 audit fix: loading/error/empty states for the snapshots query
+          (was silent failure showing 4 cards with 0/0/0/0 if the query
+          400'd or returned []). */}
+      {snapshots.isError ? (
+        <Card className="bg-white dark:bg-slate-900 border-rose-500/30">
+          <CardContent className="p-4 text-12 text-rose-700 dark:text-rose-300">
+            <span className="font-semibold">Couldn't load social snapshots:</span>{" "}
+            {(snapshots.error as any)?.message?.slice(0, 80) ?? "unknown error"}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* Top-line summary across platforms */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {PLATFORMS.map(({ key, label, icon: Icon, color, handle }) => {
@@ -234,13 +246,20 @@ function PlatformDetail({
   return (
     <>
       {snapshot ? (
+        // v26 audit fix: 6-stat detail grid → 3-stat. Followers + Views7d +
+        // Growth7d already shown in the platform card above; only Engagement
+        // + Following + Posts total are genuinely additive here. Null rows
+        // hide entirely so the grid doesn't render with empty Stat tiles.
         <div className="grid gap-3 sm:grid-cols-3">
-          <Stat icon={Users}     label="Followers"      value={snapshot.followers} />
-          <Stat icon={Eye}       label="Views (7d)"     value={snapshot.views_7d} />
-          <Stat icon={BarChart3} label="Engagement %"   value={snapshot.engagement_rate} format={(n) => n != null ? `${n.toFixed(2)}%` : "—"} />
-          <Stat icon={Users}     label="Following"      value={snapshot.following} />
-          <Stat icon={TrendingUp} label="Posts total"   value={snapshot.posts_total} />
-          <Stat icon={TrendingUp} label="Growth (7d)"   value={snapshot.growth_7d} format={(n) => n != null ? `${n >= 0 ? "+" : ""}${n}` : "—"} />
+          {snapshot.engagement_rate != null && (
+            <Stat icon={BarChart3} label="Engagement %" value={snapshot.engagement_rate} format={(n) => `${n.toFixed(2)}%`} />
+          )}
+          {snapshot.following != null && (
+            <Stat icon={Users} label="Following" value={snapshot.following} />
+          )}
+          {snapshot.posts_total != null && (
+            <Stat icon={TrendingUp} label="Posts total" value={snapshot.posts_total} />
+          )}
         </div>
       ) : null}
 

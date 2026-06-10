@@ -127,7 +127,16 @@ export default function WhaleRecruiting() {
         const heat = inferHeat(w);
         return { ...w, stage, heat };
       })
-      .sort((a, b) => HEAT_RANK[b.heat] - HEAT_RANK[a.heat]);
+      // v26 audit fix: was sorted by heat alone — within "hot" bucket the
+      // order was insertion order. Now secondary sort within each heat:
+      // newest applied_at first (more recent inbound = more urgent).
+      .sort((a, b) => {
+        const heatDelta = HEAT_RANK[b.heat] - HEAT_RANK[a.heat];
+        if (heatDelta !== 0) return heatDelta;
+        const aDate = a.applied_at ? new Date(a.applied_at).getTime() : 0;
+        const bDate = b.applied_at ? new Date(b.applied_at).getTime() : 0;
+        return bDate - aDate;
+      });
   }, [whales.data]);
 
   if (!isAdmin) {

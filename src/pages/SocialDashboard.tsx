@@ -58,13 +58,27 @@ export default function SocialDashboard() {
   const latest = (platform: string) =>
     snapshots.data?.find((s) => s.platform === platform) ?? null;
 
+  const isImported = (key: string) => latest(key)?.source === "imported";
+  const metricoolConnected = PLATFORMS.filter((p) => isImported(p.key)).length;
+
+  const PLATFORM_LINK: Record<string, (h: string) => string> = {
+    instagram: (h) => `https://instagram.com/${h.replace(/^@/, "")}`,
+    youtube: (h) => h.startsWith("UC") ? `https://youtube.com/channel/${h}` : `https://youtube.com/${h}`,
+    tiktok: (h) => `https://tiktok.com/@${h.replace(/^@/, "")}`,
+    snapchat: (h) => `https://snapchat.com/add/${h.replace(/^@/, "")}`,
+  };
+
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
       <PageHeader
         eyebrow="Brand · Growth"
         eyebrowIcon={<TrendingUp className="h-3 w-3" />}
         title="Social analytics"
-        subtitle="Track Instagram, TikTok, YouTube, and Snapchat growth in one place. Auto-pulled when the platform allows it, manual paste when it doesn't."
+        subtitle={
+          metricoolConnected > 0
+            ? `${metricoolConnected} platforms wired to Metricool · auto-syncs every 6h`
+            : "Drop a Metricool token + run metricool-sync to wire follower auto-pull."
+        }
         accent="emerald"
       />
 
@@ -72,24 +86,45 @@ export default function SocialDashboard() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {PLATFORMS.map(({ key, label, icon: Icon, color, handle }) => {
           const s = latest(key);
+          const connected = s?.source === "imported";
+          const link = PLATFORM_LINK[key]?.(handle);
           return (
-            <Card key={key} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <Card
+              key={key}
+              className={`bg-white dark:bg-slate-900 border ${
+                connected ? "border-emerald-500/40" : "border-slate-200 dark:border-slate-800"
+              }`}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Icon className={`h-5 w-5 ${color}`} />
                     <span className="text-12 font-semibold uppercase tracking-wider text-slate-500">{label}</span>
                   </div>
-                  {s?.source === "auto" && (
-                    <Badge variant="outline" className="text-[10px]">live</Badge>
+                  {connected && (
+                    <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
+                      Metricool
+                    </Badge>
                   )}
                 </div>
                 <p className="text-28 font-bold tabular-nums">{fmt(s?.followers ?? null)}</p>
-                <p className="text-12 text-slate-500">followers · @{handle}</p>
+                <p className="text-12 text-slate-500">
+                  followers ·{" "}
+                  {link ? (
+                    <a href={link} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-600">
+                      @{handle}
+                    </a>
+                  ) : (
+                    <span>@{handle}</span>
+                  )}
+                </p>
                 {s?.growth_7d != null && (
                   <p className={`mt-1 text-12 ${s.growth_7d >= 0 ? "text-emerald-600" : "text-rose-500"}`}>
                     {s.growth_7d >= 0 ? "+" : ""}{fmt(s.growth_7d)} this week
                   </p>
+                )}
+                {!connected && s == null && (
+                  <p className="text-11 text-slate-400 mt-1">No data yet — paste your weekly numbers below.</p>
                 )}
               </CardContent>
             </Card>

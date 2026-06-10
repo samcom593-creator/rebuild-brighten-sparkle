@@ -687,3 +687,6 @@ verify_jwt = false
 
 [functions.gcal-sync]
 verify_jwt = false
+
+[functions.metricool-sync]
+verify_jwt = false

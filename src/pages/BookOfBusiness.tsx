@@ -152,6 +152,11 @@ export default function BookOfBusiness() {
         return;
       }
 
+      // v9 audit 2026-06-10: BookOfBusiness was only reading the apex
+      // `deals` table, stale 20+ days since the AgentLink sync went dark.
+      // Sam: "Book of business has nothing at all." Fix: ALSO read
+      // agentlink_deals_snapshot (1,247 real policies, refreshed every 30 min
+      // by com.samjames.apex.agentlink-sync) and merge. Dedup by policy_number.
       let query = supabase
         .from("deals")
         .select(`
@@ -169,9 +174,45 @@ export default function BookOfBusiness() {
         query = query.in("agent_id", agentScopeIds);
       }
 
-      const { data } = await query;
+      const [{ data }, { data: alSnapshot }] = await Promise.all([
+        query,
+        supabase
+          .from("agentlink_deals_snapshot" as any)
+          .select("id, client_first_name, client_last_name, policy_number, product_sold, monthly_premium, annual_premium, effective_date, raw_status, carrier_id, snapshot_at")
+          .order("effective_date", { ascending: false, nullsFirst: false })
+          .limit(500),
+      ]);
 
-      const rows = (data ?? []) as DealRow[];
+      const apexRows = (data ?? []) as DealRow[];
+      const seenPolicies = new Set(apexRows.map((r) => r.policy_number).filter(Boolean));
+
+      const alRows: DealRow[] = ((alSnapshot ?? []) as Array<Record<string, unknown>>)
+        .filter((r) => r.policy_number && !seenPolicies.has(String(r.policy_number)))
+        .map((r) => ({
+          id: `al-${String(r.id ?? "")}`,
+          agent_id: "",
+          client_first_name: String(r.client_first_name ?? ""),
+          client_last_name: String(r.client_last_name ?? ""),
+          policy_number: String(r.policy_number ?? ""),
+          product_sold: r.product_sold ? String(r.product_sold) : null,
+          monthly_premium: r.monthly_premium != null ? Number(r.monthly_premium) : null,
+          annual_premium: r.annual_premium != null ? Number(r.annual_premium) : null,
+          effective_date: r.effective_date ? String(r.effective_date) : null,
+          posted_at: r.snapshot_at ? String(r.snapshot_at) : null,
+          pipeline_stage: null,
+          policy_status_standard: r.raw_status ? String(r.raw_status) : null,
+          status_updated_at: null,
+          synced_to_insuracloud_at: null,
+          external_deal_id: null,
+          insuracloud_sync_error: null,
+          source: "agentlink",
+          status: "active",
+          carrier_id: r.carrier_id != null ? String(r.carrier_id) : null,
+          pipeline_client_id: null,
+          created_at: r.snapshot_at ? String(r.snapshot_at) : new Date().toISOString(),
+        }) as DealRow);
+
+      const rows = [...apexRows, ...alRows];
 
       // Resolve agent + carrier names in one batch
       const agentIds   = [...new Set(rows.map(r => r.agent_id).filter(Boolean))];

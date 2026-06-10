@@ -182,7 +182,7 @@ export default function PreLicensing() {
         .select("display_name, profile:profiles(full_name)")
         .in("id", ids);
       if (error) {
-        console.warn("[prelicensing:downline-names]", error);
+
         return new Set();
       }
       const set = new Set<string>();

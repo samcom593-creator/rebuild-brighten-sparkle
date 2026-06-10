@@ -195,7 +195,7 @@ export default function DashboardApplicants() {
     if (managerFilter && (isAdmin || isManager)) {
       const { data: filteredApps, error } = await supabase
         .from("applications")
-        .select("*")
+        .select("id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, onboarding_stage, recruiter, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contact_at, next_step_due_at, referral_source")
         .or(orForAgentId(managerFilter))
         .order("created_at", { ascending: false });
 
@@ -205,19 +205,19 @@ export default function DashboardApplicants() {
     } else if (isAdmin) {
       const { data: adminApps } = await supabase
         .from("applications")
-        .select("*")
+        .select("id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, onboarding_stage, recruiter, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contact_at, next_step_due_at, referral_source")
         .order("created_at", { ascending: false });
       fetchedApps = (adminApps || []) as Application[];
     } else if (isManager) {
       const { data: managerApps } = await supabase
         .from("applications")
-        .select("*")
+        .select("id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, onboarding_stage, recruiter, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contact_at, next_step_due_at, referral_source")
         .order("created_at", { ascending: false });
       fetchedApps = (managerApps || []) as Application[];
     } else if (agentData) {
       const { data, error } = await supabase
         .from("applications")
-        .select("*")
+        .select("id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, onboarding_stage, recruiter, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contact_at, next_step_due_at, referral_source")
         .or(orForAgentId(agentData.id))
         .order("created_at", { ascending: false });
 

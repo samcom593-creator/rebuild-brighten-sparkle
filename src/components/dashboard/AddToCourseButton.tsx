@@ -102,7 +102,7 @@ export function AddToCourseButton({
       );
 
       if (emailError) {
-        console.warn("Course enrolled but login email failed:", emailError);
+
         toast.success(`${agentName} enrolled in course (login email may have failed)`);
       } else {
         toast.success(`✓ ${agentName} enrolled in course. Login sent!`);

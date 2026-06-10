@@ -750,7 +750,7 @@ function DealDetailDialog({ deal, onClose }: { deal: DealRow | null; onClose: ()
             </Badge>
             <span className="text-muted-foreground">{deal.policy_number || "—"}</span>
             <span className="text-muted-foreground">·</span>
-            <span className="text-muted-foreground">{deal.carrier_name || "Unknown"}</span>
+            <span className="text-muted-foreground">{deal.carrier_name || "—"}</span>
           </div>
         </DialogHeader>
 

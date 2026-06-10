@@ -135,7 +135,7 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
           );
 
           if (emailError) {
-            console.warn(`Course email failed for ${agentId}:`, emailError);
+
           }
         })
       );

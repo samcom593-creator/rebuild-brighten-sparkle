@@ -313,7 +313,7 @@ export default function DashboardCommandCenter() {
             id: a.id,
             profileId: a.profile_id,
             userId: a.user_id,
-            fullName: profile?.full_name || "Unknown",
+            fullName: profile?.full_name || "—",
             email: profile?.email || null,
             phone: profile?.phone || null,
             status: a.status,

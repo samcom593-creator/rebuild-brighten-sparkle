@@ -123,7 +123,7 @@ export default function Rewards() {
                                 {(r.agent_name ?? "?").split(" ").map(n => n[0]).slice(0,2).join("")}
                               </div>}
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold truncate">{r.agent_name ?? "Unknown"}</div>
+                            <div className="font-semibold truncate">{r.agent_name ?? "—"}</div>
                             <div className="text-xs text-muted-foreground truncate">{r.title} · {r.description}</div>
                           </div>
                           <div className="text-right">

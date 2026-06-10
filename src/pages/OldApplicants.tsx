@@ -162,7 +162,7 @@ export default function OldApplicants({ kind }: { kind: OldApplicantKind }) {
         const profile = (agent.profile as { full_name?: string } | null) ?? null;
         return {
           id: String(agent.id),
-          name: profile?.full_name || String(agent.display_name || "Unknown"),
+          name: profile?.full_name || String(agent.display_name || "—"),
         };
       });
     },

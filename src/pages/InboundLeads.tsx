@@ -344,7 +344,7 @@ export default function InboundLeads() {
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) {
-        console.warn("[inbound-leads] remote table unavailable", error);
+
         return;
       }
       mergeLeads(((data ?? []) as InboundLead[]).map((lead) => ({ ...lead, saved_to_supabase: true })));
@@ -425,7 +425,7 @@ export default function InboundLeads() {
       recordingStartRef.current = Date.now();
     } catch (err) {
       // Mic permission denied — keep going with transcript only
-      console.warn("audio recording unavailable", err);
+
     }
 
     const recognition = new SpeechRecognition();
@@ -558,7 +558,7 @@ export default function InboundLeads() {
       }
       mergeLeads([saved]);
     } catch (error) {
-      console.warn("[inbound-leads] local save only", error);
+
       mergeLeads([draft]);
       toast.warning("Saved locally. Deploy the inbound_leads migration to sync it across devices.");
     } finally {

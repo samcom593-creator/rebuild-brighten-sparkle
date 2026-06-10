@@ -533,8 +533,7 @@ export default function CallCenter() {
           .update({ started_training: true })
           .eq("id", currentLead.id)
           .then(({ error }) => {
-            if (error) console.warn("Failed to mark started_training:", error);
-          });
+            if (error) });
       }
     }
   }, [executeAction, currentLead]);

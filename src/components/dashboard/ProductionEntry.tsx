@@ -299,9 +299,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
       if (formData.deals_closed > 0) {
         setTimeout(async () => {
           try {
-            // console.log("🔔 Triggering batched notifications for", selectedAgentName);
-            
-            // Batch notifications (deal alert removed - now sent as daily leaderboard at 9 PM)
+            // // Batch notifications (deal alert removed - now sent as daily leaderboard at 9 PM)
             await Promise.allSettled([
               supabase.functions.invoke("notify-streak-alert", {
                 body: {
@@ -325,8 +323,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
               }),
             ]);
             
-            // console.log("✅ All notifications sent");
-          } catch (notifyError) {
+            // } catch (notifyError) {
             console.error("Failed to send notifications:", notifyError);
           }
         }, 2000);

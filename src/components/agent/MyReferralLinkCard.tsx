@@ -85,7 +85,7 @@ export function MyReferralLinkCard() {
         });
       if (!cancelled) {
         if (error) {
-          console.warn("[MyReferralLinkCard] auto-mint failed:", error.message);
+
         } else {
           linkQ.refetch();
         }

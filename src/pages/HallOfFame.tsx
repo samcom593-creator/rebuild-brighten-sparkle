@@ -151,7 +151,7 @@ export default function HallOfFame() {
       // Flatten the agent.profile join
       return (data ?? []).map((row: any) => ({
         ...row,
-        agent_name: row.agent?.profile?.full_name ?? "Unknown",
+        agent_name: row.agent?.profile?.full_name ?? "—",
         agent_photo: row.agent?.profile?.avatar_url ?? null,
       })) as Plaque[];
     },
@@ -214,7 +214,7 @@ export default function HallOfFame() {
         } else {
           byAgent.set(id, {
             agent_id: id,
-            agent_name: row.agent?.profile?.full_name ?? "Unknown",
+            agent_name: row.agent?.profile?.full_name ?? "—",
             avatar_url: row.agent?.profile?.avatar_url ?? null,
             plaque_count: 1,
             total_amount: amount,

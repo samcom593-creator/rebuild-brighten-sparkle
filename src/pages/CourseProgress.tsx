@@ -181,7 +181,7 @@ export default function CourseProgress() {
           const userToName = new Map(managerProfiles?.map(p => [p.user_id, p.full_name]) || []);
           managerAgents.forEach(ma => {
             if (ma.user_id) {
-              managerMap.set(ma.id, userToName.get(ma.user_id) || "Unknown");
+              managerMap.set(ma.id, userToName.get(ma.user_id) || "—");
             }
           });
         }
@@ -255,10 +255,10 @@ export default function CourseProgress() {
 
         return {
           agentId: agent.id,
-          agentName: profile?.full_name || "Unknown",
+          agentName: profile?.full_name || "—",
           email: profile?.email || "",
           managerId: agent.invited_by_manager_id,
-          managerName: agent.invited_by_manager_id ? managerMap.get(agent.invited_by_manager_id) || "Unknown" : "Unassigned",
+          managerName: agent.invited_by_manager_id ? managerMap.get(agent.invited_by_manager_id) || "—" : "Unassigned",
           onboardingStage: agent.onboarding_stage || "onboarding",
           modules: modulesRecord,
           completedCount,
@@ -663,7 +663,7 @@ export default function CourseProgress() {
                                   : agent.onboardingStage === "in_field_training" ? "Field Training"
                                   : agent.onboardingStage === "evaluated" ? "Evaluated"
                                   : agent.onboardingStage === "onboarding" ? "Onboarding"
-                                  : agent.onboardingStage || "Unknown"}
+                                  : agent.onboardingStage || "—"}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-center">

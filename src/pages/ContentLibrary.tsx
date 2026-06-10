@@ -312,7 +312,7 @@ export default function ContentLibrary() {
         }).then((res) => {
           const result = res.data;
           if (result && result.safe === false) {
-            console.warn(`⚠️ ${file.name} flagged as sensitive: ${result.reason}`);
+
             toast.warning(`⚠️ "${file.name}" was flagged as sensitive and hidden`, { duration: 6000 });
           }
           fetchContent();

@@ -161,7 +161,7 @@ async function getRows<T = any>(builder: any, label: string): Promise<T[]> {
   if (!builder) return [];
   const { data, error } = await builder;
   if (error) {
-    console.warn(`[dashboard:${label}]`, error);
+
     return [];
   }
   return (data ?? []) as T[];
@@ -171,7 +171,7 @@ async function getOne<T = any>(builder: any, label: string): Promise<T | null> {
   if (!builder) return null;
   const { data, error } = await builder;
   if (error) {
-    console.warn(`[dashboard:${label}]`, error);
+
     return null;
   }
   return (data ?? null) as T | null;
@@ -474,7 +474,7 @@ function useCurrentAgent(userId: string | undefined) {
         .eq("user_id", userId)
         .maybeSingle();
       if (error) {
-        console.warn("[dashboard:current-agent]", error);
+
         return null;
       }
       return data;

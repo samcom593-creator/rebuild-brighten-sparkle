@@ -194,7 +194,7 @@ export default function AgentManagement() {
         });
         return {
           id: a.id,
-          name: profile?.full_name || a.display_name || "Unknown",
+          name: profile?.full_name || a.display_name || "—",
           email: profile?.email || "",
           phone: profile?.phone || null,
           avatarUrl: profile?.avatar_url || null,

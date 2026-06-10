@@ -64,8 +64,7 @@ export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebration
   const fireConfetti = useCallback(() => {
     // On iOS devices, skip confetti entirely to prevent layout issues
     if (isIOSDevice()) {
-      // console.log("Skipping confetti on iOS device to prevent layout issues");
-      onComplete?.();
+      // onComplete?.();
       return;
     }
 

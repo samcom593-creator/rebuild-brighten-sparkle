@@ -113,20 +113,30 @@ export function GlobalSidebar({
   }, []);
 
   const navSections = useMemo<NavSection[]>(() => {
-    const operations: NavItem[] = [
+    // v24 Phase 7 · AgentLink fidelity sidebar prune
+    // PRIMARY: 6 top-level items (mirrors AgentLink's restraint)
+    // MORE: collapsible group with the long tail
+    // OLD: only renders if there are archive entries
+    const primary: NavItem[] = [
       { icon: LayoutDashboard, label: "Command Center", href: "/dashboard", special: true },
     ];
+    const more: NavItem[] = [];
     const oldApplicants: NavItem[] = [];
 
     if (isAdmin) {
-      operations.push(
+      // 6 PRIMARY items chosen by daily usage frequency
+      primary.push(
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
         { icon: PhoneCall, label: "Calls Today", href: "/dashboard/calls-today", special: true },
-        { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
+        { icon: Users, label: "Clients", href: "/dashboard/clients" },
         { icon: Award, label: "Contracts", href: "/dashboard/contracts", special: true },
+        { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
+      );
+      // EVERYTHING ELSE under MORE (collapses by default)
+      more.push(
+        { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
         { icon: Trophy, label: "Challenges", href: "/dashboard/challenges", special: true },
         { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
-        { icon: Users, label: "Clients", href: "/dashboard/clients" },
         { icon: Network, label: "Builders", href: "/dashboard/builders", special: true },
         { icon: UserCog, label: "Managers", href: "/dashboard/managers" },
         { icon: Crown, label: "Agency Owners", href: "/dashboard/agency-owners" },
@@ -134,7 +144,6 @@ export function GlobalSidebar({
         { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
-        { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
         { icon: TrendingUp, label: "Social", href: "/dashboard/social" },
         { icon: Library, label: "Content", href: "/dashboard/admin/content-command" },
         { icon: Settings, label: "Admin", href: "/dashboard/admin" },
@@ -144,23 +153,25 @@ export function GlobalSidebar({
         { icon: Archive, label: "Old Licensed Recruiters", href: "/dashboard/old-applicants/licensed-recruiters" },
       );
     } else if (isManager) {
-      operations.push(
+      primary.push(
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
         { icon: PhoneCall, label: "Calls Today", href: "/dashboard/calls-today", special: true },
-        { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
         { icon: Users, label: "Clients", href: "/dashboard/clients" },
         { icon: Users, label: "Agents", href: "/dashboard/my-team" },
+        { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
+      );
+      more.push(
+        { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
         { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
-        { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );
       oldApplicants.push(
         { icon: Archive, label: "Old Managers", href: "/dashboard/old-applicants/managers" },
         { icon: Archive, label: "Old Licensed Recruiters", href: "/dashboard/old-applicants/licensed-recruiters" },
       );
     } else {
-      operations.push(
+      primary.push(
         { icon: BarChart3, label: "Production", href: "/numbers" },
         { icon: Briefcase, label: "Applicants", href: "/recruit-pipeline" },
         { icon: GraduationCap, label: "Training", href: "/course-progress" },
@@ -168,7 +179,8 @@ export function GlobalSidebar({
     }
 
     return [
-      { label: "OPERATIONS", items: operations },
+      { label: "PRIMARY", items: primary },
+      ...(more.length ? [{ label: "MORE", items: more }] : []),
       ...(oldApplicants.length ? [{ label: "OLD APPLICANTS", items: oldApplicants }] : []),
     ];
   }, [isAdmin, isManager]);

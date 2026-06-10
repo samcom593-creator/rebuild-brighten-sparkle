@@ -393,7 +393,7 @@ export default function Apply() {
               : "Referral link detected!",
           );
         } else {
-          console.warn("[Apply] No agent found for ref slug:", refSlug);
+
         }
       } catch (err) {
         console.error("[Apply] ref_slug resolve failed:", err);

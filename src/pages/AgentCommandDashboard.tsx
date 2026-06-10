@@ -40,6 +40,9 @@ import { RegionPeerCard, UpcomingChargebackCard } from "@/components/dashboard/A
 import { LapsesDrilldownModal } from "@/components/dashboard/LapsesDrilldownModal";
 import { RecentActivationsPanel } from "@/components/dashboard/RecentActivationsPanel";
 import { MyReferralLinkCard } from "@/components/agent/MyReferralLinkCard";
+import { AgentLinkBookTruthCard } from "@/components/dashboard/AgentLinkBookTruthCard";
+import { CarrierBreakdownCard } from "@/components/dashboard/CarrierBreakdownCard";
+import { BookTrendCard } from "@/components/dashboard/CarrierProductionCard";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, getDealTruthTimestamp } from "@/lib/dealTruth";
 
 // ─── Formatters ─────────────────────────────────────────────────────────────
@@ -1139,6 +1142,18 @@ function AgencyCommandView() {
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+      {/* v11 audit 2026-06-10: AgencyCommandView is what Sam (admin) actually
+          sees on /dashboard. The previous Dashboard.tsx mounted AgentLink
+          truth widgets, but they only rendered for non-admin users — Sam
+          saw the stale-deals-table view instead. Now mount the truth
+          widgets AT THE TOP so the real $ numbers paint first. */}
+      <AgentLinkBookTruthCard />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <CarrierBreakdownCard />
+        <BookTrendCard />
+      </div>
+
       {/* PL-018: Agency Command top widget redesign — Sam said the box
           was "bare" and hard to read. Boosted contrast, added gradient
           frame + scanline animation, bumped title size, swapped the

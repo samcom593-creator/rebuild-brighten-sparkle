@@ -98,59 +98,80 @@ export default function CarrierContracts() {
         eyebrow="Carriers · Contracts"
         eyebrowIcon={<Award className="h-3 w-3" />}
         title="Carrier contracts"
-        subtitle={`${totalActive} active · ${totalPending} pending · ${totalNone} not contracted yet · mirrors AgentLink`}
-        accent="emerald"
+        subtitle="Mirrors AgentLink contracting · tile counts below"
       />
 
-      {/* Quick summary tiles */}
-      <div className="grid gap-3 sm:grid-cols-4">
-        <SummaryTile label="Active" count={totalActive} status="active" />
-        <SummaryTile label="Pending" count={grouped.pending_upline_assignment?.length ?? 0} status="pending_upline_assignment" />
-        <SummaryTile label="Submitted" count={grouped.submitted?.length ?? 0} status="submitted" />
-        <SummaryTile label="Rejected" count={grouped.rejected?.length ?? 0} status="rejected" />
-      </div>
+      {/* v24 audit fix: loading state IN-PLACE (top, persistent). Was
+          bottom-pinned skeleton that caused layout collapse-then-expand. */}
+      {contracts.isLoading ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <Skeleton className="h-24" /><Skeleton className="h-24" />
+            <Skeleton className="h-24" /><Skeleton className="h-24" />
+          </div>
+          <Skeleton className="h-40" />
+        </>
+      ) : (contracts.data?.length ?? 0) === 0 ? (
+        <EmptyState
+          icon={<Award className="h-6 w-6" />}
+          title="No contracts synced yet"
+          description="Run the AgentLink sync from /admin or wait for the next cron tick. Contracts will surface here automatically."
+        />
+      ) : (
+        <>
+          {/* Quick summary tiles — neutral white cards + colored dot */}
+          <div className="grid gap-3 sm:grid-cols-4">
+            <SummaryTile label="Active" count={totalActive} status="active" />
+            <SummaryTile label="Pending" count={grouped.pending_upline_assignment?.length ?? 0} status="pending_upline_assignment" />
+            <SummaryTile label="Submitted" count={grouped.submitted?.length ?? 0} status="submitted" />
+            <SummaryTile label="Rejected" count={grouped.rejected?.length ?? 0} status="rejected" />
+          </div>
 
-      {/* Status sections */}
-      {(["active", "pending_upline_assignment", "submitted", "rejected", "none"] as const).map((s) => {
-        const rows = grouped[s] ?? [];
-        if (rows.length === 0) return null;
-        return (
-          <Card key={s} className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-16 capitalize">
-                {s === "none" ? "Not contracted yet" : STATUS_META[s]?.label ?? s} · {rows.length}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-2">
-              {rows.map((row, i) => (
-                <ContractRowView key={`${row.carrier_id}-${i}`} row={row} />
-              ))}
-            </CardContent>
-          </Card>
-        );
-      })}
-
-      {contracts.isLoading && (
-        <div className="space-y-2">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
+          {/* Status sections — rows hover directly against page bg
+              (no card-within-card double-surface per audit complaint) */}
+          {(["active", "pending_upline_assignment", "submitted", "rejected", "none"] as const).map((s) => {
+            const rows = grouped[s] ?? [];
+            if (rows.length === 0) return null;
+            return (
+              <section key={s} className="space-y-2">
+                <p className="text-11 font-semibold uppercase tracking-wider text-slate-500 pt-2">
+                  {s === "none" ? "Not contracted yet" : STATUS_META[s]?.label ?? s} · {rows.length}
+                </p>
+                <div className="space-y-2">
+                  {rows.map((row, i) => (
+                    <ContractRowView key={`${row.carrier_id}-${i}`} row={row} />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </>
       )}
     </div>
   );
 }
 
+/** v24 audit fix: neutral white tile + tiny 2x2px colored status dot.
+ *  Was tinted border via STATUS_META.tint (rose/amber/blue/emerald). */
 function SummaryTile({ label, count, status }: { label: string; count: number; status: string }) {
   const meta = STATUS_META[status];
+  const dot = status === "active" ? "bg-emerald-500"
+            : status === "pending_upline_assignment" ? "bg-amber-500"
+            : status === "submitted" ? "bg-blue-500"
+            : status === "rejected" ? "bg-rose-500"
+            : "bg-slate-400";
   const Icon = meta?.icon ?? Award;
   return (
-    <Card className={`border ${meta?.tint ?? "border-slate-200 dark:border-slate-800"}`}>
+    <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
       <CardContent className="p-4 flex items-center justify-between">
         <div>
-          <p className="text-11 uppercase tracking-wider font-semibold">{label}</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`h-2 w-2 rounded-full ${dot}`} />
+            <p className="text-11 uppercase tracking-wider font-semibold">{label}</p>
+          </div>
           <p className="text-28 font-bold tabular-nums">{count}</p>
         </div>
-        <Icon className="h-5 w-5 opacity-70" />
+        <Icon className="h-5 w-5 opacity-50" />
       </CardContent>
     </Card>
   );

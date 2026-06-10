@@ -37,13 +37,16 @@ const CALL_TYPE_LABEL: Record<string, string> = {
   unknown: "Call",
 };
 
+// v24 palette restraint: was 5 rainbow tints (emerald/amber/blue/violet/slate).
+// Now mono — slate-only chips. Emerald reserved exclusively for the
+// imminent-call border-l rail (see CallRow below).
 const CALL_TYPE_TINT: Record<string, string> = {
-  licensed_prospect: "border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  unlicensed_prospect: "border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  agent_oneonone: "border-blue-500/35 bg-blue-500/10 text-blue-700 dark:text-blue-300",
-  followup: "border-violet-500/35 bg-violet-500/10 text-violet-700 dark:text-violet-300",
-  team_meeting: "border-slate-500/35 bg-slate-500/10 text-slate-700 dark:text-slate-300",
-  unknown: "border-slate-500/35 bg-slate-500/10 text-slate-700 dark:text-slate-300",
+  licensed_prospect:   "border-border bg-muted text-foreground",
+  unlicensed_prospect: "border-border bg-muted text-foreground",
+  agent_oneonone:      "border-border bg-muted text-foreground",
+  followup:            "border-border bg-muted text-foreground",
+  team_meeting:        "border-border bg-muted text-foreground",
+  unknown:             "border-border bg-muted text-foreground",
 };
 
 export default function CallsTodayCockpit() {
@@ -95,13 +98,45 @@ export default function CallsTodayCockpit() {
         eyebrowIcon={<CalendarCheck className="h-3 w-3" />}
         title="Calls today"
         subtitle="Every event your assistant adds to your calendar shows up here. Tap Start call to open the inbound-leads form pre-filled with the prospect's name and number."
-        accent="emerald"
       />
 
-      {callsQ.isLoading ? (
+      {/* v24 audit fix: 3-KPI tile row (was missing — broke the 4-zone
+          rhythm AgentLink uses). Shows today count / next-call relative /
+          this-week count above the list. */}
+      <div className="grid gap-3 sm:grid-cols-3">
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <CardContent className="p-6 text-12 text-slate-500">Loading your calendar…</CardContent>
+          <CardContent className="p-4">
+            <p className="text-11 uppercase tracking-wider font-semibold text-slate-500">Today</p>
+            <p className="text-28 font-bold tabular-nums">{grouped.today.length}</p>
+            <p className="text-11 text-slate-500">{grouped.today.length === 1 ? "call scheduled" : "calls scheduled"}</p>
+          </CardContent>
         </Card>
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <CardContent className="p-4">
+            <p className="text-11 uppercase tracking-wider font-semibold text-slate-500">Next up</p>
+            <p className="text-28 font-bold tabular-nums">
+              {grouped.today[0] ? formatDistanceToNowStrict(new Date(grouped.today[0].start_at), { addSuffix: false }) : "—"}
+            </p>
+            <p className="text-11 text-slate-500">{grouped.today[0]?.prospect_name ?? "no call yet"}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <CardContent className="p-4">
+            <p className="text-11 uppercase tracking-wider font-semibold text-slate-500">This week</p>
+            <p className="text-28 font-bold tabular-nums">{grouped.today.length + grouped.tomorrow.length + grouped.later.length}</p>
+            <p className="text-11 text-slate-500">total upcoming</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {callsQ.isLoading ? (
+        <div className="space-y-2">
+          {/* v24 audit fix: skeleton CallRow placeholders instead of plain
+              "Loading…" text · prevents layout reflow on data arrival */}
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
       ) : (callsQ.data ?? []).length === 0 ? (
         <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
           <CardContent className="p-10">
@@ -157,7 +192,7 @@ function CallRow({ call, onStart }: { call: ScheduledCall; onStart: (c: Schedule
   const imminent = inFuture && minutesAway <= 15;
 
   return (
-    <Card className={`bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${imminent ? "ring-2 ring-emerald-500" : ""}`}>
+    <Card className={`bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${imminent ? "border-l-2 border-l-emerald-500" : ""}`}>
       <CardContent className="p-4 flex items-center gap-4">
         <div className="text-center w-16 shrink-0">
           <p className="text-20 font-bold tabular-nums">{format(start, "h:mm")}</p>

@@ -393,7 +393,7 @@ export default function AgentCommandDashboard() {
           label="Agency rank · MTD"
           value={stats?.rank_agency_mtd ? `#${stats.rank_agency_mtd}` : "—"}
           subValue={`Team: ${stats?.rank_team_mtd ? `#${stats.rank_team_mtd}` : "—"} · Close: ${fmtPct(closeRate, 0)}`}
-          color="text-violet-500 dark:text-violet-400"
+          color="text-primary"
           loading={cc.isLoading}
         />
       </div>
@@ -1253,36 +1253,11 @@ function AgencyCommandView() {
         </div>
       </GlassCard>
 
-      {/* ── Wave B v9: AgentLink TRUTH row (today / week / month) ────
-          Single round-trip via apex_dashboard_summary(). Mirrors v9 §3
-          mockup: TODAY · THIS WEEK · THIS MONTH. Every $ here comes from
-          v_agentlink_book_truth, not the stale apex deals table. */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <KpiTile
-          icon={DollarSign}
-          label="Today · AgentLink"
-          value={fmtUsd(Number(summary.data?.today.premium ?? 0))}
-          subValue={`${fmtNum(Number(summary.data?.today.deals ?? 0))} deals posted today · book ${fmtUsd(Number(summary.data?.total.premium ?? 0), true)}`}
-          color="text-emerald-500 dark:text-emerald-400"
-          loading={summary.isLoading}
-        />
-        <KpiTile
-          icon={TrendingUp}
-          label="This Week · AgentLink"
-          value={fmtUsd(Number(summary.data?.this_week.premium ?? 0))}
-          subValue={`${fmtNum(Number(summary.data?.this_week.deals ?? 0))} deals this week · sync ${summary.data?.last_sync_at ? format(new Date(summary.data.last_sync_at), "MMM d, h:mm a") : "—"}`}
-          color="text-amber-500 dark:text-amber-400"
-          loading={summary.isLoading}
-        />
-        <KpiTile
-          icon={Trophy}
-          label="This Month · AgentLink"
-          value={fmtUsd(Number(summary.data?.this_month.premium ?? 0))}
-          subValue={`${fmtNum(Number(summary.data?.this_month.deals ?? 0))} deals MTD · ${fmtNum(summary.data?.just_hired_7d ?? 0)} just hired (7d) · ${fmtNum(summary.data?.stale_apps_14d ?? 0)} stale`}
-          color="text-primary"
-          loading={summary.isLoading}
-        />
-      </div>
+      {/* v24 Wave 3 audit fix: the 3-tile AgentLink hero band was collapsed
+          into the 4-tile period grid below. Showing today/week/month twice
+          (hero + period switcher) confused the eye. The period switcher
+          owns canonical numbers; the AgentLink totals still surface in the
+          footer "AgentLink summary · whole book" section. */}
 
       {/* ── 4 KPI TILES (real verified numbers) ─────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -1316,7 +1291,7 @@ function AgencyCommandView() {
           label={`Licensed hires · ${periodBounds.label}`}
           value={fmtNum(tight.data?.licensedMtd ?? 0)}
           subValue={`${fmtNum(tight.data?.contractedMtd ?? 0)} contracted · ${fmtNum(tight.data?.pleInCourse ?? 0)} in pre-license course · ${fmtNum(tight.data?.pleExamScheduled ?? 0)} exam scheduled`}
-          color="text-violet-500 dark:text-violet-400"
+          color="text-primary"
           loading={tight.isLoading}
         />
       </div>
@@ -1417,10 +1392,10 @@ function AgencyCommandView() {
                   key={a.agent_id}
                   className="flex items-center gap-3 rounded-lg border border-border/30 px-2.5 py-2 hover:border-primary/40 hover:bg-primary/[0.04] transition-colors"
                 >
+                  {/* v24 palette restraint: gold for #1 only, others neutral.
+                      Was silver+bronze rainbow per audit complaint #3. */}
                   <span className={`h-6 w-6 rounded-md text-[11px] font-bold flex items-center justify-center shrink-0 ${
                     i === 0 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" :
-                    i === 1 ? "bg-slate-400/15 text-slate-400 dark:text-slate-300" :
-                    i === 2 ? "bg-orange-500/15 text-orange-600 dark:text-orange-400" :
                     "bg-muted text-muted-foreground"
                   }`}>
                     {i + 1}
@@ -1648,9 +1623,11 @@ function StatRowCard({ icon: Icon, label, value, color, onClick }: StatRowCardPr
       <button
         type="button"
         onClick={onClick}
-        className="text-left w-full hover:scale-[1.01] transition-transform"
+        className="text-left w-full transition-base"
       >
-        <GlassCard className="p-4 flex items-center justify-between cursor-pointer hover:border-primary/40">
+        {/* v24 audit fix: removed hover:scale-[1.01] Y-translate (banned per v22 §10.5).
+            AgentLink uses bg/border shifts only — no size mutations on rows. */}
+        <GlassCard className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-primary/40">
           {inner}
         </GlassCard>
       </button>

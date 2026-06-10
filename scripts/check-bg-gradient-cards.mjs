@@ -36,9 +36,14 @@ import path from "node:path";
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const targetDir = path.join(repoRoot, "src/components/dashboard");
 
-// Post-wave-59 ratchet (commit 136afa81 + 4db68e6e). Measured 2026-06-10.
+// Post-wave-63 ratchet. Wave-59 (136afa81) killed 28 muddy gradients leaving
+// 73. Wave-2 codemod dae5773d (561 visual-noise instances killed across 161
+// files) + wave-2 GlassCard flatten 3768d5c5 dropped dashboard to 1 unmarked
+// instance + 4 allow-marked (medals/avatars/CTAs/hero). Wave-63 ratchets the
+// floor down from 73 → 1 to lock those gains — without this the gate allows
+// ~72 muddy gradients to silently re-creep into the dashboard tree.
 // Bump ONLY when intentionally landing additional brand-justified gradients.
-const BASELINE = 73;
+const BASELINE = 1;
 
 const GRADIENT_RX = /bg-gradient-to-/;
 const ALLOW_RX = /bg-gradient-card-allow/;

@@ -37,17 +37,18 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-// Post-wave-62 ratchets. Wave-61 locked src/pages at 106 + src/components/landing
-// at 18. Wave-62 killed 6 surgical gradients in src/pages (4 in AgentPortal:
-// StatCard colorClasses template + text-clip rainbow title + 3-stop muddy card
-// + absolute decor overlay; 2 in NotificationHub: hardcoded 2-stop stat cards),
-// dropping src/pages to 100 and ratcheting that lower floor. Also added
-// src/components/recruiter (baseline 0) — the folder is currently clean, lock
-// it so any future bg-gradient on a recruiter component is rejected.
+// Post-wave-63 ratchets. Wave-61/62 locked src/pages at 100 + landing at 18 +
+// recruiter at 0. Wave-2 codemod dae5773d (561-instance visual-noise sweep
+// across 161 files) + GlassCard flatten 3768d5c5 dropped src/pages from 100 →
+// 5 (all 5 remaining are admin: CompTiersSettings icon pill, IntegrationsSettings
+// winner glow, ContentCommand subtle wash, SocialMediaBot ×2 wash + progress
+// fill) and src/components/landing from 18 → 0 (full clean). Wave-63 ratchets
+// each floor down to its post-codemod count to lock those gains — without this
+// the gates allow ~113 muddy gradients to silently re-creep across pages+landing.
 // Each baseline is the count of unmarked bg-gradient-to-* instances at lock time.
 const AREAS = [
-  { dir: "src/pages", baseline: 100 },
-  { dir: "src/components/landing", baseline: 18 },
+  { dir: "src/pages", baseline: 5 },
+  { dir: "src/components/landing", baseline: 0 },
   { dir: "src/components/recruiter", baseline: 0 },
 ];
 

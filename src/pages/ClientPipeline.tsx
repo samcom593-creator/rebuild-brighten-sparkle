@@ -74,15 +74,18 @@ interface Client {
   total_monthly_income: number | string | null;
 }
 
+// v24 palette restraint: 4 colors total — slate (inactive/working) +
+// amber (in-flight/needs-attention) + emerald (sold) + rose (risk/follow-up).
+// Was 8 distinct accents per stage (rainbow). Now mono with slight gradient.
 const STAGE_META: Record<string, { label: string; color: string; tint: string }> = {
-  NEW_INITIAL:   { label: "New",        color: "bg-blue-500",    tint: "from-blue-500/15 to-blue-500/0 text-blue-600 dark:text-blue-400 border-blue-500/40" },
-  WORKING:       { label: "Working",    color: "bg-violet-500",  tint: "from-violet-500/15 to-violet-500/0 text-violet-600 dark:text-violet-400 border-violet-500/40" },
-  PITCHED:       { label: "Pitched",    color: "bg-amber-500",   tint: "from-amber-500/15 to-amber-500/0 text-amber-600 dark:text-amber-400 border-amber-500/40" },
-  ALMOST_THERE:  { label: "Almost",     color: "bg-orange-500",  tint: "from-orange-500/15 to-orange-500/0 text-orange-600 dark:text-orange-400 border-orange-500/40" },
-  SOLD:          { label: "Sold",       color: "bg-emerald-500", tint: "from-emerald-500/15 to-emerald-500/0 text-emerald-600 dark:text-emerald-400 border-emerald-500/40" },
-  FOLLOW_UP:     { label: "Follow-up",  color: "bg-rose-500",    tint: "from-rose-500/15 to-rose-500/0 text-rose-600 dark:text-rose-400 border-rose-500/40" },
-  INACTIVE:      { label: "Inactive",   color: "bg-slate-500",   tint: "from-slate-500/15 to-slate-500/0 text-slate-400 dark:text-slate-400 border-slate-500/40" },
-  UNSORTED:      { label: "Unsorted",   color: "bg-zinc-500",    tint: "from-zinc-500/15 to-zinc-500/0 text-zinc-600 dark:text-zinc-400 border-zinc-500/40" },
+  NEW_INITIAL:   { label: "New",        color: "bg-slate-400",   tint: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700" },
+  WORKING:       { label: "Working",    color: "bg-slate-500",   tint: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700" },
+  PITCHED:       { label: "Pitched",    color: "bg-amber-500",   tint: "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+  ALMOST_THERE:  { label: "Almost",     color: "bg-amber-600",   tint: "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+  SOLD:          { label: "Sold",       color: "bg-emerald-500", tint: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" },
+  FOLLOW_UP:     { label: "Follow-up",  color: "bg-rose-500",    tint: "bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300 border-rose-200 dark:border-rose-800" },
+  INACTIVE:      { label: "Inactive",   color: "bg-slate-400",   tint: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-800" },
+  UNSORTED:      { label: "Unsorted",   color: "bg-slate-300",   tint: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-800" },
 };
 
 function fmtMoney(n: unknown): string {
@@ -330,10 +333,13 @@ export default function ClientPipeline() {
                 <Tooltip
                   contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                 />
+                {/* v24 monochrome bar fill: opacity steps within one accent
+                    so cold→fresh reads as one shade, not a fruit salad. */}
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {freshnessData.map((_, i) => (
-                    <Cell key={i} fill={`hsl(${168 + i * 18} 70% 50%)`} />
-                  ))}
+                  {freshnessData.map((_, i) => {
+                    const opacity = 0.4 + (i / Math.max(freshnessData.length - 1, 1)) * 0.6;
+                    return <Cell key={i} fill={`hsl(168 84% 38% / ${opacity})`} />;
+                  })}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -510,12 +516,11 @@ export default function ClientPipeline() {
                 : null;
               const isStale = lastContactDays != null && lastContactDays > 30;
               return (
-                <motion.div
+                // v24 row stagger removed — 250-row cascading shimmer on
+                // every filter change felt sluggish. Static rows now.
+                <div
                   key={c.id}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(i * 0.005, 0.15) }}
-                  className="flex items-center gap-3 rounded-lg border border-border/40 px-3 py-2.5 hover:border-primary/40 hover:bg-primary/[0.03] transition-colors cursor-pointer"
+                  className="flex items-center gap-3 rounded-lg border border-border/40 px-3 py-2.5 hover:border-primary/40 hover:bg-primary/[0.03] transition-base cursor-pointer"
                   onClick={() => { window.location.href = `/dashboard/clients/${c.id}`; }}
                   role="button"
                   tabIndex={0}
@@ -577,7 +582,7 @@ export default function ClientPipeline() {
                     )}
                     <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
                   </div>
-                </motion.div>
+                </div>
               );
             })}
             {rows.length > list.length && (

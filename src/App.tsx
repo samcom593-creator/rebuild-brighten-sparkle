@@ -82,7 +82,6 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ApexControl = lazy(() => import("./pages/ApexControl"));
 const BuildersDashboard = lazy(() => import("./pages/BuildersDashboard"));
 const DashboardApplicants = lazy(() => import("./pages/DashboardApplicants"));
-const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
 const DashboardAccounts = lazy(() => import("./pages/DashboardAccounts"));
 const OffersPage = lazy(() => import("./pages/OffersPage"));
 const Storefront = lazy(() => import("./pages/Storefront"));
@@ -374,7 +373,6 @@ const App = () => (
                     {/* Stale-recovery panel — admins/managers only. v_stale_applicants
                         feeds it. Additive: doesn't touch DashboardApplicants. */}
                     <Route path="/dashboard/stale-recovery" element={<ProtectedRoute allowManagers><StaleRecovery /></ProtectedRoute>} />
-                    <Route path="/dashboard/admin" element={<DashboardAdmin />} />
                     <Route path="/dashboard/accounts" element={<ProtectedRoute requireAdmin><DashboardAccounts /></ProtectedRoute>} />
                     <Route path="/dashboard/offers" element={<ProtectedRoute requireAdmin><OffersPage /></ProtectedRoute>} />
                     <Route path="/dashboard/xcel-pipeline" element={<ProtectedRoute requireAdmin><XcelPipeline /></ProtectedRoute>} />

@@ -67,43 +67,17 @@ interface InboundLead {
 
 const STORAGE_KEY = "apex:inbound-leads:v1";
 
+// v24 palette restraint: kill the 6-color rainbow (cyan/violet/amber/blue/
+// emerald/slate). Stage chips read MONO via shared neutral tint; the dot
+// is the only color carrier. 4 dot colors: slate (in-progress) / amber
+// (waiting on Sam) / emerald (closed-won) / rose (closed-lost).
 const STAGE_META: Record<InboundStage, { label: string; tint: string; dot: string; icon: typeof PhoneCall }> = {
-  new: {
-    label: "New Call",
-    tint: "border-cyan-500/35 bg-cyan-500/10 text-cyan-300",
-    dot: "bg-cyan-400",
-    icon: PhoneCall,
-  },
-  diagnosing: {
-    label: "Diagnosing",
-    tint: "border-violet-500/35 bg-violet-500/10 text-violet-300",
-    dot: "bg-violet-400",
-    icon: ClipboardList,
-  },
-  quoted: {
-    label: "Quoted",
-    tint: "border-amber-500/35 bg-amber-500/10 text-amber-300",
-    dot: "bg-amber-400",
-    icon: DollarSign,
-  },
-  follow_up: {
-    label: "Follow-up",
-    tint: "border-blue-500/35 bg-blue-500/10 text-blue-300",
-    dot: "bg-blue-400",
-    icon: CalendarClock,
-  },
-  won: {
-    label: "Solved",
-    tint: "border-emerald-500/35 bg-emerald-500/10 text-emerald-300",
-    dot: "bg-emerald-400",
-    icon: CheckCircle2,
-  },
-  lost: {
-    label: "Closed Out",
-    tint: "border-slate-500/35 bg-slate-500/10 text-slate-600 dark:text-slate-300",
-    dot: "bg-slate-400",
-    icon: ShieldCheck,
-  },
+  new:        { label: "New Call",   tint: "border-border bg-muted text-foreground",   dot: "bg-slate-400",   icon: PhoneCall },
+  diagnosing: { label: "Diagnosing", tint: "border-border bg-muted text-foreground",   dot: "bg-slate-500",   icon: ClipboardList },
+  quoted:     { label: "Quoted",     tint: "border-border bg-muted text-foreground",   dot: "bg-amber-500",   icon: DollarSign },
+  follow_up:  { label: "Follow-up",  tint: "border-border bg-muted text-foreground",   dot: "bg-amber-400",   icon: CalendarClock },
+  won:        { label: "Solved",     tint: "border-border bg-muted text-foreground",   dot: "bg-emerald-500", icon: CheckCircle2 },
+  lost:       { label: "Closed Out", tint: "border-border bg-muted text-foreground",   dot: "bg-rose-400",    icon: ShieldCheck },
 };
 
 const STAGE_ORDER: InboundStage[] = ["new", "diagnosing", "quoted", "follow_up", "won", "lost"];
@@ -600,7 +574,6 @@ export default function InboundLeads() {
         eyebrowIcon={<PhoneCall className="h-3 w-3" />}
         title="Inbound Leads"
         subtitle="Fast call capture for people calling live with different problems. Log the situation, identify the solution lane, and push the client through the follow-up board."
-        accent="emerald"
         actions={
           <Button className="gap-2" onClick={() => setNewClientOpen(true)}>
             <Plus className="h-4 w-4" />

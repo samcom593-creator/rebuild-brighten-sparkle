@@ -146,7 +146,7 @@ export function GlobalSidebar({
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
         { icon: TrendingUp, label: "Social", href: "/dashboard/social" },
         { icon: Library, label: "Content", href: "/dashboard/admin/content-command" },
-        { icon: Settings, label: "Admin", href: "/dashboard/admin" },
+        { icon: Settings, label: "Admin", href: "/dashboard/command" },
       );
       oldApplicants.push(
         { icon: Archive, label: "Old Managers", href: "/dashboard/old-applicants/managers" },

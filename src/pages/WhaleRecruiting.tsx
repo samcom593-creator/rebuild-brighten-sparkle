@@ -190,11 +190,19 @@ export default function WhaleRecruiting() {
 type Heat = "hot" | "warm" | "cool" | "cold";
 
 const HEAT_RANK: Record<Heat, number> = { hot: 3, warm: 2, cool: 1, cold: 0 };
+// v24 palette restraint: tile bg goes NEUTRAL white. Heat color carries
+// only on a small dot indicator. Was 4 tinted bgs (rose/amber/blue/slate).
 const HEAT_TINT: Record<Heat, string> = {
-  hot: "border-rose-500/40 bg-rose-500/5 text-rose-700 dark:text-rose-300",
-  warm: "border-amber-500/40 bg-amber-500/5 text-amber-700 dark:text-amber-300",
-  cool: "border-blue-500/40 bg-blue-500/5 text-blue-700 dark:text-blue-300",
-  cold: "border-slate-400/40 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300",
+  hot:  "border-border bg-card text-foreground",
+  warm: "border-border bg-card text-foreground",
+  cool: "border-border bg-card text-foreground",
+  cold: "border-border bg-card text-foreground",
+};
+const HEAT_DOT: Record<Heat, string> = {
+  hot:  "bg-rose-500",
+  warm: "bg-amber-500",
+  cool: "bg-slate-400",
+  cold: "bg-slate-300",
 };
 
 const STAGE_LABEL: Record<string, string> = {
@@ -238,9 +246,12 @@ function HeatTile({ heat, rows }: { heat: Heat; rows: Array<WhaleRow & { heat: H
   return (
     <Card className={`border ${HEAT_TINT[heat]}`}>
       <CardContent className="p-4">
-        <p className="text-11 uppercase tracking-wider font-semibold">{heat}</p>
+        <div className="flex items-center gap-2 mb-1">
+          <span className={`h-2 w-2 rounded-full ${HEAT_DOT[heat]}`} />
+          <p className="text-11 uppercase tracking-wider font-semibold">{heat}</p>
+        </div>
         <p className="text-28 font-bold tabular-nums">{count}</p>
-        <p className="text-11 opacity-75">{heat === "hot" ? "Talked in 48h" : heat === "warm" ? "This week" : heat === "cool" ? "Last 30d" : "Idle 30d+"}</p>
+        <p className="text-11 text-muted-foreground">{heat === "hot" ? "Talked in 48h" : heat === "warm" ? "This week" : heat === "cool" ? "Last 30d" : "Idle 30d+"}</p>
       </CardContent>
     </Card>
   );

@@ -234,14 +234,8 @@ export function UpcomingChargebackCard({ agentId }: { agentId: string | null }) 
         </dl>
       )}
 
-      {!isClean && (
-        <Link
-          to="/dashboard/charges-audit"
-          className="mt-3 inline-flex items-center gap-1 text-xs text-primary hover:underline"
-        >
-          Open charges ledger →
-        </Link>
-      )}
+      {/* v24 Phase 13: /dashboard/charges-audit page deleted (orphaned).
+          Once a replacement ledger exists this CTA can be re-pointed. */}
     </GlassCard>
   );
 }

@@ -1581,8 +1581,9 @@ function AgencyCommandView() {
         <QuickAction icon={Users}      to="/dashboard/applicants"      label="Applicants" desc="Review + assign" />
         <QuickAction icon={Briefcase}  to="/dashboard/recruit-pipeline" label="Recruit pipeline" desc="Kanban board" />
         <QuickAction icon={Trophy}     to="/dashboard/leaderboard"     label="Leaderboard" desc="Top producers" />
-        <QuickAction icon={Wallet}     to="/dashboard/charges-audit"   label="Charges audit" desc="Stripe anomalies" />
-        <QuickAction icon={Sparkles}   to="/dashboard/conduct"         label="Conduct center" desc="Strikes + audit" />
+        {/* v24 Phase 13: Charges audit + Conduct center routes deleted
+            (orphaned). Use /dashboard/strikes for conduct + strikes. */}
+        <QuickAction icon={Sparkles}   to="/dashboard/strikes"         label="Strikes" desc="Conduct + strikes log" />
       </div>
 
       {/* v18 2026-06-10: Sam asked AgentLink summary moved to the BOTTOM

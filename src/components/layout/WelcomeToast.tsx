@@ -32,7 +32,7 @@ export function WelcomeToast() {
           action: {
             label: "Open",
             onClick: () => {
-              window.location.href = "/dashboard/conduct";
+              window.location.href = "/dashboard/strikes";
             },
           },
         },

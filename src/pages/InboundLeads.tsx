@@ -683,15 +683,26 @@ export default function InboundLeads() {
 
           <form onSubmit={saveLead} className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-4">
+              {/* v13 mid-call key-details panel — always visible during the call
+                  so Sam can see the extracted bullets as he talks. Mirrors the
+                  form fields but in a scannable read-only summary. */}
+              <CallSnapshot form={form} />
+
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="First name">
-                  <Input value={form.client_first_name} onChange={(event) => updateForm("client_first_name", event.target.value)} placeholder="Client first name" />
+                  <div className="flex gap-1">
+                    <Input value={form.client_first_name} onChange={(event) => updateForm("client_first_name", event.target.value)} placeholder="Client first name" />
+                    <TpsLookup form={form} mode="name" />
+                  </div>
                 </Field>
                 <Field label="Last name">
                   <Input value={form.client_last_name} onChange={(event) => updateForm("client_last_name", event.target.value)} placeholder="Client last name" />
                 </Field>
                 <Field label="Phone">
-                  <Input value={form.phone} onChange={(event) => updateForm("phone", formatPhone(event.target.value))} placeholder="(555) 123-4567" />
+                  <div className="flex gap-1">
+                    <Input value={form.phone} onChange={(event) => updateForm("phone", formatPhone(event.target.value))} placeholder="(555) 123-4567" />
+                    <TpsLookup form={form} mode="phone" />
+                  </div>
                 </Field>
                 <Field label="Email">
                   <Input value={form.email} onChange={(event) => updateForm("email", event.target.value)} placeholder="client@email.com" />
@@ -836,6 +847,86 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="space-y-2">
       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</Label>
       {children}
+    </div>
+  );
+}
+
+/**
+ * TpsLookup — opens TruePeopleSearch in a new tab with phone or name.
+ * Sam: "double points if you can build in a link to truepeoplesearch."
+ * Phone lookup beats name lookup when both available — fewer false matches.
+ */
+function TpsLookup({ form, mode }: { form: typeof EMPTY_FORM; mode: "phone" | "name" }) {
+  const phone = form.phone.replace(/\D/g, "");
+  const fullName = [form.client_first_name, form.client_last_name].filter(Boolean).join(" ").trim();
+  const stateZip = form.state ? `&citystatezip=${encodeURIComponent(form.state)}` : "";
+
+  const url =
+    mode === "phone" && phone.length >= 10
+      ? `https://www.truepeoplesearch.com/results?phoneno=${phone}`
+      : mode === "name" && fullName
+      ? `https://www.truepeoplesearch.com/results?name=${encodeURIComponent(fullName)}${stateZip}`
+      : null;
+
+  const disabled = !url;
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      disabled={disabled}
+      onClick={() => url && window.open(url, "_blank", "noopener,noreferrer")}
+      title={disabled ? `Enter ${mode} first` : `Look up on TruePeopleSearch`}
+      className="shrink-0"
+    >
+      <Search className="h-4 w-4" />
+    </Button>
+  );
+}
+
+/**
+ * CallSnapshot — always-visible bullet summary of the extracted caller info.
+ * Sam: "live mid call, start to list out in bullet points clearly in my
+ * face, the important details from the call itself. So I can look at easy."
+ * Reads directly from form state — every transcript-parsed field appears
+ * here the moment it's extracted. Empty fields are skipped (no clutter).
+ */
+function CallSnapshot({ form }: { form: typeof EMPTY_FORM }) {
+  const bullets: Array<{ label: string; value: string }> = [];
+  const name = [form.client_first_name, form.client_last_name].filter(Boolean).join(" ");
+  if (name) bullets.push({ label: "Name", value: name });
+  if (form.phone) bullets.push({ label: "Phone", value: form.phone });
+  if (form.email) bullets.push({ label: "Email", value: form.email });
+  if (form.city || form.state) bullets.push({ label: "Location", value: [form.city, form.state].filter(Boolean).join(", ") });
+  if (form.problem_type) bullets.push({ label: "Need", value: form.problem_type });
+  if (form.current_coverage) bullets.push({ label: "Has now", value: form.current_coverage });
+  if (form.desired_solution) bullets.push({ label: "Wants", value: form.desired_solution });
+  if (form.budget) bullets.push({ label: "Budget", value: form.budget });
+  if (form.household) bullets.push({ label: "Household", value: form.household });
+  if (form.urgency && form.urgency !== "normal") bullets.push({ label: "Urgency", value: form.urgency.toUpperCase() });
+  if (form.next_action_at) bullets.push({ label: "Next action", value: form.next_action_at });
+
+  if (bullets.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 p-3 text-xs text-muted-foreground">
+        Start the call — bullets appear here as info comes in (voice transcript auto-fills the form).
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-700 dark:text-emerald-300 mb-2">
+        Call snapshot · {bullets.length} {bullets.length === 1 ? "detail" : "details"} captured
+      </p>
+      <ul className="grid gap-1 sm:grid-cols-2">
+        {bullets.map((b) => (
+          <li key={b.label} className="text-xs flex gap-1.5">
+            <span className="text-muted-foreground shrink-0">{b.label}:</span>
+            <span className="font-medium truncate">{b.value}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

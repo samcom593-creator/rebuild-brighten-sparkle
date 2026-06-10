@@ -154,6 +154,7 @@ const AgentLinkSync = lazy(() => import("./pages/AgentLinkSync"));
 const AgentLinkVault = lazy(() => import("./pages/AgentLinkVault"));
 const ClientPipeline = lazy(() => import("./pages/ClientPipeline"));
 const InboundLeads = lazy(() => import("./pages/InboundLeads"));
+const SocialDashboard = lazy(() => import("./pages/SocialDashboard"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
 const SamHQ = lazy(() => import("./pages/admin/SamHQ"));
 const UnclaimedLeads = lazy(() => import("./pages/admin/UnclaimedLeads"));
@@ -413,6 +414,8 @@ const App = () => (
                      {/* v9 Wave A complaint #2: /dashboard/leads removed.
                          Inbound flow lives at /dashboard/inbound-leads now. */}
                      <Route path="/dashboard/leads" element={<Navigate to="/dashboard/inbound-leads" replace />} />
+                     {/* v9 social dashboard: cross-platform IG / TikTok / YT / Snap analytics */}
+                     <Route path="/dashboard/social" element={<ProtectedRoute requireAdmin><SocialDashboard /></ProtectedRoute>} />
                      <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
                      {/* Recruit pipeline — applicants/license/contracting flow. Was /agent-pipeline. */}
                      <Route path="/recruit-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />

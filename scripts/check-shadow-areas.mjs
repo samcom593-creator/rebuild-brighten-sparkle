@@ -2,6 +2,20 @@
 // Caps v22 §10.7 banned-pattern shadows across the 22 wave-60/61/62/63/64-tracked
 // component trees. Owned by Website Integrity Bot. Built wave-65 (2026-06-10).
 //
+// Wave-66 ratchet-down (2026-06-10, 16:55Z): interactive Claude shipped
+// 13c6338b "v25-rainbow-shadow: 104 visual fixes across 45 files" AFTER wave-65
+// locked floors at HEAD e69cefd5. That commit's #3 hunting target was "Heavy
+// shadows on dashboard surfaces (34 hits): shadow-{lg,xl,2xl} → shadow-sm".
+// Measured post-codemod floors at HEAD 05a87c02:
+//   src/pages:               18 → 16 (Δ -2)
+//   src/components/dashboard: 16 → 2  (Δ -14)  ← biggest gain
+// All other 20 areas unchanged at their wave-65 floors. Without this ratchet
+// the gate would silently allow 16 muddy chunky shadows to re-creep back —
+// same persistence-mandate failure mode wave-63 had to catch post-wave-2
+// codemod (185 bg-gradients re-creeping back) and wave-46/47 had to catch
+// post-wave-22 (lucide subset re-creeping back). Ratchet locks the gain
+// forever; the same drift class can never silently undo a codemod again.
+//
 // What gets counted (the v22 §10.7 banned signal — and only that):
 //   1. Arbitrary glow shadows  `shadow-[...]`  — almost always the
 //      `shadow-[0_8px_30px_color/0.X]` pattern the GlassCard.tsx header banned
@@ -53,12 +67,14 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-// Post-wave-65 baselines = exact measured floors at lock time (HEAD e69cefd5).
+// Post-wave-66 baselines = exact measured floors at lock time (HEAD 05a87c02).
 // Locks v22 §10.7 banned-pattern at the current floor across all 22 trees.
+// Wave-66 ratchet locked the post-13c6338b v25-rainbow-shadow codemod gain
+// (pages 18→16, dashboard 16→2). All other 20 floors unchanged.
 const AREAS = [
   // Active page + dashboard surfaces (carry brand glow, ratchet at floor)
-  { dir: "src/pages", baseline: 18 },
-  { dir: "src/components/dashboard", baseline: 16 },
+  { dir: "src/pages", baseline: 16 },
+  { dir: "src/components/dashboard", baseline: 2 },
   { dir: "src/components/landing", baseline: 6 },
   { dir: "src/components/awards", baseline: 3 },
   { dir: "src/components/agent", baseline: 2 },

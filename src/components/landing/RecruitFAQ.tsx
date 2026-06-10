@@ -56,10 +56,10 @@ export function RecruitFAQ() {
             return (
               <div
                 key={i}
-                className={`landing-fade-up rounded-2xl border bg-[#07111f]/90 backdrop-blur-xl overflow-hidden transition-all duration-300 ${
+                className={`landing-fade-up rounded-2xl border bg-apex-card backdrop-blur-xl overflow-hidden transition-all duration-300 ${
                   isOpen
-                    ? "border-primary/50 shadow-[0_0_0_1px_rgba(20,184,166,0.15),0_20px_60px_-20px_rgba(20,184,166,0.20)]"
-                    : "border-[#1e293b] hover:border-primary/30 hover:shadow-lg hover:-translate-y-0.5"
+                    ? "border-apex-accent/50 shadow-[0_0_0_1px_rgba(20,184,166,0.15),0_20px_60px_-20px_rgba(20,184,166,0.20)]"
+                    : "border-apex-border hover:border-apex-accent/30 hover:shadow-lg"
                 }`}
               >
                 <button
@@ -70,11 +70,11 @@ export function RecruitFAQ() {
                 >
                   <span className="flex items-start gap-3 min-w-0">
                     <span className={`mt-0.5 flex-shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-display font-bold transition-colors ${
-                      isOpen ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary"
+                      isOpen ? "bg-apex-accent text-apex-bg" : "bg-apex-hover text-apex-mute group-hover:bg-apex-accent/20 group-hover:text-apex-accent"
                     }`}>{String(i + 1).padStart(2, "0")}</span>
-                    <span className="font-display font-bold text-base sm:text-lg leading-snug text-[#f8fafc]">{item.q}</span>
+                    <span className="font-display font-bold text-base sm:text-lg leading-snug text-apex-text">{item.q}</span>
                   </span>
-                  <ChevronDown className={`h-5 w-5 flex-shrink-0 mt-1 text-muted-foreground transition-transform duration-300 ${isOpen ? "rotate-180 text-primary" : "group-hover:text-primary"}`} />
+                  <ChevronDown className={`h-5 w-5 flex-shrink-0 mt-1 text-apex-mute transition-transform duration-300 ${isOpen ? "rotate-180 text-apex-accent" : "group-hover:text-apex-accent"}`} />
                 </button>
                 <div
                   className={`grid transition-all duration-300 ease-out ${
@@ -82,7 +82,7 @@ export function RecruitFAQ() {
                   }`}
                 >
                   <div className="overflow-hidden">
-                    <div className="px-5 sm:px-6 pb-6 pl-[60px] text-base text-[#cbd5e1] leading-relaxed">
+                    <div className="px-5 sm:px-6 pb-6 pl-[60px] text-base text-apex-mute leading-relaxed">
                       {item.a}
                     </div>
                   </div>

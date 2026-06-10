@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, Crown, CheckCircle2, Calendar, ArrowLeft } from "lucide-react";
+import { Crown, CheckCircle2, Calendar, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
 import { Link } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { SCHEDULING_LINKS } from "@/lib/apexConfig";
+import {
+  SCHEDULING_LINKS,
+  resolveLicensedScheduling,
+  getCalendlyHostName,
+} from "@/lib/apexConfig";
 
 /**
  * Phase 12: Calendly Strategy
@@ -14,8 +18,7 @@ import { SCHEDULING_LINKS } from "@/lib/apexConfig";
  * Licensed → inline embed (keeps user on-site)
  * Unlicensed → inline embed (different calendar)
  */
-const SAMUEL_JAMES_CALENDLY = SCHEDULING_LINKS.licensed;
-const KJ_LICENSED_CALENDLY = SCHEDULING_LINKS.kjLicensed;
+const SAMUEL_JAMES_CALENDLY = SCHEDULING_LINKS.samLicensed;
 
 export default function ScheduleCall() {
   usePageTitle("Schedule a Call · APEX Financial");
@@ -117,42 +120,13 @@ export default function ScheduleCall() {
   }
 
   if (hasLicense === true) {
-    const calendlyUrl = leaderQualified ? SAMUEL_JAMES_CALENDLY : KJ_LICENSED_CALENDLY;
-    if (!leaderQualified && !calendlyUrl) {
-      return (
-        <div className="min-h-screen bg-background">
-          <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center h-16">
-                <Link to="/" className="flex items-center gap-2">
-                  <Crown className="h-8 w-8 text-primary" />
-                  <span className="text-xl font-bold gradient-text">APEX Financial</span>
-                </Link>
-                <Button variant="ghost" size="sm" onClick={() => setLeaderQualified(null)} className="gap-2">
-                  <ArrowLeft className="h-4 w-4" /> Back
-                </Button>
-              </div>
-            </div>
-          </nav>
-          <main className="pt-24 pb-16 px-4">
-            <div className="max-w-xl mx-auto">
-              <GlassCard className="p-8 text-center">
-                <AlertCircle className="h-12 w-12 text-amber-400 mx-auto mb-4" />
-                <h1 className="text-2xl font-bold mb-3">Onboarding calendar is being connected</h1>
-                <p className="text-muted-foreground mb-6">
-                  You are licensed, but Samuel James' calendar is reserved for
-                  senior production calls. Submit your application and the team
-                  will route you to KJ's booking link.
-                </p>
-                <Link to="/apply">
-                  <Button size="lg" className="w-full">Start Application</Button>
-                </Link>
-              </GlassCard>
-            </div>
-          </main>
-        </div>
-      );
-    }
+    // v9 wave-C: KJ's URL is still placeholder → resolver returns Sam's link
+    // and fires the idempotent Telegram nag. Once Sam pastes KJ's real URL
+    // into SCHEDULING_LINKS.kjLicensed the resolver routes there automatically.
+    const resolved = leaderQualified
+      ? { url: SAMUEL_JAMES_CALENDLY, hostName: getCalendlyHostName(SAMUEL_JAMES_CALENDLY), fallback: false }
+      : resolveLicensedScheduling(true);
+    const calendlyUrl = resolved.url;
     return (
       <div className="min-h-screen bg-background">
         <nav className="fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border">
@@ -180,6 +154,9 @@ export default function ScheduleCall() {
                       {leaderQualified ? "Samuel James strategy call" : "Licensed onboarding call"}
                     </h2>
                     <p className="text-xs text-muted-foreground">
+                      Booking with: <span className="text-foreground font-medium">{resolved.hostName}</span>
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
                       {leaderQualified
                         ? "Reserved for 5+ agents or $50K+ monthly production"
                         : "Pick a time with the onboarding strategist"}

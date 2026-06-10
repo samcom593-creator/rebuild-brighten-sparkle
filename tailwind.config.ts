@@ -69,6 +69,7 @@ export default {
       },
       colors: {
         apex: {
+          // v9 wave-0 tokens (single source of truth)
           bg:           "hsl(var(--apex-bg))",
           card:         "hsl(var(--apex-card))",
           hover:        "hsl(var(--apex-hover))",
@@ -85,6 +86,19 @@ export default {
           danger:       "hsl(var(--apex-danger))",
           info:         "hsl(var(--apex-info))",
           neutral:      "hsl(var(--apex-neutral))",
+          // Legacy apex.* keys (pre-wave-0). Kept here so the merged Tailwind
+          // build still emits the prior bg-apex-navy / text-apex-teal classes
+          // some older surfaces still reference (see src/index.css :root).
+          navy:         "hsl(var(--apex-navy))",
+          "navy-light": "hsl(var(--apex-navy-light))",
+          "navy-lighter": "hsl(var(--apex-navy-lighter))",
+          slate:        "hsl(var(--apex-slate))",
+          teal:         "hsl(var(--apex-teal))",
+          "teal-light": "hsl(var(--apex-teal-light))",
+          "teal-glow":  "hsl(var(--apex-teal-glow))",
+          emerald:      "hsl(var(--apex-emerald))",
+          gold:         "hsl(var(--apex-gold))",
+          error:        "hsl(var(--apex-error))",
         },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -129,21 +143,12 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // APEX custom colors
-        apex: {
-          navy: "hsl(var(--apex-navy))",
-          "navy-light": "hsl(var(--apex-navy-light))",
-          "navy-lighter": "hsl(var(--apex-navy-lighter))",
-          slate: "hsl(var(--apex-slate))",
-          teal: "hsl(var(--apex-teal))",
-          "teal-light": "hsl(var(--apex-teal-light))",
-          "teal-glow": "hsl(var(--apex-teal-glow))",
-          emerald: "hsl(var(--apex-emerald))",
-          gold: "hsl(var(--apex-gold))",
-          success: "hsl(var(--apex-success))",
-          warning: "hsl(var(--apex-warning))",
-          error: "hsl(var(--apex-error))",
-        },
+        // v9 wave-C: legacy apex.* keys (navy / teal / emerald / gold) merged
+        // into the wave-0 token block above. Duplicate `apex:` object literal
+        // keys collapse to the LAST one in JS spec, which silently wiped the
+        // wave-0 bg/card/border/text/mute/accent classes from the Tailwind
+        // build. Merging both into the single block above keeps both APIs
+        // alive and unblocks RecruitFAQ + Wave B tile usage.
       },
       borderRadius: {
         lg: "var(--radius)",

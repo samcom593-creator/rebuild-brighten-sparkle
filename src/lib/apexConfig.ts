@@ -100,11 +100,106 @@ export const PROGRESS_COLUMNS = [
 ] as const;
 
 // ─── Scheduling Links ─────────────────────────────────────────────────────────
+// v9 wave-C: split sam/kj so the success page can name the host. Keep the legacy
+// `unlicensed` + `licensed` keys for the dozen call sites that already read them.
+// kjLicensed is a sentinel — the resolver below routes back to Sam and fires a
+// one-time Telegram nag until Sam pastes KJ's actual URL here.
+export const KJ_CALENDLY_PLACEHOLDER = "PASTE_KJ_CALENDLY_HERE";
+
 export const SCHEDULING_LINKS = {
   unlicensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
   licensed: "https://calendly.com/apexfinancialempire/1on1-call-clone",
-  kjLicensed: "",
+  samLicensed: "https://calendly.com/apexfinancialempire/1on1-call-clone",
+  kjLicensed: KJ_CALENDLY_PLACEHOLDER,
+  samUnlicensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
+  kjUnlicensed: KJ_CALENDLY_PLACEHOLDER,
 } as const;
+
+const CALENDLY_HOST_NAMES: Record<string, string> = {
+  samueljameshq: "Samuel James — King of Sales",
+  apexfinancialempire: "Samuel James — King of Sales",
+  kjvaughn: "KJ Vaughn",
+};
+
+export function getCalendlyHostName(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const slug = (parsed.pathname.split("/").filter(Boolean)[0] ?? "").toLowerCase();
+    return CALENDLY_HOST_NAMES[slug] ?? "your APEX strategist";
+  } catch {
+    return "your APEX strategist";
+  }
+}
+
+export interface ResolvedScheduling {
+  url: string;
+  hostName: string;
+  fallback: boolean;
+}
+
+// Fire-and-forget: insert one poke_queue row when KJ's URL is still the
+// placeholder. localStorage guards client-side; the db-side existence check
+// guards across browsers. Wrapped in try/catch so a missing row policy or
+// offline browser never breaks the booking flow.
+let kjNagFiredThisTab = false;
+async function fireKjPlaceholderNagOnce(): Promise<void> {
+  if (typeof window === "undefined" || kjNagFiredThisTab) return;
+  kjNagFiredThisTab = true;
+  try {
+    const key = "apex_kj_calendly_nag_v1";
+    if (window.localStorage.getItem(key)) return;
+    const { supabase } = await import("@/integrations/supabase/client");
+    // poke_queue is a runtime ops table not in the generated Database type — cast.
+    const sb = supabase as unknown as {
+      from: (t: string) => {
+        select: (
+          c: string,
+          o: { count: "exact"; head: true },
+        ) => { eq: (c: string, v: string) => Promise<{ count: number | null }> };
+        insert: (row: Record<string, unknown>) => Promise<unknown>;
+      };
+    };
+    const { count } = await sb
+      .from("poke_queue")
+      .select("id", { count: "exact", head: true })
+      .eq("kind", "kj_calendly_missing");
+    if ((count ?? 0) === 0) {
+      await sb.from("poke_queue").insert({
+        kind: "kj_calendly_missing",
+        payload: {
+          message:
+            "Using Sam's Calendly for KJ slots until KJ's URL lands in apexConfig.ts SCHEDULING_LINKS.kjLicensed (src/lib/apexConfig.ts).",
+          action_required: "Paste KJ's Calendly URL into SCHEDULING_LINKS.kjLicensed",
+          source: "apex-website",
+        },
+      });
+    }
+    window.localStorage.setItem(key, new Date().toISOString());
+  } catch {
+    /* never break the page on a notify failure */
+  }
+}
+
+export function resolveLicensedScheduling(preferKj = false): ResolvedScheduling {
+  const kjReal =
+    SCHEDULING_LINKS.kjLicensed &&
+    SCHEDULING_LINKS.kjLicensed !== KJ_CALENDLY_PLACEHOLDER;
+  if (preferKj && kjReal) {
+    return {
+      url: SCHEDULING_LINKS.kjLicensed,
+      hostName: getCalendlyHostName(SCHEDULING_LINKS.kjLicensed),
+      fallback: false,
+    };
+  }
+  if (preferKj && !kjReal) {
+    void fireKjPlaceholderNagOnce();
+  }
+  return {
+    url: SCHEDULING_LINKS.samLicensed,
+    hostName: getCalendlyHostName(SCHEDULING_LINKS.samLicensed),
+    fallback: preferKj,
+  };
+}
 
 // ─── Call Outcomes ────────────────────────────────────────────────────────────
 export const CALL_OUTCOMES = [

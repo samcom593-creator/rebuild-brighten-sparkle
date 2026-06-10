@@ -5,7 +5,7 @@ import { CheckCircle2, Crown, Send, Calendar, Sparkles, AlertTriangle } from "lu
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
-import { SCHEDULING_LINKS } from "@/lib/apexConfig";
+import { SCHEDULING_LINKS, getCalendlyHostName } from "@/lib/apexConfig";
 import { useApplicationStatus } from "@/hooks/useApplicationStatus";
 
 /**
@@ -139,6 +139,9 @@ function LicensedBody({
   showCalendly: boolean;
   tgDeepLink: string;
 }) {
+  // v9 wave-C complaint #6: applicants land on a Calendly with no idea who
+  // they're booking with. Derive host name from the URL slug.
+  const calendlyHost = getCalendlyHostName(SCHEDULING_LINKS.licensed);
   return (
     <div className="space-y-6">
       {/* The path */}
@@ -148,6 +151,12 @@ function LicensedBody({
         <Step current label="Book your hire call" detail="The fastest path to your first check." />
         <Step label="Contracting + Discord invite arrive same day" />
       </div>
+
+      {/* Host disclosure — applicant should know whose calendar this is */}
+      <p className="text-center text-sm">
+        <span className="text-muted-foreground">You're booking with: </span>
+        <span className="font-semibold text-foreground">{calendlyHost}</span>
+      </p>
 
       {/* Primary CTA: Calendly */}
       {showCalendly ? (

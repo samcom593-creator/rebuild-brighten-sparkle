@@ -259,45 +259,34 @@ export function GlobalSidebar({
             isCollapsed ? "justify-center p-4" : "justify-between px-4 py-4",
           )}>
             {!isCollapsed && (
-              <Link to="/dashboard" className="flex items-center gap-3 group shrink-0" style={{ overflow: "visible", whiteSpace: "nowrap", minWidth: 0 }}>
-                <div className="relative" style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "visible", whiteSpace: "nowrap" }}>
-                  <span
-                    className="brand-gradient"
-                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "17px", letterSpacing: "2.5px", flexShrink: 0 }}
-                  >
-                    APEX
-                  </span>
-                  <span
-                    style={{
-                      width: "7px",
-                      height: "7px",
-                      borderRadius: "50%",
-                      background: "#22d3a5",
-                      boxShadow: "0 0 12px hsl(168 80% 50% / 0.8), 0 0 24px hsl(168 80% 50% / 0.4)",
-                      flexShrink: 0,
-                      animation: "pulse 2s infinite",
-                    }}
-                  />
-                  <span
-                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: "13px", color: "#22d3a5", flexShrink: 0, letterSpacing: "0.5px" }}
-                  >
-                    Financial
-                  </span>
-                </div>
+              // v9 wave-C complaint #13: clean wordmark, no gradient, no glow,
+              // no emoji. Letter-spacing 0.15em, size 16, color text-apex-text.
+              <Link
+                to="/dashboard"
+                className="flex items-center shrink-0 text-apex-text hover:text-apex-accent transition-colors"
+                style={{
+                  fontFamily: "'Syne', sans-serif",
+                  fontWeight: 700,
+                  fontSize: "16px",
+                  letterSpacing: "0.15em",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                APEX
               </Link>
             )}
             {isCollapsed && (
-              <Link to="/dashboard" className="group relative">
-                <span
-                  className="text-xl brand-gradient"
-                  style={{ fontFamily: "'Syne', sans-serif", fontWeight: 900 }}
-                >
-                  A
-                </span>
-                <span
-                  className="absolute -top-1 -right-2 h-1.5 w-1.5 rounded-full bg-emerald-400"
-                  style={{ boxShadow: "0 0 8px hsl(168 80% 50% / 0.8)" }}
-                />
+              <Link
+                to="/dashboard"
+                className="text-apex-text hover:text-apex-accent transition-colors"
+                style={{
+                  fontFamily: "'Syne', sans-serif",
+                  fontWeight: 800,
+                  fontSize: "16px",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                A
               </Link>
             )}
             <div className="flex items-center gap-1">

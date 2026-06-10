@@ -43,6 +43,7 @@ import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds, ge
 import { AgentLinkBookTruthCard } from "@/components/dashboard/AgentLinkBookTruthCard";
 import { CarrierBreakdownCard } from "@/components/dashboard/CarrierBreakdownCard";
 import { BookTrendCard } from "@/components/dashboard/CarrierProductionCard";
+import ManagerCommandView from "@/pages/ManagerCommandView";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
 import { getCloseRate, getLiveAgentCutoffIso, LIVE_AGENT_DEAL_WINDOW_DAYS, sumAnnualPremium } from "@/lib/metricTruth";
 import { cn } from "@/lib/utils";
@@ -884,6 +885,17 @@ export default function Dashboard() {
           <Badge variant="outline">Previewing Agent View from {actualRole}</Badge>
         )}
         <AgentCommandDashboard />
+      </div>
+    );
+  }
+
+  if (effectiveRole === "manager") {
+    return (
+      <div className="space-y-4 lg:pr-[18rem]">
+        {isPreviewing && (
+          <Badge variant="outline">Previewing Manager View from {actualRole}</Badge>
+        )}
+        <ManagerCommandView />
       </div>
     );
   }

@@ -133,7 +133,7 @@ export function AgedLeadEmailPreview({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto border rounded-xl bg-black/50">
+        <div className="flex-1 overflow-y-auto border rounded-xl bg-white dark:bg-black/50">
           <div className="p-4">
             <div className="mb-4 p-3 rounded-lg bg-muted/30 border border-border/50 space-y-1.5">
               <div className="flex items-center gap-2 text-sm">

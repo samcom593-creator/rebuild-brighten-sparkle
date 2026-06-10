@@ -32,7 +32,7 @@ type Row = {
 
 const RANK_ICONS: Record<number, { icon: typeof Crown; color: string }> = {
   1: { icon: Crown, color: "text-amber-400" },
-  2: { icon: Medal, color: "text-slate-300" },
+  2: { icon: Medal, color: "text-slate-600 dark:text-slate-300" },
   3: { icon: Medal, color: "text-orange-400" },
 };
 

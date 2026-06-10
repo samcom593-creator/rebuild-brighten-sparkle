@@ -31,7 +31,7 @@ export function EarningsSection() {
   const data = earningsData[selected];
 
   return (
-    <section id="earnings" className="py-24 relative bg-[#030712]">
+    <section id="earnings" className="py-24 relative bg-white dark:bg-[#030712]">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(168_84%_42%/0.06)_0%,transparent_60%)]" />
       
       <div className="container mx-auto px-4 relative z-10">
@@ -43,7 +43,7 @@ export function EarningsSection() {
 
         {/* Earnings Toggle */}
         <div className="flex justify-center mt-12 mb-8">
-          <div className="inline-flex rounded-lg bg-[#0f172a] border border-[#1e293b] p-1">
+          <div className="inline-flex rounded-lg bg-white dark:bg-[#0f172a] border border-[#1e293b] p-1">
             {Object.entries(earningsData).map(([key, value]) => (
               <button
                 key={key}
@@ -89,7 +89,7 @@ export function EarningsSection() {
           {milestones.map((milestone, index) => (
             <div
               key={index}
-              className="reveal p-4 text-center rounded-xl bg-[#0f172a]/80 border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
+              className="reveal p-4 text-center rounded-xl bg-white dark:bg-[#0f172a]/80 border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
               style={{ transitionDelay: `${index * 80}ms` }}
             >
               <milestone.icon className="h-6 w-6 text-[#22d3a5] mx-auto mb-2" />

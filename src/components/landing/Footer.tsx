@@ -6,7 +6,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 export const Footer = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <footer ref={ref} className="py-12 border-t border-[#1e293b] bg-[#030712]">
+    <footer ref={ref} className="py-12 border-t border-[#1e293b] bg-white dark:bg-[#030712]">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}

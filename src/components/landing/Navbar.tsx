@@ -35,7 +35,7 @@ export function Navbar() {
   };
 
   return (
-    <nav className="landing-nav-enter fixed top-[32px] left-0 right-0 z-50 bg-[#030712]/90 backdrop-blur-xl border-b border-[#1e293b]/50">
+    <nav className="landing-nav-enter fixed top-[32px] left-0 right-0 z-50 bg-white dark:bg-[#030712]/90 backdrop-blur-xl border-b border-[#1e293b]/50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
@@ -80,7 +80,7 @@ export function Navbar() {
               </button>
 
               {searchOpen && (
-                <div className="landing-panel-enter absolute right-0 top-full mt-2 w-[220px] bg-[#0f172a] border border-[#1e293b] rounded-xl shadow-2xl overflow-hidden">
+                <div className="landing-panel-enter absolute right-0 top-full mt-2 w-[220px] bg-white dark:bg-[#0f172a] border border-[#1e293b] rounded-xl shadow-2xl overflow-hidden">
                   <input
                     ref={inputRef}
                     value={searchTerm}
@@ -126,7 +126,7 @@ export function Navbar() {
 
       {/* Mobile Menu */}
       {isOpen && (
-        <div className="landing-mobile-menu-enter md:hidden bg-[#030712]/95 backdrop-blur-xl border-t border-[#1e293b]">
+        <div className="landing-mobile-menu-enter md:hidden bg-white dark:bg-[#030712]/95 backdrop-blur-xl border-t border-[#1e293b]">
           <div className="container mx-auto px-4 py-4 flex flex-col gap-1">
             {/* Mobile search */}
             <div className="relative mb-3">

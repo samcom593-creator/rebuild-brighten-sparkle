@@ -598,7 +598,7 @@ export default function DashboardCommandCenter() {
       <div className="space-y-6 page-enter p-4 md:p-6">
         <motion.div
           {...surfaceMotion}
-          className="relative overflow-hidden rounded-lg border border-slate-900/10 bg-slate-950 px-4 py-4 text-white shadow-xl shadow-slate-950/10 dark:border-white/10 md:px-5"
+          className="relative overflow-hidden rounded-lg border border-slate-900/10 bg-white dark:bg-slate-950 px-4 py-4 text-white shadow-xl shadow-slate-950/10 dark:border-white/10 md:px-5"
         >
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-400 via-cyan-400 to-emerald-400" />
           <PageHeader
@@ -803,7 +803,7 @@ export default function DashboardCommandCenter() {
           <div className="w-full lg:w-[70%]">
             <Card className="flex flex-col h-full overflow-hidden border-border/70 bg-card/95 shadow-sm">
               <Tabs defaultValue="live" className="w-full flex flex-col h-full">
-                <CardHeader className="shrink-0 border-b border-slate-800 bg-slate-950 text-white pb-4">
+                <CardHeader className="shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-white pb-4">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3">
                       <CardTitle className="text-lg font-semibold">Leaderboard</CardTitle>

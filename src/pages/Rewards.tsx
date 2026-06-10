@@ -72,7 +72,7 @@ export default function Rewards() {
 
   const rankIcon = (rank: number) => rank === 1 ? Crown : rank <= 3 ? Medal : Award;
   const rankColor = (rank: number) =>
-    rank === 1 ? "text-amber-400" : rank === 2 ? "text-slate-300" : rank === 3 ? "text-orange-400" : "text-muted-foreground";
+    rank === 1 ? "text-amber-400" : rank === 2 ? "text-slate-600 dark:text-slate-300" : rank === 3 ? "text-orange-400" : "text-muted-foreground";
   const periodLabel = (p: string) => p === "monthly" ? "Monthly" : p === "weekly" ? "Weekly" : "Daily";
 
   return (

@@ -35,7 +35,7 @@ const STATE_META: Record<Row["xcel_state"], { label: string; color: string; Icon
   active:        { label: "Active",        color: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10", Icon: Flame,         tint: "from-emerald-500/20 to-transparent" },
   recent:        { label: "Recent",        color: "text-amber-300 border-amber-500/40 bg-amber-500/10",       Icon: Clock,         tint: "from-amber-500/20 to-transparent" },
   stalled:       { label: "Stalled",       color: "text-rose-300 border-rose-500/40 bg-rose-500/10",          Icon: AlertTriangle, tint: "from-rose-500/20 to-transparent" },
-  never_started: { label: "Never started", color: "text-slate-300 border-slate-500/40 bg-slate-500/10",       Icon: GraduationCap, tint: "from-slate-500/20 to-transparent" },
+  never_started: { label: "Never started", color: "text-slate-600 dark:text-slate-300 border-slate-500/40 bg-slate-500/10",       Icon: GraduationCap, tint: "from-slate-500/20 to-transparent" },
 };
 
 const STATE_ORDER: Row["xcel_state"][] = ["never_started", "stalled", "recent", "active"];

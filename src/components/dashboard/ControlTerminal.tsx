@@ -259,14 +259,14 @@ export function ControlTerminal() {
         </TabsList>
 
         <TabsContent value="operator" className="space-y-4">
-          <div className="rounded-xl border border-emerald-500/20 bg-slate-950/60 p-4">
+          <div className="rounded-xl border border-emerald-500/20 bg-white dark:bg-slate-950/60 p-4">
             <p className="mb-2 text-xs uppercase tracking-[0.2em] text-emerald-200">Type what you want done</p>
             <textarea
               value={command}
               onChange={(event) => setCommand(event.target.value)}
               rows={3}
               spellCheck={false}
-              className="w-full resize-y rounded-md border border-emerald-500/20 bg-slate-950/70 p-3 font-mono text-xs text-emerald-100 focus:border-emerald-400 focus:outline-none md:text-sm"
+              className="w-full resize-y rounded-md border border-emerald-500/20 bg-white dark:bg-slate-950/70 p-3 font-mono text-xs text-emerald-100 focus:border-emerald-400 focus:outline-none md:text-sm"
               placeholder="Examples: refresh the leaderboard, open CRM, show me today's numbers, fix the homepage trust copy"
             />
             <div className="mt-3 flex flex-wrap gap-2">
@@ -369,7 +369,7 @@ export function ControlTerminal() {
             onChange={(event) => setSqlQuery(event.target.value)}
             rows={4}
             spellCheck={false}
-            className="w-full resize-y rounded-md border border-emerald-500/20 bg-slate-950/70 p-3 font-mono text-xs text-emerald-200 focus:border-emerald-400 focus:outline-none md:text-sm"
+            className="w-full resize-y rounded-md border border-emerald-500/20 bg-white dark:bg-slate-950/70 p-3 font-mono text-xs text-emerald-200 focus:border-emerald-400 focus:outline-none md:text-sm"
             placeholder="paste SQL — e.g. select * from deals where posted_at >= now() - interval '24 hours' limit 20"
           />
 
@@ -390,22 +390,22 @@ export function ControlTerminal() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-400">{rows.length} row{rows.length === 1 ? "" : "s"}</span>
-                <Button variant="ghost" size="sm" onClick={copyRows} className="h-7 text-xs text-slate-300 hover:text-white">
+                <Button variant="ghost" size="sm" onClick={copyRows} className="h-7 text-xs text-slate-600 dark:text-slate-300 hover:text-white">
                   {copied ? <Check className="mr-1 h-3 w-3" /> : <Copy className="mr-1 h-3 w-3" />} copy json
                 </Button>
               </div>
               <div className="max-h-72 overflow-auto rounded-md border border-emerald-500/20">
                 <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-slate-900 text-[10px] uppercase tracking-wider text-emerald-300">
+                  <thead className="sticky top-0 bg-white dark:bg-slate-900 text-[10px] uppercase tracking-wider text-emerald-300">
                     <tr>{headers.map((header) => <th key={header} className="border-b border-emerald-500/20 px-3 py-2 text-left">{header}</th>)}</tr>
                   </thead>
-                  <tbody className="font-mono text-slate-200">
+                  <tbody className="font-mono text-slate-700 dark:text-slate-200">
                     {rows.slice(0, 200).map((row, index) => (
-                      <tr key={index} className={index % 2 === 0 ? "bg-slate-950/50" : "bg-slate-900/50"}>
+                      <tr key={index} className={index % 2 === 0 ? "bg-white dark:bg-slate-950/50" : "bg-white dark:bg-slate-900/50"}>
                         {headers.map((header) => {
                           const value = row[header];
                           const text = value === null || value === undefined ? "—" : typeof value === "object" ? JSON.stringify(value) : String(value);
-                          return <td key={header} className="max-w-xs truncate border-b border-slate-800 px-3 py-1.5" title={text}>{text}</td>;
+                          return <td key={header} className="max-w-xs truncate border-b border-slate-200 dark:border-slate-800 px-3 py-1.5" title={text}>{text}</td>;
                         })}
                       </tr>
                     ))}

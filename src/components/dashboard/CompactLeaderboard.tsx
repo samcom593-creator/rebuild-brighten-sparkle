@@ -56,7 +56,7 @@ function PodiumCard({ entry, position, maxALP }: { entry: LeaderboardEntry; posi
       gradient: "from-slate-300 via-gray-300 to-slate-400",
       ring: "ring-2 ring-slate-300/50",
       icon: Medal,
-      iconColor: "text-slate-300",
+      iconColor: "text-slate-600 dark:text-slate-300",
       label: "2ND",
       glow: "shadow-md shadow-slate-400/20"
     },

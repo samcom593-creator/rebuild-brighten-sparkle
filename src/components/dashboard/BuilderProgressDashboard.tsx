@@ -201,7 +201,7 @@ export function BuilderProgressDashboard() {
 
 function Counter({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
-    <div className="rounded-md border border-border/40 bg-zinc-900/40 px-3 py-2">
+    <div className="rounded-md border border-border/40 bg-white dark:bg-zinc-900/40 px-3 py-2">
       <div className={cn("text-xl font-bold leading-none", tone)}>{value}</div>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{label}</div>
     </div>
@@ -215,7 +215,7 @@ function BuilderRowItem({ row, muted = false }: { row: BuilderRow; muted?: boole
     <Link
       to={`/admin/agents`}
       className={cn(
-        "flex items-center gap-3 rounded-md border px-3 py-2 hover:bg-zinc-900/60 transition",
+        "flex items-center gap-3 rounded-md border px-3 py-2 hover:bg-white dark:bg-zinc-900/60 transition",
         muted ? "border-border/30 opacity-70" : "border-border/40",
       )}
     >

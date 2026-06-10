@@ -329,7 +329,7 @@ export default function AwardProfilesPanel() {
                             {name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 scale-90 group-hover:scale-100">
+                        <div className="absolute inset-0 rounded-full bg-white dark:bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 scale-90 group-hover:scale-100">
                           <Camera className="h-5 w-5 text-white" />
                         </div>
                         {!agent.award_photo_url && (

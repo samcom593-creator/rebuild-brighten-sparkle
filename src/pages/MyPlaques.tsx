@@ -170,7 +170,7 @@ export default function MyPlaques() {
                   <Badge variant="outline" className={cn(
                     "text-[10px]",
                     c.rank === 1 && "border-amber-400 text-amber-400",
-                    c.rank === 2 && "border-slate-300 text-slate-300",
+                    c.rank === 2 && "border-slate-300 text-slate-600 dark:text-slate-300",
                     c.rank === 3 && "border-orange-400 text-orange-400"
                   )}>
                     {c.rank === 1 ? <Crown className="h-3 w-3 mr-1 inline" /> : <Medal className="h-3 w-3 mr-1 inline" />}

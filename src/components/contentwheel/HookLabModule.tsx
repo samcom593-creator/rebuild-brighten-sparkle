@@ -229,7 +229,7 @@ export function HookLabModule() {
                       key={cfg.key}
                       onClick={() => toggle3C(h, cfg.key as any)}
                       title={cfg.title}
-                      className={`h-7 w-7 rounded text-xs font-mono font-semibold transition-colors border ${on ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50" : "bg-zinc-800 text-zinc-500 border-zinc-700 hover:border-zinc-500"}`}
+                      className={`h-7 w-7 rounded text-xs font-mono font-semibold transition-colors border ${on ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50" : "bg-slate-50 dark:bg-zinc-800 text-zinc-500 border-zinc-700 hover:border-zinc-500"}`}
                     >
                       {on ? <Check className="h-3.5 w-3.5 mx-auto" /> : cfg.label}
                     </button>

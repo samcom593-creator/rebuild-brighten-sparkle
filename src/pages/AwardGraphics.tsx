@@ -544,7 +544,7 @@ export default function AwardGraphics() {
 
       {/* Fullscreen Image Dialog */}
       <Dialog open={!!fullscreenImage} onOpenChange={() => setFullscreenImage(null)}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] p-2 bg-black/95 border-border/20">
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-2 bg-white dark:bg-black/95 border-border/20">
           {fullscreenImage && (
             <div className="flex flex-col items-center gap-3">
               <img src={fullscreenImage} alt="Award fullscreen" className="max-h-[80vh] w-auto rounded-lg" />

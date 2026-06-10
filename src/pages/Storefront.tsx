@@ -45,7 +45,7 @@ export default function Storefront() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
-      <header className="border-b border-slate-800/60">
+      <header className="border-b border-slate-200 dark:border-slate-800/60">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 font-bold">
             <Crown className="h-6 w-6 text-emerald-400" /> APEX Financial
@@ -65,7 +65,7 @@ export default function Storefront() {
               </div>
               <CardTitle className="text-3xl font-extrabold text-white">Payment received 🎉</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5 text-center text-slate-300">
+            <CardContent className="space-y-5 text-center text-slate-600 dark:text-slate-300">
               <p>
                 Welcome aboard. Your subscription is active — Sam will reach out within the next business hour to onboard
                 you onto the dialer + drop your first batch of leads.
@@ -83,7 +83,7 @@ export default function Storefront() {
                   <a href="mailto:sam.com593@gmail.com"><Mail className="h-4 w-4" /> Email Sam</a>
                 </Button>
               </div>
-              <p className="text-xs text-slate-300 pt-3">
+              <p className="text-xs text-slate-600 dark:text-slate-300 pt-3">
                 Receipt was emailed to the address you used at checkout. If you don't see it, check spam.
               </p>
             </CardContent>
@@ -96,7 +96,7 @@ export default function Storefront() {
             </div>
             <div className="grid gap-5 md:grid-cols-2">
               {SKUS.map((s) => (
-                <Card key={s.name} className="border-slate-700 bg-slate-900/60 hover:border-emerald-500/50 transition-colors">
+                <Card key={s.name} className="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:border-emerald-500/50 transition-colors">
                   <CardHeader>
                     <CardTitle className="text-xl text-white">{s.name}</CardTitle>
                     <div className="text-2xl font-extrabold text-emerald-400 pt-1">{s.price}</div>

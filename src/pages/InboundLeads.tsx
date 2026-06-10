@@ -100,7 +100,7 @@ const STAGE_META: Record<InboundStage, { label: string; tint: string; dot: strin
   },
   lost: {
     label: "Closed Out",
-    tint: "border-slate-500/35 bg-slate-500/10 text-slate-300",
+    tint: "border-slate-500/35 bg-slate-500/10 text-slate-600 dark:text-slate-300",
     dot: "bg-slate-400",
     icon: ShieldCheck,
   },
@@ -670,7 +670,7 @@ export default function InboundLeads() {
       )}
 
       <Dialog open={newClientOpen} onOpenChange={(open) => { setNewClientOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto border-[#1e293b] bg-[#050b16]">
+        <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto border-[#1e293b] bg-white dark:bg-[#050b16]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PhoneCall className="h-5 w-5 text-primary" />

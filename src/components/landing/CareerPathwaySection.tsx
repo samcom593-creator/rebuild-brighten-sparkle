@@ -331,7 +331,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
   let stepNumber = 0;
 
   return (
-    <section id="career" ref={sectionRef} className="py-24 relative overflow-hidden bg-[#030712]">
+    <section id="career" ref={sectionRef} className="py-24 relative overflow-hidden bg-white dark:bg-[#030712]">
       {/* Floating Progress Sidebar */}
       {isInView && (
         <div className="landing-sidebar-enter fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3">

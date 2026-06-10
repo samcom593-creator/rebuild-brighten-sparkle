@@ -127,7 +127,7 @@ export function DealsTicker() {
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[60] bg-[#030712] h-8 overflow-hidden flex items-center border-b border-[#1e293b]/50">
+    <div className="fixed top-0 left-0 right-0 z-[60] bg-white dark:bg-[#030712] h-8 overflow-hidden flex items-center border-b border-[#1e293b]/50">
       <div ref={scrollRef} className="flex items-center text-sm will-change-transform">
         {/* Duplicate for seamless loop */}
         {tickerItems.map((item, i) => renderItem(item, i))}

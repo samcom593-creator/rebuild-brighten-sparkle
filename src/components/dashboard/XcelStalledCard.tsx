@@ -136,7 +136,7 @@ export function XcelStalledCard() {
           return (
             <div
               key={row.student_email}
-              className="flex items-center gap-3 rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-3 hover:border-purple-400/40 hover:bg-zinc-900/80 transition-colors"
+              className="flex items-center gap-3 rounded-xl border border-zinc-800/80 bg-white dark:bg-zinc-900/60 p-3 hover:border-purple-400/40 hover:bg-white dark:bg-zinc-900/80 transition-colors"
             >
               <span className={cn(
                 "h-2.5 w-2.5 rounded-full flex-shrink-0",

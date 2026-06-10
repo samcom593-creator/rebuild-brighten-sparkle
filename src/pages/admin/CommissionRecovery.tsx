@@ -122,7 +122,7 @@ export default function CommissionRecovery() {
       </div>
 
       <Card className="border-amber-500/25 bg-amber-500/[0.03]">
-        <CardContent className="p-4 text-sm text-slate-300">
+        <CardContent className="p-4 text-sm text-slate-600 dark:text-slate-300">
           This page is deliberately honest: it does not count missing premium/face as real AP, and it does not auto-email agents without Sam choosing to send. The recovery text buttons copy the exact request for manual send or for the next email-loop edge function.
         </CardContent>
       </Card>
@@ -136,7 +136,7 @@ export default function CommissionRecovery() {
           </CardHeader>
           <CardContent className="space-y-2">
             {loadingAgents ? <Skeleton className="h-64 w-full" /> : (agents ?? []).length === 0 ? (
-              <div className="text-sm text-slate-300">No recovery rows loaded. Source checked: v_commission_recovery_by_agent.</div>
+              <div className="text-sm text-slate-600 dark:text-slate-300">No recovery rows loaded. Source checked: v_commission_recovery_by_agent.</div>
             ) : (agents ?? []).map((row) => (
               <div key={`${row.agent_display}-${row.agent_id ?? "null"}`} className="rounded-md border border-white/10 bg-white/[0.025] p-3">
                 <div className="flex items-center justify-between gap-3">
@@ -161,7 +161,7 @@ export default function CommissionRecovery() {
           </CardHeader>
           <CardContent className="p-0">
             {loadingPolicies ? <div className="p-4"><Skeleton className="h-80 w-full" /></div> : (policies ?? []).length === 0 ? (
-              <div className="p-4 text-sm text-slate-300">No missing policy rows loaded. Source checked: v_commission_recovery_status.</div>
+              <div className="p-4 text-sm text-slate-600 dark:text-slate-300">No missing policy rows loaded. Source checked: v_commission_recovery_status.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -182,11 +182,11 @@ export default function CommissionRecovery() {
                         <td className="p-3">{policy.carrier_name ?? "—"}</td>
                         <td className="p-3">
                           <div>{policy.policy_number ?? <span className="text-rose-300">missing</span>}</div>
-                          <div className="text-xs text-slate-300">
+                          <div className="text-xs text-slate-600 dark:text-slate-300">
                             {policy.effective_date ? format(new Date(policy.effective_date), "MMM d") : "no effective date"}
                           </div>
                         </td>
-                        <td className="p-3 text-xs text-slate-300">{policy.agent_raw ?? "—"}</td>
+                        <td className="p-3 text-xs text-slate-600 dark:text-slate-300">{policy.agent_raw ?? "—"}</td>
                         <td className="p-3"><Badge variant="outline">{policy.recovery_state}</Badge></td>
                         <td className="p-3">
                           <Button size="sm" variant="outline" onClick={() => copy(recoveryText(policy))}>

@@ -277,9 +277,9 @@ function YouTubePlayer({
   const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
   return (
-    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
+    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-white dark:bg-black">
       {!apiReady && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
+        <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-black z-10">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )}
@@ -299,7 +299,7 @@ function YouTubePlayer({
                 "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
                 (playbackRate || 1) === s
                   ? "bg-primary text-primary-foreground"
-                  : "bg-black/60 text-white/70 hover:bg-black/80"
+                  : "bg-white dark:bg-black/60 text-white/70 hover:bg-white dark:bg-black/80"
               )}
             >
               {s}x
@@ -434,7 +434,7 @@ function NativeVideoPlayer({
   const SPEEDS = [0.5, 1, 1.5, 2];
 
   return (
-    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black group">
+    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-white dark:bg-black group">
       <video
         ref={videoRef}
         src={videoUrl}
@@ -452,7 +452,7 @@ function NativeVideoPlayer({
               "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
               playbackSpeed === s
                 ? "bg-primary text-primary-foreground"
-                : "bg-black/60 text-white/70 hover:bg-black/80"
+                : "bg-white dark:bg-black/60 text-white/70 hover:bg-white dark:bg-black/80"
             )}
           >
             {s}x

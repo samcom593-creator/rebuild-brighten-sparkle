@@ -1124,7 +1124,7 @@ function ContentCard({
         </div>
 
         {/* Hover actions */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+        <div className="absolute inset-0 bg-white dark:bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
           <Button variant="secondary" size="icon" className="h-8 w-8" onClick={() => onDownload(item)}>
             <Download className="h-4 w-4" />
           </Button>
@@ -1197,7 +1197,7 @@ function SensitiveContentCard({
         {/* Reveal toggle */}
         <button
           onClick={() => setRevealed(!revealed)}
-          className="absolute top-1.5 right-1.5 bg-black/60 text-white p-1.5 rounded-full hover:bg-black/80 transition-colors"
+          className="absolute top-1.5 right-1.5 bg-white dark:bg-black/60 text-white p-1.5 rounded-full hover:bg-white dark:bg-black/80 transition-colors"
         >
           {revealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
         </button>

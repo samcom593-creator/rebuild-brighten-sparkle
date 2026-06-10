@@ -254,7 +254,7 @@ function Surface({
   return (
     <section
       className={cn(
-        "rounded-md border border-white/10 bg-slate-950/70 p-4 shadow-[0_18px_50px_rgba(2,6,23,0.35)]",
+        "rounded-md border border-white/10 bg-white dark:bg-slate-950/70 p-4 shadow-[0_18px_50px_rgba(2,6,23,0.35)]",
         className
       )}
     >
@@ -268,7 +268,7 @@ export default function ApexControl() {
   const contentPrompts = useMemo(() => prompts.slice(4), []);
 
   return (
-    <main className="min-h-screen bg-[#020617] text-slate-100">
+    <main className="min-h-screen bg-[#020617] text-slate-900 dark:text-slate-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <PageHeader
           eyebrow="Admin control room"
@@ -296,7 +296,7 @@ export default function ApexControl() {
               {currentSnapshot.map((line) => (
                 <div key={line} className="flex gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-300" />
-                  <p className="text-sm text-slate-200">{line}</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-200">{line}</p>
                 </div>
               ))}
             </div>
@@ -307,7 +307,7 @@ export default function ApexControl() {
               <ShieldAlert className="h-5 w-5 text-amber-300" />
               <h2 className="text-lg font-bold">When Claude is out of credits</h2>
             </div>
-            <ol className="mt-4 space-y-3 text-sm text-slate-200">
+            <ol className="mt-4 space-y-3 text-sm text-slate-700 dark:text-slate-200">
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-emerald-400/15 text-xs font-bold text-emerald-200">1</span>
                 Stop opening more Claude chats.
@@ -334,8 +334,8 @@ export default function ApexControl() {
               <lane.icon className="h-5 w-5 text-emerald-300" />
               <h3 className="mt-3 text-base font-bold">{lane.title}</h3>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">{lane.state}</p>
-              <p className="mt-3 text-sm text-slate-300">{lane.goodFor}</p>
-              <p className="mt-3 text-xs text-slate-300">{lane.whenCapped}</p>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{lane.goodFor}</p>
+              <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">{lane.whenCapped}</p>
             </Surface>
           ))}
         </div>
@@ -350,7 +350,7 @@ export default function ApexControl() {
               {nextBuilds.map((item) => (
                 <div key={item} className="flex gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3">
                   <ArrowRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-300" />
-                  <p className="text-sm text-slate-200">{item}</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-200">{item}</p>
                 </div>
               ))}
             </div>
@@ -386,7 +386,7 @@ export default function ApexControl() {
               <h2 className="text-xl font-bold">Copy prompts</h2>
               <p className="mt-1 text-sm text-slate-400">Each card says exactly where it goes.</p>
             </div>
-            <Badge className="border-white/10 bg-white/[0.05] text-slate-300">
+            <Badge className="border-white/10 bg-white/[0.05] text-slate-600 dark:text-slate-300">
               No Notes folder needed
             </Badge>
           </div>
@@ -413,7 +413,7 @@ export default function ApexControl() {
                     Copy
                   </Button>
                 </div>
-                <pre className="mt-4 max-h-52 overflow-auto rounded-md border border-white/10 bg-black/30 p-3 text-xs leading-relaxed text-slate-300">
+                <pre className="mt-4 max-h-52 overflow-auto rounded-md border border-white/10 bg-white dark:bg-black/30 p-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                   {prompt.body}
                 </pre>
               </Surface>

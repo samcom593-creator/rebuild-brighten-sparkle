@@ -365,7 +365,7 @@ export function GlobalSidebar({
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
                       onFocus={() => setShowSearch(true)}
-                      className="h-8 pl-8 pr-8 text-sm bg-[#0f172a] border-[#1e293b] text-[#94a3b8] placeholder:text-[#334155]"
+                      className="h-8 pl-8 pr-8 text-sm bg-white dark:bg-[#0f172a] border-[#1e293b] text-[#94a3b8] placeholder:text-[#334155]"
                     />
                     {searchQuery && (
                       <Button
@@ -379,7 +379,7 @@ export function GlobalSidebar({
                     )}
                   </div>
                   {showSearch && searchResults.length > 0 && (
-                    <div className="absolute z-50 left-0 right-0 mt-1 bg-[#0f172a] border border-[#1e293b] rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-[#0f172a] border border-[#1e293b] rounded-lg shadow-lg max-h-48 overflow-y-auto">
                       {searchResults.map((result) => (
                         <button
                           key={result.id}

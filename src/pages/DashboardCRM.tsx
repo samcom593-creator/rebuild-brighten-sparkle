@@ -1324,7 +1324,7 @@ export default function DashboardCRM() {
         <BackgroundGlow accent="teal" intensity="subtle" />
         <motion.div
           {...surfaceMotion}
-          className="relative overflow-hidden rounded-lg border border-slate-900/10 bg-slate-950 px-4 py-4 text-white shadow-xl shadow-slate-950/10 dark:border-white/10 md:px-5"
+          className="relative overflow-hidden rounded-lg border border-slate-900/10 bg-white dark:bg-slate-950 px-4 py-4 text-white shadow-xl shadow-slate-950/10 dark:border-white/10 md:px-5"
         >
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400" />
           <PageHeader
@@ -1498,7 +1498,7 @@ export default function DashboardCRM() {
               return (
                 <button key={b} onClick={() => setActiveBucket(b)}
                   className={cn("flex items-center justify-between gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-all",
-                    active ? "bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")}>
+                    active ? "bg-white dark:bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")}>
                   {b === "all" ? "All" : b === "unlicensed" ? "Getting Licensed" : "Licensed & Selling"}
                   <Badge variant="outline" className="ml-2 text-[10px] h-4 px-1 font-bold">{count}</Badge>
                 </button>
@@ -1511,7 +1511,7 @@ export default function DashboardCRM() {
                 const count = (agentsBySection.get(section.key) ?? []).length;
                 const Icon = section.icon;
                 return (
-                  <TabsTrigger key={section.key} value={section.key} className="gap-1.5 rounded-md px-3 py-2 text-xs font-semibold data-[state=active]:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-950">
+                  <TabsTrigger key={section.key} value={section.key} className="gap-1.5 rounded-md px-3 py-2 text-xs font-semibold data-[state=active]:bg-white dark:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-950">
                     <Icon className={cn("h-3.5 w-3.5", section.iconColor)} />
                     {section.label}
                     <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5 font-bold", section.headerBg, section.iconColor, "border-current/20")}>{count}</Badge>
@@ -1550,7 +1550,7 @@ export default function DashboardCRM() {
                           };
                           return (
                             <div key={col.key} className={cn("rounded-lg border border-border/70 overflow-hidden border-t-4 bg-card/95 shadow-sm", colColors[col.key])}>
-                              <div className="px-3 py-2.5 bg-slate-950 text-white border-b border-border flex items-center justify-between">
+                              <div className="px-3 py-2.5 bg-white dark:bg-slate-950 text-white border-b border-border flex items-center justify-between">
                                 <span className="text-xs font-bold uppercase tracking-wide">{col.label}</span>
                                 <Badge variant="outline" className="text-[10px] h-5 font-bold tabular-nums">{colAgents.length}</Badge>
                               </div>
@@ -1576,7 +1576,7 @@ export default function DashboardCRM() {
                                               "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
                                               "bg-orange-500/10 text-orange-500 border-orange-500/20": agent.aiScoreTier === "warm",
                                               "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
-                                              "bg-slate-500/10 text-slate-300 border-slate-500/20": agent.aiScoreTier === "cold",
+                                              "bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20": agent.aiScoreTier === "cold",
                                             })}>
                                               {agent.aiScoreTier === "hot" ? "🔥" : agent.aiScoreTier === "warm" ? "☀️" : agent.aiScoreTier === "cool" ? "❄️" : "🧊"} {agent.aiScoreTier}
                                             </Badge>
@@ -1712,8 +1712,8 @@ export default function DashboardCRM() {
                       className={cn("rounded-lg border border-border/70 bg-card/95 shadow-sm overflow-x-auto", section.accent, "border-l-4")}
                     >
                       <Table className="min-w-[900px]">
-                        <TableHeader className="bg-slate-950">
-                          <TableRow className="border-slate-800 hover:bg-transparent [&_th]:h-10 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide">
+                        <TableHeader className="bg-white dark:bg-slate-950">
+                          <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-transparent [&_th]:h-10 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide">
                             {bulkMode && <TableHead className="w-8" />}
                             {getTableHeaders(section.key)}
                           </TableRow>
@@ -1759,7 +1759,7 @@ export default function DashboardCRM() {
                                               "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
                                               "bg-orange-500/10 text-orange-500 border-orange-500/20": agent.aiScoreTier === "warm",
                                               "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
-                                              "bg-slate-500/10 text-slate-300 border-slate-500/20": agent.aiScoreTier === "cold",
+                                              "bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20": agent.aiScoreTier === "cold",
                                             })}>
                                               {agent.aiScoreTier === "hot" ? "🔥" : agent.aiScoreTier === "warm" ? "☀️" : agent.aiScoreTier === "cool" ? "❄️" : "🧊"} {agent.aiScoreTier}
                                             </Badge>

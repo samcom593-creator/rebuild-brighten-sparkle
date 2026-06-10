@@ -103,7 +103,7 @@ function platformTone(platform?: string | null) {
   if (p.includes("tiktok")) return "text-cyan-300 border-cyan-500/30";
   if (p.includes("instagram") || p === "ig") return "text-pink-300 border-pink-500/30";
   if (p.includes("snap")) return "text-yellow-200 border-yellow-500/30";
-  return "text-slate-300 border-slate-500/30";
+  return "text-slate-600 dark:text-slate-300 border-slate-500/30";
 }
 
 function statusTone(status: DraftStatus) {
@@ -111,7 +111,7 @@ function statusTone(status: DraftStatus) {
   if (status === "approved") return "bg-amber-500/15 text-amber-300 border-amber-500/30";
   if (status === "rejected") return "bg-rose-500/15 text-rose-300 border-rose-500/30";
   if (status === "awaiting_approval") return "bg-cyan-500/15 text-cyan-300 border-cyan-500/30";
-  return "bg-slate-500/15 text-slate-300 border-slate-500/30";
+  return "bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/30";
 }
 
 function sourceFileHref(filePath?: string | null) {
@@ -180,7 +180,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
   return (
     <Card className="border-white/10 bg-white/[0.02]">
       <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm flex items-center gap-2 text-slate-200">
+        <CardTitle className="text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
           <TrendingUp className="h-4 w-4 text-emerald-400" />
           Deal Win Feed
           {pending.length > 0 && (
@@ -198,8 +198,8 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
               className="rounded-md border border-white/5 bg-white/[0.02] p-3 flex flex-col gap-1.5"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-slate-200 truncate">{ev.agent_name ?? "Unknown"}</span>
-                <span className="text-[10px] text-slate-300 whitespace-nowrap">
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate">{ev.agent_name ?? "Unknown"}</span>
+                <span className="text-[10px] text-slate-600 dark:text-slate-300 whitespace-nowrap">
                   {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true })}
                 </span>
               </div>
@@ -208,7 +208,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
                 <span className="text-sm font-bold text-emerald-300">
                   ${Number(ev.annual_premium ?? 0).toLocaleString()}
                 </span>
-                <span className="text-[10px] text-slate-300 truncate">{ev.product_sold ?? "Life"}</span>
+                <span className="text-[10px] text-slate-600 dark:text-slate-300 truncate">{ev.product_sold ?? "Life"}</span>
               </div>
               {ev.draft_hook && (
                 <p className="text-[10px] text-slate-400 leading-snug line-clamp-2">{ev.draft_hook}</p>
@@ -406,7 +406,7 @@ export default function ContentCommand() {
         <Metric label="Active drafts" value={totals.active} tone="text-cyan-300" />
         <Metric label="Awaiting stamp" value={totals.awaiting} tone="text-amber-300" />
         <Metric label="Approved" value={totals.approved} tone="text-emerald-300" />
-        <Metric label="Shipped" value={totals.shipped} tone="text-slate-300" />
+        <Metric label="Shipped" value={totals.shipped} tone="text-slate-600 dark:text-slate-300" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-4">
@@ -501,7 +501,7 @@ export default function ContentCommand() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2"><RefreshCw className="h-4 w-4 text-slate-300" /> Recent bot runs</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2"><RefreshCw className="h-4 w-4 text-slate-600 dark:text-slate-300" /> Recent bot runs</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {(runs ?? []).length === 0 ? (
@@ -512,7 +512,7 @@ export default function ContentCommand() {
                     <span className="font-medium">{run.mode ?? `run ${run.id}`}</span>
                     <Badge variant="outline">{run.status}</Badge>
                   </div>
-                  <div className="text-slate-300 mt-1">{formatDistanceToNow(new Date(run.started_at), { addSuffix: true })} · {run.entries ?? 0} entries</div>
+                  <div className="text-slate-600 dark:text-slate-300 mt-1">{formatDistanceToNow(new Date(run.started_at), { addSuffix: true })} · {run.entries ?? 0} entries</div>
                 </div>
               ))}
             </CardContent>
@@ -531,7 +531,7 @@ export default function ContentCommand() {
                     <span className="font-medium">{row.handle ?? row.platform}</span>
                     <Badge variant="outline">{row.status}</Badge>
                   </div>
-                  <div className="text-slate-300 mt-1">{row.intent ?? "inbound"} · {row.tier ?? "no tier"} · ${Math.round(row.conversion_value_usd ?? 0).toLocaleString()}</div>
+                  <div className="text-slate-600 dark:text-slate-300 mt-1">{row.intent ?? "inbound"} · {row.tier ?? "no tier"} · ${Math.round(row.conversion_value_usd ?? 0).toLocaleString()}</div>
                 </div>
               ))}
             </CardContent>
@@ -602,12 +602,12 @@ function DraftRow({
               <Icon className="h-3 w-3 mr-1" /> {draft.platform ?? "unknown"}
             </Badge>
             <Badge variant="outline" className={statusTone(draft.status)}>{draft.status}</Badge>
-            <span className="text-slate-300">Due {due}</span>
-            {draft.pillar ? <span className="text-slate-300">· {draft.pillar}</span> : null}
+            <span className="text-slate-600 dark:text-slate-300">Due {due}</span>
+            {draft.pillar ? <span className="text-slate-600 dark:text-slate-300">· {draft.pillar}</span> : null}
           </div>
           <div className="mt-2 font-medium leading-snug">{draft.title ?? "Untitled draft"}</div>
-          {draft.hook ? <div className="mt-1 text-sm text-slate-300 italic line-clamp-2">"{draft.hook}"</div> : null}
-          {draft.file_path ? <div className="mt-2 text-[11px] text-slate-300 font-mono truncate">{draft.file_path}</div> : null}
+          {draft.hook ? <div className="mt-1 text-sm text-slate-600 dark:text-slate-300 italic line-clamp-2">"{draft.hook}"</div> : null}
+          {draft.file_path ? <div className="mt-2 text-[11px] text-slate-600 dark:text-slate-300 font-mono truncate">{draft.file_path}</div> : null}
         </div>
         <div className="flex flex-wrap lg:justify-end gap-1.5 shrink-0">
           {draft.status !== "approved" && draft.status !== "shipped" ? (
@@ -653,7 +653,7 @@ function HealthLine({ label, ok, detail }: { label: string; ok: boolean; detail:
       {ok ? <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5" /> : <XCircle className="h-4 w-4 text-amber-400 mt-0.5" />}
       <div>
         <div className="font-medium">{label}</div>
-        <div className="text-xs text-slate-300">{detail}</div>
+        <div className="text-xs text-slate-600 dark:text-slate-300">{detail}</div>
       </div>
     </div>
   );
@@ -662,8 +662,8 @@ function HealthLine({ label, ok, detail }: { label: string; ok: boolean; detail:
 function HonestEmpty({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.02] p-5 text-sm">
-      <div className="font-medium text-slate-200">{title}</div>
-      <div className="text-xs text-slate-300 mt-1">{detail}</div>
+      <div className="font-medium text-slate-700 dark:text-slate-200">{title}</div>
+      <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">{detail}</div>
     </div>
   );
 }
@@ -700,8 +700,8 @@ function PoolOverview({ drafts }: { drafts: any[] }) {
   const draftShipped = drafts.filter((d) => d.status === "shipped").length;
 
   const pools = [
-    { label: "Raw Ideas", value: data?.ideas, hint: "cw_ideas", tone: "text-slate-300" },
-    { label: "Demand mines", value: data?.demand_mines, hint: "cw_demand_mines", tone: "text-slate-300" },
+    { label: "Raw Ideas", value: data?.ideas, hint: "cw_ideas", tone: "text-slate-600 dark:text-slate-300" },
+    { label: "Demand mines", value: data?.demand_mines, hint: "cw_demand_mines", tone: "text-slate-600 dark:text-slate-300" },
     { label: "Hook pool", value: data?.hooks, hint: "cw_hooks", tone: "text-violet-300" },
     { label: "Outliers", value: data?.outliers, hint: "cw_outliers", tone: "text-cyan-300" },
     { label: "Drafts awaiting", value: draftAwait, hint: "social_bot_drafts", tone: "text-amber-300" },
@@ -713,7 +713,7 @@ function PoolOverview({ drafts }: { drafts: any[] }) {
     <Card className="ops-card-depth border-white/10 bg-white/[0.02]">
       <CardContent className="p-3 md:p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-300">Full content flow</span>
+          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-600 dark:text-slate-300">Full content flow</span>
           <span className="text-[10px] text-slate-400">read-only · pulls live</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">

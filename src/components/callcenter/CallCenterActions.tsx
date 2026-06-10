@@ -234,7 +234,7 @@ export function CallCenterActions({
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 1.5, opacity: 0 }}
-                    className="absolute inset-0 flex items-center justify-center bg-black/30 z-20"
+                    className="absolute inset-0 flex items-center justify-center bg-white dark:bg-black/30 z-20"
                   >
                     <Check className="h-8 w-8 text-white" />
                   </motion.div>

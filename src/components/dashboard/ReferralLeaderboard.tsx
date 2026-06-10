@@ -29,7 +29,7 @@ interface ReferralEntry {
 
 const rankIcons: Record<number, JSX.Element> = {
   1: <Trophy className="h-4 w-4 text-amber-400" />,
-  2: <Medal className="h-4 w-4 text-slate-300" />,
+  2: <Medal className="h-4 w-4 text-slate-600 dark:text-slate-300" />,
   3: <Award className="h-4 w-4 text-amber-600" />,
 };
 

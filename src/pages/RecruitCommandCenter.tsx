@@ -52,7 +52,7 @@ const BUCKET_META: Record<Bucket, { label: string; icon: any; tint: string; colo
   hot:     { label: "🔥 Hot",     icon: Flame,       tint: "from-rose-500/20 to-orange-500/10 border-rose-500/40", color: "text-rose-300" },
   warm:    { label: "☀️ Warm",    icon: Sparkles,    tint: "from-amber-500/15 to-yellow-500/5 border-amber-500/40", color: "text-amber-300" },
   cold:    { label: "❄️ Cold",   icon: Snowflake,   tint: "from-sky-500/10 to-blue-500/5 border-sky-500/30",       color: "text-sky-300" },
-  ghosted: { label: "👻 Ghosted", icon: Clock,       tint: "from-slate-500/10 to-slate-700/5 border-slate-500/30",  color: "text-slate-300" },
+  ghosted: { label: "👻 Ghosted", icon: Clock,       tint: "from-slate-500/10 to-slate-700/5 border-slate-500/30",  color: "text-slate-600 dark:text-slate-300" },
 };
 
 export default function RecruitCommandCenter() {

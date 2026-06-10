@@ -303,7 +303,7 @@ export default function AwardsGallery() {
                 {isAdmin && (
                   <button
                     onClick={() => setEditing(p)}
-                    className="absolute top-3 right-3 h-7 w-7 rounded-full bg-black/60 border border-white/10 backdrop-blur text-white/80 hover:text-white hover:bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10"
+                    className="absolute top-3 right-3 h-7 w-7 rounded-full bg-white dark:bg-black/60 border border-white/10 backdrop-blur text-white/80 hover:text-white hover:bg-white dark:bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10"
                     title="Edit plaque"
                   >
                     <Edit3 className="h-3.5 w-3.5" />

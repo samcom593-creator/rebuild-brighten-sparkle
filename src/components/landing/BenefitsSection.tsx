@@ -17,7 +17,7 @@ const benefits = [
 
 export function BenefitsSection() {
   return (
-    <section id="benefits" className="py-24 relative bg-[#030712]">
+    <section id="benefits" className="py-24 relative bg-white dark:bg-[#030712]">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,hsl(168_84%_42%/0.04)_0%,transparent_50%)]" />
       
       <div className="container mx-auto px-4 relative z-10">

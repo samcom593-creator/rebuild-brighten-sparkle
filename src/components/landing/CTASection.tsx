@@ -42,7 +42,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
   const activeAgents = liveStats?.active_agents ?? 95;
 
   return (
-    <section ref={ref} className="py-24 relative overflow-hidden bg-[#030712]">
+    <section ref={ref} className="py-24 relative overflow-hidden bg-white dark:bg-[#030712]">
       {/* Accent bars */}
       <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#22d3a5] to-transparent opacity-40" />
 

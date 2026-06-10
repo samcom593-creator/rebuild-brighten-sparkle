@@ -25,7 +25,7 @@ const RecentHiresTicker = lazy(() =>
 function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
   const [loaded, setLoaded] = useState(false);
   return (
-    <div className="relative aspect-video rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_40px_hsl(168_80%_50%/0.2)] bg-black group">
+    <div className="relative aspect-video rounded-2xl overflow-hidden border border-border/60 shadow-[0_8px_40px_hsl(168_80%_50%/0.2)] bg-white dark:bg-black group">
       {loaded ? (
         <iframe
           src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
@@ -63,7 +63,7 @@ function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
             fetchpriority="high"
             className="absolute inset-0 w-full h-full object-cover"
           />
-          <span className="absolute inset-0 bg-black/30 group-hover:bg-black/45 transition-colors" />
+          <span className="absolute inset-0 bg-white dark:bg-black/30 group-hover:bg-white dark:bg-black/45 transition-colors" />
           <span className="relative h-20 w-20 rounded-full bg-primary/95 flex items-center justify-center shadow-[0_0_50px_hsl(168_80%_50%/0.6)] group-hover:scale-110 transition-transform">
             <Play className="h-10 w-10 text-primary-foreground fill-primary-foreground ml-1" />
           </span>
@@ -114,7 +114,7 @@ export function HeroSection() {
   }, []);
 
   return (
-    <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden bg-[#030712] pt-24 sm:pt-28 md:pt-32 pb-16">
+    <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden bg-white dark:bg-[#030712] pt-24 sm:pt-28 md:pt-32 pb-16">
       {/* Subtle additional decoration layers — aurora handles the heavy lifting */}
       <div
         aria-hidden

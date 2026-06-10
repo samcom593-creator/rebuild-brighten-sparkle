@@ -136,7 +136,7 @@ export function ManagerHierarchyMtdPanel() {
                 {producers.map((p, i) => (
                   <li key={p.agent_id} className="flex items-center gap-2 border border-white/5 rounded-md bg-white/[0.02] p-2 text-sm hover:border-white/15 transition-colors">
                     <span className={cn("font-mono text-xs w-5 text-center",
-                      i === 0 ? "text-amber-300 font-bold" : i < 3 ? "text-slate-300" : "text-slate-300")}>
+                      i === 0 ? "text-amber-300 font-bold" : i < 3 ? "text-slate-600 dark:text-slate-300" : "text-slate-600 dark:text-slate-300")}>
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">

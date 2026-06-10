@@ -371,7 +371,7 @@ export function CallCenterVoiceRecorder({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 48 }}
             exit={{ opacity: 0, height: 0 }}
-            className="rounded-lg overflow-hidden bg-black/30 border border-primary/20"
+            className="rounded-lg overflow-hidden bg-white dark:bg-black/30 border border-primary/20"
           >
             <canvas ref={canvasRef} width={400} height={48} className="w-full h-12" />
           </motion.div>

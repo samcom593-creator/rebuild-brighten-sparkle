@@ -13,7 +13,7 @@ export default function LeadsLanding() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 backdrop-blur-sm border-b border-slate-700/50">
+      <nav className="sticky top-0 z-50 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-blue-400 bg-clip-text text-transparent">
             APEX FINANCIAL
@@ -41,7 +41,7 @@ export default function LeadsLanding() {
               Get <span className="bg-gradient-to-r from-teal-400 to-blue-400 bg-clip-text text-transparent">Qualified Leads</span> Delivered Daily
             </h1>
             
-            <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
               Stop cold calling. Get warm, pre-qualified leads delivered daily with the same dialer, coaching, and comp structure built to help serious agents push toward $10,000 months.
             </p>
 
@@ -79,7 +79,7 @@ export default function LeadsLanding() {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-800/50">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-800/50">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-white mb-4">
@@ -100,7 +100,7 @@ export default function LeadsLanding() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-slate-300">{benefit.description}</p>
+                  <p className="text-slate-600 dark:text-slate-300">{benefit.description}</p>
                 </CardContent>
               </Card>
             ))}
@@ -147,7 +147,7 @@ export default function LeadsLanding() {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-800/50">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-800/50">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-white mb-4">
@@ -162,7 +162,7 @@ export default function LeadsLanding() {
                   <CardTitle className="text-lg text-white">{faq.q}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-slate-300">{faq.a}</p>
+                  <p className="text-slate-600 dark:text-slate-300">{faq.a}</p>
                 </CardContent>
               </Card>
             ))}
@@ -188,7 +188,7 @@ export default function LeadsLanding() {
                       <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
                     ))}
                   </div>
-                  <p className="text-slate-300 italic mb-4">"{testimonial.quote}"</p>
+                  <p className="text-slate-600 dark:text-slate-300 italic mb-4">"{testimonial.quote}"</p>
                 </CardHeader>
                 <CardContent>
                   <div className="font-semibold text-white">{testimonial.author}</div>
@@ -206,7 +206,7 @@ export default function LeadsLanding() {
           <h2 className="text-4xl font-bold text-white mb-6">
             Ready to Build Your First $10K Month?
           </h2>
-          <p className="text-xl text-slate-300 mb-8">
+          <p className="text-xl text-slate-600 dark:text-slate-300 mb-8">
             Join our community of successful agents and start receiving qualified leads today. Limited spots available this month.
           </p>
           <Button asChild size="lg" className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white border-0">
@@ -218,7 +218,7 @@ export default function LeadsLanding() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-700 py-12 px-4 sm:px-6 lg:px-8 bg-slate-900">
+      <footer className="border-t border-slate-200 dark:border-slate-700 py-12 px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-900">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
@@ -248,7 +248,7 @@ export default function LeadsLanding() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-slate-700 pt-8 flex justify-between items-center text-slate-400 text-sm">
+          <div className="border-t border-slate-200 dark:border-slate-700 pt-8 flex justify-between items-center text-slate-400 text-sm">
             <p>&copy; 2026 APEX Financial. All rights reserved.</p>
             <p>Made with ❤️ for ambitious agents</p>
           </div>

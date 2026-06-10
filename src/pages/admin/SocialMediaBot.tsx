@@ -369,7 +369,7 @@ export default function SocialMediaBot() {
                         <span className="text-zinc-500"> / {fmtNum(g.target_value)}{g.unit === "%" ? "%" : ""}</span>
                       </span>
                     </div>
-                    <div className="relative h-3 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="relative h-3 bg-slate-50 dark:bg-zinc-800 rounded-full overflow-hidden">
                       <div
                         className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-500 via-amber-300 to-amber-200 rounded-full shadow-[0_0_12px_rgba(232,197,71,0.4)]"
                         style={{ width: `${pct.toFixed(1)}%` }}
@@ -400,7 +400,7 @@ export default function SocialMediaBot() {
           ) : (
             <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
               {(data.blockers ?? []).map((b) => (
-                <div key={b.id} className="rounded-md border border-zinc-700/50 bg-zinc-900/40 p-3">
+                <div key={b.id} className="rounded-md border border-zinc-700/50 bg-white dark:bg-zinc-900/40 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="text-sm font-medium leading-tight">{b.title}</div>
                     {severityBadge(b.severity)}
@@ -456,7 +456,7 @@ export default function SocialMediaBot() {
                   return (
                     <div
                       key={d.id}
-                      className="rounded-md border border-zinc-700/50 bg-zinc-900/40 p-3 md:p-4 hover:border-amber-500/40 transition-colors cursor-pointer"
+                      className="rounded-md border border-zinc-700/50 bg-white dark:bg-zinc-900/40 p-3 md:p-4 hover:border-amber-500/40 transition-colors cursor-pointer"
                       onClick={() => setActiveDraft(d)}
                     >
                       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
@@ -518,7 +518,7 @@ export default function SocialMediaBot() {
                   <button
                     key={p.id}
                     onClick={() => setSelectedPillarCode(active ? null : p.code)}
-                    className={`text-left rounded-lg border p-3 transition-colors ${active ? "border-amber-500/60 bg-amber-500/10" : "border-zinc-700/50 bg-zinc-900/40 hover:border-zinc-600"}`}
+                    className={`text-left rounded-lg border p-3 transition-colors ${active ? "border-amber-500/60 bg-amber-500/10" : "border-zinc-700/50 bg-white dark:bg-zinc-900/40 hover:border-zinc-600"}`}
                   >
                     <div className="flex items-center justify-between text-xs text-zinc-400">
                       <span className="font-mono uppercase tracking-wider">{p.code}</span>
@@ -608,7 +608,7 @@ export default function SocialMediaBot() {
                 .map((h) => {
                   const pillar = (pillars ?? []).find(p => p.id === h.cw_ideas?.pillar_id);
                   return (
-                    <div key={h.id} className="rounded-md border border-zinc-700/50 bg-zinc-900/40 p-3">
+                    <div key={h.id} className="rounded-md border border-zinc-700/50 bg-white dark:bg-zinc-900/40 p-3">
                       <div className="text-sm leading-snug">"{h.text}"</div>
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
                         {pillar && <Badge variant="outline">{pillar.code} {pillar.name}</Badge>}
@@ -765,7 +765,7 @@ export default function SocialMediaBot() {
               )}
             </div>
             {data.scoreboard?.scoreboard_md ? (
-              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200 font-mono bg-zinc-950/50 p-4 rounded border border-zinc-800 max-h-[500px] overflow-y-auto">
+              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200 font-mono bg-white dark:bg-zinc-950/50 p-4 rounded border border-zinc-800 max-h-[500px] overflow-y-auto">
                 {data.scoreboard.scoreboard_md}
               </pre>
             ) : (
@@ -789,7 +789,7 @@ export default function SocialMediaBot() {
             </div>
             <div className="space-y-2">
               {(data.top_hooks ?? []).map((h) => (
-                <div key={h.id} className="flex items-start gap-3 rounded-md border border-zinc-800 bg-zinc-900/30 p-3">
+                <div key={h.id} className="flex items-start gap-3 rounded-md border border-zinc-800 bg-white dark:bg-zinc-900/30 p-3">
                   <div className="flex-1">
                     <div className="text-sm leading-snug">{h.hook_text}</div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500">
@@ -961,7 +961,7 @@ function SnapManualInput({ handle }: { handle: string }) {
     return <Button size="sm" variant="outline" className="mt-1 w-full" onClick={() => setOpen(true)}>Set Snap stats</Button>;
   }
   return (
-    <div className="mt-2 space-y-1.5 p-2 rounded bg-zinc-900/60 border border-zinc-700">
+    <div className="mt-2 space-y-1.5 p-2 rounded bg-white dark:bg-zinc-900/60 border border-zinc-700">
       <Input className="h-8 text-xs" placeholder="Subscribers" value={subs} onChange={(e) => setSubs(e.target.value)} />
       <Input className="h-8 text-xs" placeholder="Story views (recent)" value={storyViews} onChange={(e) => setStoryViews(e.target.value)} />
       <Input className="h-8 text-xs" placeholder="Spotlight views total" value={spotlightViews} onChange={(e) => setSpotlightViews(e.target.value)} />
@@ -1005,7 +1005,7 @@ function BlockerActions({ blocker, onResolve }: { blocker: Blocker; onResolve: (
             href={a.href}
             target="_blank"
             rel="noopener noreferrer"
-            className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded border transition-colors ${a.primary ? "border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20" : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"}`}
+            className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded border transition-colors ${a.primary ? "border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20" : "border-zinc-700 text-zinc-300 hover:bg-slate-50 dark:bg-zinc-800"}`}
           >
             <ArrowRight className="h-3 w-3" /> {a.label}
           </a>
@@ -1127,7 +1127,7 @@ function SandcastlesAutonomous() {
         ) : (
           <div className="space-y-2">
             {(queue ?? []).map((r) => (
-              <div key={r.id} className="rounded border border-zinc-700/50 bg-zinc-900/40 p-3 text-sm">
+              <div key={r.id} className="rounded border border-zinc-700/50 bg-white dark:bg-zinc-900/40 p-3 text-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="font-medium leading-snug truncate">{r.topic}</div>

@@ -573,7 +573,7 @@ function PlaqueDetail({ plaque, onClose }: PlaqueDetailProps) {
         )}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 h-9 w-9 rounded-full bg-black/50 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+          className="absolute top-3 right-3 h-9 w-9 rounded-full bg-white dark:bg-black/50 backdrop-blur-md text-white flex items-center justify-center hover:bg-white dark:bg-black/70 transition-colors"
         >
           <X className="h-4 w-4" />
         </button>

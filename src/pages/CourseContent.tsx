@@ -281,7 +281,7 @@ export default function CourseContent() {
                         
                         return (
                           <>
-                            <div className="aspect-video rounded-lg overflow-hidden bg-black">
+                            <div className="aspect-video rounded-lg overflow-hidden bg-white dark:bg-black">
                               {videoId ? (
                                 <iframe
                                   src={`https://www.youtube.com/embed/${videoId}`}

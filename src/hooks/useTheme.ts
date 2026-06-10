@@ -1,34 +1,56 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
- * useTheme — forced dark mode (2026-05-17).
+ * useTheme — 2026-06-10: re-enabled light theme as DEFAULT.
  *
- * Sam: "why do I click log in and I see some white page where I can't see
- * shit?". Light mode was breaking too many surfaces. Forcing dark mode
- * everywhere until light mode is properly audited and rebuilt.
+ * History:
+ *   - 2026-05-17: locked to dark because legacy light tokens were broken
+ *     (apex.navy/teal etc had no light values, so surfaces went white-on-white).
+ *   - 2026-06-10: Sam said "I always would like the light version more than
+ *     the dark." apex-tokens.css now ships BOTH themes with parity, so the
+ *     toggle is safe to re-enable. Default = light (Sam's preference).
  *
- * Stored `theme: 'light'` values are upgraded to `dark` on mount so users
- * who toggled in the past stop seeing white screens.
+ * Behavior:
+ *   - Reads `theme` from localStorage; falls back to "light".
+ *   - Applies the class on documentElement.
+ *   - setTheme persists the choice + flips the class immediately.
  */
-type Theme = "light" | "dark" | "system";
+type Theme = "light" | "dark";
+
+const STORAGE_KEY = "apex:theme:v2";
+
+function readStored(): Theme {
+  if (typeof window === "undefined" || !window.localStorage) return "light";
+  try {
+    const v = window.localStorage.getItem(STORAGE_KEY);
+    return v === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
 
 export function useTheme() {
+  const [theme, setThemeState] = useState<Theme>(() => readStored());
+
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove("light");
-    root.classList.add("dark");
+    root.classList.remove("light", "dark");
+    root.classList.add(theme);
     try {
-      localStorage.setItem("theme", "dark");
-    } catch {}
-  }, []);
+      window.localStorage.setItem(STORAGE_KEY, theme);
+    } catch {
+      /* private mode etc */
+    }
+  }, [theme]);
 
-  // Keep the same API surface so existing call-sites don't break.
-  const setTheme = (_t: Theme) => {
-    // no-op — dark is locked
-    const root = window.document.documentElement;
-    root.classList.remove("light");
-    root.classList.add("dark");
+  const setTheme = (next: Theme | "system") => {
+    if (next === "system") {
+      const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+      setThemeState(prefersDark ? "dark" : "light");
+    } else {
+      setThemeState(next);
+    }
   };
 
-  return { theme: "dark" as Theme, setTheme };
+  return { theme, setTheme };
 }

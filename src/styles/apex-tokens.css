@@ -1,42 +1,43 @@
-/* APEX Design Tokens — v9 Wave 0 · 2026-06-10
+/* APEX Design Tokens — v9 Wave 0 + light theme · 2026-06-10
  * Single source of truth for color/type/motion/radius/shadow.
- * All other components consume these via Tailwind arbitrary values or className.
- * Goal: AgentLink/Agent Cloud-class restraint. One accent. Three surfaces. */
+ * Goal: AgentLink/Agent Cloud-class restraint. One accent. Three surfaces.
+ *
+ * 2026-06-10: re-enabled light theme as the DEFAULT. Sam said "I always
+ * would like the light version more than the dark version." Prior light
+ * was broken because legacy tokens (apex.navy/teal/etc) only had dark
+ * values defined. This file provides BOTH light + dark with parity. */
 
-:root {
-  /* Surfaces — 3 only */
-  --apex-bg:             220 30% 7%;
-  --apex-card:           220 25% 11%;
-  --apex-hover:          220 22% 14%;
+:root,
+:root.light {
+  /* Surfaces — paper-white feel, like AgentLink. Subtle warmth. */
+  --apex-bg:             220 20% 99%;   /* page background — near-white */
+  --apex-card:           0   0% 100%;   /* card surface — pure white */
+  --apex-hover:          220 15% 96%;   /* hover bg — light gray */
 
-  /* Borders — 2 only */
-  --apex-border:         220 18% 18%;
-  --apex-border-strong:  220 16% 28%;
+  /* Borders — soft slate gray */
+  --apex-border:         220 15% 90%;
+  --apex-border-strong:  220 12% 78%;
 
-  /* Text — 3 ramps */
-  --apex-text:           220 15% 96%;
-  --apex-text-mute:      220 10% 65%;
-  --apex-text-dim:       220 8%  45%;
+  /* Text — high contrast on white */
+  --apex-text:           220 22% 14%;
+  --apex-text-mute:      220 12% 38%;
+  --apex-text-dim:       220 10% 55%;
 
-  /* Accent — emerald, used ONLY for primary action affordances */
-  --apex-accent:         160 84% 45%;
-  --apex-accent-soft:    160 84% 45% / 0.08;
-  --apex-accent-strong:  160 84% 38%;
+  /* Accent — emerald (stays the same on both themes for brand consistency) */
+  --apex-accent:         160 84% 38%;
+  --apex-accent-soft:    160 84% 38% / 0.08;
+  --apex-accent-strong:  160 84% 30%;
 
-  /* Status — 5 colors, paired with icon */
-  --apex-success:        150 70% 50%;
-  --apex-warning:        38  92% 55%;
-  --apex-danger:         0   75% 55%;
-  --apex-info:           220 80% 65%;
-  --apex-neutral:        220 12% 50%;
+  /* Status — slightly darker on light bg so contrast holds */
+  --apex-success:        150 70% 38%;
+  --apex-warning:        38  92% 45%;
+  --apex-danger:         0   75% 48%;
+  --apex-info:           220 80% 50%;
+  --apex-neutral:        220 12% 45%;
 
-  /* Type ramps — only these sizes exist */
-  --type-11: 11px;
-  --type-12: 12px;
-  --type-14: 14px;
-  --type-16: 16px;
-  --type-20: 20px;
-  --type-28: 28px;
+  /* Type ramps */
+  --type-11: 11px; --type-12: 12px; --type-14: 14px;
+  --type-16: 16px; --type-20: 20px; --type-28: 28px;
 
   /* Motion budget — nothing slower than 250ms anywhere */
   --motion-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -44,16 +45,41 @@
   --motion-slow: 240ms cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Radii */
-  --apex-r-sm: 6px;
-  --apex-r-md: 10px;
-  --apex-r-lg: 14px;
+  --apex-r-sm: 6px; --apex-r-md: 10px; --apex-r-lg: 14px;
 
-  /* Shadows — 2 only */
+  /* Shadows — visible on white surfaces */
+  --apex-shadow-1: 0 1px 2px hsl(220 30% 40% / 0.08);
+  --apex-shadow-2: 0 8px 24px hsl(220 30% 30% / 0.12);
+}
+
+/* Dark theme override — kept for users who want it via the toggle. */
+:root.dark {
+  --apex-bg:             220 30% 7%;
+  --apex-card:           220 25% 11%;
+  --apex-hover:          220 22% 14%;
+
+  --apex-border:         220 18% 18%;
+  --apex-border-strong:  220 16% 28%;
+
+  --apex-text:           220 15% 96%;
+  --apex-text-mute:      220 10% 65%;
+  --apex-text-dim:       220 8%  45%;
+
+  --apex-accent:         160 84% 45%;
+  --apex-accent-soft:    160 84% 45% / 0.08;
+  --apex-accent-strong:  160 84% 38%;
+
+  --apex-success:        150 70% 50%;
+  --apex-warning:        38  92% 55%;
+  --apex-danger:         0   75% 55%;
+  --apex-info:           220 80% 65%;
+  --apex-neutral:        220 12% 50%;
+
   --apex-shadow-1: 0 1px 2px hsl(220 50% 2% / 0.6);
   --apex-shadow-2: 0 8px 24px hsl(220 50% 2% / 0.55);
 }
 
-/* Tabular nums on every number across the app (without per-component opt-in) */
+/* Tabular nums on every number across the app */
 *,
 *::before,
 *::after {

@@ -141,3 +141,18 @@ if match '^(src/components/dashboard/.+\.(tsx?|jsx?)$|scripts/check-bg-gradient-
   echo "[pre-commit] Dashboard component staged — running check:bg-gradient-cards…"
   node scripts/check-bg-gradient-cards.mjs
 fi
+
+# ---------- check-bg-gradient-areas (wave-61) ----------
+# Trigger: any src/pages/ or src/components/landing/ tsx|ts change, or the
+# script itself. Extends wave-60's ratchet to two more high-traffic surface
+# trees: src/pages (baseline 106) + src/components/landing (baseline 18).
+# Wave-60 locked the dashboard floor; wave-61 locks the next two highest-debt
+# trees so the same v22 §10 banned-pattern (purposeless multi-stop gradients
+# on Card-style outer wrappers) cannot decay there either while future fires
+# do surgical sweeps to lower each baseline. Cost when fired: ~80ms.
+# Opt-in marker (same as wave-60 by design — one mental model):
+# `bg-gradient-card-allow:<reason>` on the same line or the line directly above.
+if match '^(src/(pages|components/landing)/.+\.(tsx?|jsx?)$|scripts/check-bg-gradient-areas\.mjs$)'; then
+  echo "[pre-commit] Pages/landing component staged — running check:bg-gradient-areas…"
+  node scripts/check-bg-gradient-areas.mjs
+fi

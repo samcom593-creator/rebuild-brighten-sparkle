@@ -77,7 +77,7 @@ export function InstagramPromptDialog({
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Instagram className="h-5 w-5 text-pink-500" />
+            <Instagram className="h-5 w-5 text-foreground" />
             Welcome to the Team! 🎉
           </DialogTitle>
           <DialogDescription>

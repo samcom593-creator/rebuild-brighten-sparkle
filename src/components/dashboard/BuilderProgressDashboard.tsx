@@ -131,7 +131,7 @@ export function BuilderProgressDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Crown className="h-4 w-4 text-yellow-400" /> My builders
+            <Crown className="h-4 w-4 text-amber-500" /> My builders
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
@@ -147,7 +147,7 @@ export function BuilderProgressDashboard() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Crown className="h-4 w-4 text-yellow-400" /> My builders
+              <Crown className="h-4 w-4 text-amber-500" /> My builders
               <Badge variant="outline" className="ml-2 border-yellow-500/40 text-yellow-300">
                 {summary.total} direct
               </Badge>

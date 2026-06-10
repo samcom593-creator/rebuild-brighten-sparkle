@@ -33,7 +33,7 @@ export function BubbleStatInput({
           "relative p-4 rounded-md border-2 transition-all duration-300",
           "bg-card",
           "hover:border-primary/30 hover:shadow-md",
-          hasValue && "border-primary/40 bg-primary/5 shadow-lg shadow-primary/10",
+          hasValue && "border-primary/40 bg-primary/5 shadow-sm shadow-primary/10",
           !hasValue && "border-border/40"
         )}
       >
@@ -76,7 +76,7 @@ export function BubbleStatInput({
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-primary shadow-lg shadow-primary/50"
+            className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-primary shadow-sm shadow-primary/50"
           />
         )}
       </div>

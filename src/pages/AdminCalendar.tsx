@@ -37,7 +37,7 @@ const CATEGORIES = [
   { key: "content", label: "Content", color: "bg-purple-500", text: "text-purple-400", border: "border-purple-500/30" },
   { key: "admin", label: "Admin", color: "bg-muted-foreground", text: "text-muted-foreground", border: "border-border" },
   { key: "fitness", label: "Fitness", color: "bg-orange-500", text: "text-orange-400", border: "border-orange-500/30" },
-  { key: "personal", label: "Personal", color: "bg-pink-500", text: "text-pink-400", border: "border-pink-500/30" },
+  { key: "personal", label: "Personal", color: "bg-pink-500", text: "text-foreground", border: "border-pink-500/30" },
 ] as const;
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 6);

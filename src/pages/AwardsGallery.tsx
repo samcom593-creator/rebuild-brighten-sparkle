@@ -44,7 +44,7 @@ const TIER_META: Record<string, { label: string; accent: string; emoji: string }
   team_single_day_10k: { label: "Team Day",    accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "⭐" },
   streak_5:            { label: "5-Streak",    accent: "border-rose-400/50 bg-rose-500/10 text-rose-300",         emoji: "🔥" },
   first_deal_of_day:   { label: "First Deal",  accent: "border-primary/50 bg-primary/10 text-primary",            emoji: "🌅" },
-  diamond_week:        { label: "Diamond",     accent: "border-cyan-400/50 bg-cyan-500/10 text-cyan-300",         emoji: "💎" },
+  diamond_week:        { label: "Diamond",     accent: "border-cyan-400/50 bg-slate-500/10 text-cyan-300",         emoji: "💎" },
   monthly_20k:         { label: "$20K Month",  accent: "border-violet-400/50 bg-violet-500/10 text-violet-300",   emoji: "👑" },
   monthly_top6:        { label: "Top 6 Month", accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🏆" },
   march_2026_top6:     { label: "March Top 6", accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🏆" },

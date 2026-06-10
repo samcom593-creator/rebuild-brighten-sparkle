@@ -216,7 +216,7 @@ export function AttendanceGrid({
                 </TooltipTrigger>
                 <TooltipContent 
                   side="top" 
-                  className="bg-popover border border-border shadow-lg px-3 py-2"
+                  className="bg-popover border border-border shadow-sm px-3 py-2"
                 >
                   <div className="text-xs space-y-0.5">
                     <p className="font-semibold">{format(day, "EEEE, MMM d")}</p>

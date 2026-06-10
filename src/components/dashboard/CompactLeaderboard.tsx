@@ -44,16 +44,16 @@ function PodiumCard({ entry, position, maxALP }: { entry: LeaderboardEntry; posi
   const positionConfig = {
     1: { 
       height: "h-36", 
-      gradient: "from-amber-400 via-yellow-400 to-amber-500",
+      gradient: "from-amber-400 to-amber-500",
       ring: "ring-2 ring-amber-400/50",
       icon: Trophy,
       iconColor: "text-amber-400",
       label: "1ST",
-      glow: "shadow-lg shadow-amber-500/20"
+      glow: "shadow-sm shadow-amber-500/20"
     },
     2: { 
       height: "h-28", 
-      gradient: "from-slate-300 via-gray-300 to-slate-400",
+      gradient: "from-slate-300 to-slate-400",
       ring: "ring-2 ring-slate-300/50",
       icon: Medal,
       iconColor: "text-slate-600 dark:text-slate-300",
@@ -62,7 +62,7 @@ function PodiumCard({ entry, position, maxALP }: { entry: LeaderboardEntry; posi
     },
     3: { 
       height: "h-24", 
-      gradient: "from-amber-600 via-orange-500 to-amber-700",
+      gradient: "from-amber-600 to-amber-700",
       ring: "ring-2 ring-amber-600/50",
       icon: Award,
       iconColor: "text-amber-600",
@@ -334,7 +334,7 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
   return (
     <motion.div 
       className={cn(
-        "bg-card/60  rounded-md border border-border/40 p-4 shadow-lg",
+        "bg-card/60  rounded-md border border-border/40 p-4 shadow-sm",
         className
       )}
       initial={{ opacity: 0, y: 10 }}

@@ -204,7 +204,7 @@ export function OnboardingTracker({
                   transition={{ type: "spring", stiffness: 400, damping: 20 }}
                   className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center transition-all",
-                    isCompleted && "bg-primary text-primary-foreground shadow-lg shadow-primary/30",
+                    isCompleted && "bg-primary text-primary-foreground shadow-sm shadow-primary/30",
                     isCurrent && "bg-primary/20 ring-2 ring-primary text-primary",
                     !isCompleted && !isCurrent && "bg-muted text-muted-foreground",
                     isClickable && "cursor-pointer hover:ring-2 hover:ring-primary/50",

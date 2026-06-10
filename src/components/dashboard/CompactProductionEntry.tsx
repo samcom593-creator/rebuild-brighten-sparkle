@@ -291,7 +291,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
       />
       
       <motion.div 
-        className="relative bg-card/80  rounded-md border border-border/50 shadow-xl overflow-hidden"
+        className="relative bg-card/80  rounded-md border border-border/50 shadow-sm overflow-hidden"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
@@ -312,7 +312,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
         <div className="px-5 py-4 border-b border-border/30 bg-white dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-md bg-white dark:bg-slate-900 flex items-center justify-center shadow-lg shadow-primary/10">
+              <div className="h-10 w-10 rounded-md bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm shadow-primary/10">
                 <Sparkles className="h-5 w-5 text-primary" />
               </div>
               <div>
@@ -328,7 +328,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.8, opacity: 0 }}
-                  className="px-4 py-2 bg-white dark:bg-slate-900 border border-primary/30 rounded-md font-bold text-primary shadow-lg"
+                  className="px-4 py-2 bg-white dark:bg-slate-900 border border-primary/30 rounded-md font-bold text-primary shadow-sm"
                 >
                   ${totalALP.toLocaleString()}
                 </motion.div>
@@ -445,7 +445,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                   className={cn(
                     "w-full gap-3 h-14 text-base font-bold rounded-md transition-all duration-300",
                     "bg-white dark:bg-slate-900 hover:from-primary/90 hover:to-emerald-500/90",
-                    "shadow-lg hover:shadow-xl",
+                    "shadow-sm hover:shadow-sm",
                     hasData && "shadow-primary/30 hover:shadow-primary/40"
                   )} 
                   size="lg"

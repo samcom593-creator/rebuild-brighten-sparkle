@@ -48,7 +48,7 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
   const renderRankBadge = () => {
     if (entry.rank === 1) {
       return (
-        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-slate-900 animate-rank-glow shadow-lg">
+        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-slate-900 animate-rank-glow shadow-sm">
           <Trophy className="h-4 w-4 text-white" />
         </div>
       );
@@ -99,7 +99,7 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
           : entry.rank <= 3
             ? "bg-white dark:bg-slate-900 border border-amber-500/20"
             : "bg-muted/30 border border-border/50",
-        "hover:shadow-lg"
+        "hover:shadow-sm"
       )}
     >
       <div className="flex items-center gap-3">

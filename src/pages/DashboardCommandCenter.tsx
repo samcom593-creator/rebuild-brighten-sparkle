@@ -673,9 +673,9 @@ export default function DashboardCommandCenter() {
               onClick={() => setStatPopup({ type: "activeAgents", open: true })}
             >
               <CardContent className="p-4">
-                <div className="mb-3 h-1 w-14 rounded-full bg-cyan-500/80 transition-all group-hover:w-20" />
+                <div className="mb-3 h-1 w-14 rounded-full bg-slate-500/80 transition-all group-hover:w-20" />
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-md bg-cyan-500/10 ring-1 ring-cyan-500/15">
+                  <div className="p-2 rounded-md bg-slate-500/10 ring-1 ring-cyan-500/15">
                     <Users className="h-5 w-5 text-primary" />
                   </div>
                   <div>

@@ -31,7 +31,7 @@ const STAGE_META: Record<Stage, { label: string; color: string; order: number }>
   onboarding: { label: "Onboarding", color: "bg-blue-500/20 text-blue-400 border-blue-500/30", order: 2 },
   licensing: { label: "Licensing", color: "bg-amber-500/20 text-amber-400 border-amber-500/30", order: 3 },
   contracting: { label: "Contracting", color: "bg-violet-500/20 text-violet-400 border-violet-500/30", order: 4 },
-  field_training: { label: "Field Training", color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30", order: 5 },
+  field_training: { label: "Field Training", color: "bg-slate-500/20 text-foreground border-cyan-500/30", order: 5 },
   producing: { label: "Producing", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", order: 6 },
   inactive: { label: "Inactive", color: "bg-red-500/20 text-red-400 border-red-500/30", order: 99 },
 };

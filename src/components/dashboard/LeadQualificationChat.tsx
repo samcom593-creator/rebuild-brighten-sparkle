@@ -115,7 +115,7 @@ export function LeadQualificationChat({ applicantContext, className }: LeadQuali
             <Button
               onClick={() => setIsOpen(true)}
               size="lg"
-              className="rounded-full h-14 w-14 shadow-lg bg-primary hover:bg-primary/90"
+              className="rounded-full h-14 w-14 shadow-sm bg-primary hover:bg-primary/90"
             >
               <MessageSquare className="h-6 w-6" />
             </Button>

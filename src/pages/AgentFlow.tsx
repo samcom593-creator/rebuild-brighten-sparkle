@@ -20,7 +20,7 @@ const unlicensedSteps = [
   { icon: BookOpen, title: "Study & Pass Exam", desc: "2-4 weeks average timeline", color: "text-orange-400" },
   { icon: Shield, title: "Get Licensed (NPN)", desc: "Apply for your state license", color: "text-emerald-400" },
   { icon: CheckCircle, title: "Contracted with Carriers", desc: "We handle all paperwork", color: "text-primary" },
-  { icon: Users, title: "Onboarding + Field Training", desc: "Training modules + shadow", color: "text-pink-400" },
+  { icon: Users, title: "Onboarding + Field Training", desc: "Training modules + shadow", color: "text-foreground" },
   { icon: Briefcase, title: "Live in Field", desc: "Start earning!", color: "text-orange-400" },
 ];
 

@@ -63,7 +63,7 @@ const colorMap = {
   cyan: {
     bg: "from-cyan-500/20 to-cyan-600/10",
     border: "border-cyan-500/30",
-    text: "text-cyan-400",
+    text: "text-foreground",
     glow: "shadow-cyan-500/20",
     ring: "ring-cyan-500/30",
   },
@@ -94,7 +94,7 @@ function BadgeIcon({ badge, compact }: { badge: WeeklyBadge; compact?: boolean }
               colors.bg,
               colors.border,
               compact ? "h-8 w-8" : "h-12 w-12",
-              "shadow-lg",
+              "shadow-sm",
               colors.glow,
               "ring-2",
               colors.ring
@@ -190,7 +190,7 @@ export function WeeklyBadgesCard({ agentId }: { agentId: string | null }) {
       
       <div className="relative">
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white dark:bg-slate-900 shadow-lg shadow-primary/20">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white dark:bg-slate-900 shadow-sm shadow-primary/20">
             <Trophy className="h-5 w-5 text-white" />
           </div>
           <div>

@@ -836,7 +836,7 @@ function DealDetailDialog({ deal, onClose }: { deal: DealRow | null; onClose: ()
                 </Section>
               )}
 
-              <Section title="Activity · Engagement" accent="text-cyan-400">
+              <Section title="Activity · Engagement" accent="text-foreground">
                 <Row label="Stage Changed" value={client.stage_changed_at ? format(new Date(String(client.stage_changed_at)), "MMM d, yyyy") : null} />
                 <Row label="Last Contact" value={client.last_contact_date ? format(new Date(String(client.last_contact_date)), "MMM d, yyyy") : null} />
                 <Row label="Next Action Date" value={client.next_action_date ? format(new Date(String(client.next_action_date)), "MMM d, yyyy") : null} />

@@ -663,7 +663,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8 border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
+                  className="h-8 w-8 border-pink-500/30 text-foreground hover:bg-rose-500/10"
                   onClick={() => {
                     logLeadActivity({
                       leadId: lead.id,
@@ -833,7 +833,7 @@ const LeadCard = memo(function LeadCard({
                   size="sm"
                   onClick={handleSaveNote}
                   disabled={savingNote}
-                  className="w-full text-xs h-7 bg-pink-500/20 text-pink-300 hover:bg-pink-500/30 border-pink-500/30 border"
+                  className="w-full text-xs h-7 bg-rose-500/20 text-pink-300 hover:bg-rose-500/30 border-pink-500/30 border"
                 >
                   {savingNote ? "Saving..." : "Save Note"}
                 </Button>
@@ -1134,7 +1134,7 @@ function RecruiterDashboardInner() {
         <div className="flex flex-col md:flex-row md:items-center gap-2">
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <Sparkles className="h-5 w-5 text-pink-400" />
+              <Sparkles className="h-5 w-5 text-foreground" />
               <h1 className="text-xl font-bold bg-white dark:bg-slate-900 bg-clip-text text-transparent">
                 Recruiter HQ
               </h1>
@@ -1177,7 +1177,7 @@ function RecruiterDashboardInner() {
               variant="outline"
               size="sm"
               asChild
-              className="border-pink-500/40 text-pink-400 hover:bg-pink-500/10 text-xs"
+              className="border-pink-500/40 text-foreground hover:bg-rose-500/10 text-xs"
             >
               <a href={UNLICENSED_SCHEDULING_LINK} target="_blank" rel="noopener noreferrer">
                 <CalendarClock className="h-3.5 w-3.5 mr-1.5" />
@@ -1204,7 +1204,7 @@ function RecruiterDashboardInner() {
 
       {/* ── Stat bubbles ── */}
       <div className="grid grid-cols-4 gap-1.5">
-        <StatBubble icon={Users} label="Total Hired (Unlicensed)" value={totalLeads} color="border border-pink-500/20 bg-pink-500/5 text-pink-400" delay={0} />
+        <StatBubble icon={Users} label="Total Hired (Unlicensed)" value={totalLeads} color="border border-pink-500/20 bg-rose-500/5 text-foreground" delay={0} />
         <StatBubble icon={AlertTriangle} label="Needs Contact" value={needsContact} color="border border-rose-500/20 bg-rose-500/5 text-rose-400" delay={0.06} />
         <StatBubble icon={TrendingUp} label="Actively In Progress" value={inProgress} color="border border-purple-500/20 bg-purple-500/5 text-purple-400" delay={0.12} />
         <StatBubble icon={Star} label="New This Month" value={thisMonth} color="border border-amber-500/20 bg-amber-500/5 text-amber-400" delay={0.18} />
@@ -1389,7 +1389,7 @@ function RecruiterDashboardInner() {
         <div className="space-y-1.5">
           {filtered.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
-              <Sparkles className="h-12 w-12 mx-auto mb-4 text-pink-400/50" />
+              <Sparkles className="h-12 w-12 mx-auto mb-4 text-foreground/50" />
               <p className="text-lg font-medium">No leads match your search</p>
               <p className="text-sm mt-1">Try adjusting your filters</p>
             </div>
@@ -1428,7 +1428,7 @@ function RecruiterDashboardInner() {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-16 text-muted-foreground">
-                    <Sparkles className="h-8 w-8 mx-auto mb-2 text-pink-400/50" />
+                    <Sparkles className="h-8 w-8 mx-auto mb-2 text-foreground/50" />
                     <p className="font-medium">No leads match your search</p>
                   </td>
                 </tr>
@@ -1458,7 +1458,7 @@ function RecruiterDashboardInner() {
                                   href={`https://instagram.com/${lead.instagram_handle.replace(/^@/, "")}`}
                                   target="_blank" rel="noopener noreferrer"
                                   onClick={e => e.stopPropagation()}
-                                  className="text-pink-400 hover:text-pink-300 shrink-0"
+                                  className="text-foreground hover:text-pink-300 shrink-0"
                                   title={`@${lead.instagram_handle.replace(/^@/, "")}`}
                                 >
                                   <Instagram className="h-3.5 w-3.5" />

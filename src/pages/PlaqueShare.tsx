@@ -226,8 +226,8 @@ export default function PlaqueShare() {
           </Button>
         </div>
 
-        <div className="rounded-md border border-pink-500/20 bg-pink-500/5 p-4 flex items-start gap-3">
-          <Instagram className="h-5 w-5 text-pink-400 shrink-0 mt-0.5" />
+        <div className="rounded-md border border-pink-500/20 bg-rose-500/5 p-4 flex items-start gap-3">
+          <Instagram className="h-5 w-5 text-foreground shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm font-medium mb-1">Post to Instagram</p>
             <p className="text-xs text-muted-foreground mb-2">

@@ -378,7 +378,7 @@ export default function HiringPipeline() {
       >
         <div className="grid gap-3 p-3 md:grid-cols-[1fr_auto] md:items-center">
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Badge variant="outline" className="border-cyan-500/30 bg-cyan-500/10 text-cyan-500">
+            <Badge variant="outline" className="border-cyan-500/30 bg-slate-500/10 text-foreground">
               Live board
             </Badge>
             <span className="text-muted-foreground">

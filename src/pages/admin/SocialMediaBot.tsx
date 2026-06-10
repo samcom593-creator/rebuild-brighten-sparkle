@@ -103,8 +103,8 @@ const platformIcon = (p: string) => {
 };
 const platformColor = (p: string) => {
   if (p.startsWith("youtube")) return "text-red-400";
-  if (p === "tiktok") return "text-cyan-400";
-  if (p === "instagram") return "text-pink-400";
+  if (p === "tiktok") return "text-foreground";
+  if (p === "instagram") return "text-foreground";
   if (p === "snapchat") return "text-yellow-300";
   return "text-zinc-300";
 };
@@ -370,7 +370,7 @@ export default function SocialMediaBot() {
                     </div>
                     <div className="relative h-3 bg-slate-50 dark:bg-zinc-800 rounded-full overflow-hidden">
                       <div
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-500 via-amber-300 to-amber-200 rounded-full shadow-[0_0_12px_rgba(232,197,71,0.4)]"
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-500 to-amber-200 rounded-full shadow-[0_0_12px_rgba(232,197,71,0.4)]"
                         style={{ width: `${pct.toFixed(1)}%` }}
                       />
                     </div>

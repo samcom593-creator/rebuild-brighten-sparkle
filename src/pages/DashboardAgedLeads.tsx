@@ -1036,7 +1036,7 @@ export default function DashboardAgedLeads() {
                         </a>
                       )}
                       {lead.instagramHandle && (
-                        <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-pink-400 hover:text-pink-300">
+                        <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-foreground hover:text-pink-300">
                           <Instagram className="h-3 w-3" /> @{lead.instagramHandle.replace("@","")}
                         </a>
                       )}
@@ -1055,7 +1055,7 @@ export default function DashboardAgedLeads() {
                           <Badge variant="outline" className="text-[9px] h-4 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>
                         )}
                         {lead.leadSource === "new_drip" && (
-                          <Badge variant="outline" className="text-[9px] h-4 px-1 bg-cyan-500/10 text-cyan-400 border-cyan-500/20">Drip</Badge>
+                          <Badge variant="outline" className="text-[9px] h-4 px-1 bg-slate-500/10 text-foreground border-cyan-500/20">Drip</Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>

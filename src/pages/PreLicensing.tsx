@@ -75,7 +75,7 @@ const SECTION_META: Record<string, { label: string; color: string }> = {
 
 const HEALTH_META: Record<XcelStudent["health_bucket"], { label: string; color: string; icon: React.ElementType }> = {
   completed:    { label: "Completed",   color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/40", icon: CheckCircle2 },
-  almost_done:  { label: "Almost done", color: "bg-cyan-500/15 text-cyan-400 border-cyan-500/40",         icon: TrendingUp },
+  almost_done:  { label: "Almost done", color: "bg-slate-500/15 text-foreground border-cyan-500/40",         icon: TrendingUp },
   in_progress:  { label: "In progress", color: "bg-primary/15 text-primary border-primary/40",            icon: BookOpen },
   just_started: { label: "Just started", color: "bg-blue-500/15 text-blue-400 border-blue-500/40",        icon: Sparkles },
   stalled:      { label: "Stalled",     color: "bg-rose-500/15 text-rose-400 border-rose-500/40",         icon: AlertCircle },
@@ -298,7 +298,7 @@ export default function PreLicensing() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <SummaryTile icon={GraduationCap} label="Active in pipeline" value={report?.active_pipeline ?? 0} color="text-primary" loading={reportQ.isLoading} />
         <SummaryTile icon={Calendar}      label="Enrolled · last 30d" value={report?.enrolled_last_30d ?? 0} color="text-violet-400" loading={reportQ.isLoading} />
-        <SummaryTile icon={Sparkles}      label="Enrolled · last 7d"  value={report?.enrolled_last_7d ?? 0}  color="text-cyan-400"   loading={reportQ.isLoading} />
+        <SummaryTile icon={Sparkles}      label="Enrolled · last 7d"  value={report?.enrolled_last_7d ?? 0}  color="text-foreground"   loading={reportQ.isLoading} />
         <SummaryTile icon={TrendingUp}    label="Active · last 10d"   value={report?.active_last_10d ?? 0}   color="text-amber-400"  loading={reportQ.isLoading} />
         <SummaryTile icon={CheckCircle2}  label="% Completed"         value={`${Math.round(pctCompleted)}%`} color="text-emerald-400" loading={reportQ.isLoading} />
       </div>
@@ -481,7 +481,7 @@ export default function PreLicensing() {
                       <div className="flex items-center gap-3">
                         <Progress value={pct} className={`h-2 flex-1 ${barColor}`} />
                         <span className={`text-sm font-bold tabular-nums shrink-0 w-12 text-right ${
-                          pct >= 100 ? "text-emerald-400" : pct >= 50 ? "text-cyan-400" : "text-amber-400"
+                          pct >= 100 ? "text-emerald-400" : pct >= 50 ? "text-foreground" : "text-amber-400"
                         }`}>
                           {Math.round(pct)}%
                         </span>

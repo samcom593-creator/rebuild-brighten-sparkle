@@ -200,7 +200,7 @@ export default function SystemHealth() {
               <div className="flex items-start gap-3">
                 <div className={`p-2 rounded-lg ${
                   result.status === "healthy" ? "bg-emerald-500/10 text-emerald-400" :
-                  result.status === "degraded" ? "bg-yellow-500/10 text-yellow-400" :
+                  result.status === "degraded" ? "bg-yellow-500/10 text-amber-500" :
                   "bg-red-500/10 text-red-400"
                 }`}>
                   <Icon className="h-4 w-4" />
@@ -260,7 +260,7 @@ export default function SystemHealth() {
                     <td className="py-2">
                       <span className={`inline-flex items-center gap-1 ${
                         log.overall_status === "healthy" ? "text-emerald-400" :
-                        log.overall_status === "degraded" ? "text-yellow-400" : "text-red-400"
+                        log.overall_status === "degraded" ? "text-amber-500" : "text-red-400"
                       }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${
                           log.overall_status === "healthy" ? "bg-emerald-400" :

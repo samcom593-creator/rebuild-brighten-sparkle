@@ -134,9 +134,9 @@ export function AgentRankBadge({
   };
 
   const getRankGradient = () => {
-    if (currentRank === 1) return "from-yellow-400 via-amber-400 to-orange-500";
-    if (currentRank === 2) return "from-gray-300 via-gray-400 to-gray-500";
-    if (currentRank === 3) return "from-orange-600 via-orange-700 to-orange-800";
+    if (currentRank === 1) return "from-yellow-400 to-orange-500";
+    if (currentRank === 2) return "from-gray-300 to-gray-500";
+    if (currentRank === 3) return "from-orange-600 to-orange-800";
     return "from-muted to-muted";
   };
 

@@ -886,7 +886,7 @@ export function TeamHierarchyManager() {
             exit={{ opacity: 0, y: 20 }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
           >
-            <div className="flex items-center gap-3 px-4 py-3 rounded-md bg-card border shadow-lg">
+            <div className="flex items-center gap-3 px-4 py-3 rounded-md bg-card border shadow-sm">
               <span className="text-sm font-medium">
                 {selectedAgents.size} selected
               </span>

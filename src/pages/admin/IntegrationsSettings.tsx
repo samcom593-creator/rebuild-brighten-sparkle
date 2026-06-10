@@ -247,7 +247,7 @@ function BotSqlSection() {
   const masked = currentToken ? `${currentToken.slice(0, 8)}…${currentToken.slice(-4)}` : "";
 
   return (
-    <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/10 via-violet-500/5 to-amber-500/10 shadow-xl shadow-primary/20 win-glow">
+    <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/10 via-violet-500/5 to-amber-500/10 shadow-sm shadow-primary/20 win-glow">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
@@ -262,7 +262,7 @@ function BotSqlSection() {
           <Badge variant="outline" className={cn(
             "text-xs",
             currentToken
-              ? "border-emerald-500/50 text-emerald-300 bg-emerald-500/20 shadow-lg shadow-emerald-500/20"
+              ? "border-emerald-500/50 text-emerald-300 bg-emerald-500/20 shadow-sm shadow-emerald-500/20"
               : "border-amber-500/50 text-amber-300 bg-amber-500/20",
           )}>
             {isLoading ? "…" : currentToken ? "● ACTIVE" : "⚠ NOT CONFIGURED"}

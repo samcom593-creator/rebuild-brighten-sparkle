@@ -762,7 +762,7 @@ export default function DashboardApplicants() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
+                  className="h-8 w-8 shrink-0 text-foreground hover:text-pink-300 hover:bg-rose-500/10"
                   onClick={() => openInstagram(app.instagram_handle!)}
                   title={`@${app.instagram_handle}`}
                   aria-label="Open Instagram"
@@ -1231,7 +1231,7 @@ export default function DashboardApplicants() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
+                                      className="h-7 w-7 text-foreground hover:text-pink-300 hover:bg-rose-500/10"
                                       onClick={() => openInstagram(app.instagram_handle!)}
                                       title={`@${app.instagram_handle}`}
                                     >

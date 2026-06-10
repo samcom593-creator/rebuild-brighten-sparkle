@@ -264,7 +264,7 @@ export function InterviewRecorder({
   };
 
   const getSentimentEmoji = (s: string) => s === "positive" ? "😊" : s === "negative" ? "😟" : "😐";
-  const getSentimentColor = (s: string) => s === "positive" ? "text-green-400" : s === "negative" ? "text-red-400" : "text-yellow-400";
+  const getSentimentColor = (s: string) => s === "positive" ? "text-green-400" : s === "negative" ? "text-red-400" : "text-amber-500";
 
   if (!isSupported) {
     return (

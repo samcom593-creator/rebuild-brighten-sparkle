@@ -110,7 +110,7 @@ function statusTone(status: DraftStatus) {
   if (status === "shipped") return "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
   if (status === "approved") return "bg-amber-500/15 text-amber-300 border-amber-500/30";
   if (status === "rejected") return "bg-rose-500/15 text-rose-300 border-rose-500/30";
-  if (status === "awaiting_approval") return "bg-cyan-500/15 text-cyan-300 border-cyan-500/30";
+  if (status === "awaiting_approval") return "bg-slate-500/15 text-cyan-300 border-cyan-500/30";
   return "bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/30";
 }
 
@@ -540,7 +540,7 @@ export default function ContentCommand() {
       </div>
 
       {editing ? (
-        <Card className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-4xl border-amber-500/30 bg-background/95 backdrop-blur shadow-2xl">
+        <Card className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-4xl border-amber-500/30 bg-background/95 backdrop-blur shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Edit draft #{editing.id}</CardTitle>
           </CardHeader>

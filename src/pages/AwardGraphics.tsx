@@ -385,7 +385,7 @@ export default function AwardGraphics() {
                           <div className="space-y-1">
                             <label className="text-xs font-medium">Instagram</label>
                             <div className="flex items-center gap-1">
-                              <Instagram className="h-4 w-4 text-pink-500" />
+                              <Instagram className="h-4 w-4 text-foreground" />
                               <Input value={editIG} onChange={e => setEditIG(e.target.value)} placeholder="@handle" className="w-36" />
                             </div>
                           </div>

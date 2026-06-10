@@ -345,7 +345,7 @@ export function ApplicationDetailSheet({
                     )}
                     {app.instagram_handle && (
                       <a href={`https://instagram.com/${app.instagram_handle.replace("@", "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm hover:text-primary transition-colors">
-                        <Instagram className="h-4 w-4 text-pink-400" />@{app.instagram_handle.replace("@", "")}
+                        <Instagram className="h-4 w-4 text-foreground" />@{app.instagram_handle.replace("@", "")}
                       </a>
                     )}
                     {(app.city || app.state) && (

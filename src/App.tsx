@@ -158,6 +158,8 @@ const SocialDashboard = lazy(() => import("./pages/SocialDashboard"));
 const CallsTodayCockpit = lazy(() => import("./pages/CallsTodayCockpit"));
 const ManagerCommandView = lazy(() => import("./pages/ManagerCommandView"));
 const WhaleRecruiting = lazy(() => import("./pages/WhaleRecruiting"));
+const CarrierContracts = lazy(() => import("./pages/CarrierContracts"));
+const Challenges = lazy(() => import("./pages/Challenges"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
 const SamHQ = lazy(() => import("./pages/admin/SamHQ"));
 const UnclaimedLeads = lazy(() => import("./pages/admin/UnclaimedLeads"));
@@ -423,6 +425,10 @@ const App = () => (
                      <Route path="/dashboard/calls-today" element={<ProtectedRoute><CallsTodayCockpit /></ProtectedRoute>} />
                      {/* v18 admin-only whale recruiting tracker */}
                      <Route path="/dashboard/whales" element={<ProtectedRoute requireAdmin><WhaleRecruiting /></ProtectedRoute>} />
+                     {/* v22 Wave B: carrier contracts (admin only) */}
+                     <Route path="/dashboard/contracts" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
+                     {/* v22 Wave H: challenges/gamification */}
+                     <Route path="/dashboard/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
                      <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
                      {/* Recruit pipeline — applicants/license/contracting flow. Was /agent-pipeline. */}
                      <Route path="/recruit-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />

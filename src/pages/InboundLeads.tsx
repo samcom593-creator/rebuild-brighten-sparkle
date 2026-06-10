@@ -5,6 +5,7 @@ import {
   ArrowRight,
   CalendarClock,
   CheckCircle2,
+  ChevronRight,
   ClipboardList,
   DollarSign,
   Mail,
@@ -74,11 +75,11 @@ const DRAFT_KEY = "apex:inbound-leads:active-draft:v1";
 //   - Quick fact chips append to notes ("Married", "Has kids", etc)
 //   - Live call duration timer
 //   - Age inference from "I'm 56" type voice clues
+// v26 overhaul: trimmed from 14 chips to 7 most-used. Less visual
+// weight above the Notes textarea. Sam can still type the rest.
 const QUICK_FACTS = [
-  "Married", "Has kids", "Owns home", "Mortgage payment",
-  "Recent health event", "Pre-existing condition", "Smoker",
-  "Already has policy", "Beneficiary set", "Wants no exam",
-  "Needs IUL", "Sole income earner", "Veteran", "Self-employed",
+  "Married", "Has kids", "Owns home", "Smoker",
+  "Pre-existing condition", "Wants no exam", "Veteran",
 ] as const;
 
 function loadDraft(): typeof EMPTY_FORM | null {
@@ -184,14 +185,28 @@ function inferStateFromPhone(phone: string): string | null {
 // emerald/slate). Stage chips read MONO via shared neutral tint; the dot
 // is the only color carrier. 4 dot colors: slate (in-progress) / amber
 // (waiting on Sam) / emerald (closed-won) / rose (closed-lost).
+// v26 overhaul: Sam wants 4 stages · New / Quoted / Follow-up / Closed.
+// Enum still has 6 values for existing data compat · `diagnosing` rolls
+// into New visually and `won`/`lost` both render under Closed.
 const STAGE_META: Record<InboundStage, { label: string; tint: string; dot: string; icon: typeof PhoneCall }> = {
-  new:        { label: "New Call",   tint: "border-border bg-muted text-foreground",   dot: "bg-slate-400",   icon: PhoneCall },
-  diagnosing: { label: "Diagnosing", tint: "border-border bg-muted text-foreground",   dot: "bg-slate-500",   icon: ClipboardList },
-  quoted:     { label: "Quoted",     tint: "border-border bg-muted text-foreground",   dot: "bg-amber-500",   icon: DollarSign },
-  follow_up:  { label: "Follow-up",  tint: "border-border bg-muted text-foreground",   dot: "bg-amber-400",   icon: CalendarClock },
-  won:        { label: "Solved",     tint: "border-border bg-muted text-foreground",   dot: "bg-emerald-500", icon: CheckCircle2 },
-  lost:       { label: "Closed Out", tint: "border-border bg-muted text-foreground",   dot: "bg-rose-400",    icon: ShieldCheck },
+  new:        { label: "New",       tint: "border-border bg-muted text-foreground",   dot: "bg-slate-400",   icon: PhoneCall },
+  diagnosing: { label: "New",       tint: "border-border bg-muted text-foreground",   dot: "bg-slate-400",   icon: PhoneCall },
+  quoted:     { label: "Quoted",    tint: "border-border bg-muted text-foreground",   dot: "bg-amber-500",   icon: DollarSign },
+  follow_up:  { label: "Follow-up", tint: "border-border bg-muted text-foreground",   dot: "bg-amber-400",   icon: CalendarClock },
+  won:        { label: "Closed",    tint: "border-border bg-muted text-foreground",   dot: "bg-emerald-500", icon: CheckCircle2 },
+  lost:       { label: "Closed",    tint: "border-border bg-muted text-foreground",   dot: "bg-rose-400",    icon: ShieldCheck },
 };
+
+// 4 user-visible buckets · each maps to one or more raw stage values
+type DisplayBucket = "new" | "quoted" | "follow_up" | "closed";
+const BUCKETS: Array<{ key: DisplayBucket; label: string; stages: InboundStage[]; canonical: InboundStage }> = [
+  { key: "new",       label: "New",       stages: ["new", "diagnosing"], canonical: "new" },
+  { key: "quoted",    label: "Quoted",    stages: ["quoted"],             canonical: "quoted" },
+  { key: "follow_up", label: "Follow-up", stages: ["follow_up"],          canonical: "follow_up" },
+  { key: "closed",    label: "Closed",    stages: ["won", "lost"],        canonical: "won" },
+];
+const bucketOf = (s: InboundStage): DisplayBucket =>
+  s === "diagnosing" ? "new" : s === "won" || s === "lost" ? "closed" : (s as DisplayBucket);
 
 const STAGE_ORDER: InboundStage[] = ["new", "diagnosing", "quoted", "follow_up", "won", "lost"];
 
@@ -402,7 +417,7 @@ export default function InboundLeads() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
-  const [stageFilter, setStageFilter] = useState<InboundStage | "__all__">("__all__");
+  const [stageFilter, setStageFilter] = useState<DisplayBucket | "__all__">("__all__");
   const [newClientOpen, setNewClientOpen] = useState(false);
   // v25 hot-fix: restore draft from localStorage on mount so a page
   // reload mid-call doesn't lose Sam's typed/transcribed data.
@@ -484,7 +499,7 @@ export default function InboundLeads() {
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
     return leads.filter((lead) => {
-      if (stageFilter !== "__all__" && lead.stage !== stageFilter) return false;
+      if (stageFilter !== "__all__" && bucketOf(lead.stage || "new") !== stageFilter) return false;
       if (!q) return true;
       return [
         leadName(lead),
@@ -923,13 +938,12 @@ export default function InboundLeads() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {/* v26 overhaul: 3 tiles (was 4) · dropped "Solved" since closed
+          leads are visible by switching the filter. Less clutter. */}
+      <div className="grid gap-3 sm:grid-cols-3">
         <Metric icon={PhoneCall} label="Inbound clients" value={stats.total} sub={loading ? "Syncing..." : "Saved intake records"} />
-        {/* v24 audit fix: dropped colored tone on KPI values. Icon at
-            opacity-60 carries any state hint; values stay text-foreground. */}
         <Metric icon={Zap} label="Hot right now" value={stats.hot} sub="Urgent or same-day need" />
         <Metric icon={CalendarClock} label="Follow-ups" value={stats.followUps} sub="Needs next touch" />
-        <Metric icon={ShieldCheck} label="Solved" value={stats.solved} sub="Moved to won/solution" />
       </div>
 
       <GlassCard className="p-4">
@@ -943,15 +957,16 @@ export default function InboundLeads() {
               className="pl-9"
             />
           </div>
-          <Select value={stageFilter} onValueChange={(value) => setStageFilter(value as InboundStage | "__all__")}>
+          {/* v26 overhaul: 4-bucket filter (was 6 raw stages) */}
+          <Select value={stageFilter} onValueChange={(value) => setStageFilter(value as DisplayBucket | "__all__")}>
             <SelectTrigger className="md:w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">All stages</SelectItem>
-              {STAGE_ORDER.map((stage) => (
-                <SelectItem key={stage} value={stage}>
-                  {STAGE_META[stage].label}
+              {BUCKETS.map((b) => (
+                <SelectItem key={b.key} value={b.key}>
+                  {b.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1018,7 +1033,11 @@ export default function InboundLeads() {
 
                   {/* Stage chip */}
                   <div className="hidden sm:flex shrink-0">
-                    <Select value={lead.stage} onValueChange={(value) => updateStage(lead, value as InboundStage)}>
+                    {/* v26 overhaul: 4-bucket per-row stage select */}
+                    <Select value={bucketOf(lead.stage)} onValueChange={(value) => {
+                      const b = BUCKETS.find((x) => x.key === value);
+                      if (b) updateStage(lead, b.canonical);
+                    }}>
                       <SelectTrigger className="h-8 w-[130px] text-12">
                         <div className="flex items-center gap-2">
                           <StageIcon className="h-3 w-3" />
@@ -1026,9 +1045,9 @@ export default function InboundLeads() {
                         </div>
                       </SelectTrigger>
                       <SelectContent>
-                        {STAGE_ORDER.map((nextStage) => (
-                          <SelectItem key={nextStage} value={nextStage}>
-                            {STAGE_META[nextStage].label}
+                        {BUCKETS.map((b) => (
+                          <SelectItem key={b.key} value={b.key}>
+                            {b.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1065,14 +1084,10 @@ export default function InboundLeads() {
             <DialogDescription>
               Capture the caller while they are live, then move them through the client solution board.
             </DialogDescription>
-            {/* v25 Google Voice auto-flow banner · clipboard polls in background
-                while this tab is visible · zero keyboard shortcuts needed. */}
-            <div className="mt-2 rounded-md border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/10 px-3 py-2">
-              <p className="text-12 text-emerald-700 dark:text-emerald-300">
-                <span className="font-semibold">🎧 Auto-flow live:</span>{" "}
-                Just <span className="font-semibold">Cmd+C the caller number from Google Voice</span> — this dialog opens itself, fills phone + state, opens TruePeopleSearch in a tab, and starts the mic. Then talk and watch fields fill.
-              </p>
-            </div>
+            {/* v26 overhaul: shrunk auto-flow banner to a single line · less clutter at the top */}
+            <p className="mt-2 text-11 text-emerald-700 dark:text-emerald-300">
+              🎧 <span className="font-semibold">Cmd+C the GV number</span> → page opens itself, fills phone+state, opens TPS tab, starts mic.
+            </p>
           </DialogHeader>
 
           <form onSubmit={saveLead} className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
@@ -1153,37 +1168,54 @@ export default function InboundLeads() {
                   </Select>
                 </Field>
                 <Field label="Stage">
-                  <Select value={form.stage} onValueChange={(value) => updateForm("stage", value as InboundStage)}>
+                  {/* v26 overhaul: 4 buckets (canonical stage value behind each) */}
+                  <Select value={bucketOf(form.stage)} onValueChange={(value) => {
+                    const b = BUCKETS.find((x) => x.key === value);
+                    if (b) updateForm("stage", b.canonical);
+                  }}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {STAGE_ORDER.map((stage) => (
-                        <SelectItem key={stage} value={stage}>{STAGE_META[stage].label}</SelectItem>
+                      {BUCKETS.map((b) => (
+                        <SelectItem key={b.key} value={b.key}>{b.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </Field>
               </div>
 
+              {/* v26 overhaul: Budget always visible (top-of-mind for sales);
+                  Current coverage / Household / Desired solution / Next action
+                  hidden under a "More details" disclosure to declutter. */}
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Current coverage">
-                  <Input value={form.current_coverage} onChange={(event) => updateForm("current_coverage", event.target.value)} placeholder="None, term policy, group life..." />
-                </Field>
                 <Field label="Monthly budget">
                   <Input value={form.budget} onChange={(event) => updateForm("budget", event.target.value)} placeholder="$75/mo" />
                 </Field>
-                <Field label="Household">
-                  <Input value={form.household} onChange={(event) => updateForm("household", event.target.value)} placeholder="Spouse, kids, mortgage, income..." />
-                </Field>
-                <Field label="Next action">
+                <Field label="Next callback">
                   <Input type="datetime-local" value={form.next_action_at} onChange={(event) => updateForm("next_action_at", event.target.value)} />
                 </Field>
               </div>
 
-              <Field label="Desired solution">
-                <Textarea value={form.desired_solution} onChange={(event) => updateForm("desired_solution", event.target.value)} placeholder="What outcome are they looking for?" className="min-h-[86px]" />
-              </Field>
+              <details className="rounded-md border border-border bg-muted/30 px-3 py-2 group">
+                <summary className="cursor-pointer text-12 font-semibold text-muted-foreground hover:text-foreground transition-base list-none flex items-center gap-1.5">
+                  <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
+                  More details (current coverage · household · desired outcome)
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Current coverage">
+                      <Input value={form.current_coverage} onChange={(event) => updateForm("current_coverage", event.target.value)} placeholder="None, term policy, group life..." />
+                    </Field>
+                    <Field label="Household">
+                      <Input value={form.household} onChange={(event) => updateForm("household", event.target.value)} placeholder="Spouse, kids, mortgage, income..." />
+                    </Field>
+                  </div>
+                  <Field label="Desired solution">
+                    <Textarea value={form.desired_solution} onChange={(event) => updateForm("desired_solution", event.target.value)} placeholder="What outcome are they looking for?" className="min-h-[72px]" />
+                  </Field>
+                </div>
+              </details>
 
               <Field label="Notes">
                 {/* v25 hot-fix quick-fact chips · one tap appends to notes

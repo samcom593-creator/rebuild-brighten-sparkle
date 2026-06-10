@@ -41,6 +41,8 @@ import { useMyDownline } from "@/hooks/useMyDownline";
 import { useRolePreview, type RolePreview } from "@/hooks/useRolePreview";
 import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
 import { AgentLinkBookTruthCard } from "@/components/dashboard/AgentLinkBookTruthCard";
+import { CarrierBreakdownCard } from "@/components/dashboard/CarrierBreakdownCard";
+import { BookTrendCard } from "@/components/dashboard/CarrierProductionCard";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
 import { getCloseRate, getLiveAgentCutoffIso, LIVE_AGENT_DEAL_WINDOW_DAYS, sumAnnualPremium } from "@/lib/metricTruth";
 import { cn } from "@/lib/utils";
@@ -790,6 +792,13 @@ function ExecutiveDashboard({
       <JustHiredPanel />
 
       <AgentLinkBookTruthCard />
+
+      {/* v9 audit fix 2026-06-10: AgentLink-style carrier breakdown + by-month trend.
+          Two-column grid at desktop, stacked on mobile. */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <CarrierBreakdownCard />
+        <BookTrendCard />
+      </div>
 
       <WeekProductionCard snapshot={snapshot} />
 

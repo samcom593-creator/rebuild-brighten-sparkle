@@ -54,7 +54,7 @@ export function Testimonials() {
                 "{t.quote}"
               </p>
               <div className="flex items-center gap-3 pt-4 border-t border-border/40">
-                <img src={t.photo} alt={t.name} className="h-12 w-12 rounded-full ring-2 ring-primary/30" loading="lazy" />
+                <img src={t.photo} alt={t.name} width={48} height={48} loading="lazy" decoding="async" className="h-12 w-12 rounded-full ring-2 ring-primary/30" />
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-foreground">{t.name} · {t.state}</p>
                   <p className="text-xs text-muted-foreground">Writing {t.carrier}</p>

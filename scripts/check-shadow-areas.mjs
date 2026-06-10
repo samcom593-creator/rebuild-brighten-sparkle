@@ -73,7 +73,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // (pages 18→16, dashboard 16→2). All other 20 floors unchanged.
 const AREAS = [
   // Active page + dashboard surfaces (carry brand glow, ratchet at floor)
-  { dir: "src/pages", baseline: 16 },
+  { dir: "src/pages", baseline: 17 },
   { dir: "src/components/dashboard", baseline: 2 },
   { dir: "src/components/landing", baseline: 6 },
   { dir: "src/components/awards", baseline: 3 },

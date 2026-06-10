@@ -223,7 +223,8 @@ export function CallCenterFilters({
                 onClick={onStart}
                 disabled={disabled}
                 size="lg"
-                className="w-full relative overflow-hidden bg-white dark:bg-slate-900 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 group"
+                /* shadow-glow-allow:start-call-cta · primary action on call center · was shadow-primary/20 */
+                className="w-full relative overflow-hidden bg-white dark:bg-slate-900 hover:from-primary/90 hover:to-primary/70 shadow-sm group"
               >
 
                 <Phone className="h-5 w-5 mr-2 group-hover:rotate-12 transition-base" />

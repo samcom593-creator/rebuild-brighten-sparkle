@@ -110,3 +110,19 @@ if match '^(src/(pages/Index|components/(landing/.+|SupabaseHealthBanner))\.tsx?
   echo "[pre-commit] Landing-icon-affecting file staged — running check:vendor-icons-landing-census…"
   node scripts/check-vendor-icons-landing-census.mjs
 fi
+
+# ---------- check-landing-css-size (wave-54a) ----------
+# Trigger: src/index.css (custom layers/@keyframes/vars), tailwind.config.landing.cjs
+# (the narrow content config), tailwind.config.ts (theme drift could leak into the
+# landing config since they mirror), any landing-reachable file under src/ (a new
+# utility class used by a landing component grows landing.css), src/App.tsx,
+# src/main.tsx, or the script itself.
+# Cost when fired: ~600-900ms (Tailwind CLI emit on ~17-file content tree).
+# Why this matters: wave-53a measured landing.css emit at 15.29 KB gz with a
+# 21.81 KB gz savings projected for wave-54 cutover. If a future change pushes
+# landing.css above 20 KB gz the projected wave-54 perf delta evaporates and
+# nobody notices until the next live Lighthouse run. Hard ceiling at commit time.
+if match '^(src/index\.css$|tailwind\.config\.(ts|landing\.cjs)$|src/(App|main)\.tsx$|src/(pages/Index|components/landing/.+|components/SupabaseHealthBanner)\.tsx?$|scripts/check-landing-css-size\.mjs$)'; then
+  echo "[pre-commit] Landing-CSS-affecting file staged — running check:landing-css-size…"
+  node scripts/check-landing-css-size.mjs
+fi

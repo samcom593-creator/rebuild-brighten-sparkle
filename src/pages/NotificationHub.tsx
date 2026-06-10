@@ -1294,11 +1294,11 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className={cn("rounded-xl border bg-gradient-to-br p-4 from-blue-500/10 to-blue-500/5 border-blue-500/20")}>
+            <div className={cn("rounded-xl border p-4 bg-blue-500/[0.06] border-blue-500/20")}>
               <p className="text-2xl font-bold text-blue-400"><AnimatedCounter value={counts?.applicants || 0} /></p>
               <p className="text-xs text-muted-foreground">Active Applicants</p>
             </div>
-            <div className={cn("rounded-xl border bg-gradient-to-br p-4 from-purple-500/10 to-purple-500/5 border-purple-500/20")}>
+            <div className={cn("rounded-xl border p-4 bg-purple-500/[0.06] border-purple-500/20")}>
               <p className="text-2xl font-bold text-purple-400"><AnimatedCounter value={counts?.agedLeads || 0} /></p>
               <p className="text-xs text-muted-foreground">Aged Leads</p>
             </div>

@@ -97,15 +97,15 @@ function QuickStat({
   delay?: number;
 }) {
   const colorClasses = {
-    primary: "from-primary/20 to-primary/5 border-primary/20 text-primary",
-    amber: "from-amber-500/20 to-amber-500/5 border-amber-500/20 text-amber-400",
-    emerald: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/20 text-emerald-400",
-    violet: "from-violet-500/20 to-violet-500/5 border-violet-500/20 text-violet-400",
+    primary: "bg-primary/[0.06] border-primary/20 text-primary",
+    amber: "bg-amber-500/[0.06] border-amber-500/20 text-amber-400",
+    emerald: "bg-emerald-500/[0.06] border-emerald-500/20 text-emerald-400",
+    violet: "bg-violet-500/[0.06] border-violet-500/20 text-violet-400",
   };
-  
+
   return (
     <div className={cn(
-      "relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg",
+      "relative overflow-hidden rounded-xl border p-4 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg",
       colorClasses[color]
     )}>
       <div className="flex items-center gap-3">
@@ -498,7 +498,7 @@ export default function AgentPortal() {
 
           <div className="text-center sm:text-left">
             <h2 className="text-2xl sm:text-3xl font-bold">
-              <span className="bg-gradient-to-r from-primary via-violet-500 to-amber-500 bg-clip-text text-transparent">
+              <span className="text-primary">
                 Performance Dashboard
               </span>
             </h2>
@@ -760,7 +760,7 @@ export default function AgentPortal() {
               </div>
               
               {/* Branded Preview Card */}
-              <div className="bg-gradient-to-br from-primary/10 via-violet-500/10 to-amber-500/10 border border-border/50 rounded-xl p-4 mb-4">
+              <div className="bg-primary/[0.06] border border-border/50 rounded-xl p-4 mb-4">
                 <div className="flex items-center gap-3">
                   <img src={apexIcon} alt="Apex" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -791,9 +791,6 @@ export default function AgentPortal() {
         <HideableCard cardKey="agent.motivational-footer" label={HIDEABLE_CARDS["agent.motivational-footer"]}>
           <section>
             <GlassCard className="p-6 text-center relative overflow-hidden">
-              {/* Gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5" />
-              
               <div className="relative">
                 <Quote className="h-8 w-8 mx-auto mb-4 text-primary/30" />
                 <p className="text-base sm:text-lg italic text-muted-foreground max-w-2xl mx-auto leading-relaxed">

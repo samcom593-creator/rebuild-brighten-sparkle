@@ -37,11 +37,18 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-// Post-wave-61 ratchets. Measured 2026-06-10 against HEAD 36666352.
+// Post-wave-62 ratchets. Wave-61 locked src/pages at 106 + src/components/landing
+// at 18. Wave-62 killed 6 surgical gradients in src/pages (4 in AgentPortal:
+// StatCard colorClasses template + text-clip rainbow title + 3-stop muddy card
+// + absolute decor overlay; 2 in NotificationHub: hardcoded 2-stop stat cards),
+// dropping src/pages to 100 and ratcheting that lower floor. Also added
+// src/components/recruiter (baseline 0) — the folder is currently clean, lock
+// it so any future bg-gradient on a recruiter component is rejected.
 // Each baseline is the count of unmarked bg-gradient-to-* instances at lock time.
 const AREAS = [
-  { dir: "src/pages", baseline: 106 },
+  { dir: "src/pages", baseline: 100 },
   { dir: "src/components/landing", baseline: 18 },
+  { dir: "src/components/recruiter", baseline: 0 },
 ];
 
 const GRADIENT_RX = /bg-gradient-to-/;
@@ -94,7 +101,7 @@ for (const area of AREAS) {
   }
   anyFailed = true;
   console.error(
-    `\n✗ check:bg-gradient-areas — ${result.dir} ${result.count} bg-gradient instances exceeds wave-61 baseline ${result.baseline} (Δ +${result.count - result.baseline})\n`,
+    `\n✗ check:bg-gradient-areas — ${result.dir} ${result.count} bg-gradient instances exceeds baseline ${result.baseline} (Δ +${result.count - result.baseline})\n`,
   );
   console.error("The v22 §10 banned-pattern is purposeless multi-stop gradients on Card-style outer wrappers.");
   console.error("Either:");

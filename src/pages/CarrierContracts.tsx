@@ -6,7 +6,6 @@ import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,12 +24,23 @@ interface ContractRow {
   contracting_speed: number | null;
 }
 
+// wave-72 audit fix: 'submitted' was border-blue-500/40 bg-blue-500/5 text-blue-700
+// — palette violation breaking AgentLink slate/amber/emerald/rose-only contract.
+// Swapped to slate (matches the Submitted summary chip already used on the same
+// page) so per-row status pill + section heading + summary chip all align.
 const STATUS_META: Record<string, { label: string; icon: React.ElementType; tint: string }> = {
   active: { label: "Active", icon: CheckCircle2, tint: "border-emerald-500/40 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300" },
   pending_upline_assignment: { label: "Pending upline", icon: Clock, tint: "border-amber-500/40 bg-amber-500/5 text-amber-700 dark:text-amber-300" },
-  submitted: { label: "Submitted", icon: Send, tint: "border-blue-500/40 bg-blue-500/5 text-blue-700 dark:text-blue-300" },
+  submitted: { label: "Submitted", icon: Send, tint: "border-slate-500/40 bg-slate-500/5 text-slate-700 dark:text-slate-300" },
   rejected: { label: "Rejected", icon: XCircle, tint: "border-rose-500/40 bg-rose-500/5 text-rose-700 dark:text-rose-300" },
 };
+
+// wave-72 audit fix: render-order priority for grouped status sections. Was a
+// hard-coded `as const` 5-tuple in the render loop which silently dropped any
+// new status the view emits (e.g. 'terminated', 'in_review'). Now: priority
+// orders the known statuses, unknown statuses append in alpha order so they
+// surface instead of vanish.
+const STATUS_PRIORITY = ["active", "pending_upline_assignment", "submitted", "rejected", "none"] as const;
 
 /**
  * CarrierContracts — v22 Wave B (2026-06-10)
@@ -140,54 +150,44 @@ export default function CarrierContracts() {
           </div>
 
           {/* Status sections — rows hover directly against page bg
-              (no card-within-card double-surface per audit complaint) */}
-          {(["active", "pending_upline_assignment", "submitted", "rejected", "none"] as const).map((s) => {
-            const rows = grouped[s] ?? [];
-            if (rows.length === 0) return null;
-            return (
-              <section key={s} className="space-y-2">
-                <p className="text-11 font-semibold uppercase tracking-wider text-slate-500 pt-2">
-                  {s === "none" ? "Not contracted yet" : STATUS_META[s]?.label ?? s} · {rows.length}
-                </p>
-                <div className="space-y-2">
-                  {rows.map((row, i) => (
-                    <ContractRowView key={`${row.carrier_id}-${i}`} row={row} />
-                  ))}
-                </div>
-              </section>
-            );
-          })}
+              (no card-within-card double-surface per audit complaint).
+              wave-72: dynamic key iteration so an unrecognized status from
+              the view (e.g. 'terminated', 'in_review') still renders instead
+              of being silently dropped by a hard-coded 5-tuple. */}
+          {(() => {
+            const known = new Set<string>(STATUS_PRIORITY);
+            const unknownKeys = Object.keys(grouped).filter((k) => !known.has(k)).sort();
+            const ordered = [...STATUS_PRIORITY, ...unknownKeys];
+            return ordered.map((s) => {
+              const rows = grouped[s] ?? [];
+              if (rows.length === 0) return null;
+              return (
+                <section key={s} className="space-y-2">
+                  <p className="text-11 font-semibold uppercase tracking-wider text-slate-500 pt-2">
+                    {s === "none" ? "Not contracted yet" : STATUS_META[s]?.label ?? s} · {rows.length}
+                  </p>
+                  <div className="space-y-2">
+                    {rows.map((row, i) => (
+                      <ContractRowView key={`${row.carrier_id}-${i}`} row={row} />
+                    ))}
+                  </div>
+                </section>
+              );
+            });
+          })()}
         </>
       )}
     </div>
   );
 }
 
-/** v24 audit fix: neutral white tile + tiny 2x2px colored status dot.
- *  Was tinted border via STATUS_META.tint (rose/amber/blue/emerald). */
-function SummaryTile({ label, count, status }: { label: string; count: number; status: string }) {
-  const meta = STATUS_META[status];
-  const dot = status === "active" ? "bg-emerald-500"
-            : status === "pending_upline_assignment" ? "bg-amber-500"
-            : status === "submitted" ? "bg-blue-500"
-            : status === "rejected" ? "bg-rose-500"
-            : "bg-slate-400";
-  const Icon = meta?.icon ?? Award;
-  return (
-    <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-      <CardContent className="p-4 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`h-2 w-2 rounded-full ${dot}`} />
-            <p className="text-11 uppercase tracking-wider font-semibold">{label}</p>
-          </div>
-          <p className="text-28 font-bold tabular-nums">{count}</p>
-        </div>
-        <Icon className="h-5 w-5 opacity-50" />
-      </CardContent>
-    </Card>
-  );
-}
+// wave-72 audit fix: removed dead SummaryTile component (lines 166-190 pre-wave-72).
+// v26 audit collapsed the 4-up KPI tile grid into inline summary chips above,
+// so SummaryTile has had zero call sites since that ship. The component still
+// hard-coded `bg-blue-500` for 'submitted', shipping the palette violation in
+// any future re-introduction. Deleting kills the dead code + the latent bug.
+// Card/CardContent/CardHeader/CardTitle imports cleaned up — only SummaryTile
+// used them.
 
 function ContractRowView({ row }: { row: ContractRow }) {
   const meta = row.status ? STATUS_META[row.status] : null;

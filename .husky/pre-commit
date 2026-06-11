@@ -225,3 +225,27 @@ if match '^(src/(pages|components/(dashboard|landing|recruiter|admin|agent|award
   echo "[pre-commit] Tracked component-tree change — running check:focus-ring-areas…"
   node scripts/check-focus-ring-areas.mjs
 fi
+
+# ---------- check-rainbow-title-areas (wave-69) ----------
+# Trigger: any change in the 22 wave-65-tracked component trees, or the script
+# itself. Same tracked-area set as wave-65/67/68 by design.
+# Mechanic: ratchets the v22 §10 banned rainbow text-clip title pattern per
+# area at the measured floor at lock time (HEAD b7408593). Counts any line
+# carrying BOTH `bg-clip-text` AND `text-transparent` — the gradient-title
+# technique regardless of which bg feeds it (rainbow `from-X via-Y to-Z`,
+# solid `bg-white`, brand `bg-primary`). Without text-transparent the
+# bg-clip-text is a no-op, and without bg-clip-text the text-transparent makes
+# text invisible — so the pair IS the banned technique.
+# Why this matters: wave-62 (commit a0d8fcdc) killed the rainbow titles in
+# AgentPortal but the technique still ships in 5 src/pages locations as the
+# wave-62 codemod-cleaned degraded solid-bg-clip form (bg-white dark:bg-slate-900
+# bg-clip-text text-transparent). AgentLink/Linear/Cursor/Vercel ship solid
+# headlines on a single brand color, no text-clip technique anywhere. Without
+# this gate, the next new headline that drifts back to rainbow gradients has
+# nothing watching. Cost when fired: ~120ms (linear in tracked-area files).
+# Opt-in marker per line for legitimate hero/CTA/banner narration:
+# `rainbow-title-allow:<reason>` same-line or line directly above.
+if match '^(src/(pages|components/(dashboard|landing|recruiter|admin|agent|awards|callcenter|celebrations|command|contentwheel|course|crm|deals|finances|layout|next-step|pipeline|plaque|profile|system-health|ui))/.+\.(tsx?|jsx?)$|scripts/check-rainbow-title-areas\.mjs$)'; then
+  echo "[pre-commit] Tracked component-tree change — running check:rainbow-title-areas…"
+  node scripts/check-rainbow-title-areas.mjs
+fi

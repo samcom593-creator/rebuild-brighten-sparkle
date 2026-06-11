@@ -127,15 +127,24 @@ export default function WhaleRecruiting() {
         const heat = inferHeat(w);
         return { ...w, stage, heat };
       })
-      // v26 audit fix: was sorted by heat alone — within "hot" bucket the
-      // order was insertion order. Now secondary sort within each heat:
-      // newest applied_at first (more recent inbound = more urgent).
+      // wave-74 audit fix: prior v26 secondary sort referenced
+      // a.applied_at / b.applied_at, but WhaleRow has NO applied_at
+      // field — only created_at — so every comparison resolved 0-0=0
+      // and the bucket was still insertion order. Replaced with the
+      // audit JSON's urgencyTs ladder: within the same heat bucket
+      // float whales whose next_action_due_at is soonest to the top,
+      // then those last contacted longest ago, then most recent
+      // created_at as a final tiebreaker.
       .sort((a, b) => {
         const heatDelta = HEAT_RANK[b.heat] - HEAT_RANK[a.heat];
         if (heatDelta !== 0) return heatDelta;
-        const aDate = a.applied_at ? new Date(a.applied_at).getTime() : 0;
-        const bDate = b.applied_at ? new Date(b.applied_at).getTime() : 0;
-        return bDate - aDate;
+        const aDue = a.next_action_due_at ? new Date(a.next_action_due_at).getTime() : Infinity;
+        const bDue = b.next_action_due_at ? new Date(b.next_action_due_at).getTime() : Infinity;
+        if (aDue !== bDue) return aDue - bDue;
+        const aLast = a.last_contact_at ? new Date(a.last_contact_at).getTime() : 0;
+        const bLast = b.last_contact_at ? new Date(b.last_contact_at).getTime() : 0;
+        if (aLast !== bLast) return aLast - bLast;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
   }, [whales.data]);
 
@@ -199,14 +208,13 @@ export default function WhaleRecruiting() {
 type Heat = "hot" | "warm" | "cool" | "cold";
 
 const HEAT_RANK: Record<Heat, number> = { hot: 3, warm: 2, cool: 1, cold: 0 };
-// v24 palette restraint: tile bg goes NEUTRAL white. Heat color carries
-// only on a small dot indicator. Was 4 tinted bgs (rose/amber/blue/slate).
-const HEAT_TINT: Record<Heat, string> = {
-  hot:  "border-border bg-card text-foreground",
-  warm: "border-border bg-card text-foreground",
-  cool: "border-border bg-card text-foreground",
-  cold: "border-border bg-card text-foreground",
-};
+// wave-74 audit fix: HEAT_TINT was a dead lookup — all 4 heat keys
+// resolved to the same string "border-border bg-card text-foreground"
+// (v24 palette restraint collapsed the 4 tinted bgs into one neutral).
+// Inlined at the HeatTile call site so the lookup overhead + bundle bytes
+// for an identical-value Record drop, and palette discipline is enforced
+// by the single concrete className instead of 4 parallel-but-identical
+// entries that invite future drift back to per-heat bg tints.
 const HEAT_DOT: Record<Heat, string> = {
   hot:  "bg-rose-500",
   warm: "bg-amber-500",
@@ -253,7 +261,7 @@ function inferHeat(w: WhaleRow): Heat {
 function HeatTile({ heat, rows }: { heat: Heat; rows: Array<WhaleRow & { heat: Heat }> }) {
   const count = rows.filter((r) => r.heat === heat).length;
   return (
-    <Card className={`border ${HEAT_TINT[heat]}`}>
+    <Card className="border border-border bg-card text-foreground">
       <CardContent className="p-4">
         <div className="flex items-center gap-2 mb-1">
           <span className={`h-2 w-2 rounded-full ${HEAT_DOT[heat]}`} />

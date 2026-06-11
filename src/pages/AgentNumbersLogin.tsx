@@ -331,7 +331,7 @@ export default function AgentNumbersLogin() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <h1 className="text-3xl font-bold mb-2 bg-white dark:bg-slate-900 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold mb-2 text-foreground">
               Apex Daily Numbers
             </h1>
             <p className="text-muted-foreground">{getStepTitle()}</p>

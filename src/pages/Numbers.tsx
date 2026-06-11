@@ -132,7 +132,7 @@ export default function Numbers() {
     <div className="max-w-lg mx-auto space-y-4">
       <div className="space-y-4">
         <div className="text-center py-2">
-          <h1 className="text-xl font-bold bg-white dark:bg-slate-900 bg-clip-text text-transparent">
+          <h1 className="text-xl font-bold text-foreground">
             APEX Daily Numbers
           </h1>
           <div className="flex items-center justify-center gap-2 mt-0.5">

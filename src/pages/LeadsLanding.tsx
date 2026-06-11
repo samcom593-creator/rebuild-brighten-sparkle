@@ -15,7 +15,7 @@ export default function LeadsLanding() {
       {/* Navigation */}
       <nav className="sticky top-0 z-50 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <Link to="/" className="text-2xl font-bold bg-white dark:bg-slate-900 bg-clip-text text-transparent">
+          <Link to="/" className="text-2xl font-bold text-foreground">
             APEX FINANCIAL
           </Link>
           <Button asChild variant="outline">
@@ -38,7 +38,7 @@ export default function LeadsLanding() {
             </div>
             
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight">
-              Get <span className="bg-white dark:bg-slate-900 bg-clip-text text-transparent">Qualified Leads</span> Delivered Daily
+              Get <span className="text-primary">Qualified Leads</span> Delivered Daily
             </h1>
             
             <p className="text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">

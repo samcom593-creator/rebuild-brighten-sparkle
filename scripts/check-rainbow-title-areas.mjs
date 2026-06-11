@@ -41,12 +41,15 @@
 //   ALL areas must pass; first failure exits 1.
 //
 // Baselines: measured floors at HEAD b7408593, locked wave-69 (2026-06-10).
-//   src/pages:                 5  (AgentNumbersLogin h1 + LeadsLanding Link+span
-//                                  + Numbers h1 + RecruiterDashboard h1 — all
-//                                  using bg-white dark:bg-slate-900 bg-clip-text
-//                                  text-transparent — degraded form of the
-//                                  wave-62 banned rainbow title pattern; lock at
-//                                  floor 5, future surgical kills ratchet down)
+// Ratcheted wave-70 (2026-06-10): src/pages 5→0 after surgical migration of all
+// 5 broken codemod-degraded headers (AgentNumbersLogin h1 + LeadsLanding Link+
+// span + Numbers h1 + RecruiterDashboard h1) to solid text-foreground /
+// text-primary. Those lines were not just style violations — they rendered
+// invisible text (bg-white dark:bg-slate-900 clipped to text = white-on-white in
+// light mode, slate-900-on-slate-900 in dark mode). Bug fix bundled with ratchet.
+//   src/pages:                 0  (wave-70 ratchet — all 5 migrated to solid;
+//                                  future drift to bg-clip-text + text-transparent
+//                                  in any src/pages file fails the gate)
 //   src/components/dashboard:  0  (WhatShippedTodayBanner.tsx self-narration of
 //                                  class names — text content, NOT rendered CSS;
 //                                  all narration lines carry rainbow-title-allow
@@ -73,14 +76,15 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-// Post-wave-69 baselines = exact measured floors at lock time (HEAD b7408593).
-// 5 src/pages hits are the wave-62 codemod-cleaned degraded form using solid
-// bg-white instead of a rainbow gradient — still the banned bg-clip-text +
-// text-transparent technique. 3 dashboard hits are banner narration of class
-// names in text content (allow-marked).
+// Post-wave-70 baselines. Wave-69 locked the wave-62 codemod-cleaned degraded
+// form (bg-white dark:bg-slate-900 bg-clip-text text-transparent) at floor 5 in
+// src/pages with surgical-discipline ratchet-down queued for wave-70. Wave-70
+// shipped all 5 migrations to solid text-foreground / text-primary (bug fix —
+// those 5 lines rendered invisible text in both color modes) and ratcheted the
+// floor 5→0. All 22 trees now at exactly 0 banned rainbow-title instances.
 const AREAS = [
-  // Active surfaces with locked floor (wave-69 — future surgical kills ratchet down)
-  { dir: "src/pages", baseline: 5 },
+  // All 22 trees locked at 0 — drift impossible without explicit allow marker
+  { dir: "src/pages", baseline: 0 },
   // Banner self-narration is allow-marked individually (rainbow-title-allow)
   { dir: "src/components/dashboard", baseline: 0 },
   // v22/v24/v25/wave-62 codemod-cleaned trees (sweep verified at exactly 0)

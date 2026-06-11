@@ -1135,7 +1135,7 @@ function RecruiterDashboardInner() {
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-foreground" />
-              <h1 className="text-xl font-bold bg-white dark:bg-slate-900 bg-clip-text text-transparent">
+              <h1 className="text-xl font-bold text-foreground">
                 Recruiter HQ
               </h1>
               {advancedToday > 0 && (

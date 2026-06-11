@@ -69,10 +69,13 @@ interface Client {
   face_amount: number | string | null;
   policy_number: string | null;
   policy_start_date: string | null;
-  imported_at: string | null;
-  external_source: string | null;
-  lead_vendor_name: string | null;
-  total_monthly_income: number | string | null;
+  // wave-76 audit fix: imported_at + external_source + lead_vendor_name +
+  // total_monthly_income dropped from interface + select string below. These
+  // 4 fields were pulled on every mount (~1.6k rows × 4 cols) but never read
+  // anywhere downstream — confirmed via grep, only appearance was the
+  // interface declaration + select string. Audit JSON L266-272 recommended
+  // trimming to ~18 essential fields. Net: 4 fewer columns over the wire on
+  // every cache miss + 1.6k×4 fewer fields in memory.
 }
 
 // v24 palette restraint: 4 colors total — slate (inactive/working) +
@@ -126,7 +129,7 @@ export default function ClientPipeline() {
       const { data, error } = await supabase
         .from("agentlink_clients")
         .select(
-          "id, insuracloud_pipeline_client_id, agent_id, first_name, last_name, phone, email, state, city, date_of_birth, pipeline_stage, created_at, updated_at, stage_changed_at, last_contact_date, next_action_date, callback_date, callback_time, do_not_call, hostile_language_detected, client_health_score, pitch_carrier, pitch_price, product_sold, face_amount, policy_number, policy_start_date, imported_at, external_source, lead_vendor_name, total_monthly_income"
+          "id, insuracloud_pipeline_client_id, agent_id, first_name, last_name, phone, email, state, city, date_of_birth, pipeline_stage, created_at, updated_at, stage_changed_at, last_contact_date, next_action_date, callback_date, callback_time, do_not_call, hostile_language_detected, client_health_score, pitch_carrier, pitch_price, product_sold, face_amount, policy_number, policy_start_date"
         )
         .order("created_at", { ascending: false })
         .limit(2_000);

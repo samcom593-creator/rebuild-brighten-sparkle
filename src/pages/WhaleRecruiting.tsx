@@ -148,6 +148,21 @@ export default function WhaleRecruiting() {
       });
   }, [whales.data]);
 
+  // wave-76 audit fix: heat-bucket tally previously rendered as a 4-Card
+  // grid that consumed ~80px of vertical real estate to convey 4 integers
+  // + a dot. Audit JSON flagged it as the louder-than-the-data clutter at
+  // /dashboard/whales L152-157 (severity=high). Pre-computed counts here
+  // so the single header strip below carries the totals inline beside the
+  // "All whales · N" title — 4 Card mounts dropped from the DOM, no extra
+  // info hidden, palette discipline preserved by the existing HEAT_DOT
+  // single-class lookup.
+  const heatCounts = useMemo(() => ({
+    hot:  ranked.filter((r) => r.heat === "hot").length,
+    warm: ranked.filter((r) => r.heat === "warm").length,
+    cool: ranked.filter((r) => r.heat === "cool").length,
+    cold: ranked.filter((r) => r.heat === "cold").length,
+  }), [ranked]);
+
   if (!isAdmin) {
     return (
       <div className="page-enter px-4 sm:px-6 pb-24">
@@ -166,18 +181,27 @@ export default function WhaleRecruiting() {
         accent="primary"
       />
 
-      {/* Heat summary tiles */}
-      <div className="grid gap-3 sm:grid-cols-4">
-        <HeatTile heat="hot" rows={ranked} />
-        <HeatTile heat="warm" rows={ranked} />
-        <HeatTile heat="cool" rows={ranked} />
-        <HeatTile heat="cold" rows={ranked} />
-      </div>
-
       {/* Main list */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-16">All whales · {ranked.length}</CardTitle>
+          {/* wave-76 audit fix: heat tiles collapsed into the title row. */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <CardTitle className="text-16">All whales · {ranked.length}</CardTitle>
+            <div className="flex items-center gap-3 text-12 text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${HEAT_DOT.hot}`} /> Hot <b className="text-foreground tabular-nums">{heatCounts.hot}</b>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${HEAT_DOT.warm}`} /> Warm <b className="text-foreground tabular-nums">{heatCounts.warm}</b>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${HEAT_DOT.cool}`} /> Cool <b className="text-foreground tabular-nums">{heatCounts.cool}</b>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${HEAT_DOT.cold}`} /> Cold <b className="text-foreground tabular-nums">{heatCounts.cold}</b>
+              </span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-0 space-y-2">
           {whales.isLoading ? (
@@ -258,21 +282,10 @@ function inferHeat(w: WhaleRow): Heat {
   return "cold";
 }
 
-function HeatTile({ heat, rows }: { heat: Heat; rows: Array<WhaleRow & { heat: Heat }> }) {
-  const count = rows.filter((r) => r.heat === heat).length;
-  return (
-    <Card className="border border-border bg-card text-foreground">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-1">
-          <span className={`h-2 w-2 rounded-full ${HEAT_DOT[heat]}`} />
-          <p className="text-11 uppercase tracking-wider font-semibold">{heat}</p>
-        </div>
-        <p className="text-28 font-bold tabular-nums">{count}</p>
-        <p className="text-11 text-muted-foreground">{heat === "hot" ? "Talked in 48h" : heat === "warm" ? "This week" : heat === "cool" ? "Last 30d" : "Idle 30d+"}</p>
-      </CardContent>
-    </Card>
-  );
-}
+// wave-76 audit fix: HeatTile component deleted — 4-Card grid collapsed
+// into a single header strip beside the "All whales · N" title above.
+// Counts now flow from the heatCounts memo at the parent so heat
+// information is preserved without 4 redundant Card mounts.
 
 function WhaleRow({ row, agent }: { row: WhaleRow & { stage: string; heat: Heat }; agent: AgentLite | null }) {
   const name = `${row.first_name ?? ""} ${row.last_name ?? ""}`.trim() || "—";

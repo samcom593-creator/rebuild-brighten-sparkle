@@ -362,43 +362,46 @@ export default function Leaderboard() {
         )}
       </p>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <Tabs value={board} onValueChange={(value) => setBoard(value as Board)}>
+      {/* PL-WAVE71: single Tabs root binds TabsList triggers + TabsContent under one Radix tree.
+          Previously rendered as two separate <Tabs value={board}> roots (header trigger row +
+          content map below), which broke aria-controls / keyboard nav and forced parallel state
+          writes. Nested productionMode + period Tabs stay as independent roots — they govern
+          orthogonal axes and don't conflict. */}
+      <Tabs value={board} onValueChange={(value) => setBoard(value as Board)}>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <TabsList className="grid grid-cols-4">
             <TabsTrigger value="production">Production</TabsTrigger>
             <TabsTrigger value="recruiting">Recruiting</TabsTrigger>
             <TabsTrigger value="referrals">Referral</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
-        </Tabs>
-        {board === "production" && (
-          <Tabs value={productionMode} onValueChange={(value) => setProductionMode(value as ProductionMode)}>
-            <TabsList>
-              <TabsTrigger value="individuals">Individuals</TabsTrigger>
-              <TabsTrigger value="top_legs">Top Producing Leg (excl. Sam)</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        )}
-        <div className="flex flex-wrap items-center gap-2">
-          <Tabs value={period} onValueChange={(value) => setPeriod(value as Period)}>
-            <TabsList>
-              <TabsTrigger value="daily">Daily</TabsTrigger>
-              <TabsTrigger value="weekly">Weekly</TabsTrigger>
-              <TabsTrigger value="monthly">Monthly</TabsTrigger>
-              <TabsTrigger value="custom">Custom</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          {period === "custom" && (
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-9 w-full sm:w-[150px]" />
-              <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-9 w-full sm:w-[150px]" />
-            </div>
+          {board === "production" && (
+            <Tabs value={productionMode} onValueChange={(value) => setProductionMode(value as ProductionMode)}>
+              <TabsList>
+                <TabsTrigger value="individuals">Individuals</TabsTrigger>
+                <TabsTrigger value="top_legs">Top Producing Leg (excl. Sam)</TabsTrigger>
+              </TabsList>
+            </Tabs>
           )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Tabs value={period} onValueChange={(value) => setPeriod(value as Period)}>
+              <TabsList>
+                <TabsTrigger value="daily">Daily</TabsTrigger>
+                <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="custom">Custom</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {period === "custom" && (
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-9 w-full sm:w-[150px]" />
+                <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-9 w-full sm:w-[150px]" />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      <Tabs value={board} onValueChange={(value) => setBoard(value as Board)}>
         {(["production", "recruiting", "referrals", "activity"] as Board[]).map((tab) => (
           <TabsContent key={tab} value={tab} className="mt-0">
             {loading ? (

@@ -201,15 +201,26 @@ function ContractRowView({ row }: { row: ContractRow }) {
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-14 font-semibold truncate">{row.carrier_name ?? "—"}</p>
+        {/* wave-73 audit fix: was `flex items-center gap-2 flex-wrap` which let
+            badges drop to a second line when carrier_name was long, swinging
+            row height 56→88px on every long-name row. Removed flex-wrap +
+            added min-w-0 so the name truncates first and badges stay inline.
+            Badge shrink-0 keeps the meta + fast pills at full width. */}
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="text-14 font-semibold truncate flex-1 min-w-0">{row.carrier_name ?? "—"}</p>
           {meta && (
-            <Badge variant="outline" className={`text-11 ${meta.tint}`}>
+            <Badge variant="outline" className={`text-11 shrink-0 ${meta.tint}`}>
               {meta.label}
             </Badge>
           )}
           {row.contracting_speed && row.contracting_speed > 1 && (
-            <Badge variant="outline" className="text-11">⚡ fast</Badge>
+            // wave-73 audit fix: was `Badge variant="outline"` with no explicit
+            // tint — fell back to the default --border CSS var, off-palette in
+            // both themes. Swapped to amber-400 (gold-accent register matching
+            // brand-bible #C9A961) distinct from amber-500 "Pending" so the
+            // speed signal reads as a positive modifier without colliding with
+            // the status palette. shrink-0 holds it inline with meta + name.
+            <Badge variant="outline" className="text-11 shrink-0 border-amber-400/40 bg-amber-400/5 text-amber-700 dark:text-amber-300">⚡ fast</Badge>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-3 text-12 text-slate-500 mt-1">

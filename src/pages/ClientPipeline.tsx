@@ -108,12 +108,20 @@ export default function ClientPipeline() {
   const { user, isAdmin, isManager } = useAuth();
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("__all__");
-  const [stateFilter, setStateFilter] = useState<string>("__all__");
   const [sortKey, setSortKey] = useState<"recent" | "name" | "stage_changed" | "callback">("recent");
 
+  // v26 audit fix (wave-75): query budget added — staleTime + gcTime stop
+  // the 31-col 2k-row pull from re-firing every time Sam tabs back. The dead
+  // state filter dropdown / states useMemo / stateFilter state were removed
+  // below (PL-045 established agentlink_clients.state is 100% null upstream
+  // so the dropdown rendered an empty list every mount); the `state` column
+  // itself stays in the select because three downstream renders read c.state
+  // and would otherwise show `undefined` literals.
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["client-pipeline", isAdmin],
     enabled: !!user?.id,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agentlink_clients")
@@ -200,21 +208,15 @@ export default function ClientPipeline() {
   // Recent additions
   const recent = useMemo(() => rows.slice(0, 8), [rows]);
 
-  // States list for filter
-  const states = useMemo(() => {
-    const s = new Set<string>();
-    for (const c of rows) if (c.state) s.add(c.state);
-    return Array.from(s).sort();
-  }, [rows]);
+  // v26 audit fix (wave-75): state filter dropdown + states useMemo + stateFilter
+  // state removed — PL-045 established agentlink_clients.state is 100% null
+  // upstream, so the dropdown rendered an empty list every mount.
 
   // Filtered + sorted main list
   const list = useMemo(() => {
     let r = rows;
     if (stageFilter !== "__all__") {
       r = r.filter((c) => (c.pipeline_stage ?? "UNSORTED") === stageFilter);
-    }
-    if (stateFilter !== "__all__") {
-      r = r.filter((c) => c.state === stateFilter);
     }
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -250,7 +252,7 @@ export default function ClientPipeline() {
         break;
     }
     return r.slice(0, 250); // cap for render perf
-  }, [rows, stageFilter, stateFilter, search, sortKey]);
+  }, [rows, stageFilter, search, sortKey]);
 
   const scopeLabel = isAdmin ? "agency-wide" : isManager ? "your team" : "your book";
 
@@ -479,13 +481,6 @@ export default function ClientPipeline() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={stateFilter} onValueChange={setStateFilter}>
-            <SelectTrigger className="md:w-[120px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All states</SelectItem>
-              {states.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
-            </SelectContent>
-          </Select>
           <Select value={sortKey} onValueChange={(v) => setSortKey(v as any)}>
             <SelectTrigger className="md:w-[160px]"><ArrowUpDown className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -505,7 +500,7 @@ export default function ClientPipeline() {
             icon={<Filter className="h-6 w-6" />}
             title="No clients match these filters"
             description="Try widening the stage or state filter, or clear the search."
-            actions={<Button size="sm" variant="ghost" onClick={() => { setSearch(""); setStageFilter("__all__"); setStateFilter("__all__"); }}>Clear filters</Button>}
+            actions={<Button size="sm" variant="ghost" onClick={() => { setSearch(""); setStageFilter("__all__"); }}>Clear filters</Button>}
           />
         ) : (
           <div className="space-y-1.5">

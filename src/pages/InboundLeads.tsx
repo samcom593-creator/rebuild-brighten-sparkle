@@ -602,15 +602,19 @@ export default function InboundLeads() {
     return () => clearTimeout(t);
   }, [newClientOpen, handlePhoneFromClipboard]);
 
-  // v25 AUTO-MIC · the moment the dialog opens, start listening so Sam
-  // doesn't have to click the mic button. Voice immediately starts
-  // filling fields as the client talks. Reward — feels magical.
+  // v26 BUG FIX · DO NOT auto-start startListening from useEffect —
+  // browsers require getUserMedia to be triggered by a user gesture
+  // (or at least a recent one). Auto-fire 300ms after dialog open
+  // means the gesture window has closed and the mic permission silently
+  // rejects on some browsers. Sam clicks the mic button (or the auto-flow
+  // banner) to start recording. Auto-start kept for the CLIPBOARD-PHONE
+  // path (handlePhoneFromClipboard) since clipboard read is itself a
+  // gesture-initiated browser API.
   useEffect(() => {
-    if (!newClientOpen) return;
-    if (listening) return;
-    const t = setTimeout(() => {
-      void startListening();
-    }, 300); // small delay so mic permission prompt doesn't race the dialog animation
+    // Only auto-start mic if the dialog opened from the clipboard-poll path
+    // (lastClipboardPhoneRef set) AND we're not already listening.
+    if (!newClientOpen || listening || !lastClipboardPhoneRef.current) return;
+    const t = setTimeout(() => { void startListening(); }, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newClientOpen]);
@@ -647,81 +651,97 @@ export default function InboundLeads() {
     return () => clearTimeout(t);
   }, [form]);
 
-  const startListening = async () => {
+  const startListening = async (opts?: { withTabAudio?: boolean }) => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       toast.error("Voice dictation is not available in this browser.");
       return;
     }
 
-    // v25 BOTH-SIDES AUDIO · capture Sam's mic + the client's voice
-    // coming through the speakers. The flow:
-    //   1. Always grab the mic (echoCancellation/noiseSuppression OFF so
-    //      we can pick up the speaker audio that mixes through).
-    //   2. ALSO try to capture tab/system audio via getDisplayMedia.
-    //      Browser pops a "choose tab to share" dialog · Sam picks the
-    //      Google Voice tab and the page audio gets mixed in.
-    //   3. If display-media is declined or not supported, fall back to
-    //      mic-only · Sam can still rely on speakerphone bleed-through.
-    //   4. Both streams are mixed in an AudioContext + recorded by a
-    //      single MediaRecorder so the saved file is one merged track.
+    // v26 BUG FIX · MIC RECORDING DIRECT (no AudioContext mixing by default)
+    // The prior path wrapped a mic stream in an AudioContext + MediaStreamDestination
+    // to enable optional tab-audio mixing. That introduced two failure modes:
+    //   (1) any AudioContext glitch killed the mic recording silently
+    //   (2) the catch block swallowed ALL errors so Sam had no idea what failed
+    // Now: mic stream → MediaRecorder directly. ALWAYS records the mic, always
+    // logs failures. Tab-audio is opt-in via the mic button long-press (TODO).
+    //
+    // For the "both sides" flow, Sam can re-enable getDisplayMedia by calling
+    // startListening({ withTabAudio: true }) — but that path requires a real
+    // user-gesture click and shows the browser tab picker.
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const destination = ctx.createMediaStreamDestination();
-
-      // 1. Mic (always)
       const micStream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
+          echoCancellation: true,
+          noiseSuppression: true,
           autoGainControl: true,
         } as MediaTrackConstraints,
+      }).catch((err) => {
+        // Mic permission denied or device not available — surface it
+        console.error("[mic] getUserMedia failed:", err);
+        toast.error(`Mic blocked: ${err?.name ?? "unknown"}. Click the lock icon → allow microphone.`);
+        return null;
       });
-      ctx.createMediaStreamSource(micStream).connect(destination);
 
-      // 2. Tab audio (best-effort) — pops a picker; Sam selects Google Voice tab
-      let displayStream: MediaStream | null = null;
-      try {
-        if (navigator.mediaDevices.getDisplayMedia) {
-          displayStream = await navigator.mediaDevices.getDisplayMedia({
-            video: true, // browsers require video=true to ask for audio
-            audio: true,
-          });
-          // Throw away the video tracks immediately — we only want the audio
-          displayStream.getVideoTracks().forEach((t) => t.stop());
-          if (displayStream.getAudioTracks().length > 0) {
-            ctx.createMediaStreamSource(displayStream).connect(destination);
-            toast.success("🎧 Both-sides audio active · capturing tab + mic");
-          } else {
-            toast.info("🎤 Mic only · tab audio share was declined");
+      if (!micStream) {
+        // Continue with transcript-only flow — no audio file will be saved
+        setListening(true);
+      } else {
+        let recordStream: MediaStream = micStream;
+        let ctx: AudioContext | null = null;
+        let displayStream: MediaStream | null = null;
+
+        // Optional both-sides path · requires explicit opts.withTabAudio = true
+        if (opts?.withTabAudio && navigator.mediaDevices.getDisplayMedia) {
+          try {
+            displayStream = await navigator.mediaDevices.getDisplayMedia({
+              video: true,
+              audio: true,
+            });
+            displayStream.getVideoTracks().forEach((t) => t.stop());
+            if (displayStream.getAudioTracks().length > 0) {
+              ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const destination = ctx.createMediaStreamDestination();
+              ctx.createMediaStreamSource(micStream).connect(destination);
+              ctx.createMediaStreamSource(displayStream).connect(destination);
+              recordStream = destination.stream;
+              toast.success("🎧 Both-sides audio active · capturing tab + mic");
+            } else {
+              displayStream.getAudioTracks().forEach((t) => t.stop());
+              displayStream = null;
+              toast.info("🎤 Mic only · tab didn't share audio");
+            }
+          } catch (err: any) {
+            console.warn("[tab-audio] getDisplayMedia declined:", err?.name);
+            // Stay on mic only · no toast (user dismissed picker intentionally)
           }
         }
-      } catch {
-        // user dismissed the screen-share prompt; keep mic only — silent
+
+        audioChunksRef.current = [];
+        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : "";
+        const recorder = new MediaRecorder(recordStream, mimeType ? { mimeType } : undefined);
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+        recorder.onerror = (e: any) => {
+          console.error("[recorder] error:", e);
+          toast.error("Recording stopped unexpectedly. Mic may have been revoked.");
+        };
+        recorder.start(1000);
+        mediaRecorderRef.current = recorder;
+        recordingStartRef.current = Date.now();
+        (recorder as any)._sourceStreams = [micStream, displayStream].filter(Boolean);
+        (recorder as any)._audioCtx = ctx;
       }
-
-      const mixedStream = destination.stream;
-      // Save references to all streams so we can stop them on Save
-      mediaRecorderRef.current = null;
-      audioChunksRef.current = [];
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : MediaRecorder.isTypeSupported("audio/mp4")
-        ? "audio/mp4"
-        : "";
-      const recorder = new MediaRecorder(mixedStream, mimeType ? { mimeType } : undefined);
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-      recorder.start(1000); // 1s chunks so a crash never loses more than a second
-      mediaRecorderRef.current = recorder;
-      recordingStartRef.current = Date.now();
-
-      // Stash mic + display streams on the recorder so stop can close them
-      (recorder as any)._sourceStreams = [micStream, displayStream].filter(Boolean);
-      (recorder as any)._audioCtx = ctx;
-    } catch (err) {
-      // Mic permission denied — keep going with transcript-only flow
+    } catch (err: any) {
+      console.error("[audio] startListening failed:", err);
+      toast.error(`Audio capture error: ${err?.message?.slice(0, 60) ?? "unknown"}`);
     }
 
     const recognition = new SpeechRecognition();
@@ -1266,11 +1286,23 @@ export default function InboundLeads() {
                       type="button"
                       variant={listening ? "destructive" : "outline"}
                       className="gap-2"
-                      onClick={listening ? stopListening : startListening}
+                      onClick={() => listening ? stopListening() : void startListening()}
                     >
                       {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                       {listening ? "Stop" : "Mic"}
                     </Button>
+                    {!listening && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1 text-11 px-2"
+                        onClick={() => void startListening({ withTabAudio: true })}
+                        title="Both-sides audio · captures mic + Google Voice tab audio together"
+                      >
+                        🎧 Both sides
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <Textarea

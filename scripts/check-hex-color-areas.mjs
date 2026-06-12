@@ -75,7 +75,7 @@ const AREAS = [
   { dir: "src/components/landing", baseline: 123 },
   { dir: "src/components/dashboard", baseline: 0 },
   { dir: "src/components/layout", baseline: 49 },
-  { dir: "src/components/ui", baseline: 6 },
+  { dir: "src/components/ui", baseline: 0 },
   // Forever-locked at 0 (v24/v25 codemod-cleaned sibling trees)
   { dir: "src/components/recruiter", baseline: 0 },
   { dir: "src/components/admin", baseline: 0 },

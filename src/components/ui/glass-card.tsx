@@ -14,7 +14,7 @@ interface GlassCardProps extends HTMLAttributes<HTMLDivElement> {
  * "Apex still looks glassy / nothing like AgentLink" complaint.
  * Every GlassCard usage inherited:
  *   - backdrop-blur-[12px]   (smoky glass · banned per v22 §10.7)
- *   - border-[#1e293b]       (hard-coded slate, not theme-aware)
+ *   - border-slate-800       (hard-coded slate hex, not theme-aware)
  *   - hover:-translate-y-1   (Y-axis lift on every card · banned per v22 §10.5)
  *   - shadow-[0_8px_30px ...]  (colored glow shadow · banned per v22 §10.7)
  *

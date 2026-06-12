@@ -80,16 +80,27 @@ interface Client {
 
 // v24 palette restraint: 4 colors total — slate (inactive/working) +
 // amber (in-flight/needs-attention) + emerald (sold) + rose (risk/follow-up).
-// Was 8 distinct accents per stage (rainbow). Now mono with slight gradient.
+// wave-77 audit fix: 8 inline tint strings (~600 chars each duplicated) collapsed
+// to 5 shared TINT tokens. Renders identically; eliminates the dark-mode-bloat
+// the v26 audit flagged. Adding a new stage now means picking a token, not
+// hand-typing 6 redundant tw classes.
+const TINT = {
+  slate:       "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700",
+  slateMuted:  "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-800",
+  amber:       "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+  emerald:     "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+  rose:        "bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300 border-rose-200 dark:border-rose-800",
+} as const;
+
 const STAGE_META: Record<string, { label: string; color: string; tint: string }> = {
-  NEW_INITIAL:   { label: "New",        color: "bg-slate-400",   tint: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700" },
-  WORKING:       { label: "Working",    color: "bg-slate-500",   tint: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700" },
-  PITCHED:       { label: "Pitched",    color: "bg-amber-500",   tint: "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
-  ALMOST_THERE:  { label: "Almost",     color: "bg-amber-600",   tint: "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
-  SOLD:          { label: "Sold",       color: "bg-emerald-500", tint: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" },
-  FOLLOW_UP:     { label: "Follow-up",  color: "bg-rose-500",    tint: "bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300 border-rose-200 dark:border-rose-800" },
-  INACTIVE:      { label: "Inactive",   color: "bg-slate-400",   tint: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-800" },
-  UNSORTED:      { label: "Unsorted",   color: "bg-slate-300",   tint: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-800" },
+  NEW_INITIAL:   { label: "New",        color: "bg-slate-400",   tint: TINT.slate },
+  WORKING:       { label: "Working",    color: "bg-slate-500",   tint: TINT.slate },
+  PITCHED:       { label: "Pitched",    color: "bg-amber-500",   tint: TINT.amber },
+  ALMOST_THERE:  { label: "Almost",     color: "bg-amber-600",   tint: TINT.amber },
+  SOLD:          { label: "Sold",       color: "bg-emerald-500", tint: TINT.emerald },
+  FOLLOW_UP:     { label: "Follow-up",  color: "bg-rose-500",    tint: TINT.rose },
+  INACTIVE:      { label: "Inactive",   color: "bg-slate-400",   tint: TINT.slateMuted },
+  UNSORTED:      { label: "Unsorted",   color: "bg-slate-300",   tint: TINT.slateMuted },
 };
 
 function fmtMoney(n: unknown): string {

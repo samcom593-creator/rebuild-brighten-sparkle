@@ -220,10 +220,10 @@ export function GlobalSidebar({
           "flex items-center gap-3 px-3 py-2.5 transition-all duration-200 min-h-[44px] lg:min-h-[40px]",
           "touch-action-manipulation select-none group/nav",
           isActive
-            ? "text-[#22d3a5] bg-white dark:bg-slate-900 border-l-[3px] border-[#22d3a5] shadow-[inset_0_0_20px_hsl(168_80%_50%/0.08)]"
+            ? "text-amber-400 bg-white dark:bg-slate-900 border-l-[3px] border-amber-400 shadow-[inset_0_0_20px_hsl(168_80%_50%/0.08)]"
             : item.special
-              ? "bg-white dark:bg-slate-900 text-[#22d3a5] border border-[#22d3a5]/20 hover:from-[#22d3a5]/25 hover:border-[#22d3a5]/50 hover: rounded-lg mx-1"
-              : "text-[#8395ab] hover:text-[#e2e8f0] hover:bg-white/[0.04] hover:translate-x-0.5",
+              ? "bg-white dark:bg-slate-900 text-amber-400 border border-amber-400/20 hover:from-amber-400/25 hover:border-amber-400/50 hover: rounded-lg mx-1"
+              : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] hover:translate-x-0.5",
           isCollapsed && "justify-center px-2",
         )}
         style={{ touchAction: "manipulation" }}
@@ -231,7 +231,7 @@ export function GlobalSidebar({
         <item.icon
           className={cn(
             "h-[18px] w-[18px] flex-shrink-0 transition-base",
-            item.special && !isActive && "text-[#22d3a5]",
+            item.special && !isActive && "text-amber-400",
             isCollapsed && "group-hover/nav:scale-110",
           )}
         />
@@ -247,10 +247,10 @@ export function GlobalSidebar({
           </span>
         )}
         {isActive && !isCollapsed && (
-          <ChevronRight className="h-4 w-4 ml-auto flex-shrink-0 text-[#22d3a5]" />
+          <ChevronRight className="h-4 w-4 ml-auto flex-shrink-0 text-amber-400" />
         )}
         {item.special && !isActive && !isCollapsed && (
-          <span className="ml-auto h-2 w-2 rounded-full bg-[#22d3a5] animate-pulse flex-shrink-0" />
+          <span className="ml-auto h-2 w-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
         )}
       </Link>
     );
@@ -281,7 +281,7 @@ export function GlobalSidebar({
       >
         <div className="flex flex-col h-full">
           <div className={cn(
-            "flex items-center border-b border-[#1e293b] transition-all",
+            "flex items-center border-b border-slate-800 transition-all",
             isCollapsed ? "justify-center p-4" : "justify-between px-4 py-4",
           )}>
             {!isCollapsed && (
@@ -318,7 +318,7 @@ export function GlobalSidebar({
             <div className="flex items-center gap-1">
               {!isCollapsed && (
                 <ConditionalTooltip label="Inbox">
-                  <NotificationBell className="h-7 w-7 text-[#8395ab] hover:text-[#22d3a5]" />
+                  <NotificationBell className="h-7 w-7 text-slate-400 hover:text-amber-400" />
                 </ConditionalTooltip>
               )}
               {!isCollapsed && (isAdmin || isManager) && (
@@ -327,7 +327,7 @@ export function GlobalSidebar({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-[#22d3a5] hover:bg-[#22d3a5]/10"
+                      className="h-7 w-7 text-amber-400 hover:bg-amber-400/10"
                       style={{ touchAction: "manipulation" }}
                       aria-label="Add agent"
                     >
@@ -341,7 +341,7 @@ export function GlobalSidebar({
                   variant="ghost"
                   size="icon"
                   onClick={onToggle}
-                  className="h-7 w-7 text-[#8395ab] hover:text-[#94a3b8]"
+                  className="h-7 w-7 text-slate-400 hover:text-slate-300"
                   style={{ touchAction: "manipulation" }}
                 >
                   {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -351,13 +351,13 @@ export function GlobalSidebar({
           </div>
 
           {isCollapsed && (isAdmin || isManager) && (
-            <div className="px-2 py-2 border-b border-[#1e293b]">
+            <div className="px-2 py-2 border-b border-slate-800">
               <AddAgentModal
                 trigger={
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-center text-[#22d3a5] hover:bg-[#22d3a5]/10"
+                    className="w-full justify-center text-amber-400 hover:bg-amber-400/10"
                     style={{ touchAction: "manipulation" }}
                     aria-label="Add agent"
                   >
@@ -369,14 +369,14 @@ export function GlobalSidebar({
           )}
 
           {(isAdmin || isManager) && (
-            <div className="px-2 py-2 border-b border-[#1e293b]" ref={searchRef}>
+            <div className="px-2 py-2 border-b border-slate-800" ref={searchRef}>
               {isCollapsed ? (
                 <ConditionalTooltip label="Search Agents">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => { onToggle(); setTimeout(() => setShowSearch(true), 200); }}
-                    className="w-full justify-center text-[#8395ab] hover:text-[#94a3b8]"
+                    className="w-full justify-center text-slate-400 hover:text-slate-300"
                     style={{ touchAction: "manipulation" }}
                   >
                     <Search className="h-4 w-4" />
@@ -385,13 +385,13 @@ export function GlobalSidebar({
               ) : (
                 <div className="relative">
                   <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#475569]" />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-600" />
                     <Input
                       placeholder="Search agents..."
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
                       onFocus={() => setShowSearch(true)}
-                      className="h-8 pl-8 pr-8 text-sm bg-white dark:bg-[#0f172a] border-[#1e293b] text-[#94a3b8] placeholder:text-[#334155]"
+                      className="h-8 pl-8 pr-8 text-sm bg-white dark:bg-slate-900 border-slate-800 text-slate-300 placeholder:text-slate-700"
                     />
                     {searchQuery && (
                       <Button
@@ -405,7 +405,7 @@ export function GlobalSidebar({
                     )}
                   </div>
                   {showSearch && searchResults.length > 0 && (
-                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-[#0f172a] border border-[#1e293b] rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-800 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                       {searchResults.map((result) => (
                         <button
                           key={result.id}
@@ -417,8 +417,8 @@ export function GlobalSidebar({
                           }}
                           className="w-full text-left px-3 py-2 hover:bg-white/[0.04] transition-colors"
                         >
-                          <p className="text-sm font-medium truncate text-[#e2e8f0]">{result.name}</p>
-                          <p className="text-xs text-[#8395ab] truncate">{result.email}</p>
+                          <p className="text-sm font-medium truncate text-slate-200">{result.name}</p>
+                          <p className="text-xs text-slate-400 truncate">{result.email}</p>
                         </button>
                       ))}
                     </div>
@@ -433,14 +433,14 @@ export function GlobalSidebar({
               <div key={section.label}>
                 {!isCollapsed && (
                   <div
-                    className="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[3px] text-[#334155]"
+                    className="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[3px] text-slate-700"
                     style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700 }}
                   >
                     {section.label}
                   </div>
                 )}
                 {isCollapsed && sIdx > 0 && (
-                  <div className="my-2 mx-2 border-t border-[#1e293b]/50" />
+                  <div className="my-2 mx-2 border-t border-slate-800/50" />
                 )}
                 <div className="space-y-0.5">
                   {section.items.map((item) => {
@@ -455,7 +455,7 @@ export function GlobalSidebar({
             <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-6 bg-white dark:bg-slate-900" />
           </nav>
 
-          <div className="border-t border-[#1e293b] p-2">
+          <div className="border-t border-slate-800 p-2">
             {user && !isCollapsed && (isAdmin || isManager) && (
               <div className="mb-2 px-2">
                 <AddAgentModal
@@ -463,7 +463,7 @@ export function GlobalSidebar({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full justify-start gap-2 border-[#22d3a5]/25 bg-[#22d3a5]/10 text-[#22d3a5] hover:bg-[#22d3a5]/15"
+                      className="w-full justify-start gap-2 border-amber-400/25 bg-amber-400/10 text-amber-400 hover:bg-amber-400/15"
                       style={{ touchAction: "manipulation" }}
                     >
                       <Plus className="h-4 w-4" />
@@ -476,10 +476,10 @@ export function GlobalSidebar({
 
             {user && !isCollapsed && (
               <div className="mb-2 px-3 py-2">
-                <p className="text-sm font-medium truncate text-[#e2e8f0]">
+                <p className="text-sm font-medium truncate text-slate-200">
                   {user.user_metadata?.full_name || user.email}
                 </p>
-                <p className="text-xs text-[#8395ab] truncate">{user.email}</p>
+                <p className="text-xs text-slate-400 truncate">{user.email}</p>
               </div>
             )}
 
@@ -487,7 +487,7 @@ export function GlobalSidebar({
               "flex items-center mb-2",
               isCollapsed ? "justify-center px-2" : "justify-between px-3",
             )}>
-              {!isCollapsed && <span className="text-sm text-[#8395ab]">Theme</span>}
+              {!isCollapsed && <span className="text-sm text-slate-400">Theme</span>}
               <ThemeToggle />
             </div>
 
@@ -497,7 +497,7 @@ export function GlobalSidebar({
                 size="sm"
                 onClick={onFullscreenToggle}
                 className={cn(
-                  "w-full mb-1 text-[#8395ab] hover:text-[#94a3b8] hover:bg-white/[0.03]",
+                  "w-full mb-1 text-slate-400 hover:text-slate-300 hover:bg-white/[0.03]",
                   isCollapsed ? "justify-center" : "justify-start px-3",
                 )}
                 style={{ touchAction: "manipulation" }}
@@ -522,7 +522,7 @@ export function GlobalSidebar({
                 size="sm"
                 onClick={handleLogout}
                 className={cn(
-                  "w-full text-[#8395ab] hover:text-red-400 hover:bg-red-500/10",
+                  "w-full text-slate-400 hover:text-red-400 hover:bg-red-500/10",
                   isCollapsed ? "justify-center" : "justify-start px-3",
                 )}
                 style={{ touchAction: "manipulation" }}
@@ -533,9 +533,9 @@ export function GlobalSidebar({
             </ConditionalTooltip>
 
             {!isCollapsed && (
-              <div className="mt-3 pt-3 border-t border-[#1e293b]/50 text-center">
-                <p className="text-[9px] text-[#475569] uppercase tracking-widest">
-                  Powered by <span className="font-semibold text-[#22d3a5]/80">Apex Financial</span>
+              <div className="mt-3 pt-3 border-t border-slate-800/50 text-center">
+                <p className="text-[9px] text-slate-600 uppercase tracking-widest">
+                  Powered by <span className="font-semibold text-amber-400/80">Apex Financial</span>
                 </p>
               </div>
             )}

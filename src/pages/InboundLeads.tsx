@@ -1095,7 +1095,7 @@ export default function InboundLeads() {
       )}
 
       <Dialog open={newClientOpen} onOpenChange={(open) => { setNewClientOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto border-[#1e293b] bg-white dark:bg-[#050b16]">
+        <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto border-slate-800 bg-white dark:bg-[#0A0A0A]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PhoneCall className="h-5 w-5 text-primary" />

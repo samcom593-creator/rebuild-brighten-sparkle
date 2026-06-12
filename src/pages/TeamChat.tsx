@@ -128,7 +128,7 @@ export default function TeamChat() {
                   <div className={cn(
                     "px-3.5 py-2 rounded-md text-sm leading-relaxed break-words bounce-in",
                     mine
-                      ? "bg-white dark:bg-slate-900 text-[#030712] rounded-br-md"
+                      ? "bg-white dark:bg-slate-900 text-gray-950 rounded-br-md"
                       : "bg-muted/40 text-foreground rounded-bl-md",
                   )}>
                     {m.body}

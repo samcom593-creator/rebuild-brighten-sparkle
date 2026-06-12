@@ -71,7 +71,7 @@ const EXCLUDED_FILES = new Set([
 // cleanups land.
 const AREAS = [
   // High-traffic surfaces
-  { dir: "src/pages", baseline: 21 },
+  { dir: "src/pages", baseline: 0 },
   { dir: "src/components/landing", baseline: 123 },
   { dir: "src/components/dashboard", baseline: 0 },
   { dir: "src/components/layout", baseline: 49 },

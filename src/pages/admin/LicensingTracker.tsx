@@ -193,7 +193,7 @@ export default function LicensingTracker() {
       <PageHeader
         title="Licensing Tracker"
         subtitle="8-stage pipeline from Enrolled → Quit. Auto-enrolls on application paid. Per-student exam-readiness rollup lights up Monday when the course player ships (see /business-ops/apex-os-week/specs/PRELICENSING-NEXT-WEEK.md)."
-        icon={<GraduationCap className="w-6 h-6 text-[#22d3a5]" />}
+        icon={<GraduationCap className="w-6 h-6 text-amber-400" />}
       />
 
       <Card className="border-amber-500/30 bg-amber-500/5">

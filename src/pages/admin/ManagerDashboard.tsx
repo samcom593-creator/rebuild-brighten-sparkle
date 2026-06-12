@@ -290,7 +290,7 @@ export default function ManagerDashboard() {
       <PageHeader
         title="Manager Command"
         subtitle="One screen for the manager who runs the room. Recruiting (new apps + contact gaps), Licensing (paid → exam-ready), Production (deals + leaderboard)."
-        icon={<Users className="w-6 h-6 text-[#22d3a5]" />}
+        icon={<Users className="w-6 h-6 text-amber-400" />}
       />
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid grid-cols-3 w-full max-w-md">

@@ -268,7 +268,7 @@ export default function ApexControl() {
   const contentPrompts = useMemo(() => prompts.slice(4), []);
 
   return (
-    <main className="min-h-screen bg-[#020617] text-slate-900 dark:text-slate-100">
+    <main className="min-h-screen bg-[#0A0A0A] text-slate-900 dark:text-slate-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <PageHeader
           eyebrow="Admin control room"

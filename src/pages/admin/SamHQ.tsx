@@ -147,10 +147,10 @@ function TodaySection({ today }: { today: string }) {
   };
 
   return (
-    <Card className="border-[#22d3a5]/30">
+    <Card className="border-amber-400/30">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2 text-xl">
-          <CalIcon className="w-5 h-5 text-[#22d3a5]" />
+          <CalIcon className="w-5 h-5 text-amber-400" />
           TODAY · {new Date(today + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </CardTitle>
         <div className="text-sm text-slate-400">
@@ -272,7 +272,7 @@ function ThisWeekSection({ today }: { today: string }) {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <CalIcon className="w-4 h-4 text-[#22d3a5]" /> THIS WEEK
+          <CalIcon className="w-4 h-4 text-amber-400" /> THIS WEEK
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -284,7 +284,7 @@ function ThisWeekSection({ today }: { today: string }) {
             return (
               <div key={d.date} className={cn(
                 "rounded-md p-2.5 text-center border transition-colors",
-                isToday ? "border-[#22d3a5] bg-[#22d3a5]/10" : "border-white/10 bg-white/[0.02]"
+                isToday ? "border-amber-400 bg-amber-400/10" : "border-white/10 bg-white/[0.02]"
               )}>
                 <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">{dowLabel(d.date)}</div>
                 <div className="text-xl font-bold mt-1">{new Date(d.date + "T12:00:00").getDate()}</div>
@@ -322,7 +322,7 @@ function ShippedSection() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Rocket className="w-4 h-4 text-[#22d3a5]" /> WHAT SHIPPED (LIVE)
+          <Rocket className="w-4 h-4 text-amber-400" /> WHAT SHIPPED (LIVE)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
@@ -343,7 +343,7 @@ function ShippedSection() {
           </ul>
         </div>
         <div className="text-xs text-slate-600 dark:text-slate-300 pt-2 border-t border-white/5">
-          Build + content + bot ships are in the <code className="text-[#22d3a5]">/dashboard</code> What Shipped Today banner and in each bot's ledger. This panel will surface ledger-feed entries once the <code>get-bot-shipped-feed</code> edge fn ships.
+          Build + content + bot ships are in the <code className="text-amber-400">/dashboard</code> What Shipped Today banner and in each bot's ledger. This panel will surface ledger-feed entries once the <code>get-bot-shipped-feed</code> edge fn ships.
         </div>
       </CardContent>
     </Card>
@@ -456,10 +456,10 @@ function NextActionsSection() {
   ].filter(Boolean).slice(0, 3) as Array<{ label: string; href: string; tone: string }>;
 
   return (
-    <Card className="border-[#22d3a5]/30 bg-[#22d3a5]/[0.03]">
+    <Card className="border-amber-400/30 bg-amber-400/[0.03]">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <AlertTriangle className="w-4 h-4 text-[#22d3a5]" /> TOP 3 NEXT ACTIONS
+          <AlertTriangle className="w-4 h-4 text-amber-400" /> TOP 3 NEXT ACTIONS
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -467,7 +467,7 @@ function NextActionsSection() {
           <Link
             key={action.label}
             to={action.href}
-            className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm hover:border-[#22d3a5]/40 transition-colors"
+            className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm hover:border-amber-400/40 transition-colors"
           >
             <span><span className={cn("font-mono mr-2", action.tone)}>#{index + 1}</span>{action.label}</span>
             <span className="text-slate-600 dark:text-slate-300">open</span>
@@ -564,7 +564,7 @@ function BotsSection() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Activity className="w-4 h-4 text-[#22d3a5]" /> BOTS
+          <Activity className="w-4 h-4 text-amber-400" /> BOTS
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-1.5 text-sm">
@@ -578,7 +578,7 @@ function BotsSection() {
           </div>
         ))}
         <div className="pt-2 text-xs text-slate-600 dark:text-slate-300">
-          Telegram bot: {tgUsername ? <span className="text-[#22d3a5]">@{tgUsername}</span> : <span className="text-amber-400">awaiting BotFather token</span>}
+          Telegram bot: {tgUsername ? <span className="text-amber-400">@{tgUsername}</span> : <span className="text-amber-400">awaiting BotFather token</span>}
         </div>
       </CardContent>
     </Card>
@@ -605,7 +605,7 @@ export default function SamHQ() {
       <PageHeader
         title="Sam HQ"
         subtitle="One command surface. Today's must-do, this week, what shipped, what leaks. Edits sync across devices every 60s."
-        icon={<Crown className="w-6 h-6 text-[#22d3a5]" />}
+        icon={<Crown className="w-6 h-6 text-amber-400" />}
       />
 
       <TelegramStatusTile />

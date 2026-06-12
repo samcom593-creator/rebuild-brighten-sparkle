@@ -8,7 +8,7 @@ export default function Contact() {
   usePageTitle("Contact APEX Financial");
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#030712] px-4 py-16 text-white">
+    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] px-4 py-16 text-white">
       <div className="mx-auto max-w-4xl space-y-8">
         <div className="space-y-3 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-teal-300">APEX Financial</p>

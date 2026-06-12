@@ -1,16 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import {
-  Crown,
-  ExternalLink,
-  Phone,
-  Mail,
-  Users,
-  GraduationCap,
-  TrendingUp,
-  Calendar,
-} from "lucide-react";
+import { Crown, ExternalLink } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -305,31 +296,25 @@ function WhaleRow({ row, agent }: { row: WhaleRow & { stage: string; heat: Heat 
           {/* v24 audit fix: state was a Badge — downgraded to plain meta text */}
           {row.state && <span className="text-11 text-muted-foreground">· {row.state}</span>}
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-12 text-slate-500">
+        {/* wave-83 audit fix: 5 Lucide meta icons (Phone/Mail/Users/TrendingUp/Calendar)
+            collapsed — text is fully self-describing, 3x3 icons added noise without aiding scan */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-12 text-slate-500">
           {formattedPhone && (
-            <a href={`tel:${row.phone}`} className="flex items-center gap-1 hover:text-emerald-600">
-              <Phone className="h-3 w-3" /> {formattedPhone}
-            </a>
+            <a href={`tel:${row.phone}`} className="hover:text-emerald-600">{formattedPhone}</a>
           )}
           {row.email && (
-            <a href={`mailto:${row.email}`} className="flex items-center gap-1 hover:text-emerald-600">
-              <Mail className="h-3 w-3" /> {row.email}
-            </a>
+            <a href={`mailto:${row.email}`} className="hover:text-emerald-600 truncate">{row.email}</a>
           )}
           {agent && agent.total_downline_count > 0 && (
-            <span className="flex items-center gap-1">
-              <Users className="h-3 w-3" /> {agent.total_downline_count} downline
+            <span>
+              {agent.total_downline_count} downline
               {agent.direct_downline_count !== agent.total_downline_count ? ` (${agent.direct_downline_count} direct)` : ""}
             </span>
           )}
           {agent && agent.monthly_premium > 0 && (
-            <span className="flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" /> ${Math.round(agent.monthly_premium / 1000)}K/mo
-            </span>
+            <span>${Math.round(agent.monthly_premium / 1000)}K/mo</span>
           )}
-          <span className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" /> applied {formatDistanceToNowStrict(new Date(row.created_at), { addSuffix: true })}
-          </span>
+          <span>applied {formatDistanceToNowStrict(new Date(row.created_at), { addSuffix: true })}</span>
         </div>
         {row.next_action && (
           <p className="text-11 text-slate-700 dark:text-slate-300 mt-1 italic">Next: {row.next_action}</p>

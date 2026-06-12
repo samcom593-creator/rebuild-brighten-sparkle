@@ -73,7 +73,7 @@ const AREAS = [
   // High-traffic surfaces
   { dir: "src/pages", baseline: 21 },
   { dir: "src/components/landing", baseline: 123 },
-  { dir: "src/components/dashboard", baseline: 2 },
+  { dir: "src/components/dashboard", baseline: 0 },
   { dir: "src/components/layout", baseline: 49 },
   { dir: "src/components/ui", baseline: 6 },
   // Forever-locked at 0 (v24/v25 codemod-cleaned sibling trees)

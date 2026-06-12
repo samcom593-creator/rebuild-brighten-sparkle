@@ -65,11 +65,11 @@ export function ManagerHierarchyMtdPanel() {
   }), [managers]);
 
   return (
-    <Card className="ops-card-depth border-[#22d3a5]/20">
+    <Card className="ops-card-depth border-amber-400/20">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Users className="h-4 w-4 text-[#22d3a5]" />
+            <Users className="h-4 w-4 text-amber-400" />
             Manager hierarchy · MTD production
           </CardTitle>
           <Link to="/dashboard/admin/manager" className="text-xs inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">

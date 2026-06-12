@@ -383,7 +383,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const webhookUrl = await resolveDiscordWebhook(supabase, getDiscordAudience(event_type));
+    // v26 NO-SPAM RULE · resolveDiscordWebhook throws "DISCORD_SUPPRESSED"
+    // when the kill switch is on or rate limit is exceeded. Catch + return
+    // ok=false silently — no error to the caller.
+    let webhookUrl: string;
+    try {
+      webhookUrl = await resolveDiscordWebhook(supabase, getDiscordAudience(event_type));
+    } catch (err: any) {
+      if (err?.message === "DISCORD_SUPPRESSED") {
+        console.log(`[discord-webhook-notify] suppressed event_type=${event_type}`);
+        return new Response(
+          JSON.stringify({ ok: true, suppressed: true, event_type }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw err;
+    }
     await sendToDiscord(webhookUrl, payload);
 
     // After deal_closed: auto-check monthly milestones

@@ -41,10 +41,50 @@ async function readSystemSetting(supabase: any, key: string): Promise<string | n
   return value || null;
 }
 
+/**
+ * v26 NO-SPAM RULE · 2026-06-11
+ * Every Discord post path now passes through canPostToDiscord() first.
+ * Honors:
+ *   - system_settings.discord_notifications_paused  (HARD kill switch)
+ *   - should_post_to_discord(category, max_per_hour) (DB-level rate limit)
+ * Returns false → caller must SILENTLY skip. No error, no throw.
+ */
+export async function canPostToDiscord(
+  supabase: any,
+  category: string = "default",
+  maxPerHour: number = 5,
+): Promise<boolean> {
+  // Hard kill switch
+  const paused = await readSystemSetting(supabase, "discord_notifications_paused");
+  if (paused && paused.trim().toLowerCase() === "true") {
+    console.log(`[discord-guard] PAUSED (system_settings.discord_notifications_paused=true)`);
+    return false;
+  }
+  // DB-level rate limit (hourly bucket, max 5 per category per hour by default)
+  const { data, error } = await supabase.rpc("should_post_to_discord", {
+    p_category: category,
+    p_max_per_hour: maxPerHour,
+  });
+  if (error) {
+    console.warn(`[discord-guard] rpc error: ${error.message}; defaulting to ALLOW`);
+    return true; // fail-open to keep critical pings flowing if DB hiccups
+  }
+  if (data === false) {
+    console.log(`[discord-guard] RATE LIMIT exceeded for category=${category} (max ${maxPerHour}/hr)`);
+  }
+  return data !== false;
+}
+
 export async function resolveDiscordWebhook(
   supabase: any,
   audience: DiscordAudience,
 ): Promise<string> {
+  // v26 NO-SPAM RULE · check kill switch + rate limit FIRST. If the guard
+  // returns false, throw a sentinel that callers must catch + ignore.
+  if (!(await canPostToDiscord(supabase, audience))) {
+    throw new Error("DISCORD_SUPPRESSED");
+  }
+
   const envKey = audience === "recruiting" ? "DISCORD_WEBHOOK_URL_RECRUITING" : "DISCORD_WEBHOOK_URL";
   const envValue = Deno.env.get(envKey)?.trim();
   if (isDiscordWebhookUrl(envValue)) return envValue;

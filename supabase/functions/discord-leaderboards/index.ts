@@ -269,7 +269,20 @@ Deno.serve(async (req: Request) => {
     const { type } = await req.json();
     if (!type) throw new Error("Missing type: daily | weekly | pipeline");
 
-    const webhookUrl = await resolveDiscordWebhook(sb, type === "pipeline" ? "recruiting" : "production");
+    // v26 NO-SPAM RULE
+    let webhookUrl: string;
+    try {
+      webhookUrl = await resolveDiscordWebhook(sb, type === "pipeline" ? "recruiting" : "production");
+    } catch (err: any) {
+      if (err?.message === "DISCORD_SUPPRESSED") {
+        console.log(`[discord-leaderboards] suppressed type=${type}`);
+        return new Response(
+          JSON.stringify({ ok: true, suppressed: true, type }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      throw err;
+    }
 
     let payload: Record<string, unknown>;
     if      (type === "daily")    payload = await buildDaily(sb);

@@ -4,11 +4,11 @@ import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, Loader2, Users, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,15 +22,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// PL-SAM-2026-06-03-008 wave-85: collapsed 8-field 4-grouped-section layout down
+// to a single vertical 6-field stack. Removed license-status select (was always
+// defaulting to "unknown" — we ask after first contact instead) and the
+// "How do you know them?" relationship dropdown (zero signal upfront).
+// Mobile-first vertical scan, one decision per line, ship in <30 seconds.
 const schema = z
   .object({
     firstName: z.string().min(2, "First name required").max(50),
     lastName: z.string().min(2, "Last name required").max(50),
     email: z.string().email("Valid email").optional().or(z.literal("")),
     phone: z.string().optional(),
-    state: z.string().min(2),
-    license: z.enum(["licensed", "unlicensed", "unknown"]),
-    relationship: z.string().optional(),
+    state: z.string().min(2, "Pick a state"),
     notes: z.string().max(2000).optional(),
   })
   .refine(
@@ -52,7 +55,6 @@ export default function ReferralSubmit() {
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { license: "unknown" },
   });
 
   async function onSubmit(values: FormData) {
@@ -64,8 +66,8 @@ export default function ReferralSubmit() {
         p_email: values.email || null,
         p_phone: values.phone || null,
         p_state: values.state,
-        p_license: values.license,
-        p_relationship: values.relationship ?? null,
+        p_license: "unknown",
+        p_relationship: null,
         p_notes: values.notes ?? null,
       });
       if (error) throw error;
@@ -120,121 +122,86 @@ export default function ReferralSubmit() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-2xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-xl mx-auto">
       <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate(-1)}>
         <ArrowLeft className="h-4 w-4 mr-1" /> Back
       </Button>
 
-      {/* PL-064: surface the $300 / first $10k bonus prominently above the
-          form so referrers see the deal before they fill anything in. */}
-      <div className="mb-4 rounded-md border border-primary/40 bg-white dark:bg-slate-900 p-4">
+      <div className="mb-5 rounded-md border border-primary/40 bg-white dark:bg-slate-900 p-4">
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Referral bonus</p>
         <h2 className="text-lg font-bold mt-1">$300 when your referral hits their first $10k in production.</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Paid out automatically when the agent you sent crosses the $10k AP mark. No paperwork — we track it for you in your <span className="text-foreground">My Referrals</span> tab.
+          Paid automatically when the agent you sent crosses $10k AP. We track it for you in <span className="text-foreground">My Referrals</span>.
         </p>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" /> Submit a referral
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Send us someone who could win in this business. We move fast — first contact inside 24 hours.
+        <CardContent className="p-5 sm:p-6">
+          <h1 className="text-xl font-bold mb-1">Send us someone who could win.</h1>
+          <p className="text-sm text-muted-foreground mb-5">
+            First contact in 24 hours. Takes 30 seconds.
           </p>
-        </CardHeader>
-        <CardContent>
+
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="firstName">First name *</Label>
-                <Input id="firstName" {...form.register("firstName")} />
-                {form.formState.errors.firstName && (
-                  <p className="text-xs text-destructive">{form.formState.errors.firstName.message}</p>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="lastName">Last name *</Label>
-                <Input id="lastName" {...form.register("lastName")} />
-                {form.formState.errors.lastName && (
-                  <p className="text-xs text-destructive">{form.formState.errors.lastName.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" {...form.register("email")} />
-                {form.formState.errors.email && (
-                  <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" type="tel" {...form.register("phone")} />
-              </div>
-            </div>
-            <p className="text-[11px] text-muted-foreground -mt-2">Need at least one — email or phone.</p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>State *</Label>
-                <Select
-                  value={form.watch("state")}
-                  onValueChange={(v) => form.setValue("state", v, { shouldValidate: true })}
-                >
-                  <SelectTrigger><SelectValue placeholder="Pick a state" /></SelectTrigger>
-                  <SelectContent>
-                    {US_STATES.map((s: any) => (
-                      <SelectItem key={s.value ?? s} value={s.value ?? s}>{s.label ?? s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {form.formState.errors.state && (
-                  <p className="text-xs text-destructive">{form.formState.errors.state.message}</p>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label>License status</Label>
-                <Select
-                  value={form.watch("license")}
-                  onValueChange={(v) => form.setValue("license", v as FormData["license"], { shouldValidate: true })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unlicensed">Not licensed</SelectItem>
-                    <SelectItem value="licensed">Licensed</SelectItem>
-                    <SelectItem value="unknown">Not sure</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="firstName">First name *</Label>
+              <Input id="firstName" autoComplete="given-name" {...form.register("firstName")} />
+              {form.formState.errors.firstName && (
+                <p className="text-xs text-destructive">{form.formState.errors.firstName.message}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="relationship">How do you know them?</Label>
+              <Label htmlFor="lastName">Last name *</Label>
+              <Input id="lastName" autoComplete="family-name" {...form.register("lastName")} />
+              {form.formState.errors.lastName && (
+                <p className="text-xs text-destructive">{form.formState.errors.lastName.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="phone">Phone</Label>
+              <Input id="phone" type="tel" autoComplete="tel" {...form.register("phone")} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
+              <p className="text-[11px] text-muted-foreground">Phone or email — at least one.</p>
+              {form.formState.errors.email && (
+                <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>State *</Label>
               <Select
-                value={form.watch("relationship") ?? ""}
-                onValueChange={(v) => form.setValue("relationship", v)}
+                value={form.watch("state")}
+                onValueChange={(v) => form.setValue("state", v, { shouldValidate: true })}
               >
-                <SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Pick a state" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="friend">Friend</SelectItem>
-                  <SelectItem value="family">Family</SelectItem>
-                  <SelectItem value="coworker">Coworker</SelectItem>
-                  <SelectItem value="former_colleague">Former colleague</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  {US_STATES.map((s: any) => (
+                    <SelectItem key={s.value ?? s} value={s.value ?? s}>{s.label ?? s}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {form.formState.errors.state && (
+                <p className="text-xs text-destructive">{form.formState.errors.state.message}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="notes">Notes (what makes them a good fit?)</Label>
-              <Textarea id="notes" rows={3} {...form.register("notes")} />
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                rows={3}
+                placeholder="Anything we should know? (background, why they'd be a fit, when to reach out)"
+                {...form.register("notes")}
+              />
             </div>
 
-            <Button type="submit" disabled={submitting} className="w-full">
+            <Button type="submit" disabled={submitting} className="w-full" size="lg">
               {submitting ? (
                 <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Submitting…</span>
               ) : (

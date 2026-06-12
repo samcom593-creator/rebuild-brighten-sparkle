@@ -27,6 +27,7 @@
     "check:motion-areas": "node scripts/check-motion-areas.mjs",
     "check:focus-ring-areas": "node scripts/check-focus-ring-areas.mjs",
     "check:rainbow-title-areas": "node scripts/check-rainbow-title-areas.mjs",
+    "check:hex-color-areas": "node scripts/check-hex-color-areas.mjs",
     "smoke": "node scripts/route-smoke.mjs",
     "smoke:prod": "BASE=https://apex-financial.org node scripts/route-smoke.mjs",
     "lighthouse:prod": "node scripts/lighthouse-prod.mjs",
@@ -34,7 +35,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "prepare": "git config core.hooksPath .husky 2>/dev/null || true",
-    "verify:core": "npm run check:forbidden-language && npm run check:metric-truth && npm run check:sync-reliability && npm run check:unsafe-supabase-catch && npm run check:vsl-sync && npm run check:cold-landing-sonner && npm run check:cold-landing-supabase-queryFn && npm run check:vendor-icons-landing-census && npm run check:landing-css-size && npm run check:bg-gradient-cards && npm run check:bg-gradient-areas && npm run check:shadow-areas && npm run check:motion-areas && npm run check:focus-ring-areas && npm run check:rainbow-title-areas && npx tsc --noEmit && npm run build"
+    "verify:core": "npm run check:forbidden-language && npm run check:metric-truth && npm run check:sync-reliability && npm run check:unsafe-supabase-catch && npm run check:vsl-sync && npm run check:cold-landing-sonner && npm run check:cold-landing-supabase-queryFn && npm run check:vendor-icons-landing-census && npm run check:landing-css-size && npm run check:bg-gradient-cards && npm run check:bg-gradient-areas && npm run check:shadow-areas && npm run check:motion-areas && npm run check:focus-ring-areas && npm run check:rainbow-title-areas && npm run check:hex-color-areas && npx tsc --noEmit && npm run build"
   },
   "dependencies": {
     "@alloc/quick-lru": "5.2.0",

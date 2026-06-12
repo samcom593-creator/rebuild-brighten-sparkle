@@ -249,3 +249,27 @@ if match '^(src/(pages|components/(dashboard|landing|recruiter|admin|agent|award
   echo "[pre-commit] Tracked component-tree change — running check:rainbow-title-areas…"
   node scripts/check-rainbow-title-areas.mjs
 fi
+
+# ---------- check-hex-color-areas (wave-78) ----------
+# Trigger: any change in the 22 wave-65-tracked component trees, or the script
+# itself. Same tracked-area set as wave-65/67/68/69 by design.
+# Mechanic: locks the Brand-Bible 6-color palette (#0A0A0A bg / #C9A961 accent /
+# #8A7340 deep / #FFFFFF text / #9A9A9A mid / #B83A2E alert) by scanning
+# Tailwind arbitrary-bracket syntax `[#XXXXXX]` per area and failing if the
+# count of non-palette hexes exceeds each area's baseline. 17 of 22 areas at
+# baseline 0 (forever-locked). 5 with non-zero baselines (pages 21, landing
+# 123, dashboard 2, layout 49, ui 6) that can only shrink. WhatShippedTodayBanner.tsx
+# exempted (narrative prose quoting historical hex literals — immutable docs).
+# Why this matters: wave-9 audit a11y pass discovered legacy non-palette hexes
+# (#22d3a5 teal-mint, #030712 slate-bg, #1e293b border, #94a3b8 text, etc.)
+# embedded in 200+ spots. Every Lovable/AI-completion regression silently
+# re-introduces them — nothing in CI catches palette drift. This gate makes it
+# visible at commit time, before push. Same persistence-mandate drift class
+# as bg-gradient + shadow + motion + focus-ring + rainbow-title gates. Cost
+# when fired: ~120ms (linear in tracked-area files).
+# Opt-in marker per line for 3rd-party brand hexes (FB blue, X teal) or
+# deliberate exceptions: `palette-allow:<reason>` same-line or line above.
+if match '^(src/(pages|components/(dashboard|landing|recruiter|admin|agent|awards|callcenter|celebrations|command|contentwheel|course|crm|deals|finances|layout|next-step|pipeline|plaque|profile|system-health|ui))/.+\.(tsx?|jsx?)$|scripts/check-hex-color-areas\.mjs$)'; then
+  echo "[pre-commit] Tracked component-tree change — running check:hex-color-areas…"
+  node scripts/check-hex-color-areas.mjs
+fi

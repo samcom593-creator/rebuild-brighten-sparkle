@@ -137,6 +137,8 @@ export function GlobalSidebar({
         { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
         { icon: Trophy, label: "Challenges", href: "/dashboard/challenges", special: true },
         { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
+        { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
+        { icon: Users, label: "Team Analytics", href: "/dashboard/team-analytics", special: true },
         { icon: Network, label: "Builders", href: "/dashboard/builders", special: true },
         { icon: UserCog, label: "Managers", href: "/dashboard/managers" },
         { icon: Crown, label: "Agency Owners", href: "/dashboard/agency-owners" },
@@ -162,6 +164,7 @@ export function GlobalSidebar({
       );
       more.push(
         { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
+        { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
         { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },

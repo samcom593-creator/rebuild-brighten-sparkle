@@ -412,28 +412,31 @@ export default function BookOfBusiness() {
       {/* PL-047 — surface AgentLink sync prompt for non-admin agents w/o data */}
       <AgentLinkConnectionPrompt />
 
-      {/* Totals strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <GlassCard className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Deals</div>
-          <div className="text-2xl font-bold tabular-nums">{filtered.length}</div>
-        </GlassCard>
-        <GlassCard className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Monthly</div>
-          <div className="text-2xl font-bold tabular-nums text-emerald-400">{fmt$(totalMonthly)}</div>
-        </GlassCard>
-        <GlassCard className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Annual (ALP)</div>
-          <div className="text-2xl font-bold tabular-nums text-emerald-400">{fmt$(totalALP)}</div>
-        </GlassCard>
-        <GlassCard className="p-3">
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">APEX / AgentLink</div>
-          <div className="text-2xl font-bold tabular-nums">
-            {apexCount}
-            <span className="text-muted-foreground"> / </span>
-            {agentLinkCount}
-          </div>
-        </GlassCard>
+      {/* v26 audit fix · AgentLink-style inline totals strip.
+          Was: 4 tall GlassCards stacked at ~76px each.
+          Now: single inline chip row like AgentLink's "Deals (1276)" header
+          + tiny labels for ALP / Monthly / Source split. ~32px total. */}
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 px-1 py-2 border-b border-border/40">
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-bold tabular-nums">{filtered.length}</span>
+          <span className="text-12 text-muted-foreground">deals</span>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-15 font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{fmt$(totalALP)}</span>
+          <span className="text-11 text-muted-foreground uppercase tracking-wide">ALP</span>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-15 font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{fmt$(totalMonthly)}</span>
+          <span className="text-11 text-muted-foreground uppercase tracking-wide">Monthly</span>
+        </div>
+        <div className="flex items-baseline gap-2 ml-auto">
+          <span className="text-11 text-muted-foreground">Source:</span>
+          <span className="text-12 tabular-nums">
+            <span className="font-semibold">{apexCount}</span> APEX
+            <span className="text-muted-foreground mx-1">·</span>
+            <span className="font-semibold">{agentLinkCount}</span> AgentLink
+          </span>
+        </div>
       </div>
 
       {syncErrors > 0 && (

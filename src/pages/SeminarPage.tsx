@@ -149,6 +149,52 @@ export default function SeminarPage() {
     }
   }
 
+  // PL-SAM-2026-06-03-009: Hide seminar UI for unlicensed prospects. The
+  // seminar is the last step before hire — unlicensed people need a license
+  // first, not a 60-minute group interview. Default form state is
+  // "unlicensed" so most landings hit this gate; one-click flip to
+  // "licensed" exits the gate for already-licensed visitors who arrived
+  // with a stale URL default.
+  const watchedLicense = form.watch("licenseStatus");
+
+  if (!success && watchedLicense === "unlicensed") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-xl"
+        >
+          <GlassCard className="p-6 sm:p-8 space-y-5 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <Crown className="h-6 w-6 text-primary" />
+              <span className="text-base font-bold" style={{ fontFamily: "Syne" }}>APEX Financial</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
+              You need your license first.
+            </h1>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              The seminar is the final step before we hire you. Get licensed first — it takes about 3 days — then we put you on the seminar and write you a check.
+            </p>
+            <Link to="/get-licensed" className="block">
+              <GradientButton className="w-full text-base h-14" size="lg">
+                Start prelicensing course
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </GradientButton>
+            </Link>
+            <button
+              type="button"
+              onClick={() => form.setValue("licenseStatus", "licensed", { shouldValidate: true })}
+              className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
+            >
+              I'm already licensed → continue to seminar signup
+            </button>
+          </GlassCard>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (success) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">

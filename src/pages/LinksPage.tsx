@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Crown, Instagram, MessageCircle, Video, Users, Sparkles, ArrowRight,
-  Loader2, CheckCircle2, X, Dumbbell, Cpu, Briefcase, Heart
+  Loader2, CheckCircle2, X, Dumbbell, Heart
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,21 +55,9 @@ const offerCards = [
     accentColor: "text-amber-500",
   },
   {
-    icon: Cpu,
-    title: "Our Systems",
-    subtitle: "See the tech & tools powering our agency",
-    href: "/seminar",
-    gradient: "from-blue-500/15 to-indigo-500/10",
-    border: "border-blue-500/30",
-    iconBg: "bg-white dark:bg-slate-900",
-    iconColor: "text-white",
-    glow: "hover:",
-    accentColor: "text-blue-500",
-  },
-  {
     icon: Heart,
     title: "Book a Call",
-    subtitle: "Chat 1-on-1 about your goals",
+    subtitle: "Talk to Sam 1-on-1 about your goals",
     href: "/schedule-call",
     gradient: "from-rose-500/15 to-pink-500/10",
     border: "border-rose-500/30",
@@ -198,30 +186,30 @@ export default function LinksPage() {
                     </div>
                     <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-amber-500/20 mb-5">
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        <span className="font-semibold text-foreground">An overall life makeover</span> — from out of shape and financially stuck to highly successful, in peak fitness, and financially free.
+                        <span className="font-semibold text-foreground">Body, mind, and money.</span> A small circle that holds you to the standard while you rebuild all three.
                       </p>
                     </div>
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                           <Label htmlFor="ec-fn" className="text-xs">First Name *</Label>
-                          <Input id="ec-fn" value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} placeholder="First" className="bg-input" />
+                          <Input id="ec-fn" value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} placeholder="First" className="bg-input" autoComplete="given-name" />
                           {errors.firstName && <p className="text-xs text-destructive">{errors.firstName}</p>}
                         </div>
                         <div className="space-y-1.5">
                           <Label htmlFor="ec-ln" className="text-xs">Last Name *</Label>
-                          <Input id="ec-ln" value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} placeholder="Last" className="bg-input" />
+                          <Input id="ec-ln" value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} placeholder="Last" className="bg-input" autoComplete="family-name" />
                           {errors.lastName && <p className="text-xs text-destructive">{errors.lastName}</p>}
                         </div>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="ec-email" className="text-xs">Email *</Label>
-                        <Input id="ec-email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="you@email.com" className="bg-input" />
+                        <Input id="ec-email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="you@email.com" className="bg-input" autoComplete="email" />
                         {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="ec-phone" className="text-xs">Phone *</Label>
-                        <Input id="ec-phone" type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="(555) 123-4567" className="bg-input" />
+                        <Input id="ec-phone" type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="(555) 123-4567" className="bg-input" autoComplete="tel" />
                         {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
                       </div>
                       <div className="space-y-1.5">

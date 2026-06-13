@@ -183,8 +183,8 @@ export default function StateCareerLanding() {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link to="/seminar">
-                Attend the next seminar
+              <Link to="/schedule-call">
+                Talk to a recruiter
               </Link>
             </Button>
           </div>

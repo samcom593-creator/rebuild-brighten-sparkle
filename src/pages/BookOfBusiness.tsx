@@ -448,8 +448,11 @@ export default function BookOfBusiness() {
         </GlassCard>
       )}
 
+      {/* WAVE B5 · Chargeback widget compact header by default (was always-expanded).
+          Auto-shows full content only when chargebacks exist OR user expands.
+          Saves ~80-120px vertical when there are zero chargebacks. */}
       {/* PL-043 — period chargeback widget (custom date range) */}
-      <GlassCard className="p-4 border-rose-500/30 bg-rose-500/5">
+      <GlassCard className={`p-4 border-rose-500/30 bg-rose-500/5 ${chargebacks.length === 0 && !cbLoading ? "py-2" : ""}`}>
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <div className="flex items-center gap-2">
             <TrendingDown className="h-4 w-4 text-rose-300" />

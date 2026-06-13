@@ -51,6 +51,15 @@ interface Carrier {
   avg_deal_size: string;
 }
 
+interface Challenge {
+  period: "daily" | "weekly" | "monthly" | "quarterly";
+  current_premium: string;
+  target_premium: string;
+  current_deals: number;
+  target_deals: number;
+  period_end_at: string;
+}
+
 interface Insights {
   top_carrier_name: string | null;
   top_carrier_share_pct: string;
@@ -106,6 +115,18 @@ export default function BusinessAnalytics() {
   });
   const ins = insights.data;
 
+  const challenges = useQuery({
+    queryKey: ["sales-challenges"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_sales_challenges" as any)
+        .select("period, current_premium, target_premium, current_deals, target_deals, period_end_at");
+      if (error) throw error;
+      return (data ?? []) as unknown as Challenge[];
+    },
+    refetchInterval: 5 * 60_000,
+  });
+
   const s = summary.data;
   const growth = Number(s?.growth_pct_mom ?? 0);
   const growthPositive = growth >= 0;
@@ -128,6 +149,35 @@ export default function BusinessAnalytics() {
           </div>
         }
       />
+
+      {/* WAVE B1 · AI-Powered Sales Challenges — mirrors AgentLink's flagship
+          motivator. 4 tiles: Daily / Weekly / Monthly / Quarterly. Each shows
+          % to target, premium progress, deal count, and time remaining.
+          Targets are formula-driven (no manual config): daily = MTD pace,
+          weekly = last week, monthly/quarterly = prior period × 1.1 (10% growth). */}
+      {challenges.isLoading ? (
+        <div className="grid gap-3 md:grid-cols-4">
+          <Skeleton className="h-28" /><Skeleton className="h-28" />
+          <Skeleton className="h-28" /><Skeleton className="h-28" />
+        </div>
+      ) : (challenges.data?.length ?? 0) > 0 ? (
+        <div>
+          <div className="flex items-baseline justify-between mb-2 px-0.5">
+            <h2 className="text-12 uppercase tracking-wider font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" />
+              AI-Powered Sales Challenges
+            </h2>
+            <span className="text-11 text-muted-foreground">live · auto-targets from your pace</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-4">
+            {["daily","weekly","monthly","quarterly"].map((p) => {
+              const c = challenges.data!.find((x) => x.period === p);
+              if (!c) return null;
+              return <ChallengeTile key={p} challenge={c} />;
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {/* v26 Trophy Cabinet · mirrors AgentLink's yellow streak banner.
           Shows the consecutive-day deal streak this month + MTD numbers.
@@ -332,6 +382,53 @@ export default function BusinessAnalytics() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ChallengeTile({ challenge: c }: { challenge: Challenge }) {
+  const current = Number(c.current_premium);
+  const target = Number(c.target_premium) || 1;
+  const pct = Math.min(150, Math.round((current / target) * 100));
+  const dealsPct = Math.min(150, Math.round((c.current_deals / Math.max(1, c.target_deals)) * 100));
+  const onTrack = pct >= 100;
+  const close = pct >= 70 && !onTrack;
+  // Days/hours remaining
+  const end = new Date(c.period_end_at);
+  const msLeft = end.getTime() - Date.now();
+  const daysLeft = Math.max(0, Math.floor(msLeft / (24 * 60 * 60 * 1000)));
+  const hoursLeft = Math.max(0, Math.floor(msLeft / (60 * 60 * 1000)));
+  const timeLabel = c.period === "daily"
+    ? `${hoursLeft}h left`
+    : c.period === "weekly"
+    ? `${daysLeft}d left`
+    : `${daysLeft}d left`;
+  const periodLabel = c.period.charAt(0).toUpperCase() + c.period.slice(1);
+  const accent = onTrack ? "emerald" : close ? "amber" : "slate";
+  const barColor = accent === "emerald"
+    ? "bg-emerald-500"
+    : accent === "amber"
+    ? "bg-amber-500"
+    : "bg-slate-500";
+  return (
+    <Card className={`border ${onTrack ? "border-emerald-500/40" : close ? "border-amber-500/40" : "border-slate-300 dark:border-slate-700"} bg-white dark:bg-slate-900`}>
+      <CardContent className="p-3.5">
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-11 uppercase tracking-wider font-bold text-slate-500">{periodLabel}</p>
+          <span className={`text-11 font-bold tabular-nums ${onTrack ? "text-emerald-600 dark:text-emerald-400" : close ? "text-amber-600 dark:text-amber-400" : "text-slate-500"}`}>{pct}%</span>
+        </div>
+        <p className="text-lg font-bold tabular-nums">
+          {fmtUsd(current, true)}
+          <span className="text-11 font-normal text-muted-foreground"> / {fmtUsd(target, true)}</span>
+        </p>
+        <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+          <div className={`h-full ${barColor} transition-all`} style={{ width: `${Math.min(100, pct)}%` }} />
+        </div>
+        <p className="text-11 text-muted-foreground mt-2 flex items-center justify-between">
+          <span>{c.current_deals} / {c.target_deals} deals · {dealsPct}%</span>
+          <span className="text-11 tabular-nums">{timeLabel}</span>
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 

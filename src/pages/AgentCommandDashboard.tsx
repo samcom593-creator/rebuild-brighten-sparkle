@@ -1204,10 +1204,23 @@ function AgencyCommandView() {
           }
           accent="primary"
           actions={
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-amber-500/15 text-amber-300 border-amber-400/50 font-semibold">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 mr-1.5 animate-pulse" /> Live · 60s refresh
-              </Badge>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* WAVE A3 · period switcher moved into PageHeader actions
+                  to drop a full zone. KPIs/Trend/Leaderboard all key off this. */}
+              <div className="grid grid-cols-4 gap-0.5 rounded-md border border-border/60 bg-muted/30 p-0.5">
+                {AGENCY_PERIODS.map((option) => (
+                  <Button
+                    key={option.value}
+                    type="button"
+                    size="sm"
+                    variant={period === option.value ? "default" : "ghost"}
+                    className="h-7 px-2 text-11"
+                    onClick={() => setPeriod(option.value)}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
               <Button asChild variant="outline" size="sm">
                 <Link to="/dashboard/command">CEO panel <ArrowRight className="h-4 w-4 ml-1.5" /></Link>
               </Button>
@@ -1216,50 +1229,16 @@ function AgencyCommandView() {
         />
       </div>
 
-      <GlassCard className="p-3 sm:p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Owner metric window</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              KPIs, top producers, licensed hires, and manager share are reading <span className="font-semibold text-foreground">{periodBounds.label}</span>.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="grid grid-cols-4 gap-1 rounded-lg border border-border/60 bg-muted/30 p-1">
-              {AGENCY_PERIODS.map((option) => (
-                <Button
-                  key={option.value}
-                  type="button"
-                  size="sm"
-                  variant={period === option.value ? "default" : "ghost"}
-                  className="h-8 px-2 text-xs"
-                  onClick={() => setPeriod(option.value)}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-            {period === "custom" && (
-              <div className="grid grid-cols-2 gap-2 sm:w-[17rem]">
-                <Input
-                  type="date"
-                  value={customStart}
-                  onChange={(e) => setCustomStart(e.target.value)}
-                  className="h-9 text-xs"
-                  aria-label="Custom period start"
-                />
-                <Input
-                  type="date"
-                  value={customEnd}
-                  onChange={(e) => setCustomEnd(e.target.value)}
-                  className="h-9 text-xs"
-                  aria-label="Custom period end"
-                />
-              </div>
-            )}
-          </div>
+      {/* Custom-period date inputs appear only when 'custom' picked, as a
+          single skinny strip — not a full card. Saves a zone. */}
+      {period === "custom" && (
+        <div className="flex flex-wrap items-center gap-2 px-1 py-1 border-l-2 border-l-primary/40 bg-primary/[0.03] rounded-r-md">
+          <span className="text-11 text-muted-foreground">Custom range:</span>
+          <Input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-8 w-36 text-11" aria-label="Custom period start" />
+          <span className="text-11 text-muted-foreground">→</span>
+          <Input type="date" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} className="h-8 w-36 text-11" aria-label="Custom period end" />
         </div>
-      </GlassCard>
+      )}
 
       {/* v24 Wave 3 audit fix: the 3-tile AgentLink hero band was collapsed
           into the 4-tile period grid below. Showing today/week/month twice

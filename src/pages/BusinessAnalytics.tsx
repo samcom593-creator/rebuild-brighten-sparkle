@@ -61,6 +61,14 @@ interface Challenge {
   period_end_at: string;
 }
 
+interface TrophyCabinet {
+  daily_wins: number;
+  weekly_wins: number;
+  monthly_wins: number;
+  quarterly_wins: number;
+  total_wins: number;
+}
+
 interface Insights {
   top_carrier_name: string | null;
   top_carrier_share_pct: string;
@@ -128,6 +136,20 @@ export default function BusinessAnalytics() {
     refetchInterval: 5 * 60_000,
   });
 
+  const trophy = useQuery({
+    queryKey: ["trophy-cabinet"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_trophy_cabinet" as any)
+        .select("daily_wins, weekly_wins, monthly_wins, quarterly_wins, total_wins")
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as TrophyCabinet;
+    },
+    refetchInterval: 5 * 60_000,
+  });
+  const tc = trophy.data;
+
   const s = summary.data;
   const growth = Number(s?.growth_pct_mom ?? 0);
   const growthPositive = growth >= 0;
@@ -180,33 +202,48 @@ export default function BusinessAnalytics() {
         </div>
       ) : null}
 
-      {/* v26 Trophy Cabinet · mirrors AgentLink's yellow streak banner.
-          Shows the consecutive-day deal streak this month + MTD numbers.
-          When streak = days_in_month_elapsed, the team has written a deal
-          EVERY DAY this month — gold treatment. */}
-      {insights.isLoading ? (
-        <Skeleton className="h-16 w-full rounded-md" />
-      ) : ins ? (
+      {/* WAVE 100x · Trophy Cabinet UPGRADED · mirrors AgentLink's actual layout.
+          AgentLink shows: "20 Total · Daily 16 · Weekly 4 · Monthly 0 · Quarterly 0"
+          Ours: cumulative win counts from v_trophy_cabinet (live SQL). PERFECT
+          gold treatment when current streak = days elapsed.
+          Win definitions:
+          - Daily = days this month with ≥1 deal
+          - Weekly = weeks YTD with ≥5 deals
+          - Monthly = months YTD that beat the prior month's premium
+          - Quarterly = quarters YTD that beat the prior quarter's premium */}
+      {insights.isLoading || trophy.isLoading ? (
+        <Skeleton className="h-24 w-full rounded-md" />
+      ) : ins && tc ? (
         <div className={`rounded-md border-2 p-4 ${
           Number(ins.streak_days) >= Number(ins.days_in_month_elapsed) - 1
             ? "border-amber-400 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-amber-500/15 dark:from-amber-500/20 dark:to-amber-500/20" // bg-gradient-card-allow:trophy-cabinet-perfect-month-gold-banner
             : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
         }`}>
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-2xl">🏆</span>
+          <div className="flex items-start gap-4 flex-wrap">
+            <span className="text-2xl shrink-0">🏆</span>
             <div className="flex-1 min-w-0">
-              <p className="text-11 uppercase tracking-wider font-bold text-amber-700 dark:text-amber-300">Trophy Cabinet</p>
-              <p className="text-15 font-bold text-foreground">
-                <span className="tabular-nums">{ins.streak_days}</span>
-                <span className="text-muted-foreground"> / </span>
-                <span className="tabular-nums">{ins.days_in_month_elapsed}</span>
-                <span className="text-13 font-normal text-muted-foreground"> days with a deal this month</span>
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <p className="text-11 uppercase tracking-wider font-bold text-amber-700 dark:text-amber-300">Trophy Cabinet</p>
+                <span className="text-22 font-extrabold tabular-nums text-amber-600 dark:text-amber-400">{tc.total_wins}</span>
+                <span className="text-11 text-muted-foreground uppercase tracking-wide">Total wins</span>
                 {Number(ins.streak_days) >= Number(ins.days_in_month_elapsed) - 1 && (
-                  <span className="ml-2 text-amber-600 dark:text-amber-400 font-bold">· PERFECT</span>
+                  <span className="text-11 text-amber-600 dark:text-amber-400 font-bold">· PERFECT MONTH</span>
                 )}
+              </div>
+              <div className="flex flex-wrap gap-4 mt-2 text-12">
+                <span><span className="font-bold tabular-nums">{tc.daily_wins}</span> <span className="text-muted-foreground">Daily</span></span>
+                <span className="text-muted-foreground">·</span>
+                <span><span className="font-bold tabular-nums">{tc.weekly_wins}</span> <span className="text-muted-foreground">Weekly</span></span>
+                <span className="text-muted-foreground">·</span>
+                <span><span className="font-bold tabular-nums">{tc.monthly_wins}</span> <span className="text-muted-foreground">Monthly</span></span>
+                <span className="text-muted-foreground">·</span>
+                <span><span className="font-bold tabular-nums">{tc.quarterly_wins}</span> <span className="text-muted-foreground">Quarterly</span></span>
+              </div>
+              <p className="text-11 text-muted-foreground mt-1.5">
+                Streak: <span className="font-semibold text-foreground tabular-nums">{ins.streak_days}/{ins.days_in_month_elapsed}</span> days with a deal this month
               </p>
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <p className="text-11 uppercase tracking-wider font-semibold text-slate-500">MTD Premium</p>
               <p className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{fmtUsd(Number(ins.team_premium_30d), true)}</p>
             </div>

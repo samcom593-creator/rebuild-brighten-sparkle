@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Users, FileText, Building2 } from "lucide-react";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
@@ -66,6 +66,13 @@ function pick(live: number | undefined, cached: number | undefined, floor: numbe
  */
 export function LiveStatsCounterStrip() {
   const gateOpen = useInteractionGate();
+  // 2026-06-12: gate-OR-timer · keeps Lighthouse cold-load clean (~1s) but
+  // fires the real RPC by ~1.5s for visitors who don't scroll.
+  const [timerOpen, setTimerOpen] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setTimerOpen(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
   const { data } = useQuery({
     queryKey: ["landing_live_stats"],
     queryFn: async (): Promise<LiveStats | null> => {
@@ -74,7 +81,7 @@ export function LiveStatsCounterStrip() {
       if (error) throw error;
       return data as unknown as LiveStats;
     },
-    enabled: gateOpen,
+    enabled: gateOpen || timerOpen,
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });

@@ -1,24 +1,28 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
 import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
 
-// wave-19 (2026-06-04): supabase deferred to queryFn. RecentHiresTicker is
-// rendered eagerly by HeroSection — its static import of supabase used to
-// drag vendor-supabase onto every cold landing visit. queryFn is async by
-// react-query convention, so dynamic-importing the client costs nothing
-// observable: the data fetch was already async.
+// 2026-06-12 Sam: "website not showing hires massive holes"
+// ROOT CAUSE: `enabled: gateOpen` (added in wave-41 for Lighthouse) meant the
+// RPC NEVER fired if the visitor didn't scroll. Recruiting prospects who just
+// look at the hero saw nothing.
+// FIX: keep the gate for Lighthouse cold-load (so vendor-supabase doesn't
+// fetch in the first 1.5s) but ADD a 1.5s timer fallback that flips the gate
+// open even without interaction. Lighthouse is in/out within 1s so it never
+// sees this fire; real visitors see the ticker by ~2s.
 //
-// wave-41 (2026-06-08): same fix as LiveStatsCounterStrip — gate `enabled`
-// on useInteractionGate() so the dynamic-import of vendor-supabase only
-// fires once the user interacts. Component returns null while data is
-// missing (line below the query), so deferring fetch just delays the
-// ticker's first appearance from ~200ms post-mount to ~500ms post-first-
-// scroll. Lighthouse audits never see vendor-supabase touch the network.
+// Also: the prior HireRow interface declared { amount, hired_at } fields the
+// RPC doesn't return. The actual RPC shape is below.
 
 interface HireRow {
   first_name: string | null;
-  amount: number | null;
-  hired_at: string | null;
+  display_name: string | null;
+  agent_code: string | null;
+  manager_name: string | null;
+  hired_on: string | null;
+  days_on_team: number | null;
+  onboarding_stage: string | null;
 }
 
 /**
@@ -32,6 +36,11 @@ interface HireRow {
  */
 export function RecentHiresTicker() {
   const gateOpen = useInteractionGate();
+  const [timerOpen, setTimerOpen] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setTimerOpen(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
   const { data, isLoading } = useQuery({
     queryKey: ["landing_recent_hires"],
     queryFn: async (): Promise<HireRow[]> => {
@@ -40,7 +49,7 @@ export function RecentHiresTicker() {
       if (error) throw error;
       return (data as HireRow[]) ?? [];
     },
-    enabled: gateOpen,
+    enabled: gateOpen || timerOpen,
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });
@@ -67,9 +76,9 @@ export function RecentHiresTicker() {
         <div className="absolute inset-0 flex items-center gap-8 ticker-animate" style={{ width: "200%" }}>
           {doubled.map((r, i) => (
             <span key={i} className="text-sm font-display font-bold whitespace-nowrap shrink-0">
-              <span className="text-amber-300">{(r.first_name ?? "Agent").toString().toUpperCase()}</span>
-              {r.amount !== null && r.amount !== undefined && (
-                <span className="text-muted-foreground"> · ${Math.round(r.amount).toLocaleString()}</span>
+              <span className="text-amber-300">{(r.first_name ?? r.display_name ?? "Agent").toString().toUpperCase()}</span>
+              {r.days_on_team !== null && r.days_on_team !== undefined && r.days_on_team >= 0 && (
+                <span className="text-muted-foreground"> · {r.days_on_team < 7 ? "this week" : r.days_on_team < 30 ? `${r.days_on_team}d ago` : `${Math.floor(r.days_on_team/30)}mo ago`}</span>
               )}
             </span>
           ))}

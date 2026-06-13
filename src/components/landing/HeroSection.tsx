@@ -18,6 +18,12 @@ const LiveStatsCounterStrip = lazy(() =>
 const RecentHiresTicker = lazy(() =>
   import("./RecentHiresTicker").then((m) => ({ default: m.RecentHiresTicker })),
 );
+// 2026-06-13: Sam reported "I see no applications" on the landing. Mirrors
+// the hires ticker pattern with anonymized first names + city + state from
+// landing_recent_applicants() public RPC.
+const RecentApplicantsTicker = lazy(() =>
+  import("./RecentApplicantsTicker").then((m) => ({ default: m.RecentApplicantsTicker })),
+);
 
 // LazyYouTube — render a static poster image as the LCP element, only
 // mount the iframe (and pull the YouTube SDK) when the user clicks.
@@ -324,6 +330,7 @@ export function HeroSection() {
             <LazyQueryRoot>
               <LiveStatsCounterStrip />
               <RecentHiresTicker />
+              <RecentApplicantsTicker />
             </LazyQueryRoot>
           </Suspense>
 

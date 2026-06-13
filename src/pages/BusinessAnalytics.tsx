@@ -15,7 +15,7 @@
 // swap the queries below to call the AgentLink API instead. Same shape.
 
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, Trophy, Users, Target, TrendingUp, RefreshCw, Sparkles, Flame, AlertTriangle, Brain } from "lucide-react";
+import { DollarSign, Trophy, Users, Target, TrendingUp, RefreshCw, Sparkles, Flame, AlertTriangle, Brain, UserX, Lightbulb, GraduationCap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
@@ -67,6 +67,30 @@ interface TrophyCabinet {
   monthly_wins: number;
   quarterly_wins: number;
   total_wins: number;
+}
+
+interface NeedsAttention {
+  id: string;
+  display_name: string | null;
+  agent_code: string | null;
+  deals_30d: number;
+  premium_30d: string;
+  potential_30d: string;
+  recommendation: string;
+}
+
+interface LearnFrom {
+  user_id: number;
+  display_name: string;
+  agent_code: string | null;
+  deals_30d: number;
+  premium_30d: string;
+  pct_above_avg: string;
+}
+
+interface InactiveSummary {
+  inactive_count: number;
+  sample_names: string[] | null;
 }
 
 interface Insights {
@@ -149,6 +173,45 @@ export default function BusinessAnalytics() {
     refetchInterval: 5 * 60_000,
   });
   const tc = trophy.data;
+
+  // WAVE FINAL · personalized insights backing the AgentLink-style cards
+  const needsAttention = useQuery({
+    queryKey: ["agents-needs-attention"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_agents_needs_attention" as any)
+        .select("id, display_name, agent_code, deals_30d, premium_30d, potential_30d, recommendation")
+        .limit(3);
+      if (error) throw error;
+      return (data ?? []) as unknown as NeedsAttention[];
+    },
+    refetchInterval: 10 * 60_000,
+  });
+
+  const learnFrom = useQuery({
+    queryKey: ["agents-learn-from"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_agents_learn_from" as any)
+        .select("user_id, display_name, agent_code, deals_30d, premium_30d, pct_above_avg");
+      if (error) throw error;
+      return (data ?? []) as unknown as LearnFrom[];
+    },
+    refetchInterval: 10 * 60_000,
+  });
+
+  const inactive = useQuery({
+    queryKey: ["agents-inactive-summary"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_inactive_agents_summary" as any)
+        .select("inactive_count, sample_names")
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as InactiveSummary;
+    },
+    refetchInterval: 10 * 60_000,
+  });
 
   const s = summary.data;
   const growth = Number(s?.growth_pct_mom ?? 0);
@@ -251,45 +314,108 @@ export default function BusinessAnalytics() {
         </div>
       ) : null}
 
-      {/* v26 AI-Powered Insights · 3 formula-driven insight cards.
-          Each card shows a data-derived "what to do" prompt that mirrors
-          AgentLink's AI Insights panel. Updated live from v_business_analytics_insights. */}
-      {ins && (
-        <div className="grid gap-3 md:grid-cols-3">
-          <InsightCard
-            icon={Flame}
-            tone={Number(ins.top_carrier_share_pct) >= 50 ? "warn" : "neutral"}
-            title="Carrier concentration"
-            metric={`${ins.top_carrier_share_pct}%`}
-            body={`${ins.top_carrier_name ?? "Top carrier"} carries ${ins.top_carrier_share_pct}% of your team's premium (${ins.top_carrier_deals} deals · 30d).${
-              Number(ins.top_carrier_share_pct) >= 50
-                ? " Diversify before this becomes a single-point failure."
-                : " Healthy spread across multiple carriers."
-            }`}
-          />
-          <InsightCard
-            icon={AlertTriangle}
-            tone={Number(ins.top3_producer_share_pct) >= 50 ? "warn" : "neutral"}
-            title="Producer concentration"
-            metric={`${ins.top3_producer_share_pct}%`}
-            body={`Top 3 producers wrote ${ins.top3_producer_share_pct}% of team premium across ${ins.team_producers} active producers.${
-              Number(ins.top3_producer_share_pct) >= 50
-                ? " Coach the bottom 75% to close the gap."
-                : " Production is distributed — keep the bench warm."
-            }`}
-          />
-          <InsightCard
-            icon={Brain}
-            tone="positive"
-            title="Team rhythm"
-            metric={`${ins.team_deals_30d}`}
-            body={`Team wrote ${ins.team_deals_30d} deals in 30 days · avg ${fmtUsd(Number(ins.team_premium_30d) / Math.max(1, Number(ins.team_deals_30d)))} per policy. ${
-              Number(ins.team_producers) > 0
-                ? `Each producer averaged ${Math.round(Number(ins.team_deals_30d) / Number(ins.team_producers))} deals this month.`
-                : ""
-            }`}
-          />
+      {/* WAVE FINAL · AI-Powered Insights · PERSONALIZED with named agents.
+          Mirrors AgentLink's actual insight card layout: "<Agent Name> Needs
+          Attention · $X potential · Action: <verb>". Backed by 3 SQL views
+          shipped 2026-06-13. Falls back to formula insights if no agents need
+          attention (healthy roster). */}
+      <div>
+        <div className="flex items-baseline justify-between mb-2 px-0.5">
+          <h2 className="text-12 uppercase tracking-wider font-bold text-foreground flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+            AI-Powered Insights
+          </h2>
+          <span className="text-11 text-muted-foreground">live · personalized per producer</span>
         </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {/* Up to 3 "Needs Attention" cards · names with action recommendation */}
+          {(needsAttention.data ?? []).slice(0, 3).map((agent, i) => (
+            <InsightCard
+              key={`na-${agent.id}`}
+              icon={i === 0 ? AlertTriangle : UserX}
+              tone="warn"
+              title={`${agent.display_name ?? agent.agent_code ?? "Agent"} · needs attention`}
+              metric={fmtUsd(Number(agent.potential_30d), true)}
+              body={`${agent.recommendation} · potential ${fmtUsd(Number(agent.potential_30d))} if matched team avg.`}
+            />
+          ))}
+          {/* Fill remainder with the original 3 formula insights so the row is always full */}
+          {ins && Array.from({ length: Math.max(0, 3 - (needsAttention.data?.length ?? 0)) }).slice(0, 1).map((_, i) => (
+            <InsightCard
+              key={`fallback-carrier-${i}`}
+              icon={Flame}
+              tone={Number(ins.top_carrier_share_pct) >= 50 ? "warn" : "neutral"}
+              title="Carrier concentration"
+              metric={`${ins.top_carrier_share_pct}%`}
+              body={`${ins.top_carrier_name ?? "Top carrier"} carries ${ins.top_carrier_share_pct}% of premium (${ins.top_carrier_deals} deals · 30d).${
+                Number(ins.top_carrier_share_pct) >= 50
+                  ? " Diversify before this becomes a single-point failure."
+                  : " Healthy spread across carriers."
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* WAVE FINAL · LEARN FROM cards · top-3 performers above team avg.
+          Mirrors AgentLink's "Learn from <agent> · X% above average · Action".
+          v_agents_learn_from filters to >150% team avg. */}
+      {(learnFrom.data?.length ?? 0) > 0 && (
+        <div>
+          <div className="flex items-baseline justify-between mb-2 px-0.5">
+            <h2 className="text-12 uppercase tracking-wider font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+              <GraduationCap className="h-3.5 w-3.5" />
+              Learn from
+            </h2>
+            <span className="text-11 text-muted-foreground">top performers · share their playbook</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {learnFrom.data!.map((agent) => (
+              <Card key={`lf-${agent.user_id}`} className="border-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/10 border-2">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Lightbulb className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-13 font-bold truncate">{agent.display_name}</p>
+                      <p className="text-22 font-bold tabular-nums mt-0.5 text-emerald-600 dark:text-emerald-400">+{agent.pct_above_avg}%</p>
+                      <p className="text-12 text-foreground/80 mt-1.5 leading-snug">
+                        Above team average · {agent.deals_30d} deals · {fmtUsd(Number(agent.premium_30d))} in 30d.
+                        Schedule a team best-practices session with them.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* WAVE FINAL · INACTIVE AGENTS · count + sample names · mirrors
+          AgentLink's "138 Agents Inactive" callout. */}
+      {inactive.data && Number(inactive.data.inactive_count) > 0 && (
+        <Card className="border-slate-300 dark:border-slate-700">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <UserX className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-22 font-bold tabular-nums">{inactive.data.inactive_count}</span>
+                  <span className="text-13 text-muted-foreground">Licensed agents inactive 30d</span>
+                </div>
+                {inactive.data.sample_names && inactive.data.sample_names.length > 0 && (
+                  <p className="text-12 text-muted-foreground mt-1.5 leading-relaxed">
+                    {inactive.data.sample_names.slice(0, 10).join(" · ")}
+                    {Number(inactive.data.inactive_count) > 10 && ` · +${Number(inactive.data.inactive_count) - 10} more`}
+                  </p>
+                )}
+                <p className="text-11 text-amber-700 dark:text-amber-300 mt-2 font-semibold">
+                  Action: bulk re-engagement campaign · 1-on-1 check-ins prioritized by tenure.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* WAVE B2 · 10-tab analytics strip · mirrors AgentLink's biz-analytics

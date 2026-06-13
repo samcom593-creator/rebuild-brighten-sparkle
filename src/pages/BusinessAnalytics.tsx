@@ -226,9 +226,27 @@ export default function BusinessAnalytics() {
         title="Business Analytics"
         subtitle="Track this team's performance and business growth. Mirrors AgentLink's business-analytics page."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="text-11">Last 30 days</Badge>
-            <Button variant="outline" size="sm" onClick={() => { summary.refetch(); carriers.refetch(); }}>
+            {/* WAVE FINAL · AI Insights jump-to-section button · mirrors AgentLink's
+                top-right "AI Insights" header button. Scrolls to the AI section. */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                const el = document.querySelector("[data-section='ai-insights']");
+                el?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            >
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              AI Insights
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => {
+              summary.refetch(); carriers.refetch(); insights.refetch();
+              challenges.refetch(); trophy.refetch(); needsAttention.refetch();
+              learnFrom.refetch(); inactive.refetch();
+            }}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${summary.isFetching || carriers.isFetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>
@@ -236,25 +254,30 @@ export default function BusinessAnalytics() {
         }
       />
 
-      {/* WAVE B1 · AI-Powered Sales Challenges — mirrors AgentLink's flagship
-          motivator. 4 tiles: Daily / Weekly / Monthly / Quarterly. Each shows
-          % to target, premium progress, deal count, and time remaining.
-          Targets are formula-driven (no manual config): daily = MTD pace,
-          weekly = last week, monthly/quarterly = prior period × 1.1 (10% growth). */}
+      {/* WAVE B1 + FINAL · AI-Powered Sales Challenges · AgentLink-grade
+          mirror. 4 tiles: Daily / Weekly / Monthly / Quarterly. Each shows
+          % to target, premium progress, deal count, time remaining, AND a
+          motivational copy line that adapts to progress bucket (matches
+          AgentLink's "Almost there, maintain your momentum" pattern).
+          Targets are formula-driven: daily = MTD pace, weekly = last week,
+          monthly/quarterly = prior period × 1.1. */}
       {challenges.isLoading ? (
         <div className="grid gap-3 md:grid-cols-4">
-          <Skeleton className="h-28" /><Skeleton className="h-28" />
-          <Skeleton className="h-28" /><Skeleton className="h-28" />
+          <Skeleton className="h-32" /><Skeleton className="h-32" />
+          <Skeleton className="h-32" /><Skeleton className="h-32" />
         </div>
       ) : (challenges.data?.length ?? 0) > 0 ? (
         <div>
-          <div className="flex items-baseline justify-between mb-2 px-0.5">
+          <div className="flex items-baseline justify-between mb-1 px-0.5">
             <h2 className="text-12 uppercase tracking-wider font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
               <Sparkles className="h-3.5 w-3.5" />
               AI-Powered Sales Challenges
             </h2>
             <span className="text-11 text-muted-foreground">live · auto-targets from your pace</span>
           </div>
+          <p className="text-11 text-muted-foreground mb-2.5 px-0.5">
+            Personalized challenges based on your performance history and market trends
+          </p>
           <div className="grid gap-3 md:grid-cols-4">
             {["daily","weekly","monthly","quarterly"].map((p) => {
               const c = challenges.data!.find((x) => x.period === p);
@@ -289,6 +312,7 @@ export default function BusinessAnalytics() {
                 <p className="text-11 uppercase tracking-wider font-bold text-amber-700 dark:text-amber-300">Trophy Cabinet</p>
                 <span className="text-22 font-extrabold tabular-nums text-amber-600 dark:text-amber-400">{tc.total_wins}</span>
                 <span className="text-11 text-muted-foreground uppercase tracking-wide">Total wins</span>
+                <a href="/dashboard/team-analytics" className="text-11 text-amber-700 dark:text-amber-400 font-semibold underline-offset-2 hover:underline ml-1">View all →</a>
                 {Number(ins.streak_days) >= Number(ins.days_in_month_elapsed) - 1 && (
                   <span className="text-11 text-amber-600 dark:text-amber-400 font-bold">· PERFECT MONTH</span>
                 )}
@@ -319,7 +343,7 @@ export default function BusinessAnalytics() {
           Attention · $X potential · Action: <verb>". Backed by 3 SQL views
           shipped 2026-06-13. Falls back to formula insights if no agents need
           attention (healthy roster). */}
-      <div>
+      <div data-section="ai-insights">
         <div className="flex items-baseline justify-between mb-2 px-0.5">
           <h2 className="text-12 uppercase tracking-wider font-bold text-foreground flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 text-amber-500" />
@@ -672,6 +696,23 @@ function ComingSoonTab({ title, description, preview }: { title: string; descrip
   );
 }
 
+// WAVE FINAL · adaptive motivational copy + target description
+// mirroring AgentLink ("Close new deals today · Almost there, maintain
+// your momentum"). Five buckets · slate→amber→emerald progression.
+function motivation(period: Challenge["period"], pct: number): { goal: string; copy: string } {
+  const goal = period === "daily"     ? "Close new deals today"
+             : period === "weekly"    ? "Weekly deal target"
+             : period === "monthly"   ? "Monthly premium goal"
+             :                          "Quarterly stretch goal";
+  const copy = pct >= 130 ? "On fire — keep stacking, you're way past target"
+             : pct >= 100 ? "🎯 Target hit · push the bonus"
+             : pct >= 75  ? "Almost there, maintain your momentum"
+             : pct >= 50  ? "Great progress, keep it up!"
+             : pct >= 25  ? "Focus on larger premium policies"
+             :              "Open day · start strong with the first close";
+  return { goal, copy };
+}
+
 function ChallengeTile({ challenge: c }: { challenge: Challenge }) {
   const current = Number(c.current_premium);
   const target = Number(c.target_premium) || 1;
@@ -686,8 +727,6 @@ function ChallengeTile({ challenge: c }: { challenge: Challenge }) {
   const hoursLeft = Math.max(0, Math.floor(msLeft / (60 * 60 * 1000)));
   const timeLabel = c.period === "daily"
     ? `${hoursLeft}h left`
-    : c.period === "weekly"
-    ? `${daysLeft}d left`
     : `${daysLeft}d left`;
   const periodLabel = c.period.charAt(0).toUpperCase() + c.period.slice(1);
   const accent = onTrack ? "emerald" : close ? "amber" : "slate";
@@ -696,23 +735,30 @@ function ChallengeTile({ challenge: c }: { challenge: Challenge }) {
     : accent === "amber"
     ? "bg-amber-500"
     : "bg-slate-500";
+  const { goal, copy } = motivation(c.period, pct);
   return (
     <Card className={`border ${onTrack ? "border-emerald-500/40" : close ? "border-amber-500/40" : "border-slate-300 dark:border-slate-700"} bg-white dark:bg-slate-900`}>
       <CardContent className="p-3.5">
         <div className="flex items-center justify-between mb-1.5">
-          <p className="text-11 uppercase tracking-wider font-bold text-slate-500">{periodLabel}</p>
+          <p className="text-11 uppercase tracking-wider font-bold text-slate-500">{periodLabel} Challenge</p>
           <span className={`text-11 font-bold tabular-nums ${onTrack ? "text-emerald-600 dark:text-emerald-400" : close ? "text-amber-600 dark:text-amber-400" : "text-slate-500"}`}>{pct}%</span>
         </div>
-        <p className="text-lg font-bold tabular-nums">
+        <p className="text-lg font-bold tabular-nums leading-tight">
           {fmtUsd(current, true)}
           <span className="text-11 font-normal text-muted-foreground"> / {fmtUsd(target, true)}</span>
+        </p>
+        <p className="text-11 text-muted-foreground mt-0.5">
+          {c.current_deals} / {c.target_deals} deals · {goal}
         </p>
         <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
           <div className={`h-full ${barColor} transition-all`} style={{ width: `${Math.min(100, pct)}%` }} />
         </div>
-        <p className="text-11 text-muted-foreground mt-2 flex items-center justify-between">
-          <span>{c.current_deals} / {c.target_deals} deals · {dealsPct}%</span>
-          <span className="text-11 tabular-nums">{timeLabel}</span>
+        <p className={`text-11 mt-2 ${onTrack ? "text-emerald-700 dark:text-emerald-300" : close ? "text-amber-700 dark:text-amber-300" : "text-slate-600 dark:text-slate-400"} leading-snug`}>
+          {copy}
+        </p>
+        <p className="text-11 text-muted-foreground tabular-nums mt-1.5 flex items-center justify-between">
+          <span>{dealsPct}% of deal target</span>
+          <span>{timeLabel}</span>
         </p>
       </CardContent>
     </Card>

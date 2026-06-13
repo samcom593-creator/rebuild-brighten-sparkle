@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import { Outlet } from "react-router-dom";
 import { SidebarLayout } from "./SidebarLayout";
 import { PushNotificationPrompt } from "./PushNotificationPrompt";
@@ -10,6 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { CelebrationProvider } from "@/components/celebrations/CelebrationProvider";
 import { RequireProfilePicture } from "@/components/profile/RequireProfilePicture";
+// WAVE C1 · AskApex AI assistant docked bottom-right on every dashboard route.
+// Lazy to keep landing chunk clean.
+const AskApex = lazy(() => import("@/components/ai/AskApex").then((m) => ({ default: m.AskApex })));
 // wave-18 (2026-06-04): TooltipProvider lives here, not in App.tsx. Every
 // dashboard component that mounts a <Tooltip> is rendered under this shell,
 // so context is in scope. Landing routes never mount tooltips — moving the
@@ -53,6 +56,9 @@ export function AuthenticatedShell() {
               <Outlet />
             </Suspense>
           </ComponentErrorBoundary>
+          <Suspense fallback={null}>
+            <AskApex />
+          </Suspense>
         </SidebarLayout>
       </TooltipProvider>
     </ProtectedRoute>

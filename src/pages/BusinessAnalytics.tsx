@@ -189,7 +189,7 @@ export default function BusinessAnalytics() {
       ) : ins ? (
         <div className={`rounded-md border-2 p-4 ${
           Number(ins.streak_days) >= Number(ins.days_in_month_elapsed) - 1
-            ? "border-amber-400 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-amber-500/15 dark:from-amber-500/20 dark:to-amber-500/20"
+            ? "border-amber-400 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-amber-500/15 dark:from-amber-500/20 dark:to-amber-500/20" // bg-gradient-card-allow:trophy-cabinet-perfect-month-gold-banner
             : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
         }`}>
           <div className="flex items-center gap-3 flex-wrap">

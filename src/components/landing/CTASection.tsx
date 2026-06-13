@@ -39,7 +39,8 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });
-  const activeAgents = liveStats?.active_agents ?? 95;
+  // wave-88 (2026-06-13): truth-floor sync with LiveStatsCounterStrip (95 → 104).
+  const activeAgents = liveStats?.active_agents ?? 104;
 
   return (
     <section ref={ref} className="py-24 relative overflow-hidden bg-white dark:bg-[#030712]">

@@ -267,7 +267,8 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
 
   // Fall back to the same canonical numbers the LiveStatsCounterStrip uses,
   // so the cards never render "0" or "..." even before the RPC resolves.
-  const activeAgents = liveStats?.active_agents ?? 95;
+  // wave-88 (2026-06-13): truth-floor sync (95 → 104).
+  const activeAgents = liveStats?.active_agents ?? 104;
   const carriers = liveStats?.carriers_partnered ?? 22;
   const phases = useMemo(() => buildPhases(carriers), [carriers]);
 

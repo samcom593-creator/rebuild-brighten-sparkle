@@ -31,7 +31,12 @@ interface LiveStats {
 }
 
 const CACHE_KEY = "apex_live_stats_last_good";
-const HARDCODED_FLOOR = { active_agents: 95, applications_30d: 131, carriers_partnered: 22 } as const;
+// wave-88 (2026-06-13): df6798e4 commit message claimed 95→104 but only the
+// commit message changed — the constant stayed at 95. Bumped here for real;
+// also bumped CTASection + CareerPathwaySection `?? 95` fallbacks + HeroSection
+// number-variant subhead "95+" → "100+" in the same wave so the landing never
+// quotes a roster smaller than the truth-floor while the gate-or-timer waits.
+const HARDCODED_FLOOR = { active_agents: 104, applications_30d: 131, carriers_partnered: 22 } as const;
 
 function readCache(): Partial<LiveStats> | null {
   try {

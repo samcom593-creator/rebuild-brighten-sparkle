@@ -342,7 +342,8 @@ export default function Apply() {
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });
-  const liveActiveAgents = liveStats?.active_agents ?? 95;
+  // wave-88 (2026-06-13): truth-floor sync with LiveStatsCounterStrip (95 → 104).
+  const liveActiveAgents = liveStats?.active_agents ?? 104;
   const liveCarriers = liveStats?.carriers_partnered ?? 22;
 
   // Fetch only active MANAGERS for referral selection via edge function (bypasses RLS for public access)

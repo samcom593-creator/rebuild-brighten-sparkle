@@ -15,7 +15,7 @@
 // swap the queries below to call the AgentLink API instead. Same shape.
 
 import { useQuery } from "@tanstack/react-query";
-import { DollarSign, Trophy, Users, Target, TrendingUp, RefreshCw, Sparkles } from "lucide-react";
+import { DollarSign, Trophy, Users, Target, TrendingUp, RefreshCw, Sparkles, Flame, AlertTriangle, Brain } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
@@ -51,6 +51,18 @@ interface Carrier {
   avg_deal_size: string;
 }
 
+interface Insights {
+  top_carrier_name: string | null;
+  top_carrier_share_pct: string;
+  top_carrier_deals: string;
+  top3_producer_share_pct: string;
+  team_producers: string;
+  team_deals_30d: string;
+  team_premium_30d: string;
+  streak_days: string;
+  days_in_month_elapsed: string;
+}
+
 export default function BusinessAnalytics() {
   usePageTitle("Business Analytics · APEX");
 
@@ -80,6 +92,20 @@ export default function BusinessAnalytics() {
     refetchInterval: 5 * 60_000,
   });
 
+  const insights = useQuery({
+    queryKey: ["business-analytics-insights"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_business_analytics_insights" as any)
+        .select("top_carrier_name, top_carrier_share_pct, top_carrier_deals, top3_producer_share_pct, team_producers, team_deals_30d, team_premium_30d, streak_days, days_in_month_elapsed")
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as Insights;
+    },
+    refetchInterval: 5 * 60_000,
+  });
+  const ins = insights.data;
+
   const s = summary.data;
   const growth = Number(s?.growth_pct_mom ?? 0);
   const growthPositive = growth >= 0;
@@ -102,6 +128,81 @@ export default function BusinessAnalytics() {
           </div>
         }
       />
+
+      {/* v26 Trophy Cabinet · mirrors AgentLink's yellow streak banner.
+          Shows the consecutive-day deal streak this month + MTD numbers.
+          When streak = days_in_month_elapsed, the team has written a deal
+          EVERY DAY this month — gold treatment. */}
+      {insights.isLoading ? (
+        <Skeleton className="h-16 w-full rounded-md" />
+      ) : ins ? (
+        <div className={`rounded-md border-2 p-4 ${
+          Number(ins.streak_days) >= Number(ins.days_in_month_elapsed) - 1
+            ? "border-amber-400 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-amber-500/15 dark:from-amber-500/20 dark:to-amber-500/20"
+            : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+        }`}>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-2xl">🏆</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-11 uppercase tracking-wider font-bold text-amber-700 dark:text-amber-300">Trophy Cabinet</p>
+              <p className="text-15 font-bold text-foreground">
+                <span className="tabular-nums">{ins.streak_days}</span>
+                <span className="text-muted-foreground"> / </span>
+                <span className="tabular-nums">{ins.days_in_month_elapsed}</span>
+                <span className="text-13 font-normal text-muted-foreground"> days with a deal this month</span>
+                {Number(ins.streak_days) >= Number(ins.days_in_month_elapsed) - 1 && (
+                  <span className="ml-2 text-amber-600 dark:text-amber-400 font-bold">· PERFECT</span>
+                )}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-11 uppercase tracking-wider font-semibold text-slate-500">MTD Premium</p>
+              <p className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{fmtUsd(Number(ins.team_premium_30d), true)}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* v26 AI-Powered Insights · 3 formula-driven insight cards.
+          Each card shows a data-derived "what to do" prompt that mirrors
+          AgentLink's AI Insights panel. Updated live from v_business_analytics_insights. */}
+      {ins && (
+        <div className="grid gap-3 md:grid-cols-3">
+          <InsightCard
+            icon={Flame}
+            tone={Number(ins.top_carrier_share_pct) >= 50 ? "warn" : "neutral"}
+            title="Carrier concentration"
+            metric={`${ins.top_carrier_share_pct}%`}
+            body={`${ins.top_carrier_name ?? "Top carrier"} carries ${ins.top_carrier_share_pct}% of your team's premium (${ins.top_carrier_deals} deals · 30d).${
+              Number(ins.top_carrier_share_pct) >= 50
+                ? " Diversify before this becomes a single-point failure."
+                : " Healthy spread across multiple carriers."
+            }`}
+          />
+          <InsightCard
+            icon={AlertTriangle}
+            tone={Number(ins.top3_producer_share_pct) >= 50 ? "warn" : "neutral"}
+            title="Producer concentration"
+            metric={`${ins.top3_producer_share_pct}%`}
+            body={`Top 3 producers wrote ${ins.top3_producer_share_pct}% of team premium across ${ins.team_producers} active producers.${
+              Number(ins.top3_producer_share_pct) >= 50
+                ? " Coach the bottom 75% to close the gap."
+                : " Production is distributed — keep the bench warm."
+            }`}
+          />
+          <InsightCard
+            icon={Brain}
+            tone="positive"
+            title="Team rhythm"
+            metric={`${ins.team_deals_30d}`}
+            body={`Team wrote ${ins.team_deals_30d} deals in 30 days · avg ${fmtUsd(Number(ins.team_premium_30d) / Math.max(1, Number(ins.team_deals_30d)))} per policy. ${
+              Number(ins.team_producers) > 0
+                ? `Each producer averaged ${Math.round(Number(ins.team_deals_30d) / Number(ins.team_producers))} deals this month.`
+                : ""
+            }`}
+          />
+        </div>
+      )}
 
       {/* 4-KPI tile row */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -231,6 +332,37 @@ export default function BusinessAnalytics() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function InsightCard({
+  icon: Icon, tone, title, metric, body,
+}: {
+  icon: any; tone: "positive" | "warn" | "neutral"; title: string; metric: string; body: string;
+}) {
+  const toneClass = tone === "positive"
+    ? "border-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/10"
+    : tone === "warn"
+    ? "border-rose-500/30 bg-rose-50 dark:bg-rose-900/10"
+    : "border-border bg-card";
+  const iconColor = tone === "positive"
+    ? "text-emerald-600 dark:text-emerald-400"
+    : tone === "warn"
+    ? "text-rose-600 dark:text-rose-400"
+    : "text-slate-500";
+  return (
+    <Card className={`${toneClass} border-2`}>
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <Icon className={`h-4 w-4 ${iconColor} shrink-0 mt-0.5`} />
+          <div className="flex-1 min-w-0">
+            <p className="text-11 uppercase tracking-wider font-semibold text-muted-foreground">{title}</p>
+            <p className={`text-22 font-bold tabular-nums mt-0.5 ${iconColor}`}>{metric}</p>
+            <p className="text-12 text-foreground/80 mt-1.5 leading-snug">{body}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

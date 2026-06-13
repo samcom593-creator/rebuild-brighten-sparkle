@@ -198,7 +198,7 @@ export function HeroSection() {
                     <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(168 80% 50% / 0.45))" }}>
                       selling life insurance
                     </span>
-                    <span className="block text-foreground text-[0.55em] mt-3">Warm leads · Paid weekly · 95+ agents writing</span>
+                    <span className="block text-foreground text-[0.55em] mt-3">Warm leads · Paid weekly · 100+ agents writing</span>
                   </>
                 );
               }

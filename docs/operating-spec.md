@@ -14,7 +14,7 @@ The expansion vs prompt 124: §3 (Dashboard Atlas) documents the 12 dashboards S
 
 | Audience | Lands on | Needs |
 |---|---|---|
-| Recruiting prospects | `/` · `/apply` · agent post-hire `/dashboard` | proof of activity (hires + applicants tickers · 22 carriers · live stats) · low-friction apply · seamless onboarding |
+| Recruiting prospects | `/` · `/apply` · agent post-hire `/dashboard` | proof of activity (hires + applicants tickers · live `landing_live_stats().carriers_partnered` · live stats) · low-friction apply · clean onboarding |
 | Sam + admins | `/dashboard/*` (100+ routes registered, 12 used daily) | live AgentLink truth · zero clutter · faster + smoother + more AI-leverage than AgentLink |
 | Active agents | `/dashboard` (agent view) · `/dashboard/inbound-leads` · `/dashboard/clients` | inbound call cockpit · personal MTD AP · contract progress · pipeline |
 
@@ -78,7 +78,7 @@ node scripts/route-smoke.mjs   # 26/26 routes 200
 **Audience:** uncredentialled recruiting prospects.
 **Data sources:** `landing_live_stats()` for the eyebrow strip · `applications` INSERT on submit.
 **Sections head-to-toe:**
-1. Top trust bar (RECRUITING NOW · 22 CARRIERS · 104 ACTIVE)
+1. Top trust bar (RECRUITING NOW · live carriers_partnered · live active_agents — pulled from `landing_live_stats()`)
 2. Founder credit ("You're applying directly to Samuel James")
 3. 4-step progress (Personal Info → Experience → Licensing → Goals)
 4. Step 1 fields: First/Last/Email/Phone/City/State/Instagram

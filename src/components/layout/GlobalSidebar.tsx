@@ -11,6 +11,7 @@ import {
   Crown,
   Trophy,
   GraduationCap,
+  Inbox,
   LayoutDashboard,
   Library,
   LogOut,
@@ -134,6 +135,7 @@ export function GlobalSidebar({
       );
       // EVERYTHING ELSE under MORE (collapses by default)
       more.push(
+        { icon: Inbox, label: "Recruiting Inbox", href: "/admin/recruiting-inbox", special: true },
         { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
         { icon: Trophy, label: "Challenges", href: "/dashboard/challenges", special: true },
         { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
@@ -163,6 +165,7 @@ export function GlobalSidebar({
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );
       more.push(
+        { icon: Inbox, label: "Recruiting Inbox", href: "/admin/recruiting-inbox", special: true },
         { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
         { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },

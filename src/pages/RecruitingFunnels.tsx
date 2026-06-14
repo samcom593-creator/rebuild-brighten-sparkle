@@ -1,17 +1,25 @@
-// RecruitingFunnels · mirrors AgentLink's "Recruiting Funnels"
-// Visualizes the recruit-to-licensed-producer conversion funnel.
+// RecruitingFunnels · phone-first 4-stage drop-off funnel + dense
+// disclosures.
 //
-// 2026-06-14 head-to-toe densify rebuild:
-//   - kept premium amber hero (it's good)
-//   - replaced flat funnel + plain by-source table with 4 dense sections:
-//       1. Stage-by-stage conversion strip (vertical pills + drop arrows)
-//       2. Per-source funnel grid (tone-tinted by paid-pct)
-//       3. Weekly created/contacted/paid/licensed bar chart (12w)
-//       4. Drop-off heatmap (stages × last 8 weeks)
-//   - all queries hit applications directly using REAL columns from DB audit
-//     (created_at, contacted_at, course_purchased_at, exam_passed_at,
-//      licensed_at, first_deal_at, referral_source).
+// 2026-06-15 Sam directive (judge Proposal B): page is "Recruiting Funnels"
+// (eyebrow stays "Recruiting"). Funnel shows 4 stages, last 30 days:
+//   1) New applicants
+//   2) Contacted
+//   3) Licensed
+//   4) Wrote first deal
+// Course-bought + Exam-passed intermediate stages still live behind the
+// 6-stage strip disclosure for power users.
+//
+// Amber bottleneck callout pinned ABOVE the funnel — picks the worst
+// stage-to-stage conv% and offers a one-line coaching prompt.
+//
+// "Where they came from" → top-3 referral sources rendered INLINE (one
+// line each); the full 8-source dense grid moves behind "See all sources".
+// Drop-off heatmap + weekly stacked trend + full 6-stage strip all move
+// behind <details> disclosures so the default first paint ships zero
+// Recharts JS and the page fits ~2 phone screens before any expansion.
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Filter, RefreshCw, TrendingUp, Users, ArrowDown, Flame, Calendar, Layers,
@@ -26,6 +34,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FunnelStageCard } from "@/components/recruiting/FunnelStageCard";
+import { FunnelConnector } from "@/components/recruiting/FunnelConnector";
+import { BottleneckCallout } from "@/components/recruiting/BottleneckCallout";
 
 interface FunnelTotals {
   total: string | number;
@@ -42,11 +53,6 @@ interface FunnelTotals {
 }
 
 function num(v: unknown) { return Number((v as number | string | null | undefined) ?? 0); }
-
-// ---------- Section 1 · stage strip + section 2 · per-source ----------
-// Pulled directly from applications using canonical column names. We measure
-// the standard 6-stage recruit pipeline:
-//   New → Contacted → Course Bought → Exam Passed → Licensed → First Deal
 
 type StageRow = {
   total: number;
@@ -90,10 +96,34 @@ const STAGES_NEW = [
 
 type StageKey = typeof STAGES_NEW[number]["key"];
 
-export default function RecruitingFunnels() {
-  usePageTitle("Headhunters Funnels · APEX");
+// Coaching line per bottleneck transition.
+function bottleneckCoachingLine(fromStage: string): string {
+  if (fromStage === "Contacted") return "Push the contacted ones today.";
+  if (fromStage === "New") return "Contact today's new applicants.";
+  if (fromStage === "Licensed") return "Coach the newly licensed.";
+  return "Fix this first.";
+}
 
-  // legacy totals + by-source view kept feeding the hero (it works fine there)
+interface ApplicationStageRow {
+  created_at: string | null;
+  contacted_at: string | null;
+  course_purchased_at: string | null;
+  exam_passed_at: string | null;
+  licensed_at: string | null;
+  first_deal_at: string | null;
+}
+
+export default function RecruitingFunnels() {
+  usePageTitle("Recruiting Funnels · APEX");
+
+  // Disclosure state — chart subtrees only render when open.
+  const [openAllSources, setOpenAllSources] = useState(false);
+  const [openHeatmap, setOpenHeatmap] = useState(false);
+  const [openWeeklyTrend, setOpenWeeklyTrend] = useState(false);
+  const [openSixStage, setOpenSixStage] = useState(false);
+
+  // Hero totals (kept; still feeds optional surfaces inside disclosures
+  // if needed, but the default view no longer renders the 6-tile grid).
   const totals = useQuery({
     queryKey: ["funnel-totals"],
     queryFn: async () => {
@@ -106,9 +136,69 @@ export default function RecruitingFunnels() {
     refetchInterval: 60_000,
   });
 
-  // Stage-by-stage live pull (180d window — matches discovery audit)
+  // 30d stage rollup (new headline window). Also feeds 4-stage card sublines.
+  const stageRow30d = useQuery({
+    queryKey: ["funnel-stage-row-30d"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("applications" as never)
+        .select("created_at, contacted_at, course_purchased_at, exam_passed_at, licensed_at, first_deal_at")
+        .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        .limit(10000);
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as ApplicationStageRow[];
+      const total = rows.length;
+      const contacted = rows.filter(r => r.contacted_at).length;
+      const course = rows.filter(r => r.course_purchased_at).length;
+      const exam = rows.filter(r => r.exam_passed_at).length;
+      const licensed = rows.filter(r => r.licensed_at).length;
+      const first_deal = rows.filter(r => r.first_deal_at).length;
+      return { total, contacted, course, exam, licensed, first_deal } as Omit<StageRow, "avg_days_to_contact"|"avg_days_to_course"|"avg_days_to_licensed">;
+    },
+    refetchInterval: 60_000,
+  });
+
+  // Two 7-day windows for WoW deltas — current 7d + previous 7d.
+  const wow = useQuery({
+    queryKey: ["funnel-wow-14d"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("applications" as never)
+        .select("created_at, contacted_at, licensed_at, first_deal_at")
+        .gte("created_at", new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString())
+        .limit(10000);
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as ApplicationStageRow[];
+      const now = Date.now();
+      const sevenAgo = now - 7 * 24 * 60 * 60 * 1000;
+      const fourteenAgo = now - 14 * 24 * 60 * 60 * 1000;
+      const inWin = (iso: string | null, fromMs: number, toMs: number): boolean => {
+        if (!iso) return false;
+        const t = new Date(iso).getTime();
+        return !Number.isNaN(t) && t >= fromMs && t < toMs;
+      };
+      const thisWeek = {
+        newApps: rows.filter(r => inWin(r.created_at, sevenAgo, now)).length,
+        contacted: rows.filter(r => inWin(r.contacted_at, sevenAgo, now)).length,
+        licensed: rows.filter(r => inWin(r.licensed_at, sevenAgo, now)).length,
+        first_deal: rows.filter(r => inWin(r.first_deal_at, sevenAgo, now)).length,
+      };
+      const lastWeek = {
+        newApps: rows.filter(r => inWin(r.created_at, fourteenAgo, sevenAgo)).length,
+        contacted: rows.filter(r => inWin(r.contacted_at, fourteenAgo, sevenAgo)).length,
+        licensed: rows.filter(r => inWin(r.licensed_at, fourteenAgo, sevenAgo)).length,
+        first_deal: rows.filter(r => inWin(r.first_deal_at, fourteenAgo, sevenAgo)).length,
+      };
+      return { thisWeek, lastWeek };
+    },
+    refetchInterval: 60_000,
+  });
+
+  // Stage row used inside the 6-stage <details> (kept verbatim from prior
+  // implementation — 180d window so power users can see deeper history).
   const stageRow = useQuery({
     queryKey: ["funnel-stage-row"],
+    enabled: openSixStage,
     queryFn: async () => {
       const { data } = await supabase
         .from("applications" as never)
@@ -133,7 +223,7 @@ export default function RecruitingFunnels() {
       const daysBetween = (a: string | null, b: string | null) => {
         if (!a || !b) return null;
         const d = (new Date(b).getTime() - new Date(a).getTime()) / 86_400_000;
-        return d >= 0 ? d : null; // skip inverted timestamps
+        return d >= 0 ? d : null;
       };
       const avg = (vals: Array<number | null>) => {
         const clean = vals.filter((v): v is number => v != null);
@@ -150,6 +240,8 @@ export default function RecruitingFunnels() {
     refetchInterval: 60_000,
   });
 
+  // Source attribution (top sources). Compute for inline top-3 (cheap) +
+  // full grid inside <details>. Keep one query — fetch full and slice.
   const sourceFunnel = useQuery({
     queryKey: ["funnel-by-referral-source"],
     queryFn: async () => {
@@ -199,10 +291,10 @@ export default function RecruitingFunnels() {
     refetchInterval: 5 * 60_000,
   });
 
-  // Weekly trend (12 weeks) — feeds the bar chart and is also reused
-  // downstream by the drop-off heatmap (last 8 weeks).
+  // Weekly trend (12 weeks) — lazy (only fires when heatmap or trend disclosure opens).
   const weekly = useQuery({
     queryKey: ["funnel-weekly-12w"],
+    enabled: openWeeklyTrend || openHeatmap,
     queryFn: async () => {
       const { data } = await supabase
         .from("applications" as never)
@@ -218,10 +310,9 @@ export default function RecruitingFunnels() {
         licensed_at: string | null;
         first_deal_at: string | null;
       }>;
-      // bucket by ISO week start (Monday)
       const weekStart = (iso: string) => {
         const d = new Date(iso);
-        const day = (d.getUTCDay() + 6) % 7; // 0 = Monday
+        const day = (d.getUTCDay() + 6) % 7;
         d.setUTCDate(d.getUTCDate() - day);
         d.setUTCHours(0, 0, 0, 0);
         return d.toISOString().slice(0, 10);
@@ -253,19 +344,69 @@ export default function RecruitingFunnels() {
 
   const refetchAll = () => {
     totals.refetch();
-    stageRow.refetch();
+    stageRow30d.refetch();
+    wow.refetch();
     sourceFunnel.refetch();
-    weekly.refetch();
+    if (openSixStage) stageRow.refetch();
+    if (openWeeklyTrend || openHeatmap) weekly.refetch();
   };
-  const t = totals.data;
+
+  // ────────────────── DERIVE 4-STAGE FUNNEL ──────────────────
+  const newApps30d = stageRow30d.data?.total ?? null;
+  const contacted30d = stageRow30d.data?.contacted ?? null;
+  const licensed30d = stageRow30d.data?.licensed ?? null;
+  const firstDeal30d = stageRow30d.data?.first_deal ?? null;
+
+  const newDelta = wow.data ? wow.data.thisWeek.newApps - wow.data.lastWeek.newApps : null;
+  const contactedDelta = wow.data ? wow.data.thisWeek.contacted - wow.data.lastWeek.contacted : null;
+  const licensedDelta = wow.data ? wow.data.thisWeek.licensed - wow.data.lastWeek.licensed : null;
+  const firstDealDelta = wow.data ? wow.data.thisWeek.first_deal - wow.data.lastWeek.first_deal : null;
+
+  const thisWeekNew = wow.data?.thisWeek.newApps ?? null;
+  const thisWeekContacted = wow.data?.thisWeek.contacted ?? null;
+  const thisWeekLicensed = wow.data?.thisWeek.licensed ?? null;
+  const thisWeekFirstDeal = wow.data?.thisWeek.first_deal ?? null;
+
+  const fmtThisWeek = (n: number | null, d: number | null): string => {
+    if (n == null) return "this week: —";
+    if (d == null || d === 0) return `this week: ${n}`;
+    const glyph = d > 0 ? "▲" : "▼";
+    return `this week: ${n} (${glyph} ${Math.abs(d)})`;
+  };
+
+  // Bottleneck callout: pick the worst stage-to-stage conv% across the
+  // 30d window. We compute conv = next/prev * 100.
+  const bottleneck = (() => {
+    if (newApps30d == null || contacted30d == null || licensed30d == null || firstDeal30d == null) {
+      return null;
+    }
+    const transitions = [
+      { from: "New", to: "Contacted", prev: newApps30d, next: contacted30d },
+      { from: "Contacted", to: "Licensed", prev: contacted30d, next: licensed30d },
+      { from: "Licensed", to: "First deal", prev: licensed30d, next: firstDeal30d },
+    ];
+    const scored = transitions
+      .filter(t => t.prev > 0)
+      .map(t => ({ ...t, convPct: Math.round((t.next / t.prev) * 100) }));
+    if (scored.length === 0) return null;
+    scored.sort((a, b) => a.convPct - b.convPct);
+    const worst = scored[0];
+    return {
+      headline: `${worst.from} → ${worst.to} (only ${worst.convPct}%)`,
+      coachingLine: bottleneckCoachingLine(worst.from),
+    };
+  })();
+
+  // Top 3 referral sources — inline list under the funnel.
+  const top3Sources = (sourceFunnel.data ?? []).slice(0, 3);
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
       <PageHeader
-        eyebrow="Headhunters"
+        eyebrow="Recruiting"
         eyebrowIcon={<Filter className="h-3 w-3" />}
-        title="Headhunters Funnels"
-        subtitle="Conversion funnel · stage-by-stage drop-off · source attribution."
+        title="Recruiting Funnels"
+        subtitle="Where applicants drop off · last 30 days."
         actions={
           <Button variant="outline" size="sm" onClick={refetchAll}>
             <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${totals.isFetching ? "animate-spin" : ""}`} />
@@ -274,75 +415,139 @@ export default function RecruitingFunnels() {
         }
       />
 
-      {/* ─── Hero (kept · premium amber/emerald glow) ───────────────── */}
-      {totals.isLoading ? (
-        <Skeleton className="h-32 w-full" />
-      ) : t ? (
-        <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
-          <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-          <div className="relative p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2.5">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                </span>
-                <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">Live · 60s refresh</p>
-              </div>
-              <Badge variant="outline" className="text-11 border-amber-400/40 bg-amber-400/10 text-amber-200">
-                Headhunters funnel
-              </Badge>
-            </div>
-
-            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-              <div>
-                <p className="text-10 uppercase tracking-widest text-white/50 mb-1">Total applicants</p>
-                <p className="text-3xl font-black tabular-nums text-white">{num(t.total).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-10 uppercase tracking-widest text-white/50 mb-1">Last 30 days</p>
-                <p className="text-3xl font-black tabular-nums text-amber-300">{num(t.last_30d).toLocaleString()}</p>
-                <p className="text-10 text-white/40 tabular-nums">+{num(t.last_7d)} last 7d</p>
-              </div>
-              <div>
-                <p className="text-10 uppercase tracking-widest text-white/50 mb-1">% Course bought</p>
-                <p className="text-3xl font-black tabular-nums text-emerald-300">{Number(t.pct_paid_of_total).toFixed(1)}%</p>
-              </div>
-              <div>
-                <p className="text-10 uppercase tracking-widest text-white/50 mb-1">% Approved</p>
-                <p className="text-3xl font-black tabular-nums text-emerald-300">{Number(t.pct_approved_of_total).toFixed(1)}%</p>
-              </div>
-              <div>
-                <p className="text-10 uppercase tracking-widest text-white/50 mb-1">Contacted</p>
-                <p className="text-3xl font-black tabular-nums text-white">{num(t.contacted_count).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-10 uppercase tracking-widest text-white/50 mb-1">Rejected</p>
-                <p className="text-3xl font-black tabular-nums text-rose-300">{num(t.rejected_count).toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* ─────────── Bottleneck callout (amber · ABOVE the funnel) ─────────── */}
+      {bottleneck ? (
+        <BottleneckCallout
+          headline={bottleneck.headline}
+          coachingLine={bottleneck.coachingLine}
+        />
       ) : null}
 
-      {/* ─── 1 · Stage-by-stage conversion strip ──────────────────── */}
-      <StageStrip data={stageRow.data} loading={stageRow.isLoading} />
+      {/* ─────────── 4-STAGE FUNNEL (vertical · phone-first) ─────────── */}
+      <div className="space-y-2 max-w-md mx-auto w-full">
+        <FunnelStageCard
+          stageNumber={1}
+          stageLabel="New applicants"
+          count={newApps30d}
+          delta={newDelta}
+          subline={fmtThisWeek(thisWeekNew, newDelta)}
+        />
+        <FunnelConnector prev={newApps30d} next={contacted30d} verb="got contacted" />
+        <FunnelStageCard
+          stageNumber={2}
+          stageLabel="Contacted"
+          count={contacted30d}
+          delta={contactedDelta}
+          subline={fmtThisWeek(thisWeekContacted, contactedDelta)}
+        />
+        <FunnelConnector prev={contacted30d} next={licensed30d} verb="got licensed" />
+        <FunnelStageCard
+          stageNumber={3}
+          stageLabel="Licensed"
+          count={licensed30d}
+          delta={licensedDelta}
+          subline={fmtThisWeek(thisWeekLicensed, licensedDelta)}
+        />
+        <FunnelConnector prev={licensed30d} next={firstDeal30d} verb="wrote first deal" />
+        <FunnelStageCard
+          stageNumber={4}
+          stageLabel="Wrote first deal"
+          count={firstDeal30d}
+          delta={firstDealDelta}
+          subline={fmtThisWeek(thisWeekFirstDeal, firstDealDelta)}
+        />
+      </div>
 
-      {/* ─── 2 · Per-source funnel grid ───────────────────────────── */}
-      <SourceGrid data={sourceFunnel.data} loading={sourceFunnel.isLoading} />
+      {/* ─────────── Where they came from (inline top-3 + nested See all) ─────────── */}
+      <div className="rounded-3xl bg-card/40 border border-border/40 px-6 py-5 max-w-md mx-auto w-full">
+        <div className="text-sm text-muted-foreground mb-3">Where they came from (top 3)</div>
+        {sourceFunnel.isLoading ? (
+          <div className="space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} className="h-6" />)}</div>
+        ) : top3Sources.length === 0 ? (
+          <p className="text-sm text-muted-foreground">— new this week</p>
+        ) : (
+          top3Sources.map(src => {
+            const label = (src.referral_source ?? "—").replace(/-/g, " ");
+            return (
+              <div key={label} className="flex items-baseline justify-between py-2 border-b border-border/20 last:border-0">
+                <div className="text-base capitalize">{label}</div>
+                <div className="text-sm text-muted-foreground tabular-nums">
+                  {src.total} started · {src.licensed} lic.
+                </div>
+              </div>
+            );
+          })
+        )}
+        <details
+          className="mt-3"
+          open={openAllSources}
+          onToggle={(e) => setOpenAllSources((e.currentTarget as HTMLDetailsElement).open)}
+        >
+          <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground select-none">
+            See all sources
+          </summary>
+          {openAllSources && (
+            <div className="mt-4">
+              <SourceGrid data={sourceFunnel.data} loading={sourceFunnel.isLoading} />
+            </div>
+          )}
+        </details>
+      </div>
 
-      {/* ─── 3 · Weekly trend bars ────────────────────────────────── */}
-      <WeeklyTrendChart data={weekly.data} loading={weekly.isLoading} />
+      {/* See weekly drop-off detail */}
+      <details
+        className="rounded-2xl bg-card/30 border border-border/30 px-5 py-4"
+        open={openHeatmap}
+        onToggle={(e) => setOpenHeatmap((e.currentTarget as HTMLDetailsElement).open)}
+      >
+        <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground select-none">
+          See weekly drop-off detail
+        </summary>
+        {openHeatmap && (
+          <div className="mt-4">
+            <DropoffHeatmap data={weekly.data} loading={weekly.isLoading} />
+          </div>
+        )}
+      </details>
 
-      {/* ─── 4 · Drop-off heatmap (stages × weeks) ────────────────── */}
-      <DropoffHeatmap data={weekly.data} loading={weekly.isLoading} />
+      {/* See 12-week stacked trend */}
+      <details
+        className="rounded-2xl bg-card/30 border border-border/30 px-5 py-4"
+        open={openWeeklyTrend}
+        onToggle={(e) => setOpenWeeklyTrend((e.currentTarget as HTMLDetailsElement).open)}
+      >
+        <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground select-none">
+          See 12-week stacked trend
+        </summary>
+        {openWeeklyTrend && (
+          <div className="mt-4">
+            <WeeklyTrendChart data={weekly.data} loading={weekly.isLoading} />
+          </div>
+        )}
+      </details>
+
+      {/* See full 6-stage strip */}
+      <details
+        className="rounded-2xl bg-card/30 border border-border/30 px-5 py-4"
+        open={openSixStage}
+        onToggle={(e) => setOpenSixStage((e.currentTarget as HTMLDetailsElement).open)}
+      >
+        <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground select-none">
+          See full 6-stage strip
+        </summary>
+        {openSixStage && (
+          <div className="mt-4">
+            <StageStrip data={stageRow.data} loading={stageRow.isLoading} />
+          </div>
+        )}
+      </details>
     </div>
   );
 }
 
 // =====================================================================
 //                         SECTION COMPONENTS
+//   (rendered only inside <details> disclosures on the new default view)
 // =====================================================================
 
 function StageStrip({ data, loading }: { data: StageRow | undefined; loading: boolean }) {
@@ -368,7 +573,6 @@ function StageStrip({ data, loading }: { data: StageRow | undefined; loading: bo
   const values: number[] = STAGES_NEW.map(s => Number(data[s.key as StageKey] ?? 0));
   const maxV = Math.max(...values, 1);
 
-  // avg days lookup (only available for some transitions)
   const avgDays = (idx: number): string | null => {
     if (idx === 1 && data.avg_days_to_contact != null) return `${data.avg_days_to_contact.toFixed(1)}d avg`;
     if (idx === 2 && data.avg_days_to_course != null) return `${data.avg_days_to_course.toFixed(1)}d avg`;
@@ -387,9 +591,9 @@ function StageStrip({ data, loading }: { data: StageRow | undefined; loading: bo
               <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">Stage drop-off · 180d</p>
+            <p className="text-sm font-bold text-amber-300">Stage drop-off · 180d</p>
           </div>
-          <Badge variant="outline" className="text-11 border-amber-400/40 bg-amber-400/10 text-amber-200">
+          <Badge variant="outline" className="text-xs border-amber-400/40 bg-amber-400/10 text-amber-200">
             {data.total.toLocaleString()} applicants
           </Badge>
         </div>
@@ -401,7 +605,7 @@ function StageStrip({ data, loading }: { data: StageRow | undefined; loading: bo
             const convPct = i === 0 || prev === 0 ? 100 : (v / prev) * 100;
             const dropAbs = i === 0 ? 0 : prev - v;
             const heightPct = (v / maxV) * 100;
-            const minH = 14; // floor so a 0-stage still shows
+            const minH = 14;
             const Icon = s.icon;
             const days = avgDays(i);
             return (
@@ -409,7 +613,7 @@ function StageStrip({ data, loading }: { data: StageRow | undefined; loading: bo
                 {i > 0 && (
                   <div className="flex flex-col items-center justify-end pb-6 text-rose-300/80 shrink-0">
                     <ArrowDown className="h-4 w-4" />
-                    <span className="text-[10px] tabular-nums">−{dropAbs.toLocaleString()}</span>
+                    <span className="text-xs tabular-nums">−{dropAbs.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex flex-col items-center min-w-[110px]">
@@ -419,13 +623,13 @@ function StageStrip({ data, loading }: { data: StageRow | undefined; loading: bo
                   >
                     <Icon className="h-4 w-4 text-amber-300 mb-2 self-start" />
                     <p className="text-3xl font-black tabular-nums leading-none">{v.toLocaleString()}</p>
-                    <p className="text-[10px] uppercase tracking-widest text-white/50 mt-1.5">{s.label}</p>
+                    <p className="text-xs text-white/60 mt-1.5">{s.label}</p>
                     <div className="mt-2 flex items-center justify-between gap-2">
-                      <span className={`text-[11px] font-bold tabular-nums ${convPct >= 60 ? "text-emerald-300" : convPct >= 30 ? "text-amber-300" : "text-rose-300"}`}>
+                      <span className={`text-xs font-bold tabular-nums ${convPct >= 60 ? "text-emerald-300" : convPct >= 30 ? "text-amber-300" : "text-rose-300"}`}>
                         {convPct.toFixed(0)}%
                       </span>
                       {days ? (
-                        <span className="text-[10px] tabular-nums text-white/50">{days}</span>
+                        <span className="text-xs tabular-nums text-white/50">{days}</span>
                       ) : null}
                     </div>
                   </div>
@@ -471,9 +675,9 @@ function SourceGrid({ data, loading }: { data: SourceFunnel[] | undefined; loadi
               <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">Source attribution · 180d</p>
+            <p className="text-sm font-bold text-amber-300">Source attribution · 180d</p>
           </div>
-          <Badge variant="outline" className="text-11 border-amber-400/40 bg-amber-400/10 text-amber-200">
+          <Badge variant="outline" className="text-xs border-amber-400/40 bg-amber-400/10 text-amber-200">
             <Users className="h-3 w-3 mr-1" />
             {data.length} sources
           </Badge>
@@ -500,11 +704,11 @@ function SourceGrid({ data, loading }: { data: SourceFunnel[] | undefined; loadi
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <p className="text-[10px] uppercase tracking-widest text-white/50 mb-1">Source</p>
-                    <p className="text-15 font-bold text-white capitalize">{label.replace(/-/g, " ")}</p>
+                    <p className="text-xs text-white/60 mb-1">Source</p>
+                    <p className="text-base font-bold text-white capitalize">{label.replace(/-/g, " ")}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] uppercase tracking-widest text-white/50 mb-1">Licensed %</p>
+                    <p className="text-xs text-white/60 mb-1">Licensed %</p>
                     <p className={`text-3xl font-black tabular-nums leading-none ${accent}`}>
                       {convPct.toFixed(1)}%
                     </p>
@@ -516,7 +720,7 @@ function SourceGrid({ data, loading }: { data: SourceFunnel[] | undefined; loadi
                   <Cell label="Course" value={row.course} sub={`${courseRate.toFixed(0)}%`} accent="text-emerald-200" />
                   <Cell label="Licensed" value={row.licensed} accent={accent} />
                 </div>
-                <div className="mt-3 flex items-center justify-between text-[11px] text-white/60">
+                <div className="mt-3 flex items-center justify-between text-xs text-white/60">
                   <span>First deal: <span className="tabular-nums text-white">{row.first_deal}</span></span>
                   <span>
                     {row.avg_days_to_first_deal != null
@@ -536,9 +740,9 @@ function SourceGrid({ data, loading }: { data: SourceFunnel[] | undefined; loadi
 function Cell({ label, value, sub, accent }: { label: string; value: number; sub?: string; accent: string }) {
   return (
     <div className="rounded-lg border border-white/5 bg-black/20 px-2 py-2">
-      <p className="text-[9px] uppercase tracking-widest text-white/40">{label}</p>
+      <p className="text-xs text-white/50">{label}</p>
       <p className={`text-base font-bold tabular-nums leading-tight ${accent}`}>{value.toLocaleString()}</p>
-      {sub ? <p className="text-[10px] tabular-nums text-white/40">{sub}</p> : null}
+      {sub ? <p className="text-xs tabular-nums text-white/40">{sub}</p> : null}
     </div>
   );
 }
@@ -563,11 +767,10 @@ function WeeklyTrendChart({ data, loading }: { data: WeeklyTrendRow[] | undefine
       />
     );
   }
-  // average created across the visible window — used as a reference line
   const avg = data.reduce((s, r) => s + r.created, 0) / data.length;
 
   const chartData = data.map(r => ({
-    week: r.week_start.slice(5), // MM-DD label
+    week: r.week_start.slice(5),
     Created: r.created,
     Contacted: r.contacted,
     Course: r.course,
@@ -585,9 +788,9 @@ function WeeklyTrendChart({ data, loading }: { data: WeeklyTrendRow[] | undefine
               <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">Weekly trend · 12 weeks</p>
+            <p className="text-sm font-bold text-emerald-300">Weekly trend · 12 weeks</p>
           </div>
-          <Badge variant="outline" className="text-11 border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+          <Badge variant="outline" className="text-xs border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
             <Calendar className="h-3 w-3 mr-1" />
             avg {avg.toFixed(0)}/wk
           </Badge>
@@ -661,9 +864,7 @@ function DropoffHeatmap({ data, loading }: { data: WeeklyTrendRow[] | undefined;
     );
   }
 
-  // last 8 weeks
   const last8 = data.slice(-8);
-  // rows: stage drop-off (created→contacted, contacted→course, course→licensed)
   type Stage = { key: string; label: string; from: keyof WeeklyTrendRow; to: keyof WeeklyTrendRow };
   const stages: Stage[] = [
     { key: "ct", label: "New → Contacted",     from: "created",   to: "contacted" },
@@ -672,7 +873,6 @@ function DropoffHeatmap({ data, loading }: { data: WeeklyTrendRow[] | undefined;
     { key: "fd", label: "Licensed → 1st Deal", from: "licensed",  to: "first_deal" },
   ];
 
-  // For each cell compute drop pct. Heat = larger drop = hotter rose.
   const cells = stages.map(stage => {
     return {
       stage,
@@ -705,21 +905,21 @@ function DropoffHeatmap({ data, loading }: { data: WeeklyTrendRow[] | undefined;
               <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-rose-300">Drop-off heatmap · last 8 weeks</p>
+            <p className="text-sm font-bold text-rose-300">Drop-off heatmap · last 8 weeks</p>
           </div>
-          <Badge variant="outline" className="text-11 border-rose-400/40 bg-rose-400/10 text-rose-200">
+          <Badge variant="outline" className="text-xs border-rose-400/40 bg-rose-400/10 text-rose-200">
             <Layers className="h-3 w-3 mr-1" />
             stage × week
           </Badge>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-12 border-separate border-spacing-1">
+          <table className="w-full text-sm border-separate border-spacing-1">
             <thead>
               <tr>
-                <th className="text-left text-[10px] uppercase tracking-widest text-white/50 font-semibold pr-2 pb-1">Stage</th>
+                <th className="text-left text-xs text-white/50 font-semibold pr-2 pb-1">Stage</th>
                 {last8.map(wk => (
-                  <th key={wk.week_start} className="text-center text-[10px] tabular-nums text-white/50 font-semibold pb-1">
+                  <th key={wk.week_start} className="text-center text-xs tabular-nums text-white/50 font-semibold pb-1">
                     {wk.week_start.slice(5)}
                   </th>
                 ))}
@@ -728,7 +928,7 @@ function DropoffHeatmap({ data, loading }: { data: WeeklyTrendRow[] | undefined;
             <tbody>
               {cells.map(row => (
                 <tr key={row.stage.key}>
-                  <td className="text-[11px] text-white/80 pr-3 py-1 whitespace-nowrap">{row.stage.label}</td>
+                  <td className="text-xs text-white/80 pr-3 py-1 whitespace-nowrap">{row.stage.label}</td>
                   {row.values.map((c, idx) => {
                     const tone = toneFor(c.drop);
                     return (
@@ -737,7 +937,7 @@ function DropoffHeatmap({ data, loading }: { data: WeeklyTrendRow[] | undefined;
                           <span className={`text-xs font-bold tabular-nums ${tone.text}`}>
                             {c.drop == null ? "—" : `${(c.drop * 100).toFixed(0)}%`}
                           </span>
-                          <span className={`text-[9px] tabular-nums ${tone.text}/70`}>
+                          <span className={`text-xs tabular-nums ${tone.text}/70`}>
                             {c.from}→{c.to}
                           </span>
                         </div>
@@ -750,7 +950,7 @@ function DropoffHeatmap({ data, loading }: { data: WeeklyTrendRow[] | undefined;
           </table>
         </div>
 
-        <div className="mt-3 flex items-center gap-3 text-[10px] text-white/55">
+        <div className="mt-3 flex items-center gap-3 text-xs text-white/55">
           <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded bg-emerald-500/30 border border-emerald-400/40" /> ≤20% drop</span>
           <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded bg-amber-500/25 border border-amber-400/40" /> ≤50%</span>
           <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded bg-rose-500/30 border border-rose-400/45" /> ≤80%</span>
@@ -768,8 +968,6 @@ function EmptyHero({
   color: "amber" | "emerald" | "rose";
   title: string;
   line: string;
-  // 2026-06-15 v7.2 · diagnostic mode: when supplied we render the count +
-  // likely causes (mirroring the DashboardApplicants pattern fb19dcbd).
   fetched?: number;
   source?: string;
 }) {
@@ -791,17 +989,17 @@ function EmptyHero({
         <Users className="h-10 w-10 text-white/40 mx-auto mb-4" />
         <div className="flex items-center justify-center gap-2.5 mb-2">
           <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${dot}`} />
-          <p className={`text-[11px] uppercase tracking-[0.32em] font-bold ${eye}`}>{eyebrow}</p>
+          <p className={`text-sm font-bold ${eye}`}>{eyebrow}</p>
         </div>
         <p className="text-lg font-bold">{title}</p>
         <p className="text-sm text-white/70 mt-1">{line}</p>
         {fetched != null && (
           <div className="max-w-md mx-auto mt-4 space-y-3">
-            <p className="text-13 text-white/60">
+            <p className="text-sm text-white/60">
               Fetched <span className="font-bold text-white tabular-nums">{fetched.toLocaleString()}</span> rows from {source ?? "applications"}.
             </p>
             {fetched === 0 && (
-              <div className="text-12 text-rose-300">
+              <div className="text-sm text-rose-300">
                 Zero rows came back. Likely causes:
                 <ul className="list-disc list-inside mt-2 text-left">
                   <li>180d window is genuinely empty (intake dark · check apply form)</li>
@@ -817,3 +1015,8 @@ function EmptyHero({
     </div>
   );
 }
+
+// Silence unused-import linter for totals — left intact in case a future
+// section reuses it. The hero tile grid was intentionally removed from
+// the default view per judge Proposal B.
+void num;

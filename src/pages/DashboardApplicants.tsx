@@ -172,13 +172,12 @@ export default function DashboardApplicants() {
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   
-  // 2026-06-15 v7.8 · AUTOMATIC SESSION REFRESH ON MOUNT
-  // Sam's last sign-in was 20h ago. Supabase JWT lifetime is 1h. The client
-  // SHOULD silently refresh via the refresh token chain, but if the chain
-  // breaks (refresh token expired/invalidated), the client sends an
-  // anon/expired token → RLS returns 0 rows → diagnostic banner says
-  // "Fetched 0." This effect runs once on mount and refreshes the session
-  // proactively. If refresh fails, redirect to /login so Sam gets a fresh JWT.
+  // 2026-06-15 v7.9 · AUTO-HEAL on mount + after-load detection
+  // The global AuthenticatedShell session-refresh runs first. This per-page
+  // hook is the second-chance · if after 3 seconds the queryData has loaded
+  // but returned ZERO apps, treat it as a JWT death and auto-trigger the
+  // refresh path. No user action needed.
+  const autoHealedRef = useRef(false);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -187,9 +186,7 @@ export default function DashboardApplicants() {
         if (cancelled) return;
         if (error || !data?.session) {
           console.warn("[DashboardApplicants] session refresh failed:", error);
-          // Don't redirect automatically · let the diagnostic UI handle it.
         } else {
-          // Invalidate so the query re-fires with the fresh token
           queryClient.invalidateQueries({ queryKey: ["applicants"] });
         }
       } catch (e) {
@@ -197,7 +194,6 @@ export default function DashboardApplicants() {
       }
     })();
     return () => { cancelled = true; };
-    // Run exactly once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -328,6 +324,36 @@ export default function DashboardApplicants() {
   const fetchApplications = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["applicants"] });
   }, [queryClient]);
+
+  // 2026-06-15 v7.9 · AUTO-HEAL trigger
+  // If the query has loaded (queryData defined) AND returned 0 apps AND we
+  // haven't already tried to auto-heal, fire one self-fix attempt. This
+  // gives Sam the fix WITHOUT requiring him to tap any button.
+  useEffect(() => {
+    if (autoHealedRef.current) return;
+    if (isLoading) return;
+    if (!queryData) return; // wait for first fetch to complete
+    if (applications.length > 0) return; // already healthy
+
+    autoHealedRef.current = true;
+    console.warn("[DashboardApplicants] auto-heal: 0 apps fetched · refreshing session + retrying");
+    (async () => {
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (error || !data?.session) {
+          console.warn("[auto-heal] session refresh failed:", error);
+          toast.error("Session expired · signing you out for fresh login");
+          await supabase.auth.signOut();
+          setTimeout(() => { window.location.href = "/login"; }, 400);
+          return;
+        }
+        toast.success("Session refreshed · reloading applications");
+        queryClient.invalidateQueries({ queryKey: ["applicants"] });
+      } catch (e) {
+        console.error("[auto-heal] threw:", e);
+      }
+    })();
+  }, [queryData, applications.length, isLoading, queryClient]);
 
   // Scroll to highlighted lead when data loads
   useEffect(() => {

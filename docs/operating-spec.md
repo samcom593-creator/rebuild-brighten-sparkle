@@ -14,7 +14,7 @@ The expansion vs prompt 124: §3 (Dashboard Atlas) documents the 12 dashboards S
 
 | Audience | Lands on | Needs |
 |---|---|---|
-| Recruiting prospects | `/` · `/apply` · agent post-hire `/dashboard` | proof of activity (hires + applicants tickers · live `landing_live_stats().carriers_partnered` · live stats) · low-friction apply · clean onboarding |
+| Recruiting prospects | `/` · `/apply` · agent post-hire `/dashboard` | proof of activity (hires + applicants tickers · 22 carriers · live stats) · low-friction apply · seamless onboarding |
 | Sam + admins | `/dashboard/*` (100+ routes registered, 12 used daily) | live AgentLink truth · zero clutter · faster + smoother + more AI-leverage than AgentLink |
 | Active agents | `/dashboard` (agent view) · `/dashboard/inbound-leads` · `/dashboard/clients` | inbound call cockpit · personal MTD AP · contract progress · pipeline |
 
@@ -78,7 +78,7 @@ node scripts/route-smoke.mjs   # 26/26 routes 200
 **Audience:** uncredentialled recruiting prospects.
 **Data sources:** `landing_live_stats()` for the eyebrow strip · `applications` INSERT on submit.
 **Sections head-to-toe:**
-1. Top trust bar (RECRUITING NOW · live carriers_partnered · live active_agents — pulled from `landing_live_stats()`)
+1. Top trust bar (RECRUITING NOW · 22 CARRIERS · 104 ACTIVE)
 2. Founder credit ("You're applying directly to Samuel James")
 3. 4-step progress (Personal Info → Experience → Licensing → Goals)
 4. Step 1 fields: First/Last/Email/Phone/City/State/Instagram
@@ -830,4 +830,116 @@ If any of these counts have drifted significantly when reading this prompt later
 ---
 
 **Hold the Standard. Average is the disease.**
+
+
+---
+
+## §17 · AGENTLINK FULL SIDEBAR PARITY MATRIX (sourced from real capture 2026-06-13)
+
+Captured via Playwright from `/business-analytics` sidebar — AgentLink's complete navigation tree:
+
+### Dashboard section
+| AgentLink item | We have? | Path / status |
+|---|---|---|
+| Overview | ✅ | `/dashboard` (AgentCommandDashboard) |
+| Notifications | ⚠️ | partial · NotificationBell in sidebar header · no full page |
+| Announcements | ❌ | not implemented |
+| News Feed | ❌ | not implemented |
+| Post a Deal | ❌ | not implemented · AgentLink lets agents post wins to a feed |
+
+### Workspace section
+| AgentLink item | We have? | Path / status |
+|---|---|---|
+| Pipeline | ✅ | `/dashboard/agent-pipeline` and `/dashboard/recruit-pipeline` |
+| Calendar | ⚠️ | route exists at `/dashboard/calendar` · not in sidebar |
+| My Phone | ✅ | `/dashboard/inbound-leads` (call cockpit) + `/dashboard/calls-today` |
+| AI Assistant | ✅ | Ask Apex AI dock on every dashboard route |
+
+### My Business section
+| AgentLink item | We have? | Path / status |
+|---|---|---|
+| My Team | ✅ | `/dashboard/team-analytics` and `/dashboard/my-team` |
+| Book of Business | ✅ | `/dashboard/book-of-business` (1278 deals · 10-col table) |
+| Business Analytics | ✅ | `/dashboard/business-analytics` (★ flagship · 10-tab strip) |
+| Finances | ❌ | CFO bot lives off-site at `~/business-ops/finance-bot/` · no in-app page |
+
+### Contracting section
+| AgentLink item | We have? | Path / status |
+|---|---|---|
+| Invite Agent | ⚠️ | `add-agent` edge fn exists · no dedicated page |
+| Contract Requests | ✅ | `/dashboard/contracts` (CarrierContracts) |
+| Transfer Requests | ❌ | not implemented |
+| Commission Grids | ⚠️ | `v_agent_revenue_estimate` exists · no UI |
+| Annuity Training | ❌ | not implemented |
+| **Carriers (Resources)** | ✅ | `/dashboard/carriers` shipped 2026-06-13 — mirrors AgentLink's carrier resource cards (logo, phone, website, best-for tags, View Resources + Contract actions) |
+
+### Resources section
+| AgentLink item | We have? | Path / status |
+|---|---|---|
+| New Agent Guide | ⚠️ | `/dashboard/getting-started` exists · could expand |
+| Agent Handbook | ❌ | not implemented |
+| Scripts | ⚠️ | Switch Center script in inbound-leads · no central library |
+| State Licenses | ⚠️ | `/dashboard/pre-licensing` exists · not labeled as State Licenses |
+| Agent Academy | ✅ | `/course-catalog` (Apex Course) + `/dashboard/admin/content-command` |
+
+### Back Office section
+| AgentLink item | We have? | Path / status |
+|---|---|---|
+| Case Design | ❌ | not implemented · AgentLink's case-builder tool |
+| Advanced Desk | ❌ | not implemented · case-runner for complex policies |
+| Recruiting Funnels | ⚠️ | `/admin/recruiting-inbox` + `/dashboard/recruit-pipeline` |
+| Recruiting Tracker | ⚠️ | merged into `/dashboard/applicants` and `/dashboard/whales` |
+| Client Marketing | ❌ | not implemented |
+
+### Tools section
+| AgentLink item | We have? | Path / status |
+|---|---|---|
+| Needs Analysis Calculator | ❌ | not implemented |
+| Quoter | ❌ | not implemented |
+| Leads | ⚠️ | `/dashboard/lead-center` exists |
+| Inbound Calls | ✅ | `/dashboard/inbound-leads` + `/dashboard/calls-today` |
+
+### Account section
+| AgentLink item | We have? | Path / status |
+|---|---|---|
+| Help Center / FAQ | ❌ | not implemented |
+| Producer Profile | ⚠️ | `/dashboard/settings` partial |
+| My Landing Page | ❌ | not implemented |
+| Calling Cards | ❌ | not implemented |
+| Challenges | ✅ | `/dashboard/challenges` |
+
+### Sign Out
+| AgentLink item | We have? | Path / status |
+|---|---|---|
+| Sign Out | ✅ | sidebar logout button |
+
+---
+
+## §18 · IMMEDIATE QUEUE (ranked by recruiting leverage)
+
+From §17 gaps · highest impact for "look what we built":
+
+1. **`/dashboard/announcements`** + **News Feed** · 1-page wins · easy to mock with `v_culture_feed` (we already have the view)
+2. **Post a Deal** flow · feeds `v_culture_feed` · ties into Discord (currently paused) + landing ticker
+3. **Finances page** · expose `v_cfo_snapshot` · CFO bot already produces the data
+4. **Scripts library** · centralize from inbound-leads Switch Center · new route + content
+5. **Producer Profile** · agent-facing self-edit page · ties to existing `agents` + `profiles` tables
+6. **Help Center / FAQ** · static · CFO-style page from existing markdown
+7. **Recruiting Funnels** · expand `/admin/recruiting-inbox` into multi-step visualization
+8. **Annuity Training** + **Commission Grids** · pull from existing data
+9. **Calendar in sidebar** · existing route just not exposed in nav
+10. **Needs Analysis Calculator + Quoter** · larger build · queue for L-effort
+
+---
+
+## §19 · CARRIER RESOURCES PAGE (live 2026-06-13)
+
+`/dashboard/carriers` — mirrors AgentLink's `/carriers`:
+- 16 carrier cards from `agentlink_carriers`
+- Per-carrier 30d production from `v_business_analytics_carriers`
+- `BEST_FOR` mapping (Final Expense · Whole Life · IUL · Term · Annuity · etc.) per carrier
+- Click "View Resources" → carrier's website (new tab)
+- Click "Contract" → `/dashboard/contracts`
+
+When AgentLink's carrier-plans / carrier-product detail endpoint becomes accessible (currently 404 with cookie), expand into per-plan tiles per carrier.
 

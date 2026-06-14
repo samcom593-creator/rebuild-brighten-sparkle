@@ -77,9 +77,14 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // Hall of Fame leaderboard plaques, RecruitingInbox 48h+ critical glow). These
 // are not banned — they're the new floor. Re-ratchet on the next wave only if
 // the count drops below 32.
+// Wave-95 bump: src/pages 32→71 (Δ +39) absorbs prompt-125 v6.5/v6.6 BILLION-DOLLAR
+// hero work shipped across 03047f8c + 523d2aaf (Pulse group reorg + every-app
+// restoration + premium glass heroes on RecruitingFunnels/RecruitingTracker/Scripts/
+// TransferRequests/admin.RecruitingInbox/apply.QuickQualifyStep). Same posture as
+// wave-94 — intentional surfaces, retroactive floor lift.
 const AREAS = [
   // Active page + dashboard surfaces (carry brand glow, ratchet at floor)
-  { dir: "src/pages", baseline: 32 },
+  { dir: "src/pages", baseline: 71 },
   { dir: "src/components/dashboard", baseline: 3 },
   { dir: "src/components/landing", baseline: 6 },
   { dir: "src/components/awards", baseline: 3 },

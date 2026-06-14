@@ -1208,26 +1208,35 @@ function AgencyCommandView() {
   });
 
   // Live application stream — last 25 active applicants, newest first
+  // 2026-06-14 BUG FIX: was querying `applied_at` (column doesn't exist) and
+  // `ica_paid_at` (wrong terminology per Sam rule). Real columns: created_at +
+  // course_purchased_at. That's why "I can't even see my application" — the
+  // entire query was failing silently due to column-not-found.
   const liveApps = useQuery({
     queryKey: ["agency-live-applications"],
     refetchInterval: 60_000,
     staleTime: 55_000,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("applications" as any)
-        .select("id, first_name, last_name, status, license_progress, applied_at, contacted_at, ica_paid_at")
+        .select("id, first_name, last_name, status, license_progress, created_at, contacted_at, course_purchased_at, licensed_at, state, phone, email")
         .is("terminated_at", null)
-        .order("applied_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false, nullsFirst: false })
         .limit(25);
+      if (error) console.error("liveApps query error:", error);
       return (data ?? []) as unknown as Array<{
         id: string;
         first_name: string | null;
         last_name: string | null;
         status: string | null;
         license_progress: string | null;
-        applied_at: string | null;
+        created_at: string | null;
         contacted_at: string | null;
-        ica_paid_at: string | null;
+        course_purchased_at: string | null;
+        licensed_at: string | null;
+        state: string | null;
+        phone: string | null;
+        email: string | null;
       }>;
     },
   });
@@ -1363,11 +1372,12 @@ function AgencyCommandView() {
           <div className="grid gap-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {apps.slice(0, 12).map((a) => {
               const name = [a.first_name, a.last_name].filter(Boolean).join(" ") || "—";
-              const stage = a.ica_paid_at ? "course bought" : a.contacted_at ? (a.license_progress ?? a.status ?? "contacted") : "uncontacted";
-              const tone = a.ica_paid_at ? "text-emerald-600 dark:text-emerald-400"
+              const stage = a.licensed_at ? "LICENSED" : a.course_purchased_at ? "course bought" : a.contacted_at ? (a.license_progress ?? a.status ?? "contacted") : "uncontacted";
+              const tone = a.licensed_at ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
+                : a.course_purchased_at ? "text-emerald-600 dark:text-emerald-400"
                 : !a.contacted_at ? "text-rose-600 dark:text-rose-400"
                 : "text-amber-600 dark:text-amber-400";
-              const applied = a.applied_at ? format(new Date(a.applied_at), "MMM d") : "—";
+              const applied = a.created_at ? format(new Date(a.created_at), "MMM d") : "—";
               return (
                 <Link
                   key={a.id}

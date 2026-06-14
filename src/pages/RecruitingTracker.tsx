@@ -1,6 +1,7 @@
 // RecruitingTracker · per-recruiter scorecard + LIVE interview cascade
 // 2026-06-14 Sam: "What's tied to a tracker that tracks my calendar · interviews"
-// + "There's two Samueljames' for some reason" — dedup added.
+// dedup now resolved at DB layer (wave-93) via v_agent_canonical_map →
+// v_recruiting_leaderboard + v_recruiter_pipeline canonicalize SJAMES01/02 et al.
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -68,58 +69,15 @@ export default function RecruitingTracker() {
     refetchInterval: 60_000,
   });
 
-  // Join: leaderboard rows + names from pipeline rows
+  // Recruiter name lookup keyed on the canonical recruiter_id returned by
+  // v_recruiting_leaderboard (post wave-93 DB canonicalization).
   const nameByRecruiter = new Map<string, string>();
   for (const r of (pipeline.data ?? [])) {
     if (r.recruiter_name) nameByRecruiter.set(r.recruiter_id, r.recruiter_name);
   }
 
-  // 2026-06-14 dedup: Sam has 2 "Samuel James" agent rows (SJAMES01 + SJAMES02).
-  // The leaderboard was showing him twice. Merge by display_name → sum totals,
-  // keep the highest-volume recruiter_id as the canonical row.
-  const dedupedLeaders = useMemo(() => {
-    const byName = new Map<string, LeaderRow>();
-    for (const row of leaders.data ?? []) {
-      const name = nameByRecruiter.get(row.recruiter_id) ?? `r_${row.recruiter_id.slice(0, 8)}`;
-      const existing = byName.get(name);
-      if (!existing) {
-        byName.set(name, { ...row });
-      } else {
-        byName.set(name, {
-          ...existing,
-          today: Number(existing.today) + Number(row.today),
-          this_week: Number(existing.this_week) + Number(row.this_week),
-          this_month: Number(existing.this_month) + Number(row.this_month),
-          last_30d: Number(existing.last_30d) + Number(row.last_30d),
-          // keep the recruiter_id of whichever had more last_30d
-          recruiter_id: Number(existing.last_30d) >= Number(row.last_30d) ? existing.recruiter_id : row.recruiter_id,
-        });
-      }
-    }
-    return Array.from(byName.values()).sort((a, b) => Number(b.last_30d) - Number(a.last_30d));
-  }, [leaders.data, pipeline.data]);
-
-  // Similar dedup for pipeline rows (Sam: 2 Samuel James entries)
-  const dedupedPipeline = useMemo(() => {
-    const byName = new Map<string, PipelineRow>();
-    for (const row of pipeline.data ?? []) {
-      const name = row.recruiter_name ?? row.recruiter_email ?? `r_${row.recruiter_id.slice(0, 8)}`;
-      const existing = byName.get(name);
-      if (!existing) {
-        byName.set(name, { ...row });
-      } else {
-        byName.set(name, {
-          ...existing,
-          total_assigned: (existing.total_assigned ?? 0) + (row.total_assigned ?? 0),
-          new_count: (existing.new_count ?? 0) + (row.new_count ?? 0),
-          in_progress_count: (existing.in_progress_count ?? 0) + (row.in_progress_count ?? 0),
-          contracting_count: (existing.contracting_count ?? 0) + (row.contracting_count ?? 0),
-          paid_count: (existing.paid_count ?? 0) + (row.paid_count ?? 0),
-        });
-      }
-    }
-    return Array.from(byName.values()).sort((a, b) => (b.paid_count ?? 0) - (a.paid_count ?? 0));
-  }, [pipeline.data]);
+  const leaderRows = (leaders.data ?? []) as LeaderRow[];
+  const pipelineRows = (pipeline.data ?? []) as PipelineRow[];
 
   // 2026-06-14 NEW: pull today's + tomorrow's Calendly-booked interviews
   // (synced via google calendar → applications. Reads calls scheduled via Calendly)
@@ -147,7 +105,7 @@ export default function RecruitingTracker() {
     refetchInterval: 5 * 60_000,
   });
 
-  const top3 = dedupedLeaders.slice(0, 3);
+  const top3 = leaderRows.slice(0, 3);
   const podium = ["bg-amber-500", "bg-slate-400", "bg-amber-700"];
 
   return (
@@ -262,7 +220,7 @@ export default function RecruitingTracker() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {dedupedLeaders.map((r) => (
+                  {leaderRows.map((r) => (
                     <tr key={r.recruiter_id} className="hover:bg-muted/20">
                       <td className="px-4 py-2 font-medium">{nameByRecruiter.get(r.recruiter_id) ?? r.recruiter_id.slice(0, 8) + "…"}</td>
                       <td className="px-4 py-2 text-right tabular-nums">{r.today}</td>
@@ -300,7 +258,7 @@ export default function RecruitingTracker() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {dedupedPipeline.map((r) => (
+                  {pipelineRows.map((r) => (
                     <tr key={r.recruiter_id} className="hover:bg-muted/20">
                       <td className="px-4 py-2 font-medium">
                         {r.recruiter_name ?? r.recruiter_email ?? r.recruiter_id.slice(0, 8) + "…"}

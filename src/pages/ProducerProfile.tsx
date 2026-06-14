@@ -7,9 +7,11 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import {
   User as UserIcon, Save, MapPin, Phone, Mail, Instagram, FileText,
   Image as ImageIcon, Calendar, Shield, TrendingUp, RefreshCw,
+  GraduationCap, CheckCircle2, PlayCircle, ArrowRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -20,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -34,6 +37,7 @@ interface ProfileForm {
 }
 
 interface AgentStat {
+  id: string;
   agent_code: string | null;
   license_status: string | null;
   license_states: string[] | null;
@@ -43,6 +47,33 @@ interface AgentStat {
   total_earnings: number | null;
   performance_tier: string | null;
   attendance_status: string | null;
+  has_training_course: boolean | null;
+  onboarding_stage: string | null;
+}
+
+interface CourseModule {
+  id: string;
+  title: string;
+  order_index: number;
+}
+
+interface CourseModuleProgress {
+  module_id: string;
+  passed: boolean | null;
+  completed_at: string | null;
+  video_watched_percent: number | null;
+  score: number | null;
+}
+
+interface CourseAccessSnapshot {
+  hasAccess: boolean;
+  licensedAt: string | null;
+  modules: CourseModule[];
+  progressByModule: Map<string, CourseModuleProgress>;
+  completedCount: number;
+  totalCount: number;
+  percentComplete: number;
+  lastActivity: string | null;
 }
 
 function fmtUsd(n: number | null): string {
@@ -75,12 +106,92 @@ export default function ProducerProfile() {
     queryKey: ["agent", userId],
     enabled: !!userId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("agents" as any)
-        .select("agent_code, license_status, license_states, start_date, total_policies, total_premium, total_earnings, performance_tier, attendance_status")
+        .select("id, agent_code, license_status, license_states, start_date, total_policies, total_premium, total_earnings, performance_tier, attendance_status, has_training_course, onboarding_stage")
         .eq("user_id", userId)
-        .maybeSingle();
-      return data as unknown as AgentStat | null;
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const row = Array.isArray(data) && data.length > 0 ? data[0] : null;
+      return row as unknown as AgentStat | null;
+    },
+  });
+
+  // Course access · audit: applications.licensed_at NOT NULL OR agents.has_training_course=true grants access
+  // Linkage: profiles.email -> applications.email (applicant identity), agents.user_id -> profiles.user_id
+  const userEmail: string | null = (profile.data?.email ?? null) || ((user as any)?.email ?? null);
+  const agentId: string | null = (agent.data?.id ?? null) || null;
+
+  const course = useQuery<CourseAccessSnapshot>({
+    queryKey: ["producer-course-access", agentId, userEmail],
+    enabled: !!userId,
+    queryFn: async (): Promise<CourseAccessSnapshot> => {
+      // Most recent licensed_at for this email (may be null if applicant not licensed)
+      let licensedAt: string | null = null;
+      if (userEmail) {
+        const { data: appRows, error: appErr } = await supabase
+          .from("applications" as any)
+          .select("licensed_at")
+          .eq("email", userEmail)
+          .not("licensed_at", "is", null)
+          .order("licensed_at", { ascending: false })
+          .limit(1);
+        if (appErr) throw appErr;
+        const arr = (appRows as unknown as Array<{ licensed_at: string | null }>) ?? [];
+        licensedAt = arr.length > 0 ? arr[0].licensed_at : null;
+      }
+
+      const hasAccess = !!licensedAt || agent.data?.has_training_course === true;
+
+      // Active modules (load even if no agent yet, so the panel can preview)
+      const { data: moduleRows, error: modErr } = await supabase
+        .from("onboarding_modules" as any)
+        .select("id, title, order_index")
+        .eq("is_active", true)
+        .order("order_index");
+      if (modErr) throw modErr;
+      const modules = ((moduleRows as unknown as CourseModule[]) ?? []).map((m) => ({
+        id: m.id,
+        title: m.title,
+        order_index: m.order_index,
+      }));
+
+      const progressByModule = new Map<string, CourseModuleProgress>();
+      let lastActivity: string | null = null;
+      if (agentId) {
+        const { data: progRows, error: progErr } = await supabase
+          .from("onboarding_progress" as any)
+          .select("module_id, passed, completed_at, video_watched_percent, score")
+          .eq("agent_id", agentId);
+        if (progErr) throw progErr;
+        const rows = (progRows as unknown as CourseModuleProgress[]) ?? [];
+        rows.forEach((r) => {
+          progressByModule.set(r.module_id, r);
+          if (r.completed_at && (!lastActivity || r.completed_at > lastActivity)) {
+            lastActivity = r.completed_at;
+          }
+        });
+      }
+
+      const totalCount = modules.length;
+      let completedCount = 0;
+      modules.forEach((m) => {
+        const p = progressByModule.get(m.id);
+        if (p?.passed) completedCount += 1;
+      });
+      const percentComplete = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+      return {
+        hasAccess,
+        licensedAt,
+        modules,
+        progressByModule,
+        completedCount,
+        totalCount,
+        percentComplete,
+        lastActivity,
+      };
     },
   });
 
@@ -183,6 +294,114 @@ export default function ProducerProfile() {
           </div>
         </div>
       </div>
+
+      {/* COURSE ACCESS / TRAINING · audit: every applicant with licensed_at IS NOT NULL gets course access */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+                <GraduationCap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="text-13 font-bold">Prelicensing Course</h3>
+                <p className="text-11 text-muted-foreground">Your training modules and progress</p>
+              </div>
+            </div>
+            {course.data?.hasAccess ? (
+              <Badge variant="outline" className="text-11 bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300">
+                <CheckCircle2 className="h-3 w-3 mr-1" /> Access granted
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-11">No access yet</Badge>
+            )}
+          </div>
+
+          {course.isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-8" />)}
+            </div>
+          ) : course.isError ? (
+            <p className="text-12 text-red-500">
+              Failed to load course state: {(course.error as Error)?.message ?? "—"}
+            </p>
+          ) : course.data && course.data.hasAccess ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-12">
+                <div>
+                  <p className="text-11 text-muted-foreground">Modules complete</p>
+                  <p className="text-18 font-bold tabular-nums">{course.data.completedCount}/{course.data.totalCount}</p>
+                </div>
+                <div>
+                  <p className="text-11 text-muted-foreground">Progress</p>
+                  <p className="text-18 font-bold tabular-nums">{course.data.percentComplete}%</p>
+                </div>
+                <div>
+                  <p className="text-11 text-muted-foreground">Licensed</p>
+                  <p className="text-12 font-medium">
+                    {course.data.licensedAt
+                      ? new Date(course.data.licensedAt).toLocaleDateString()
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-11 text-muted-foreground">Last activity</p>
+                  <p className="text-12 font-medium">
+                    {course.data.lastActivity
+                      ? new Date(course.data.lastActivity).toLocaleDateString()
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+
+              <Progress value={course.data.percentComplete} className="h-2" />
+
+              {course.data.modules.length > 0 && (
+                <div className="space-y-1.5">
+                  {course.data.modules.map((m) => {
+                    const p = course.data!.progressByModule.get(m.id);
+                    const passed = p?.passed === true;
+                    const watched = p?.video_watched_percent ?? 0;
+                    return (
+                      <div
+                        key={m.id}
+                        className="flex items-center justify-between gap-2 rounded-md border border-border/40 bg-muted/20 px-3 py-2"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {passed ? (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                          ) : watched > 0 ? (
+                            <PlayCircle className="h-4 w-4 text-blue-500 shrink-0" />
+                          ) : (
+                            <PlayCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                          )}
+                          <span className="text-12 truncate">{m.title}</span>
+                        </div>
+                        <span className="text-11 tabular-nums text-muted-foreground shrink-0">
+                          {passed ? `Passed${p?.score != null ? ` · ${p.score}%` : ""}` : watched > 0 ? `${watched}% watched` : "—"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button asChild size="sm">
+                  <Link to="/onboarding-course">
+                    {course.data.percentComplete >= 100 ? "Review course" : "Resume course"}
+                    <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-12 text-muted-foreground">
+              Course unlocks once your application is marked licensed or your manager grants access. Talk to your upline if you believe this is wrong.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-5 lg:grid-cols-3">
         {/* EDITABLE PROFILE */}

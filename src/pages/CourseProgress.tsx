@@ -720,7 +720,7 @@ export default function CourseProgress() {
                                   {format(new Date(agent.lastActivity), "MMM d")}
                                 </span>
                               ) : agent.hasStarted ? (
-                                <span className="text-xs text-muted-foreground">Unknown</span>
+                                <span className="text-xs text-muted-foreground">—</span>
                               ) : (
                                 <span className="text-xs text-muted-foreground">Not started</span>
                               )}

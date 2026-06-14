@@ -138,7 +138,11 @@ export default function DashboardApplicants() {
 
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>(statusParam || "all");
+  // 2026-06-15 v7.3 · Default to "in_funnel" (excludes hired + contracted) so
+  // the page matches Sam's definition: every website-traffic app EXCEPT
+  // completed or moved-to-another-category. URL ?status=all opens the full
+  // active set; click chips on the hero switch between funnel/contracted/hired.
+  const [statusFilter, setStatusFilter] = useState<string>(statusParam || "in_funnel");
   const [licenseFilter, setLicenseFilter] = useState<string>(licenseParam || "all");
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
@@ -577,6 +581,7 @@ export default function DashboardApplicants() {
         const matchesStatus =
           statusFilter === "all" ||
           statusFilter === "terminated" ||
+          (statusFilter === "in_funnel" && !app.closed_at && !app.contracted_at) ||
           (statusFilter === "course_bought" && Boolean(app.course_purchased_at)) ||
           appStatus === statusFilter;
         const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
@@ -634,15 +639,20 @@ export default function DashboardApplicants() {
   const counterLabel = statusFilter === "terminated" ? "terminated applications" : "active applications";
 
   // Stats - exclude terminated from active stats — single pass
-  const { totalLeads, hired, contracted, coursePurchased } = useMemo(() => {
-    let hired = 0, contracted = 0, coursePurchased = 0;
+  const { totalLeads, hired, contracted, coursePurchased, inFunnel } = useMemo(() => {
+    // 2026-06-15 v7.3 · Sam: "Applications should be every website-traffic
+    // app EXCEPT completed or moved to a different category." in_funnel
+    // excludes hired + contracted (those are conversions, surfaced as their
+    // own filter chips but not the default view).
+    let hired = 0, contracted = 0, coursePurchased = 0, inFunnel = 0;
     for (const a of activeApplications) {
       if (a.closed_at && !a.contracted_at) hired++;
       if (a.contracted_at) contracted++;
       const lp = a.license_progress as string | null;
       if (a.course_purchased_at || lp === "course_purchased" || lp === "finished_course") coursePurchased++;
+      if (!a.closed_at && !a.contracted_at) inFunnel++;
     }
-    return { totalLeads: activeApplications.length, hired, contracted, coursePurchased };
+    return { totalLeads: activeApplications.length, hired, contracted, coursePurchased, inFunnel };
   }, [activeApplications]);
 
   // Helper for urgency badge
@@ -1069,12 +1079,18 @@ export default function DashboardApplicants() {
             </Badge>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {/* 2026-06-15 v7.3 · Sam: "Applications should be every website-traffic
+                app EXCEPT completed or moved to a different category." Added
+                "In Funnel" as the DEFAULT view (excludes contracted + hired).
+                Total Active = 519 · In Funnel = 438 · the rest are conversions
+                (separated · still visible · clickable). */}
             {[
-              { label: "Total Active", value: totalLeads, color: "text-white",         tone: "bg-white/[0.04] border-white/[0.06] hover:border-white/20", filter: "all" },
+              { label: "In Funnel",   value: inFunnel,      color: "text-white",         tone: "bg-amber-500/[0.10] border-amber-500/30 hover:border-amber-400/60",        filter: "in_funnel" },
               { label: "Course bought", value: coursePurchased, color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50", filter: "course_bought" },
-              { label: "Contracted",  value: contracted,    color: "text-amber-300",   tone: "bg-amber-500/[0.08] border-amber-500/20 hover:border-amber-400/50", filter: "contracted" },
-              { label: "Hired",       value: hired,         color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50", filter: "hired" },
+              { label: "Contracted",  value: contracted,    color: "text-amber-300",   tone: "bg-amber-500/[0.08] border-amber-500/20 hover:border-amber-400/50",        filter: "contracted" },
+              { label: "Hired",       value: hired,         color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50",   filter: "hired" },
+              { label: "Total Active", value: totalLeads,   color: "text-white/70",     tone: "bg-white/[0.04] border-white/[0.06] hover:border-white/20",                filter: "all" },
             ].map((stat) => (
               <button
                 key={stat.label}
@@ -1473,7 +1489,7 @@ export default function DashboardApplicants() {
                           size="sm"
                           onClick={() => {
                             setSearchQuery("");
-                            setStatusFilter("all");
+                            setStatusFilter("all"); // Clear-filters button shows everything
                             setLicenseFilter("all");
                             setMyDirectsOnly(false);
                             setHotLeadsOnly(false);

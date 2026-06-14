@@ -15,8 +15,8 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Activity, ArrowRight, BarChart3, Briefcase, Calendar, ChevronRight,
-  CircleDollarSign, Crown, DollarSign, Flame, ShieldCheck, Sparkles,
+  Activity, AlertTriangle, ArrowRight, BarChart3, Briefcase, Calendar, ChevronRight,
+  CircleDollarSign, Clock, Crown, DollarSign, Flame, ShieldAlert, ShieldCheck, Sparkles,
   Target, TrendingDown, TrendingUp, Trophy, UserPlus, Users, Wallet,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
@@ -1241,8 +1241,43 @@ function AgencyCommandView() {
     },
   });
 
+  // 2026-06-14 BIG PROMPT execution · enrich hero with month-level apps + hires + uncontacted depth
+  const monthDepth = useQuery({
+    queryKey: ["dashboard-month-depth"],
+    refetchInterval: 60_000,
+    staleTime: 55_000,
+    queryFn: async () => {
+      const tzNow = new Date();
+      const monthStart = new Date(tzNow.getFullYear(), tzNow.getMonth(), 1).toISOString();
+      const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+      const cutoff48h = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+
+      const [appsMtdRes, hiresMtdRes, apps7dRes, uncTotalRes, unc48hRes] = await Promise.all([
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .gte("created_at", monthStart).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .gte("licensed_at", monthStart).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .gte("created_at", weekAgo).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .is("contacted_at", null).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .is("contacted_at", null).is("terminated_at", null).lt("created_at", cutoff48h),
+      ]);
+
+      return {
+        apps_mtd: appsMtdRes.count ?? 0,
+        hires_mtd: hiresMtdRes.count ?? 0,
+        apps_7d: apps7dRes.count ?? 0,
+        uncontacted_total: uncTotalRes.count ?? 0,
+        uncontacted_48h: unc48hRes.count ?? 0,
+      };
+    },
+  });
+
   const leak = cfoLive.data;
   const apps = liveApps.data ?? [];
+  const depth = monthDepth.data;
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
@@ -1368,10 +1403,36 @@ function AgencyCommandView() {
             </div>
           </div>
 
+          {/* Month-level supplement · Sam: 'this month apps · this month hires · per agent · per manager' */}
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 mb-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Apps · MTD</p>
+              <p className="text-[22px] leading-none font-bold tabular-nums text-white">{fmtNum(depth?.apps_mtd ?? 0)}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">+{fmtNum(depth?.apps_7d ?? 0)} last 7d</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Hires · MTD</p>
+              <p className="text-[22px] leading-none font-bold tabular-nums text-emerald-300">{fmtNum(depth?.hires_mtd ?? 0)}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">{fmtNum(tight.data?.licensedMtd ?? 0)} licensed</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Uncontacted</p>
+              <p className={`text-[22px] leading-none font-bold tabular-nums ${(depth?.uncontacted_48h ?? 0) > 50 ? "text-rose-400" : "text-amber-300"}`}>
+                {fmtNum(depth?.uncontacted_total ?? 0)}
+              </p>
+              <p className="text-[10px] text-rose-300/80 tabular-nums">{fmtNum(depth?.uncontacted_48h ?? 0)} stale 48h+</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Idle producers</p>
+              <p className="text-[22px] leading-none font-bold tabular-nums text-amber-300">{fmtNum((leak?.idle_active_agents ?? 0) as number)}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">no deal 10d+</p>
+            </div>
+          </div>
+
           {/* Pre-license pipeline mini-bar */}
-          <div className="flex items-center gap-3 text-[11px]">
+          <div className="flex items-center gap-3 text-[11px] flex-wrap">
             <p className="text-white/50 uppercase tracking-widest text-[10px]">License Pipeline</p>
-            <div className="flex-1 flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <Badge variant="outline" className="text-[10px] border-rose-400/40 bg-rose-400/10 text-rose-200">
                 {fmtNum(tight.data?.pleInCourse ?? 0)} in course
               </Badge>
@@ -1404,11 +1465,19 @@ function AgencyCommandView() {
             slate:   { border: "border-slate-500/30",   bg: "bg-slate-500/[0.06]",   text: "text-slate-700 dark:text-slate-300",     chip: "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30" },
           };
           const t = tones[tone];
+          // UNCONTACTED gets an urgent pulse — Sam: "make uncontacted more animated"
+          const isUrgent = tone === "rose" && count > 0;
           return (
-            <div className={`rounded-2xl border ${t.border} ${t.bg} p-4`}>
+            <div className={`relative rounded-2xl border ${t.border} ${t.bg} p-4 ${isUrgent ? "shadow-[0_0_24px_-8px_hsl(0_70%_60%/0.4)]" : ""}`}>
+              {isUrgent && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-rose-500" />
+                </span>
+              )}
               <div className="flex items-center justify-between mb-2">
                 <p className={`text-[10px] uppercase tracking-widest font-bold ${t.text}`}>{title}</p>
-                <span className={`text-13 tabular-nums font-bold ${t.text}`}>{count}</span>
+                <span className={`text-13 tabular-nums font-bold ${t.text} ${isUrgent ? "text-[15px]" : ""}`}>{count}</span>
               </div>
               {items.length === 0 ? (
                 <p className="text-12 text-muted-foreground italic">{tip}</p>
@@ -1463,96 +1532,103 @@ function AgencyCommandView() {
         );
       })()}
 
-      {/* §C · LEAKS · single-row sleek glass strip ─────────────────────── */}
-      <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[0.03] dark:bg-rose-500/[0.05] p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="h-2 w-2 rounded-full bg-rose-500" />
-          <p className="text-[11px] uppercase tracking-widest font-bold text-rose-700 dark:text-rose-300">LIVE LEAKS · CFO bot</p>
-          <Link to="/dashboard/finances" className="text-[11px] text-muted-foreground hover:text-foreground ml-auto">
-            Full CFO →
-          </Link>
+      {/* §C · LEAKS · PREMIUM GLASS BAND (Sam: 'make leaks way better, way more appealing, more understandable') */}
+      <div className="relative overflow-hidden rounded-3xl border border-rose-500/25 bg-gradient-to-br from-slate-950 via-rose-950/40 to-slate-950 text-white shadow-[0_0_48px_-12px_hsl(0_70%_50%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-rose-300">LIVE LEAKS · CFO BOT</p>
+            </div>
+            <Link to="/dashboard/finances" className="text-[10px] text-rose-200/80 hover:text-rose-100 uppercase tracking-widest font-bold">
+              Full CFO →
+            </Link>
+          </div>
+
+          {cfoLive.isLoading ? (
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+              {Array.from({length:6}).map((_,i) => <Skeleton key={i} className="h-16 bg-white/[0.04]" />)}
+            </div>
+          ) : leak ? (
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+              {/* $$ Ghost AP — biggest leak, biggest emphasis */}
+              <div className="group relative p-3 rounded-xl bg-rose-500/[0.08] border border-rose-500/20 hover:border-rose-400/50 transition-all">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <AlertTriangle className="h-3 w-3 text-rose-400" />
+                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Ghost AP at risk</p>
+                </div>
+                <p className="text-[22px] leading-none font-black tabular-nums text-rose-300">{fmtUsd(Number(leak.ghost_ap_at_risk ?? 0), true)}</p>
+              </div>
+
+              {/* Course bought · stuck */}
+              <div className="group p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20 hover:border-amber-400/50 transition-all">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Clock className="h-3 w-3 text-amber-400" />
+                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Course bought · stuck</p>
+                </div>
+                <p className="text-[22px] leading-none font-black tabular-nums text-amber-300">{leak.ica_paid_stuck ?? 0}</p>
+              </div>
+
+              {/* Walked commission */}
+              <div className="group p-3 rounded-xl bg-rose-500/[0.08] border border-rose-500/20 hover:border-rose-400/50 transition-all">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <TrendingDown className="h-3 w-3 text-rose-400" />
+                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Walked commission</p>
+                </div>
+                <p className="text-[22px] leading-none font-black tabular-nums text-rose-300">{fmtUsd(Number(leak.lapsed_walked_commission ?? 0), true)}</p>
+              </div>
+
+              {/* Dup charges */}
+              <div className="group p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20 hover:border-amber-400/50 transition-all">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <ShieldAlert className="h-3 w-3 text-amber-400" />
+                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Dup charges</p>
+                </div>
+                <p className="text-[22px] leading-none font-black tabular-nums text-amber-300">{leak.dup_charges_open ?? 0}</p>
+              </div>
+
+              {/* Idle agents */}
+              <div className="group p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20 hover:border-amber-400/50 transition-all">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Users className="h-3 w-3 text-amber-400" />
+                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Idle agents · 10d</p>
+                </div>
+                <p className="text-[22px] leading-none font-black tabular-nums text-amber-300">{leak.idle_active_agents ?? 0}</p>
+              </div>
+
+              {/* Sync status */}
+              <div className="group p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-white/20 transition-all">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Activity className="h-3 w-3 text-white/60" />
+                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Carrier sync</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className={`text-[13px] font-bold leading-tight flex items-center gap-1 ${String(leak.insuracloud_sync ?? "").includes("🟢") ? "text-emerald-300" : "text-rose-300"}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${String(leak.insuracloud_sync ?? "").includes("🟢") ? "bg-emerald-400" : "bg-rose-400"}`} />
+                    InsuraCloud
+                  </p>
+                  <p className={`text-[13px] font-bold leading-tight flex items-center gap-1 ${String(leak.agentlink_sync ?? "").includes("🟢") ? "text-emerald-300" : "text-rose-300"}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${String(leak.agentlink_sync ?? "").includes("🟢") ? "bg-emerald-400" : "bg-rose-400"}`} />
+                    AgentLink
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-12 text-white/60">CFO snapshot unavailable.</p>
+          )}
         </div>
-        {cfoLive.isLoading ? (
-          <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-            {Array.from({length:6}).map((_,i) => <Skeleton key={i} className="h-12" />)}
-          </div>
-        ) : leak ? (
-          <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 text-12">
-            <div>
-              <p className="text-[10px] uppercase text-muted-foreground">Ghost AP at risk</p>
-              <p className="text-15 font-bold tabular-nums text-rose-600 dark:text-rose-400">{fmtUsd(Number(leak.ghost_ap_at_risk ?? 0), true)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase text-muted-foreground">Course bought · stuck</p>
-              <p className="text-15 font-bold tabular-nums text-amber-600 dark:text-amber-400">{leak.ica_paid_stuck ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase text-muted-foreground">Walked commission</p>
-              <p className="text-15 font-bold tabular-nums text-rose-600 dark:text-rose-400">{fmtUsd(Number(leak.lapsed_walked_commission ?? 0), true)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase text-muted-foreground">Dup charges open</p>
-              <p className="text-15 font-bold tabular-nums text-amber-600 dark:text-amber-400">{leak.dup_charges_open ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase text-muted-foreground">Idle active agents</p>
-              <p className="text-15 font-bold tabular-nums text-amber-600 dark:text-amber-400">{leak.idle_active_agents ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase text-muted-foreground">Sync status</p>
-              <p className="text-12 font-bold tabular-nums leading-tight">
-                <span className={String(leak.insuracloud_sync ?? "").includes("🟢") ? "text-emerald-600" : "text-rose-600"}>ICA {String(leak.insuracloud_sync ?? "—").includes("🟢") ? "🟢" : "🔴"}</span>
-                {" · "}
-                <span className={String(leak.agentlink_sync ?? "").includes("🟢") ? "text-emerald-600" : "text-rose-600"}>AL {String(leak.agentlink_sync ?? "—").includes("🟢") ? "🟢" : "🔴"}</span>
-              </p>
-            </div>
-          </div>
-        ) : (
-          <p className="text-12 text-muted-foreground">CFO snapshot unavailable.</p>
-        )}
       </div>
 
-      {/* (former §B · LIVE APPLICATIONS — superseded by the 3-lane pipeline strip above) */}
-
-      {/* ── 4 KPI TILES (real verified numbers) ─────────────────────── */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiTile
-          icon={DollarSign}
-          label={`Agency AP · ${periodBounds.label}`}
-          value={fmtUsd(periodDealsAllStatuses.data?.totalAp ?? periodSummary.totalAp)}
-          subValue={`${fmtNum(periodDealsAllStatuses.data?.count ?? periodSummary.dealCount)} deals (${fmtNum(periodSummary.dealCount)} trusted) · prior period ${priorPeriodDeals.data == null ? "…" : fmtUsd(priorPeriodDeals.data, true)}`}
-          trendPct={periodTrendPct}
-          color="text-emerald-500 dark:text-emerald-400"
-          loading={periodDeals.isLoading || priorPeriodDeals.isLoading || periodDealsAllStatuses.isLoading}
-        />
-        <KpiTile
-          icon={Trophy}
-          label={`Deals · ${periodBounds.label}`}
-          value={fmtNum(periodSummary.dealCount)}
-          subValue={`${fmtNum(periodSummary.producingAgents)} producing agents in selected window`}
-          color="text-amber-500 dark:text-amber-400"
-          loading={periodDeals.isLoading}
-        />
-        <KpiTile
-          icon={Users}
-          label={`Producers · ${periodBounds.label}`}
-          value={fmtNum(periodSummary.producingAgents)}
-          subValue={`${fmtNum(tight.data?.active10d ?? 0)} agents have any deal or production log in last 10d`}
-          color="text-primary"
-          loading={periodDeals.isLoading || tight.isLoading}
-        />
-        <KpiTile
-          icon={ShieldCheck}
-          label={`Licensed hires · ${periodBounds.label}`}
-          value={fmtNum(tight.data?.licensedMtd ?? 0)}
-          subValue={`${fmtNum(tight.data?.contractedMtd ?? 0)} contracted · ${fmtNum(tight.data?.pleInCourse ?? 0)} in pre-license course · ${fmtNum(tight.data?.pleExamScheduled ?? 0)} exam scheduled`}
-          color="text-primary"
-          loading={tight.isLoading}
-        />
-      </div>
-
-      {/* v26 L-effort refactor: Manager hierarchy share moved into the
-          tabbed strip below the trend+leaderboard grid. */}
+      {/* 2026-06-14 BIG PROMPT execution: 4-KPI tile row REMOVED — duplicated the
+          new AGENCY HERO band above. Sam: "kinda duplicate the previous portion."
+          The hero owns Agency AP / Deals / Producers / Licensed MTD canonically. */}
 
       {/* ── Trend chart (period-aware) + Top producers leaderboard ── */}
       <div className="grid gap-3 lg:grid-cols-3">

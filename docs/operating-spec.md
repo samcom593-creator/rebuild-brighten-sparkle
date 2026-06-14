@@ -1623,3 +1623,106 @@ Added: a second chart — **DAILY DEAL COUNT** bar chart (amber bars · same per
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+---
+
+# v6.8 · HEAD-TO-TOE CHECKLIST + COMPREHENSIVE SWEEP · 2026-06-15
+
+*Sam: "Make sure everything runs smoothly · everything flows smoothly · everything visually looks okay head to toe · check every single box · plug all holes · zero gaps anywhere · generate the master prompt." This section codifies the standing audit checklist that every future commit is graded against, and logs the receipt of the 10-agent sweep workflow that ran against the v6.7 state.*
+
+---
+
+## §71 · The HEAD-TO-TOE CHECKLIST (the standing audit rule)
+
+Before any new ship lands on `main`, the work passes this 18-point checklist. Anything that fails is either fixed before commit or explicitly waived in the commit body.
+
+### Functional · routes + queries
+1. Every sidebar nav item works · HTTP 200 on `apex-financial.org/<route>`
+2. Every Supabase `useQuery` selects columns that ACTUALLY EXIST in `information_schema.columns`
+3. Every Supabase `.from("table")` references a real table (no typos)
+4. Every `.single()` on a query that COULD return multiple rows is `.maybeSingle()`
+5. Every `.limit(N)` where the result is client-side bucketed has `N >= 1000`
+
+### Visual · canonical hero pattern
+6. Every page has the v6 §31 premium gradient hero immediately after PageHeader
+7. Every panel that introduces summary stats uses the canonical hero wrapper
+8. NO flat `slate-only` Cards on dashboards (legacy v22 patterns)
+9. NO `bg-clip-text + text-transparent` rainbow titles
+10. Color palette restricted to slate / amber / emerald / rose / white-black
+
+### Animation · the smoothness rule
+11. `animate-pulse` is BANNED on `Badge` components (Sam's permanent rule)
+12. `animate-ping` is ONLY allowed on the LIVE indicator dot
+13. Transitions use `transition-base` (180-220ms cubic-bezier)
+
+### Language · the terminology rule
+14. NO `"Unknown"` in user-facing text · use `"—"`
+15. NO `"ICA"` in user-facing labels · use `"Course bought"` (Sam's permanent rule)
+16. NO `"applied_at"` or `"ica_paid_at"` in queries · use `"created_at"` / `"course_purchased_at"`
+
+### Voice · the coaching rule
+17. Every zero value has COACHING COPY explaining what that 0 MEANS in context
+18. Empty states say something action-oriented (NEVER bare "No data")
+    - Examples: "Inbox zero. Hold the Standard." / "First deal opens the board." / "Open the ask."
+
+---
+
+## §72 · The Sweep Workflow (the 10-agent audit + fix)
+
+A `apex-head-to-toe-sweep` Workflow ran with this structure:
+
+**Phase 1 · Audit (6 parallel lanes)**
+- Lane 1 · Sidebar + route functional check (every nav HTTP 200)
+- Lane 2 · Dashboard zone-by-zone gap audit (every Skeleton + every "0" + every flat card)
+- Lane 3 · Data integrity sweep (every useQuery verified against information_schema)
+- Lane 4 · Visual consistency (animate-pulse on Badges · rainbow titles · "Unknown" · "ICA")
+- Lane 5 · Mobile responsiveness (grid-cols breakpoints · table overflow)
+- Lane 6 · Data hygiene leaks (orphan reserves · unlinked hires · is_duplicate hidden apps)
+
+**Phase 2 · Fix (4 parallel worktree agents)**
+- Dashboard misc fixes
+- Applicants page fixes (the "missing apps" complaint that recurs each session)
+- Recruiting Tracker sweep
+- Recruiting Funnels sweep
+
+**Phase 3 · Wrap (synthesis + receipt)**
+
+Worktree isolation enabled — 4 agents touching 4 different files simultaneously without conflict. Each fix agent ran `npx tsc --noEmit` and reported back.
+
+---
+
+## §73 · The Permanent Standing Rule
+
+> **Every commit on `main` is graded against the §71 18-point checklist. Items 1-5 (functional) are auto-checked by CI. Items 6-13 (visual + animation) are checked manually before push. Items 14-16 (language) are pre-commit grep gates. Items 17-18 (voice) are the cultural check — anyone reviewing a PR should fail it if a zero value renders without context.**
+
+The checklist evolves. As Sam catches new gaps, they get added to the list. The list never shrinks · it only grows.
+
+---
+
+## §74 · Persisted-to v6.8
+
+- This file (v6.8): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- HEAD-TO-TOE CHECKLIST is now `§71` for permanent reference
+- Sweep workflow commit: pending workflow completion, will append §75 with receipts
+
+---
+
+> **Hold the Standard. Average is the disease.**
+
+
+---
+
+## §75 · v6.8 Receipt (post-workflow)
+
+Workflow stats: 11 agents · 811K tokens · 4m22s · 0 failures.
+
+Key new panels (this push):
+- **LICENSED RECRUIT BANK** (renamed from AGED LEAD RESERVES) · filter to `license_status='licensed'` · 51 real records · tel:click on every row.
+- **LOW PRODUCERS · UNDER $5K · 7d** (rose gradient · NEW) · surfaces agents who sold something but under the bar (Dudley $1.4K · KJ $3.6K · SJAMES02 $4.2K) with progress bar to $5K + gap callout.
+
+Sweep workflow fixes merged: 3 files · +28/-5 lines · all tsc-clean.
+Animation rule enforced: 3 `animate-pulse` Badge violations killed.
+Data fix: `monthDepth.hires_mtd` switched from `applications.licensed_at` (2/523 populated) → `agents.created_at` (8 MTD · real number).
+
+Total dense panels on `/dashboard` now: 20.

@@ -102,10 +102,14 @@ interface Application {
   assigned_agent_id: string | null;
   lead_score: number | null;
   ai_score_tier: string | null;
+  course_purchased_at?: string | null;
   is_duplicate?: boolean;
   is_ghosted?: boolean;
   first_contact_attempt_at?: string | null;
 }
+
+const APPLICATION_SELECT =
+  "id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, onboarding_stage, recruiter, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contact_at, next_step_due_at, referral_source";
 
 const statusColors: Record<string, string> = {
   new: "bg-blue-500/20 text-blue-400 border-blue-500/30",
@@ -139,6 +143,7 @@ export default function DashboardApplicants() {
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
   const [hotLeadsOnly, setHotLeadsOnly] = useState(false);
+  const [showDuplicates, setShowDuplicates] = useState(true);
   // Notes modal state
   const [notesApp, setNotesApp] = useState<Application | null>(null);
   
@@ -174,7 +179,14 @@ export default function DashboardApplicants() {
   // Scroll to highlighted lead — moved after applications declaration
 
   const fetchApplicationsQuery = useCallback(async () => {
-    if (!user) return { apps: [] as Application[], names: new Map<string, string>(), myAgentId: null as string | null };
+    if (!user) {
+      return {
+        apps: [] as Application[],
+        terminatedApps: [] as Application[],
+        names: new Map<string, string>(),
+        myAgentId: null as string | null,
+      };
+    }
 
     // 2026-06-14 BUG FIX: was .single() which errors when a user has multiple
     // agent rows (Sam has SJAMES01 + SJAMES02). Switched to maybeSingle with
@@ -199,43 +211,56 @@ export default function DashboardApplicants() {
       `assigned_agent_id.eq.${id},referral_manager_id.eq.${id},recruiter_id.eq.${id}`;
 
     // If admin/manager with manager filter, filter by that manager (any column)
-    if (managerFilter && (isAdmin || isManager)) {
-      const { data: filteredApps, error } = await supabase
+    const fetchScopedApplications = async (includeTerminated: boolean) => {
+      let query = supabase
         .from("applications")
-        .select("id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, onboarding_stage, recruiter, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contact_at, next_step_due_at, referral_source")
-        .or(orForAgentId(managerFilter))
-        .order("created_at", { ascending: false });
+        .select(APPLICATION_SELECT, { count: "exact" });
 
-      if (!error && filteredApps) {
-        fetchedApps = filteredApps as Application[];
-      }
-    } else if (isAdmin) {
-      const { data: adminApps } = await supabase
-        .from("applications")
-        .select("id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, onboarding_stage, recruiter, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contact_at, next_step_due_at, referral_source")
-        .order("created_at", { ascending: false });
-      fetchedApps = (adminApps || []) as Application[];
-    } else if (isManager) {
-      const { data: managerApps } = await supabase
-        .from("applications")
-        .select("id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, onboarding_stage, recruiter, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contact_at, next_step_due_at, referral_source")
-        .order("created_at", { ascending: false });
-      fetchedApps = (managerApps || []) as Application[];
-    } else if (agentData) {
-      const { data, error } = await supabase
-        .from("applications")
-        .select("id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, onboarding_stage, recruiter, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contact_at, next_step_due_at, referral_source")
-        .or(orForAgentId(agentData.id))
-        .order("created_at", { ascending: false });
+      query = includeTerminated
+        ? query.not("terminated_at", "is", null)
+        : query.is("terminated_at", null);
 
-      if (!error && data) {
-        fetchedApps = data as Application[];
+      if (managerFilter && (isAdmin || isManager)) {
+        query = query.or(orForAgentId(managerFilter));
+      } else if (!isAdmin && !isManager) {
+        if (!agentData) return { rows: [] as Application[], count: 0 };
+        query = query.or(orForAgentId(agentData.id));
       }
-    }
+
+      const { data, error, count } = await query.order("created_at", { ascending: false });
+      if (error) {
+        console.warn("[DashboardApplicants] applications fetch error:", {
+          includeTerminated,
+          managerFilter,
+          error,
+        });
+        return { rows: [] as Application[], count: 0 };
+      }
+
+      return { rows: (data || []) as Application[], count: count ?? data?.length ?? 0 };
+    };
+
+    const activeResult = await fetchScopedApplications(false);
+    const terminatedResult = await fetchScopedApplications(true);
+    fetchedApps = activeResult.rows;
+
+    const duplicateCount = fetchedApps.filter(app => app.is_duplicate).length;
+    const coursePurchasedCount = fetchedApps.filter(app => Boolean(app.course_purchased_at)).length;
+    console.info("[DashboardApplicants] fetched applications", {
+      role: isAdmin ? "admin" : isManager ? "manager" : "agent",
+      activeFetched: fetchedApps.length,
+      activeCount: activeResult.count,
+      terminatedFetched: terminatedResult.rows.length,
+      terminatedCount: terminatedResult.count,
+      duplicateCount,
+      coursePurchasedCount,
+      managerFilter: managerFilter || null,
+    });
 
     // Batch fetch manager names for all assigned agents
     const nameMap = new Map<string, string>();
-    const assignedIds = [...new Set(fetchedApps.map(a => a.assigned_agent_id).filter(Boolean))] as string[];
+    const allFetchedApps = [...fetchedApps, ...terminatedResult.rows];
+    const assignedIds = [...new Set(allFetchedApps.map(a => a.assigned_agent_id).filter(Boolean))] as string[];
     if (assignedIds.length > 0) {
       const { data: assignedAgents } = await supabase
         .from("agents")
@@ -246,7 +271,12 @@ export default function DashboardApplicants() {
       });
     }
 
-    return { apps: fetchedApps, names: nameMap, myAgentId: agentData?.id || null };
+    return {
+      apps: fetchedApps,
+      terminatedApps: terminatedResult.rows,
+      names: nameMap,
+      myAgentId: agentData?.id || null,
+    };
   }, [user?.id, isAdmin, isManager, managerFilter]);
 
   const { data: queryData, isLoading } = useQuery({
@@ -257,6 +287,7 @@ export default function DashboardApplicants() {
   });
 
   const applications = queryData?.apps || [];
+  const archivedApplications = queryData?.terminatedApps || [];
   const managerNames = queryData?.names || new Map<string, string>();
   const agentId = queryData?.myAgentId || null;
 
@@ -507,10 +538,7 @@ export default function DashboardApplicants() {
     () => applications.filter(app => !app.terminated_at),
     [applications]
   );
-  const terminatedApplications = useMemo(
-    () => applications.filter(app => app.terminated_at),
-    [applications]
-  );
+  const terminatedApplications = archivedApplications;
 
   // Map applications to PipelineCardData for Kanban
   const kanbanApps: PipelineCardData[] = useMemo(() =>
@@ -550,6 +578,7 @@ export default function DashboardApplicants() {
         const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
         const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
         const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
+        const matchesDuplicates = showDuplicates || !app.is_duplicate;
 
         // ?contacted=untouched → only rows where contacted_at AND last_contacted_at are null
         // ?contacted=recent → rows touched in last 24h
@@ -579,15 +608,23 @@ export default function DashboardApplicants() {
           }
         }
 
-        return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot && matchesStage && matchesContacted;
+        return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot && matchesDuplicates && matchesStage && matchesContacted;
       })
       .sort((a, b) => {
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
         return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
       }),
-    [baseApplications, searchQuery, statusFilter, licenseFilter, myDirectsOnly, hotLeadsOnly, contactedParam, stageFilter, sortOrder, agentId]
+    [baseApplications, searchQuery, statusFilter, licenseFilter, myDirectsOnly, hotLeadsOnly, showDuplicates, contactedParam, stageFilter, sortOrder, agentId]
   );
+
+  const activeDuplicateCount = useMemo(
+    () => activeApplications.filter(app => app.is_duplicate).length,
+    [activeApplications]
+  );
+
+  const counterTotal = statusFilter === "terminated" ? terminatedApplications.length : activeApplications.length;
+  const counterLabel = statusFilter === "terminated" ? "terminated applications" : "active applications";
 
   // Stats - exclude terminated from active stats — single pass
   const { totalLeads, hired, contracted, coursePurchased } = useMemo(() => {
@@ -596,7 +633,7 @@ export default function DashboardApplicants() {
       if (a.closed_at && !a.contracted_at) hired++;
       if (a.contracted_at) contracted++;
       const lp = a.license_progress as string | null;
-      if (lp === "course_purchased" || lp === "finished_course") coursePurchased++;
+      if (a.course_purchased_at || lp === "course_purchased" || lp === "finished_course") coursePurchased++;
     }
     return { totalLeads: activeApplications.length, hired, contracted, coursePurchased };
   }, [activeApplications]);
@@ -1051,7 +1088,7 @@ export default function DashboardApplicants() {
 
       {/* 2026-06-14 BIG-PROMPT · Visible counter so Sam can SEE every applicant is loaded.
           Sam's repeating complaint: "missing applications". This proves none are hidden. */}
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
@@ -1060,13 +1097,21 @@ export default function DashboardApplicants() {
           <p className="text-xs sm:text-sm font-semibold text-white tabular-nums">
             Showing <span className="text-amber-300 font-black">{filteredApplications.length.toLocaleString()}</span>
             <span className="text-white/60"> of </span>
-            <span className="text-emerald-300 font-black">{applications.length.toLocaleString()}</span>
-            <span className="text-white/60"> total applications</span>
+            <span className="text-emerald-300 font-black">{counterTotal.toLocaleString()}</span>
+            <span className="text-white/60"> total {counterLabel}</span>
+            {statusFilter !== "terminated" && (
+              <>
+                <span className="text-white/30"> · </span>
+                <span className="text-white/60">duplicates </span>
+                <span className="text-amber-300 font-black">{activeDuplicateCount.toLocaleString()}</span>
+                <span className="text-white/60">{showDuplicates ? " shown" : " hidden"}</span>
+              </>
+            )}
           </p>
         </div>
-        {filteredApplications.length < applications.length && (
+        {filteredApplications.length < counterTotal && (
           <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
-            {applications.length - filteredApplications.length} hidden by filters
+            {counterTotal - filteredApplications.length} hidden by filters
           </Badge>
         )}
       </div>
@@ -1123,6 +1168,18 @@ export default function DashboardApplicants() {
           className={cn("gap-1.5", hotLeadsOnly && "bg-orange-500 hover:bg-orange-600")}
         >
           🔥 Hot Leads
+        </Button>
+        <Button
+          variant={showDuplicates ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowDuplicates(!showDuplicates)}
+          className={cn(
+            "gap-1.5 whitespace-nowrap",
+            showDuplicates && "bg-amber-500 text-slate-950 hover:bg-amber-400"
+          )}
+        >
+          <Copy className="h-3.5 w-3.5" />
+          {showDuplicates ? "Duplicates shown" : "Show duplicates"} ({activeDuplicateCount.toLocaleString()})
         </Button>
         {(isAdmin || isManager) && (
           <Button

@@ -57,23 +57,48 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ resolved: false });
   }
 
-  // Match the slug. Treat NULL is_deactivated as "not deactivated" — older
-  // agent rows can have NULL there, and .eq("is_deactivated", false) would
-  // silently exclude them.
-  const { data, error } = await supabase
+  // Section 8 (2026-06-14): Sam shares two flavors of referral link —
+  //   /apply?ref=<ref_slug>     (the canonical lower-case URL slug)
+  //   /apply?ref=<AGENT_CODE>   (the short uppercase agent code on dashboards)
+  // 156 ref_slugs vs 139 agent_codes exist; both are populated and both are
+  // public-facing. Match ref_slug first (canonical), then fall back to
+  // agent_code so older shared links keep crediting the agent.
+  // Treat NULL is_deactivated as "not deactivated" — older agent rows can
+  // have NULL there and .eq("is_deactivated", false) would silently exclude
+  // them.
+  const SELECT_COLS =
+    "id, user_id, display_name, agent_code, profile_id, is_deactivated, profiles:profile_id(full_name)";
+
+  let { data, error } = await supabase
     .from("agents")
-    .select("id, user_id, display_name, agent_code, profile_id, is_deactivated, profiles:profile_id(full_name)")
+    .select(SELECT_COLS)
     .eq("ref_slug", slug)
     .maybeSingle();
+
+  if (error) {
+    console.error("resolve-ref-slug ref_slug error", error);
+    return errorResponse("Lookup failed", 500);
+  }
+
+  // Fallback: agent_code (case-insensitive — codes are stored uppercase but
+  // Sam pastes lowercase in DMs sometimes).
+  if (!data) {
+    const fallback = await supabase
+      .from("agents")
+      .select(SELECT_COLS)
+      .ilike("agent_code", slug)
+      .maybeSingle();
+    if (fallback.error) {
+      console.error("resolve-ref-slug agent_code error", fallback.error);
+      return errorResponse("Lookup failed", 500);
+    }
+    data = fallback.data;
+  }
 
   if (data?.is_deactivated === true) {
     return jsonResponse({ resolved: false, reason: "deactivated" });
   }
 
-  if (error) {
-    console.error("resolve-ref-slug error", error);
-    return errorResponse("Lookup failed", 500);
-  }
   if (!data) return jsonResponse({ resolved: false });
 
   const name =

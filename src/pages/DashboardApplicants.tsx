@@ -100,6 +100,7 @@ interface Application {
   previous_company: string | null;
   years_experience: number | null;
   assigned_agent_id: string | null;
+  recruiter_id: string | null;
   lead_score: number | null;
   ai_score_tier: string | null;
   course_purchased_at?: string | null;
@@ -326,10 +327,54 @@ export default function DashboardApplicants() {
       });
     }
 
+    // Section 8 (2026-06-14): Upline attribution — for every applicant credited
+    // to a recruiter, surface the recruiter's manager. Two-hop lookup:
+    //   applications.recruiter_id (agent) -> agents.manager_id -> agents
+    //   -> profiles.full_name.
+    // 26/156 agents currently have manager_id set, so most upline cells will
+    // render "—" until Sam fills out the hierarchy; that's correct truth, not
+    // a bug.
+    const recruiterMap = new Map<string, { name: string; uplineId: string | null }>();
+    const uplineMap = new Map<string, string>();
+    const recruiterIds = [
+      ...new Set(allFetchedApps.map(a => a.recruiter_id).filter(Boolean)),
+    ] as string[];
+    if (recruiterIds.length > 0) {
+      const { data: recruiterRows } = await supabase
+        .from("agents")
+        .select("id, manager_id, profiles!agents_profile_id_fkey(full_name)")
+        .in("id", recruiterIds);
+      recruiterRows?.forEach((r: any) => {
+        recruiterMap.set(r.id, {
+          name: r.profiles?.full_name || "—",
+          uplineId: r.manager_id || null,
+        });
+      });
+
+      const uplineIds = [
+        ...new Set(
+          (recruiterRows || [])
+            .map((r: any) => r.manager_id)
+            .filter(Boolean) as string[]
+        ),
+      ];
+      if (uplineIds.length > 0) {
+        const { data: uplineRows } = await supabase
+          .from("agents")
+          .select("id, profiles!agents_profile_id_fkey(full_name)")
+          .in("id", uplineIds);
+        uplineRows?.forEach((u: any) => {
+          uplineMap.set(u.id, u.profiles?.full_name || "—");
+        });
+      }
+    }
+
     return {
       apps: fetchedApps,
       terminatedApps: terminatedResult.rows,
       names: nameMap,
+      recruiters: recruiterMap,
+      uplines: uplineMap,
       myAgentId: agentData?.id || null,
     };
   }, [user?.id, isAdmin, isManager, managerFilter]);
@@ -344,6 +389,9 @@ export default function DashboardApplicants() {
   const applications = queryData?.apps || [];
   const archivedApplications = queryData?.terminatedApps || [];
   const managerNames = queryData?.names || new Map<string, string>();
+  const recruiterDirectory =
+    queryData?.recruiters || new Map<string, { name: string; uplineId: string | null }>();
+  const uplineNames = queryData?.uplines || new Map<string, string>();
   const agentId = queryData?.myAgentId || null;
 
   const fetchApplications = useCallback(() => {
@@ -1522,6 +1570,12 @@ export default function DashboardApplicants() {
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">License</th>
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Location</th>
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Manager</th>
+                      <th
+                        className="h-10 px-4 text-left align-middle font-medium text-muted-foreground"
+                        title="Recruiter's upline manager — who the referring agent reports to"
+                      >
+                        Upline
+                      </th>
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Created</th>
                       <th className="h-10 px-4 text-right align-middle font-medium text-muted-foreground">Actions</th>
                     </tr>
@@ -1609,6 +1663,42 @@ export default function DashboardApplicants() {
                             ) : (
                               <span className="text-muted-foreground">Unassigned</span>
                             )}
+                          </td>
+                          <td className="p-3 align-middle text-xs">
+                            {(() => {
+                              // Upline = recruiter's manager. Two-hop: applicant
+                              // -> recruiter -> recruiter.manager_id -> name.
+                              // Sam never wants "Unknown" anywhere — show "—" if
+                              // any hop is missing (no recruiter, no hierarchy).
+                              const recruiter = app.recruiter_id
+                                ? recruiterDirectory.get(app.recruiter_id)
+                                : null;
+                              const uplineName = recruiter?.uplineId
+                                ? uplineNames.get(recruiter.uplineId)
+                                : null;
+                              if (!recruiter) {
+                                return <span className="text-muted-foreground">—</span>;
+                              }
+                              if (!uplineName) {
+                                return (
+                                  <span
+                                    className="text-muted-foreground"
+                                    title={`Referred by ${recruiter.name}; recruiter has no manager_id on file`}
+                                  >
+                                    —
+                                  </span>
+                                );
+                              }
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-indigo-500/10 text-indigo-300 border-indigo-500/30 text-[10px]"
+                                  title={`Referred by ${recruiter.name} — under ${uplineName}`}
+                                >
+                                  {uplineName}
+                                </Badge>
+                              );
+                            })()}
                           </td>
                           <td className="p-3 align-middle text-muted-foreground text-xs">
                             {getTimeAgo(app.created_at)}

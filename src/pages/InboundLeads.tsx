@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
   Activity,
   AlertCircle,
   ArrowRight,
+  BarChart3,
   CalendarClock,
   CheckCircle2,
   ChevronRight,
@@ -416,7 +418,17 @@ function applyTranscriptHints(
 
 export default function InboundLeads() {
   usePageTitle("Inbound Leads · APEX");
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  // Section 11 (2026-06-14): inbound lead routing. ?ref=<slug> on the
+  // InboundLeads URL credits the captured call to that agent (sets
+  // owner_agent_id on insert). Generic inbound with no ref falls through
+  // to the capturing user (created_by_user_id), which is the implicit
+  // round-robin = whoever is on the floor answers the call. Admin-defined
+  // routing is layered as an attribution panel by month (admin-only).
+  const [searchParams] = useSearchParams();
+  const refSlug = searchParams.get("ref")?.trim() || null;
+  const [routedAgentId, setRoutedAgentId] = useState<string | null>(null);
+  const [routedAgentName, setRoutedAgentName] = useState<string | null>(null);
   const [leads, setLeads] = useState<InboundLead[]>(() => loadLocalLeads());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -491,6 +503,40 @@ export default function InboundLeads() {
   useEffect(() => {
     loadRemote();
   }, [loadRemote]);
+
+  // Section 11: resolve ?ref=<slug> → owner_agent_id via resolve-ref-slug
+  // edge fn (same path Apply.tsx uses). If resolved, every inbound lead
+  // saved on this tab routes to that agent. If unresolved or absent,
+  // owner_agent_id stays null and the lead is owned by the capturing user.
+  useEffect(() => {
+    if (!refSlug) {
+      setRoutedAgentId(null);
+      setRoutedAgentName(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("resolve-ref-slug", {
+          body: { slug: refSlug },
+        });
+        if (cancelled) return;
+        if (error) {
+          console.error("[InboundLeads] resolve-ref-slug error:", error);
+          return;
+        }
+        const payload = data as { resolved?: boolean; agent_id?: string; display_name?: string };
+        if (payload?.resolved && payload.agent_id) {
+          setRoutedAgentId(payload.agent_id);
+          setRoutedAgentName(payload.display_name ?? null);
+          toast.success(`Routing inbound leads to ${payload.display_name ?? "referrer"}`);
+        }
+      } catch (err) {
+        console.error("[InboundLeads] resolve-ref-slug failed:", err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [refSlug]);
 
   const stats = useMemo(() => {
     const total = leads.length;
@@ -589,6 +635,84 @@ export default function InboundLeads() {
     const s = sec % 60;
     return s ? `${m}m ${s}s` : `${m}m`;
   };
+
+  // Section 11 (2026-06-14): admin-only Lead Source Attribution by Month.
+  // Pulls last 6 months of inbound_leads, buckets by Phoenix-month + source,
+  // shows totals and Won counts per cell. Surfaces which channels Sam should
+  // double down on. Admin gate via isAdmin — agents never see this panel.
+  // Verification: bot-sql confirmed inbound_leads columns id, created_at,
+  // stage, source exist (2026-06-14).
+  const sourceAttribution = useQuery({
+    queryKey: ["inbound-leads", "source-attribution"],
+    enabled: !!isAdmin,
+    queryFn: async () => {
+      const since = new Date();
+      since.setMonth(since.getMonth() - 5);
+      since.setDate(1);
+      since.setHours(0, 0, 0, 0);
+      const { data, error } = await (supabase as any)
+        .from("inbound_leads")
+        .select("id, created_at, source, stage")
+        .gte("created_at", since.toISOString())
+        .order("created_at", { ascending: false })
+        .limit(5000);
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{
+        id: string;
+        created_at: string;
+        source: string | null;
+        stage: InboundStage | null;
+      }>;
+
+      // Phoenix tz YYYY-MM key for grouping (Sam's permanent rule for any
+      // today/week/month query).
+      const fmtMonth = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Phoenix",
+        year: "numeric",
+        month: "2-digit",
+      });
+      const labelMonth = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Phoenix",
+        year: "numeric",
+        month: "short",
+      });
+
+      type Cell = { total: number; won: number };
+      const matrix = new Map<string, Map<string, Cell>>(); // month → source → cell
+      const sourceSet = new Set<string>();
+      const monthSet = new Set<string>();
+      const monthLabels = new Map<string, string>();
+
+      for (const r of rows) {
+        const monthKey = fmtMonth.format(new Date(r.created_at));
+        const sourceKey = (r.source && r.source.trim()) || "unattributed";
+        const stage = r.stage || "new";
+        sourceSet.add(sourceKey);
+        monthSet.add(monthKey);
+        monthLabels.set(monthKey, labelMonth.format(new Date(r.created_at)));
+        let m = matrix.get(monthKey);
+        if (!m) { m = new Map(); matrix.set(monthKey, m); }
+        let cell = m.get(sourceKey);
+        if (!cell) { cell = { total: 0, won: 0 }; m.set(sourceKey, cell); }
+        cell.total += 1;
+        if (stage === "won") cell.won += 1;
+      }
+
+      // Sort months newest → oldest, sources by total descending across the
+      // window so the busiest channel sits on top.
+      const months = Array.from(monthSet).sort().reverse();
+      const sources = Array.from(sourceSet).sort((a, b) => {
+        const at = Array.from(matrix.values()).reduce(
+          (acc, m) => acc + (m.get(a)?.total ?? 0), 0);
+        const bt = Array.from(matrix.values()).reduce(
+          (acc, m) => acc + (m.get(b)?.total ?? 0), 0);
+        return bt - at;
+      });
+      return { months, sources, matrix, monthLabels };
+    },
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
 
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -963,6 +1087,16 @@ export default function InboundLeads() {
     };
 
     try {
+      // Section 11 routing payload:
+      //   - owner_agent_id ← routedAgentId (from ?ref= slug) when set,
+      //     else null (lead is owned by the capturing user via
+      //     created_by_user_id default).
+      //   - source ← refSlug suffix when present so the attribution
+      //     panel splits "manual_inbound_call" vs "manual_inbound_call:ref"
+      //     by month without losing the canonical bucket.
+      const routedSource = routedAgentId
+        ? `${draft.source}:ref`
+        : draft.source;
       const { data, error } = await (supabase as any)
         .from("inbound_leads")
         .insert({
@@ -983,7 +1117,8 @@ export default function InboundLeads() {
           transcript: draft.transcript,
           stage: draft.stage,
           next_action_at: draft.next_action_at || null,
-          source: draft.source,
+          source: routedSource,
+          owner_agent_id: routedAgentId,
         })
         .select("*")
         .maybeSingle();
@@ -1188,6 +1323,30 @@ export default function InboundLeads() {
         </div>
       </div>
 
+      {/* Section 11: routing banner — visible only when ?ref=<slug> is
+          present on the URL and resolved to an agent. Sam sees who every
+          captured call on this tab will be credited to. */}
+      {refSlug && (
+        <GlassCard className="p-3">
+          <div className="flex items-center gap-2 text-12">
+            <ArrowRight className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+            {routedAgentId ? (
+              <span>
+                Routing every saved lead to{" "}
+                <span className="font-semibold text-emerald-600 dark:text-emerald-300">
+                  {routedAgentName ?? "the referring agent"}
+                </span>{" "}
+                <span className="text-muted-foreground">(?ref={refSlug})</span>
+              </span>
+            ) : (
+              <span className="text-muted-foreground">
+                Resolving ?ref={refSlug} …
+              </span>
+            )}
+          </div>
+        </GlassCard>
+      )}
+
       <GlassCard className="p-4">
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
           <div className="relative flex-1 min-w-[220px]">
@@ -1313,6 +1472,91 @@ export default function InboundLeads() {
               );
             })}
           </div>
+        </GlassCard>
+      )}
+
+      {/* Section 11 (2026-06-14): Admin-only Lead Source Attribution by
+          Month. Shows which source generated how many leads + Won counts
+          by Phoenix-month. Sam uses this to double down on the channels
+          actually closing. Agents don't see it. */}
+      {isAdmin && (
+        <GlassCard className="p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-amber-500" />
+            <p className="text-13 font-bold">Lead source attribution · last 6 months</p>
+            <Badge variant="outline" className="ml-auto text-10 uppercase tracking-widest">
+              Admin · Phoenix
+            </Badge>
+          </div>
+          {sourceAttribution.isLoading ? (
+            <p className="text-12 text-muted-foreground">Loading attribution…</p>
+          ) : sourceAttribution.error ? (
+            <p className="text-12 text-rose-500">
+              Attribution unavailable: {(sourceAttribution.error as Error).message}
+            </p>
+          ) : !sourceAttribution.data || sourceAttribution.data.sources.length === 0 ? (
+            <p className="text-12 text-muted-foreground">
+              No inbound leads in the last 6 months yet. Save a call to start populating.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-12">
+                <thead>
+                  <tr className="border-b border-border/40 text-left">
+                    <th className="py-2 pr-3 font-semibold text-muted-foreground">Source</th>
+                    {sourceAttribution.data.months.map((m) => (
+                      <th key={m} className="py-2 px-2 text-right font-semibold text-muted-foreground tabular-nums">
+                        {sourceAttribution.data?.monthLabels.get(m) ?? m}
+                      </th>
+                    ))}
+                    <th className="py-2 pl-3 text-right font-semibold text-muted-foreground tabular-nums">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sourceAttribution.data.sources.map((src) => {
+                    let rowTotal = 0;
+                    let rowWon = 0;
+                    return (
+                      <tr key={src} className="border-b border-border/20 last:border-0">
+                        <td className="py-2 pr-3 font-medium">{src}</td>
+                        {sourceAttribution.data!.months.map((m) => {
+                          const cell = sourceAttribution.data!.matrix.get(m)?.get(src);
+                          rowTotal += cell?.total ?? 0;
+                          rowWon += cell?.won ?? 0;
+                          return (
+                            <td key={m} className="py-2 px-2 text-right tabular-nums">
+                              {cell ? (
+                                <span>
+                                  {cell.total}
+                                  {cell.won > 0 && (
+                                    <span className="text-emerald-500 ml-1">· {cell.won}w</span>
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground/50">—</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="py-2 pl-3 text-right font-semibold tabular-nums">
+                          {rowTotal}
+                          {rowWon > 0 && (
+                            <span className="text-emerald-500 ml-1">· {rowWon}w</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="mt-2 text-10 text-muted-foreground">
+                "w" = leads that reached stage=won. Months bucketed by Phoenix timezone.
+                Sources ending in ":ref" came in via a ?ref=&lt;slug&gt; URL.
+              </p>
+            </div>
+          )}
         </GlassCard>
       )}
 

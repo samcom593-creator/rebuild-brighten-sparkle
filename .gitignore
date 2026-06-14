@@ -39,3 +39,4 @@ supabase/.temp/
 # tailwind.config.landing.cjs + src/index.css via scripts/build-landing-css.mjs.
 # Not a source file — gitignored so `git status` stays clean post-build.
 public/landing.css
+.claude/

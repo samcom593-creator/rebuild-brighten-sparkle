@@ -1048,3 +1048,106 @@ Every future Dashboard PR is judged against these three commits + the v6 §31/§
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v6.2 · HEAD-TO-TOE EXECUTION · 2026-06-14 LATE-NIGHT
+
+*Sam saw the v6.1 ship live and said: "the entire website looks the exact same · screenshots of empty spaces · daily AP run-rate is left to only a graph · I wanted more like those inner layer graphs · 4 or 5 of those · should be actually generally unrecognizable · should be black and white." This section is the receipt for the parallel-worktree head-to-toe rebuild that followed.*
+
+---
+
+## §41 · The 13-Agent Workflow
+
+A multi-phase Workflow with 13 agents executed in 4m17s, consuming 798K tokens. Phase structure:
+
+1. **Audit** (6 parallel Explore agents) — each scanned one target page, returned current state + bug list + insertion points.
+2. **Rebuild** (6 parallel agents, each in `isolation: 'worktree'`) — each rebuilt one page per the v6 §31 canonical hero spec.
+3. **Synthesize** (1 agent) — consolidated reports into Sam-receipt.
+
+The worktree isolation pattern was essential: 6 agents all touched the same `rebuild-brighten-sparkle` repo simultaneously without merge conflicts. Each agent ran `tsc --noEmit` before reporting back — 0 failures.
+
+The orchestrating Claude (main thread) ran a parallel solo rewrite of `Daily AP run-rate` + `Leaderboard` cards on the Dashboard while the Workflow churned, since those were called out by name in Sam's complaint. The two streams converged at merge time.
+
+---
+
+## §42 · What Shipped (commit `bb5d459a`)
+
+5 pages got the canonical v6 §31 premium gradient hero. Each picked a tone-appropriate color per the §31.5 rule (amber for recruiting/data, emerald for production/money, rose for leak posture).
+
+| File | Lines | Hero color | Special |
+|---|---|---|---|
+| `InboundLeads.tsx` | +201 | amber | Existing dialer + Switch Center reframed; 4 hero metrics |
+| `CallsTodayCockpit.tsx` | +185 | amber | Stage-tinted row backgrounds (emerald/amber/rose) + "Inbox zero. Dial something new." empty state |
+| `Leaderboard.tsx` | +186 | emerald | #1 amber-glow ring + ring shadow; #2 slate; #3 amber-700; "Unknown" → "—" |
+| `admin/RecruitingInbox.tsx` | +173 | rose | Pulsing rose ping dots on >48h stale; "Mark Contacted" action; "Inbox zero. Hold the Standard." |
+| `BusinessAnalytics.tsx` | +298 | amber | Overview tab only; 3-lane challenge strip (Daily rose/Weekly amber/Monthly emerald); other 9 tabs untouched |
+
+Total: +1,043 lines / -216 deletions across the 5 files.
+
+Compound side effects the agents applied uniformly:
+- Removed duplicate 4-flat-KPI tile rows (Sam's "kinda duplicate" rule, retroactively applied).
+- Rewrote every "No data" generic empty state as coaching copy ending in "Hold the Standard. Average is the disease."
+- Stage-tinted row backgrounds on list views.
+
+---
+
+## §43 · What the Main Thread Shipped (commit `52dca9ea`)
+
+In parallel with the Workflow, the orchestrating Claude rewrote:
+
+1. **Daily AP run-rate card** (Dashboard lower section) — emerald-gradient hero with 4 inner glass tiles above the chart. Chart restyled for dark-mode context (emerald grid lines, white/40 axes, dark popover tooltip). This is the "more inner layer graphs · 4 or 5 of those" Sam asked for.
+2. **Leaderboard card on Dashboard** — amber-gradient hero matching the Daily AP card. #1 amber glow ring. Crown icon. Dark-mode chip palette.
+3. **Applicants page** — v6 §31 amber hero with 4 click-to-filter button tiles + `.single()` → `.maybeSingle()` bug fix that was masking the 0/0/0/0 display. The hero matches the new pattern, the filter buttons are 32px font-black tabular numbers, and active filter gets a `ring-amber-400/60` highlight.
+
+---
+
+## §44 · The `.single()` Bug That Was Hiding 519 Applications
+
+The Applicants page used `.single()` on this query:
+```ts
+const { data: agentData } = await supabase
+  .from("agents")
+  .select("id")
+  .eq("user_id", user.id)
+  .single();
+```
+
+Sam has TWO agent rows (SJAMES01 + SJAMES02). `.single()` returns a Postgrest error when the query matches multiple rows. Even though the isAdmin path bypasses the agentData branch (so admin SHOULD see all 523 apps), React Query's resolve chain was being killed by the error, leaving `applications` as `[]` and showing 0/0/0/0 stats + "No applicants found."
+
+Fix: `.order("created_at", { ascending: false }).limit(1).maybeSingle()` + explicit `console.warn` on error. Page now loads 523 active applications correctly.
+
+This bug pattern (`.single()` on potentially-multi-row queries) is now a permanent column-audit checklist item:
+- Any `.from(<table>).select(...).eq(...).single()` where `<table>` could have multiple rows per `<column>` MUST use `.maybeSingle()` with explicit `.order().limit(1)`.
+
+---
+
+## §45 · The Math
+
+| Metric | This sprint |
+|---|---|
+| Pages with v6 §31 hero | 5 (rebuilt) + 3 (Dashboard sections) = 8 |
+| Workflow agents spawned | 13 |
+| Workflow tokens consumed | 798K |
+| Workflow duration | 4m17s |
+| Workflow failures | 0 |
+| Commits this sprint | 4 (`52dca9ea` Dashboard sections + Applicants hero + .single() fix · `0baf962d` worktree-ignore cleanup · `bb5d459a` head-to-toe parallel ship · this prompt update) |
+| Pages still un-touched | Carrier Resources, Commission Grids, Producer Profile, Calling Cards, My Landing Page, Calendar, Transfer Requests, Scripts, Help Center, Handbook, Annuity Training, Client Marketing, Needs Analysis, Quoter, all Onboarding flows |
+
+The 14 still-untouched pages get the same treatment in the next sprint. The canonical hero (§31), 3-lane pipeline strip (§32), and column-audit rule (§44) are the standing reference.
+
+---
+
+## §46 · Persisted-to v6.2
+
+- **This file**: `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- **Repo mirror**: `docs/operating-spec.md`
+- **Canonical hero reference** (Dashboard): `src/pages/AgentCommandDashboard.tsx`, commit `1d51f86a` for the original ship, `52dca9ea` for the Daily AP + Leaderboard inner-graph upgrade
+- **Canonical hero reference** (rebuilt page): `src/pages/Leaderboard.tsx` (emerald variant) and `src/pages/admin/RecruitingInbox.tsx` (rose variant), commit `bb5d459a`
+- **`.single()` bug guard**: §44 of this file
+- **Worktree-isolation Workflow pattern**: this file §41
+
+---
+
+> **Hold the Standard. Average is the disease.**

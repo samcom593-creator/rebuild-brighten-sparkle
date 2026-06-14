@@ -1,0 +1,290 @@
+// ProducerProfile · mirrors AgentLink's "Producer Profile" sidebar item
+//
+// Agent-facing self-edit view. Loads from `profiles` (joined on user_id)
+// + `agents` (read-only stats panel). User edits name/phone/bio/city/state/
+// instagram_handle/avatar_url; SAVE updates `profiles`. Agents stats are
+// read-only (license_status, license_states, start_date, total_premium, etc).
+
+import { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  User as UserIcon, Save, MapPin, Phone, Mail, Instagram, FileText,
+  Image as ImageIcon, Calendar, Shield, TrendingUp, RefreshCw,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+
+interface ProfileForm {
+  full_name: string;
+  phone: string;
+  avatar_url: string;
+  bio: string;
+  city: string;
+  state: string;
+  instagram_handle: string;
+}
+
+interface AgentStat {
+  agent_code: string | null;
+  license_status: string | null;
+  license_states: string[] | null;
+  start_date: string | null;
+  total_policies: number | null;
+  total_premium: number | null;
+  total_earnings: number | null;
+  performance_tier: string | null;
+  attendance_status: string | null;
+}
+
+function fmtUsd(n: number | null): string {
+  const v = Number(n ?? 0);
+  if (Math.abs(v) >= 1000) return `$${(v / 1000).toFixed(1)}K`;
+  return `$${Math.round(v).toLocaleString()}`;
+}
+
+export default function ProducerProfile() {
+  usePageTitle("Producer Profile · APEX");
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const userId = (user as any)?.id ?? null;
+
+  const profile = useQuery({
+    queryKey: ["profile", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles" as any)
+        .select("id, user_id, email, full_name, phone, avatar_url, bio, city, state, instagram_handle, photo_url")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as any;
+    },
+  });
+
+  const agent = useQuery({
+    queryKey: ["agent", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agents" as any)
+        .select("agent_code, license_status, license_states, start_date, total_policies, total_premium, total_earnings, performance_tier, attendance_status")
+        .eq("user_id", userId)
+        .maybeSingle();
+      return data as unknown as AgentStat | null;
+    },
+  });
+
+  const [form, setForm] = useState<ProfileForm>({
+    full_name: "", phone: "", avatar_url: "", bio: "",
+    city: "", state: "", instagram_handle: "",
+  });
+
+  useEffect(() => {
+    if (profile.data) {
+      setForm({
+        full_name: profile.data.full_name ?? "",
+        phone: profile.data.phone ?? "",
+        avatar_url: profile.data.avatar_url ?? profile.data.photo_url ?? "",
+        bio: profile.data.bio ?? "",
+        city: profile.data.city ?? "",
+        state: profile.data.state ?? "",
+        instagram_handle: profile.data.instagram_handle ?? "",
+      });
+    }
+  }, [profile.data]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      if (!userId) throw new Error("Not logged in");
+      const { error } = await supabase
+        .from("profiles" as any)
+        .update({
+          full_name: form.full_name.trim() || null,
+          phone: form.phone.trim() || null,
+          avatar_url: form.avatar_url.trim() || null,
+          bio: form.bio.trim() || null,
+          city: form.city.trim() || null,
+          state: form.state.trim() || null,
+          instagram_handle: form.instagram_handle.trim() || null,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Profile saved");
+      qc.invalidateQueries({ queryKey: ["profile", userId] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Save failed"),
+  });
+
+  const ag = agent.data;
+
+  return (
+    <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+      <PageHeader
+        eyebrow="Account"
+        eyebrowIcon={<UserIcon className="h-3 w-3" />}
+        title="Producer Profile"
+        subtitle="Your contact info, bio, and license stats. Save changes below."
+        actions={
+          <Button variant="outline" size="sm" onClick={() => { profile.refetch(); agent.refetch(); }}>
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${profile.isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        }
+      />
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* EDITABLE PROFILE */}
+        <div className="lg:col-span-2 space-y-3">
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              {profile.isLoading ? (
+                <div className="space-y-3">
+                  {Array.from({length:5}).map((_,i) => <Skeleton key={i} className="h-9" />)}
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-4">
+                    {form.avatar_url ? (
+                      <img src={form.avatar_url} alt="" className="h-16 w-16 rounded-full object-cover ring-2 ring-amber-500/40" />
+                    ) : (
+                      <div className="h-16 w-16 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-18 font-bold flex items-center justify-center">
+                        {(form.full_name || profile.data?.email || "?").slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <label className="text-11 text-muted-foreground flex items-center gap-1.5 mb-1"><UserIcon className="h-3 w-3" /> Full Name</label>
+                        <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Your full name" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-11 text-muted-foreground flex items-center gap-1.5 mb-1"><ImageIcon className="h-3 w-3" /> Avatar URL</label>
+                    <Input value={form.avatar_url} onChange={(e) => setForm({ ...form, avatar_url: e.target.value })} placeholder="https://…" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-11 text-muted-foreground flex items-center gap-1.5 mb-1"><Phone className="h-3 w-3" /> Phone</label>
+                      <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 555 5555" />
+                    </div>
+                    <div>
+                      <label className="text-11 text-muted-foreground flex items-center gap-1.5 mb-1"><Instagram className="h-3 w-3" /> Instagram</label>
+                      <Input value={form.instagram_handle} onChange={(e) => setForm({ ...form, instagram_handle: e.target.value })} placeholder="@yourhandle" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-11 text-muted-foreground flex items-center gap-1.5 mb-1"><MapPin className="h-3 w-3" /> City</label>
+                      <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="City" />
+                    </div>
+                    <div>
+                      <label className="text-11 text-muted-foreground flex items-center gap-1.5 mb-1"><MapPin className="h-3 w-3" /> State</label>
+                      <Input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="ST" maxLength={2} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-11 text-muted-foreground flex items-center gap-1.5 mb-1"><FileText className="h-3 w-3" /> Bio</label>
+                    <Textarea
+                      value={form.bio}
+                      onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                      placeholder="A short bio agents/clients see on your profile…"
+                      rows={4}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-11 text-muted-foreground flex items-center gap-1.5 mb-1"><Mail className="h-3 w-3" /> Email (read-only)</label>
+                    <Input value={profile.data?.email ?? ""} disabled className="opacity-70" />
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <Button onClick={() => save.mutate()} disabled={save.isPending}>
+                      <Save className="h-3.5 w-3.5 mr-1.5" />
+                      {save.isPending ? "Saving…" : "Save Changes"}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* READ-ONLY AGENT STATS */}
+        <div className="space-y-3">
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <h3 className="text-13 font-bold flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-emerald-500" /> Production</h3>
+              {agent.isLoading ? (
+                <div className="space-y-2">{Array.from({length:4}).map((_,i)=><Skeleton key={i} className="h-6" />)}</div>
+              ) : ag ? (
+                <div className="space-y-2 text-12">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Agent Code</span>
+                    <span className="tabular-nums">{ag.agent_code ?? "—"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">License Status</span>
+                    <Badge variant="outline" className="text-11">{ag.license_status ?? "—"}</Badge>
+                  </div>
+                  {(ag.license_states ?? []).length > 0 && (
+                    <div>
+                      <span className="text-muted-foreground">Licensed States</span>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {ag.license_states!.map((s) => (
+                          <Badge key={s} variant="outline" className="text-11 bg-emerald-500/10 border-emerald-500/30">{s}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> Start Date</span>
+                    <span>{ag.start_date ?? "—"}</span>
+                  </div>
+                  <div className="border-t border-border/40 pt-2 mt-2 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Policies</span>
+                      <span className="tabular-nums font-bold">{ag.total_policies ?? 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Premium</span>
+                      <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{fmtUsd(ag.total_premium)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Earnings</span>
+                      <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{fmtUsd(ag.total_earnings)}</span>
+                    </div>
+                  </div>
+                  {ag.performance_tier && (
+                    <div className="flex justify-between pt-1">
+                      <span className="text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Tier</span>
+                      <Badge variant="outline" className="text-11 bg-amber-500/10 border-amber-500/30">{ag.performance_tier}</Badge>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-12 text-muted-foreground">No agent record linked to this user. Ask your manager.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

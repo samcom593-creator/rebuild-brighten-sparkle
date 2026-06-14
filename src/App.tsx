@@ -143,6 +143,7 @@ const CarrierResources = lazy(() => import("./pages/CarrierResources"));
 const Announcements = lazy(() => import("./pages/Announcements"));
 const Finances = lazy(() => import("./pages/Finances"));
 const Scripts = lazy(() => import("./pages/Scripts"));
+const ProducerProfile = lazy(() => import("./pages/ProducerProfile"));
 const TeamAnalytics = lazy(() => import("./pages/TeamAnalytics"));
 const AwardsGallery = lazy(() => import("./pages/AwardsGallery"));
 const HallOfFame = lazy(() => import("./pages/HallOfFame"));
@@ -457,6 +458,7 @@ const App = () => (
                        <Route path="/dashboard/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
                        <Route path="/dashboard/finances" element={<ProtectedRoute requireAdmin><Finances /></ProtectedRoute>} />
                        <Route path="/dashboard/scripts" element={<ProtectedRoute><Scripts /></ProtectedRoute>} />
+                       <Route path="/dashboard/profile" element={<ProtectedRoute><ProducerProfile /></ProtectedRoute>} />
                        <Route path="/dashboard/team-analytics" element={<ProtectedRoute><TeamAnalytics /></ProtectedRoute>} />
                        <Route path="/dashboard/awards" element={<ProtectedRoute><AwardsGallery /></ProtectedRoute>} />
                        <Route path="/dashboard/hall-of-fame" element={<ProtectedRoute><HallOfFame /></ProtectedRoute>} />

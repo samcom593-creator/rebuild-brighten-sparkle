@@ -471,6 +471,8 @@ function useCurrentAgent(userId: string | undefined) {
         .from("agents")
         .select("id, display_name")
         .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
       if (error) {
 
@@ -828,15 +830,9 @@ function ExecutiveDashboard({
 
 export default function Dashboard() {
   const { user, isLoading, isAdmin } = useAuth();
-  const { effectiveRole, actualRole, isPreviewing } = useRolePreview();
+  const { effectiveRole, actualRole, isPreviewing, previewRole } = useRolePreview();
+  const shouldRenderDefaultAdminCommand = isAdmin && !previewRole && effectiveRole === "admin";
 
-  // 2026-06-15 v6.9 BUG FIX: was `if (isAdmin) return <AgentCommandDashboard />`
-  // BEFORE useRolePreview() — Sam's role-preview bubbles (Agent View / Manager
-  // View / Admin View) set a previewRole URL param but this short-circuit
-  // ignored it. So toggling "Agent View" did nothing for admins.
-  // Now: respect effectiveRole. Admin defaults still see AgentCommandDashboard
-  // because effectiveRole === "admin" when no preview is active.
-  if (isAdmin && !isPreviewing) return <AgentCommandDashboard />;
   const currentAgent = useCurrentAgent(user?.id);
   const downline = useMyDownline();
   const [runningSystemCheck, setRunningSystemCheck] = useState(false);
@@ -854,7 +850,7 @@ export default function Dashboard() {
   const snapshotQuery = useQuery({
     queryKey: ["launch-dashboard-snapshot", user?.id, effectiveRole, scopedAgentIds ? [...scopedAgentIds].sort() : "agency"],
     queryFn: () => loadDashboardSnapshot(effectiveRole, user!.id, scopedAgentIds),
-    enabled: Boolean(user?.id) && !currentAgent.isLoading && !downline.isLoading,
+    enabled: Boolean(user?.id) && !shouldRenderDefaultAdminCommand && !currentAgent.isLoading && !downline.isLoading,
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });
@@ -873,11 +869,24 @@ export default function Dashboard() {
     }
   };
 
-  if (isLoading || currentAgent.isLoading || downline.isLoading) {
+  if (isLoading) {
     return <PageLoadingSkeleton title="Loading command dashboard" />;
   }
 
   if (!user) return null;
+
+  // Role preview routing contract:
+  // - no preview + real admin: AgentCommandDashboard
+  // - previewRole=agent: AgentCommandDashboard
+  // - previewRole=manager: ManagerCommandView
+  // - previewRole=admin: ExecutiveDashboard
+  if (shouldRenderDefaultAdminCommand) {
+    return <AgentCommandDashboard />;
+  }
+
+  if (currentAgent.isLoading || downline.isLoading) {
+    return <PageLoadingSkeleton title="Loading command dashboard" />;
+  }
 
   if (effectiveRole === "agent") {
     return (

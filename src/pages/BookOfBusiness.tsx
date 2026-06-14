@@ -412,10 +412,42 @@ export default function BookOfBusiness() {
       {/* PL-047 — surface AgentLink sync prompt for non-admin agents w/o data */}
       <AgentLinkConnectionPrompt />
 
-      {/* v26 audit fix · AgentLink-style inline totals strip.
-          Was: 4 tall GlassCards stacked at ~76px each.
-          Now: single inline chip row like AgentLink's "Deals (1276)" header
-          + tiny labels for ALP / Monthly / Source split. ~32px total. */}
+      {/* 2026-06-14 PREMIUM HERO · Sam: 'Book of Business absolutely terrible'
+          Glassy gradient hero panel with the headline stats up front. */}
+      <div className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950 text-white p-5 shadow-[0_0_48px_hsl(168_70%_45%/0.10)]">
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            <p className="text-11 uppercase tracking-[0.2em] font-bold text-emerald-300">Live · Synced from AgentLink</p>
+          </div>
+        </div>
+        <div className="relative grid gap-4 grid-cols-2 sm:grid-cols-4">
+          <div>
+            <p className="text-10 uppercase tracking-widest text-white/50 mb-1">Total deals</p>
+            <p className="text-26 font-bold tabular-nums text-white">{filtered.length.toLocaleString()}</p>
+            <p className="text-10 text-white/40 tabular-nums">{apexCount} APEX · {agentLinkCount} AgentLink</p>
+          </div>
+          <div>
+            <p className="text-10 uppercase tracking-widest text-white/50 mb-1">Annual premium</p>
+            <p className="text-26 font-bold tabular-nums text-emerald-300">{fmt$(totalALP)}</p>
+          </div>
+          <div>
+            <p className="text-10 uppercase tracking-widest text-white/50 mb-1">Monthly premium</p>
+            <p className="text-26 font-bold tabular-nums text-emerald-300">{fmt$(totalMonthly)}</p>
+          </div>
+          <div>
+            <p className="text-10 uppercase tracking-widest text-white/50 mb-1">Avg per deal</p>
+            <p className="text-26 font-bold tabular-nums text-amber-300">{fmt$(filtered.length > 0 ? totalALP / filtered.length : 0)}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Compact inline strip kept below the hero for keyboard scanning */}
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 px-1 py-2 border-b border-border/40">
         <div className="flex items-baseline gap-2">
           <span className="text-2xl font-bold tabular-nums">{filtered.length}</span>

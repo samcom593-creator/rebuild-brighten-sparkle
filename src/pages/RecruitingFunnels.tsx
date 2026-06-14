@@ -88,30 +88,58 @@ export default function RecruitingFunnels() {
         }
       />
 
-      {/* Top stats */}
+      {/* 2026-06-14 visual rebuild · premium glass hero with gradient depth +
+          live indicator pulse + per-stage conversion percentage.
+          Sam: 'looks ass · premium box ass' — replaced flat 4-card grid
+          with single gradient hero panel + dense 6-metric layout. */}
       {totals.isLoading ? (
-        <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
-          {Array.from({length:4}).map((_,i) => <Skeleton key={i} className="h-20" />)}
-        </div>
+        <Skeleton className="h-32 w-full" />
       ) : t ? (
-        <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
-          <Card><CardContent className="p-3">
-            <p className="text-11 text-muted-foreground uppercase tracking-wider mb-1">Total Applicants</p>
-            <p className="text-22 font-bold tabular-nums">{num(t.total).toLocaleString()}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-3">
-            <p className="text-11 text-muted-foreground uppercase tracking-wider mb-1">Last 30 days</p>
-            <p className="text-22 font-bold tabular-nums text-amber-600">{num(t.last_30d)}</p>
-            <p className="text-11 text-muted-foreground tabular-nums">{num(t.last_7d)} in last 7d</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-3">
-            <p className="text-11 text-muted-foreground uppercase tracking-wider mb-1">% Paid</p>
-            <p className="text-22 font-bold tabular-nums text-emerald-600">{Number(t.pct_paid_of_total).toFixed(1)}%</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-3">
-            <p className="text-11 text-muted-foreground uppercase tracking-wider mb-1">% Approved</p>
-            <p className="text-22 font-bold tabular-nums text-emerald-600">{Number(t.pct_approved_of_total).toFixed(1)}%</p>
-          </CardContent></Card>
+        <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950 dark:from-slate-950 dark:via-slate-900 dark:to-amber-950 text-white p-5 shadow-[0_0_48px_hsl(168_70%_45%/0.10)]">
+          {/* Soft glow accent */}
+          <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+
+          <div className="relative flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              <p className="text-11 uppercase tracking-[0.2em] font-bold text-emerald-300">Live · 60s refresh</p>
+            </div>
+            <Badge variant="outline" className="text-11 border-amber-400/40 bg-amber-400/10 text-amber-200">
+              Recruiting funnel
+            </Badge>
+          </div>
+
+          <div className="relative grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            <div>
+              <p className="text-10 uppercase tracking-widest text-white/50 mb-1">Total applicants</p>
+              <p className="text-26 font-bold tabular-nums text-white">{num(t.total).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-10 uppercase tracking-widest text-white/50 mb-1">Last 30 days</p>
+              <p className="text-26 font-bold tabular-nums text-amber-300">{num(t.last_30d).toLocaleString()}</p>
+              <p className="text-10 text-white/40 tabular-nums">+{num(t.last_7d)} last 7d</p>
+            </div>
+            <div>
+              <p className="text-10 uppercase tracking-widest text-white/50 mb-1">% Paid</p>
+              <p className="text-26 font-bold tabular-nums text-emerald-300">{Number(t.pct_paid_of_total).toFixed(1)}%</p>
+            </div>
+            <div>
+              <p className="text-10 uppercase tracking-widest text-white/50 mb-1">% Approved</p>
+              <p className="text-26 font-bold tabular-nums text-emerald-300">{Number(t.pct_approved_of_total).toFixed(1)}%</p>
+            </div>
+            <div>
+              <p className="text-10 uppercase tracking-widest text-white/50 mb-1">Contacted</p>
+              <p className="text-26 font-bold tabular-nums text-white">{num(t.contacted_count).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-10 uppercase tracking-widest text-white/50 mb-1">Rejected</p>
+              <p className="text-26 font-bold tabular-nums text-rose-300">{num(t.rejected_count).toLocaleString()}</p>
+            </div>
+          </div>
         </div>
       ) : null}
 

@@ -338,110 +338,6 @@ export default function BusinessAnalytics() {
         </div>
       ) : null}
 
-      {/* WAVE FINAL · AI-Powered Insights · PERSONALIZED with named agents.
-          Mirrors AgentLink's actual insight card layout: "<Agent Name> Needs
-          Attention · $X potential · Action: <verb>". Backed by 3 SQL views
-          shipped 2026-06-13. Falls back to formula insights if no agents need
-          attention (healthy roster). */}
-      <div data-section="ai-insights">
-        <div className="flex items-baseline justify-between mb-2 px-0.5">
-          <h2 className="text-12 uppercase tracking-wider font-bold text-foreground flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            AI-Powered Insights
-          </h2>
-          <span className="text-11 text-muted-foreground">live · personalized per producer</span>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          {/* Up to 3 "Needs Attention" cards · names with action recommendation */}
-          {(needsAttention.data ?? []).slice(0, 3).map((agent, i) => (
-            <InsightCard
-              key={`na-${agent.id}`}
-              icon={i === 0 ? AlertTriangle : UserX}
-              tone="warn"
-              title={`${agent.display_name ?? agent.agent_code ?? "Agent"} · needs attention`}
-              metric={fmtUsd(Number(agent.potential_30d), true)}
-              body={`${agent.recommendation} · potential ${fmtUsd(Number(agent.potential_30d))} if matched team avg.`}
-            />
-          ))}
-          {/* Fill remainder with the original 3 formula insights so the row is always full */}
-          {ins && Array.from({ length: Math.max(0, 3 - (needsAttention.data?.length ?? 0)) }).slice(0, 1).map((_, i) => (
-            <InsightCard
-              key={`fallback-carrier-${i}`}
-              icon={Flame}
-              tone={Number(ins.top_carrier_share_pct) >= 50 ? "warn" : "neutral"}
-              title="Carrier concentration"
-              metric={`${ins.top_carrier_share_pct}%`}
-              body={`${ins.top_carrier_name ?? "Top carrier"} carries ${ins.top_carrier_share_pct}% of premium (${ins.top_carrier_deals} deals · 30d).${
-                Number(ins.top_carrier_share_pct) >= 50
-                  ? " Diversify before this becomes a single-point failure."
-                  : " Healthy spread across carriers."
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* WAVE FINAL · LEARN FROM cards · top-3 performers above team avg.
-          Mirrors AgentLink's "Learn from <agent> · X% above average · Action".
-          v_agents_learn_from filters to >150% team avg. */}
-      {(learnFrom.data?.length ?? 0) > 0 && (
-        <div>
-          <div className="flex items-baseline justify-between mb-2 px-0.5">
-            <h2 className="text-12 uppercase tracking-wider font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
-              <GraduationCap className="h-3.5 w-3.5" />
-              Learn from
-            </h2>
-            <span className="text-11 text-muted-foreground">top performers · share their playbook</span>
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {learnFrom.data!.map((agent) => (
-              <Card key={`lf-${agent.user_id}`} className="border-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/10 border-2">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <Lightbulb className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-13 font-bold truncate">{agent.display_name}</p>
-                      <p className="text-22 font-bold tabular-nums mt-0.5 text-emerald-600 dark:text-emerald-400">+{agent.pct_above_avg}%</p>
-                      <p className="text-12 text-foreground/80 mt-1.5 leading-snug">
-                        Above team average · {agent.deals_30d} deals · {fmtUsd(Number(agent.premium_30d))} in 30d.
-                        Schedule a team best-practices session with them.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* WAVE FINAL · INACTIVE AGENTS · count + sample names · mirrors
-          AgentLink's "138 Agents Inactive" callout. */}
-      {inactive.data && Number(inactive.data.inactive_count) > 0 && (
-        <Card className="border-slate-300 dark:border-slate-700">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <UserX className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2 flex-wrap">
-                  <span className="text-22 font-bold tabular-nums">{inactive.data.inactive_count}</span>
-                  <span className="text-13 text-muted-foreground">Licensed agents inactive 30d</span>
-                </div>
-                {inactive.data.sample_names && inactive.data.sample_names.length > 0 && (
-                  <p className="text-12 text-muted-foreground mt-1.5 leading-relaxed">
-                    {inactive.data.sample_names.slice(0, 10).join(" · ")}
-                    {Number(inactive.data.inactive_count) > 10 && ` · +${Number(inactive.data.inactive_count) - 10} more`}
-                  </p>
-                )}
-                <p className="text-11 text-amber-700 dark:text-amber-300 mt-2 font-semibold">
-                  Action: bulk re-engagement campaign · 1-on-1 check-ins prioritized by tenure.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* WAVE B2 · 10-tab analytics strip · mirrors AgentLink's biz-analytics
           tab navigation. Overview is the default (shipped). Carriers + Trends
           surface our existing data. Daily Report + Individual + Team + Policy
@@ -460,7 +356,7 @@ export default function BusinessAnalytics() {
             { v: "trends", l: "Trends" },
             { v: "policy", l: "Policy" },
             { v: "quality", l: "Quality" },
-            { v: "marketing", l: "Marketing" },
+            { v: "recruiting", l: "Recruiting" },
             { v: "ai-coach", l: "AI Coach" },
           ].map((tab) => (
             <TabsTrigger
@@ -474,6 +370,110 @@ export default function BusinessAnalytics() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 space-y-5">
+        {/* WAVE FINAL · AI-Powered Insights · PERSONALIZED with named agents.
+            Mirrors AgentLink's actual insight card layout: "<Agent Name> Needs
+            Attention · $X potential · Action: <verb>". Backed by 3 SQL views
+            shipped 2026-06-13. Falls back to formula insights if no agents need
+            attention (healthy roster). */}
+        <div data-section="ai-insights">
+          <div className="flex items-baseline justify-between mb-2 px-0.5">
+            <h2 className="text-12 uppercase tracking-wider font-bold text-foreground flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              AI-Powered Insights
+            </h2>
+            <span className="text-11 text-muted-foreground">live · personalized per producer</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {/* Up to 3 "Needs Attention" cards · names with action recommendation */}
+            {(needsAttention.data ?? []).slice(0, 3).map((agent, i) => (
+              <InsightCard
+                key={`na-${agent.id}`}
+                icon={i === 0 ? AlertTriangle : UserX}
+                tone="warn"
+                title={`${agent.display_name ?? agent.agent_code ?? "Agent"} · needs attention`}
+                metric={fmtUsd(Number(agent.potential_30d), true)}
+                body={`${agent.recommendation} · potential ${fmtUsd(Number(agent.potential_30d))} if matched team avg.`}
+              />
+            ))}
+            {/* Fill remainder with the original 3 formula insights so the row is always full */}
+            {ins && Array.from({ length: Math.max(0, 3 - (needsAttention.data?.length ?? 0)) }).slice(0, 1).map((_, i) => (
+              <InsightCard
+                key={`fallback-carrier-${i}`}
+                icon={Flame}
+                tone={Number(ins.top_carrier_share_pct) >= 50 ? "warn" : "neutral"}
+                title="Carrier concentration"
+                metric={`${ins.top_carrier_share_pct}%`}
+                body={`${ins.top_carrier_name ?? "Top carrier"} carries ${ins.top_carrier_share_pct}% of premium (${ins.top_carrier_deals} deals · 30d).${
+                  Number(ins.top_carrier_share_pct) >= 50
+                    ? " Diversify before this becomes a single-point failure."
+                    : " Healthy spread across carriers."
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* WAVE FINAL · LEARN FROM cards · top-3 performers above team avg.
+            Mirrors AgentLink's "Learn from <agent> · X% above average · Action".
+            v_agents_learn_from filters to >150% team avg. */}
+        {(learnFrom.data?.length ?? 0) > 0 && (
+          <div>
+            <div className="flex items-baseline justify-between mb-2 px-0.5">
+              <h2 className="text-12 uppercase tracking-wider font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                <GraduationCap className="h-3.5 w-3.5" />
+                Learn from
+              </h2>
+              <span className="text-11 text-muted-foreground">top performers · share their playbook</span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              {learnFrom.data!.map((agent) => (
+                <Card key={`lf-${agent.user_id}`} className="border-emerald-500/30 bg-emerald-50 dark:bg-emerald-900/10 border-2">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <Lightbulb className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-13 font-bold truncate">{agent.display_name}</p>
+                        <p className="text-22 font-bold tabular-nums mt-0.5 text-emerald-600 dark:text-emerald-400">+{agent.pct_above_avg}%</p>
+                        <p className="text-12 text-foreground/80 mt-1.5 leading-snug">
+                          Above team average · {agent.deals_30d} deals · {fmtUsd(Number(agent.premium_30d))} in 30d.
+                          Schedule a team best-practices session with them.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* WAVE FINAL · INACTIVE AGENTS · count + sample names · mirrors
+            AgentLink's "138 Agents Inactive" callout. */}
+        {inactive.data && Number(inactive.data.inactive_count) > 0 && (
+          <Card className="border-slate-300 dark:border-slate-700">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <UserX className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-22 font-bold tabular-nums">{inactive.data.inactive_count}</span>
+                    <span className="text-13 text-muted-foreground">Licensed agents inactive 30d</span>
+                  </div>
+                  {inactive.data.sample_names && inactive.data.sample_names.length > 0 && (
+                    <p className="text-12 text-muted-foreground mt-1.5 leading-relaxed">
+                      {inactive.data.sample_names.slice(0, 10).join(" · ")}
+                      {Number(inactive.data.inactive_count) > 10 && ` · +${Number(inactive.data.inactive_count) - 10} more`}
+                    </p>
+                  )}
+                  <p className="text-11 text-amber-700 dark:text-amber-300 mt-2 font-semibold">
+                    Action: bulk re-engagement campaign · 1-on-1 check-ins prioritized by tenure.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
       {/* 4-KPI tile row */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi
@@ -659,11 +659,11 @@ export default function BusinessAnalytics() {
           />
         </TabsContent>
 
-        <TabsContent value="marketing" className="mt-4">
+        <TabsContent value="recruiting" className="mt-4">
           <ComingSoonTab
-            title="Marketing · channel attribution"
-            description="Apex social reach, application source mix, cost-per-application by channel, and lead-quality scoring per channel."
-            preview="Social analytics live at /dashboard/social"
+            title="Recruiting · pipeline + performance"
+            description="Application funnel by source, manager-attribution rollup, time-to-license, and ROI per channel."
+            preview="Full pipeline live at /dashboard/applicants · per-manager rollup at /dashboard/managers"
           />
         </TabsContent>
 
@@ -696,20 +696,24 @@ function ComingSoonTab({ title, description, preview }: { title: string; descrip
   );
 }
 
-// WAVE FINAL · adaptive motivational copy + target description
-// mirroring AgentLink ("Close new deals today · Almost there, maintain
-// your momentum"). Five buckets · slate→amber→emerald progression.
+// WAVE FINAL+ · per-period AgentLink-exact copy.
+// AgentLink uses different copy patterns per period — not just by % bucket.
+// Captured from biz.html live snapshot 2026-06-13.
 function motivation(period: Challenge["period"], pct: number): { goal: string; copy: string } {
   const goal = period === "daily"     ? "Close new deals today"
              : period === "weekly"    ? "Weekly deal target"
              : period === "monthly"   ? "Monthly premium goal"
-             :                          "Quarterly stretch goal";
+             :                          "Recruit new team members";
+  // AgentLink per-period defaults (used when % is low)
+  const defaultCopy = period === "daily"     ? "Focus on high-probability prospects"
+                    : period === "weekly"    ? "Schedule more client meetings"
+                    : period === "monthly"   ? "Focus on larger premium policies"
+                    :                          "Good team building progress";
   const copy = pct >= 130 ? "On fire — keep stacking, you're way past target"
              : pct >= 100 ? "🎯 Target hit · push the bonus"
              : pct >= 75  ? "Almost there, maintain your momentum"
              : pct >= 50  ? "Great progress, keep it up!"
-             : pct >= 25  ? "Focus on larger premium policies"
-             :              "Open day · start strong with the first close";
+             :              defaultCopy;
   return { goal, copy };
 }
 
@@ -717,25 +721,22 @@ function ChallengeTile({ challenge: c }: { challenge: Challenge }) {
   const current = Number(c.current_premium);
   const target = Number(c.target_premium) || 1;
   const pct = Math.min(150, Math.round((current / target) * 100));
-  const dealsPct = Math.min(150, Math.round((c.current_deals / Math.max(1, c.target_deals)) * 100));
   const onTrack = pct >= 100;
   const close = pct >= 70 && !onTrack;
-  // Days/hours remaining
+  const isQuarterly = c.period === "quarterly"; // recruit-count based, not premium
   const end = new Date(c.period_end_at);
   const msLeft = end.getTime() - Date.now();
   const daysLeft = Math.max(0, Math.floor(msLeft / (24 * 60 * 60 * 1000)));
   const hoursLeft = Math.max(0, Math.floor(msLeft / (60 * 60 * 1000)));
-  const timeLabel = c.period === "daily"
-    ? `${hoursLeft}h left`
-    : `${daysLeft}d left`;
+  const timeLabel = c.period === "daily" ? `${hoursLeft}h left` : `${daysLeft}d left`;
   const periodLabel = c.period.charAt(0).toUpperCase() + c.period.slice(1);
-  const accent = onTrack ? "emerald" : close ? "amber" : "slate";
-  const barColor = accent === "emerald"
-    ? "bg-emerald-500"
-    : accent === "amber"
-    ? "bg-amber-500"
-    : "bg-slate-500";
+  const barColor = onTrack ? "bg-emerald-500" : close ? "bg-amber-500" : "bg-slate-500";
   const { goal, copy } = motivation(c.period, pct);
+  // Quarterly is recruit-based: show "agents" not "deals"; current_premium IS the agent count
+  const unit = isQuarterly ? "agents" : "deals";
+  const headlineMetric = isQuarterly
+    ? <><span className="tabular-nums">{Math.round(current)}</span><span className="text-11 font-normal text-muted-foreground"> / {Math.round(target)} {unit}</span></>
+    : <><>{fmtUsd(current, true)}</><span className="text-11 font-normal text-muted-foreground"> / {fmtUsd(target, true)}</span></>;
   return (
     <Card className={`border ${onTrack ? "border-emerald-500/40" : close ? "border-amber-500/40" : "border-slate-300 dark:border-slate-700"} bg-white dark:bg-slate-900`}>
       <CardContent className="p-3.5">
@@ -743,12 +744,9 @@ function ChallengeTile({ challenge: c }: { challenge: Challenge }) {
           <p className="text-11 uppercase tracking-wider font-bold text-slate-500">{periodLabel} Challenge</p>
           <span className={`text-11 font-bold tabular-nums ${onTrack ? "text-emerald-600 dark:text-emerald-400" : close ? "text-amber-600 dark:text-amber-400" : "text-slate-500"}`}>{pct}%</span>
         </div>
-        <p className="text-lg font-bold tabular-nums leading-tight">
-          {fmtUsd(current, true)}
-          <span className="text-11 font-normal text-muted-foreground"> / {fmtUsd(target, true)}</span>
-        </p>
+        <p className="text-lg font-bold leading-tight">{headlineMetric}</p>
         <p className="text-11 text-muted-foreground mt-0.5">
-          {c.current_deals} / {c.target_deals} deals · {goal}
+          {isQuarterly ? `${Math.round(current)} / ${Math.round(target)} ${unit}` : `${c.current_deals} / ${c.target_deals} deals`} · {goal}
         </p>
         <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
           <div className={`h-full ${barColor} transition-all`} style={{ width: `${Math.min(100, pct)}%` }} />
@@ -756,10 +754,7 @@ function ChallengeTile({ challenge: c }: { challenge: Challenge }) {
         <p className={`text-11 mt-2 ${onTrack ? "text-emerald-700 dark:text-emerald-300" : close ? "text-amber-700 dark:text-amber-300" : "text-slate-600 dark:text-slate-400"} leading-snug`}>
           {copy}
         </p>
-        <p className="text-11 text-muted-foreground tabular-nums mt-1.5 flex items-center justify-between">
-          <span>{dealsPct}% of deal target</span>
-          <span>{timeLabel}</span>
-        </p>
+        <p className="text-11 text-muted-foreground tabular-nums mt-1.5 text-right">{timeLabel}</p>
       </CardContent>
     </Card>
   );

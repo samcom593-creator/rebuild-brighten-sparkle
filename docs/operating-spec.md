@@ -1726,3 +1726,246 @@ Animation rule enforced: 3 `animate-pulse` Badge violations killed.
 Data fix: `monthDepth.hires_mtd` switched from `applications.licensed_at` (2/523 populated) → `agents.created_at` (8 MTD · real number).
 
 Total dense panels on `/dashboard` now: 20.
+
+---
+
+# v6.9 · THE MEGA PROMPT (Codex-verified) · 2026-06-15
+
+*Sam: "Make this a mecca prompt · use Codex to verify · look for holes and gaps. Once that prompt's done, you just hit it." Codex's gap analysis (§77.1) returned 12 concrete findings. They are now baked into the §76 checklist (expanded from 30 → 52 rules across 8 categories). The grep gate is updated. The spec is locked.*
+
+---
+
+## §76 · THE 52-POINT MEGA CHECKLIST · the bar for every commit
+
+### A. Functional · routes + queries + role-handling (10 rules)
+1. **Route rendering**: Every nav route renders its expected `<h1>`/`<PageHeader>` heading with zero console errors under admin, manager, and agent sessions (HTTP 200 is necessary but NOT sufficient — SPAs can crash post-200).
+2. **Column existence**: Every Supabase `.select(...)` references columns that exist in `information_schema.columns` for that table.
+3. **Table existence**: Every Supabase `.from("table")` references a real table (no typos).
+4. **Single vs multi**: `.maybeSingle()` is for zero-or-one queries backed by a UNIQUE filter (`.eq("id", uuid)`). Multi-row queries return arrays and iterate. `.single()` is BANNED on any query whose filter doesn't enforce uniqueness.
+5. **Client-side bucketing**: If a query is bucketed/grouped client-side, prefer SERVER-side aggregation (a view or RPC). If client-side is unavoidable: use deterministic `.order()` + `.limit(N)` where N is documented in a comment and `N > expected_row_count × 2`. Test against >1000 rows.
+6. **Effective-role rule**: Role-gated components must read `effectiveRole` from `useRolePreview()` BEFORE any early `return`. The pattern `if (isAdmin) return <X />` BEFORE the `useRolePreview()` call is a permanent ban (root cause: Dashboard.tsx:835 silent role-toggle break · commit `565eb1e6`).
+7. **Role test**: Every role-gated route has a manual smoke test toggling Sam's view bubbles (admin → manager → agent → admin) and visibly seeing the layout change.
+8. **RLS bypass**: Admin RLS bypass is wired on `applications`, `agents`, `agentlink_deals_snapshot`, `aged_leads`. No service role key in browser code (only `anon` + `authenticated`).
+9. **Permission matrix**: Every `ProtectedRoute` is documented with which roles can see it. `/dashboard/finances` = admin only. `/dashboard/profile` = all roles. Verified manually per ship.
+10. **PII discipline**: User-facing displays show first-name + last-initial in cross-agent contexts. Full PII (full name + phone + email + state) only on rows the viewer owns.
+
+### B. Visual · canonical hero + density (12 rules)
+11. Every page has the v6 §31 premium gradient hero immediately after `PageHeader` (see §80.A for the exact snippet).
+12. Every panel that introduces summary stats uses the canonical hero wrapper (§80.A).
+13. NO flat `slate-only` Cards on dashboards (legacy v22 patterns).
+14. NO `bg-clip-text + text-transparent` pairings (rainbow titles · auto-degrade to white-on-white).
+15. Color palette restricted to `slate`, `amber`, `emerald`, `rose`, plus `white`/`black` for backgrounds. Pink permitted ONLY for Instagram CTAs.
+16. Tabular numerals on every number (`tabular-nums` class).
+17. Headline metrics in heroes are `text-[28px]` to `text-[40px]` `font-black`.
+18. Every interactive surface has a visible hover state (`hover:bg-*` or `hover:border-*`).
+19. Visible focus ring on every focusable element (≥ 2px outline · WCAG AA contrast).
+20. Premium hero wrapper: 2 soft-blur orb accents + animate-ping live dot + `tracking-[0.32em]` eyebrow.
+21. Zero blank zones: every grid cell has either real data or coaching copy. No empty `<div>`.
+22. Per-page first-paint shows real numbers (not 0s) wherever data exists in the DB.
+
+### C. Animation + smoothness (4 rules)
+23. `animate-pulse` is BANNED on `Badge` components (Sam's permanent rule).
+24. `animate-ping` is ONLY allowed on the LIVE indicator dot at panel eyebrows.
+25. Transitions use the `transition-base` utility (180-220ms cubic-bezier).
+26. Page mounts use 250ms fade+rise via `page-enter` utility.
+
+### D. Language + terminology (5 rules)
+27. NO `"Unknown"` in user-facing text · use `"—"`.
+28. NO `"ICA"` in user-facing labels · use `"Course bought"` (Sam's permanent rule).
+29. NO `"applied_at"` or `"ica_paid_at"` in queries · use `"created_at"` / `"course_purchased_at"`.
+30. NO `"No data"` empty states · always coaching copy (see §80.C).
+31. Voice: direct, faith-aware, anti-soft. Banned: "delve" · "tapestry" · "in the realm of."
+
+### E. Loading + error + edge states (5 rules)
+32. Every data panel defines five states: `loading` · `error` · `unauthorized` · `empty` · `stale` · with user-facing recovery copy.
+33. Skeletons during initial mount only · never during refetch (use a 1px progress bar at the top instead).
+34. Query errors log to `console.error(...)` AND show a user-facing "Couldn't load X · retry" link.
+35. Auth failures redirect to `/login` with a return-to query param.
+36. Partial-data states (e.g. some queries returned, some pending) show the available data + a "loading more…" hint, never block the whole panel.
+
+### F. Mobile + responsive (5 rules)
+37. Verified at three widths: `390px` (iPhone Pro Max portrait) · `768px` (iPad portrait) · `1280px+` (desktop).
+38. Tables wrap in `overflow-x-auto` so they scroll cleanly on narrow viewports.
+39. Touch targets are ≥ 44px high.
+40. Every `grid-cols-N` has a `sm:grid-cols-1` (or appropriate smaller value) fallback for mobile.
+41. No content overlap on portrait phones (test sidebar collapsed + floating bubbles position).
+
+### G. Accessibility (4 rules)
+42. All controls reachable via keyboard (`Tab` order + `Enter`/`Space` activation).
+43. Visible focus indicator on every focusable (≥ 2px ring at WCAG AA contrast).
+44. Accessible names: every icon-only button has `aria-label` or `title`. Every chart has a `<title>` describing it.
+45. Semantic structure: `<h1>` per page · `<section>` for major regions · ordered lists for ordered content.
+
+### H. Data integrity + Sam's permanent rules (7 rules)
+46. Canonical deal table is EXACTLY `agentlink_deals_snapshot`. The grep gate BLOCKS `.from("deals")`, `.from("deals_snapshot")`, or any other deal source.
+47. Phoenix tz for every today/week/month query · `(NOW() AT TIME ZONE 'America/Phoenix')::date`.
+48. **Date windows**: DATE columns use `BETWEEN <start_date> AND <today_date>` (inclusive · Phoenix-local). **Timestamp windows**: use `>= <start_ts> AND < <next_day_ts>` (half-open · tested around midnight DST).
+49. Production source = AgentLink. If our number disagrees with `agentlink.insuracloud.ai`, investigate sync first.
+50. `agents.al_user_id` links our agent to AgentLink's user. 61/156 backfilled · `v_agents_missing_al_user_id` surfaces the rest.
+51. Phoenix tz applies to BOTH the column-side AND the window-bound side. Never compare a UTC timestamp to a Phoenix-local date.
+52. Every cron / scheduled task that produces dashboard data writes a `last_run_at` we can surface in a "stale" state.
+
+---
+
+## §77 · The Codex Verification Pass
+
+Sam: "Use Codex to verify · look for holes and gaps." Codex was run against the v6.9 draft (30 rules · §76 v1) on 2026-06-15 and returned 12 findings. They are baked into the §76 v2 above (now 52 rules across 8 categories). See §77.1 for the raw findings transcript.
+
+### §77.1 · Codex findings transcript (preserved for traceability)
+
+1. `deals_snapshot` vs `agentlink_deals_snapshot` conflict between §76.7 and §76.28 · **fixed in v2 §76.46** (single canonical name + grep gate covers all deal-table variants).
+2. `.maybeSingle()` guidance was wrong for true multi-row queries · **fixed in v2 §76.4** (split single vs multi semantics).
+3. Role-preview rule wasn't testable enough · **fixed in v2 §76.6 + §76.7** (banned the early-return pattern explicitly + added the manual smoke test).
+4. HTTP 200 route check too weak (SPA can render blank post-200) · **fixed in v2 §76.1** (requires rendered heading + zero console errors under 3 roles).
+5. Time-window rule conflicted with timestamp correctness · **fixed in v2 §76.48** (split DATE inclusive vs TIMESTAMP half-open).
+6. `limit(1000)` allowed silent truncation · **fixed in v2 §76.5** (prefer server-side aggregation; N > 2× expected; >1000-row test).
+7. Security mostly absent · **fixed in v2 §76.8-10** (RLS bypass + permission matrix + PII discipline).
+8. Accessibility missing · **fixed in v2 §76.42-45** (keyboard + focus + a11y names + semantic structure).
+9. Loading/error states missing · **fixed in v2 §76.32-36** (5-state contract per panel).
+10. Subjective phrasing not enforceable · **fixed via §80 concrete-examples appendix below**.
+11. Mobile/responsive not specified · **fixed in v2 §76.37-41** (390/768/1280 + 44px touch + overflow-x-auto).
+12. Missing examples for riskiest rules · **fixed via §80 examples appendix below**.
+
+---
+
+## §78 · Pre-commit grep gate (the 52-point CI)
+
+```bash
+# A · functional
+grep -nE '\.single\(\)' src/pages/  # any .single() · review for multi-row risk
+grep -nE '\.from\("deals_snapshot"|\.from\("deals"' src/pages/  # banned deal sources
+grep -B2 -A1 'if.*isAdmin.*return' src/pages/Dashboard.tsx | grep -v useRolePreview  # role-preview short-circuit
+
+# B · visual
+grep -nE 'bg-clip-text.*text-transparent|text-transparent.*bg-clip-text' src/pages/  # rainbow titles
+grep -nE 'text-(blue|purple|teal)-[0-9]' src/pages/  # palette violations (pink permitted for IG only)
+
+# C · animation
+grep -nE '<Badge[^>]*animate-pulse' src/pages/  # banned
+
+# D · language
+grep -nE '"Unknown"|"ICA "|"applied_at"|"ica_paid_at"|"No data"' src/pages/
+
+# F · mobile
+grep -nE 'min-w-\[[0-9]{4,}px\]' src/pages/  # likely mobile-breaking widths
+grep -nE 'grid-cols-[3-9]' src/pages/  | grep -v 'sm:grid-cols'  # no mobile fallback
+
+# G · a11y
+grep -nE '<button[^>]*>(\s*<[A-Z])' src/pages/ | grep -v 'aria-label\|title='  # icon-only without name
+
+# H · data
+grep -nE '>=.*startIso.*&&.*<=.*endIso' src/pages/  # timestamp BETWEEN — half-open?
+```
+
+Any hit → commit blocked until fixed or explicitly waived in commit body with `forbidden-allow:<reason>`.
+
+---
+
+## §79 · Persisted-to v6.9
+
+- This file (v6.9): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Codex verification commit: pending after this push
+- Critical role-preview bug fix this version: commit `565eb1e6` (Dashboard.tsx:835)
+- The 52-point §76 mega-checklist (Codex-verified) is now the standing rule
+
+---
+
+## §80 · Examples Appendix · approved snippets + banned anti-patterns
+
+### §80.A · Canonical premium hero (v6 §31 reference)
+
+```tsx
+<div className="relative overflow-hidden rounded-3xl border border-COLOR-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-COLOR-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+  <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-COLOR-500/15 blur-3xl pointer-events-none" />
+  <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+  <div className="relative p-5">
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2.5">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-COLOR-400 opacity-75 animate-ping" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-COLOR-500" />
+        </span>
+        <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-COLOR-300">EYEBROW · LIVE</p>
+      </div>
+    </div>
+    {/* 4-6 metric tiles · text-[28px]-[40px] font-black tabular-nums */}
+  </div>
+</div>
+```
+
+COLOR ∈ { amber (data/recruiting) | emerald (money/production) | rose (leak/urgent) }.
+
+### §80.B · Role-preview gate (the bug we shipped wrong twice)
+
+```tsx
+// ✅ GOOD · effectiveRole drives all decisions
+function Dashboard() {
+  const { user, isLoading, isAdmin } = useAuth();
+  const { effectiveRole, isPreviewing } = useRolePreview();
+
+  if (isAdmin && !isPreviewing) return <AgentCommandDashboard />;
+  if (effectiveRole === "agent") return <AgentCommandDashboard />;
+  if (effectiveRole === "manager") return <ManagerCommandView />;
+  return <ExecutiveDashboard role={effectiveRole} />;
+}
+
+// ❌ BANNED · short-circuit before useRolePreview · toggles do nothing
+function Dashboard() {
+  const { isAdmin } = useAuth();
+  if (isAdmin) return <AgentCommandDashboard />;  // ← Sam's bug
+  const { effectiveRole } = useRolePreview();      // ← unreachable for admin
+}
+```
+
+### §80.C · Coaching empty state
+
+```tsx
+// ✅ GOOD
+{rows.length === 0 ? (
+  <div className="py-6 text-center">
+    <p className="text-15 font-bold text-emerald-300">Every producer cleared $5K this week.</p>
+    <p className="text-11 text-white/40">Hold the Standard. Average is the disease.</p>
+  </div>
+) : (
+  rows.map(...)
+)}
+
+// ❌ BANNED
+{rows.length === 0 ? <p>No data</p> : rows.map(...)}
+```
+
+### §80.D · Date window discipline
+
+```sql
+-- ✅ GOOD · DATE column · Phoenix-local · inclusive both sides
+WHERE effective_date BETWEEN date_trunc('month', (NOW() AT TIME ZONE 'America/Phoenix')::date)
+                       AND     (NOW() AT TIME ZONE 'America/Phoenix')::date
+
+-- ✅ GOOD · TIMESTAMPTZ column · half-open (avoids midnight DST bugs)
+WHERE created_at >= date_trunc('month', (NOW() AT TIME ZONE 'America/Phoenix')::date) AT TIME ZONE 'America/Phoenix'
+  AND created_at <  (date_trunc('month', (NOW() AT TIME ZONE 'America/Phoenix')::date) + INTERVAL '1 month') AT TIME ZONE 'America/Phoenix'
+
+-- ❌ BANNED · UTC bound on a Phoenix-local column · off-by-7-hours bug
+WHERE created_at >= '2026-06-01'  -- treated as UTC midnight
+```
+
+### §80.E · Five-state panel contract
+
+Every data panel must handle:
+- **loading**: `<Skeleton>` for initial mount only
+- **error**: console.error + user-facing "Couldn't load X · retry" link
+- **unauthorized**: redirect to `/login?return_to=<current>`
+- **empty**: coaching copy (NEVER "No data")
+- **stale**: "as of N min ago" with refresh button
+
+```tsx
+if (q.isLoading) return <Skeleton className="h-24 w-full" />;
+if (q.isError) return <ErrorRetry onRetry={q.refetch} message="Couldn't load production." />;
+if (q.data?.length === 0) return <EmptyCoach copy="First deal opens the board." />;
+return <DataPanel rows={q.data} stalenessSec={(Date.now() - q.dataUpdatedAt) / 1000} />;
+```
+
+---
+
+> **Hold the Standard. Average is the disease.**

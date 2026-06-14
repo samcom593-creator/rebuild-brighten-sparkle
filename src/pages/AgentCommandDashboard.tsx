@@ -1217,16 +1217,20 @@ function AgencyCommandView() {
   // course_purchased_at. That's why "I can't even see my application" — the
   // entire query was failing silently due to column-not-found.
   const liveApps = useQuery({
+    // 2026-06-15 v6.6: Sam — "I'm still missing applications from the website.
+    // Bring back every single application." Bumped limit 25 → 1000 so the
+    // 3-lane strip counts are accurate against all 519 active apps + every
+    // applicant from the website surfaces in their proper lane.
     queryKey: ["agency-live-applications"],
     refetchInterval: 60_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("applications" as any)
-        .select("id, first_name, last_name, status, license_progress, created_at, contacted_at, course_purchased_at, licensed_at, state, phone, email")
+        .select("id, first_name, last_name, status, license_progress, created_at, contacted_at, course_purchased_at, licensed_at, state, phone, email, referral_source")
         .is("terminated_at", null)
         .order("created_at", { ascending: false, nullsFirst: false })
-        .limit(25);
+        .limit(1000);
       if (error) console.error("liveApps query error:", error);
       return (data ?? []) as unknown as Array<{
         id: string;
@@ -1241,6 +1245,7 @@ function AgencyCommandView() {
         state: string | null;
         phone: string | null;
         email: string | null;
+        referral_source: string | null;
       }>;
     },
   });
@@ -1695,6 +1700,11 @@ function AgencyCommandView() {
           </div>
         </div>
       </div>
+
+      {/* 2026-06-15 v6.6 · PULSE GROUP · 4 charts directly under the agency hero.
+          Sam: "WoW chart I like a lot · put hire pace state production
+          commission projected in same group right under this month annual AP." */}
+      <DashboardPulseGroup />
 
       {/* §B · APPLICATION PIPELINE · 3-LANE STRIP ─────────────────────── */}
       {(() => {
@@ -2835,12 +2845,25 @@ function StatRowCard({ icon: Icon, label, value, color, onClick }: StatRowCardPr
 // ─────────────────────────────────────────────────────────────────────
 
 function ParityGapPanels() {
+  // 2026-06-15 v6.6: WoW moved to DashboardPulseGroup at top of page (Sam directive).
+  // SLA spans full width since only 3 items remain · 2-col grid with col-span-2 on SLA.
   return (
     <div className="grid gap-3 lg:grid-cols-2">
       <PersonalPacePanel />
       <ProductMixPanel />
-      <WeekOverWeekPanel />
       <RecruiterContactSlaPanel />
+    </div>
+  );
+}
+
+// v6.6 PULSE GROUP — 4 charts Sam wants directly under the agency hero
+function DashboardPulseGroup() {
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      <WeekOverWeekPanel />
+      <HirePace12WPanel />
+      <StateProductionPanel />
+      <CommissionProjectionPanel />
     </div>
   );
 }
@@ -3312,12 +3335,12 @@ function RecruiterContactSlaPanel() {
 // ─────────────────────────────────────────────────────────────────────
 
 function ExtendedParityPanels() {
+  // 2026-06-15 v6.6: State / Commission / HirePace moved to DashboardPulseGroup
+  // up top per Sam directive. TimeOfDay stays here as a deep-dive heat-map
+  // (still valuable but doesn't need to be in the headline row).
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-      <StateProductionPanel />
       <TimeOfDayProductionPanel />
-      <CommissionProjectionPanel />
-      <HirePace12WPanel />
     </div>
   );
 }

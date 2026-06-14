@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Megaphone, Pin, Sparkles, TrendingUp, RefreshCw, Send, Plus } from "lucide-react";
+import { Megaphone, Pin, Sparkles, TrendingUp, RefreshCw, Send, Plus, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
@@ -68,6 +68,21 @@ export default function Announcements() {
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", body: "", priority: "normal", pinned: false });
+  const [showDealForm, setShowDealForm] = useState(false);
+  const [dealForm, setDealForm] = useState({ premium: "", product: "Final Expense", note: "" });
+
+  const myAgent = useQuery({
+    queryKey: ["my-agent-id", (user as any)?.id],
+    enabled: !!(user as any)?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agents" as any)
+        .select("id, full_name, display_name, avatar_url")
+        .eq("user_id", (user as any).id)
+        .maybeSingle();
+      return data as any;
+    },
+  });
 
   const announcements = useQuery({
     queryKey: ["announcements-active"],
@@ -123,6 +138,28 @@ export default function Announcements() {
     onError: (e: any) => toast.error(e?.message || "Failed to post"),
   });
 
+  const postDeal = useMutation({
+    mutationFn: async () => {
+      if (!myAgent.data?.id) throw new Error("No agent profile linked to your user · ask admin to link agents.user_id");
+      const premium = parseFloat(dealForm.premium);
+      if (!Number.isFinite(premium) || premium <= 0) throw new Error("Enter a premium > 0");
+      const { error } = await supabase.rpc("fn_post_deal_celebration" as any, {
+        p_agent_id: myAgent.data.id,
+        p_annual_premium: premium,
+        p_product_sold: dealForm.product,
+        p_note: dealForm.note || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Deal posted to the feed");
+      setDealForm({ premium: "", product: "Final Expense", note: "" });
+      setShowDealForm(false);
+      qc.invalidateQueries({ queryKey: ["news-feed"] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Failed to post deal"),
+  });
+
   const priorityColor = (p: string | null) => {
     if (p === "high" || p === "urgent") return "bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300";
     if (p === "normal") return "bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300";
@@ -144,6 +181,15 @@ export default function Announcements() {
             <Button variant="outline" size="sm" onClick={() => { announcements.refetch(); feed.refetch(); }}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${announcements.isFetching ? "animate-spin" : ""}`} />
               Refresh
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              className="bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => setShowDealForm((v) => !v)}
+            >
+              <Trophy className="h-3.5 w-3.5 mr-1.5" />
+              Post a Deal
             </Button>
             {isAdmin && (
               <Button size="sm" onClick={() => setShowForm((v) => !v)}>
@@ -200,6 +246,64 @@ export default function Announcements() {
                   Publish
                 </Button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* POST A DEAL FORM */}
+      {showDealForm && (
+        <Card className="border-emerald-500/30 bg-emerald-500/5">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Trophy className="h-4 w-4 text-emerald-600" />
+              <p className="text-13 font-bold">Post a Deal</p>
+              {!myAgent.data?.id && (
+                <Badge variant="outline" className="text-11 ml-auto text-rose-600 border-rose-500/30">
+                  No agent linked
+                </Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                type="number"
+                placeholder="Annual premium ($)"
+                value={dealForm.premium}
+                onChange={(e) => setDealForm({ ...dealForm, premium: e.target.value })}
+              />
+              <select
+                className="border border-border bg-background rounded-md px-3 py-2 text-13"
+                value={dealForm.product}
+                onChange={(e) => setDealForm({ ...dealForm, product: e.target.value })}
+              >
+                <option>Final Expense</option>
+                <option>Whole Life</option>
+                <option>Term Life</option>
+                <option>IUL</option>
+                <option>Annuity</option>
+                <option>Mortgage Protection</option>
+                <option>Children's Whole Life</option>
+                <option>Supplemental Health</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <Textarea
+              placeholder="Brag a little — what made this one yours? (optional)"
+              value={dealForm.note}
+              onChange={(e) => setDealForm({ ...dealForm, note: e.target.value })}
+              rows={2}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowDealForm(false)}>Cancel</Button>
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700"
+                disabled={!dealForm.premium || postDeal.isPending || !myAgent.data?.id}
+                onClick={() => postDeal.mutate()}
+              >
+                <Trophy className="h-3.5 w-3.5 mr-1.5" />
+                {postDeal.isPending ? "Posting…" : "Celebrate It"}
+              </Button>
             </div>
           </CardContent>
         </Card>

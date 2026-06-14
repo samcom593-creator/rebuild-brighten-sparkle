@@ -240,7 +240,11 @@ export default function DashboardApplicants() {
     const orForAgentId = (id: string) =>
       `assigned_agent_id.eq.${id},referral_manager_id.eq.${id},recruiter_id.eq.${id}`;
 
-    // If admin/manager with manager filter, filter by that manager (any column)
+    // 2026-06-15 v7.12 · Codex audit rule #4: do NOT catch Supabase errors
+    // and return [] / 0. RLS denial looked identical to "no data exists" ·
+    // diagnostic banner couldn't distinguish · Sam saw "Fetched 0" forever.
+    // Now: errors THROW · React Query catches them · queryError surfaces in
+    // the evidence line · Sam sees the actual cause (RLS code, network, auth).
     const fetchScopedApplications = async (includeTerminated: boolean) => {
       let query = supabase
         .from("applications")
@@ -253,21 +257,32 @@ export default function DashboardApplicants() {
       if (managerFilter && (isAdmin || isManager)) {
         query = query.or(orForAgentId(managerFilter));
       } else if (!isAdmin && !isManager) {
-        if (!agentData) return { rows: [] as Application[], count: 0 };
+        if (!agentData) {
+          throw new Error(
+            "Agent lookup returned no row · cannot scope applications. " +
+            "Either the user has no `agents` row OR the lookup failed. " +
+            "Check console for [DashboardApplicants] agent lookup error."
+          );
+        }
         query = query.or(orForAgentId(agentData.id));
       }
 
       const { data, error, count } = await query.order("created_at", { ascending: false });
       if (error) {
-        console.warn("[DashboardApplicants] applications fetch error:", {
-          includeTerminated,
-          managerFilter,
-          error,
-        });
-        return { rows: [] as Application[], count: 0 };
+        // Surface verbatim · don't swallow. React Query sets queryError ·
+        // evidence line shows it · Sam knows what to fix.
+        const tag = `[DashboardApplicants] ${includeTerminated ? "terminated" : "active"} fetch failed`;
+        console.error(tag, { error, managerFilter, isAdmin, isManager });
+        throw Object.assign(
+          new Error(`${error.code ?? "??"}: ${error.message ?? "Supabase rejected the query"}`),
+          { supabaseError: error, includeTerminated, managerFilter }
+        );
+      }
+      if (data == null) {
+        throw new Error("Supabase returned null data without an error · investigate client config.");
       }
 
-      return { rows: (data || []) as Application[], count: count ?? data?.length ?? 0 };
+      return { rows: data as Application[], count: count ?? data.length };
     };
 
     const activeResult = await fetchScopedApplications(false);

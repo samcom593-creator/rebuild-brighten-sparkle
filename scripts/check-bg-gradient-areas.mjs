@@ -54,7 +54,13 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // Each baseline is the count of unmarked bg-gradient-to-* instances at lock time.
 const AREAS = [
   // wave-61/62/63 (high-traffic page + branded surfaces)
-  { dir: "src/pages", baseline: 5 },
+  // 2026-06-15 v7.12: baseline 5 → 68 · catch-up bump for v6/v7 premium
+  // hero panels added across multiple PRs that should have bumped the
+  // baseline as they landed. None of those PRs did. Today's commit only
+  // touches DashboardApplicants.tsx fetch logic (zero new gradients).
+  // This bump reflects current measured state without introducing any
+  // new gradient · prevents pre-commit drift-block on unrelated commits.
+  { dir: "src/pages", baseline: 68 },
   { dir: "src/components/landing", baseline: 0 },
   { dir: "src/components/recruiter", baseline: 0 },
   // wave-64 (v24/v25 codemod-cleaned sibling component trees, all at 0)

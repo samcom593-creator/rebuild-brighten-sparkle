@@ -1203,7 +1203,7 @@ function RecruiterDashboardInner() {
       </div>
 
       {/* ── Stat bubbles ── */}
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
         <StatBubble icon={Users} label="Total Hired (Unlicensed)" value={totalLeads} color="border border-pink-500/20 bg-rose-500/5 text-foreground" delay={0} />
         <StatBubble icon={AlertTriangle} label="Needs Contact" value={needsContact} color="border border-rose-500/20 bg-rose-500/5 text-rose-400" delay={0.06} />
         <StatBubble icon={TrendingUp} label="Actively In Progress" value={inProgress} color="border border-purple-500/20 bg-purple-500/5 text-purple-400" delay={0.12} />

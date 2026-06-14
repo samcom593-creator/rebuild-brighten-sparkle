@@ -625,7 +625,7 @@ export default function BookOfBusiness() {
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Count</div>
             <div className="text-2xl font-bold tabular-nums text-rose-300">

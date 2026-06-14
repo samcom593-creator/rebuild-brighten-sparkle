@@ -556,7 +556,7 @@ export default function RecruitingTracker() {
                         {badge.label}
                       </Badge>
                     </div>
-                    <div className="grid grid-cols-4 gap-1.5 mb-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-3">
                       <div className="rounded-lg bg-black/30 px-2 py-1.5 text-center">
                         <p className="text-[26px] leading-none font-black tabular-nums text-white">{today}</p>
                         <p className="text-[9px] uppercase tracking-wider text-white/60 mt-1">Today</p>

@@ -3024,7 +3024,7 @@ function PersonalPacePanel() {
           <p className="text-12 text-white/60">No production data found. Wire your AgentLink.</p>
         ) : (
           <>
-            <div className="grid gap-4 grid-cols-3 mb-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 mb-4">
               <div>
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">MTD · AP</p>
                 <p className="text-[28px] leading-none font-black tabular-nums text-emerald-300">{fmtUsd(p.mtdAp, true)}</p>

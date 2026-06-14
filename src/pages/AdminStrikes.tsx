@@ -826,7 +826,7 @@ function AgentDrillSheet({ agentId, summary, onClose }: DrillProps) {
           </SheetTitle>
         </SheetHeader>
         {summary && (
-          <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
             <div className="rounded-md border border-border/40 p-2">
               <p className="text-[10px] uppercase text-muted-foreground">Active</p>
               <p className="text-xl font-bold text-rose-400">{summary.active_count}</p>

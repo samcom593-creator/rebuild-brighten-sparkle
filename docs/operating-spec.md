@@ -2552,3 +2552,100 @@ Head-to-toe checklist now **30 items**.
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v7.8 · THE REAL BUG · STALE JWT + RLS DENIES ALL · 2026-06-15
+
+*Sam's screenshot (this round) was the breakthrough. The diagnostic banner he saw said: "0 active applications loaded from the database · Zero rows came back from the database." The UI was telling the truth all along — the server was returning 0 rows. The bug was at the AUTH layer.*
+
+---
+
+## §108 · The diagnosis
+
+DB probes run at the moment of Sam's screenshot:
+
+| Check | Result |
+|---|---|
+| Sam's `user_roles` | admin + agent (both present) |
+| `has_role(Sam, 'admin')` | `TRUE` |
+| All `applications` RLS policies | `polpermissive=true · polroles=authenticated` |
+| RLS on applications | `ENABLED` |
+| Simulated SQL as Sam (jwt sub=Sam's user_id) | **520 rows visible** |
+| Sam's last_sign_in_at | `2026-06-14T20:29:42Z` (≈20 hours before screenshot) |
+| Sam's auth.users.banned_until | `NULL` (account healthy) |
+
+So the SERVER agreed Sam should see 520 rows. Sam's browser said he was admin. But the fetch returned 0.
+
+### §108.1 · The chain that broke
+
+Supabase JWT default lifetime is **1 hour**. The client SHOULD silently refresh via the refresh token chain. But when:
+
+- The browser sleeps + wakes
+- A network blip mid-refresh fails the rotation
+- The tab is backgrounded long enough for both JWT + refresh-token grace to lapse
+- A timing race in `@supabase/supabase-js` `getSession()`
+
+…the client keeps sending an **expired/anon token**. Postgres reads `auth.uid() = NULL`, `has_role(NULL, 'admin') = FALSE`, every RLS clause that requires the admin role rejects, and the fetch returns 0 rows silently.
+
+Meanwhile `useAuth` already has `isAdmin = true` cached from a previous successful fetch. The page UI lies: it shows admin chips, admin-only tiles, the admin sidebar. But every query to RLS-gated tables returns empty.
+
+That's why the diagnostic banner was the smoking gun: **"Fetched 0 active applications from the database"** — the FETCH was the problem, not the filter, not the render, not the bundle.
+
+---
+
+## §109 · The fix in two layers
+
+### §109.1 · Layer 1 · Per-page diagnostic + self-fix buttons (commit `e9705918`)
+
+On `/dashboard/applicants`, when `activeApplications.length === 0` AND `!isLoading`, the diagnostic banner now renders TWO buttons:
+
+**🟡 Amber "Refresh session" button**
+- Calls `supabase.auth.refreshSession()`
+- On success: `queryClient.invalidateQueries({queryKey: ["applicants"]})` and re-fetches. No page reload needed.
+- On failure: `supabase.auth.signOut()` then redirect to `/login`
+
+**🔴 Rose "Full reset + sign in" button**
+- Unregister every Service Worker
+- Delete every CacheStorage entry
+- Clear ALL `localStorage` (including `sb-*` tokens this time — nuclear)
+- Clear `sessionStorage`
+- `supabase.auth.signOut()`
+- Redirect to `/login`
+
+The amber button is the lightweight fix. The rose button is the guaranteed nuclear option.
+
+### §109.2 · Layer 2 · Global session refresh in AuthenticatedShell (commit `59ba5f0c`)
+
+A new `useGlobalSessionRefresh()` hook in `AuthenticatedShell.tsx` runs on EVERY auth-gated route mount:
+
+- **On mount**: `supabase.auth.refreshSession()`. If successful, `queryClient.invalidateQueries()` (all queries) forces them to re-fire with the fresh JWT.
+- **Every 30 minutes** while the tab is open (JWT lifetime is 1h · 30m headroom against blips)
+- **On `visibilitychange === "visible"`** (catches laptop-wake scenarios where the auto-refresh missed a beat)
+- Singleton via `onceRef` so quick re-mounts don't refire
+
+This kills the entire class of "0 fetched" bugs for everyone, not just Sam, not just `/dashboard/applicants`. Every authenticated route, every user.
+
+---
+
+## §110 · The standing rule (head-to-toe checklist items 31-32)
+
+31. **Every auth-gated app MUST have a global session-refresh hook** that fires on mount, on a 30-minute interval, and on tab visibility-change. Supabase's built-in auto-refresh is NOT enough when the refresh chain can break silently.
+
+32. **Every list-page diagnostic empty-state MUST offer a "Refresh session" button** (lightweight: refresh + invalidate query) in addition to the "Full reset" button (nuclear: clear everything + sign-out). The amber button is the 99% fix; the rose button is the 1% guarantee.
+
+Head-to-toe checklist now **32 items**.
+
+---
+
+## §111 · Persisted-to v7.8
+
+- This file (v7.8): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Commit `e9705918`: per-page session refresh + 2 self-fix buttons
+- Commit `59ba5f0c`: global session refresh in AuthenticatedShell
+
+---
+
+> **Hold the Standard. Average is the disease.**

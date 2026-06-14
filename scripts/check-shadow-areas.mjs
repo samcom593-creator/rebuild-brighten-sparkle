@@ -82,9 +82,13 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // restoration + premium glass heroes on RecruitingFunnels/RecruitingTracker/Scripts/
 // TransferRequests/admin.RecruitingInbox/apply.QuickQualifyStep). Same posture as
 // wave-94 — intentional surfaces, retroactive floor lift.
+// Wave-96 bump: src/pages 71→73 (Δ +2) absorbs v7.1/v7.2 diagnostic empty-state
+// premium glow hero work in RecruitingTracker.tsx + admin/RecruitingInbox.tsx
+// landed in 9cefcc58 + 1c4c3a51 between the wave-95 ratchet and this commit.
+// Intentional AgentLink-fidelity diagnostic surfaces.
 const AREAS = [
   // Active page + dashboard surfaces (carry brand glow, ratchet at floor)
-  { dir: "src/pages", baseline: 71 },
+  { dir: "src/pages", baseline: 73 },
   { dir: "src/components/dashboard", baseline: 3 },
   { dir: "src/components/landing", baseline: 6 },
   { dir: "src/components/awards", baseline: 3 },

@@ -1230,3 +1230,133 @@ When the density-bomb workflow finishes, it ships in a second commit + receipt s
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v6.4 · PARITY GAP PANELS + WORKFLOW LESSON · 2026-06-15 EARLY
+
+*Sam saw the density-bomb ship and said "every analytic AgentLink has, I pretty much would · production cares · all the displays on this side should be working." Launched an AgentLink-parity-deepdive workflow; the audit phase stalled (this prompt is now 1232 lines, too big for the agent to ingest plus the 3 huge target page files). Pivoted to a direct solo build of the 4 highest-impact gap panels, which shipped in ~3 minutes instead of waiting for another 18-min workflow.*
+
+---
+
+## §51 · The 4 Solo-Built Parity Gap Panels (commit `f5c89aba`)
+
+All four live on `/dashboard` below the existing 6-panel densification strip, above the Footer health stats. Total +483 lines in `AgentCommandDashboard.tsx`.
+
+### §51.1 · PERSONAL PRODUCTION PACE · MTD vs LMTD (emerald)
+- Looks up the admin's `al_user_id` from `agents` (via `auth.uid()` → `agents.user_id`)
+- Queries `agentlink_deals_snapshot` filtered by that `user_id`, joining 3 windows: MTD, LMTD-same-period, LMTD-full
+- 3-stat row: MTD AP/deals · LMTD same-period AP/deals · Projected EOM
+- Pace bar (`projected / lmtd_full` %) with `bg-emerald-400/60` fill
+- Delta % badge: `▲ X%` emerald or `▼ X%` rose
+- Sam pace verified: 26 MTD vs 22 LMTD same-period
+
+### §51.2 · PRODUCT MIX MTD (emerald)
+- `agentlink_deals_snapshot.product_sold` grouped, summed by AP, sorted DESC, top 8
+- Horizontal bar visualization per row + emerald `font-black tabular-nums` $ + count + % of total
+- Coaching empty state: "First deal opens the board."
+
+### §51.3 · WEEK-OVER-WEEK · DAILY AP (emerald)
+- 14-day window split into THIS week vs LAST week (7 days each)
+- 2 stat tiles above the chart (emerald glow tile for this-week, slate for last-week)
+- recharts `AreaChart` with TWO series: this-week solid emerald area + last-week dashed white line overlay
+- Custom dark tooltip + emerald `CartesianGrid`
+- WoW delta % badge
+
+### §51.4 · RECRUITER CONTACT SLA · LEAK POSTURE (rose · full-width `lg:col-span-2`)
+- THIS IS SAM'S BIGGEST LEAK: 234 apps, only 11 contacted in 24h
+- Pulls all non-terminated `applications` rows, groups by `recruiter_id ?? assigned_agent_id`
+- Per-recruiter metrics: Total assigned · Uncontacted · Stale 48h+ · 1st-touch <24h %
+- Tone-coded:
+  - stale-48h-pct ≥50% rose · ≥25% amber · <25% white
+  - 1st-touch ≥30% emerald · ≥10% amber · <10% rose
+- Top 8 by `stale_48h DESC` (worst offenders first)
+- Link → `/admin/recruiting-inbox` for action
+
+---
+
+## §52 · The Workflow Lesson · Big-Prompt Stall
+
+The audit agent in the parity-deepdive workflow stalled on 6 retries × 180s each (18 min wasted) before failing. Root cause: the agent prompt instructed it to read this v6.3 spec file (1232 lines) PLUS read 3 huge target pages (`AgentCommandDashboard.tsx` 2759 lines, `RecruitingFunnels.tsx` 857 lines, `RecruitingTracker.tsx` 653 lines). That's >4000 lines of context just for the audit phase — bigger than the agent's effective context window.
+
+**Permanent rule for future Workflow audit agents:**
+
+> When the prompt 125 spec file exceeds ~1000 lines, audit-phase agents should be given a TRIMMED slice of the spec (just the relevant §) instead of the whole file. Use `Read` with explicit offset/limit, never ingest the full file.
+
+For the next ship slice, I'll factor the spec into v6 §31 hero pattern + per-page section pointers, so each phase agent reads only the chunk it needs.
+
+---
+
+## §53 · AgentLink Parity Matrix · Updated Status (as of 2026-06-15)
+
+This becomes the canonical gap list for future sessions.
+
+| AgentLink Feature | Our Equivalent | Status |
+|---|---|---|
+| Dashboard · Annual Premium MTD | Hero § A (AgentCommandDashboard) | ✅ shipped 2026-06-14 |
+| Dashboard · Deals MTD | Hero § A · big-number 2 | ✅ shipped |
+| Dashboard · Producers | Hero § A · big-number 3 | ✅ shipped |
+| Dashboard · Licensed Hires MTD | Hero § A · big-number 4 | ✅ shipped |
+| Dashboard · Carrier Mix | Densify § 1 | ✅ shipped 2026-06-15 |
+| Dashboard · Top Movers WoW | Densify § 2 | ✅ shipped |
+| Dashboard · Conversion Funnel | Densify § 3 | ✅ shipped |
+| Dashboard · Activity Feed | Densify § 4 | ✅ shipped |
+| Dashboard · Source Attribution ROI | Densify § 5 | ✅ shipped |
+| Dashboard · Money Flow MTD | Densify § 6 | ✅ shipped |
+| Dashboard · Personal Production Pace | Parity § 1 | ✅ shipped 2026-06-15 v6.4 |
+| Dashboard · Product Mix MTD | Parity § 2 | ✅ shipped |
+| Dashboard · Week-over-Week | Parity § 3 | ✅ shipped |
+| Dashboard · Recruiter Contact SLA | Parity § 4 (rose leak) | ✅ shipped |
+| Dashboard · Recent Hires Stream | Tabbed strip · Just Hired tab | ✅ shipped earlier |
+| Dashboard · State-Level Production | DEFERRED · `payload` JSON empty | ❌ blocked by data |
+| Dashboard · Time-of-Day Production | DEFERRED · `effective_date` is DATE-only | ❌ blocked by data |
+| Pipeline · Stage-by-Stage Conversion | RecruitingFunnels § Strip | ✅ shipped 2026-06-15 |
+| Pipeline · Per-Source Funnel | RecruitingFunnels § Source Grid | ✅ shipped |
+| Pipeline · Weekly Hire Trend | RecruitingFunnels § Trend Chart | ✅ shipped |
+| Pipeline · Drop-off Heatmap | RecruitingFunnels § Heatmap | ✅ shipped |
+| Tracker · Per-Recruiter Cards | RecruitingTracker § Rich Cards | ✅ shipped |
+| Tracker · Top Performer Sparklines | RecruitingTracker § Podium | ✅ shipped |
+| Tracker · Hiring Pace Chart | RecruitingTracker § AreaChart | ✅ shipped |
+| Tracker · Interview Cascade | RecruitingTracker § Interview Cascade | ✅ shipped earlier |
+| All 22 sidebar pages · v6 §31 hero | every page from /dashboard to /quoter | ✅ 22/22 |
+
+**Still in the future bucket (data-layer blockers):**
+- State production map · needs `agentlink_deals_snapshot.payload` jurisdiction backfill OR new column
+- Time-of-day production heat · needs `snapshot_at` proxy or `effective_at` datetime
+- Commission pacing chart · needs `commission_ledger` actually populated (currently $0 paid · $310 pending)
+- 12-week hire pace sparkline · needs `applications.licensed_at` backfill (only 2 licensed rows in 12 weeks)
+
+---
+
+## §54 · Persisted-to v6.4
+
+- This file (v6.4): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Commit `f5c89aba`: 4 parity gap panels (this section's worth of changes)
+- 4 parity panel components live in `src/pages/AgentCommandDashboard.tsx`:
+  - `ParityGapPanels` (container, 2-col grid)
+  - `PersonalPacePanel`
+  - `ProductMixPanel`
+  - `WeekOverWeekPanel`
+  - `RecruiterContactSlaPanel` (full-width)
+
+---
+
+## §55 · Workflow Tally (this multi-hour session)
+
+| Workflow | Agents | Tokens | Duration | Outcome |
+|---|---|---|---|---|
+| `apex-head-to-toe-rebuild` | 13 | 798K | 4m17s | 6/6 page rebuilds clean · merged + shipped |
+| `apex-14-page-finisher-v1` | 0 used | — | 11s | Failed at orchestrator (cwd not in git repo) |
+| `apex-14-page-finisher-v2` | 15 | 1.08M | 2m9s | 14/14 page rebuilds clean · auto-edited main repo · shipped |
+| `apex-density-bomb` | 6 | 522K | 10m55s | 13 panels across 3 files · worktree-merged · shipped |
+| `apex-agentlink-parity-deepdive` | 1 stalled | 530K | 6m attempts | Phase-1 audit agent stalled · pivoted to solo build |
+
+Then solo: 4 parity panels added directly in ~3 min.
+
+Total session token consumption (workflows + solo): ~3.3M+ subagent tokens, ~10 commits, ~22 pages with canonical hero, ~30 distinct dense panels live across Command Center + Recruit Pipeline + Recruit Tracker.
+
+---
+
+> **Hold the Standard. Average is the disease.**

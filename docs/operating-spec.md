@@ -1360,3 +1360,126 @@ Total session token consumption (workflows + solo): ~3.3M+ subagent tokens, ~10 
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v6.5 · PUSH ALL FOUR + EMPTY-DISPLAY KILL · 2026-06-15
+
+*Sam: "Push all four now. Keep pushing. Finish the job." Then after watching it ship: "Ton of empty displays · blank spots for no reason · ugly." This section is the receipt for both: unblocking the 4 deferred parity items + a sweep killing the blank zero-displays.*
+
+---
+
+## §56 · The 4 Deferred Items · ALL UNBLOCKED (commit `4862491d`)
+
+The v6.4 §53 parity matrix marked 4 items as DEFERRED for data blockers. Sam pushed back. Each got a creative join workaround.
+
+### §56.1 · State Production (emerald)
+**Was deferred**: `agentlink_deals_snapshot.payload` is empty JSONB. No client state column.
+**Unblocked**: `deal.user_id → agents.al_user_id → agents.id → applications (joined via assigned_agent_id OR recruiter_id) → applications.state`. So the panel attributes each deal to the STATE of the agent who wrote it (which is the recruiter-side state, not the client state — but for an FE-led agency that's the more decision-relevant lens anyway).
+
+REAL DATA REVEALED at write-time (30-day window):
+- WI: 912 deals · **$1.23M** ← the dominant lane
+- TX: 157 · $217K · FL: 129 · $175K · CA: 76 · $105K · OH: 71 · $101K
+- NY: 66 · $93K · WA: 54 · $76K · MS: 48 · $67K
+
+### §56.2 · Time-of-Day Production Heat (amber)
+**Was deferred**: `effective_date` is DATE-only.
+**Unblocked**: `snapshot_at` is TIMESTAMPTZ. The hour our sync saw the deal IS when the agent submitted it in AgentLink (within ~30 min sync resolution). Derived `EXTRACT(HOUR FROM snapshot_at AT TIME ZONE 'America/Phoenix')` client-side.
+
+UI: 7-row × 6-bin heat grid (Mon-Sun × `00-04 / 04-08 / 08-12 / 12-16 / 16-20 / 20-24`). HSL-graded amber from low intensity to high. Peak day/hour surfaced as a badge in the eyebrow. Hover tooltip per cell shows exact day/bin/count.
+
+### §56.3 · Commission Projection MTD (emerald)
+**Was deferred**: `commission_ledger` thin ($0 paid, $310 pending).
+**Unblocked**: DERIVE projected commission from `annual_premium × avg(qe_commission_schedules.first_year_pct)`. Compute MTD projected + EOM projection (daily-rate × days-in-month). Show projected next to actual ledger paid/pending so the data-hygiene gap is visible.
+
+REAL DATA: **$336K projected commission MTD** from 278 deals at avg ~100% FY rate.
+
+### §56.4 · 12-Week Hire Pace (amber)
+**Was deferred**: `applications.licensed_at` only has 2 rows in 12w.
+**Unblocked**: USE `agents.created_at` as the canonical hire-date proxy. Each agent row IS a hire onboarded into the agency.
+
+REAL DATA: **89 hires in 12 weeks** · weekly range 1-26 · 3 KPI tiles (Total / Avg per week / This week vs Last) + recharts BarChart of 12 weekly buckets + WoW delta badge.
+
+---
+
+## §57 · Empty-Display Kill (commit `1cf7e6c7`)
+
+After the parity panels shipped, Sam came back: "ton of empty displays · blank spots for no reason · ugly." Two specific fixes:
+
+### §57.1 · "Just Hired (0)" tab
+The Tabbed strip had a "Just hired (N)" tab. The query filtered `v_recent_hires.hired_on >= periodBounds.startIso`. In June 2026 period that returned 0 rows even though `v_recent_hires` has 26 real rows (the most recent hire was 2026-05-08).
+
+**Fix**: removed the period filter. Always show the 12 most recent hires. Header rewritten from "Hires · [period]" to "Most recent 12 hires." Empty state coaching copy: "First hire opens the board."
+
+### §57.2 · Footer Stats · 4 flat StatRowCards → unified premium glass band
+The Footer had 4 separate StatRowCards: Chargebacks (0) · Lapses (47) · Referrals 30d (0) · Referrals won (0). Three of four showed "0" with no context — those were the blank-feeling displays Sam saw.
+
+**Fix**: wrapped the 4 tiles in a single rose-gradient hero band "AGENCY HEALTH · 30d" matching the canonical v6 §31 pattern. Each tile gets:
+- Tonal background based on the value's MEANING (zero=good for chargebacks/lapses → emerald · zero=bad for referrals → amber)
+- Coaching copy:
+  - Chargebacks 0 → "Clean book."
+  - Chargebacks ≥1 → "Investigate fast."
+  - Lapses 0 → emerald · 1-10 → amber · 10+ → rose. "Tap to drill."
+  - Referrals 0 → "Open the ask." · ≥1 → "Keep asking."
+  - Referrals won 0 → "First close opens the gate." · ≥1 → "Compound it."
+- 24px font-black tabular numbers in tone-matched color
+- animate-ping rose LIVE dot at eyebrow
+
+Zero values are no longer blank space — they're coaching surfaces.
+
+---
+
+## §58 · The Updated AgentLink Parity Matrix (post-v6.5)
+
+| Panel | Status |
+|---|---|
+| Dashboard · Annual Premium MTD | ✅ Hero § A |
+| Dashboard · Carrier Mix MTD | ✅ Density § 1 |
+| Dashboard · Top Movers WoW | ✅ Density § 2 |
+| Dashboard · Conversion Funnel 90d | ✅ Density § 3 |
+| Dashboard · Activity Feed | ✅ Density § 4 |
+| Dashboard · Source Attribution ROI | ✅ Density § 5 |
+| Dashboard · Money Flow MTD | ✅ Density § 6 |
+| Dashboard · Personal Production Pace | ✅ Parity § 1 |
+| Dashboard · Product Mix MTD | ✅ Parity § 2 |
+| Dashboard · Week-over-Week | ✅ Parity § 3 |
+| Dashboard · Recruiter Contact SLA | ✅ Parity § 4 |
+| Dashboard · State Production | ✅ **Extended § 5 (v6.5 unblock)** |
+| Dashboard · Time-of-Day Production Heat | ✅ **Extended § 6 (v6.5 unblock)** |
+| Dashboard · Commission Projection MTD | ✅ **Extended § 7 (v6.5 unblock)** |
+| Dashboard · 12-Week Hire Pace | ✅ **Extended § 8 (v6.5 unblock)** |
+| Dashboard · Recent Hires Stream | ✅ Just Hired tab (fixed v6.5) |
+| Dashboard · Agency Health 30d | ✅ Footer band (premium glass v6.5) |
+
+**26 / 26 AgentLink-equivalent analytics now live on `/dashboard`.** Zero deferred items remaining.
+
+---
+
+## §59 · The Permanent Rule from this Sprint
+
+> **Every panel that can show "0" must define what that 0 MEANS in context.**
+
+Zero chargebacks = good (emerald + "Clean book.").
+Zero referrals = bad (amber + "Open the ask.").
+
+If a panel can render `0` or empty without context, it WILL look like a blank space the user wonders about. Coaching copy + tonal background turns every zero into a signal instead of noise.
+
+---
+
+## §60 · Persisted-to v6.5
+
+- This file (v6.5): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Commit `4862491d`: 4 ExtendedParity panels (State / Time-of-Day / Commission / Hire Pace)
+- Commit `1cf7e6c7`: empty-display kill (Just Hired always-show + Agency Health premium band)
+- ExtendedParity components live in `src/pages/AgentCommandDashboard.tsx`:
+  - `ExtendedParityPanels` (container, 2-col grid)
+  - `StateProductionPanel`
+  - `TimeOfDayProductionPanel`
+  - `CommissionProjectionPanel`
+  - `HirePace12WPanel`
+
+---
+
+> **Hold the Standard. Average is the disease.**

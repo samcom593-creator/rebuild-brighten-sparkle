@@ -15,7 +15,8 @@ import { AgentLinkConnectionPrompt } from "@/components/dashboard/AgentLinkConne
 
 interface DealRow {
   id: string;
-  agent_id: string;
+  agent_id: string | null;
+  agentlink_user_id?: number | null;
   client_first_name: string | null;
   client_last_name: string | null;
   policy_number: string | null;
@@ -98,6 +99,7 @@ export default function BookOfBusiness() {
   const [deals, setDeals]       = useState<DealRow[]>([]);
   const [loading, setLoading]   = useState(true);
   const [agentScopeIds, setAgentScopeIds] = useState<string[] | null>(null);
+  const [agentLinkScopeUserIds, setAgentLinkScopeUserIds] = useState<number[] | null>(null);
   const [selectedDeal, setSelectedDeal] = useState<DealRow | null>(null);
   const [search, setSearch]     = useState("");
   const [sourceFilter, setSource] = useState<"all" | "apex" | "agent_link">("all");
@@ -116,30 +118,46 @@ export default function BookOfBusiness() {
     (async () => {
       if (!user?.id) {
         setAgentScopeIds([]);
+        setAgentLinkScopeUserIds([]);
         return;
       }
       if (isAdmin) {
         setAgentScopeIds(null);
+        setAgentLinkScopeUserIds(null);
         return;
       }
-      const { data: agent } = await supabase
+      const { data: userAgents } = await supabase
         .from("agents")
-        .select("id")
+        .select("id, al_user_id")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .order("created_at", { ascending: false });
       if (cancelled) return;
-      if (!agent?.id) {
+      if (!userAgents?.length) {
         setAgentScopeIds([]);
+        setAgentLinkScopeUserIds([]);
         return;
       }
-      const ids = new Set<string>([agent.id]);
+      const ids = new Set<string>(userAgents.map((agent) => agent.id).filter(Boolean));
       if (isManager) {
         const { data: downline } = await supabase.rpc("my_downline_agent_ids" as any);
         for (const row of ((downline as any[]) ?? [])) {
           if (row.agent_id) ids.add(row.agent_id);
         }
       }
-      setAgentScopeIds(Array.from(ids));
+
+      const scopedAgentIds = Array.from(ids);
+      const { data: scopedAgents } = scopedAgentIds.length
+        ? await supabase
+            .from("agents")
+            .select("id, al_user_id")
+            .in("id", scopedAgentIds)
+        : { data: [] as Array<{ id: string; al_user_id: number | null }> };
+      const alUserIds = [...new Set(((scopedAgents ?? []) as any[])
+        .map((agent) => agent.al_user_id)
+        .filter((id): id is number => typeof id === "number"))];
+
+      setAgentScopeIds(scopedAgentIds);
+      setAgentLinkScopeUserIds(alUserIds);
     })();
     return () => { cancelled = true; };
   }, [user?.id, isAdmin, isManager]);
@@ -147,7 +165,13 @@ export default function BookOfBusiness() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      if (!isAdmin && agentScopeIds !== null && agentScopeIds.length === 0) {
+      if (
+        !isAdmin &&
+        agentScopeIds !== null &&
+        agentScopeIds.length === 0 &&
+        agentLinkScopeUserIds !== null &&
+        agentLinkScopeUserIds.length === 0
+      ) {
         setDeals([]);
         return;
       }
@@ -155,7 +179,8 @@ export default function BookOfBusiness() {
       // v9 audit 2026-06-10: BookOfBusiness was only reading the apex
       // `deals` table, stale 20+ days since the AgentLink sync went dark.
       // Sam: "Book of business has nothing at all." Fix: ALSO read
-      // agentlink_deals_snapshot (1,247 real policies, refreshed every 30 min
+      // agentlink_deals_snapshot (1,286 real policies as of 2026-06-14,
+      // refreshed every 30 min
       // by com.samjames.apex.agentlink-sync) and merge. Dedup by policy_number.
       let query = supabase
         .from("deals")
@@ -168,29 +193,72 @@ export default function BookOfBusiness() {
         `)
         .neq("status", "draft")
         .order("created_at", { ascending: false })
-        .limit(500);
+        .limit(2_000);
 
       if (!isAdmin && agentScopeIds !== null) {
         query = query.in("agent_id", agentScopeIds);
       }
 
-      const [{ data }, { data: alSnapshot }] = await Promise.all([
+      let alQuery = supabase
+        .from("agentlink_deals_snapshot" as any)
+        .select("id, user_id, pipeline_client_id, client_first_name, client_last_name, policy_number, product_sold, monthly_premium, annual_premium, effective_date, raw_status, carrier_id, snapshot_at", { count: "exact" })
+        .order("effective_date", { ascending: false, nullsFirst: false })
+        .limit(5_000);
+
+      if (!isAdmin && agentLinkScopeUserIds !== null) {
+        if (agentLinkScopeUserIds.length === 0) {
+          alQuery = alQuery.in("user_id", [-1]);
+        } else {
+          alQuery = alQuery.in("user_id", agentLinkScopeUserIds);
+        }
+      }
+
+      const [{ data }, { data: alSnapshot, count: alCount, error: alError }] = await Promise.all([
         query,
-        supabase
-          .from("agentlink_deals_snapshot" as any)
-          .select("id, client_first_name, client_last_name, policy_number, product_sold, monthly_premium, annual_premium, effective_date, raw_status, carrier_id, snapshot_at")
-          .order("effective_date", { ascending: false, nullsFirst: false })
-          .limit(500),
+        alQuery,
       ]);
+      if (alError) console.error("[BookOfBusiness] AgentLink snapshot fetch failed:", alError);
 
       const apexRows = (data ?? []) as DealRow[];
       const seenPolicies = new Set(apexRows.map((r) => r.policy_number).filter(Boolean));
+      const alRawRows = ((alSnapshot ?? []) as Array<Record<string, unknown>>)
+        .filter((r) => r.policy_number && !seenPolicies.has(String(r.policy_number)));
 
-      const alRows: DealRow[] = ((alSnapshot ?? []) as Array<Record<string, unknown>>)
-        .filter((r) => r.policy_number && !seenPolicies.has(String(r.policy_number)))
-        .map((r) => ({
+      const alUserIds = [...new Set(alRawRows
+        .map((r) => Number(r.user_id))
+        .filter((id) => Number.isFinite(id)))];
+      const alCarrierIds = [...new Set(alRawRows
+        .map((r) => r.carrier_id != null ? String(r.carrier_id) : null)
+        .filter((id): id is string => Boolean(id)))];
+
+      const [{ data: agentsByAl }, { data: alCarriers }] = await Promise.all([
+        alUserIds.length
+          ? supabase
+              .from("agents")
+              .select("id, display_name, al_user_id, profile:profiles(full_name)")
+              .in("al_user_id", alUserIds)
+          : Promise.resolve({ data: [] } as any),
+        alCarrierIds.length
+          ? supabase.from("carriers").select("id, name").in("id", alCarrierIds)
+          : Promise.resolve({ data: [] } as any),
+      ]);
+
+      const agentByAlUserId = new Map<number, any>();
+      for (const agent of ((agentsByAl ?? []) as any[])) {
+        if (typeof agent.al_user_id === "number") agentByAlUserId.set(agent.al_user_id, agent);
+      }
+      const alCarrierMap: Record<string, string> = {};
+      for (const carrier of ((alCarriers ?? []) as any[])) alCarrierMap[String(carrier.id)] = carrier.name;
+
+      const alRows: DealRow[] = alRawRows
+        .map((r) => {
+          const agentlinkUserId = Number(r.user_id);
+          const mappedAgent = Number.isFinite(agentlinkUserId) ? agentByAlUserId.get(agentlinkUserId) : null;
+          const carrierId = r.carrier_id != null ? String(r.carrier_id) : null;
+          return {
           id: `al-${String(r.id ?? "")}`,
-          agent_id: "",
+          agent_id: mappedAgent?.id ?? null,
+          agentlink_user_id: Number.isFinite(agentlinkUserId) ? agentlinkUserId : null,
           client_first_name: String(r.client_first_name ?? ""),
           client_last_name: String(r.client_last_name ?? ""),
           policy_number: String(r.policy_number ?? ""),
@@ -207,12 +275,22 @@ export default function BookOfBusiness() {
           insuracloud_sync_error: null,
           source: "agentlink",
           status: "active",
-          carrier_id: r.carrier_id != null ? String(r.carrier_id) : null,
-          pipeline_client_id: null,
+          carrier_id: carrierId,
+          pipeline_client_id: r.pipeline_client_id != null ? Number(r.pipeline_client_id) : null,
           created_at: r.snapshot_at ? String(r.snapshot_at) : new Date().toISOString(),
-        }) as DealRow);
+          agent_name: mappedAgent?.profile?.full_name ?? mappedAgent?.display_name ?? (Number.isFinite(agentlinkUserId) ? `AgentLink user #${agentlinkUserId}` : "Unmatched AgentLink agent"),
+          carrier_name: carrierId ? alCarrierMap[carrierId] ?? "" : "",
+        } as DealRow;
+      });
 
       const rows = [...apexRows, ...alRows];
+      console.info("[BookOfBusiness] loaded deals", {
+        apexRows: apexRows.length,
+        agentLinkRows: alRows.length,
+        agentLinkSnapshotCount: alCount,
+        totalRows: rows.length,
+        scope: isAdmin ? "admin" : "scoped",
+      });
 
       // Resolve agent + carrier names in one batch
       const agentIds   = [...new Set(rows.map(r => r.agent_id).filter(Boolean))];
@@ -234,27 +312,27 @@ export default function BookOfBusiness() {
 
       setDeals(rows.map(r => ({
         ...r,
-        agent_name:   agentMap[r.agent_id] ?? "Agent",
-        carrier_name: r.carrier_id ? carrierMap[r.carrier_id] ?? "" : "",
+        agent_name:   r.agent_name ?? (r.agent_id ? agentMap[r.agent_id] ?? "Agent" : r.agentlink_user_id ? `AgentLink user #${r.agentlink_user_id}` : "Agent"),
+        carrier_name: r.carrier_name ?? (r.carrier_id ? carrierMap[r.carrier_id] ?? "" : ""),
       })));
     } finally {
       setLoading(false);
     }
-  }, [agentScopeIds, isAdmin]);
+  }, [agentScopeIds, agentLinkScopeUserIds, isAdmin]);
 
   useEffect(() => {
-    if (isAdmin || agentScopeIds !== null) load();
-  }, [agentScopeIds, isAdmin, load]);
+    if (isAdmin || (agentScopeIds !== null && agentLinkScopeUserIds !== null)) load();
+  }, [agentScopeIds, agentLinkScopeUserIds, isAdmin, load]);
 
   // Realtime subscription
   useEffect(() => {
-    if (!isAdmin && agentScopeIds === null) return;
+    if (!isAdmin && (agentScopeIds === null || agentLinkScopeUserIds === null)) return;
     const scopeKey = isAdmin ? "admin" : (agentScopeIds ?? []).slice().sort().join(",");
     const ch = supabase.channel(`bob-${scopeKey}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "deals" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [agentScopeIds, isAdmin, load]);
+  }, [agentScopeIds, agentLinkScopeUserIds, isAdmin, load]);
 
   // PL-043 — chargeback fetch, refreshed on date change OR scope change
   const loadChargebacks = useCallback(async () => {
@@ -365,6 +443,8 @@ export default function BookOfBusiness() {
   );
   const apexCount = useMemo(() => filtered.filter(d => sourceKey(d.source) === "apex").length, [filtered]);
   const agentLinkCount = useMemo(() => filtered.filter(d => sourceKey(d.source) === "agent_link").length, [filtered]);
+  const loadedApexCount = useMemo(() => deals.filter(d => sourceKey(d.source) === "apex").length, [deals]);
+  const loadedAgentLinkCount = useMemo(() => deals.filter(d => sourceKey(d.source) === "agent_link").length, [deals]);
   const syncErrors = useMemo(
     () => filtered.filter((d) => Boolean(d.insuracloud_sync_error)).length,
     [filtered],
@@ -600,6 +680,25 @@ export default function BookOfBusiness() {
 
       {/* Filters */}
       <GlassCard className="p-3 flex flex-wrap gap-2 items-center">
+        <div className="w-full flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-border/40">
+          <div className="text-sm font-semibold tabular-nums">
+            {loading ? (
+              <span className="text-muted-foreground">Loading full book of business...</span>
+            ) : (
+              <>
+                Showing <span className="text-amber-500">{filtered.length.toLocaleString()}</span>
+                <span className="text-muted-foreground"> of </span>
+                <span className="text-emerald-500">{deals.length.toLocaleString()}</span>
+                <span className="text-muted-foreground"> deals</span>
+              </>
+            )}
+          </div>
+          {!loading && (
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest">
+              {loadedApexCount.toLocaleString()} APEX · {loadedAgentLinkCount.toLocaleString()} AgentLink
+            </Badge>
+          )}
+        </div>
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
@@ -664,7 +763,7 @@ export default function BookOfBusiness() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="px-6 py-16 text-center text-muted-foreground">
-                    No deals match these filters.
+                    Filters are hiding the book. Clear search, reset source and stage, then verify the agent has an AgentLink user mapping if this stays empty. Hold the Standard.
                   </td>
                 </tr>
               ) : (

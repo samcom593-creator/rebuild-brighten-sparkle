@@ -2171,6 +2171,15 @@ function AgencyCommandView() {
         <MoneyFlowPanel data={moneyFlow.data} loading={moneyFlow.isLoading} />
       </div>
 
+      {/* 2026-06-15 NEW · AgentLink-parity gap panels (4) ─────────────
+          Sam: "every analytic AgentLink has, I pretty much would."
+          1. Personal Pace · MTD vs LMTD
+          2. Product Mix MTD
+          3. Week-over-Week 2-line chart
+          4. Recruiter Contact SLA (the 234→11 leak)
+      */}
+      <ParityGapPanels />
+
       {/* ── Footer · health stats + quick actions in ONE section ─── */}
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -2746,5 +2755,479 @@ function StatRowCard({ icon: Icon, label, value, color, onClick }: StatRowCardPr
     <GlassCard className="p-4 flex items-center justify-between">
       {inner}
     </GlassCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// PARITY GAP PANELS · 2026-06-15
+// Sam: "every analytic AgentLink has, I pretty much would."
+// 4 new dense panels filling the highest-impact AgentLink-parity gaps.
+// ─────────────────────────────────────────────────────────────────────
+
+function ParityGapPanels() {
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      <PersonalPacePanel />
+      <ProductMixPanel />
+      <WeekOverWeekPanel />
+      <RecruiterContactSlaPanel />
+    </div>
+  );
+}
+
+// ── PANEL · PERSONAL PRODUCTION PACE · MTD vs LMTD ──────────────────
+function PersonalPacePanel() {
+  const { user } = useAuth();
+  const userId = (user as any)?.id ?? null;
+
+  // Resolve admin's al_user_id once (used to filter the snapshot)
+  const me = useQuery({
+    queryKey: ["my-al-user-id", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agents" as never)
+        .select("al_user_id, display_name")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data as { al_user_id: number | null; display_name: string | null } | null;
+    },
+  });
+  const alUid = me.data?.al_user_id ?? null;
+
+  const pace = useQuery({
+    queryKey: ["personal-pace", alUid],
+    enabled: !!alUid,
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+      const dayOfMonth = now.getDate();
+      const lastMonthSameDayStr = new Date(now.getFullYear(), now.getMonth() - 1, dayOfMonth).toISOString().slice(0, 10);
+      const today = now.toISOString().slice(0, 10);
+
+      const [mtdRes, lmtdSameDayRes, lmtdFullRes] = await Promise.all([
+        supabase.from("agentlink_deals_snapshot" as never)
+          .select("annual_premium", { count: "exact" })
+          .eq("user_id", alUid)
+          .gte("effective_date", monthStart)
+          .lte("effective_date", today),
+        supabase.from("agentlink_deals_snapshot" as never)
+          .select("annual_premium", { count: "exact" })
+          .eq("user_id", alUid)
+          .gte("effective_date", lastMonthStart)
+          .lte("effective_date", lastMonthSameDayStr),
+        supabase.from("agentlink_deals_snapshot" as never)
+          .select("annual_premium", { count: "exact" })
+          .eq("user_id", alUid)
+          .gte("effective_date", lastMonthStart)
+          .lte("effective_date", lastMonthEnd),
+      ]);
+
+      const sum = (rows: any) => (rows ?? []).reduce((s: number, r: any) => s + Number(r.annual_premium ?? 0), 0);
+      const mtdAp = sum(mtdRes.data);
+      const lmtdSameDayAp = sum(lmtdSameDayRes.data);
+      const lmtdFullAp = sum(lmtdFullRes.data);
+      const mtdDeals = mtdRes.count ?? 0;
+      const lmtdSameDayDeals = lmtdSameDayRes.count ?? 0;
+      const lmtdFullDeals = lmtdFullRes.count ?? 0;
+      const daysIntoMonth = dayOfMonth;
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const projectedAp = daysIntoMonth > 0 ? (mtdAp / daysIntoMonth) * daysInMonth : 0;
+
+      return { mtdAp, lmtdSameDayAp, lmtdFullAp, mtdDeals, lmtdSameDayDeals, lmtdFullDeals, projectedAp, daysIntoMonth, daysInMonth };
+    },
+  });
+
+  const p = pace.data;
+  const apDeltaPct = p && p.lmtdSameDayAp > 0 ? ((p.mtdAp - p.lmtdSameDayAp) / p.lmtdSameDayAp) * 100 : 0;
+  const dealsDelta = p ? p.mtdDeals - p.lmtdSameDayDeals : 0;
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">MY PACE · MTD vs LMTD</p>
+          </div>
+          {p && (
+            <Badge variant="outline" className={`text-[10px] uppercase tracking-widest ${apDeltaPct >= 0 ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-rose-400/40 bg-rose-400/10 text-rose-200"}`}>
+              {apDeltaPct >= 0 ? "▲" : "▼"} {Math.abs(apDeltaPct).toFixed(1)}%
+            </Badge>
+          )}
+        </div>
+        {pace.isLoading ? (
+          <div className="space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} className="h-10 bg-white/[0.04]" />)}</div>
+        ) : !alUid ? (
+          <p className="text-12 text-white/60 italic">Link your al_user_id on your agent profile to see personal pace.</p>
+        ) : !p ? (
+          <p className="text-12 text-white/60">No production data found. Wire your AgentLink.</p>
+        ) : (
+          <>
+            <div className="grid gap-4 grid-cols-3 mb-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">MTD · AP</p>
+                <p className="text-[28px] leading-none font-black tabular-nums text-emerald-300">{fmtUsd(p.mtdAp, true)}</p>
+                <p className="text-[10px] text-white/40 tabular-nums">{p.mtdDeals} deals · day {p.daysIntoMonth}/{p.daysInMonth}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LMTD · same period</p>
+                <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmtUsd(p.lmtdSameDayAp, true)}</p>
+                <p className="text-[10px] text-white/40 tabular-nums">{p.lmtdSameDayDeals} deals · {dealsDelta >= 0 ? "+" : ""}{dealsDelta} vs now</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PROJECTED · EOM</p>
+                <p className="text-[28px] leading-none font-black tabular-nums text-amber-300">{fmtUsd(p.projectedAp, true)}</p>
+                <p className="text-[10px] text-white/40 tabular-nums">last month full: {fmtUsd(p.lmtdFullAp, true)}</p>
+              </div>
+            </div>
+            <div className="pt-3 border-t border-white/[0.06]">
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1.5">PACE BAR</p>
+              <div className="relative h-2 rounded-full bg-white/[0.04] overflow-hidden">
+                <div
+                  className="h-full bg-emerald-400/60 transition-all"
+                  style={{ width: `${Math.min(100, p.lmtdFullAp > 0 ? (p.projectedAp / p.lmtdFullAp) * 100 : 0).toFixed(1)}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-white/40 mt-1 tabular-nums">
+                {p.lmtdFullAp > 0 ? `${((p.projectedAp / p.lmtdFullAp) * 100).toFixed(0)}% of last month's full month` : "First full month coming up"}
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── PANEL · PRODUCT MIX MTD ─────────────────────────────────────────
+function ProductMixPanel() {
+  const mix = useQuery({
+    queryKey: ["dashboard-product-mix"],
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+      const today = now.toISOString().slice(0, 10);
+      const { data } = await supabase
+        .from("agentlink_deals_snapshot" as never)
+        .select("product_sold, annual_premium")
+        .gte("effective_date", monthStart)
+        .lte("effective_date", today);
+      const rows = (data ?? []) as Array<{ product_sold: string | null; annual_premium: number | string | null }>;
+      const totals = new Map<string, { count: number; ap: number }>();
+      for (const r of rows) {
+        const key = (r.product_sold ?? "—").trim();
+        const existing = totals.get(key) ?? { count: 0, ap: 0 };
+        existing.count += 1;
+        existing.ap += Number(r.annual_premium ?? 0);
+        totals.set(key, existing);
+      }
+      const list = Array.from(totals.entries())
+        .map(([product, v]) => ({ product, count: v.count, ap: v.ap }))
+        .sort((a, b) => b.ap - a.ap)
+        .slice(0, 8);
+      const totalAp = list.reduce((s, x) => s + x.ap, 0);
+      return { list, totalAp };
+    },
+  });
+
+  const data = mix.data;
+  const max = data?.list[0]?.ap ?? 0;
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">PRODUCT MIX · MTD</p>
+          </div>
+          {data && (
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+              {fmtUsd(data.totalAp, true)} total
+            </Badge>
+          )}
+        </div>
+        {mix.isLoading ? (
+          <div className="space-y-2">{Array.from({length:6}).map((_,i)=><Skeleton key={i} className="h-8 bg-white/[0.04]" />)}</div>
+        ) : !data || data.list.length === 0 ? (
+          <p className="text-12 text-white/60 italic">First deal opens the board.</p>
+        ) : (
+          <div className="space-y-2">
+            {data.list.map((r) => {
+              const pct = max > 0 ? (r.ap / max) * 100 : 0;
+              const totalPct = data.totalAp > 0 ? (r.ap / data.totalAp) * 100 : 0;
+              return (
+                <div key={r.product} className="space-y-0.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-medium truncate flex-1 text-white/85">{r.product}</span>
+                    <span className="tabular-nums font-bold text-emerald-300 shrink-0 ml-2">{fmtUsd(r.ap, true)}</span>
+                    <span className="tabular-nums text-white/40 shrink-0 ml-2 w-12 text-right">{r.count} · {totalPct.toFixed(0)}%</span>
+                  </div>
+                  <div className="relative h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
+                    <div className="h-full bg-emerald-400/70" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── PANEL · WEEK-OVER-WEEK 2-LINE CHART ─────────────────────────────
+function WeekOverWeekPanel() {
+  const wow = useQuery({
+    queryKey: ["dashboard-wow"],
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const today = new Date();
+      const start = new Date(today);
+      start.setDate(start.getDate() - 13);
+      const startStr = start.toISOString().slice(0, 10);
+      const todayStr = today.toISOString().slice(0, 10);
+      const { data } = await supabase
+        .from("agentlink_deals_snapshot" as never)
+        .select("effective_date, annual_premium")
+        .gte("effective_date", startStr)
+        .lte("effective_date", todayStr);
+      const rows = (data ?? []) as Array<{ effective_date: string | null; annual_premium: number | string | null }>;
+      const buckets = new Map<string, number>();
+      for (let i = 0; i < 14; i++) {
+        const d = new Date(start); d.setDate(start.getDate() + i);
+        buckets.set(d.toISOString().slice(0, 10), 0);
+      }
+      for (const r of rows) {
+        if (!r.effective_date) continue;
+        const k = r.effective_date.slice(0, 10);
+        buckets.set(k, (buckets.get(k) ?? 0) + Number(r.annual_premium ?? 0));
+      }
+      const sorted = Array.from(buckets.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+      const chart: Array<{ idx: number; weekday: string; thisWeek: number | null; lastWeek: number | null; dayLabel: string }> = [];
+      for (let i = 0; i < 7; i++) {
+        const lastWeek = sorted[i]?.[1] ?? 0;
+        const thisWeek = sorted[i + 7]?.[1] ?? 0;
+        const weekDate = new Date(sorted[i + 7]?.[0] ?? new Date());
+        const weekday = weekDate.toLocaleDateString("en-US", { weekday: "short" });
+        chart.push({ idx: i, weekday, lastWeek, thisWeek, dayLabel: weekday });
+      }
+      const thisWeekTotal = chart.reduce((s, x) => s + (x.thisWeek ?? 0), 0);
+      const lastWeekTotal = chart.reduce((s, x) => s + (x.lastWeek ?? 0), 0);
+      const deltaPct = lastWeekTotal > 0 ? ((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100 : 0;
+      return { chart, thisWeekTotal, lastWeekTotal, deltaPct };
+    },
+  });
+
+  const d = wow.data;
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">WEEK OVER WEEK · DAILY AP</p>
+          </div>
+          {d && (
+            <Badge variant="outline" className={`text-[10px] uppercase tracking-widest ${d.deltaPct >= 0 ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-rose-400/40 bg-rose-400/10 text-rose-200"}`}>
+              {d.deltaPct >= 0 ? "▲" : "▼"} {Math.abs(d.deltaPct).toFixed(1)}%
+            </Badge>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="p-3 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20">
+            <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">THIS WEEK</p>
+            <p className="text-[24px] leading-none font-black tabular-nums text-emerald-300">{fmtUsd(d?.thisWeekTotal ?? 0, true)}</p>
+          </div>
+          <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+            <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST WEEK</p>
+            <p className="text-[24px] leading-none font-black tabular-nums text-white">{fmtUsd(d?.lastWeekTotal ?? 0, true)}</p>
+          </div>
+        </div>
+        {wow.isLoading ? (
+          <Skeleton className="h-32 w-full bg-white/[0.04]" />
+        ) : d?.chart && d.chart.length > 0 ? (
+          <ResponsiveContainer width="100%" height={140}>
+            <AreaChart data={d.chart}>
+              <defs>
+                <linearGradient id="wowThisWk" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(168 70% 55%)" stopOpacity={0.55} />
+                  <stop offset="100%" stopColor="hsl(168 70% 55%)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="dayLabel" fontSize={10} stroke="rgba(255,255,255,0.4)" />
+              <YAxis fontSize={10} stroke="rgba(255,255,255,0.4)" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+              <Tooltip
+                contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(168 70% 45% / 0.4)", borderRadius: 12, color: "#fff", fontSize: 11 }}
+                formatter={(v: number, name: string) => [fmtUsd(v), name === "thisWeek" ? "This week" : "Last week"]}
+              />
+              <Area type="monotone" dataKey="thisWeek" stroke="hsl(168 70% 60%)" strokeWidth={2} fill="url(#wowThisWk)" />
+              <Area type="monotone" dataKey="lastWeek" stroke="rgba(255,255,255,0.4)" strokeWidth={1.5} strokeDasharray="4 4" fill="none" />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-12 text-white/60 italic">Momentum starts Monday.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── PANEL · RECRUITER CONTACT SLA (rose · leak posture) ─────────────
+function RecruiterContactSlaPanel() {
+  const sla = useQuery({
+    queryKey: ["dashboard-contact-sla"],
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const cutoff48 = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+      const cutoff24 = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const { data: apps } = await supabase
+        .from("applications" as never)
+        .select("id, assigned_agent_id, recruiter_id, contacted_at, created_at, terminated_at")
+        .is("terminated_at", null);
+
+      const rows = (apps ?? []) as Array<{
+        id: string; assigned_agent_id: string | null; recruiter_id: string | null;
+        contacted_at: string | null; created_at: string | null; terminated_at: string | null;
+      }>;
+
+      // Aggregate per recruiter (use recruiter_id when present, else assigned_agent_id)
+      const buckets = new Map<string, { total: number; uncontacted: number; stale48: number; stale24: number; contacted24h: number }>();
+      for (const r of rows) {
+        const k = r.recruiter_id ?? r.assigned_agent_id;
+        if (!k) continue;
+        const b = buckets.get(k) ?? { total: 0, uncontacted: 0, stale48: 0, stale24: 0, contacted24h: 0 };
+        b.total += 1;
+        if (!r.contacted_at) {
+          b.uncontacted += 1;
+          if (r.created_at && r.created_at < cutoff48) b.stale48 += 1;
+          if (r.created_at && r.created_at < cutoff24) b.stale24 += 1;
+        } else if (r.created_at) {
+          const dt = (new Date(r.contacted_at).getTime() - new Date(r.created_at).getTime()) / 3600000;
+          if (dt <= 24 && dt >= 0) b.contacted24h += 1;
+        }
+        buckets.set(k, b);
+      }
+
+      // Resolve names
+      const ids = Array.from(buckets.keys());
+      const { data: agents } = ids.length > 0
+        ? await supabase.from("agents" as never).select("id, display_name, agent_code").in("id", ids)
+        : { data: [] };
+      const nameMap = new Map<string, { name: string; code: string | null }>();
+      for (const a of (agents ?? []) as Array<{ id: string; display_name: string | null; agent_code: string | null }>) {
+        nameMap.set(a.id, { name: a.display_name ?? "—", code: a.agent_code });
+      }
+
+      const list = Array.from(buckets.entries())
+        .map(([id, b]) => ({
+          id,
+          name: nameMap.get(id)?.name ?? "—",
+          code: nameMap.get(id)?.code ?? "—",
+          ...b,
+          firstTouchRate: b.total > 0 ? (b.contacted24h / b.total) * 100 : 0,
+        }))
+        .filter(r => r.total >= 5)
+        .sort((a, b) => b.stale48 - a.stale48)
+        .slice(0, 8);
+
+      const totalUncontacted = list.reduce((s, x) => s + x.uncontacted, 0);
+      const totalStale48 = list.reduce((s, x) => s + x.stale48, 0);
+
+      return { list, totalUncontacted, totalStale48 };
+    },
+  });
+
+  const d = sla.data;
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-rose-500/25 bg-gradient-to-br from-slate-950 via-rose-950/40 to-slate-950 text-white shadow-[0_0_48px_-12px_hsl(0_70%_50%/0.25)] lg:col-span-2">
+      <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-rose-300">RECRUITER CONTACT SLA · LEAK</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-rose-400/40 bg-rose-400/10 text-rose-200">
+              {d?.totalStale48 ?? 0} stale 48h+
+            </Badge>
+            <Link to="/admin/recruiting-inbox" className="text-[10px] text-rose-200/80 hover:text-rose-100 uppercase tracking-widest font-bold">
+              Inbox →
+            </Link>
+          </div>
+        </div>
+        {sla.isLoading ? (
+          <div className="space-y-2">{Array.from({length:5}).map((_,i)=><Skeleton key={i} className="h-10 bg-white/[0.04]" />)}</div>
+        ) : !d || d.list.length === 0 ? (
+          <p className="text-12 text-white/60 italic">Inbox zero across the board. Hold the Standard.</p>
+        ) : (
+          <div className="overflow-auto">
+            <table className="w-full text-12">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-widest text-white/40 border-b border-white/[0.06]">
+                  <th className="text-left pb-2 font-bold">Recruiter</th>
+                  <th className="text-right pb-2 font-bold">Total</th>
+                  <th className="text-right pb-2 font-bold">Uncontacted</th>
+                  <th className="text-right pb-2 font-bold">Stale 48h+</th>
+                  <th className="text-right pb-2 font-bold">1st-touch &lt;24h</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.04]">
+                {d.list.map((r) => {
+                  const sla48Pct = r.total > 0 ? (r.stale48 / r.total) * 100 : 0;
+                  const tone = sla48Pct >= 50 ? "text-rose-300" : sla48Pct >= 25 ? "text-amber-300" : "text-white/80";
+                  return (
+                    <tr key={r.id} className="hover:bg-white/[0.02]">
+                      <td className="py-2">
+                        <p className="font-medium truncate text-white">{r.name}</p>
+                        <p className="text-[10px] text-white/40 tabular-nums">{r.code}</p>
+                      </td>
+                      <td className="text-right tabular-nums font-bold text-white">{r.total}</td>
+                      <td className="text-right tabular-nums font-bold text-amber-300">{r.uncontacted}</td>
+                      <td className={`text-right tabular-nums font-bold ${tone}`}>{r.stale48}</td>
+                      <td className="text-right tabular-nums">
+                        <span className={`font-bold ${r.firstTouchRate >= 30 ? "text-emerald-300" : r.firstTouchRate >= 10 ? "text-amber-300" : "text-rose-300"}`}>
+                          {r.firstTouchRate.toFixed(0)}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

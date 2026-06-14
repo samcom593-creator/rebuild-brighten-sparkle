@@ -1,0 +1,205 @@
+// HelpCenter · mirrors AgentLink's "Help Center / FAQ"
+//
+// Static FAQ + how-to library covering APEX's most-asked questions.
+// Curated as code so we don't need a CMS round-trip. Easy to extend.
+
+import { useState, useMemo } from "react";
+import {
+  HelpCircle, Search, ChevronDown, BookOpen, DollarSign, Phone,
+  Shield, Users, FileText, GraduationCap, Briefcase, Wrench, Sparkles,
+} from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+
+interface FaqItem {
+  q: string;
+  a: string;
+  category: string;
+}
+
+const FAQ: FaqItem[] = [
+  // Getting Started
+  { category: "Getting Started", q: "I just got hired. What's the very first thing I do?",
+    a: "1) Schedule your prelicensing course immediately. 2) Pass your state exam (most people do it in 14 days if serious). 3) The day you're licensed, your manager onboards you, runs your carrier contracts, and gives you your first lead block. Until you're licensed you can't write business, so don't waste days." },
+  { category: "Getting Started", q: "Where do I find my carrier contracting links?",
+    a: "Go to /dashboard/contracts. Each carrier card on /dashboard/carriers also has a 'Contract' button that drops you straight to the request flow." },
+  { category: "Getting Started", q: "What's the agent code on my profile?",
+    a: "Your APEX agent code is your internal identifier across our systems. It links your deals in AgentLink to your record in our admin dashboards. You can see it on /dashboard/profile." },
+
+  // Licensing
+  { category: "Licensing", q: "How long does prelicensing take?",
+    a: "If you're serious: 7-14 days of focused study. Some states require a fixed minimum number of hours — check /dashboard/pre-licensing for state-specific guidance." },
+  { category: "Licensing", q: "What states should I get licensed in first?",
+    a: "Your resident state first (required). Then prioritize high-volume FE/IUL states: TX, FL, GA, NC, OH, AZ. We'll guide you on which carriers we're already appointed in." },
+  { category: "Licensing", q: "Do I need to take continuing education (CE)?",
+    a: "Yes. Each state has its own CE requirements (typically 24 hrs every 2 years, including ethics). We track it on your Producer Profile so you don't lapse." },
+
+  // Selling
+  { category: "Selling", q: "What products do we sell most?",
+    a: "Final Expense (FE) is our top volume. Then Whole Life, IUL, Term, Annuity, Mortgage Protection, and supplemental health. Carrier mix on /dashboard/carriers shows current 30-day production split." },
+  { category: "Selling", q: "What's the right script for an inbound call?",
+    a: "Use the Switch Center scripts on /dashboard/scripts → Inbound. Open → Fact Find → Close. Run it every time. The scripts work; agents who freelance underperform." },
+  { category: "Selling", q: "How do I handle 'I need to talk to my spouse'?",
+    a: "Don't lose them. The exact rebuttal is in /dashboard/scripts → Objections → spouse. Frame: locking in today's health rate + 30-day free look. If they cancel, they cancel — but they won't." },
+  { category: "Selling", q: "What if the carrier rejects my client?",
+    a: "Most carriers we partner with have a 'Plan B' tier. Re-quote in the field using the carrier's underwriting matrix. If it's truly uninsurable, we have guaranteed-issue carriers." },
+
+  // Commission + Payouts
+  { category: "Commission + Payouts", q: "When do I get paid?",
+    a: "Carrier-direct commissions hit your account on the carrier's schedule (usually weekly or daily after the policy is in force and the first premium clears). Check /dashboard/finances for your live ledger." },
+  { category: "Commission + Payouts", q: "What's a chargeback and how do I avoid them?",
+    a: "If a policy lapses within the first 6-12 months, the carrier claws back the commission. To avoid: solid fact-finding + realistic budgeting + post-sale check-in calls at 30/60/90 days." },
+  { category: "Commission + Payouts", q: "Where do I see my real numbers?",
+    a: "/dashboard/book-of-business for all your deals. /dashboard/business-analytics for trophy cabinet, challenges, and personal stats. AgentLink (agentlink.insuracloud.ai) is the carrier source of truth." },
+
+  // Carriers
+  { category: "Carriers", q: "How do I request a carrier contract?",
+    a: "/dashboard/carriers → click the carrier card → 'Contract' button. The contracting team approves you in 24-48 hours." },
+  { category: "Carriers", q: "Which carrier is best for diabetic clients?",
+    a: "Depends on A1C, age, and other conditions. Generally: American Home Life or Royal Neighbors for milder cases. For guaranteed issue, look at our GI carriers. The Carrier Resources page shows 'Best For' tags per carrier." },
+
+  // Tools
+  { category: "Tools", q: "How do I use the dialer?",
+    a: "Login at readymode.apex (your credentials are emailed on day 1). If you don't have access, check /dashboard/inbound-leads to see whether your dialer login is provisioned." },
+  { category: "Tools", q: "Where's the AI assistant?",
+    a: "Ask Apex AI is the floating dock at the bottom-right of every dashboard route. Hit it anytime — it knows your data and can answer questions about your book or our products." },
+  { category: "Tools", q: "How do I share an APEX win on social?",
+    a: "/dashboard/announcements → 'Post a Deal' button → fill in premium + product. It posts to the live News Feed and we'll auto-feed it to the public landing page ticker." },
+
+  // Brand + Culture
+  { category: "Brand + Culture", q: "What's the Apex Standard?",
+    a: "Hold the Standard. Average is the disease. Read the full brand voice script on /dashboard/scripts → Brand. We don't chase low-rated carriers, we don't compromise client coverage for commission, and we don't work with agents who do." },
+  { category: "Brand + Culture", q: "I want to post content but I'm new — what's safe to say?",
+    a: "Talk about what you're learning, who you're protecting, and what you're discovering about the industry. Avoid: client names, claim amounts, anything that could be construed as advice without a license, and lying about ratings. When in doubt: ask your manager." },
+];
+
+const CATEGORIES = Array.from(new Set(FAQ.map((f) => f.category)));
+
+const CATEGORY_ICONS: Record<string, any> = {
+  "Getting Started":      BookOpen,
+  "Licensing":            GraduationCap,
+  "Selling":              Phone,
+  "Commission + Payouts": DollarSign,
+  "Carriers":             Briefcase,
+  "Tools":                Wrench,
+  "Brand + Culture":      Sparkles,
+};
+
+function FaqRow({ item, open, onToggle }: { item: FaqItem; open: boolean; onToggle: () => void }) {
+  const Icon = CATEGORY_ICONS[item.category] ?? FileText;
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <button
+          onClick={onToggle}
+          className="w-full px-4 py-3 flex items-start gap-3 text-left hover:bg-muted/30 transition-base"
+        >
+          <Icon className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-13 font-bold">{item.q}</p>
+            <Badge variant="outline" className="text-11 mt-1">{item.category}</Badge>
+          </div>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+        {open && (
+          <div className="px-4 pb-4 pl-11 text-13 text-foreground/85 leading-relaxed whitespace-pre-line border-t border-border/30">
+            <p className="pt-3">{item.a}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function HelpCenter() {
+  usePageTitle("Help Center · APEX");
+  const [search, setSearch] = useState("");
+  const [activeCat, setActiveCat] = useState<string>("All");
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+
+  const filtered = useMemo(() => {
+    const lowered = search.trim().toLowerCase();
+    return FAQ.filter((f) => {
+      if (activeCat !== "All" && f.category !== activeCat) return false;
+      if (!lowered) return true;
+      return f.q.toLowerCase().includes(lowered) || f.a.toLowerCase().includes(lowered);
+    });
+  }, [search, activeCat]);
+
+  return (
+    <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+      <PageHeader
+        eyebrow="Support"
+        eyebrowIcon={<HelpCircle className="h-3 w-3" />}
+        title="Help Center"
+        subtitle="The questions you ask most, answered. Searchable. Mirrors AgentLink's Help Center."
+        actions={<Badge variant="outline" className="text-11">{FAQ.length} FAQ</Badge>}
+      />
+
+      {/* Search + category */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search FAQ…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex gap-1 overflow-x-auto pb-1">
+          <button
+            onClick={() => setActiveCat("All")}
+            className={`px-3 py-1.5 rounded-md text-12 font-medium whitespace-nowrap transition-base ${
+              activeCat === "All" ? "bg-amber-500 text-white" : "bg-muted text-foreground hover:bg-muted/80"
+            }`}
+          >
+            All ({FAQ.length})
+          </button>
+          {CATEGORIES.map((c) => {
+            const count = FAQ.filter((f) => f.category === c).length;
+            return (
+              <button
+                key={c}
+                onClick={() => setActiveCat(c)}
+                className={`px-3 py-1.5 rounded-md text-12 font-medium whitespace-nowrap transition-base ${
+                  activeCat === c ? "bg-amber-500 text-white" : "bg-muted text-foreground hover:bg-muted/80"
+                }`}
+              >
+                {c} ({count})
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {filtered.length === 0 ? (
+          <Card><CardContent className="p-8 text-center text-13 text-muted-foreground">No FAQ matches your filter.</CardContent></Card>
+        ) : (
+          filtered.map((f, i) => {
+            const key = `${f.category}::${f.q}`;
+            return <FaqRow key={i} item={f} open={!!open[key]} onToggle={() => setOpen((s) => ({ ...s, [key]: !s[key] }))} />;
+          })
+        )}
+      </div>
+
+      {/* Still stuck callout */}
+      <Card className="border-amber-500/30 bg-amber-500/5">
+        <CardContent className="p-4 flex items-start gap-3">
+          <HelpCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-13 font-bold">Still stuck?</p>
+            <p className="text-12 text-foreground/80">
+              Open Ask Apex AI (bottom-right dock on any dashboard page) or DM your manager directly.
+              For escalations: <a href="mailto:info@kingofsales.net" className="text-amber-600 hover:underline">info@kingofsales.net</a>.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

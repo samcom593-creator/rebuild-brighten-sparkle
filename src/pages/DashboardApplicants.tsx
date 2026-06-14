@@ -309,7 +309,7 @@ export default function DashboardApplicants() {
     };
   }, [user?.id, isAdmin, isManager, managerFilter]);
 
-  const { data: queryData, isLoading } = useQuery({
+  const { data: queryData, isLoading, error: queryError } = useQuery({
     queryKey: ["applicants", user?.id, isAdmin, isManager, managerFilter],
     queryFn: fetchApplicationsQuery,
     enabled: !!user,
@@ -634,11 +634,13 @@ export default function DashboardApplicants() {
           (app.phone && app.phone.includes(q));
 
         const appStatus = getApplicationStatus(app);
+        const lowerStatus = (app.status ?? "").toLowerCase();
         const matchesStatus =
           statusFilter === "all" ||
           statusFilter === "terminated" ||
           (statusFilter === "in_funnel" && !app.closed_at && !app.contracted_at) ||
           (statusFilter === "course_bought" && Boolean(app.course_purchased_at)) ||
+          (statusFilter === "rejected" && (lowerStatus === "rejected" || lowerStatus === "disqualified")) ||
           appStatus === statusFilter;
         const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
         const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
@@ -695,21 +697,28 @@ export default function DashboardApplicants() {
   const counterLabel = statusFilter === "terminated" ? "terminated applications" : "active applications";
 
   // Stats - exclude terminated from active stats — single pass
-  const { totalLeads, hired, contracted, coursePurchased, inFunnel } = useMemo(() => {
-    // 2026-06-15 v7.3 · Sam: "Applications should be every website-traffic
-    // app EXCEPT completed or moved to a different category." in_funnel
-    // excludes hired + contracted (those are conversions, surfaced as their
-    // own filter chips but not the default view).
-    let hired = 0, contracted = 0, coursePurchased = 0, inFunnel = 0;
-    for (const a of activeApplications) {
+  const { totalLeads, hired, coursePurchased, inFunnel, rejected, todayCount } = useMemo(() => {
+    // 2026-06-15 v7.10 · Sam: "524 apps · 109 today · 17 rejected · remove
+    // contract portion." Removed contracted counter. Added rejected =
+    // status IN ('rejected','disqualified') and today = created today.
+    const tzNow = new Date();
+    const todayDate = new Date(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate());
+    const todayIso = todayDate.toISOString().slice(0, 10);
+    let hired = 0, coursePurchased = 0, inFunnel = 0, rejected = 0, todayCount = 0;
+    // Walk ALL applications (active + terminated) so rejected count is
+    // accurate even when rejected apps have terminated_at set.
+    const all = [...activeApplications, ...terminatedApplications];
+    for (const a of all) {
       if (a.closed_at && !a.contracted_at) hired++;
-      if (a.contracted_at) contracted++;
       const lp = a.license_progress as string | null;
       if (a.course_purchased_at || lp === "course_purchased" || lp === "finished_course") coursePurchased++;
-      if (!a.closed_at && !a.contracted_at) inFunnel++;
+      if (!a.closed_at && !a.contracted_at && !a.terminated_at) inFunnel++;
+      const status = (a.status ?? "").toLowerCase();
+      if (status === "rejected" || status === "disqualified") rejected++;
+      if (a.created_at && a.created_at.slice(0, 10) === todayIso) todayCount++;
     }
-    return { totalLeads: activeApplications.length, hired, contracted, coursePurchased, inFunnel };
-  }, [activeApplications]);
+    return { totalLeads: activeApplications.length, hired, coursePurchased, inFunnel, rejected, todayCount };
+  }, [activeApplications, terminatedApplications]);
 
   // Helper for urgency badge
   const getUrgencyBadge = (app: Application) => {
@@ -1098,29 +1107,56 @@ export default function DashboardApplicants() {
       {/* 2026-06-15 v7.4 · ALWAYS-VISIBLE LOAD STATUS · directly under header.
           Sam: "I can't even see if it's in the application." This banner
           fires even if everything below crashes so Sam can see the count. */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06]">
-        <div className="flex items-center gap-3 text-13">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-          </span>
-          {isLoading ? (
-            <span className="font-semibold text-amber-600 dark:text-amber-400">Loading applications…</span>
-          ) : (
-            <>
-              <span className="font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
-                {activeApplications.length.toLocaleString()}
-              </span>
-              <span className="text-foreground/85 font-medium">active applications loaded from the database</span>
-              {terminatedApplications.length > 0 && (
-                <span className="text-muted-foreground tabular-nums">
-                  · {terminatedApplications.length.toLocaleString()} terminated
+      <div className={`mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border ${activeApplications.length === 0 && !isLoading ? "border-rose-500/40 bg-rose-500/[0.06]" : "border-emerald-500/30 bg-emerald-500/[0.06]"}`}>
+        <div className="flex flex-col gap-1 text-13 min-w-0 flex-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="relative flex h-2 w-2">
+              <span className={`absolute inline-flex h-full w-full rounded-full ${activeApplications.length === 0 && !isLoading ? "bg-rose-400" : "bg-emerald-400"} opacity-75 animate-ping`} />
+              <span className={`relative inline-flex h-2 w-2 rounded-full ${activeApplications.length === 0 && !isLoading ? "bg-rose-500" : "bg-emerald-500"}`} />
+            </span>
+            {isLoading ? (
+              <span className="font-semibold text-amber-600 dark:text-amber-400">Loading applications…</span>
+            ) : (
+              <>
+                <span className="font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                  {activeApplications.length.toLocaleString()}
+                </span>
+                <span className="text-foreground/85 font-medium">active applications loaded from the database</span>
+                {todayCount > 0 && (
+                  <span className="text-amber-700 dark:text-amber-400 tabular-nums font-semibold">
+                    · <span className="font-bold">{todayCount.toLocaleString()}</span> today
+                  </span>
+                )}
+                {rejected > 0 && (
+                  <span className="text-rose-700 dark:text-rose-400 tabular-nums">
+                    · <span className="font-bold">{rejected.toLocaleString()}</span> rejected
+                  </span>
+                )}
+                {terminatedApplications.length > 0 && (
+                  <span className="text-muted-foreground tabular-nums">
+                    · {terminatedApplications.length.toLocaleString()} terminated
+                  </span>
+                )}
+                <span className="text-muted-foreground">
+                  · showing <span className="font-bold tabular-nums text-foreground">{filteredApplications.length.toLocaleString()}</span>
+                </span>
+              </>
+            )}
+          </div>
+          {/* 2026-06-15 v7.10 · EVIDENCE LINE. Shows the actual session
+              identity + any query error so Sam can SEE what's wrong instead
+              of guessing. */}
+          {!isLoading && (
+            <div className="text-11 text-muted-foreground font-mono flex items-center gap-3 flex-wrap">
+              <span>uid: <span className="text-foreground">{(user as any)?.id?.slice(0, 8) ?? "ANONYMOUS"}</span></span>
+              <span>email: <span className="text-foreground">{(user as any)?.email ?? "—"}</span></span>
+              <span>role: <span className="text-foreground">{isAdmin ? "admin" : isManager ? "manager" : "agent"}</span></span>
+              {queryError && (
+                <span className="text-rose-600 dark:text-rose-400 truncate max-w-md">
+                  err: {(queryError as any)?.message?.slice(0, 80) ?? String(queryError).slice(0, 80)}
                 </span>
               )}
-              <span className="text-muted-foreground">
-                · showing <span className="font-bold tabular-nums text-foreground">{filteredApplications.length.toLocaleString()}</span>
-              </span>
-            </>
+            </div>
           )}
         </div>
         <div className="flex items-center gap-2 text-11 text-muted-foreground">
@@ -1253,17 +1289,15 @@ export default function DashboardApplicants() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {/* 2026-06-15 v7.5 · Sam reverted v7.3 default. Clicking Applications
-                from the sidebar shows EVERY active app (519). "Total Active" is
-                now the leftmost default. The other 4 chips are click-to-filter
-                slices: In Funnel (438 · still recruiting) · Course bought (52) ·
-                Contracted (22 · converted) · Hired (72 · converted). */}
+            {/* 2026-06-15 v7.10 · Sam: "524 apps · 109 today · 17 rejected ·
+                remove that contract portion." Removed Contracted chip. Added
+                Rejected (status=rejected OR disqualified · matches Sam's 17). */}
             {[
               { label: "Total Active", value: totalLeads,   color: "text-white",         tone: "bg-amber-500/[0.10] border-amber-500/30 hover:border-amber-400/60",       filter: "all" },
               { label: "In Funnel",    value: inFunnel,     color: "text-white",         tone: "bg-white/[0.04] border-white/[0.06] hover:border-white/20",               filter: "in_funnel" },
               { label: "Course bought", value: coursePurchased, color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50", filter: "course_bought" },
-              { label: "Contracted",   value: contracted,   color: "text-amber-300",   tone: "bg-amber-500/[0.08] border-amber-500/20 hover:border-amber-400/50",        filter: "contracted" },
               { label: "Hired",        value: hired,        color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50",   filter: "hired" },
+              { label: "Rejected",     value: rejected,     color: "text-rose-300",    tone: "bg-rose-500/[0.08] border-rose-500/20 hover:border-rose-400/50",            filter: "rejected" },
             ].map((stat) => (
               <button
                 key={stat.label}

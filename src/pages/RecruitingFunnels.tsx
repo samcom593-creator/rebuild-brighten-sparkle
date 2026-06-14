@@ -486,7 +486,7 @@ function SourceGrid({ data, loading }: { data: SourceFunnel[] | undefined; loadi
               convPct >= 10 ? "text-emerald-300" :
               convPct >= 5  ? "text-amber-300" :
                               "text-rose-300";
-            const label = row.referral_source ?? "Unknown";
+            const label = row.referral_source ?? "—";
             const courseRate = row.total > 0 ? (row.course / row.total) * 100 : 0;
             const contactRate = row.total > 0 ? (row.contacted / row.total) * 100 : 0;
             return (

@@ -635,7 +635,7 @@ export default function CourseProgress() {
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium text-sm">{agent.agentName}</span>
                                   {agent.isAtRisk && (
-                                    <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[9px] animate-pulse">
+                                    <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[9px]">
                                       At Risk
                                     </Badge>
                                   )}

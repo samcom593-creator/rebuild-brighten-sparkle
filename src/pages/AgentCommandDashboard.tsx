@@ -16,7 +16,7 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, Briefcase, Building2, Calendar, ChevronRight,
-  CircleDollarSign, Clock, Crown, DollarSign, Filter, Flame, Layers, Radio,
+  CircleDollarSign, Clock, Crown, DollarSign, Filter, Flame, Layers, Phone, Radio,
   ShieldAlert, ShieldCheck, Sparkles,
   Target, TrendingDown, TrendingUp, Trophy, UserPlus, Users, Wallet, Zap,
 } from "lucide-react";
@@ -238,9 +238,9 @@ export default function AgentCommandDashboard() {
         .select("id, client_first_name, client_last_name, product_sold, annual_premium, posted_at, status, pipeline_stage")
         .eq("agent_id", agentId!)
         .order("posted_at", { ascending: false, nullsFirst: false })
-        .limit(8);
+        .limit(1000);
       if (error) throw error;
-      return (data ?? []) as unknown as Deal[];
+      return ((data ?? []) as unknown as Deal[]).slice(0, 8);
     },
   });
 
@@ -596,7 +596,7 @@ export default function AgentCommandDashboard() {
                 <li key={d.id} className="py-2.5 flex items-center justify-between gap-3 hover:bg-primary/[0.04] rounded px-2 -mx-2 transition-colors">
                   <div className="min-w-0">
                     <p className="font-semibold truncate">
-                      {[d.client_first_name, d.client_last_name].filter(Boolean).join(" ") || "Unknown client"}
+                      {[d.client_first_name, d.client_last_name].filter(Boolean).join(" ") || "—"}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {d.product_sold ?? "—"} · {d.pipeline_stage ?? d.status ?? "—"}
@@ -636,6 +636,7 @@ export default function AgentCommandDashboard() {
                 <Tooltip
                   contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                   labelFormatter={(d) => format(new Date(d), "PPP")}
+                  formatter={(v: number) => [fmtNum(v), "Deals"]}
                 />
                 <Bar dataKey="deals" fill="hsl(168 70% 45%)" name="Deals" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -1268,8 +1269,11 @@ function AgencyCommandView() {
       const [appsMtdRes, hiresMtdRes, apps7dRes, uncTotalRes, unc48hRes] = await Promise.all([
         supabase.from("applications").select("id", { count: "exact", head: true })
           .gte("created_at", monthStart).is("terminated_at", null),
-        supabase.from("applications").select("id", { count: "exact", head: true })
-          .gte("licensed_at", monthStart).is("terminated_at", null),
+        // 2026-06-15 v6.8 fix: applications.licensed_at is barely populated
+        // (audit found 2/523). Real hire-count = agents.created_at because
+        // every agent row IS a licensed hire. Sam: "should be counted obviously".
+        supabase.from("agents").select("id", { count: "exact", head: true })
+          .gte("created_at", monthStart),
         supabase.from("applications").select("id", { count: "exact", head: true })
           .gte("created_at", weekAgo).is("terminated_at", null),
         supabase.from("applications").select("id", { count: "exact", head: true })
@@ -1713,6 +1717,11 @@ function AgencyCommandView() {
       {/* 2026-06-15 v6.7 · Sam: "bring back all those leads · every single lead
           just gone." aged_leads table has 899 records (897 new + unworked). */}
       <AgedLeadsPanel />
+
+      {/* 2026-06-15 v6.8 · Sam: "anyone below five thousand for the last seven days
+          · make their box look red." Rose-gradient leak panel surfacing the soft
+          producers so Sam can act. */}
+      <LowProducersPanel />
 
       {/* §B · APPLICATION PIPELINE · 3-LANE STRIP ─────────────────────── */}
       {(() => {
@@ -3824,36 +3833,42 @@ function HirePace12WPanel() {
 // ── PANEL · AGED LEADS · 899 RESERVES ───────────────────────────────
 // Sam 2026-06-15: "Bring back all those leads · every single lead just gone."
 // Source: aged_leads table · 899 records · 897 status='new' (unworked).
+// 2026-06-15 v6.8 · Sam: "switch out the aged lead reserves · show old agents
+// with their license in aged leads · make the buttons clickable."
+// Renamed → LICENSED RECRUIT BANK · prioritizes the 51 licensed records ·
+// every row has tel:click + tap-to-take-action.
 function AgedLeadsPanel() {
   const leads = useQuery({
-    queryKey: ["aged-leads-summary"],
+    queryKey: ["aged-leads-licensed-bank"],
     refetchInterval: 5 * 60_000,
     queryFn: async () => {
       const cutoff7d = new Date(Date.now() - 7 * 86400000).toISOString();
-      const cutoff30d = new Date(Date.now() - 30 * 86400000).toISOString();
-      const [totalRes, newRes, recent7Res, dialedRes, dncRes, recentList] = await Promise.all([
+      const [totalRes, licensedRes, unworkedLicensedRes, recent7Res, dialedRes, dncRes, licensedList, recentList] = await Promise.all([
         supabase.from("aged_leads" as never).select("id", { count: "exact", head: true }),
-        supabase.from("aged_leads" as never).select("id", { count: "exact", head: true }).eq("status", "new"),
+        supabase.from("aged_leads" as never).select("id", { count: "exact", head: true }).eq("license_status", "licensed"),
+        supabase.from("aged_leads" as never).select("id", { count: "exact", head: true }).eq("license_status", "licensed").eq("status", "new"),
         supabase.from("aged_leads" as never).select("id", { count: "exact", head: true }).gte("created_at", cutoff7d),
         supabase.from("aged_leads" as never).select("id", { count: "exact", head: true }).gt("dial_count", 0),
         supabase.from("aged_leads" as never).select("id", { count: "exact", head: true }).eq("dnc", true),
         supabase.from("aged_leads" as never)
           .select("id, first_name, last_name, phone, license_status, status, lead_source, dial_count, last_disposition, created_at")
+          .eq("license_status", "licensed")
           .order("created_at", { ascending: false })
           .limit(8),
+        supabase.from("aged_leads" as never)
+          .select("id, first_name, last_name, phone, license_status, status, lead_source, dial_count, last_disposition, created_at")
+          .order("created_at", { ascending: false })
+          .limit(6),
       ]);
       return {
         total: totalRes.count ?? 0,
-        unworked: newRes.count ?? 0,
+        licensed: licensedRes.count ?? 0,
+        unworkedLicensed: unworkedLicensedRes.count ?? 0,
         recent7: recent7Res.count ?? 0,
         dialed: dialedRes.count ?? 0,
         dnc: dncRes.count ?? 0,
-        recent: (recentList.data ?? []) as Array<{
-          id: string; first_name: string | null; last_name: string | null;
-          phone: string | null; license_status: string | null; status: string | null;
-          lead_source: string | null; dial_count: number | null; last_disposition: string | null;
-          created_at: string | null;
-        }>,
+        licensedTop: (licensedList.data ?? []) as AgedLeadRow[],
+        recent: (recentList.data ?? []) as AgedLeadRow[],
       };
     },
   });
@@ -3871,11 +3886,11 @@ function AgedLeadsPanel() {
               <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
             </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">AGED LEAD RESERVES · LIVE</p>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">LICENSED RECRUIT BANK · LIVE</p>
           </div>
           {d && (
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
-              {d.total} on file
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+              {d.licensed} licensed · {d.total} total
             </Badge>
           )}
         </div>
@@ -3886,22 +3901,22 @@ function AgedLeadsPanel() {
           <p className="text-12 text-white/60 italic">Lead bank loading…</p>
         ) : (
           <div className="grid gap-4 lg:grid-cols-3">
-            {/* Left · 5 KPI tiles */}
+            {/* Left · 4 KPI tiles */}
             <div className="lg:col-span-1 grid grid-cols-2 gap-2 content-start">
+              <div className="p-3 rounded-xl bg-emerald-500/[0.10] border border-emerald-500/30">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LICENSED</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-emerald-300">{d.licensed}</p>
+                <p className="text-[10px] text-white/40 tabular-nums">already licensed</p>
+              </div>
               <div className="p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20">
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">UNWORKED</p>
-                <p className="text-[24px] leading-none font-black tabular-nums text-amber-300">{d.unworked}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">status='new'</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-amber-300">{d.unworkedLicensed}</p>
+                <p className="text-[10px] text-white/40 tabular-nums">licensed · untouched</p>
               </div>
               <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">DIALED</p>
                 <p className="text-[24px] leading-none font-black tabular-nums text-white">{d.dialed}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">touched once+</p>
-              </div>
-              <div className="p-3 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">NEW · 7d</p>
-                <p className="text-[24px] leading-none font-black tabular-nums text-emerald-300">{d.recent7}</p>
-                <p className="text-[10px] text-white/40 tabular-nums">last 7 days</p>
+                <p className="text-[10px] text-white/40 tabular-nums">all leads · touched 1+</p>
               </div>
               <div className="p-3 rounded-xl bg-rose-500/[0.06] border border-rose-500/20">
                 <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">DNC</p>
@@ -3909,32 +3924,167 @@ function AgedLeadsPanel() {
                 <p className="text-[10px] text-white/40 tabular-nums">do-not-call</p>
               </div>
             </div>
-            {/* Right · 8 most recent leads */}
+            {/* Right · top 8 LICENSED + clickable */}
             <div className="lg:col-span-2 space-y-1.5">
-              <p className="text-[10px] uppercase tracking-widest text-white/40 font-bold mb-1">Most recent · 8</p>
-              {d.recent.map((l) => {
-                const name = [l.first_name, l.last_name].filter(Boolean).join(" ") || "—";
-                const stat = (l.status ?? "new").toLowerCase();
-                const tone = stat === "hired" ? "text-emerald-300"
-                  : stat === "licensing" ? "text-amber-300"
-                  : (l.dial_count ?? 0) > 0 ? "text-white/80"
-                  : "text-amber-300";
-                return (
-                  <div key={l.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.04] hover:border-white/[0.12] transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-13 font-bold truncate text-white">{name}</p>
-                      <p className="text-[10px] text-white/40 truncate">
-                        {l.phone ?? "—"} · {l.lead_source ?? "aged"}{l.license_status ? ` · ${l.license_status}` : ""}
-                      </p>
+              <p className="text-[10px] uppercase tracking-widest text-emerald-300 font-bold mb-1">
+                Top 8 licensed · click to dial
+              </p>
+              {d.licensedTop.length === 0 ? (
+                <p className="text-12 text-white/60 italic">No licensed reserves on file. Re-bank licensed agents to surface here.</p>
+              ) : (
+                d.licensedTop.map((l) => <AgedLeadRowClickable key={l.id} l={l} />)
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type AgedLeadRow = {
+  id: string; first_name: string | null; last_name: string | null;
+  phone: string | null; license_status: string | null; status: string | null;
+  lead_source: string | null; dial_count: number | null; last_disposition: string | null;
+  created_at: string | null;
+};
+
+function AgedLeadRowClickable({ l }: { l: AgedLeadRow }) {
+  const name = [l.first_name, l.last_name].filter(Boolean).join(" ") || "—";
+  const stat = (l.status ?? "new").toLowerCase();
+  const tone = stat === "hired" ? "text-emerald-300"
+    : stat === "licensing" ? "text-amber-300"
+    : (l.dial_count ?? 0) > 0 ? "text-white/80"
+    : "text-emerald-300";
+  const phoneClean = (l.phone ?? "").replace(/[^0-9+]/g, "");
+  const canDial = phoneClean.length >= 7;
+
+  return (
+    <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.04] hover:border-emerald-400/40 hover:bg-emerald-500/[0.04] transition-colors group">
+      <div className="flex-1 min-w-0">
+        <p className="text-13 font-bold truncate text-white">{name}</p>
+        <p className="text-[10px] text-white/40 truncate">
+          {l.phone ?? "—"} · {l.lead_source ?? "aged"}{l.license_status ? ` · ${l.license_status}` : ""}
+        </p>
+      </div>
+      <div className="text-right shrink-0 tabular-nums">
+        <p className={`text-11 font-bold uppercase ${tone}`}>{stat}</p>
+        <p className="text-[10px] text-white/40">{l.dial_count ?? 0} dials</p>
+      </div>
+      {canDial ? (
+        <a
+          href={`tel:${phoneClean}`}
+          className="shrink-0 p-2 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25 hover:text-emerald-200 transition-colors"
+          title={`Dial ${name}`}
+        >
+          <Phone className="h-3.5 w-3.5" />
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
+// ── PANEL · LOW PRODUCERS · UNDER $5K LAST 7d (rose · leak posture) ─────
+// Sam 2026-06-15: "Anyone below five thousand for the last seven days. Make
+// their box look red." Producers who sold something but below the $5K bar.
+function LowProducersPanel() {
+  const low = useQuery({
+    queryKey: ["low-producers-7d"],
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+      const { data: dealRows } = await supabase
+        .from("agentlink_deals_snapshot" as never)
+        .select("user_id, annual_premium")
+        .gte("effective_date", cutoff);
+      const rows = (dealRows ?? []) as Array<{ user_id: number | null; annual_premium: number | string | null }>;
+      // Bucket by user_id (al_user_id)
+      const byUid = new Map<number, { deals: number; ap: number }>();
+      for (const r of rows) {
+        if (r.user_id == null) continue;
+        const b = byUid.get(r.user_id) ?? { deals: 0, ap: 0 };
+        b.deals += 1;
+        b.ap += Number(r.annual_premium ?? 0);
+        byUid.set(r.user_id, b);
+      }
+      // Filter under $5K, get agent names
+      const uids = Array.from(byUid.entries()).filter(([_, v]) => v.ap < 5000 && v.ap > 0).map(([k]) => k);
+      if (uids.length === 0) return { list: [], total: 0 };
+      const { data: agents } = await supabase
+        .from("agents" as never)
+        .select("al_user_id, display_name, agent_code")
+        .in("al_user_id", uids);
+      const agentMap = new Map<number, { name: string; code: string | null }>();
+      for (const a of (agents ?? []) as Array<{ al_user_id: number; display_name: string | null; agent_code: string | null }>) {
+        agentMap.set(a.al_user_id, { name: a.display_name ?? "—", code: a.agent_code });
+      }
+      const list = uids.map((uid) => {
+        const b = byUid.get(uid)!;
+        const a = agentMap.get(uid);
+        return {
+          uid,
+          name: a?.name ?? `User #${uid}`,
+          code: a?.code ?? "—",
+          deals: b.deals,
+          ap: b.ap,
+        };
+      }).sort((a, b) => a.ap - b.ap);
+      return { list, total: list.length };
+    },
+  });
+
+  const d = low.data;
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-rose-500/30 bg-gradient-to-br from-slate-950 via-rose-950/50 to-slate-950 text-white shadow-[0_0_48px_-12px_hsl(0_70%_50%/0.30)]">
+      <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-rose-500/20 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-rose-300">LOW PRODUCERS · UNDER $5K · 7d</p>
+          </div>
+          {d && (
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-rose-400/40 bg-rose-400/10 text-rose-200">
+              {d.total} agents · soft
+            </Badge>
+          )}
+        </div>
+
+        {low.isLoading ? (
+          <div className="space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} className="h-12 bg-white/[0.04]" />)}</div>
+        ) : !d || d.total === 0 ? (
+          <div className="py-6 text-center">
+            <p className="text-15 font-bold text-emerald-300 mb-1">Every producer cleared $5K this week.</p>
+            <p className="text-11 text-white/40">Hold the Standard. Average is the disease.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {d.list.map((a) => {
+              const pct = (a.ap / 5000) * 100;
+              return (
+                <div key={a.uid} className="p-3 rounded-xl bg-rose-500/[0.10] border border-rose-500/30 hover:border-rose-400/50 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-13 font-bold truncate text-white">{a.name}</p>
+                      <p className="text-[10px] text-white/40 tabular-nums">{a.code} · {a.deals} deal{a.deals !== 1 ? "s" : ""}</p>
                     </div>
                     <div className="text-right shrink-0 tabular-nums">
-                      <p className={`text-11 font-bold uppercase ${tone}`}>{stat}</p>
-                      <p className="text-[10px] text-white/40">{l.dial_count ?? 0} dials</p>
+                      <p className="text-[20px] leading-none font-black text-rose-300">{fmtUsd(a.ap, true)}</p>
+                      <p className="text-[10px] text-white/40">target $5K</p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="relative h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
+                    <div className="h-full bg-rose-400/60 transition-all" style={{ width: `${Math.min(100, pct)}%` }} />
+                  </div>
+                  <p className="text-[10px] text-rose-200/60 mt-1 tabular-nums">{pct.toFixed(0)}% to target · {fmtUsd(5000 - a.ap, true)} gap</p>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

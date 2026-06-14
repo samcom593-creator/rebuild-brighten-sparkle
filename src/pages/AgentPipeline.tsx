@@ -505,7 +505,7 @@ export default function AgentPipeline() {
                 {contactLabel}
               </Badge>
               {atRisk && (
-                <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[10px] animate-pulse">
+                <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-[10px]">
                   <Flame className="h-2.5 w-2.5 mr-1" />
                   At Risk
                 </Badge>

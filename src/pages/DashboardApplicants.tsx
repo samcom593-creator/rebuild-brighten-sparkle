@@ -242,7 +242,7 @@ export default function DashboardApplicants() {
         .select("id, profiles!agents_profile_id_fkey(full_name)")
         .in("id", assignedIds);
       assignedAgents?.forEach((a: any) => {
-        nameMap.set(a.id, a.profiles?.full_name || "Unknown");
+        nameMap.set(a.id, a.profiles?.full_name || "—");
       });
     }
 
@@ -608,7 +608,7 @@ export default function DashboardApplicants() {
       (new Date().getTime() - new Date(app.created_at).getTime()) / (1000 * 60 * 60 * 24)
     );
     if (daysSinceCreated >= 3) {
-      return <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px] gap-1 animate-pulse">🔴 {daysSinceCreated}d uncontacted</Badge>;
+      return <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px] gap-1">🔴 {daysSinceCreated}d uncontacted</Badge>;
     }
     if (daysSinceCreated >= 2) {
       return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-[10px] gap-1">🟡 {daysSinceCreated}d uncontacted</Badge>;
@@ -1047,6 +1047,28 @@ export default function DashboardApplicants() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* 2026-06-14 BIG-PROMPT · Visible counter so Sam can SEE every applicant is loaded.
+          Sam's repeating complaint: "missing applications". This proves none are hidden. */}
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+          </span>
+          <p className="text-xs sm:text-sm font-semibold text-white tabular-nums">
+            Showing <span className="text-amber-300 font-black">{filteredApplications.length.toLocaleString()}</span>
+            <span className="text-white/60"> of </span>
+            <span className="text-emerald-300 font-black">{applications.length.toLocaleString()}</span>
+            <span className="text-white/60"> total applications</span>
+          </p>
+        </div>
+        {filteredApplications.length < applications.length && (
+          <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
+            {applications.length - filteredApplications.length} hidden by filters
+          </Badge>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6">

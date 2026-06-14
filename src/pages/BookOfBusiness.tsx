@@ -762,8 +762,46 @@ export default function BookOfBusiness() {
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-6 py-16 text-center text-muted-foreground">
-                    Filters are hiding the book. Clear search, reset source and stage, then verify the agent has an AgentLink user mapping if this stays empty. Hold the Standard.
+                  <td colSpan={11} className="px-6 py-12 text-center">
+                    {/* 2026-06-15 v7.2 · diagnostic empty-state pattern */}
+                    <Book className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <h3 className="text-15 font-bold mb-2">
+                      {deals.length === 0 ? "No deals fetched" : "Filters are hiding the book"}
+                    </h3>
+                    <div className="max-w-md mx-auto space-y-3">
+                      <p className="text-13 text-muted-foreground">
+                        Fetched <span className="font-bold text-foreground tabular-nums">{deals.length.toLocaleString()}</span> deals from the database.
+                      </p>
+                      {deals.length === 0 ? (
+                        <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
+                          Zero rows came back. Likely causes:
+                          <ul className="list-disc list-inside mt-2">
+                            <li>Agent has no AgentLink user mapping (al_user_id NULL)</li>
+                            <li>Your session expired (log out + back in)</li>
+                            <li>AgentLink sync is dark — check /dashboard/finances · CFO bot</li>
+                          </ul>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-12 text-amber-600 dark:text-amber-400">
+                            But the filters above match <span className="font-bold tabular-nums">0</span>.
+                            The data IS there — your filters are hiding it.
+                          </p>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                              setSearch("");
+                              setSource("all");
+                              setStage("all");
+                            }}
+                            className="bg-amber-500 hover:bg-amber-400 text-slate-950"
+                          >
+                            Clear all filters · show {deals.length.toLocaleString()} deals
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (

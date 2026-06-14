@@ -1569,3 +1569,57 @@ Total dense info panels: 18 above the footer.
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v6.7 · AGED LEADS + INTERACTIVE PIE + LICENSE-COUNT FIX + DAILY-AP DEAD-SPACE · 2026-06-15
+
+*Sam after v6.6: "bring back all those leads · every single lead just gone · fill up this box · the one graph looks weird · zero license those months are inaccurate · carrier mix if it was more interactive."*
+
+---
+
+## §66 · The AgedLeadsPanel (commit `<this>`)
+
+The `aged_leads` table has been quietly accumulating: **899 records · 897 status='new'**. Sam said "every single lead just gone" — they were never rendered.
+
+NEW panel placed right after the DashboardPulseGroup (high-visibility · before the 3-lane application strip). Layout:
+- 4 KPI tiles · `UNWORKED` (amber 897) / `DIALED` (white) / `NEW · 7d` (emerald) / `DNC` (rose)
+- 8 most-recent leads list · name + phone + source + license_status + status badge + dial count
+- Status badge tone: hired=emerald · licensing=amber · dialed=white · default=amber
+
+This is the canonical answer to "bring back the leads."
+
+---
+
+## §67 · Carrier Mix Pie · made interactive
+
+The Carrier Mix donut already had hover tooltips. Sam wanted MORE interactivity. Now both the Pie itself and each legend row are `<Link>`s to `/dashboard/carriers`. Hover state lifts the legend row (`hover:bg-white/[0.04]`). Cursor changes to pointer over the Pie. The hover-tooltip stays.
+
+---
+
+## §68 · Licensed-Hires-MTD accuracy fix
+
+Was: `applications.licensed_at >= period.startIso`. But `applications.licensed_at` is rarely populated (2 rows in 12 weeks). Dashboard showed `0 licensed hires MTD` while the real number is 8.
+
+Now: `agents.created_at >= period.startIso`. Every agent row IS a licensed hire by definition. Sam: "should be counted obviously." Done.
+
+---
+
+## §69 · Daily AP run-rate · dead-space filled
+
+Sam: "fill up this box · the one graph looks weird." The Daily AP run-rate emerald-gradient hero card had one AP area chart + a huge empty space below.
+
+Added: a second chart — **DAILY DEAL COUNT** bar chart (amber bars · same period data) underneath the AP line with a "peak day: N deals" callout. Two dimensions of data in one card instead of one. No more dead space.
+
+---
+
+## §70 · Persisted-to v6.7
+
+- This file (v6.7): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- `AgedLeadsPanel` component lives in `src/pages/AgentCommandDashboard.tsx`
+
+---
+
+> **Hold the Standard. Average is the disease.**

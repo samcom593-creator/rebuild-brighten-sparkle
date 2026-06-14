@@ -1632,108 +1632,140 @@ function AgencyCommandView() {
 
       {/* ── Trend chart (period-aware) + Top producers leaderboard ── */}
       <div className="grid gap-3 lg:grid-cols-3">
-        <GlassCard className="p-4 lg:col-span-2">
-          <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
-            <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{periodBounds.label} · Annual Premium written</p>
-              <h3 className="text-lg font-bold">Daily AP run-rate</h3>
-            </div>
-            {/* Micro-stat strip alongside the chart so the band isn't empty when
-                production is sparse (Sam: "this month's agency production — there's
-                a bunch of space that's there"). */}
-            <div className="flex items-center gap-3 text-right">
-              <div>
-                <p className="text-[10px] uppercase text-muted-foreground">Total AP</p>
-                <p className="text-15 font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{fmtUsd(periodSummary.totalAp, true)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase text-muted-foreground">Deals</p>
-                <p className="text-15 font-bold tabular-nums">{fmtNum(periodSummary.dealCount)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase text-muted-foreground">Avg / deal</p>
-                <p className="text-15 font-bold tabular-nums">{fmtUsd(periodSummary.dealCount ? periodSummary.totalAp / periodSummary.dealCount : 0, true)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase text-muted-foreground">Daily pace</p>
-                <p className="text-15 font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtUsd(periodSummary.totalAp / Math.max(1, (Math.ceil((new Date(periodBounds.endIso).getTime() - new Date(periodBounds.startIso).getTime()) / 86400000))), true)}</p>
-              </div>
-            </div>
-          </div>
-          {trend.isLoading ? (
-            <Skeleton className="h-[220px] w-full" />
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={trend.data}>
-                <defs>
-                  <linearGradient id="ceoApGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(168 70% 45%)" stopOpacity={0.65} />
-                    <stop offset="100%" stopColor="hsl(168 70% 45%)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.4)" />
-                <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={10} stroke="hsl(var(--muted-foreground))" />
-                <YAxis fontSize={10} stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                <Tooltip
-                  contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                  labelFormatter={(d) => format(new Date(d), "PPP")}
-                  formatter={(v: number, name: string) => name === "ap" ? fmtUsd(v) : v}
-                />
-                <Area type="monotone" dataKey="ap" stroke="hsl(168 70% 45%)" fill="url(#ceoApGrad)" name="ap" />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </GlassCard>
+        {/* 2026-06-14 BIG PROMPT v6.2 · Daily AP run-rate PROMOTED to premium glass.
+            Sam: "Daily AP run-rate is left to only fucking graph I see. I wanted
+            more like those inner layer graphs."
+            Now wrapped in the canonical gradient hero pattern (slate→emerald)
+            with glow rim shadow, 2 soft-blur accents, animate-ping LIVE dot,
+            4 inner glass tiles above the chart for context. */}
+        <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)] lg:col-span-2">
+          <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
 
-        <GlassCard className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Top producers · {periodBounds.label}</p>
-              <h3 className="text-lg font-bold">Leaderboard</h3>
+          <div className="relative p-5">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                </span>
+                <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">{periodBounds.label} · ANNUAL PREMIUM</p>
+              </div>
+              <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+                Daily run-rate
+              </Badge>
             </div>
-            <Crown className="h-5 w-5 text-amber-500 dark:text-amber-400" />
+
+            {/* 4 inner glass tiles · the "more inner layer graphs" Sam asked for */}
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 mb-4">
+              <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Total AP</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-emerald-300">{fmtUsd(periodSummary.totalAp, true)}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Deals</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-white">{fmtNum(periodSummary.dealCount)}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Avg / deal</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-white">{fmtUsd(periodSummary.dealCount ? periodSummary.totalAp / periodSummary.dealCount : 0, true)}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Daily pace</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-amber-300">{fmtUsd(periodSummary.totalAp / Math.max(1, (Math.ceil((new Date(periodBounds.endIso).getTime() - new Date(periodBounds.startIso).getTime()) / 86400000))), true)}</p>
+              </div>
+            </div>
+
+            {trend.isLoading ? (
+              <Skeleton className="h-[220px] w-full bg-white/[0.04]" />
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={trend.data}>
+                  <defs>
+                    <linearGradient id="ceoApGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(168 70% 50%)" stopOpacity={0.75} />
+                      <stop offset="100%" stopColor="hsl(168 70% 50%)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={10} stroke="rgba(255,255,255,0.4)" />
+                  <YAxis fontSize={10} stroke="rgba(255,255,255,0.4)" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(168 70% 45% / 0.4)", borderRadius: 12, color: "#fff" }}
+                    labelStyle={{ color: "hsl(168 70% 70%)" }}
+                    labelFormatter={(d) => format(new Date(d), "PPP")}
+                    formatter={(v: number, name: string) => name === "ap" ? fmtUsd(v) : v}
+                  />
+                  <Area type="monotone" dataKey="ap" stroke="hsl(168 70% 60%)" strokeWidth={2} fill="url(#ceoApGrad)" name="ap" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          {periodDeals.isLoading ? (
-            <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
-          ) : periodSummary.producers.length === 0 ? (
-            <EmptyState icon={<Trophy className="h-6 w-6" />} title={`No production in ${periodBounds.label.toLowerCase()}`} />
-          ) : (
-            <ul className="space-y-1.5">
-              {periodSummary.producers.map((a, i) => (
-                <li
-                  key={a.agent_id}
-                  className="flex items-center gap-3 rounded-lg border border-border/30 px-2.5 py-2 hover:border-primary/40 hover:bg-primary/[0.04] transition-colors"
-                >
-                  {/* v24 palette restraint: gold for #1 only, others neutral.
-                      Was silver+bronze rainbow per audit complaint #3. */}
-                  <span className={`h-6 w-6 rounded-md text-[11px] font-bold flex items-center justify-center shrink-0 ${
-                    i === 0 ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" :
-                    "bg-muted text-muted-foreground"
-                  }`}>
-                    {i + 1}
-                  </span>
-                  {a.avatar_url ? (
-                    <img src={a.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-border" />
-                  ) : (
-                    <div className="h-7 w-7 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center">
-                      {(a.display_name ?? "?").split(" ").map(s => s[0]).slice(0, 2).join("")}
+        </div>
+
+        {/* Leaderboard promoted to amber-gradient glass to match the new Daily AP card */}
+        <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.20)]">
+          <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
+          <div className="relative p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <Crown className="h-4 w-4 text-amber-400" />
+                <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">TOP PRODUCERS · {periodBounds.label.toUpperCase()}</p>
+              </div>
+            </div>
+
+            {periodDeals.isLoading ? (
+              <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full bg-white/[0.04]" />)}</div>
+            ) : periodSummary.producers.length === 0 ? (
+              <div className="py-8 text-center">
+                <Trophy className="h-8 w-8 mx-auto mb-2 text-white/30" />
+                <p className="text-13 text-white/60">No production in {periodBounds.label.toLowerCase()} yet.</p>
+                <p className="text-11 text-white/40 mt-1">First deal opens the board.</p>
+              </div>
+            ) : (
+              <ul className="space-y-1.5">
+                {periodSummary.producers.map((a, i) => (
+                  <li
+                    key={a.agent_id}
+                    className={`flex items-center gap-3 rounded-xl px-2.5 py-2 border transition-all ${
+                      i === 0
+                        ? "border-amber-400/40 bg-amber-400/[0.06] shadow-[0_0_16px_-4px_hsl(45_85%_55%/0.3)]"
+                        : "border-white/[0.06] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    <span className={`h-7 w-7 rounded-lg text-[12px] font-black flex items-center justify-center shrink-0 ${
+                      i === 0 ? "bg-amber-500/20 text-amber-300 ring-1 ring-amber-400/40" :
+                      i === 1 ? "bg-slate-400/15 text-slate-200" :
+                      i === 2 ? "bg-amber-700/20 text-amber-400" :
+                      "bg-white/[0.04] text-white/50"
+                    }`}>
+                      {i + 1}
+                    </span>
+                    {a.avatar_url ? (
+                      <img src={a.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-white/10" />
+                    ) : (
+                      <div className="h-7 w-7 rounded-full bg-white/[0.06] text-white text-[10px] font-bold flex items-center justify-center">
+                        {(a.display_name ?? "?").split(" ").map(s => s[0]).slice(0, 2).join("")}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-13 font-semibold truncate text-white">{a.display_name ?? "—"}</p>
+                      <p className="text-[10px] text-white/50">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
                     </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold truncate">{a.display_name ?? "—"}</p>
-                    <p className="text-[11px] text-muted-foreground">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
-                  </div>
-                  <p className="text-sm font-bold tabular-nums text-emerald-500 dark:text-emerald-400 shrink-0">
-                    {fmtUsd(a.ap, true)}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-          <Button asChild variant="ghost" size="sm" className="w-full mt-3">
-            <Link to="/dashboard/leaderboard">Full leaderboard <ArrowRight className="h-3 w-3 ml-1" /></Link>
-          </Button>
-        </GlassCard>
+                    <p className="text-14 font-black tabular-nums text-emerald-300 shrink-0">
+                      {fmtUsd(a.ap, true)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Button asChild variant="ghost" size="sm" className="w-full mt-3 text-white/70 hover:text-white hover:bg-white/[0.04]">
+              <Link to="/dashboard/leaderboard">Full leaderboard <ArrowRight className="h-3 w-3 ml-1" /></Link>
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* ──────────────────────────────────────────────────────────────

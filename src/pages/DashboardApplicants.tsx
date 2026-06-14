@@ -176,12 +176,19 @@ export default function DashboardApplicants() {
   const fetchApplicationsQuery = useCallback(async () => {
     if (!user) return { apps: [] as Application[], names: new Map<string, string>(), myAgentId: null as string | null };
 
-    // Get agent ID
-    const { data: agentData } = await supabase
+    // 2026-06-14 BUG FIX: was .single() which errors when a user has multiple
+    // agent rows (Sam has SJAMES01 + SJAMES02). Switched to maybeSingle with
+    // limit(1) — even if the error path triggers, isAdmin still passes through.
+    const { data: agentData, error: agentLookupError } = await supabase
       .from("agents")
       .select("id")
       .eq("user_id", user.id)
-      .single();
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (agentLookupError) {
+      console.warn("[DashboardApplicants] agent lookup error:", agentLookupError);
+    }
 
     let fetchedApps: Application[] = [];
 
@@ -996,33 +1003,50 @@ export default function DashboardApplicants() {
         </div>
       </div>
 
-      {/* Stats - Clickable to filter */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        {[
-          { label: "Total Leads", value: totalLeads, icon: Users, color: "text-primary", filter: "all" },
-          { label: "Hired", value: hired, icon: UserCheck, color: "text-emerald-400", filter: "hired" },
-          { label: "Contracted", value: contracted, icon: FileCheck, color: "text-primary", filter: "contracted" },
-          { label: "Course Purchased", value: coursePurchased, icon: GraduationCap, color: "text-blue-400", filter: "all" },
-        ].map((stat) => (
-          <GlassCard 
-            key={stat.label} 
-            className={cn(
-              "p-3 cursor-pointer transition-all hover:scale-[1.02]",
-              statusFilter === stat.filter && "ring-2 ring-primary ring-offset-2 ring-offset-background"
-            )}
-            onClick={() => setStatusFilter(stat.filter === "terminated" ? "all" : stat.filter)}
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">
-                <stat.icon className={cn("h-4 w-4", stat.color)} />
-              </div>
-              <div>
-                <p className={cn("text-xl font-bold", stat.color)}>{stat.value}</p>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
-              </div>
+      {/* 2026-06-14 v6.2 BIG-PROMPT · Premium hero band replacing the 4 flat GlassCards.
+          Sam: "Applications · 0/0/0/0 · No applicants found" while 519 active in DB.
+          The flat-row design hid the bug behind 4 gray tiles. New design surfaces
+          the actual data PLUS makes the page look unrecognizable per v6 §31. */}
+      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.25)] mb-5">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">RECRUITING PIPELINE · LIVE</p>
             </div>
-          </GlassCard>
-        ))}
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
+              click to filter
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: "Total Active", value: totalLeads, color: "text-white",         tone: "bg-white/[0.04] border-white/[0.06] hover:border-white/20", filter: "all" },
+              { label: "Course bought", value: coursePurchased, color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50", filter: "all" },
+              { label: "Contracted",  value: contracted,    color: "text-amber-300",   tone: "bg-amber-500/[0.08] border-amber-500/20 hover:border-amber-400/50", filter: "contracted" },
+              { label: "Hired",       value: hired,         color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50", filter: "hired" },
+            ].map((stat) => (
+              <button
+                key={stat.label}
+                onClick={() => setStatusFilter(stat.filter === "terminated" ? "all" : stat.filter)}
+                className={cn(
+                  "group p-4 rounded-2xl border transition-all text-left",
+                  stat.tone,
+                  statusFilter === stat.filter && "ring-2 ring-amber-400/60 ring-offset-2 ring-offset-slate-950"
+                )}
+              >
+                <p className="text-[10px] uppercase tracking-widest text-white/50 mb-1.5 font-bold">{stat.label}</p>
+                <p className={cn("text-[32px] leading-none font-black tabular-nums", stat.color)}>{stat.value}</p>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6">

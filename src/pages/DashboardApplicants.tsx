@@ -138,11 +138,12 @@ export default function DashboardApplicants() {
 
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
-  // 2026-06-15 v7.3 · Default to "in_funnel" (excludes hired + contracted) so
-  // the page matches Sam's definition: every website-traffic app EXCEPT
-  // completed or moved-to-another-category. URL ?status=all opens the full
-  // active set; click chips on the hero switch between funnel/contracted/hired.
-  const [statusFilter, setStatusFilter] = useState<string>(statusParam || "in_funnel");
+  // 2026-06-15 v7.5 · Sam reverted v7.3: "see every single application ever
+  // instead [of in_funnel]." Default back to "all" so the sidebar Applications
+  // click shows everything — 519 active. The 5-chip strip (In Funnel · Course
+  // bought · Contracted · Hired · Total Active) is still there so Sam can
+  // filter down when he wants, but the default is ALL.
+  const [statusFilter, setStatusFilter] = useState<string>(statusParam || "all");
   const [licenseFilter, setLicenseFilter] = useState<string>(licenseParam || "all");
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
@@ -1127,17 +1128,17 @@ export default function DashboardApplicants() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {/* 2026-06-15 v7.3 · Sam: "Applications should be every website-traffic
-                app EXCEPT completed or moved to a different category." Added
-                "In Funnel" as the DEFAULT view (excludes contracted + hired).
-                Total Active = 519 · In Funnel = 438 · the rest are conversions
-                (separated · still visible · clickable). */}
+            {/* 2026-06-15 v7.5 · Sam reverted v7.3 default. Clicking Applications
+                from the sidebar shows EVERY active app (519). "Total Active" is
+                now the leftmost default. The other 4 chips are click-to-filter
+                slices: In Funnel (438 · still recruiting) · Course bought (52) ·
+                Contracted (22 · converted) · Hired (72 · converted). */}
             {[
-              { label: "In Funnel",   value: inFunnel,      color: "text-white",         tone: "bg-amber-500/[0.10] border-amber-500/30 hover:border-amber-400/60",        filter: "in_funnel" },
+              { label: "Total Active", value: totalLeads,   color: "text-white",         tone: "bg-amber-500/[0.10] border-amber-500/30 hover:border-amber-400/60",       filter: "all" },
+              { label: "In Funnel",    value: inFunnel,     color: "text-white",         tone: "bg-white/[0.04] border-white/[0.06] hover:border-white/20",               filter: "in_funnel" },
               { label: "Course bought", value: coursePurchased, color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50", filter: "course_bought" },
-              { label: "Contracted",  value: contracted,    color: "text-amber-300",   tone: "bg-amber-500/[0.08] border-amber-500/20 hover:border-amber-400/50",        filter: "contracted" },
-              { label: "Hired",       value: hired,         color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50",   filter: "hired" },
-              { label: "Total Active", value: totalLeads,   color: "text-white/70",     tone: "bg-white/[0.04] border-white/[0.06] hover:border-white/20",                filter: "all" },
+              { label: "Contracted",   value: contracted,   color: "text-amber-300",   tone: "bg-amber-500/[0.08] border-amber-500/20 hover:border-amber-400/50",        filter: "contracted" },
+              { label: "Hired",        value: hired,        color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50",   filter: "hired" },
             ].map((stat) => (
               <button
                 key={stat.label}

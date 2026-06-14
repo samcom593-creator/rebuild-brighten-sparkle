@@ -1969,3 +1969,99 @@ return <DataPanel rows={q.data} stalenessSec={(Date.now() - q.dataUpdatedAt) / 1
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v7.0 · THE CODEX MEGA-AUDIT · 2026-06-15
+
+*Sam: "Look for the gold codex... use codex to see how you can make this 150-1000x better... if there's no substance there it probably shouldn't even be a portion of the website." This section records the receipt of the 6-pass Codex CLI audit that ran fully autonomously with `--sandbox danger-full-access` on the v6.9 state and committed + pushed each pass to `origin/main` between passes. Token cost was Codex's, not Claude's, per Sam's standing credit-routing rule.*
+
+---
+
+## §81 · The Codex 6-Pass Audit (the gold standard run)
+
+**Trigger**: Sam's voice message asking for Codex to find holes and gaps and make the work 150-1000x better.
+
+**Authority granted**: `codex exec --sandbox danger-full-access --skip-git-repo-check` — full edit + commit + push autonomously.
+
+**Brief location**: `~/business-ops/2026-06-15-codex-audit/audit-prompt.md`
+**Run log**: `~/business-ops/2026-06-15-codex-audit/codex-run.log`
+
+**Six sequential passes**:
+
+| Pass | Title | Commit | Brief |
+|---|---|---|---|
+| 1 | Applications visibility | `61e0a5fc` | Show duplicates toggle, `count: "exact"` for accurate totals, explicit active/terminated split, console.warn on errors |
+| 2 | Role preview routing | `9be06d56` | Move `if (isAdmin)` short-circuit BELOW `useRolePreview()` so Agent/Manager view bubbles actually route |
+| 3 | Book of Business AgentLink visibility | `dbccba18` | Load full agentlink_deals_snapshot (1286 rows) instead of capped/blank 500-row merge |
+| 4 | Course-bought visibility | `5d4f5690` | Dashboard 3-lane strip + Applicants filter now match BOTH `course_purchased_at` AND `license_progress='course_purchased'` (was 23-only · now 52 visible) |
+| 5 | Sidebar route audit | `e5df1a29` | Curl every sidebar route at apex-financial.org — all 200, no 404/500 |
+| 6 | Zero-substance page cull | `771ba752` | Business Analytics + Instagram Automation dead placeholder surfaces removed |
+
+**Codex's own self-verified truth** (queried via bot-sql · all real numbers):
+- 519 active applications
+- 55 active duplicate applications (now toggleable)
+- 23 course_purchased_at set
+- 40 license_progress=course_purchased (52 distinct combining both signals)
+- 1286 AgentLink book rows
+- 1263 mapped through `agents.al_user_id`
+- Final `npx tsc --noEmit`: clean
+
+**Tokens used**: 267,693 — Codex CLI billing, not Claude.
+
+---
+
+## §82 · The Three Bugs That Were Real (the ones Sam was right about)
+
+### §82.1 · "Agent View / Manager View toggles don't change anything"
+**Root cause**: `Dashboard.tsx` line 835 had `if (isAdmin) return <AgentCommandDashboard />` BEFORE the `useRolePreview()` hook ran. So admins clicking "Agent View" stayed on AgentCommandDashboard regardless. The hook fired but no component read its output.
+**Fix**: hook reordered above the short-circuit; the short-circuit now gates on `effectiveRole === "admin"`.
+
+### §82.2 · "Book of Business is bullshit and empty"
+**Root cause**: Book of Business queried the legacy `deals` table (~1243 rows but stale 20+ days) with a 500-row cap. Admins' AgentLink scope wasn't filling in `agentLinkScopeUserIds`, so the AgentLink snapshot pass (1286 rows) was effectively blank.
+**Fix**: `agentLinkScopeUserIds` now set to `null` (= unrestricted) for admins; load both `deals` + `agentlink_deals_snapshot` and merge by policy_number.
+
+### §82.3 · "Can't see course-purchased people"
+**Root cause**: Two columns track "course bought": `course_purchased_at` (date) and `license_progress='course_purchased'` (enum). Only 23 rows have the date set; 40 have the enum. The dashboard's 3-lane "Course bought" lane only matched on the date column, hiding 17 applicants.
+**Fix**: filter now matches EITHER signal · 52 distinct course-bought applicants now visible.
+
+---
+
+## §83 · The Permanent Standing Rule (v7.0)
+
+> **When two columns track the same state, the UI filter must match EITHER. When data is split between a legacy table and a synced snapshot, the page must load BOTH and merge. When a hook output should change rendering, NO early-return may bypass the hook check. These are now §44 column-audit rule extensions.**
+
+Adds to the v6.8 §71 head-to-toe checklist as items 19-21:
+- 19. No early-return that bypasses a `useRolePreview()` / `useEffectiveRole()` output
+- 20. When two columns model the same boolean state, filters match the disjunction
+- 21. When a page reads a synced snapshot table, the legacy unfilled table loads too if it has unique rows
+
+---
+
+## §84 · The Cost Model This Validates
+
+The Codex 6-pass audit consumed 267,693 tokens of Codex billing, ran fully autonomously, and shipped 6 verified-clean commits + a final clean `tsc --noEmit` + clean worktree. Zero Claude tokens consumed during the audit window.
+
+This is the canonical pattern for any future "Sam-says-everything-is-broken-head-to-toe" sweep:
+1. Claude drafts the 6-pass brief (cheap)
+2. Codex CLI executes with full sandbox access (free vs Claude)
+3. Claude verifies HTTP 200 + writes the v-bump prompt section (cheap)
+4. Sam gets one consolidated receipt instead of 6 narration messages
+
+When Sam asks for breadth-and-depth at scale, the routing rule is **Codex for the execution**, **Claude for the framing + verification + prompt evolution**.
+
+---
+
+## §85 · Persisted-to v7.0
+
+- This file (v7.0): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Codex audit brief: `~/business-ops/2026-06-15-codex-audit/audit-prompt.md`
+- Codex run log: `~/business-ops/2026-06-15-codex-audit/codex-run.log`
+- 6 Codex commits: 61e0a5fc · 9be06d56 · dbccba18 · 5d4f5690 · e5df1a29 · 771ba752
+- HEAD-TO-TOE checklist expanded to 21 items (§71 + §83)
+
+---
+
+> **Hold the Standard. Average is the disease.**

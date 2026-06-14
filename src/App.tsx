@@ -147,6 +147,16 @@ const ProducerProfile = lazy(() => import("./pages/ProducerProfile"));
 const HelpCenter = lazy(() => import("./pages/HelpCenter"));
 const TransferRequests = lazy(() => import("./pages/TransferRequests"));
 const CommissionGrids = lazy(() => import("./pages/CommissionGrids"));
+const AgentHandbook = lazy(() => import("./pages/AgentHandbook"));
+const AnnuityTraining = lazy(() => import("./pages/AnnuityTraining"));
+const ClientMarketing = lazy(() => import("./pages/ClientMarketing"));
+const CallingCards = lazy(() => import("./pages/CallingCards"));
+const MyLandingPage = lazy(() => import("./pages/MyLandingPage"));
+const PublicAgentLanding = lazy(() => import("./pages/PublicAgentLanding"));
+const RecruitingFunnels = lazy(() => import("./pages/RecruitingFunnels"));
+const RecruitingTracker = lazy(() => import("./pages/RecruitingTracker"));
+const NeedsAnalysis = lazy(() => import("./pages/NeedsAnalysis"));
+const Quoter = lazy(() => import("./pages/Quoter"));
 const TeamAnalytics = lazy(() => import("./pages/TeamAnalytics"));
 const AwardsGallery = lazy(() => import("./pages/AwardsGallery"));
 const HallOfFame = lazy(() => import("./pages/HallOfFame"));
@@ -337,6 +347,7 @@ const App = () => (
                       combined sign-in / create-account flow used by existing links. */}
                   <Route path="/agent-signup" element={<AgentSignup />} />
                   <Route path="/agent-login" element={<AgentNumbersLogin />} />
+                  <Route path="/agent/:userId" element={<PublicAgentLanding />} />
                   <Route path="/magic-login" element={<MagicLogin />} />
                   <Route path="/schedule-call" element={<ScheduleCall />} />
                   <Route path="/pending-approval" element={<PendingApproval />} />
@@ -465,6 +476,15 @@ const App = () => (
                        <Route path="/dashboard/help" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />
                        <Route path="/dashboard/transfers" element={<ProtectedRoute><TransferRequests /></ProtectedRoute>} />
                        <Route path="/dashboard/commission-grids" element={<ProtectedRoute><CommissionGrids /></ProtectedRoute>} />
+                       <Route path="/dashboard/handbook" element={<ProtectedRoute><AgentHandbook /></ProtectedRoute>} />
+                       <Route path="/dashboard/annuity-training" element={<ProtectedRoute><AnnuityTraining /></ProtectedRoute>} />
+                       <Route path="/dashboard/client-marketing" element={<ProtectedRoute><ClientMarketing /></ProtectedRoute>} />
+                       <Route path="/dashboard/calling-cards" element={<ProtectedRoute><CallingCards /></ProtectedRoute>} />
+                       <Route path="/dashboard/landing-page" element={<ProtectedRoute><MyLandingPage /></ProtectedRoute>} />
+                       <Route path="/dashboard/recruiting-funnels" element={<ProtectedRoute><RecruitingFunnels /></ProtectedRoute>} />
+                       <Route path="/dashboard/recruiting-tracker" element={<ProtectedRoute><RecruitingTracker /></ProtectedRoute>} />
+                       <Route path="/dashboard/needs-analysis" element={<ProtectedRoute><NeedsAnalysis /></ProtectedRoute>} />
+                       <Route path="/dashboard/quoter" element={<ProtectedRoute><Quoter /></ProtectedRoute>} />
                        <Route path="/dashboard/team-analytics" element={<ProtectedRoute><TeamAnalytics /></ProtectedRoute>} />
                        <Route path="/dashboard/awards" element={<ProtectedRoute><AwardsGallery /></ProtectedRoute>} />
                        <Route path="/dashboard/hall-of-fame" element={<ProtectedRoute><HallOfFame /></ProtectedRoute>} />

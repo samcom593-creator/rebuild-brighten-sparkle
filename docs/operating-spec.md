@@ -2386,3 +2386,79 @@ Verified: `/dashboard/commission-grids` returns HTTP 200 (the Navigate component
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v7.5 + v7.6 · APPLICATIONS DEFAULT REVERT + LANE OVERFLOW · 2026-06-15
+
+*Sam (v7.5): "see every single application ever instead of [In Funnel default]. Whenever I click Applications, I should be able to see that."*
+*Sam (v7.6): "I'm seeing a lot of people left off · all the applications is not there."*
+
+---
+
+## §100 · v7.5 · The In Funnel default revert (commit `05893e23`)
+
+The v7.3 default of `statusFilter = "in_funnel"` (438 of 519 active) was reverted to `statusFilter = "all"`. Clicking Applications from the sidebar now shows EVERY active app.
+
+The 5-chip hero strip was reordered: **Total Active** is now first/leftmost (default · amber highlight) · the other 4 chips (In Funnel · Course bought · Contracted · Hired) are click-to-filter slices, still useful but not default.
+
+### §100.1 · The lesson
+
+When Sam asked for `in_funnel` default in v7.3, the assumption was that conversions (hired + contracted) should be hidden from the main view. He clarified the opposite: the main view should be every app, period. Conversions are still chips for those who want to filter.
+
+**Rule (added to checklist as #28)**: when the user says "see every X", default to no filter. Subdivisions stay as click-to-filter chips, not the default state.
+
+---
+
+## §101 · v7.6 · The 3-lane strip overflow fix (commit `397ef926`)
+
+On `/dashboard` (the Owner Command Center) the Application Pipeline strip groups 519 active apps into 4 lanes. The lane render used `items.slice(0, 4)` so each lane showed only 4 names + a tiny "+N more →" text link.
+
+With 198 uncontacted apps Sam saw 4 names + "+194 more" and read this as "198 applications missing." The data was loaded; the UX was hiding it.
+
+### §101.1 · The fix
+
+- `items.slice(0, 4)` → `items.slice(0, 10)` (2.5× more names visible per lane)
+- The overflow link is now a bordered button-style band, not a thin text link
+- The overflow text was `+ N more →` · now `+ <overflow-count> more · click to see all <total-count> →`
+- Border uses the lane's color token so the band feels attached to its lane (rose / amber / emerald)
+
+### §101.2 · DB truth at ship time
+
+- 198 uncontacted (rose lane)
+- 301 in-progress (amber lane)
+- 23 course bought (emerald lane)
+- 2 licensed (emerald-strong lane)
+
+Total 524 positions across lanes (some apps fit two lanes) · 519 active apps total.
+
+### §101.3 · The lesson
+
+**Rule (added to checklist as #29)**: when a list is intentionally truncated, the overflow indicator must show the EXACT count above the threshold, not a vague "+more". Users read "+N more" as a UI flourish; they read "+ 188 more · click to see all 198 →" as data.
+
+---
+
+## §102 · 29-item head-to-toe checklist
+
+| # | Rule | Added |
+|---|---|---|
+| 1-18 | Functional · Visual · Animation · Language · Voice | v6.8 §71 |
+| 19-21 | Role-preview hook · two-column disjunction · legacy+snapshot merge | v7.0 §83 |
+| 22-23 | Empty-state shows fetched count · Clear-filters resets all | v7.2 §88 |
+| 24-25 | Lifecycle default · canonical hero | v7.3 §92 |
+| 26-27 | No early-return on nice-to-have · async MediaRecorder stop | v7.4 §96 |
+| 28 | "See every X" defaults to no filter; subdivisions are chips | **v7.5 §100** |
+| 29 | Truncation overflow shows exact count · "+N more · click to see all M →" | **v7.6 §101** |
+
+---
+
+## §103 · Persisted-to v7.5 + v7.6
+
+- This file: `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Commits: `05893e23` (v7.5) + `397ef926` (v7.6)
+
+---
+
+> **Hold the Standard. Average is the disease.**

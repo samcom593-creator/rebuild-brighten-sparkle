@@ -418,6 +418,57 @@ export default function CalendarPage() {
   const overdueCount = interviews?.filter((iv) => isBefore(new Date(iv.interview_date), now) && iv.status === "scheduled" && !isToday(new Date(iv.interview_date))).length || 0;
   const upcomingPipelineEvents = (pipelineEvents ?? []).filter((event) => !isBefore(new Date(event.date), now)).slice(0, 12);
 
+  // Hero metrics
+  const weekStartHero = useMemo(() => startOfWeek(new Date(), { weekStartsOn: 0 }), []);
+  const weekEndHero = useMemo(() => addDays(weekStartHero, 7), [weekStartHero]);
+
+  const weekEventCount = useMemo(() => {
+    if (!interviews) return 0;
+    return interviews.filter((iv) => {
+      const d = new Date(iv.interview_date);
+      return d >= weekStartHero && d < weekEndHero;
+    }).length;
+  }, [interviews, weekStartHero, weekEndHero]);
+
+  // Open slots: count business-hour slots (9am-5pm, 30-min) today with no scheduled interview
+  const openSlotsToday = useMemo(() => {
+    if (!interviews) return 16;
+    const todaysInterviews = interviews.filter((iv) => isToday(new Date(iv.interview_date)));
+    const takenSlots = new Set<string>();
+    for (const iv of todaysInterviews) {
+      const d = new Date(iv.interview_date);
+      const h = getHours(d);
+      const m = getMinutes(d) >= 30 ? 30 : 0;
+      takenSlots.add(`${h}:${m}`);
+    }
+    let open = 0;
+    for (let h = 9; h < 17; h++) {
+      for (const m of [0, 30]) {
+        if (!takenSlots.has(`${h}:${m}`)) open++;
+      }
+    }
+    return open;
+  }, [interviews]);
+
+  // Calendly sync status: derive from calendar_events presence in next 60d window
+  const { data: calendlySyncStatus } = useQuery({
+    queryKey: ["calendar-calendly-sync", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("calendar_events")
+        .select("id, starts_at, source")
+        .gte("starts_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
+        .order("starts_at", { ascending: false })
+        .limit(1);
+      if (error) return { live: false, lastSync: null as string | null };
+      const last = data?.[0];
+      if (!last) return { live: false, lastSync: null };
+      return { live: true, lastSync: last.starts_at };
+    },
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+  });
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Premium Header */}
@@ -463,6 +514,54 @@ export default function CalendarPage() {
         </div>
       </motion.div>
 
+      {/* Canonical v6 §31 Premium Hero — emerald (production/calendar) */}
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">CALENDAR FLOW · LIVE</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TODAY</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{todayCount}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">{todayCount === 1 ? "interview" : "interviews"}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">THIS WEEK</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{weekEventCount}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">scheduled</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">OPEN SLOTS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{openSlotsToday}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">today · 9a–5p</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CALENDLY SYNC</p>
+              <p className={cn(
+                "text-[28px] leading-none font-black tabular-nums",
+                calendlySyncStatus?.live ? "text-emerald-300" : "text-white/60"
+              )}>
+                {calendlySyncStatus?.live ? "LIVE" : "—"}
+              </p>
+              <p className="text-[10px] text-white/40 tabular-nums">
+                {calendlySyncStatus?.lastSync
+                  ? `last ${format(new Date(calendlySyncStatus.lastSync), "MMM d")}`
+                  : "feed quiet — push to sync"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* View Toggle + Filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
@@ -492,7 +591,7 @@ export default function CalendarPage() {
             <Badge variant="outline" className="text-[10px]">{upcomingPipelineEvents.length} upcoming</Badge>
           </div>
           {upcomingPipelineEvents.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No upcoming pipeline dates found.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">Pipeline calendar is open — book test dates, follow-ups and licensing checks so nothing slips.</p>
           ) : (
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {upcomingPipelineEvents.map((event) => (
@@ -543,7 +642,7 @@ export default function CalendarPage() {
                     const TypeIcon = typeIcons[iv.interview_type] || Calendar;
                     const name = iv.applications
                       ? `${iv.applications.first_name} ${iv.applications.last_name}`
-                      : "Unknown";
+                      : "—";
                     return (
                       <div
                         key={iv.id}
@@ -581,7 +680,7 @@ export default function CalendarPage() {
             <Card>
               <CardContent className="py-12 text-center">
                 <Calendar className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">No interviews found</p>
+                <p className="text-muted-foreground">Calendar's clear — every booked interview is a hire in motion. Schedule the next one.</p>
                 <Button variant="outline" size="sm" className="mt-3" onClick={() => setSearchOpen(true)}>
                   Schedule one now
                 </Button>

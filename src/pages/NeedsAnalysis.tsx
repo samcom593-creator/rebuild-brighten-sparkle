@@ -110,6 +110,46 @@ TOTAL COVERAGE NEED: ${fmt(calc.totalNeed)}`;
         }
       />
 
+      {/* v6 §31 premium gradient hero — live needs analysis */}
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">DIME CALCULATOR · LIVE</p>
+            </div>
+            <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-200">{inputs.yearsReplacement} yr replacement</Badge>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">INCOME NEED</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmt(calc.incomeNeed)}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">{fmt(n(inputs.income))} × {inputs.yearsReplacement} yrs</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">MORTGAGE</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmt(calc.mortgageNeed)}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">payoff balance</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">DEBT</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmt(calc.debtNeed)}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">cards · auto · student</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL COVERAGE NEED</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-emerald-300">{fmt(calc.totalNeed)}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">gross {fmt(calc.gross)} − {fmt(calc.offset)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Inputs */}
         <Card className="lg:col-span-2">

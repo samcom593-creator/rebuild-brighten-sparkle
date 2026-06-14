@@ -4,7 +4,7 @@
 
 import { useState, useMemo } from "react";
 import {
-  Mail, Copy, Check, Search, Tag, Send, Calendar, Heart, RefreshCw, Filter,
+  Copy, Check, Search, Heart, Filter,
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
@@ -114,6 +114,8 @@ export default function ClientMarketing() {
   const [activeCat, setActiveCat] = useState("All");
   const [copied, setCopied] = useState<string | null>(null);
 
+  const [copyCounts, setCopyCounts] = useState<Record<string, number>>({});
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return TEMPLATES.filter((t) => {
@@ -123,9 +125,24 @@ export default function ClientMarketing() {
     });
   }, [search, activeCat]);
 
+  const channelCounts = useMemo(() => {
+    const sms = TEMPLATES.filter((t) => t.channel === "sms").length;
+    const email = TEMPLATES.filter((t) => t.channel === "email").length;
+    const dm = TEMPLATES.filter((t) => t.channel === "dm").length;
+    return { sms, email, dm };
+  }, []);
+
+  const mostCopied = useMemo(() => {
+    const entries = Object.entries(copyCounts);
+    if (entries.length === 0) return { title: "—", count: 0 };
+    const top = entries.sort((a, b) => b[1] - a[1])[0];
+    return { title: top[0], count: top[1] };
+  }, [copyCounts]);
+
   const copy = async (t: Template) => {
     await navigator.clipboard.writeText(t.body);
     setCopied(t.title);
+    setCopyCounts((prev) => ({ ...prev, [t.title]: (prev[t.title] ?? 0) + 1 }));
     toast.success(`Copied: ${t.title}`);
     setTimeout(() => setCopied(null), 2000);
   };
@@ -139,6 +156,46 @@ export default function ClientMarketing() {
         subtitle="Pre-written DM/SMS/email templates to send your clients post-sale. Pre-appointment confirms, onboarding, referrals, holidays. Click to copy."
         actions={<Badge variant="outline" className="text-11">{TEMPLATES.length} templates</Badge>}
       />
+
+      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">CLIENT MARKETING · LIVE</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TEMPLATES</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{TEMPLATES.length}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">ready to send</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CHANNELS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">
+                {channelCounts.sms}<span className="text-white/40">/</span>{channelCounts.email}<span className="text-white/40">/</span>{channelCounts.dm}
+              </p>
+              <p className="text-[10px] text-white/40 tabular-nums">SMS · Email · DM</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CATEGORIES</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{CATEGORIES.length}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">touchpoint types</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">MOST COPIED</p>
+              <p className="text-[18px] leading-tight font-black text-white truncate" title={mostCopied.title}>{mostCopied.title}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">{mostCopied.count > 0 ? `${mostCopied.count}× this session` : "copy one to track"}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -175,7 +232,7 @@ export default function ClientMarketing() {
       {filtered.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-13 text-muted-foreground">
           <Filter className="h-6 w-6 mx-auto mb-2 opacity-50" />
-          No template matches your filter.
+          Nothing in this filter. Loosen the search or jump back to "All" — your clients can't read a template you don't send.
         </CardContent></Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">

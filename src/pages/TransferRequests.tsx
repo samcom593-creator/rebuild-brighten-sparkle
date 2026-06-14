@@ -137,6 +137,26 @@ export default function TransferRequests() {
   const pending = (requests.data ?? []).filter((r) => r.status === "pending");
   const decided = (requests.data ?? []).filter((r) => r.status !== "pending");
 
+  // Hero metrics (Phoenix tz month window)
+  const phoenixNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
+  const monthStart = new Date(phoenixNow.getFullYear(), phoenixNow.getMonth(), 1).getTime();
+  const all = requests.data ?? [];
+  const approvedThisMonth = all.filter(
+    (r) => r.status === "approved" && r.decided_at && new Date(r.decided_at).getTime() >= monthStart,
+  ).length;
+  const deniedThisMonth = all.filter(
+    (r) => r.status === "denied" && r.decided_at && new Date(r.decided_at).getTime() >= monthStart,
+  ).length;
+  const decidedWithTime = all.filter((r) => r.decided_at && r.created_at && r.status !== "pending");
+  const avgDecisionDays =
+    decidedWithTime.length === 0
+      ? null
+      : decidedWithTime.reduce(
+          (acc, r) =>
+            acc + (new Date(r.decided_at as string).getTime() - new Date(r.created_at).getTime()) / 86_400_000,
+          0,
+        ) / decidedWithTime.length;
+
   const statusBadge = (s: string) => {
     if (s === "approved") return <Badge className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"><CheckCircle2 className="h-3 w-3 mr-1" />Approved</Badge>;
     if (s === "denied")   return <Badge className="bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/30"><XCircle className="h-3 w-3 mr-1" />Denied</Badge>;
@@ -165,6 +185,53 @@ export default function TransferRequests() {
           </div>
         }
       />
+
+      {/* PREMIUM HERO · v6 §31 */}
+      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">CONTRACTING · LIVE</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PENDING</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">
+                {requests.isLoading ? "—" : pending.length}
+              </p>
+              <p className="text-[10px] text-white/40 tabular-nums">awaiting decision</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">APPROVED · MTD</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">
+                {requests.isLoading ? "—" : approvedThisMonth}
+              </p>
+              <p className="text-[10px] text-white/40 tabular-nums">this month</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">DENIED · MTD</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">
+                {requests.isLoading ? "—" : deniedThisMonth}
+              </p>
+              <p className="text-[10px] text-white/40 tabular-nums">this month</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">AVG DECISION</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">
+                {avgDecisionDays === null ? "—" : avgDecisionDays.toFixed(1)}
+              </p>
+              <p className="text-[10px] text-white/40 tabular-nums">days to decide</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* SUBMIT FORM */}
       {showForm && (
@@ -213,7 +280,7 @@ export default function TransferRequests() {
         {requests.isLoading ? (
           Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20" />)
         ) : pending.length === 0 ? (
-          <Card><CardContent className="p-6 text-center text-13 text-muted-foreground">No pending requests.</CardContent></Card>
+          <Card><CardContent className="p-6 text-center text-13 text-muted-foreground">Inbox is clear. Every upline is locked in.</CardContent></Card>
         ) : (
           pending.map((r) => (
             <Card key={r.id}>
@@ -251,7 +318,7 @@ export default function TransferRequests() {
       <section className="space-y-2">
         <h2 className="text-13 font-bold flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> History ({decided.length})</h2>
         {decided.length === 0 ? (
-          <Card><CardContent className="p-6 text-center text-13 text-muted-foreground">No decided requests yet.</CardContent></Card>
+          <Card><CardContent className="p-6 text-center text-13 text-muted-foreground">No decisions yet. History will fill as approvals come in.</CardContent></Card>
         ) : (
           decided.map((r) => (
             <Card key={r.id}>

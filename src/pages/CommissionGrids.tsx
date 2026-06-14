@@ -92,6 +92,38 @@ export default function CommissionGrids() {
 
   const fmtPct = (n: number | null) => n == null ? "—" : `${Number(n).toFixed(2)}%`;
 
+  const heroMetrics = useMemo(() => {
+    const all = grid.data ?? [];
+    const totalProducts = all.length;
+    const fyValues = all
+      .map((r) => Number(r.first_year_pct))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    const avgFy = fyValues.length
+      ? fyValues.reduce((a, b) => a + b, 0) / fyValues.length
+      : null;
+    let topCarrier: string | null = null;
+    let topFy = -Infinity;
+    for (const r of all) {
+      const v = Number(r.first_year_pct);
+      if (Number.isFinite(v) && v > topFy && r.carrier_name) {
+        topFy = v;
+        topCarrier = r.carrier_name;
+      }
+    }
+    const annuityCount = all.filter((r) => {
+      const cat = (r.category ?? "").toLowerCase();
+      const name = (r.product_name ?? "").toLowerCase();
+      return cat.includes("annuity") || name.includes("annuity");
+    }).length;
+    return {
+      totalProducts,
+      avgFy,
+      topCarrier: topCarrier ?? "—",
+      topFy: Number.isFinite(topFy) ? topFy : null,
+      annuityCount,
+    };
+  }, [grid.data]);
+
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
       <PageHeader
@@ -109,6 +141,46 @@ export default function CommissionGrids() {
           </div>
         }
       />
+
+      {/* Premium gradient hero · v6 §31 */}
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">COMMISSION GRID · LIVE</p>
+            </div>
+            <p className="text-[10px] uppercase tracking-widest text-white/40">Carrier × Product</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL PRODUCTS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{heroMetrics.totalProducts}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">contracted carriers</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">AVG FY %</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{heroMetrics.avgFy == null ? "—" : `${heroMetrics.avgFy.toFixed(1)}%`}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">across all products</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">HIGHEST FY %</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white truncate">{heroMetrics.topCarrier}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">{heroMetrics.topFy == null ? "—" : `${heroMetrics.topFy.toFixed(2)}% top payout`}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">ANNUITY PRODUCTS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{heroMetrics.annuityCount}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">in the grid</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Filter bar */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -189,7 +261,7 @@ export default function CommissionGrids() {
                   {rows.length === 0 && (
                     <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">
                       <Filter className="h-5 w-5 mx-auto mb-2 opacity-50" />
-                      No products match your filter.
+                      Nothing matches that filter yet. Loosen the carrier or category to see more of the grid.
                     </td></tr>
                   )}
                 </tbody>

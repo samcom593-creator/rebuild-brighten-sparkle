@@ -99,6 +99,27 @@ export default function CarrierResources() {
 
   const rows = (carriers.data ?? []).filter((c) => c.is_active !== false);
 
+  // Hero metrics
+  const partnerCount = rows.length;
+  const prodRows = production.data ?? [];
+  const thisMonthDeals = prodRows.reduce((sum, p) => sum + Number(p.deal_count ?? 0), 0);
+  const topCarrier = prodRows.slice().sort((a, b) => Number(b.total_premium ?? 0) - Number(a.total_premium ?? 0))[0];
+  const topCarrierName = topCarrier?.carrier_name ?? "—";
+  const topCarrierPremium = topCarrier ? fmtUsd(Number(topCarrier.total_premium ?? 0)) : "—";
+
+  const activeContracts = useQuery({
+    queryKey: ["carrier-active-contracts"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("apex_carrier_contracts" as any)
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    refetchInterval: 10 * 60_000,
+  });
+
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
       <PageHeader
@@ -116,6 +137,45 @@ export default function CarrierResources() {
           </div>
         }
       />
+
+      {/* Premium gradient hero · v6 §31 */}
+      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">CARRIER NETWORK · LIVE</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PARTNER CARRIERS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{partnerCount}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">active resource cards</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">THIS-MONTH DEALS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{thisMonthDeals}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">across {prodRows.length || "—"} carriers</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOP CARRIER</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white truncate">{topCarrierName}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">{topCarrierPremium} premium</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">ACTIVE CONTRACTS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{activeContracts.data ?? "—"}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">apex_carrier_contracts</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {carriers.isLoading ? (
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">

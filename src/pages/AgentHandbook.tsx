@@ -116,10 +116,14 @@ These are not titles. They are EARNED milestones. Check /dashboard/business-anal
   },
 ];
 
+const READ_MINUTES_PER_SECTION = 3;
+
 export default function AgentHandbook() {
   usePageTitle("Agent Handbook · APEX");
   const [search, setSearch] = useState("");
   const [active, setActive] = useState<string | null>(null);
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [lastOpened, setLastOpened] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -128,6 +132,23 @@ export default function AgentHandbook() {
       s.title.toLowerCase().includes(q) || s.body.toLowerCase().includes(q)
     );
   }, [search]);
+
+  const totalChapters = SECTIONS.length;
+  const readMinutes = totalChapters * READ_MINUTES_PER_SECTION;
+  const chaptersCompleted = completed.size;
+  const lastOpenedTitle = lastOpened
+    ? SECTIONS.find((s) => s.key === lastOpened)?.title ?? "—"
+    : "—";
+
+  const openChapter = (key: string) => {
+    setActive(key);
+    setLastOpened(key);
+    setCompleted((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  };
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
@@ -138,6 +159,44 @@ export default function AgentHandbook() {
         subtitle="Every APEX agent's reference book. Mission · Code · Comp · Selling · Recruiting · Strikes · Growth path."
         actions={<Badge variant="outline" className="text-11">{SECTIONS.length} chapters</Badge>}
       />
+
+      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">HANDBOOK · LIVE</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL CHAPTERS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{totalChapters}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">cover-to-cover</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">READ TIME</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{readMinutes}<span className="text-[14px] text-white/50"> min</span></p>
+              <p className="text-[10px] text-white/40 tabular-nums">est. full read</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">COMPLETED</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{chaptersCompleted}<span className="text-[14px] text-white/50">/{totalChapters}</span></p>
+              <p className="text-[10px] text-white/40 tabular-nums">this session</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST OPENED</p>
+              <p className="text-[16px] leading-tight font-black text-white truncate">{lastOpenedTitle}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">{lastOpened ? "active chapter" : "pick one to start"}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -155,7 +214,7 @@ export default function AgentHandbook() {
           {filtered.map((s) => (
             <button
               key={s.key}
-              onClick={() => setActive(s.key)}
+              onClick={() => openChapter(s.key)}
               className={`w-full text-left p-3 rounded-lg border transition-base flex items-center gap-3 ${
                 active === s.key
                   ? "border-amber-500 bg-amber-500/10"
@@ -168,7 +227,7 @@ export default function AgentHandbook() {
             </button>
           ))}
           {filtered.length === 0 && (
-            <Card><CardContent className="p-6 text-center text-13 text-muted-foreground">No chapter matches "{search}".</CardContent></Card>
+            <Card><CardContent className="p-6 text-center text-13 text-muted-foreground">Nothing matches "{search}" yet — try a shorter phrase or browse the full handbook.</CardContent></Card>
           )}
         </div>
 

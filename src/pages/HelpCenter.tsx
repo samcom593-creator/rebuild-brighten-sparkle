@@ -78,6 +78,12 @@ const FAQ: FaqItem[] = [
 
 const CATEGORIES = Array.from(new Set(FAQ.map((f) => f.category)));
 
+// Read-time estimate: ~30s avg per Q&A read (skim a question + scan answer).
+const READ_TIME_MIN = Math.max(1, Math.round((FAQ.length * 30) / 60));
+
+// Curated last-updated date — bump when FAQ array changes.
+const LAST_UPDATED = "Jun 14";
+
 const CATEGORY_ICONS: Record<string, any> = {
   "Getting Started":      BookOpen,
   "Licensing":            GraduationCap,
@@ -139,6 +145,45 @@ export default function HelpCenter() {
         actions={<Badge variant="outline" className="text-11">{FAQ.length} FAQ</Badge>}
       />
 
+      {/* Canonical v6 §31 premium gradient hero */}
+      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">KNOWLEDGE BASE · LIVE</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL FAQ</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{FAQ.length}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">questions answered</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CATEGORIES</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{CATEGORIES.length}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">topic clusters</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">READ TIME</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{READ_TIME_MIN}<span className="text-[16px] text-white/60"> min</span></p>
+              <p className="text-[10px] text-white/40 tabular-nums">full library scan</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST UPDATED</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{LAST_UPDATED}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">curated weekly</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Search + category */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <div className="relative flex-1">
@@ -178,7 +223,7 @@ export default function HelpCenter() {
 
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <Card><CardContent className="p-8 text-center text-13 text-muted-foreground">No FAQ matches your filter.</CardContent></Card>
+          <Card><CardContent className="p-8 text-center text-13 text-muted-foreground">Nothing matches yet — try a broader search term, or tap "All" to see every answer in the library.</CardContent></Card>
         ) : (
           filtered.map((f, i) => {
             const key = `${f.category}::${f.q}`;

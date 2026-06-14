@@ -119,6 +119,11 @@ DO NOT skip these. Annuity audits are increasingly common and the carriers WILL 
   },
 ];
 
+const ANNUITY_PRODUCTS = ["Fixed (FA)", "Indexed (FIA)", "Variable (VA)", "Immediate (SPIA)"];
+
+const TOTAL_WORDS = MODULES.reduce((sum, m) => sum + m.body.split(/\s+/).length, 0);
+const READ_TIME_MIN = Math.max(1, Math.round(TOTAL_WORDS / 220));
+
 export default function AnnuityTraining() {
   usePageTitle("Annuity Training · APEX");
   const [active, setActive] = useState(MODULES[0].key);
@@ -149,6 +154,48 @@ export default function AnnuityTraining() {
           </div>
         }
       />
+
+      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">ANNUITY TRAINING · LIVE</p>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-white/40">
+              <Clock className="h-3 w-3" />
+              <span>~{READ_TIME_MIN} min read</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL MODULES</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{MODULES.length}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">curated curriculum</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">COMPLETED</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{completed.size}<span className="text-white/30">/{MODULES.length}</span></p>
+              <p className="text-[10px] text-white/40 tabular-nums">{allDone ? "training complete" : "keep going"}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">READ TIME</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{READ_TIME_MIN}<span className="text-white/40 text-[14px] ml-1">min</span></p>
+              <p className="text-[10px] text-white/40 tabular-nums">end to end</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PRODUCTS COVERED</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{ANNUITY_PRODUCTS.length}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">FA · FIA · VA · SPIA</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-4">
         {/* Module list */}

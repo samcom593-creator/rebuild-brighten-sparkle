@@ -107,6 +107,15 @@ export default function Quoter() {
   const fmt = (v: number) => `$${v.toFixed(2)}/mo`;
   const fmtAnnual = (v: number) => `$${(v * 12).toFixed(0)}/yr`;
 
+  const HEALTH_TIERS: Health[] = ["preferred", "standard", "graded", "gi"];
+  const lastQuoteTotal = useMemo(() => {
+    let total = 0;
+    for (const r of results) {
+      for (const x of r.rates) total += x.mo;
+    }
+    return total;
+  }, [results]);
+
   const copyQuote = async () => {
     const lines = [
       `APEX Quick Quote · ${age}yo ${gender}${tobacco ? " · TOBACCO" : ""} · $${parseInt(face).toLocaleString()} face`,
@@ -146,6 +155,49 @@ export default function Quoter() {
           </div>
         }
       />
+
+      {/* Hero · v6 §31 canonical pattern */}
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">QUOTER · LIVE</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PRODUCTS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{PRODUCTS.length}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">FE · WL · Term 20</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">HEALTH TIERS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{HEALTH_TIERS.length}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">Preferred → GI</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">AGE RANGE</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">18–89</p>
+              <p className="text-[10px] text-white/40 tabular-nums">5 bands per product</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST QUOTE TOTAL</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">
+                {lastQuoteTotal > 0 ? `$${lastQuoteTotal.toFixed(0)}` : "—"}
+              </p>
+              <p className="text-[10px] text-white/40 tabular-nums">
+                {results.length > 0 ? `${results.length} product${results.length === 1 ? "" : "s"} priced` : "Enter age to price"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Inputs */}
       <Card>
@@ -187,7 +239,7 @@ export default function Quoter() {
       {results.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-13 text-muted-foreground">
           <Filter className="h-6 w-6 mx-auto mb-2 opacity-50" />
-          No products available for age {age}. Try a different age.
+          Age {age} is outside our rate bands. Adjust between 18–89 to pull a quote — most APEX closes sit 50–75.
         </CardContent></Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-3">

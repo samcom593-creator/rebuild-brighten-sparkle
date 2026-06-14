@@ -112,6 +112,45 @@ export default function Scripts() {
         }
       />
 
+      {/* Premium gradient hero (v6 §31 — amber) */}
+      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">SCRIPTS LIBRARY · LIVE</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL SCRIPTS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{scripts.data?.length ?? 0}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">active in library</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CATEGORIES</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{CATEGORIES.length - 1}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">inbound · objections · recruiting · brand</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">INBOUND</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{countByCat("inbound")}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">switch center opens</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">OBJECTIONS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{countByCat("objections")}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">rebuttals ready</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Search + category bar */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <div className="relative flex-1">
@@ -150,7 +189,7 @@ export default function Scripts() {
       ) : filtered.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-13 text-muted-foreground">
           <Filter className="h-6 w-6 mx-auto mb-2 opacity-50" />
-          No scripts match your filter.
+          Nothing matches that filter yet. Clear the search or switch categories — every closer keeps a script within reach.
         </CardContent></Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">

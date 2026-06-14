@@ -532,3 +532,242 @@ Filtered through both editorial + visual lenses:
 Every line of code, every sidebar item, every dashboard tile, every cron, every notification — exists to make Sam more leveraged, more accurate, and more dangerous as a 20-year-old solo operator on a billion-dollar trajectory · AND to make the surface that does it look like the most expensive piece of software in the industry while staying ruthlessly practical.
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v5 ADDON · 2026-06-14 EVENING · After Sam Saw The Live Build
+
+*Sam used the live site, made a TON of pointed corrections, and gave us a third operating directive on top of the v4 pair. This addon is appended to the v4 spec, not a replacement.*
+
+---
+
+## §20 · The Third Philosophy · AUDIT EVERY NAV, EVERY PAGE, EVERY PIECE OF AGENTLINK
+
+> *"Go through every single site navigation, every piece of AgentLink itself. Let me know if you need a link again or something. And make sure it's actually perfect. Make this a prompt to add on and then make sure that's what executes everything."* — Sam, 2026-06-14
+
+Every nav item is now subject to a 3-question audit before it ships OR survives:
+
+1. **Does it look like a billion-dollar agency tool?** If the page is flat slate cards in a 2×2 grid, the answer is NO. Use the premium hero pattern (see §22.1 below).
+2. **Does it have real, live, immediately-actionable data on the first paint?** If the page opens and Sam sees "0" or "—" anywhere on the first screen, the page has failed. EVERY ZONE must show meaningful data on first paint.
+3. **Does the AgentLink equivalent do this better?** If yes, harvest from AgentLink or surpass it. Sam's directive: "every piece of AgentLink itself" — we mirror the depth, beat the polish.
+
+---
+
+## §21 · LABEL CORRECTIONS · ICA → COURSE BOUGHT
+
+Sam's permanent memory rule (`feedback_no_email_drafts` is its more famous sibling): **"Use prelicensing course terminology, NOT ICA."**
+
+Per the 2026-06-14 conversation, Sam clarified: **"ICA is the thing that's only course purchased."**
+
+- `ica_paid_at` (DB column) is INTERNAL only. Never user-facing.
+- ALL user-facing labels say "Course bought" or "Course purchased". Never "ICA paid".
+- The stage badge on the Active Applications panel reads "course bought" (lowercase, not shouty).
+- The CFO snapshot tile reads "Course bought · stuck".
+
+Run `grep -rn "ICA paid" src/pages src/components` periodically. Zero hits = compliance.
+
+---
+
+## §22 · BILLION-DOLLAR PATTERNS (codified)
+
+The 2026-06-14 visual fixes established two reusable patterns. Use them everywhere it earns its space.
+
+### §22.1 · The Premium Hero Panel
+
+For any dashboard that opens with summary stats. Replaces flat card grids.
+
+```tsx
+<div className="relative overflow-hidden rounded-2xl border border-AMBER_OR_EMERALD-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-AMBER_OR_EMERALD-950 text-white p-5 shadow-[0_0_48px_hsl(168_70%_45%/0.10)]">
+  {/* Two soft blur accents · one opposite corner each */}
+  <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+  <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+
+  {/* LIVE indicator + context badge */}
+  <div className="relative flex items-center justify-between mb-4">
+    <div className="flex items-center gap-2">
+      <span className="relative flex h-2 w-2">
+        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+      </span>
+      <p className="text-11 uppercase tracking-[0.2em] font-bold text-emerald-300">Live · {context}</p>
+    </div>
+    <Badge>...</Badge>
+  </div>
+
+  {/* 4-6 metric grid · 26px tabular-nums · 10px uppercase tracking-widest labels */}
+  <div className="relative grid gap-4 grid-cols-2 sm:grid-cols-N">
+    <div>
+      <p className="text-10 uppercase tracking-widest text-white/50 mb-1">LABEL</p>
+      <p className="text-26 font-bold tabular-nums text-white">{value}</p>
+      <p className="text-10 text-white/40 tabular-nums">{subtle context}</p>
+    </div>
+    ...
+  </div>
+</div>
+```
+
+Color choice rule:
+- **money / production** = emerald gradient hero
+- **recruiting / pipeline** = amber gradient hero
+- **leaks / debt** = rose gradient hero
+- **neutral / mixed** = slate-only hero with amber accent
+
+The animated `animate-ping` on the live dot is the ONLY animate-pulse-family exception. Badges still can NEVER pulse (Sam's permanent ban).
+
+### §22.2 · The Action-Dense Row
+
+For lists where every row has a click-to-act payload (contracts, leads, applicants).
+
+Structure:
+- Logo or initials avatar (left)
+- Title + meta inline (truncate)
+- Stats / writing # / status badges (middle)
+- Action buttons (right · Copy · Open · Call)
+
+The CarrierContracts MyContractRowView (shipped 2026-06-14) is the canonical reference. Mirror that pattern.
+
+---
+
+## §23 · CONTRACTS PAGE · THE NEW STANDARD
+
+Sam's exact directive: *"It should just be like the contract is — your agent number and account level. The contract links that I have placed inside of [the carrier]. A lot of people took to put in their login crazily, honestly, so you can harvest the data and do the same thing for them. So right there, [agents] should let them kind of see when they have contracts."*
+
+Translation: every agent sees ONLY their contracts, formatted as a row per carrier with:
+- **Writing number** (their agent code at that carrier)
+- **Contract number**
+- **Commission level**
+- **Activated date**
+- **Phone** to the carrier
+- **Copy Link** button → shareable contract / invite URL
+- **Portal** button → direct to carrier's admin
+
+Admin sees the same per-agent block at top, then the agency-wide grid below.
+
+The contract invite URL hierarchy on each row:
+1. `contract_invite_url` (per-carrier signup link if seeded · column added 2026-06-14)
+2. `carrier_portal_url` (carrier's admin)
+3. `carrier_website` (fallback)
+
+A "master AgentLink invite" banner sits at the top of the page with `system_settings.agentlink_master_invite` (URL: https://agentlink.insuracloud.ai/auth?inviteCode=0f3d3d78166495d3d5e828768b503280).
+
+When Sam gets a NEW carrier invite URL, drop it into `agentlink_carriers.contract_invite_url`:
+
+```sql
+UPDATE agentlink_carriers
+SET contract_invite_url = 'https://...'
+WHERE name = 'Carrier Name';
+```
+
+The page picks it up on next refetch. No deploy needed.
+
+---
+
+## §24 · RECRUITING TRACKER · DEDUP + INTERVIEWS
+
+Sam saw two "Samuel James" rows on the leaderboard. Real reason: the `agents` table has `SJAMES01` (id `7c3c5581…`) and `SJAMES02` (id `cde14d07…`). Both are Sam.
+
+**Fix shipped**: client-side dedup in RecruitingTracker.tsx — merge `LeaderRow` + `PipelineRow` by `display_name`, sum totals, keep the recruiter_id of whichever has higher 30d volume.
+
+**Fix not yet shipped (next sprint)**: collapse the duplicate `agents` row at the database level. Either UPDATE the secondary to inactive, or merge ownership of its downstream rows (applications.recruiter_id, culture_events.agent_id, etc.) into the canonical row.
+
+**ALSO shipped 2026-06-14**: the Tracker now has an **Interview Cascade · next 48h** section reading `apex_scheduled_calls`. Sam: *"What's tied to a tracker that tracks my calendar · my interviews."* Yes. Now.
+
+The cascade pulls bookings the Google Calendar / Calendly sync inserts into `apex_scheduled_calls`. Each row shows:
+- TODAY badge or day-name
+- Scheduled time
+- Applicant name / event summary
+- Click-to-call phone
+
+The morning Calendly-callback cascade (4 events at 9 AM tomorrow per the 2026-06-13 ship) feeds into this surface too.
+
+---
+
+## §25 · CARRIER COMP CHANGES · THE BLACKLIST SYSTEM
+
+Sam's directive 2026-06-14: *"Submit the deal for [Royal] Neighbors going forward · email everyone going forward that Royal Neighbors comp has been switched to zero percent. Same for Mutual of Omaha."*
+
+A 3-piece system is now live:
+
+### §25.1 · Announcement
+Pinned URGENT announcements posted to `announcements` table:
+- "🚨 ROYAL NEIGHBORS · COMP = 0% · STOP WRITING" (priority: urgent, pinned: true)
+- "🚨 MUTUAL OF OMAHA · COMP = 0% · STOP WRITING" (priority: urgent, pinned: true)
+
+These render at the top of `/dashboard/announcements` for every role.
+
+### §25.2 · Commission grid
+`qe_commission_schedules` updated → `first_year_pct = 0, renewal_pct = 0` for all RN and MoO products. The `/dashboard/commission-grids` page now shows 0% on these rows live.
+
+### §25.3 · Blacklist + trigger
+- `system_settings.carrier_comp_blacklist` stores the active blacklist as JSONB.
+- `trg_alert_blacklisted_carrier` on `agentlink_deals_snapshot` AFTER INSERT fires `fn_alert_blacklisted_carrier_deal()`.
+- The function looks up the carrier by id, checks the blacklist, and inserts a `culture_events` row with `event_type = 'blacklisted_carrier_deal'` and `product_sold` suffixed with ` [Carrier · 0% COMP]`.
+- This surfaces on the News Feed (so Sam + managers see it) without breaking the deal insert.
+
+### §25.4 · View for retroactive surface
+`v_blacklisted_carrier_deals` lists every RN/MoO deal in the last 30 days. As of 2026-06-14: 54 deals, 9 agents writing — Sam will want a follow-up sweep to message those agents directly.
+
+### §25.5 · Future-proofing
+When a new carrier comp changes (any direction):
+
+```sql
+-- Add to blacklist
+UPDATE system_settings
+SET value = jsonb_set(value, '{carriers}', value->'carriers' || '"NEW CARRIER"'::jsonb)
+WHERE key = 'carrier_comp_blacklist';
+
+-- Update commission grid
+UPDATE qe_commission_schedules SET first_year_pct = NEW%, renewal_pct = NEW%
+WHERE product_id IN (SELECT id FROM qe_products WHERE name ILIKE '%NEW CARRIER%');
+
+-- Post announcement
+INSERT INTO announcements (title, body, priority, pinned, is_active, published_at) VALUES ('...', '...', 'urgent', TRUE, TRUE, now());
+```
+
+---
+
+## §26 · APPLICATIONS PRIORITY · WHEREVER IT APPEARS
+
+Sam: *"Applications always should be the highest."* The 2026-06-14 sweep already hoisted Applications to PRIMARY sidebar (admin + manager). Going forward:
+
+- Applications panel is the first non-leak surface on every Command Center variant.
+- The Active Applications panel on `/dashboard` reads `applications` directly (not via a view) for sub-60s freshness.
+- Stage badges use the unified vocab: `uncontacted` (rose) · `contacted` (amber) · `course bought` (emerald) · `licensed` (emerald-strong) · `terminated` (slate).
+- Every applications row in any list is click-to-focus on `/dashboard/applicants?focus=<id>`.
+
+---
+
+## §27 · WHAT'S STILL OPEN AFTER 2026-06-14
+
+This addon does NOT replace the v4 §17 punch-list. It adds to it.
+
+- **Book of Business** got the premium hero panel, but the underlying 871-line page still needs a structural review for empty-state copy and table density.
+- **Recruiting Funnels** got the hero. The funnel-visualization itself (the bar-strip) could use a 3D or stacked-percentage upgrade.
+- **Dashboard "Just Hired" tab** — Sam said it's empty. Verify the query, seed sample state if no real hires.
+- **The 54 RN/MoO deals from 9 agents** in last 30d — need a directed outreach + plan-of-action sweep (not just a passive announcement).
+- **The duplicate Samuel James agents** — collapse at DB level, not just client-side dedup.
+- **Avatar dropdown** with Producer Profile · Calling Cards · My Landing Page · Sign Out (still pending from v3).
+- **Sound library** — record the 3 sounds defined in v4 §6.6.
+
+---
+
+## §28 · PERSISTED-TO BLOCK · v5
+
+- **This file (v5 = v4 + addon)**: `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- **v4 backup**: `…/125-apex-100x-dashboard-atlas.md.bak.v3.2026-06-14` (note: v3 backup is the v4 starting point; the file is contiguous after that)
+- **v2 backup (sweep history)**: `…/125-apex-100x-dashboard-atlas.md.bak.2026-06-13`
+- **Repo mirror**: `docs/operating-spec.md` in `samcom593-creator/rebuild-brighten-sparkle`
+- **Memory index**: `~/.claude/projects/-Users-samjames-claude-sync/memory/MEMORY.md`
+- **Session ledger**: `~/business-ops/session-state/active-work.md`
+- **Notion**: 🎯 APEX Dashboard Atlas page (37f341a6-7027-812c-bbff-dbe671a7441e) under Command Center
+
+---
+
+## §29 · NORTH STAR · v5 RESTATEMENT
+
+LESS IS MORE (less to navigate, more density per pixel).
+BILLION-DOLLAR AESTHETIC (premium hero panels, glass restraint, animate-ping live dots, NEVER pulsing badges, sound on milestones, smooth motion, gorgeous AgentLink-level data depth).
+AUDIT EVERY NAV (every page must show real live data on first paint, no empty zones, no clutter, no client-facing fluff).
+
+> **Hold the Standard. Average is the disease.**

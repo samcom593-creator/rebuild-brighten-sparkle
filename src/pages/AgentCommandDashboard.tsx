@@ -1315,7 +1315,7 @@ function AgencyCommandView() {
               <p className="text-15 font-bold tabular-nums text-rose-600 dark:text-rose-400">{fmtUsd(Number(leak.ghost_ap_at_risk ?? 0), true)}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase text-muted-foreground">ICA paid stuck</p>
+              <p className="text-[10px] uppercase text-muted-foreground">Course bought · stuck</p>
               <p className="text-15 font-bold tabular-nums text-amber-600 dark:text-amber-400">{leak.ica_paid_stuck ?? 0}</p>
             </div>
             <div>
@@ -1363,7 +1363,7 @@ function AgencyCommandView() {
           <div className="grid gap-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {apps.slice(0, 12).map((a) => {
               const name = [a.first_name, a.last_name].filter(Boolean).join(" ") || "—";
-              const stage = a.ica_paid_at ? "PAID · stuck?" : a.contacted_at ? (a.license_progress ?? a.status ?? "contacted") : "uncontacted";
+              const stage = a.ica_paid_at ? "course bought" : a.contacted_at ? (a.license_progress ?? a.status ?? "contacted") : "uncontacted";
               const tone = a.ica_paid_at ? "text-emerald-600 dark:text-emerald-400"
                 : !a.contacted_at ? "text-rose-600 dark:text-rose-400"
                 : "text-amber-600 dark:text-amber-400";
@@ -1427,12 +1427,32 @@ function AgencyCommandView() {
       {/* ── Trend chart (period-aware) + Top producers leaderboard ── */}
       <div className="grid gap-3 lg:grid-cols-3">
         <GlassCard className="p-4 lg:col-span-2">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
             <div>
-              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{periodBounds.label} agency production</p>
-              <h3 className="text-lg font-bold">Daily AP across all agents</h3>
+              <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{periodBounds.label} · Annual Premium written</p>
+              <h3 className="text-lg font-bold">Daily AP run-rate</h3>
             </div>
-            <Badge variant="outline" className="text-xs">{fmtUsd(periodSummary.totalAp, true)} · {periodBounds.label}</Badge>
+            {/* Micro-stat strip alongside the chart so the band isn't empty when
+                production is sparse (Sam: "this month's agency production — there's
+                a bunch of space that's there"). */}
+            <div className="flex items-center gap-3 text-right">
+              <div>
+                <p className="text-[10px] uppercase text-muted-foreground">Total AP</p>
+                <p className="text-15 font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{fmtUsd(periodSummary.totalAp, true)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase text-muted-foreground">Deals</p>
+                <p className="text-15 font-bold tabular-nums">{fmtNum(periodSummary.dealCount)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase text-muted-foreground">Avg / deal</p>
+                <p className="text-15 font-bold tabular-nums">{fmtUsd(periodSummary.dealCount ? periodSummary.totalAp / periodSummary.dealCount : 0, true)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase text-muted-foreground">Daily pace</p>
+                <p className="text-15 font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtUsd(periodSummary.totalAp / Math.max(1, (Math.ceil((new Date(periodBounds.endIso).getTime() - new Date(periodBounds.startIso).getTime()) / 86400000))), true)}</p>
+              </div>
+            </div>
           </div>
           {trend.isLoading ? (
             <Skeleton className="h-[220px] w-full" />

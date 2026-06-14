@@ -195,6 +195,7 @@ export function GlobalSidebar({
         { icon: Trophy, label: "Recruiting Tracker", href: "/dashboard/recruiting-tracker" },
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
+        { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
         { icon: Percent, label: "Commission Grids", href: "/dashboard/commission-grids" },
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements" },
         { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
@@ -220,6 +221,7 @@ export function GlobalSidebar({
       );
       more.push(
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
+        { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
         { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
         { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
         { icon: Percent, label: "Commission Grids", href: "/dashboard/commission-grids" },

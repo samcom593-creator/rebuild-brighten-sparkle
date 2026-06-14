@@ -218,7 +218,7 @@ export default function Finances() {
       ) : snap ? (
         <div className="grid gap-2 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
           <MetricTile icon={AlertTriangle} label="Ghost AP at risk" value={fmtUsd(snap.ghost_ap_at_risk)} tone="rose" />
-          <MetricTile icon={Clock} label="ICA paid + stuck" value={snap.ica_paid_stuck} tone="amber" sub="apps awaiting status" />
+          <MetricTile icon={Clock} label="Course bought · stuck" value={snap.ica_paid_stuck} tone="amber" sub="paid for prelicensing course · not advancing" />
           <MetricTile icon={TrendingDown} label="Walked commission" value={fmtUsd(snap.lapsed_walked_commission)} tone="rose" sub="lapsed/withdrawn" />
           <MetricTile icon={ShieldAlert} label="Open dup charges" value={snap.dup_charges_open} tone="amber" />
           <MetricTile icon={Users} label="Idle active agents" value={snap.idle_active_agents} tone="amber" sub="no recent activity" />
@@ -284,7 +284,7 @@ export default function Finances() {
           </Card>
           <Card>
             <CardContent className="p-4">
-              <h4 className="text-13 font-bold mb-2 flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-rose-500" /> ICA Paid + Stuck ({stuck.data?.length ?? 0})</h4>
+              <h4 className="text-13 font-bold mb-2 flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-rose-500" /> Course Bought · Stuck ({stuck.data?.length ?? 0})</h4>
               <div className="space-y-1.5 max-h-72 overflow-auto">
                 {(stuck.data ?? []).slice(0, 50).map((s, i) => (
                   <div key={i} className="text-12 flex justify-between border-b border-border/40 py-1">

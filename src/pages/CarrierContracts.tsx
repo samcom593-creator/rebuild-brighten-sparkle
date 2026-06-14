@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, CheckCircle2, Clock, XCircle, Send, Award } from "lucide-react";
+import { ExternalLink, CheckCircle2, Clock, XCircle, Send, Award, Copy, Briefcase, Phone, Check } from "lucide-react";
 import { format } from "date-fns";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -10,7 +10,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { toast } from "sonner";
 
 interface ContractRow {
   carrier_id: number;
@@ -58,9 +60,63 @@ const STATUS_PRIORITY = ["active", "pending_upline_assignment", "submitted", "re
  * request that pushes to InsurancePay / Surancebay API on submit, sets
  * status to 'submitted', notifies Sam via Telegram.
  */
+interface MyContractRow {
+  id: string;
+  carrier_id: number;
+  carrier_name: string | null;
+  carrier_logo: string | null;
+  carrier_website: string | null;
+  carrier_phone: string | null;
+  contract_invite_url: string | null;
+  writing_number: string | null;
+  contract_number: string | null;
+  commission_level_id: string | null;
+  status: string | null;
+  activated_date: string | null;
+  appointment_date: string | null;
+  carrier_portal_url: string | null;
+}
+
 export default function CarrierContracts() {
   usePageTitle("Carrier Contracts · APEX");
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // 2026-06-14 Sam-directive: per-agent contracts surface BEFORE admin grid.
+  // Each row shows carrier + writing # + level + portal link + INVITE LINK.
+  // "What it should do is just copy the link · agent number and account level"
+  const myContracts = useQuery({
+    queryKey: ["my-contracts", (user as any)?.id],
+    enabled: !!(user as any)?.id,
+    queryFn: async (): Promise<MyContractRow[]> => {
+      const { data } = await supabase
+        .from("v_my_carrier_contracts" as any)
+        .select("*")
+        .eq("user_id", (user as any).id);
+      return ((data ?? []) as unknown) as MyContractRow[];
+    },
+  });
+
+  // Master AgentLink invite link from system_settings
+  const masterInvite = useQuery({
+    queryKey: ["agentlink-master-invite"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("system_settings" as any)
+        .select("value")
+        .eq("key", "agentlink_master_invite")
+        .maybeSingle();
+      return (data as any)?.value as { url: string; label: string } | null;
+    },
+    staleTime: 60 * 60_000,
+  });
+
+  const copyLink = async (id: string, url: string) => {
+    await navigator.clipboard.writeText(url);
+    setCopiedId(id);
+    toast.success("Link copied");
+    setTimeout(() => setCopiedId(null), 1500);
+  };
 
   const contracts = useQuery({
     queryKey: ["carrier-contracts-summary"],
@@ -90,10 +146,23 @@ export default function CarrierContracts() {
     return byStatus;
   }, [contracts.data]);
 
+  // For non-admins: render ONLY the per-agent section
   if (!isAdmin) {
     return (
-      <div className="page-enter px-4 sm:px-6 pb-24">
-        <EmptyState icon={<Award className="h-6 w-6" />} title="Admin only" description="Contract management is reserved for the agency owner." />
+      <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+        <PageHeader
+          eyebrow="Your Contracts"
+          eyebrowIcon={<Award className="h-3 w-3" />}
+          title="My Carrier Contracts"
+          subtitle="Your active writing numbers, levels, and direct portal links."
+        />
+        <MyContractsSection
+          rows={myContracts.data ?? []}
+          isLoading={myContracts.isLoading}
+          masterInvite={masterInvite.data ?? null}
+          copyLink={copyLink}
+          copiedId={copiedId}
+        />
       </div>
     );
   }
@@ -108,8 +177,21 @@ export default function CarrierContracts() {
         eyebrow="Carriers · Contracts"
         eyebrowIcon={<Award className="h-3 w-3" />}
         title="Carrier contracts"
-        subtitle="Mirrors AgentLink contracting · tile counts below"
+        subtitle="Your contracts + agency-wide grid · tap Copy to share contract links"
       />
+
+      {/* 2026-06-14 NEW · Sam's contracts at the top (writing # · level · portal · invite copy) */}
+      <MyContractsSection
+        rows={myContracts.data ?? []}
+        isLoading={myContracts.isLoading}
+        masterInvite={masterInvite.data ?? null}
+        copyLink={copyLink}
+        copiedId={copiedId}
+      />
+
+      <div className="border-t border-border/40 pt-3">
+        <p className="text-11 font-semibold uppercase tracking-wider text-muted-foreground">Agency-wide grid · admin only</p>
+      </div>
 
       {/* v26 audit fix: isError state was missing (silent failure). Added below. */}
       {contracts.isLoading ? (
@@ -245,6 +327,162 @@ function ContractRowView({ row }: { row: ContractRow }) {
           </a>
         </Button>
       )}
+    </div>
+  );
+}
+
+/**
+ * MyContractsSection · 2026-06-14
+ * Sam: "It should just be like the contract is — your agent number and
+ * account level. The contract links that I have placed inside of [the carrier],
+ * a lot of people took to put in their login crazily so you can harvest the
+ * data and do the same thing for them. So right there, [agents] should let
+ * them kind of see when they have contracts."
+ *
+ * Each carrier row shows: logo · carrier name · status badge · writing #
+ * · level · activated date · Portal button · Contract LINK copy button.
+ */
+function MyContractsSection({
+  rows, isLoading, masterInvite, copyLink, copiedId,
+}: {
+  rows: MyContractRow[];
+  isLoading: boolean;
+  masterInvite: { url: string; label: string } | null;
+  copyLink: (id: string, url: string) => Promise<void>;
+  copiedId: string | null;
+}) {
+  const active = rows.filter((r) => r.status === "active");
+  const pending = rows.filter((r) => r.status && r.status !== "active");
+
+  return (
+    <>
+      {/* Master AgentLink invite — top action */}
+      {masterInvite && (
+        <Card className="border-amber-500/30 bg-amber-500/[0.04]">
+          <CardContent className="p-3 flex items-center gap-3">
+            <Award className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-12 font-bold">{masterInvite.label}</p>
+              <p className="text-11 text-muted-foreground truncate font-mono">{masterInvite.url}</p>
+            </div>
+            <Button
+              size="sm"
+              variant={copiedId === "master" ? "default" : "outline"}
+              className={copiedId === "master" ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+              onClick={() => copyLink("master", masterInvite.url)}
+            >
+              {copiedId === "master" ? <><Check className="h-3.5 w-3.5 mr-1" /> Copied</> : <><Copy className="h-3.5 w-3.5 mr-1" /> Copy</>}
+            </Button>
+            <Button asChild size="sm">
+              <a href={masterInvite.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active contracts */}
+      {isLoading ? (
+        <div className="space-y-2">{Array.from({length:3}).map((_,i) => <Skeleton key={i} className="h-16" />)}</div>
+      ) : active.length === 0 && pending.length === 0 ? (
+        <EmptyState
+          icon={<Briefcase className="h-6 w-6" />}
+          title="No carrier contracts on file yet"
+          description="Once you contract through APEX, your writing numbers + levels show up here. Ask your manager to send you carrier invite links."
+        />
+      ) : (
+        <>
+          {active.length > 0 && (
+            <section className="space-y-2">
+              <p className="text-11 font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                Active · {active.length}
+              </p>
+              <div className="space-y-2">
+                {active.map((row) => <MyContractRowView key={row.id} row={row} copyLink={copyLink} copiedId={copiedId} />)}
+              </div>
+            </section>
+          )}
+          {pending.length > 0 && (
+            <section className="space-y-2">
+              <p className="text-11 font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300 pt-2">
+                Pending · {pending.length}
+              </p>
+              <div className="space-y-2">
+                {pending.map((row) => <MyContractRowView key={row.id} row={row} copyLink={copyLink} copiedId={copiedId} />)}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
+function MyContractRowView({
+  row, copyLink, copiedId,
+}: {
+  row: MyContractRow;
+  copyLink: (id: string, url: string) => Promise<void>;
+  copiedId: string | null;
+}) {
+  const meta = row.status ? STATUS_META[row.status] : null;
+  const inviteUrl = row.contract_invite_url ?? row.carrier_portal_url ?? row.carrier_website;
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-base">
+      {row.carrier_logo ? (
+        <img src={row.carrier_logo} alt="" className="h-10 w-10 rounded object-contain bg-white shrink-0" />
+      ) : (
+        <div className="h-10 w-10 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-13 font-bold text-slate-500 shrink-0">
+          {(row.carrier_name ?? "?").slice(0, 2).toUpperCase()}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-14 font-bold truncate">{row.carrier_name ?? "—"}</p>
+          {meta && (
+            <Badge variant="outline" className={`text-11 shrink-0 ${meta.tint}`}>{meta.label}</Badge>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-11 text-muted-foreground">
+          {row.writing_number && (
+            <span><span className="opacity-70">Writing #:</span> <span className="font-mono font-semibold text-foreground tabular-nums">{row.writing_number}</span></span>
+          )}
+          {row.contract_number && (
+            <span><span className="opacity-70">Contract #:</span> <span className="font-mono font-semibold text-foreground tabular-nums">{row.contract_number}</span></span>
+          )}
+          {row.commission_level_id && (
+            <span><span className="opacity-70">Level:</span> <span className="font-semibold text-foreground">{row.commission_level_id}</span></span>
+          )}
+          {row.activated_date && (
+            <span><span className="opacity-70">Activated:</span> <span className="font-semibold text-foreground">{format(new Date(row.activated_date), "MMM d, yyyy")}</span></span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {row.carrier_phone && (
+          <Button asChild size="sm" variant="ghost" className="h-8 px-2">
+            <a href={`tel:${row.carrier_phone}`}><Phone className="h-3.5 w-3.5" /></a>
+          </Button>
+        )}
+        {inviteUrl && (
+          <Button
+            size="sm"
+            variant={copiedId === row.id ? "default" : "outline"}
+            className={copiedId === row.id ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+            onClick={() => copyLink(row.id, inviteUrl)}
+          >
+            {copiedId === row.id ? <><Check className="h-3.5 w-3.5 mr-1" /> Copied</> : <><Copy className="h-3.5 w-3.5 mr-1" /> Link</>}
+          </Button>
+        )}
+        {row.carrier_portal_url && (
+          <Button asChild size="sm">
+            <a href={row.carrier_portal_url} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-3.5 w-3.5 mr-1" /> Portal
+            </a>
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

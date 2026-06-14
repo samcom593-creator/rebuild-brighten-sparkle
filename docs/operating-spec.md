@@ -2280,3 +2280,109 @@ Head-to-toe checklist now **25 items**.
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v7.4 · ALWAYS-VISIBLE STATUS + REFERRAL LINKS + RECORDER FIX + COMMISSION CULL · 2026-06-15
+
+*Sam (batched directives this round):*
+1. *"For some reason I can't even see if it's in the application."*
+2. *"Bring referral links to all work so managers can copy + paste it automatically, mark them down as the referral."*
+3. *"I'm clicking the recorder. It's not recording the audio. Fix that."*
+4. *"Remove all commission grids. Remove that shit completely from everyone's view, including me."*
+
+Single commit `d43208b6` · 4 directives shipped together.
+
+---
+
+## §94 · The Always-Visible Load Banner (Applications)
+
+The page now renders an emerald banner DIRECTLY UNDER PageHeader (before any filter or table) that says:
+
+> **● {N} active applications loaded from the database · {M} terminated · showing {K}**
+
+This fires from `activeApplications.length` + `terminatedApplications.length` + `filteredApplications.length` — three counts the page already had. The banner is BEFORE the table/filter render path, so even if the table or filters throw, Sam can still SEE the data is loaded.
+
+Animated pulse dot · `v7.4` version tag · active filter chip on the right.
+
+---
+
+## §95 · The Manager Referral Link
+
+A new `<ReferralLinkBanner agentId={agentId} />` component renders ONLY for `isAdmin || isManager` on the Applications page. It:
+
+1. Reads the manager's `agent_code` from the `agents` table via useQuery (30min stale).
+2. Constructs `<origin>/apply?ref=<encodeURIComponent(agent_code)>`.
+3. Renders 3 actions: Copy · Share (uses navigator.share when supported) · Open (opens the page in a new tab).
+4. Apply.tsx already accepts `?ref=<slug>` → resolves via `resolve-ref-slug` edge fn → auto-sets `recruiter_id` on insert. The wiring was always there; the link itself was buried.
+
+Banner sits as the second band on the page, right under the Load Banner. Managers can grab their link in one tap.
+
+---
+
+## §96 · The Inbound Recorder · 3 Bugs Killed
+
+### §96.1 · SpeechRecognition early-return blocked the recorder
+
+The old code had `if (!SpeechRecognition) { toast.error(...); return; }` at the start of `startListening`. On Firefox / older Safari, this killed the entire flow — recording AND dictation both failed.
+
+**Fix**: track `hasDictation` boolean, skip the dictation block if unavailable, but the audio recording path runs regardless. User gets a *"Dictation not supported — recording audio only"* toast.
+
+### §96.2 · 1000ms timeslice lost short recordings
+
+`recorder.start(1000)` means `ondataavailable` fires every 1 second. Any recording under 1 second emitted ZERO chunks → empty audio file.
+
+**Fix**: `recorder.start(250)`. Now even 300ms utterances produce a chunk.
+
+Added `toast.success("🔴 Recording started · mic live")` immediately after `recorder.start()` so Sam can SEE that it actually fired.
+
+### §96.3 · `harvestAudio` was synchronous after async `stop()`
+
+`MediaRecorder.stop()` flushes the final chunk **asynchronously** via `ondataavailable`. The old `saveLead` called `mediaRecorder.stop()` then synchronously called `harvestAudio()` → missed the final chunk → `audioChunksRef.current.length === 0` → `harvestAudio()` returned null → no audio persisted.
+
+**Fix**: `harvestAudio` is now async. It awaits the recorder's `stop` event before reading chunks. It also calls `requestData()` to force a final flush. Hard 1.5s timeout prevents hangs on broken recorders.
+
+### §96.4 · The permanent rule (added to checklist items 26-27)
+
+26. Never early-return on a missing nice-to-have (dictation) when a critical feature (recording) doesn't depend on it.
+27. When working with `MediaRecorder`, ALWAYS await the `stop` event before reading `chunks`. Synchronous reads miss the final chunk.
+
+---
+
+## §97 · Commission Grids · KILLED
+
+Per Sam's directive: completely removed from all 3 sidebar role contexts (admin, manager, agent) · removed from `App.tsx` (lazy import + Route both gone) · `src/pages/CommissionGrids.tsx` replaced with a tombstone `<Navigate to="/dashboard" replace />` so any bookmarked URL gracefully redirects home.
+
+Verified: `/dashboard/commission-grids` returns HTTP 200 (the Navigate component fires the redirect to /dashboard).
+
+---
+
+## §98 · The 27-item head-to-toe checklist (updated)
+
+| # | Rule | Added in |
+|---|---|---|
+| 1-13 | Functional / Visual / Animation rules | v6.8 §71 |
+| 14-16 | Language rules (Unknown · ICA · applied_at) | v6.8 §71 |
+| 17-18 | Voice rules (coaching copy) | v6.8 §71 |
+| 19 | No early-return bypasses role-preview hook | v7.0 §83 |
+| 20 | Two-column state → filter the disjunction | v7.0 §83 |
+| 21 | Legacy + snapshot tables both load + merge | v7.0 §83 |
+| 22 | Every list empty-state shows fetched count + cause | v7.2 §88 |
+| 23 | Clear-filters button resets every filter + URL param | v7.2 §88 |
+| 24 | Pages with lifecycle default to active-funnel view | v7.3 §92 |
+| 25 | Every page uses canonical v6 §31 hero | v7.3 §92 |
+| 26 | Never early-return on a missing nice-to-have | **v7.4 §96** |
+| 27 | MediaRecorder: always await `stop` event before reading chunks | **v7.4 §96** |
+
+---
+
+## §99 · Persisted-to v7.4
+
+- This file (v7.4): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Commit: `d43208b6`
+
+---
+
+> **Hold the Standard. Average is the disease.**

@@ -771,3 +771,206 @@ BILLION-DOLLAR AESTHETIC (premium hero panels, glass restraint, animate-ping liv
 AUDIT EVERY NAV (every page must show real live data on first paint, no empty zones, no clutter, no client-facing fluff).
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v6 ULTIMATE · 2026-06-14 NIGHT · THE GAME-BREAKING BAR
+
+*After Sam shipped, looked, said "zero out of ten compared to what I want · should look game breaking · agents should want to transfer TO this · sting simple · less is more." This is the fourth philosophy layer on top of the three v5 had — and the bar that every future commit is measured against. There is no v7 promised; v6 is the line in the sand.*
+
+---
+
+## §30 · The Fourth Philosophy · RETENTION-GRADE GAME-BREAKING
+
+> *"Sting simple. Less is more. Make this look like something that agents wanna transfer TO. They look at it over and over and end up not transferring because of that."* — Sam, 2026-06-14 night
+
+The dashboard is a **retention weapon**. An agent at another agency looks at our UI and walks. A current agent sees a competitor's tool and shrugs. That's the bar.
+
+In practice, every screen must pass three retention tests:
+
+### §30.1 · The 3-second test
+A new agent opens the page. Within 3 seconds, they can answer:
+- What is the agency doing right now (live · total · trend)?
+- What are the open opportunities (applications · stuck · ready)?
+- What is the LEAK / what needs my attention?
+
+If they can't, the page failed.
+
+### §30.2 · The "I want to show my buddy" test
+The agent screenshots the page and shows it to a friend at another agency.
+The friend says: "wait, what tool is that?"
+If the friend says "looks like AgentLink," the page failed.
+
+### §30.3 · The "stop watching me" test
+The page is so visually addictive that the agent keeps it open in a tab. Pulse indicators, live counters, real-time data — the page itself becomes a productivity loop. The agent doesn't close the tab because something good might happen.
+
+---
+
+## §31 · The Game-Breaking Hero · canonical specification
+
+The new dashboard hero (`/dashboard` § A, shipped 2026-06-14 night) is the canonical reference for ALL future hero panels.
+
+### §31.1 · Container
+- `rounded-3xl` (NOT rounded-2xl — more luxurious, less corporate)
+- `border-amber-500/25` (subtle, brand-anchored)
+- `bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950` (deep, no flat solids)
+- `text-white` (the hero is always dark-mode-feel, even in light mode)
+- `shadow-[0_0_64px_-12px_hsl(168_70%_45%/0.35)]` (the emerald glow rim — the signature)
+
+### §31.2 · Glow accents (the secret sauce)
+Two soft-blur orbs at opposite corners:
+```tsx
+<div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
+<div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+```
+Plus one radial-gradient texture:
+```tsx
+<div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,hsl(168_70%_45%/0.06),transparent_60%)] pointer-events-none" />
+```
+That triple-orb texture is what makes it FEEL premium instead of just looking gradient.
+
+### §31.3 · LIVE indicator
+Animated emerald ping (the ONLY allowed animate-ping-family usage):
+```tsx
+<span className="relative flex h-2.5 w-2.5">
+  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+</span>
+<p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">
+  CONTEXT · LIVE
+</p>
+```
+The `tracking-[0.32em]` is what makes the eyebrow feel like a high-end product label, not a dashboard caption.
+
+### §31.4 · The big numbers
+```tsx
+<p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
+  {value}
+</p>
+```
+- `font-black` not `font-bold` — needs to PUNCH
+- `text-[40px]` not Tailwind's text-4xl (39.2px) — exact, premium
+- `leading-none` — no vertical padding stealing density
+- `tabular-nums` — non-negotiable
+
+Sub-label below each big number in `text-[10px] text-white/50 tabular-nums`.
+
+### §31.5 · Color hierarchy in the hero
+- White: primary metric
+- Emerald-300: positive money-flow metric (deals, revenue, success)
+- Amber-300: producer/agent count
+- Rose-300: leak / drop / negative trend (in the leak strip below)
+
+Never mix more than 4 colors total in a single hero. The luxury is in restraint.
+
+---
+
+## §32 · The 3-Lane Pipeline Strip · canonical specification
+
+The Active Applications panel (shipped 2026-06-14 night) replaced the flat row list with stage-grouped lanes. Use this pattern for ANY data with a clear progression.
+
+### §32.1 · Structure
+4 equal-width lanes (or 3 on smaller screens) — one per stage. Each lane:
+- `rounded-2xl` (matches the hero family)
+- Stage-toned border + background tint (rose / amber / emerald / slate)
+- Eyebrow with stage name (text-[10px] uppercase tracking-widest)
+- Count badge in the same tone
+- Top-4 name chips, each with:
+  - Circular initials avatar (tone-matched chip)
+  - Truncated full name
+  - Right-aligned state code or other compact tag
+- `+ N more →` link if overflow
+
+### §32.2 · Coaching copy (the secret)
+Each lane has a coaching line when EMPTY:
+- Uncontacted: "Inbox zero."
+- Contacted in-progress: "Move them forward."
+- Course bought: "Coach to exam."
+- Licensed: "Onboard fast."
+
+That copy is the retention magic. The dashboard isn't just data — it's a coach.
+
+---
+
+## §33 · The Critical Bug That Caused Sam's Frustration
+
+A confession that becomes a permanent guard: the v4 Applications panel had this query:
+```ts
+.select("id, first_name, last_name, status, license_progress, applied_at, contacted_at, ica_paid_at")
+.order("applied_at", { ascending: false, nullsFirst: false })
+```
+
+**`applied_at` doesn't exist.** The column is `created_at`.
+**`ica_paid_at` is the wrong terminology.** The column is `course_purchased_at`.
+
+The query failed silently. Sam saw "No active applications" while 519 active applications sat in the DB.
+
+### §33.1 · The permanent guard
+Every Supabase query on a table goes through this checklist before commit:
+1. `npx supabase gen types typescript --linked > src/integrations/supabase/types.ts` runs in CI — schema drift breaks the build.
+2. Every `.select("...")` is reviewed for column names against `information_schema.columns`.
+3. Every query logs errors to console explicitly (`if (error) console.error(...)`). NO silent failure.
+4. Every panel that shows "No data" with a non-zero DB count is a P0 bug — page audit triggered.
+
+### §33.2 · The column terminology law
+| User-facing label | DB column | Banned column |
+|---|---|---|
+| "Applied" / "Created" | `created_at` | `applied_at` ← doesn't exist |
+| "Course bought" / "Course purchased" | `course_purchased_at` | `ica_paid_at` ← lives in DB but use is BANNED in new code |
+| "Licensed" | `licensed_at` | — |
+| "Contracted" | `contracted_at` | — |
+
+Sam's rule (permanent): **Use prelicensing course terminology. NEVER ICA.**
+
+---
+
+## §34 · "Agents wanna transfer TO this" — the marketing implication
+
+Every visual decision should be evaluated against: "If a recruiting prospect sees this on a Zoom call with their potential manager, do they sign?"
+
+This means:
+- The dashboard shows up in recruiting demos
+- The Carrier Resources page is shareable in DMs
+- The Producer Profile + Calling Cards + per-agent landing are shareable on social
+- The premium aesthetic is a recruiting asset, not just internal polish
+
+When in doubt: **build for the agent who hasn't joined yet**, the polish their current agency lacks.
+
+---
+
+## §35 · The Updated Punch-List (post-v6)
+
+Items moved to permanent-watch:
+- Every `apex-financial.org` route's first-fold visual must pass the 3-second test.
+- Every `select()` query is column-audited before commit.
+- Every empty state has coaching copy (no bare "No data" rows).
+- Every page that opens with stats has a gradient-hero band per §31.
+
+Items still open:
+- Sound library record (3 files: deal-posted, lead-picked-up, milestone) — at −14 LUFS, toggle in /dashboard/settings.
+- Avatar dropdown with Producer Profile · Calling Cards · My Landing Page · Sign Out.
+- Outreach sweep to the 9 agents writing RN/MoO last 30d.
+- Per-page audit of every other page (Contracts, Book of Business, Funnels, Tracker) for §31 hero conformance.
+- Just Hired tab on Dashboard — verify query, seed coaching copy on empty.
+- The 95 remaining `agents.al_user_id` rows needing manual name-match — admin UI.
+
+---
+
+## §36 · Persisted-to v6
+
+- **This file (v6 = v5 + this section)**: `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- **Repo mirror**: `docs/operating-spec.md`
+- **Game-breaking hero canonical reference**: `src/pages/AgentCommandDashboard.tsx` § A (commit c022f85b)
+- **3-lane pipeline canonical reference**: same file § B
+- **Critical bug guard**: column-audit rule (this file §33)
+
+---
+
+## §37 · North Star · v6
+
+LESS IS MORE × BILLION-DOLLAR AESTHETIC × AUDIT EVERY NAV × **RETENTION-GRADE GAME-BREAKING**.
+
+If an agent at another agency sees the screenshot and doesn't text their friend "what is this?" — we missed.
+
+> **Hold the Standard. Average is the disease.**

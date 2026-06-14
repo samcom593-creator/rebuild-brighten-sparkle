@@ -1440,10 +1440,60 @@ export default function DashboardApplicants() {
             ) : (
               <div className="border border-border rounded-md p-12 text-center">
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No applicants found</h3>
-                <p className="text-muted-foreground">
-                  {isLoading ? "Loading..." : "Try adjusting your search or filter criteria"}
-                </p>
+                <h3 className="text-lg font-semibold mb-2">
+                  {isLoading ? "Loading applications…" : activeApplications.length === 0 ? "No active applications fetched" : "Filters are hiding everything"}
+                </h3>
+                {/* 2026-06-15 v7.1 · Sam: "I still see no applications." 99% of
+                    the time the fetch returned hundreds of rows but client-side
+                    filters reduced them to 0. Diagnostic panel below makes that
+                    visible + offers a one-tap reset. */}
+                {!isLoading && (
+                  <div className="space-y-3 max-w-md mx-auto">
+                    <p className="text-13 text-muted-foreground">
+                      Fetched <span className="font-bold text-foreground tabular-nums">{activeApplications.length.toLocaleString()}</span> active applications
+                      from the database{terminatedApplications.length > 0 && <> · <span className="font-bold text-foreground tabular-nums">{terminatedApplications.length.toLocaleString()}</span> terminated</>}.
+                    </p>
+                    {activeApplications.length === 0 ? (
+                      <div className="text-12 text-rose-600 dark:text-rose-400">
+                        Zero rows came back from the database. Likely causes:
+                        <ul className="list-disc list-inside mt-2 text-left">
+                          <li>Your session expired (try logging out + back in)</li>
+                          <li>Your role lost admin grant (check user_roles)</li>
+                          <li>RLS policy regression (check Supabase logs)</li>
+                        </ul>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-12 text-amber-600 dark:text-amber-400">
+                          But the filters below match <span className="font-bold tabular-nums">0</span>.
+                          The data IS there — your filters are hiding it.
+                        </p>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            setSearchQuery("");
+                            setStatusFilter("all");
+                            setLicenseFilter("all");
+                            setMyDirectsOnly(false);
+                            setHotLeadsOnly(false);
+                            setShowDuplicates(true);
+                            // Clear URL params that may also be filtering
+                            const params = new URLSearchParams(searchParams);
+                            params.delete("status");
+                            params.delete("license");
+                            params.delete("contacted");
+                            params.delete("stage");
+                            setSearchParams(params, { replace: true });
+                          }}
+                          className="bg-amber-500 hover:bg-amber-400 text-slate-950"
+                        >
+                          Clear all filters · show {activeApplications.length.toLocaleString()} applications
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

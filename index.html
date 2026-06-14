@@ -22,7 +22,7 @@
       // so BUMP_VERSION must also change. Embedding the videoId makes
       // that mechanical: the build can't ship without a bump.
       (function() {
-        var BUMP_VERSION = "2026-06-15-v7-11-force-sw-update-E2VJ1v85IRE";
+        var BUMP_VERSION = "2026-06-15-v7-13-force-reload-on-bump-E2VJ1v85IRE";
         try {
           var staleKeys = [];
           for (var i = 0; i < localStorage.length; i++) {
@@ -46,10 +46,16 @@
                 keys.forEach(function(k) { caches.delete(k); });
               });
             }
-            // Only auto-reload on the migration case (preserves intent of
-            // original script). Bump-only updates take effect next visit
-            // because the SW/caches are cleared but page already loaded.
-            if (hadStaleAuth) {
+            // 2026-06-15 v7.13 · ALWAYS auto-reload on BUMP_VERSION change.
+            // Was: only reloaded on hadStaleAuth (migration case). That left
+            // bump-only updates stranded — the SW + caches got nuked but
+            // the page stayed on the old bundle until next navigation. Sam
+            // was refreshing /dashboard/applicants over and over; the page
+            // never updated because the reload never fired. Now: any
+            // version mismatch triggers an immediate reload with a
+            // cache-busting query param. Fresh content lands within 1
+            // page load · no manual action required.
+            if (hadStaleAuth || needsBump) {
               location.replace(location.pathname + (location.search ? location.search + '&' : '?') + '_freshv=' + Date.now());
             }
           }

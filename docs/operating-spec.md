@@ -1483,3 +1483,89 @@ If a panel can render `0` or empty without context, it WILL look like a blank sp
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v6.6 · PULSE GROUP REORG + EVERY APP RESTORED · 2026-06-15
+
+*Sam: "I like the WoW chart a lot · put hire pace, state production, commission projected in the same group right under this month annual AP. I'm still missing applications from the website. Bring back every single application." Sam wanted the chart cluster MOVED UP into a single high-visibility group, and the Applications panel to actually show everything from the website.*
+
+---
+
+## §61 · The Pulse Group (commit `03047f8c`)
+
+A new 2×2 grid called `DashboardPulseGroup` lives directly under the Agency Hero, before the 3-lane application strip. It contains 4 charts Sam called out by name:
+
+| Slot | Panel | Hero | Notes |
+|---|---|---|---|
+| 1 | Week-Over-Week Daily AP | emerald | The chart Sam said he "likes a lot" |
+| 2 | 12-Week Hire Pace | amber | recharts BarChart · 89 real hires · WoW badge |
+| 3 | State Production · 30d | emerald | WI/TX/FL/CA horizontal bars |
+| 4 | Commission Projection MTD | emerald | $336K projected · variance vs LMTD |
+
+All 4 are extracted from their previous positions deep in the page:
+- `WeekOverWeekPanel` was in `ParityGapPanels` row 3 → now Pulse row 1
+- `HirePace12WPanel` was in `ExtendedParityPanels` row 4 → now Pulse row 2
+- `StateProductionPanel` was in `ExtendedParityPanels` row 1 → now Pulse row 3
+- `CommissionProjectionPanel` was in `ExtendedParityPanels` row 3 → now Pulse row 4
+
+Secondary cleanup:
+- `ParityGapPanels` now contains 3 items (Personal Pace + Product Mix + Contact SLA full-width)
+- `ExtendedParityPanels` now contains 1 item (Time-of-Day Heat) as a deep-dive
+
+No duplicates · no orphaned panels.
+
+---
+
+## §62 · Every App Restored
+
+The Active Applications query on the dashboard was capped at `.limit(25)`. The DB has **519 active applications**. Result: the 3-lane application strip only showed the most recent 25, all of which were in the UNCONTACTED bucket. The other 3 lanes (in-progress, course bought, licensed) looked empty.
+
+**Fix**: bumped `.limit(25)` → `.limit(1000)`. Now:
+1. The 3-lane strip counts are accurate against the full 519
+2. Every recent applicant from the website (last 8 are 2026-06-10 to 2026-06-13 social-media submits) surfaces in the proper lane
+3. The 192 stale-48h+ uncontacted leak shows its real magnitude
+4. Added `referral_source` to the select projection (already in the DB) so per-lane source attribution becomes possible in the next slice
+
+---
+
+## §63 · The Permanent Rule from This Slice
+
+> **When a panel filters or groups data, the underlying query MUST fetch enough rows that the groupings are accurate. A 25-cap on a 519-row table will misrepresent the data and make lanes look empty.**
+
+For any future page that does client-side bucketing, the default cap is `.limit(1000)` unless there's a specific reason to throttle (mobile bandwidth, infinite scroll, etc).
+
+---
+
+## §64 · The Reordered `/dashboard` Top of Page
+
+After v6.6 the front-fold renders in this order:
+
+1. **PageHeader** (period switcher + CEO panel link)
+2. **§A · AGENCY HERO** (gradient · 4 big numbers · month-depth strip · license pipeline)
+3. **DashboardPulseGroup** (NEW v6.6 · 4 charts 2×2 grid)
+4. **§B · 3-LANE APPLICATION PIPELINE** (now accurate against 519 apps)
+5. **§C · LEAKS** (premium glass rose band)
+6. **Daily AP run-rate + Leaderboard** (2:1 premium glass grid)
+7. **Tabbed strip** (Pipeline / Managers / Just Hired / Activations)
+8. **6 Density panels** (Carrier Mix · Top Movers · Conversion Funnel · Activity Feed · Source ROI · Money Flow)
+9. **3 ParityGap panels** (Personal Pace · Product Mix · Contact SLA full-width)
+10. **1 ExtendedParity panel** (Time-of-Day Heat)
+11. **Agency Health 30d** premium glass footer
+12. **Quick Actions** grid
+
+Total dense info panels: 18 above the footer.
+
+---
+
+## §65 · Persisted-to v6.6
+
+- This file (v6.6): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Commit `03047f8c`: Pulse group reorg + every app restored
+- `DashboardPulseGroup` component lives in `src/pages/AgentCommandDashboard.tsx`
+
+---
+
+> **Hold the Standard. Average is the disease.**

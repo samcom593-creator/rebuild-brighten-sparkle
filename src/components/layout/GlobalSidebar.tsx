@@ -9,6 +9,7 @@ import {
   Briefcase,
   Calculator,
   CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Crown,
@@ -92,6 +93,48 @@ export function GlobalSidebar({
   const searchRef = useRef<HTMLDivElement>(null);
   const isTouch = useIsTouchDevice();
   const { playSound } = useSoundEffects();
+
+  // v7.15 Section 4 · collapsible sidebar groups (MORE / OLD APPLICANTS).
+  // PRIMARY is never collapsible (always-visible daily flow).
+  // State persists in localStorage so reload restores user preference.
+  const SIDEBAR_GROUPS_STORAGE_KEY = "apex.sidebar.collapsedGroups.v1";
+  const COLLAPSIBLE_GROUP_LABELS = ["MORE", "OLD APPLICANTS"] as const;
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = window.localStorage.getItem(SIDEBAR_GROUPS_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, boolean>;
+      }
+      return {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(SIDEBAR_GROUPS_STORAGE_KEY, JSON.stringify(collapsedGroups));
+    } catch {
+      // localStorage quota / private-mode failures are non-fatal
+    }
+  }, [collapsedGroups]);
+
+  const toggleGroup = useCallback((label: string) => {
+    setCollapsedGroups((prev) => {
+      const next = { ...prev, [label]: !prev[label] };
+      return next;
+    });
+    playSound("click");
+  }, [playSound]);
+
+  const isGroupCollapsible = useCallback(
+    (label: string) => (COLLAPSIBLE_GROUP_LABELS as readonly string[]).includes(label),
+    [],
+  );
 
   useEffect(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
@@ -480,29 +523,59 @@ export function GlobalSidebar({
           )}
 
           <nav className="flex-1 p-2 overflow-y-auto sidebar-nav-scroll relative">
-            {navSections.map((section, sIdx) => (
-              <div key={section.label}>
-                {!isCollapsed && (
-                  <div
-                    className="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[3px] text-slate-700"
-                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700 }}
-                  >
-                    {section.label}
-                  </div>
-                )}
-                {isCollapsed && sIdx > 0 && (
-                  <div className="my-2 mx-2 border-t border-slate-800/50" />
-                )}
-                <div className="space-y-0.5">
-                  {section.items.map((item) => {
-                    const isActive = item.href === "/dashboard"
-                      ? location.pathname === item.href
-                      : location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
-                    return <NavItemComponent key={item.href} item={item} isActive={isActive} />;
-                  })}
+            {navSections.map((section, sIdx) => {
+              const collapsible = isGroupCollapsible(section.label);
+              // Collapsed-sidebar mode (icon rail) shows every item — group toggle
+              // only applies when the sidebar is expanded.
+              const groupCollapsed = collapsible && !isCollapsed && collapsedGroups[section.label] === true;
+              return (
+                <div key={section.label}>
+                  {!isCollapsed && (
+                    collapsible ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(section.label)}
+                        aria-expanded={!groupCollapsed}
+                        aria-controls={`sidebar-group-${section.label}`}
+                        className="w-full flex items-center justify-between px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[3px] text-slate-700 hover:text-slate-400 transition-colors"
+                        style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, touchAction: "manipulation" }}
+                      >
+                        <span>{section.label}</span>
+                        <ChevronDown
+                          className={cn(
+                            "h-3 w-3 flex-shrink-0 transition-transform duration-200",
+                            groupCollapsed && "-rotate-90",
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      <div
+                        className="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[3px] text-slate-700"
+                        style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700 }}
+                      >
+                        {section.label}
+                      </div>
+                    )
+                  )}
+                  {isCollapsed && sIdx > 0 && (
+                    <div className="my-2 mx-2 border-t border-slate-800/50" />
+                  )}
+                  {!groupCollapsed && (
+                    <div
+                      id={`sidebar-group-${section.label}`}
+                      className="space-y-0.5"
+                    >
+                      {section.items.map((item) => {
+                        const isActive = item.href === "/dashboard"
+                          ? location.pathname === item.href
+                          : location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
+                        return <NavItemComponent key={item.href} item={item} isActive={isActive} />;
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-6 bg-white dark:bg-slate-900" />
           </nav>
 

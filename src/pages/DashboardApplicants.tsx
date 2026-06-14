@@ -1089,7 +1089,18 @@ export default function DashboardApplicants() {
                     const names = await caches.keys();
                     await Promise.all(names.map((n) => caches.delete(n)));
                   }
-                  toast.success("Cache cleared · reloading…");
+                  // 2026-06-15 v7.7 · also clear app-level storage (keep
+                  // Supabase auth tokens — those are namespaced sb-*-auth-token)
+                  try {
+                    const keysToKill: string[] = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                      const k = localStorage.key(i);
+                      if (k && !k.startsWith("sb-")) keysToKill.push(k);
+                    }
+                    keysToKill.forEach((k) => localStorage.removeItem(k));
+                    sessionStorage.clear();
+                  } catch {/* private mode · ignore */}
+                  toast.success("Cache + storage cleared · reloading…");
                 } catch (e) {
                   console.error("[cache-bust]", e);
                 } finally {

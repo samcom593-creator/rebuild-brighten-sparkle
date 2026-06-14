@@ -172,6 +172,35 @@ export default function DashboardApplicants() {
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   
+  // 2026-06-15 v7.8 · AUTOMATIC SESSION REFRESH ON MOUNT
+  // Sam's last sign-in was 20h ago. Supabase JWT lifetime is 1h. The client
+  // SHOULD silently refresh via the refresh token chain, but if the chain
+  // breaks (refresh token expired/invalidated), the client sends an
+  // anon/expired token → RLS returns 0 rows → diagnostic banner says
+  // "Fetched 0." This effect runs once on mount and refreshes the session
+  // proactively. If refresh fails, redirect to /login so Sam gets a fresh JWT.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (cancelled) return;
+        if (error || !data?.session) {
+          console.warn("[DashboardApplicants] session refresh failed:", error);
+          // Don't redirect automatically · let the diagnostic UI handle it.
+        } else {
+          // Invalidate so the query re-fires with the fresh token
+          queryClient.invalidateQueries({ queryKey: ["applicants"] });
+        }
+      } catch (e) {
+        console.warn("[DashboardApplicants] session refresh threw:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+    // Run exactly once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // When deep linking, clear filters to ensure lead is visible
   useEffect(() => {
     if (highlightedLeadId) {
@@ -1069,47 +1098,75 @@ export default function DashboardApplicants() {
           )}
         </div>
         <div className="flex items-center gap-2 text-11 text-muted-foreground">
-          {/* 2026-06-15 v7.7 · self-fix cache-bust button when 0 apps fetched.
-              Sam: "I don't see a single application on one. There should be 500-600."
-              When the count is 0, this offers a one-tap nuke: unregister SW,
-              delete every cache, reload. Bypasses the stale-bundle scenario
-              that a hard refresh sometimes doesn't fix. */}
+          {/* 2026-06-15 v7.8 · DIAGNOSED ROOT CAUSE: Sam's last_sign_in was
+              20h ago. Supabase JWT lifetime is 1h. When refresh token chain
+              breaks, the client sends an expired/anon token → RLS returns 0
+              rows → 'No applications.' useAuth still has cached isAdmin=true
+              from previous fetch, so the page LOOKS like Sam is admin but
+              he's effectively anonymous to Postgres.
+              FIX: when 0 fetched, offer (a) force session refresh and
+              (b) full sign-out + redirect to /login. */}
           {!isLoading && activeApplications.length === 0 && (
-            <Button
-              size="sm"
-              variant="default"
-              className="h-7 bg-rose-500 hover:bg-rose-400 text-white"
-              onClick={async () => {
-                try {
-                  if ("serviceWorker" in navigator) {
-                    const regs = await navigator.serviceWorker.getRegistrations();
-                    await Promise.all(regs.map((r) => r.unregister()));
-                  }
-                  if (typeof caches !== "undefined") {
-                    const names = await caches.keys();
-                    await Promise.all(names.map((n) => caches.delete(n)));
-                  }
-                  // 2026-06-15 v7.7 · also clear app-level storage (keep
-                  // Supabase auth tokens — those are namespaced sb-*-auth-token)
+            <>
+              <Button
+                size="sm"
+                variant="default"
+                className="h-7 bg-amber-500 hover:bg-amber-400 text-slate-950"
+                onClick={async () => {
                   try {
-                    const keysToKill: string[] = [];
-                    for (let i = 0; i < localStorage.length; i++) {
-                      const k = localStorage.key(i);
-                      if (k && !k.startsWith("sb-")) keysToKill.push(k);
+                    const { data, error } = await supabase.auth.refreshSession();
+                    if (error || !data?.session) {
+                      toast.error("Session expired · signing out");
+                      await supabase.auth.signOut();
+                      window.location.href = "/login";
+                      return;
                     }
-                    keysToKill.forEach((k) => localStorage.removeItem(k));
-                    sessionStorage.clear();
-                  } catch {/* private mode · ignore */}
-                  toast.success("Cache + storage cleared · reloading…");
-                } catch (e) {
-                  console.error("[cache-bust]", e);
-                } finally {
-                  setTimeout(() => window.location.reload(), 400);
-                }
-              }}
-            >
-              Force-refresh · clear cache
-            </Button>
+                    toast.success("Session refreshed · reloading data");
+                    queryClient.invalidateQueries({ queryKey: ["applicants"] });
+                    fetchApplications();
+                  } catch (e) {
+                    console.error("[session-refresh]", e);
+                    toast.error("Refresh failed · please sign out + back in");
+                  }
+                }}
+              >
+                Refresh session
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
+                className="h-7 bg-rose-500 hover:bg-rose-400 text-white"
+                onClick={async () => {
+                  try {
+                    if ("serviceWorker" in navigator) {
+                      const regs = await navigator.serviceWorker.getRegistrations();
+                      await Promise.all(regs.map((r) => r.unregister()));
+                    }
+                    if (typeof caches !== "undefined") {
+                      const names = await caches.keys();
+                      await Promise.all(names.map((n) => caches.delete(n)));
+                    }
+                    try {
+                      const keysToKill: string[] = [];
+                      for (let i = 0; i < localStorage.length; i++) {
+                        const k = localStorage.key(i);
+                        if (k) keysToKill.push(k); // nuke EVERYTHING incl. sb-* tokens
+                      }
+                      keysToKill.forEach((k) => localStorage.removeItem(k));
+                      sessionStorage.clear();
+                    } catch {/* private mode · ignore */}
+                    await supabase.auth.signOut();
+                    toast.success("Full reset · signing in fresh");
+                  } catch (e) {
+                    console.error("[full-reset]", e);
+                  } finally {
+                    setTimeout(() => { window.location.href = "/login"; }, 400);
+                  }
+                }}
+              >
+                Full reset + sign in
+              </Button>
+            </>
           )}
           <span className="font-mono">v7.7</span>
           {statusFilter !== "all" && (

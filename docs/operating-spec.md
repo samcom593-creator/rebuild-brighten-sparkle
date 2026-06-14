@@ -1151,3 +1151,82 @@ The 14 still-untouched pages get the same treatment in the next sprint. The cano
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v6.3 · 14-PAGE COMPLETION · 2026-06-15 EARLY
+
+*Sam saw v6.2 ship and said "fourteen still remaining okay? push on fourteen · let me know it's all done · this is diabolical." This section is the receipt that all 14 remaining in-scope pages now ship the canonical v6 §31 hero. Plus a density-bomb workflow churning in parallel against Command Center + Recruit Pipeline + Recruit Tracker.*
+
+---
+
+## §47 · The 14-Page Workflow (v2)
+
+A first attempt at this Workflow failed because `isolation: 'worktree'` requires the Workflow tool to be invoked from inside a git repo, and the orchestrator's cwd was `/Users/samjames`, not the project. The v2 workflow dropped worktree isolation and dispatched 14 agents in pipeline-parallel mode against the shared repo. Each agent owned a distinct file and only touched that file, so no merge conflicts.
+
+Workflow stats:
+- 14 rebuild agents + 1 synthesis = 15
+- 1.08M tokens consumed
+- 2m9s wall-clock
+- 0 failures (every page returned `tsc clean`)
+- +847 / -13 lines net
+
+---
+
+## §48 · The 14 Pages · Hero Tally
+
+**Amber (recruiting/data/training/account · 10 pages)**
+- `CarrierResources.tsx` — 16 carriers · this-month deals · top carrier · active contracts
+- `ProducerProfile.tsx` — license status · states count · total premium · earnings
+- `CallingCards.tsx` — style options · share URL ready · QR scannable · profile % filled
+- `MyLandingPage.tsx` — public URL LIVE · profile complete % · bio length · has photo
+- `TransferRequests.tsx` — pending · approved MTD · denied MTD · avg decision time
+- `Scripts.tsx` — total scripts · categories · inbound · objections
+- `HelpCenter.tsx` — total FAQ · categories · read time · last updated
+- `AgentHandbook.tsx` — chapters · read minutes · chapters completed · last opened
+- `AnnuityTraining.tsx` — modules · modules completed · read time · annuity products available
+- `ClientMarketing.tsx` — templates · channels (SMS/Email/DM) · categories · most-copied (state-tracked)
+
+**Emerald (money/production/calc · 4 pages)**
+- `CommissionGrids.tsx` — total products · avg FY% · highest FY% carrier · annuity count
+- `CalendarPage.tsx` — today events · this week · open slots · Calendly sync
+- `NeedsAnalysis.tsx` — income need · mortgage · debt · total coverage (live calc)
+- `Quoter.tsx` — products · health tiers · age range · last quote total
+
+Total hero coverage now: 22 pages on the canonical v6 §31 pattern (8 from earlier sprints + 14 here).
+
+---
+
+## §49 · The Density-Bomb Workflow (parallel-running)
+
+In parallel with the 14-page finisher, a separate 4-agent Workflow attacked DENSITY on the 3 Sam-called-out pages:
+
+- **Command Center** — add 6 NEW dense panels below the existing tabbed strip:
+  1. Carrier Mix donut chart (top 6 carriers by AP this month)
+  2. Top Movers panel (week-over-week production deltas)
+  3. 5-stage Conversion Funnel (created → contacted → course → exam → licensed, with avg days per stage)
+  4. Activity Feed (last 12 culture events, live)
+  5. State Production (top 8 states by AP)
+  6. Money Flow (commission_ledger + Stripe + projected outstanding)
+
+- **RecruitingFunnels.tsx** — rebuild lower content with: stage-by-stage conversion strip · per-source funnel grid · 12-week hire trend BarChart · drop-off heatmap (stages × weeks)
+
+- **RecruitingTracker.tsx** — rebuild with: per-recruiter rich cards (avatar + today/week/month/30d + conversion % + ROI + status badge) · deeper podium with sparklines · hiring pace AreaChart
+
+The density-bomb workflow runs from `/Users/samjames` (not a git repo) but its agents target `/Users/samjames/projects/rebuild-brighten-sparkle` directly. Worktree isolation was attempted but failed at the orchestrator level — agents dispatched without isolation, which means they may serialize on file locks but won't conflict (each agent owns a distinct file).
+
+When the density-bomb workflow finishes, it ships in a second commit + receipt section §50.
+
+---
+
+## §50 · Persisted-to v6.3
+
+- This file (v6.3): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Commit `1114fc82`: 14-page rebuild (this section's worth of changes)
+- Density-bomb commit: pending, will append §51 with receipts when it completes
+
+---
+
+> **Hold the Standard. Average is the disease.**

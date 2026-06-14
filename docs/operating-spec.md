@@ -943,3 +943,53 @@ From §17 gaps · highest impact for "look what we built":
 
 When AgentLink's carrier-plans / carrier-product detail endpoint becomes accessible (currently 404 with cookie), expand into per-plan tiles per carrier.
 
+
+---
+
+## §20 · 2026-06-13 PARITY SWEEP · SHIPS
+
+Continued from §17 immediate queue. Sprint shipped in one session, all builds tsc-clean.
+
+| # | Sidebar | Route | Built On |
+|---|---|---|---|
+| 1 | Carrier Resources | `/dashboard/carriers` | `agentlink_carriers` + `v_business_analytics_carriers` + static BEST_FOR map |
+| 2 | Announcements | `/dashboard/announcements` § Announcements | `announcements` table (3 seeded) |
+| 3 | (same page) § News Feed | `/dashboard/announcements` § feed | `v_culture_feed` (157 events) · refetch 30s |
+| 4 | Post a Deal | `/dashboard/announcements` button | New RPC `fn_post_deal_celebration(p_agent_id, p_premium, p_product, p_note)` · SECURITY DEFINER → `culture_events` INSERT |
+| 5 | Finances | `/dashboard/finances` (admin only) | `v_cfo_snapshot` + `v_cfo_dup_charge_watch` + `v_cfo_ica_paid_stuck` + `v_cfo_agent_activation_watch` + `commission_ledger` + `cfo_approval_requests` |
+| 6 | Scripts | `/dashboard/scripts` | New `sales_scripts` table (10 seeded · inbound/objections/recruiting/brand) |
+
+Backfill executed same session:
+- `agents.al_user_id` populated for 61/156 by direct copy from `insuracloud_user_id` (they share the same numbering).
+- Remaining 95 surfaced via `v_agents_missing_al_user_id` for manual name-match.
+
+---
+
+## §21 · STILL OPEN AFTER §20
+
+From §17 parity matrix:
+
+P1:
+- Producer Profile · agent-facing self-edit
+- Help Center / FAQ · static
+- New Agent Guide expansion (route exists but thin)
+- Calendar in sidebar (route exists but hidden)
+- Transfer Requests · contracting
+- Commission Grids UI · view exists, no page
+
+P2:
+- Recruiting Funnels expansion (route exists)
+- Recruiting Tracker dedicated route
+- Agent Handbook
+- Annuity Training
+- News Feed posting expansion (currently agents can post deals; let admins post news items beyond announcements)
+- Client Marketing
+- My Landing Page (per-agent public landing)
+- Calling Cards
+
+P3 (large builds):
+- Needs Analysis Calculator
+- Quoter
+- Case Design (multi-step case builder)
+- Advanced Desk (case runner for complex policies)
+

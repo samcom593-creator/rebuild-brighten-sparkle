@@ -993,3 +993,21 @@ P3 (large builds):
 - Case Design (multi-step case builder)
 - Advanced Desk (case runner for complex policies)
 
+
+---
+
+## §22 · 2026-06-13 PARITY SWEEP · ALL §21 P1 SHIPPED
+
+§21 P1 queue cleared in one continuous session, all live on apex-financial.org.
+
+| # | Sidebar | Route | Built On |
+|---|---|---|---|
+| 1 | Producer Profile | `/dashboard/profile` | `profiles` (edit) + `agents` (read-only stats panel) |
+| 2 | Help Center | `/dashboard/help` | Static · 21 hand-curated FAQ across 7 categories |
+| 3 | Calendar (sidebar exposure) | `/dashboard/calendar` | Route already existed · now visible |
+| 4 | Transfer Requests | `/dashboard/transfers` | New `transfer_requests` table + RLS + `v_transfer_requests` |
+| 5 | Commission Grids | `/dashboard/commission-grids` | Seeded 15 carriers + 22 products + 22 schedules · new `v_commission_grid` LATERAL JOIN |
+
+Sidebar now has **11 newly-exposed AgentLink-parity items** in this 2-day sweep:
+Carrier Resources · Announcements · Producer Profile · Calendar · Transfer Requests · Commission Grids · Help Center · Finances · Scripts · (and Post a Deal CTA on Announcements).
+

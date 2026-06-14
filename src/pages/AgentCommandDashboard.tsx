@@ -1064,14 +1064,17 @@ function AgencyCommandView() {
   // view. v_recent_hires filters out deactivated/inactive/ghost rows
   // and joins managers, so we just sort by hired_on. (PL-017)
   const recentHires = useQuery({
-    queryKey: ["agency-recent-hires", periodBounds.startIso],
+    // 2026-06-15 v6.5 fix: Sam called out 'Just hired (0)' empty tab.
+    // The query was filtering by period (June 2026) → 0 rows even though
+    // v_recent_hires has 26 real rows. Now: ALWAYS show the most recent 12
+    // hires regardless of period — recent hires are recent hires.
+    queryKey: ["agency-recent-hires-always"],
     refetchInterval: 60_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_recent_hires" as any)
         .select("id, display_name, agent_code, hired_on, manager_name, onboarding_stage, days_on_team, total_premium, total_policies")
-        .gte("hired_on", periodBounds.startIso.slice(0, 10))
         .order("hired_on", { ascending: false })
         .limit(12);
       if (error) throw error;
@@ -2105,11 +2108,11 @@ function AgencyCommandView() {
             {recentHires.isLoading ? (
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
             ) : (recentHires.data ?? []).length === 0 ? (
-              <EmptyState icon={<UserPlus className="h-6 w-6" />} title={`No new hires in ${periodBounds.label}`} description="When a new agent is onboarded they'll surface here even before their first deal." />
+              <EmptyState icon={<UserPlus className="h-6 w-6" />} title="First hire opens the board" description="When a new agent is onboarded they'll surface here even before their first deal." />
             ) : (
               <>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Hires · {periodBounds.label}</p>
+                  <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">Most recent {(recentHires.data ?? []).length} hires</p>
                   <Button asChild size="sm" variant="ghost">
                     <Link to="/dashboard/team-hierarchy">All agents <ArrowRight className="h-3 w-3 ml-1" /></Link>
                   </Button>
@@ -2189,34 +2192,92 @@ function AgencyCommandView() {
       */}
       <ExtendedParityPanels />
 
-      {/* ── Footer · health stats + quick actions in ONE section ─── */}
+      {/* 2026-06-15 v6.5 · Footer Agency Health PROMOTED to premium glass.
+          Sam: "ton of empty displays · blank spots for no reason · ugly."
+          The 4 flat StatRowCards (Chargebacks 0 · Lapses 47 · Referrals 0 ·
+          Referrals won 0) showed THREE zeros which made the footer look empty.
+          Now: single premium glass band where 0-value tiles get coaching copy
+          + tonal background (emerald=good zero, rose=bad number, amber=warn). */}
       <div className="grid gap-3 lg:grid-cols-2">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <StatRowCard
-            icon={Activity}
-            label="Chargebacks · 30d"
-            value={fmtNum(c?.chargebacks_30d ?? 0)}
-            color={(c?.chargebacks_30d ?? 0) > 0 ? "text-rose-500 dark:text-rose-400" : "text-emerald-500 dark:text-emerald-400"}
-          />
-          <StatRowCard
-            icon={Activity}
-            label="Lapses · 30d"
-            value={fmtNum(c?.lapses_30d ?? 0)}
-            color={(c?.lapses_30d ?? 0) > 10 ? "text-rose-500 dark:text-rose-400" : "text-amber-500 dark:text-amber-400"}
-            onClick={() => setLapsesOpen(true)}
-          />
-          <StatRowCard
-            icon={Users}
-            label="Referrals · 30d"
-            value={fmtNum(c?.ref_30d ?? 0)}
-            color="text-primary"
-          />
-          <StatRowCard
-            icon={Crown}
-            label="Referrals · won"
-            value={fmtNum(c?.ref_won ?? 0)}
-            color="text-emerald-500 dark:text-emerald-400"
-          />
+        <div className="relative overflow-hidden rounded-3xl border border-rose-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950 text-white shadow-[0_0_48px_-12px_hsl(0_70%_50%/0.15)]">
+          <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-rose-500/12 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+          <div className="relative p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+                </span>
+                <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-rose-300">AGENCY HEALTH · 30d</p>
+              </div>
+              <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-rose-400/40 bg-rose-400/10 text-rose-200">
+                clean = silent
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Chargebacks · zero = good · non-zero = rose */}
+              {(() => {
+                const cb = c?.chargebacks_30d ?? 0;
+                const isZero = cb === 0;
+                return (
+                  <div className={`p-3 rounded-xl border ${isZero ? "bg-emerald-500/[0.06] border-emerald-500/20" : "bg-rose-500/[0.10] border-rose-500/30"}`}>
+                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Chargebacks</p>
+                    <p className={`text-[24px] leading-none font-black tabular-nums ${isZero ? "text-emerald-300" : "text-rose-300"}`}>{fmtNum(cb)}</p>
+                    <p className="text-[10px] text-white/40 mt-0.5">{isZero ? "Clean book." : "Investigate fast."}</p>
+                  </div>
+                );
+              })()}
+
+              {/* Lapses · 0-10 = amber, 10+ = rose */}
+              {(() => {
+                const lp = c?.lapses_30d ?? 0;
+                const tone = lp > 10 ? "rose" : lp > 0 ? "amber" : "emerald";
+                return (
+                  <button
+                    onClick={() => setLapsesOpen(true)}
+                    className={`p-3 rounded-xl border text-left transition-all hover:border-white/40 ${
+                      tone === "rose"    ? "bg-rose-500/[0.10] border-rose-500/30" :
+                      tone === "amber"   ? "bg-amber-500/[0.08] border-amber-500/20" :
+                                           "bg-emerald-500/[0.06] border-emerald-500/20"
+                    }`}
+                  >
+                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Lapses</p>
+                    <p className={`text-[24px] leading-none font-black tabular-nums ${
+                      tone === "rose" ? "text-rose-300" : tone === "amber" ? "text-amber-300" : "text-emerald-300"
+                    }`}>{fmtNum(lp)}</p>
+                    <p className="text-[10px] text-white/40 mt-0.5">Tap to drill.</p>
+                  </button>
+                );
+              })()}
+
+              {/* Referrals 30d · 0 = coaching */}
+              {(() => {
+                const r = c?.ref_30d ?? 0;
+                const isZero = r === 0;
+                return (
+                  <div className={`p-3 rounded-xl border ${isZero ? "bg-amber-500/[0.06] border-amber-500/20" : "bg-emerald-500/[0.08] border-emerald-500/20"}`}>
+                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Referrals · 30d</p>
+                    <p className={`text-[24px] leading-none font-black tabular-nums ${isZero ? "text-amber-300" : "text-emerald-300"}`}>{fmtNum(r)}</p>
+                    <p className="text-[10px] text-white/40 mt-0.5">{isZero ? "Open the ask." : "Keep asking."}</p>
+                  </div>
+                );
+              })()}
+
+              {/* Referrals won · 0 = coaching */}
+              {(() => {
+                const rw = c?.ref_won ?? 0;
+                const isZero = rw === 0;
+                return (
+                  <div className={`p-3 rounded-xl border ${isZero ? "bg-amber-500/[0.06] border-amber-500/20" : "bg-emerald-500/[0.10] border-emerald-500/30"}`}>
+                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Referrals · won</p>
+                    <p className={`text-[24px] leading-none font-black tabular-nums ${isZero ? "text-amber-300" : "text-emerald-300"}`}>{fmtNum(rw)}</p>
+                    <p className="text-[10px] text-white/40 mt-0.5">{isZero ? "First close opens the gate." : "Compound it."}</p>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
         </div>
 
         {/* v26 audit fix: was 5-col grid (asymmetric · 4 items in 5 slots).

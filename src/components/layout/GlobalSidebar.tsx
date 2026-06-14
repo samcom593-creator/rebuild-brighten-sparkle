@@ -138,49 +138,40 @@ export function GlobalSidebar({
     const oldApplicants: NavItem[] = [];
 
     if (isAdmin) {
-      // 6 PRIMARY items chosen by daily usage frequency
+      // 2026-06-14 LESS-IS-MORE refactor (Sam's directive):
+      // "should probably be less than half · make this practical · use logic
+      //  for a high-level agency · Sam = owner · managers = franchise · agents."
+      //
+      // PRIMARY = daily-flow surfaces (Applications hoisted per Sam: "applications
+      // always should be the highest").
+      // MORE = the franchise+admin tail. ~14 items max. Anything not used daily,
+      // weekly, or as a recurring leak-detection step is GONE.
       primary.push(
+        { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
         { icon: PhoneCall, label: "Calls Today", href: "/dashboard/calls-today", special: true },
-        { icon: Users, label: "Clients", href: "/dashboard/clients" },
         { icon: Award, label: "Contracts", href: "/dashboard/contracts", special: true },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );
-      // EVERYTHING ELSE under MORE (collapses by default)
       more.push(
+        // Recruiting (where applications come from → who joins)
         { icon: Inbox, label: "Recruiting Inbox", href: "/admin/recruiting-inbox", special: true },
-        { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
-        { icon: Trophy, label: "Challenges", href: "/dashboard/challenges", special: true },
-        { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
-        { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
-        { icon: Users, label: "Team Analytics", href: "/dashboard/team-analytics", special: true },
-        { icon: Briefcase, label: "Carrier Resources", href: "/dashboard/carriers", special: true },
-        { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },
-        { icon: DollarSign, label: "Finances", href: "/dashboard/finances", special: true },
-        { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts", special: true },
-        { icon: UserCog, label: "Producer Profile", href: "/dashboard/profile", special: true },
-        { icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar", special: true },
-        { icon: ArrowRightLeft, label: "Transfer Requests", href: "/dashboard/transfers", special: true },
-        { icon: Percent, label: "Commission Grids", href: "/dashboard/commission-grids", special: true },
-        { icon: BookOpen, label: "Agent Handbook", href: "/dashboard/handbook", special: true },
-        { icon: TrendingUp, label: "Annuity Training", href: "/dashboard/annuity-training", special: true },
-        { icon: Heart, label: "Client Marketing", href: "/dashboard/client-marketing", special: true },
-        { icon: CreditCard, label: "Calling Cards", href: "/dashboard/calling-cards", special: true },
-        { icon: Globe, label: "My Landing Page", href: "/dashboard/landing-page", special: true },
         { icon: Filter, label: "Recruiting Funnels", href: "/dashboard/recruiting-funnels", special: true },
         { icon: Trophy, label: "Recruiting Tracker", href: "/dashboard/recruiting-tracker", special: true },
-        { icon: Calculator, label: "Needs Analysis", href: "/dashboard/needs-analysis", special: true },
-        { icon: Calculator, label: "Quoter", href: "/dashboard/quoter", special: true },
-        { icon: HelpCircle, label: "Help Center", href: "/dashboard/help", special: true },
-        { icon: Network, label: "Builders", href: "/dashboard/builders", special: true },
-        { icon: UserCog, label: "Managers", href: "/dashboard/managers" },
-        { icon: Crown, label: "Agency Owners", href: "/dashboard/agency-owners" },
-        { icon: Users, label: "Agents", href: "/dashboard/agent-management" },
-        { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },
-        { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
-        { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
-        { icon: TrendingUp, label: "Social", href: "/dashboard/social" },
-        { icon: Library, label: "Content", href: "/dashboard/admin/content-command" },
+        { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
+        // Production + money
+        { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
+        { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
+        { icon: DollarSign, label: "Finances · CFO", href: "/dashboard/finances", special: true },
+        { icon: Percent, label: "Commission Grids", href: "/dashboard/commission-grids" },
+        // Franchise mgmt (Sam owns · managers run their own)
+        { icon: Users, label: "Team Analytics", href: "/dashboard/team-analytics" },
+        { icon: Network, label: "Builders + Managers", href: "/dashboard/managers" },
+        // Culture + comms (drives momentum, low maintenance)
+        { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },
+        { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
+        { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
+        // Admin hub (everything that isn't daily flow)
         { icon: Settings, label: "Admin", href: "/dashboard/command" },
       );
       oldApplicants.push(
@@ -188,68 +179,50 @@ export function GlobalSidebar({
         { icon: Archive, label: "Old Licensed Recruiters", href: "/dashboard/old-applicants/licensed-recruiters" },
       );
     } else if (isManager) {
+      // MANAGER = franchise operator. Their daily flow is recruiting + running
+      // their downline of producing agents. They do NOT need: client marketing,
+      // calling cards, my landing page, training modules. Those are noise.
       primary.push(
+        { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
         { icon: PhoneCall, label: "Calls Today", href: "/dashboard/calls-today", special: true },
-        { icon: Users, label: "Clients", href: "/dashboard/clients" },
-        { icon: Users, label: "Agents", href: "/dashboard/my-team" },
+        { icon: Users, label: "My Team", href: "/dashboard/my-team", special: true },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );
       more.push(
         { icon: Inbox, label: "Recruiting Inbox", href: "/admin/recruiting-inbox", special: true },
-        { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
-        { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
-        { icon: Briefcase, label: "Carrier Resources", href: "/dashboard/carriers" },
-        { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements" },
-        { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
-        { icon: UserCog, label: "Producer Profile", href: "/dashboard/profile" },
-        { icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" },
-        { icon: ArrowRightLeft, label: "Transfer Requests", href: "/dashboard/transfers" },
-        { icon: Percent, label: "Commission Grids", href: "/dashboard/commission-grids" },
-        { icon: BookOpen, label: "Agent Handbook", href: "/dashboard/handbook" },
-        { icon: TrendingUp, label: "Annuity Training", href: "/dashboard/annuity-training" },
-        { icon: Heart, label: "Client Marketing", href: "/dashboard/client-marketing" },
-        { icon: CreditCard, label: "Calling Cards", href: "/dashboard/calling-cards" },
-        { icon: Globe, label: "My Landing Page", href: "/dashboard/landing-page" },
         { icon: Filter, label: "Recruiting Funnels", href: "/dashboard/recruiting-funnels" },
         { icon: Trophy, label: "Recruiting Tracker", href: "/dashboard/recruiting-tracker" },
-        { icon: Calculator, label: "Needs Analysis", href: "/dashboard/needs-analysis" },
-        { icon: Calculator, label: "Quoter", href: "/dashboard/quoter" },
-        { icon: HelpCircle, label: "Help Center", href: "/dashboard/help" },
-        { icon: Briefcase, label: "Applicants", href: "/dashboard/applicants" },
-        { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
-        { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
+        { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
+        { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
+        { icon: Percent, label: "Commission Grids", href: "/dashboard/commission-grids" },
+        { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements" },
+        { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
+        { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
       );
       oldApplicants.push(
         { icon: Archive, label: "Old Managers", href: "/dashboard/old-applicants/managers" },
         { icon: Archive, label: "Old Licensed Recruiters", href: "/dashboard/old-applicants/licensed-recruiters" },
       );
     } else {
-      // AGENT role — every parity item must be available
+      // AGENT = the daily producer. Their flow: take inbound calls → write apps
+      // → check production → reference scripts/carriers/comp. Anything beyond
+      // that is friction. KILLED: Calling Cards, Client Marketing, My Landing
+      // Page, Annuity Training, Transfer Requests, Calendar (lives in cockpit),
+      // Help Center (footer link), Needs Analysis + Quoter (in-call tools live
+      // in the dialer dock, not nav).
       primary.push(
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
+        { icon: PhoneCall, label: "Calls Today", href: "/dashboard/calls-today", special: true },
         { icon: BarChart3, label: "Production", href: "/numbers" },
-        { icon: Briefcase, label: "Applicants", href: "/recruit-pipeline" },
         { icon: Trophy, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },
       );
       more.push(
-        { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
-        { icon: Briefcase, label: "Carrier Resources", href: "/dashboard/carriers" },
+        { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
         { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
-        { icon: UserCog, label: "Producer Profile", href: "/dashboard/profile" },
-        { icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" },
-        { icon: ArrowRightLeft, label: "Transfer Requests", href: "/dashboard/transfers" },
+        { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
         { icon: Percent, label: "Commission Grids", href: "/dashboard/commission-grids" },
-        { icon: BookOpen, label: "Agent Handbook", href: "/dashboard/handbook" },
-        { icon: TrendingUp, label: "Annuity Training", href: "/dashboard/annuity-training" },
-        { icon: Heart, label: "Client Marketing", href: "/dashboard/client-marketing" },
-        { icon: CreditCard, label: "Calling Cards", href: "/dashboard/calling-cards" },
-        { icon: Globe, label: "My Landing Page", href: "/dashboard/landing-page" },
-        { icon: Calculator, label: "Needs Analysis", href: "/dashboard/needs-analysis" },
-        { icon: Calculator, label: "Quoter", href: "/dashboard/quoter" },
-        { icon: HelpCircle, label: "Help Center", href: "/dashboard/help" },
-        { icon: GraduationCap, label: "Training", href: "/course-progress" },
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
       );

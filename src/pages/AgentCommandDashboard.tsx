@@ -1186,6 +1186,55 @@ function AgencyCommandView() {
   const c = ceo.data;
   const ap30 = Number(c?.ap_30d ?? 0);
 
+  // 2026-06-14: Sam's LESS-IS-MORE directive — leaks + live applications
+  // belong on the front dashboard, not buried in /dashboard/finances or in
+  // a tab. "Any leaks I need just aren't even there."
+  const cfoLive = useQuery({
+    queryKey: ["agency-cfo-live"],
+    refetchInterval: 5 * 60_000,
+    staleTime: 4 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase.from("v_cfo_snapshot" as any).select("*").maybeSingle();
+      return data as unknown as {
+        ghost_ap_at_risk: string | number;
+        ica_paid_stuck: number;
+        lapsed_walked_commission: string | number;
+        dup_charges_open: number;
+        idle_active_agents: number;
+        insuracloud_sync: string;
+        agentlink_sync: string;
+      } | null;
+    },
+  });
+
+  // Live application stream — last 25 active applicants, newest first
+  const liveApps = useQuery({
+    queryKey: ["agency-live-applications"],
+    refetchInterval: 60_000,
+    staleTime: 55_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("applications" as any)
+        .select("id, first_name, last_name, status, license_progress, applied_at, contacted_at, ica_paid_at")
+        .is("terminated_at", null)
+        .order("applied_at", { ascending: false, nullsFirst: false })
+        .limit(25);
+      return (data ?? []) as unknown as Array<{
+        id: string;
+        first_name: string | null;
+        last_name: string | null;
+        status: string | null;
+        license_progress: string | null;
+        applied_at: string | null;
+        contacted_at: string | null;
+        ica_paid_at: string | null;
+      }>;
+    },
+  });
+
+  const leak = cfoLive.data;
+  const apps = liveApps.data ?? [];
+
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
       {/* v13 Wave E (2026-06-10): killed the inline gradient +  +
@@ -1240,11 +1289,100 @@ function AgencyCommandView() {
         </div>
       )}
 
-      {/* v24 Wave 3 audit fix: the 3-tile AgentLink hero band was collapsed
-          into the 4-tile period grid below. Showing today/week/month twice
-          (hero + period switcher) confused the eye. The period switcher
-          owns canonical numbers; the AgentLink totals still surface in the
-          footer "AgentLink summary · whole book" section. */}
+      {/* 2026-06-14 Sam-directive · LESS-IS-MORE: leaks + apps belong front.
+          Two bands inserted before the 4 KPI tiles:
+            §A · LEAKS STRIP (v_cfo_snapshot) — ghost AP · stuck · idle · sync
+            §B · LIVE APPLICATIONS panel — Sam: "applications always should be the highest"
+      */}
+
+      {/* §A · LEAKS STRIP ────────────────────────────────────────────── */}
+      <div className="rounded-md border border-rose-500/20 bg-rose-500/[0.03] dark:bg-rose-500/[0.05] p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="h-2 w-2 rounded-full bg-rose-500" />
+          <p className="text-[11px] uppercase tracking-widest font-bold text-rose-700 dark:text-rose-300">LIVE LEAKS · CFO bot</p>
+          <Link to="/dashboard/finances" className="text-[11px] text-muted-foreground hover:text-foreground ml-auto">
+            Full CFO →
+          </Link>
+        </div>
+        {cfoLive.isLoading ? (
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            {Array.from({length:6}).map((_,i) => <Skeleton key={i} className="h-12" />)}
+          </div>
+        ) : leak ? (
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 text-12">
+            <div>
+              <p className="text-[10px] uppercase text-muted-foreground">Ghost AP at risk</p>
+              <p className="text-15 font-bold tabular-nums text-rose-600 dark:text-rose-400">{fmtUsd(Number(leak.ghost_ap_at_risk ?? 0), true)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase text-muted-foreground">ICA paid stuck</p>
+              <p className="text-15 font-bold tabular-nums text-amber-600 dark:text-amber-400">{leak.ica_paid_stuck ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase text-muted-foreground">Walked commission</p>
+              <p className="text-15 font-bold tabular-nums text-rose-600 dark:text-rose-400">{fmtUsd(Number(leak.lapsed_walked_commission ?? 0), true)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase text-muted-foreground">Dup charges open</p>
+              <p className="text-15 font-bold tabular-nums text-amber-600 dark:text-amber-400">{leak.dup_charges_open ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase text-muted-foreground">Idle active agents</p>
+              <p className="text-15 font-bold tabular-nums text-amber-600 dark:text-amber-400">{leak.idle_active_agents ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase text-muted-foreground">Sync status</p>
+              <p className="text-12 font-bold tabular-nums leading-tight">
+                <span className={String(leak.insuracloud_sync ?? "").includes("🟢") ? "text-emerald-600" : "text-rose-600"}>ICA {String(leak.insuracloud_sync ?? "—").includes("🟢") ? "🟢" : "🔴"}</span>
+                {" · "}
+                <span className={String(leak.agentlink_sync ?? "").includes("🟢") ? "text-emerald-600" : "text-rose-600"}>AL {String(leak.agentlink_sync ?? "—").includes("🟢") ? "🟢" : "🔴"}</span>
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-12 text-muted-foreground">CFO snapshot unavailable.</p>
+        )}
+      </div>
+
+      {/* §B · LIVE APPLICATIONS (Sam: "applications always should be the highest") */}
+      <div className="rounded-md border border-amber-500/30 bg-amber-500/[0.04] p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Briefcase className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <p className="text-[11px] uppercase tracking-widest font-bold text-amber-700 dark:text-amber-300">
+            ACTIVE APPLICATIONS · LIVE ({apps.length})
+          </p>
+          <Link to="/dashboard/applicants" className="text-[11px] text-muted-foreground hover:text-foreground ml-auto">
+            Full pipeline →
+          </Link>
+        </div>
+        {liveApps.isLoading ? (
+          <div className="space-y-1">{Array.from({length:4}).map((_,i) => <Skeleton key={i} className="h-7" />)}</div>
+        ) : apps.length === 0 ? (
+          <p className="text-12 text-muted-foreground py-2">No active applications.</p>
+        ) : (
+          <div className="grid gap-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {apps.slice(0, 12).map((a) => {
+              const name = [a.first_name, a.last_name].filter(Boolean).join(" ") || "—";
+              const stage = a.ica_paid_at ? "PAID · stuck?" : a.contacted_at ? (a.license_progress ?? a.status ?? "contacted") : "uncontacted";
+              const tone = a.ica_paid_at ? "text-emerald-600 dark:text-emerald-400"
+                : !a.contacted_at ? "text-rose-600 dark:text-rose-400"
+                : "text-amber-600 dark:text-amber-400";
+              const applied = a.applied_at ? format(new Date(a.applied_at), "MMM d") : "—";
+              return (
+                <Link
+                  key={a.id}
+                  to={`/dashboard/applicants?focus=${a.id}`}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-border/40 hover:border-amber-500/40 hover:bg-amber-500/5 transition-colors text-12"
+                >
+                  <span className="truncate font-medium flex-1">{name}</span>
+                  <span className={`text-[10px] tabular-nums font-bold uppercase ${tone}`}>{stage}</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">{applied}</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* ── 4 KPI TILES (real verified numbers) ─────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

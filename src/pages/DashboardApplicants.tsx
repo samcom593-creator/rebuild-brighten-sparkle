@@ -108,8 +108,18 @@ interface Application {
   first_contact_attempt_at?: string | null;
 }
 
+// 2026-06-15 v7.14 · THE ACTUAL ROOT CAUSE Sam was hitting:
+// This SELECT referenced 3 columns that DO NOT EXIST in applications:
+//   - onboarding_stage  (never existed)
+//   - recruiter         (column is recruiter_id · dropped the _id)
+//   - last_contact_at   (column is last_contacted_at · missing the 'ed')
+// Postgres rejected the ENTIRE SELECT with code 42703 column-not-found.
+// Pre-v7.12 fetchScopedApplications swallowed the error and returned [].
+// Sam saw "0 applications" for hours regardless of RLS · JWT · SW state.
+// FIX: drop the 3 invalid identifiers + rename last_contact_at →
+// last_contacted_at to match information_schema.columns.
 const APPLICATION_SELECT =
-  "id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, onboarding_stage, recruiter, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contact_at, next_step_due_at, referral_source";
+  "id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contacted_at, next_step_due_at, referral_source";
 
 const statusColors: Record<string, string> = {
   new: "bg-blue-500/20 text-blue-400 border-blue-500/30",

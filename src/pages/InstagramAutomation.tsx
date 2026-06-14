@@ -14,8 +14,8 @@ import {
 } from "@/components/ui/select";
 import {
   Instagram, DollarSign, RefreshCw, ToggleLeft, ToggleRight,
-  CheckCircle, XCircle, Image, Copy, Download, Loader2, Users,
-  TrendingUp, Sparkles,
+  CheckCircle, XCircle, Copy, Download, Loader2, Users,
+  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -217,40 +217,6 @@ export default function InstagramAutomation() {
           </div>
         )}
       </div>
-
-      {/* Content Generator placeholder */}
-      <GlassCard className="p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Image className="h-6 w-6 text-primary" />
-          <h2 className="text-xl font-bold">Content Generator</h2>
-        </div>
-        <p className="text-muted-foreground mb-4">
-          Auto-generate Instagram posts from agent achievements and milestones.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <GlassCard className="p-4 border-dashed border-2 border-border hover:border-primary/30 transition-all cursor-pointer text-center">
-            <div className="h-12 w-12 rounded-lg bg-muted mx-auto mb-3 flex items-center justify-center">
-              <Sparkles className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <p className="font-semibold text-sm">Moody Lifestyle</p>
-            <p className="text-xs text-muted-foreground mt-1">Dark background, achievement stat in large green text</p>
-          </GlassCard>
-          <GlassCard className="p-4 border-dashed border-2 border-border hover:border-primary/30 transition-all cursor-pointer text-center">
-            <div className="h-12 w-12 rounded-lg bg-muted mx-auto mb-3 flex items-center justify-center">
-              <TrendingUp className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <p className="font-semibold text-sm">Hype Post</p>
-            <p className="text-xs text-muted-foreground mt-1">Bright, energetic deal announcement</p>
-          </GlassCard>
-          <GlassCard className="p-4 border-dashed border-2 border-border hover:border-primary/30 transition-all cursor-pointer text-center">
-            <div className="h-12 w-12 rounded-lg bg-muted mx-auto mb-3 flex items-center justify-center">
-              <Users className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <p className="font-semibold text-sm">Recruitment Post</p>
-            <p className="text-xs text-muted-foreground mt-1">Designed to attract new agents</p>
-          </GlassCard>
-        </div>
-      </GlassCard>
     </div>
   );
 }

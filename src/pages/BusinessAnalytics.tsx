@@ -20,7 +20,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -452,38 +451,9 @@ export default function BusinessAnalytics() {
         </div>
       )}
 
-      {/* WAVE B2 · 10-tab analytics strip · mirrors AgentLink's biz-analytics
-          tab navigation. Overview is the default (shipped). Carriers + Trends
-          surface our existing data. Daily Report + Individual + Team + Policy
-          + Quality + Marketing + AI Coach are scoped placeholders that show a
-          "Coming soon · syncs from your live data" message instead of empty
-          screens — every tab is a real page route a recruiting prospect can
-          click through. */}
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="inline-flex h-9 bg-transparent border-b border-border w-full justify-start gap-0 rounded-none p-0 overflow-x-auto">
-          {[
-            { v: "daily-report", l: "Daily Report" },
-            { v: "overview", l: "Overview" },
-            { v: "individual", l: "Individual" },
-            { v: "team", l: "Team" },
-            { v: "carriers", l: "Carriers" },
-            { v: "trends", l: "Trends" },
-            { v: "policy", l: "Policy" },
-            { v: "quality", l: "Quality" },
-            { v: "recruiting", l: "Recruiting" },
-            { v: "ai-coach", l: "AI Coach" },
-          ].map((tab) => (
-            <TabsTrigger
-              key={tab.v}
-              value={tab.v}
-              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground rounded-none px-3 py-2 text-12 text-muted-foreground whitespace-nowrap"
-            >
-              {tab.l}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        <TabsContent value="overview" className="mt-4 space-y-5">
+      {/* 2026-06-15 zero-substance cull: removed the dead tab strip.
+          Business Analytics now shows only live data-backed sections. */}
+      <div className="space-y-5">
         {/* WAVE FINAL · AI-Powered Insights · PERSONALIZED with named agents.
             Mirrors AgentLink's actual insight card layout: "<Agent Name> Needs
             Attention · $X potential · Action: <verb>". Backed by 3 SQL views
@@ -685,98 +655,8 @@ export default function BusinessAnalytics() {
           )}
         </CardContent>
       </Card>
-        </TabsContent>
-
-        <TabsContent value="carriers" className="mt-4">
-          <ComingSoonTab
-            title="Carriers · deep dive"
-            description="Per-carrier production trend, average premium, churn rate, and policy-status mix. Drill into any of your 22 partners."
-            preview={`${ins?.top_carrier_name ?? "American Home Life"} leads with ${ins?.top_carrier_share_pct ?? "58.2"}% of 30d premium · live`}
-          />
-        </TabsContent>
-
-        <TabsContent value="trends" className="mt-4">
-          <ComingSoonTab
-            title="Trends · 90-day view"
-            description="Day-over-day production trend, week-over-week conversion, and MoM growth chart with seasonality overlays."
-            preview={`MoM growth: ${ins ? "live" : "loading"} · Quarterly pace: see Sales Challenges above`}
-          />
-        </TabsContent>
-
-        <TabsContent value="daily-report" className="mt-4">
-          <ComingSoonTab
-            title="Daily Report"
-            description="Auto-generated AI summary of today's production, top producer, biggest deal, and any anomalies. Pushed daily at 6 PM Phoenix."
-            preview="Coming soon · today's data already powers the Trophy Cabinet above"
-          />
-        </TabsContent>
-
-        <TabsContent value="individual" className="mt-4">
-          <ComingSoonTab
-            title="Individual · agent self-view"
-            description="The single-agent dashboard each producer sees when they log in. Their MTD AP, contracted carriers, recent policies, and personal challenges."
-            preview={`Currently surfaced via the agent-view at /dashboard for non-admins`}
-          />
-        </TabsContent>
-
-        <TabsContent value="team" className="mt-4">
-          <ComingSoonTab
-            title="Team analytics"
-            description="Full producer roster, ranked. Already shipped at /dashboard/team-analytics."
-            preview="Click 'Team' in the sidebar — feature is live"
-          />
-        </TabsContent>
-
-        <TabsContent value="policy" className="mt-4">
-          <ComingSoonTab
-            title="Policy · health + retention"
-            description="Per-policy chargeback rate, lapse rate by age, persistency trend, and refund triggers. Identifies which carriers + products lapse most."
-            preview={ins ? `${ins.team_deals_30d} policies in last 30d · chargeback view in /dashboard/book-of-business` : "loading"}
-          />
-        </TabsContent>
-
-        <TabsContent value="quality" className="mt-4">
-          <ComingSoonTab
-            title="Quality scoring"
-            description="Per-agent quality grade: contract-pull rate, conversion rate, retention rate, average deal size, and compliance signals."
-            preview="Drives the strikes pipeline at /dashboard/strikes (live now)"
-          />
-        </TabsContent>
-
-        <TabsContent value="recruiting" className="mt-4">
-          <ComingSoonTab
-            title="Recruiting · pipeline + performance"
-            description="Application funnel by source, manager-attribution rollup, time-to-license, and ROI per channel."
-            preview="Full pipeline live at /dashboard/applicants · per-manager rollup at /dashboard/managers"
-          />
-        </TabsContent>
-
-        <TabsContent value="ai-coach" className="mt-4">
-          <ComingSoonTab
-            title="AI Coach · ask anything"
-            description="Chat with the Apex assistant about your book. 'Who is my top producer?' · 'Which carrier is concentrated?' · 'Should I push a contract on Foresters?' Powered by the same insights view above."
-            preview="WAVE C1 in execution plan · ~/business-ops/master-prompts/123"
-          />
-        </TabsContent>
-      </Tabs>
+      </div>
     </div>
-  );
-}
-
-function ComingSoonTab({ title, description, preview }: { title: string; description: string; preview?: string }) {
-  return (
-    <Card className="bg-slate-50 dark:bg-slate-900/50 border-dashed border-slate-300 dark:border-slate-700">
-      <CardContent className="p-8 text-center">
-        <Sparkles className="h-8 w-8 mx-auto text-amber-500 mb-3 opacity-70" />
-        <h3 className="text-lg font-bold mb-2">{title}</h3>
-        <p className="text-13 text-muted-foreground max-w-xl mx-auto">{description}</p>
-        {preview && (
-          <p className="text-11 text-amber-700 dark:text-amber-300 mt-3 font-mono">
-            <span className="font-bold">LIVE:</span> {preview}
-          </p>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 

@@ -1069,7 +1069,38 @@ export default function DashboardApplicants() {
           )}
         </div>
         <div className="flex items-center gap-2 text-11 text-muted-foreground">
-          <span className="font-mono">v7.4</span>
+          {/* 2026-06-15 v7.7 · self-fix cache-bust button when 0 apps fetched.
+              Sam: "I don't see a single application on one. There should be 500-600."
+              When the count is 0, this offers a one-tap nuke: unregister SW,
+              delete every cache, reload. Bypasses the stale-bundle scenario
+              that a hard refresh sometimes doesn't fix. */}
+          {!isLoading && activeApplications.length === 0 && (
+            <Button
+              size="sm"
+              variant="default"
+              className="h-7 bg-rose-500 hover:bg-rose-400 text-white"
+              onClick={async () => {
+                try {
+                  if ("serviceWorker" in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(regs.map((r) => r.unregister()));
+                  }
+                  if (typeof caches !== "undefined") {
+                    const names = await caches.keys();
+                    await Promise.all(names.map((n) => caches.delete(n)));
+                  }
+                  toast.success("Cache cleared · reloading…");
+                } catch (e) {
+                  console.error("[cache-bust]", e);
+                } finally {
+                  setTimeout(() => window.location.reload(), 400);
+                }
+              }}
+            >
+              Force-refresh · clear cache
+            </Button>
+          )}
+          <span className="font-mono">v7.7</span>
           {statusFilter !== "all" && (
             <Badge variant="outline" className="text-11">filter: {statusFilter}</Badge>
           )}

@@ -2649,3 +2649,94 @@ Head-to-toe checklist now **32 items**.
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v7.9 + v7.10 · AUTO-HEAL + EVIDENCE LINE + REJECTED CHIP · 2026-06-15
+
+*Sam: "stll nothiug how hard could it be to replace the applicatiins thar were filled out wtdf" → then: "It should be 524 applications · 109 from today · 17 rejected · remove that contract portion."*
+
+---
+
+## §112 · v7.9 · The auto-heal trigger (commit `a6f469a9`)
+
+Even with the v7.8 global session refresh in AuthenticatedShell + per-page session refresh in DashboardApplicants, Sam still saw 0 apps. Either the global refresh succeeded but the React Query cache didn't propagate, OR Sam's browser was still serving the old bundle.
+
+The v7.9 fix: detect the broken state and self-heal.
+
+When the page detects `queryData` has loaded AND `applications.length === 0` AND auto-heal hasn't already fired (one-shot guard via `autoHealedRef`):
+
+1. `console.warn` the auto-heal kick
+2. `supabase.auth.refreshSession()`
+   - On success: `queryClient.invalidateQueries({ queryKey: ["applicants"] })` → re-fire with fresh JWT
+   - On failure: toast → `signOut()` → `window.location.href = "/login"`
+
+No button-tapping. The page detects the broken state and fixes itself 1-2 seconds after load.
+
+---
+
+## §113 · v7.10 · The evidence line + rejected chip (commit `b3cf5e71`)
+
+Sam gave specific numbers in his next message:
+- **524 applications total**
+- **109 from today** (likely a transcription artifact — actual today = 1 at probe time)
+- **17 rejected**
+
+DB probe verified at the moment of the message:
+- 524 total ✓
+- `status='rejected'` = 9 · `status='disqualified'` = 8 · **sum = 17** ✓
+- terminated = 4 (with reason `reapplied_merged`)
+- Today (Phoenix tz) = 1 actual at probe time
+
+### §113.1 · Hero chip strip redesigned (5 chips · no Contracted)
+
+| Chip | Filter | Tone |
+|---|---|---|
+| **Total Active** (DEFAULT · amber highlight) | `terminated_at IS NULL` | amber |
+| In Funnel | `!closed_at && !contracted_at` | neutral white |
+| Course bought | `course_purchased_at OR license_progress IN (...)` | emerald |
+| Hired | `closed_at && !contracted_at` | emerald |
+| **Rejected** (NEW) | `status='rejected' OR status='disqualified'` | rose |
+
+**Removed**: Contracted chip (Sam: *"remove that contract portion"*).
+
+### §113.2 · Diagnostic banner enriched
+
+The always-visible banner now reads:
+> **N** active applications loaded from the database · **T** today · **R** rejected · **X** terminated · showing **K**
+
+Plus a NEW monospace evidence footer:
+> uid: 71826bba · email: sam.com593@gmail.com · role: admin
+> err: \<error message\>  *(only when queryError defined)*
+
+Sam can SEE his actual session identity + any query error without opening DevTools.
+
+### §113.3 · Banner color flips
+
+When `activeApplications.length === 0 && !isLoading`, the banner border + bg flip from emerald to **rose**. Visual signal that the page is in a broken state.
+
+### §113.4 · Counter logic walks both active + terminated
+
+Earlier counter only walked `activeApplications`. The `rejected` count needs to walk BOTH (since rejected apps may have `terminated_at` set). v7.10 walks `[...activeApplications, ...terminatedApplications]`.
+
+---
+
+## §114 · The standing rule (head-to-toe checklist items 33-34)
+
+33. Every list page with auth-gated data MUST have an evidence line in its diagnostic banner showing the session uid + email + role + any queryError. Users should never need DevTools to know what's wrong.
+34. Every list page with status categories MUST count BOTH active AND terminated rows when computing category counters. Status doesn't disappear when a record is soft-deleted.
+
+Head-to-toe checklist now **34 items**.
+
+---
+
+## §115 · Persisted-to v7.9 + v7.10
+
+- This file: `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Commits: `a6f469a9` (v7.9 auto-heal) + `b3cf5e71` (v7.10 evidence + rejected)
+
+---
+
+> **Hold the Standard. Average is the disease.**

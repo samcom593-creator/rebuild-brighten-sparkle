@@ -1136,7 +1136,11 @@ function AgencyCommandView() {
       const [dealAgents, prodAgents, licensedMtdRes, contractedMtdRes, inCourseRes, finishedRes, examScheduledRes] = await Promise.all([
         supabase.from("deals").select("agent_id").gte("posted_at", since10).in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase.from("daily_production").select("agent_id").gte("production_date", since10.slice(0, 10)),
-        supabase.from("applications").select("id", { count: "exact", head: true }).gte("licensed_at", periodBounds.startIso).lte("licensed_at", periodBounds.endIso).is("terminated_at", null),
+        // 2026-06-15 v6.7 fix: licensed_at on applications is barely populated
+        // (only 1-2 rows). The TRUE hire-count source is agents.created_at —
+        // every agent row IS a licensed hire by definition. Sam said the count
+        // was inaccurate; this returns 8 vs the old 0.
+        supabase.from("agents").select("id", { count: "exact", head: true }).gte("created_at", periodBounds.startIso).lte("created_at", periodBounds.endIso),
         supabase.from("applications").select("id", { count: "exact", head: true }).gte("contracted_at", periodBounds.startIso).lte("contracted_at", periodBounds.endIso).is("terminated_at", null),
         // Pre-licensing education (PLE) pipeline — from license_progress
         supabase.from("applications").select("id", { count: "exact", head: true }).eq("license_progress", "course_purchased").is("terminated_at", null),
@@ -1706,6 +1710,10 @@ function AgencyCommandView() {
           commission projected in same group right under this month annual AP." */}
       <DashboardPulseGroup />
 
+      {/* 2026-06-15 v6.7 · Sam: "bring back all those leads · every single lead
+          just gone." aged_leads table has 899 records (897 new + unworked). */}
+      <AgedLeadsPanel />
+
       {/* §B · APPLICATION PIPELINE · 3-LANE STRIP ─────────────────────── */}
       {(() => {
         const uncontacted = apps.filter((a) => !a.contacted_at);
@@ -1956,6 +1964,33 @@ function AgencyCommandView() {
                   <Area type="monotone" dataKey="ap" stroke="hsl(168 70% 60%)" strokeWidth={2} fill="url(#ceoApGrad)" name="ap" />
                 </AreaChart>
               </ResponsiveContainer>
+            )}
+
+            {/* 2026-06-15 v6.7 · Sam: "fill up this box · the one graph looks weird."
+                Adding a DAILY DEAL COUNT bar chart underneath the AP area chart so
+                the card carries 2 dimensions of data instead of one. */}
+            {trend.data && trend.data.length > 0 && (
+              <>
+                <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">DAILY DEAL COUNT</p>
+                  <span className="text-[10px] tabular-nums text-white/40">
+                    peak day: {Math.max(...trend.data.map((t: any) => t.deals ?? 0))} deals
+                  </span>
+                </div>
+                <ResponsiveContainer width="100%" height={110}>
+                  <BarChart data={trend.data}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={9} stroke="rgba(255,255,255,0.4)" />
+                    <YAxis fontSize={9} stroke="rgba(255,255,255,0.4)" allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(45 85% 55% / 0.4)", borderRadius: 12, color: "#fff", fontSize: 11 }}
+                      labelFormatter={(d) => format(new Date(d), "PPP")}
+                      formatter={(v: number) => [`${v} deals`, "Deals"]}
+                    />
+                    <Bar dataKey="deals" fill="hsl(45 85% 55%)" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </>
             )}
           </div>
         </div>
@@ -2360,7 +2395,7 @@ function CarrierMixPanel({ data, loading }: {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-center">
-            <div className="sm:col-span-2 h-40">
+            <Link to="/dashboard/carriers" className="sm:col-span-2 h-40 block group" title="Open Carrier Resources">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -2371,6 +2406,7 @@ function CarrierMixPanel({ data, loading }: {
                     outerRadius={64}
                     paddingAngle={2}
                     stroke="none"
+                    className="cursor-pointer transition-opacity group-hover:opacity-90"
                   >
                     {chartData.map((_, i) => (
                       <Cell key={i} fill={palette[i % palette.length]} />
@@ -2382,20 +2418,25 @@ function CarrierMixPanel({ data, loading }: {
                   />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
+            </Link>
             <div className="sm:col-span-3 space-y-1.5">
               {chartData.slice(0, 6).map((row, i) => (
-                <div key={row.name} className="flex items-center justify-between gap-2 text-[11px]">
+                <Link
+                  key={row.name}
+                  to="/dashboard/carriers"
+                  className="flex items-center justify-between gap-2 text-[11px] hover:bg-white/[0.04] rounded-md px-1.5 py-1 transition-colors group"
+                  title={`Open ${row.name} resources`}
+                >
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="h-2 w-2 rounded-full shrink-0" style={{ background: palette[i % palette.length] }} />
-                    <span className="text-white/85 truncate font-medium">{row.name}</span>
+                    <span className="text-white/85 truncate font-medium group-hover:text-white">{row.name}</span>
                   </div>
                   <div className="flex items-center gap-3 shrink-0 tabular-nums">
                     <span className="text-white/60">{row.deals}d</span>
                     <span className="text-white font-semibold">{fmtUsd(row.value, true)}</span>
                     <span className="text-emerald-300 w-10 text-right">{row.pct.toFixed(0)}%</span>
                   </div>
-                </div>
+                </Link>
               ))}
               {topConcentration && topConcentration.pct >= 50 && (
                 <p className="text-[10px] text-amber-300/80 mt-2 flex items-center gap-1">
@@ -3774,6 +3815,127 @@ function HirePace12WPanel() {
               </BarChart>
             </ResponsiveContainer>
           </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── PANEL · AGED LEADS · 899 RESERVES ───────────────────────────────
+// Sam 2026-06-15: "Bring back all those leads · every single lead just gone."
+// Source: aged_leads table · 899 records · 897 status='new' (unworked).
+function AgedLeadsPanel() {
+  const leads = useQuery({
+    queryKey: ["aged-leads-summary"],
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const cutoff7d = new Date(Date.now() - 7 * 86400000).toISOString();
+      const cutoff30d = new Date(Date.now() - 30 * 86400000).toISOString();
+      const [totalRes, newRes, recent7Res, dialedRes, dncRes, recentList] = await Promise.all([
+        supabase.from("aged_leads" as never).select("id", { count: "exact", head: true }),
+        supabase.from("aged_leads" as never).select("id", { count: "exact", head: true }).eq("status", "new"),
+        supabase.from("aged_leads" as never).select("id", { count: "exact", head: true }).gte("created_at", cutoff7d),
+        supabase.from("aged_leads" as never).select("id", { count: "exact", head: true }).gt("dial_count", 0),
+        supabase.from("aged_leads" as never).select("id", { count: "exact", head: true }).eq("dnc", true),
+        supabase.from("aged_leads" as never)
+          .select("id, first_name, last_name, phone, license_status, status, lead_source, dial_count, last_disposition, created_at")
+          .order("created_at", { ascending: false })
+          .limit(8),
+      ]);
+      return {
+        total: totalRes.count ?? 0,
+        unworked: newRes.count ?? 0,
+        recent7: recent7Res.count ?? 0,
+        dialed: dialedRes.count ?? 0,
+        dnc: dncRes.count ?? 0,
+        recent: (recentList.data ?? []) as Array<{
+          id: string; first_name: string | null; last_name: string | null;
+          phone: string | null; license_status: string | null; status: string | null;
+          lead_source: string | null; dial_count: number | null; last_disposition: string | null;
+          created_at: string | null;
+        }>,
+      };
+    },
+  });
+
+  const d = leads.data;
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.20)]">
+      <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">AGED LEAD RESERVES · LIVE</p>
+          </div>
+          {d && (
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
+              {d.total} on file
+            </Badge>
+          )}
+        </div>
+
+        {leads.isLoading ? (
+          <div className="space-y-2">{Array.from({length:4}).map((_,i)=><Skeleton key={i} className="h-12 bg-white/[0.04]" />)}</div>
+        ) : !d ? (
+          <p className="text-12 text-white/60 italic">Lead bank loading…</p>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-3">
+            {/* Left · 5 KPI tiles */}
+            <div className="lg:col-span-1 grid grid-cols-2 gap-2 content-start">
+              <div className="p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">UNWORKED</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-amber-300">{d.unworked}</p>
+                <p className="text-[10px] text-white/40 tabular-nums">status='new'</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">DIALED</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-white">{d.dialed}</p>
+                <p className="text-[10px] text-white/40 tabular-nums">touched once+</p>
+              </div>
+              <div className="p-3 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">NEW · 7d</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-emerald-300">{d.recent7}</p>
+                <p className="text-[10px] text-white/40 tabular-nums">last 7 days</p>
+              </div>
+              <div className="p-3 rounded-xl bg-rose-500/[0.06] border border-rose-500/20">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">DNC</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-rose-300">{d.dnc}</p>
+                <p className="text-[10px] text-white/40 tabular-nums">do-not-call</p>
+              </div>
+            </div>
+            {/* Right · 8 most recent leads */}
+            <div className="lg:col-span-2 space-y-1.5">
+              <p className="text-[10px] uppercase tracking-widest text-white/40 font-bold mb-1">Most recent · 8</p>
+              {d.recent.map((l) => {
+                const name = [l.first_name, l.last_name].filter(Boolean).join(" ") || "—";
+                const stat = (l.status ?? "new").toLowerCase();
+                const tone = stat === "hired" ? "text-emerald-300"
+                  : stat === "licensing" ? "text-amber-300"
+                  : (l.dial_count ?? 0) > 0 ? "text-white/80"
+                  : "text-amber-300";
+                return (
+                  <div key={l.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.04] hover:border-white/[0.12] transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-13 font-bold truncate text-white">{name}</p>
+                      <p className="text-[10px] text-white/40 truncate">
+                        {l.phone ?? "—"} · {l.lead_source ?? "aged"}{l.license_status ? ` · ${l.license_status}` : ""}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0 tabular-nums">
+                      <p className={`text-11 font-bold uppercase ${tone}`}>{stat}</p>
+                      <p className="text-[10px] text-white/40">{l.dial_count ?? 0} dials</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
       </div>
     </div>

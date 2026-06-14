@@ -91,7 +91,7 @@ const STAGES_NEW = [
 type StageKey = typeof STAGES_NEW[number]["key"];
 
 export default function RecruitingFunnels() {
-  usePageTitle("Recruiting Funnels · APEX");
+  usePageTitle("Headhunters Funnels · APEX");
 
   // legacy totals + by-source view kept feeding the hero (it works fine there)
   const totals = useQuery({
@@ -262,9 +262,9 @@ export default function RecruitingFunnels() {
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
       <PageHeader
-        eyebrow="Recruiting"
+        eyebrow="Headhunters"
         eyebrowIcon={<Filter className="h-3 w-3" />}
-        title="Recruiting Funnels"
+        title="Headhunters Funnels"
         subtitle="Conversion funnel · stage-by-stage drop-off · source attribution."
         actions={
           <Button variant="outline" size="sm" onClick={refetchAll}>
@@ -291,7 +291,7 @@ export default function RecruitingFunnels() {
                 <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">Live · 60s refresh</p>
               </div>
               <Badge variant="outline" className="text-11 border-amber-400/40 bg-amber-400/10 text-amber-200">
-                Recruiting funnel
+                Headhunters funnel
               </Badge>
             </div>
 

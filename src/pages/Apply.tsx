@@ -710,7 +710,7 @@ export default function Apply() {
             </Link>
             <div className="hidden md:flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] font-display font-semibold">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="text-emerald-700 dark:text-emerald-300">Recruiting now</span>
+              <span className="text-emerald-700 dark:text-emerald-300">Headhunters live</span>
               <span className="text-muted-foreground">·</span>
               <span className="text-foreground/80">{liveCarriers} carriers · {liveActiveAgents} active</span>
             </div>

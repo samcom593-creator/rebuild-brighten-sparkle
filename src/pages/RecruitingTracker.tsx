@@ -90,7 +90,7 @@ function initials(name?: string | null): string {
 }
 
 export default function RecruitingTracker() {
-  usePageTitle("Recruiting Tracker · APEX");
+  usePageTitle("Headhunters Tracker · APEX");
 
   const pipeline = useQuery({
     queryKey: ["recruiter-pipeline"],
@@ -323,9 +323,9 @@ export default function RecruitingTracker() {
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
       <PageHeader
-        eyebrow="Recruiting"
+        eyebrow="Headhunters"
         eyebrowIcon={<Trophy className="h-3 w-3" />}
-        title="Recruiting Tracker"
+        title="Headhunters Tracker"
         subtitle="Per-recruiter rich cards · live podium · 12-week hiring pace."
         actions={
           <Button variant="outline" size="sm" onClick={() => {

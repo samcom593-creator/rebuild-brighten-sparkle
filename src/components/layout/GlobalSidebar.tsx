@@ -154,10 +154,11 @@ export function GlobalSidebar({
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );
       more.push(
-        // Recruiting (where applications come from → who joins)
-        { icon: Inbox, label: "Recruiting Inbox", href: "/admin/recruiting-inbox", special: true },
-        { icon: Filter, label: "Recruiting Funnels", href: "/dashboard/recruiting-funnels", special: true },
-        { icon: Trophy, label: "Recruiting Tracker", href: "/dashboard/recruiting-tracker", special: true },
+        // Headhunters (where applications come from → who joins)
+        { icon: Inbox, label: "Headhunters Inbox", href: "/admin/recruiting-inbox", special: true },
+        { icon: Filter, label: "Headhunters Funnels", href: "/dashboard/recruiting-funnels", special: true },
+        { icon: Trophy, label: "Headhunters Tracker", href: "/dashboard/recruiting-tracker", special: true },
+        { icon: CalendarDays, label: "Headhunters · Calendar", href: "/dashboard/headhunters-calendar", special: true },
         { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
         // Production + money
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
@@ -189,9 +190,10 @@ export function GlobalSidebar({
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );
       more.push(
-        { icon: Inbox, label: "Recruiting Inbox", href: "/admin/recruiting-inbox", special: true },
-        { icon: Filter, label: "Recruiting Funnels", href: "/dashboard/recruiting-funnels" },
-        { icon: Trophy, label: "Recruiting Tracker", href: "/dashboard/recruiting-tracker" },
+        { icon: Inbox, label: "Headhunters Inbox", href: "/admin/recruiting-inbox", special: true },
+        { icon: Filter, label: "Headhunters Funnels", href: "/dashboard/recruiting-funnels" },
+        { icon: Trophy, label: "Headhunters Tracker", href: "/dashboard/recruiting-tracker" },
+        { icon: CalendarDays, label: "Headhunters · Calendar", href: "/dashboard/headhunters-calendar", special: true },
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },

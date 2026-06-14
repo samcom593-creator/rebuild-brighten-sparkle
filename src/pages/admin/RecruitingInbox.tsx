@@ -91,7 +91,7 @@ function hoursSince(iso: string | null): number | null {
 }
 
 export default function RecruitingInbox() {
-  usePageTitle("Recruiting Inbox · APEX Financial");
+  usePageTitle("Headhunters Inbox · APEX Financial");
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
@@ -222,7 +222,7 @@ export default function RecruitingInbox() {
                   <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
                   <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
                 </span>
-                <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">RECRUITING INBOX · LIVE</p>
+                <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">HEADHUNTERS INBOX · LIVE</p>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2 text-white">
                 <Inbox className="h-7 w-7 text-rose-300" /> Uncontacted Queue

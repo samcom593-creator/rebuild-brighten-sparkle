@@ -574,7 +574,11 @@ export default function DashboardApplicants() {
           (app.phone && app.phone.includes(q));
 
         const appStatus = getApplicationStatus(app);
-        const matchesStatus = statusFilter === "all" || statusFilter === "terminated" || appStatus === statusFilter;
+        const matchesStatus =
+          statusFilter === "all" ||
+          statusFilter === "terminated" ||
+          (statusFilter === "course_bought" && Boolean(app.course_purchased_at)) ||
+          appStatus === statusFilter;
         const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
         const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
         const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
@@ -595,6 +599,7 @@ export default function DashboardApplicants() {
           const lp = (app as any).license_progress;
           const map: Record<string, string[]> = {
             pre_course: ["unlicensed", "not_started", "applied"],
+            course_bought: ["course_purchased", "in_course", "studying"],
             in_course: ["course_purchased", "in_course", "studying"],
             exam_scheduled: ["test_scheduled", "exam_scheduled"],
             passed: ["passed_test", "exam_passed", "test_passed"],
@@ -603,6 +608,8 @@ export default function DashboardApplicants() {
           const allowed = map[stageFilter] || [];
           if (stageFilter === "pre_course") {
             matchesStage = !lp || allowed.includes(lp);
+          } else if (stageFilter === "course_bought") {
+            matchesStage = Boolean(app.course_purchased_at) || allowed.includes(lp);
           } else {
             matchesStage = allowed.includes(lp);
           }
@@ -1065,7 +1072,7 @@ export default function DashboardApplicants() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { label: "Total Active", value: totalLeads, color: "text-white",         tone: "bg-white/[0.04] border-white/[0.06] hover:border-white/20", filter: "all" },
-              { label: "Course bought", value: coursePurchased, color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50", filter: "all" },
+              { label: "Course bought", value: coursePurchased, color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50", filter: "course_bought" },
               { label: "Contracted",  value: contracted,    color: "text-amber-300",   tone: "bg-amber-500/[0.08] border-amber-500/20 hover:border-amber-400/50", filter: "contracted" },
               { label: "Hired",       value: hired,         color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50", filter: "hired" },
             ].map((stat) => (
@@ -1134,6 +1141,7 @@ export default function DashboardApplicants() {
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="new">New</SelectItem>
+            <SelectItem value="course_bought">Course bought</SelectItem>
             <SelectItem value="hired">Hired</SelectItem>
             <SelectItem value="contracted">Contracted</SelectItem>
             <SelectItem value="terminated">Terminated</SelectItem>

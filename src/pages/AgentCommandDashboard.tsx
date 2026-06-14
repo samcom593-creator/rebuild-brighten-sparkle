@@ -1730,8 +1730,8 @@ function AgencyCommandView() {
         const licensed = apps.filter((a) => a.licensed_at);
         const inProgress = apps.filter((a) => a.contacted_at && !a.course_purchased_at && !a.licensed_at);
         const Lane = ({
-          title, count, tone, items, tip,
-        }: { title: string; count: number; tone: "rose" | "amber" | "emerald" | "slate"; items: typeof apps; tip: string }) => {
+          title, count, tone, items, tip, href,
+        }: { title: string; count: number; tone: "rose" | "amber" | "emerald" | "slate"; items: typeof apps; tip: string; href: string }) => {
           const tones: Record<typeof tone, { border: string; bg: string; text: string; chip: string }> = {
             rose:    { border: "border-rose-500/30",    bg: "bg-rose-500/[0.06]",    text: "text-rose-700 dark:text-rose-300",       chip: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30" },
             amber:   { border: "border-amber-500/30",   bg: "bg-amber-500/[0.06]",   text: "text-amber-700 dark:text-amber-300",     chip: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30" },
@@ -1763,7 +1763,7 @@ function AgencyCommandView() {
                     return (
                       <Link
                         key={a.id}
-                        to={`/dashboard/applicants?focus=${a.id}`}
+                        to={`/dashboard/applicants?lead=${a.id}`}
                         className="flex items-center gap-2 text-12 group hover:bg-white/30 dark:hover:bg-black/20 rounded-lg px-1.5 py-1 transition-colors"
                       >
                         <span className={`h-6 w-6 rounded-full text-[10px] font-bold flex items-center justify-center ${t.chip}`}>
@@ -1775,7 +1775,7 @@ function AgencyCommandView() {
                     );
                   })}
                   {items.length > 4 && (
-                    <Link to="/dashboard/applicants" className={`text-11 ${t.text} hover:underline font-semibold inline-block`}>
+                    <Link to={href} className={`text-11 ${t.text} hover:underline font-semibold inline-block`}>
                       + {items.length - 4} more →
                     </Link>
                   )}
@@ -1797,10 +1797,10 @@ function AgencyCommandView() {
               </Link>
             </div>
             <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-              <Lane title="Uncontacted" count={uncontacted.length} tone="rose" items={uncontacted} tip="Inbox zero." />
-              <Lane title="Contacted · in progress" count={inProgress.length} tone="amber" items={inProgress} tip="Move them forward." />
-              <Lane title="Course bought" count={inCourse.length} tone="emerald" items={inCourse} tip="Coach to exam." />
-              <Lane title="Licensed" count={licensed.length} tone="emerald" items={licensed} tip="Onboard fast." />
+              <Lane title="Uncontacted" count={uncontacted.length} tone="rose" items={uncontacted} tip="Inbox zero." href="/dashboard/applicants?contacted=untouched" />
+              <Lane title="Contacted · in progress" count={inProgress.length} tone="amber" items={inProgress} tip="Move them forward." href="/dashboard/applicants" />
+              <Lane title="Course bought" count={inCourse.length} tone="emerald" items={inCourse} tip="Coach to exam." href="/dashboard/applicants?status=course_bought" />
+              <Lane title="Licensed" count={licensed.length} tone="emerald" items={licensed} tip="Onboard fast." href="/dashboard/applicants?license=licensed" />
             </div>
           </div>
         );

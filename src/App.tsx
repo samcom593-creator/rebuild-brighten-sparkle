@@ -145,6 +145,8 @@ const Finances = lazy(() => import("./pages/Finances"));
 const Scripts = lazy(() => import("./pages/Scripts"));
 const ProducerProfile = lazy(() => import("./pages/ProducerProfile"));
 const HelpCenter = lazy(() => import("./pages/HelpCenter"));
+const TransferRequests = lazy(() => import("./pages/TransferRequests"));
+const CommissionGrids = lazy(() => import("./pages/CommissionGrids"));
 const TeamAnalytics = lazy(() => import("./pages/TeamAnalytics"));
 const AwardsGallery = lazy(() => import("./pages/AwardsGallery"));
 const HallOfFame = lazy(() => import("./pages/HallOfFame"));
@@ -461,6 +463,8 @@ const App = () => (
                        <Route path="/dashboard/scripts" element={<ProtectedRoute><Scripts /></ProtectedRoute>} />
                        <Route path="/dashboard/profile" element={<ProtectedRoute><ProducerProfile /></ProtectedRoute>} />
                        <Route path="/dashboard/help" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />
+                       <Route path="/dashboard/transfers" element={<ProtectedRoute><TransferRequests /></ProtectedRoute>} />
+                       <Route path="/dashboard/commission-grids" element={<ProtectedRoute><CommissionGrids /></ProtectedRoute>} />
                        <Route path="/dashboard/team-analytics" element={<ProtectedRoute><TeamAnalytics /></ProtectedRoute>} />
                        <Route path="/dashboard/awards" element={<ProtectedRoute><AwardsGallery /></ProtectedRoute>} />
                        <Route path="/dashboard/hall-of-fame" element={<ProtectedRoute><HallOfFame /></ProtectedRoute>} />

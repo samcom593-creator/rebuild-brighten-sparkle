@@ -50,12 +50,28 @@ if ("serviceWorker" in navigator) {
     window.location.reload();
   });
 
-  // Poll for updates when the tab regains focus — covers long-open PWAs.
+  // 2026-06-15 v7.11 · AGGRESSIVE SW UPDATE POLLING
+  // Sam screenshot showed v7.7 bundle still active hours after v7.8-v7.11
+  // shipped. Old SW poll was 60 MINUTES which left long-open tabs stuck on
+  // stale bundles. Bumped to 60 SECONDS so any update lands within a
+  // minute of being deployed. Also forces update on history.pushState
+  // (every route change) so SPA navigation can't slip past the check.
   navigator.serviceWorker.ready.then(reg => {
+    const tryUpdate = () => reg.update().catch(() => {});
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") reg.update().catch(() => {});
+      if (document.visibilityState === "visible") tryUpdate();
     });
-    setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+    // 60-second poll (was 60-minute) for aggressive update detection
+    setInterval(tryUpdate, 60 * 1000);
+    // Also force update on every SPA navigation
+    const origPushState = window.history.pushState;
+    window.history.pushState = function(...args) {
+      tryUpdate();
+      return origPushState.apply(window.history, args as any);
+    };
+    window.addEventListener("popstate", tryUpdate);
+    // And once at first paint, in case the SW just got installed
+    tryUpdate();
   });
 }
 

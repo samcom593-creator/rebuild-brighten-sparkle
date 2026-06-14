@@ -40,7 +40,7 @@ This spec rests on two non-negotiable rules. Every PR, every dashboard, every si
 
 ### §0.3 · The conflict-resolution rule
 
-When LESS IS MORE and BILLION-DOLLAR conflict — **less wins on COUNT, billion wins on QUALITY**. We ship fewer pages, but every one we ship holds the standard.
+When LESS IS MORE and BILLION-DOLLAR conflict — **less wins on COUNT, billion wins on QUALITY**. We ship fewer pages, but the ones we ship are world-class.
 
 ---
 
@@ -972,5 +972,79 @@ Items still open:
 LESS IS MORE × BILLION-DOLLAR AESTHETIC × AUDIT EVERY NAV × **RETENTION-GRADE GAME-BREAKING**.
 
 If an agent at another agency sees the screenshot and doesn't text their friend "what is this?" — we missed.
+
+> **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v6.1 · BIG-PROMPT EXECUTION LOG · 2026-06-14 NIGHT/2
+
+*v6 was the bar. v6.1 is the receipt that the bar got executed against. After Sam said "do the big prompt only · make this the big proms only," this section logs the concrete changes that turned v6 from a written-down spec into a live UI. Not a new philosophy — proof of work.*
+
+---
+
+## §38 · What v6.1 shipped against v6 specs
+
+### §38.1 · Dedupe (Sam: "kinda duplicate the previous portion")
+- KILLED: the legacy 4-KPI tile row (`Agency AP · Deals · Producers · Licensed hires`). It sat directly below the new HERO and re-rendered the exact same 4 numbers in a flatter, less premium form. Hero now owns those 4 metrics canonically. Saves ~150px vertical and removes the duplicate visual layer.
+
+### §38.2 · LEAKS · promoted to PREMIUM GLASS BAND (Sam: "make leaks way better, way more appealing, more understanding")
+- Container: was `rounded-md border-rose-500/20 bg-rose-500/[0.03]`, now `rounded-3xl gradient slate-950 → rose-950/40 → slate-950` with `shadow-[0_0_48px_-12px_hsl(0_70%_50%/0.25)]` glow rim.
+- 2 soft-blur orb accents (rose top-right, amber bottom-left).
+- Animated rose ping at the eyebrow (the same animate-ping pattern as the HERO).
+- Eyebrow uses `tracking-[0.32em]` luxury label spacing.
+- Each of 6 leaks is now its own sub-card with: tone-matched Lucide icon, hover-lift border, 22px `font-black tabular-nums` value.
+- Sync status row uses dual color-dot indicators (`InsuraCloud` + `AgentLink` as text labels with leading status dots) instead of cryptic emoji.
+
+### §38.3 · UNCONTACTED · ANIMATED URGENT PULSE (Sam: "make uncontacted more animated")
+- The rose UNCONTACTED lane in the 3-lane pipeline strip now renders with:
+  - A pulsing rose ping dot in the top-right corner (animate-ping rose-400)
+  - A rose glow shadow ring around the panel (`shadow-[0_0_24px_-8px_hsl(0_70%_60%/0.4)]`)
+  - +2px count font size when the count is non-zero (15px vs 13px)
+- Pulse ONLY fires when count > 0. Inbox-zero days stay silent.
+
+### §38.4 · MONTH METRICS · enriched the HERO (Sam: "this month apps, this month hires, per agent, per manager")
+- New inner glass band inside the HERO with 4 month-level stats:
+  - **Apps · MTD** (e.g. 57) + `+N last 7d` sub-line
+  - **Hires · MTD** (emerald) + `N licensed` sub-line
+  - **Uncontacted** (color shifts to rose when >50 stale 48h+) + the stale count
+  - **Idle producers** (no deal 10d+) — pulled from `v_cfo_snapshot`
+- Live `monthDepth` query runs 5 parallel `applications` head-counts on 60s refetch.
+- Live data verified at write-time: 57 apps MTD · 0 hires MTD · 198 uncontacted total · 192 stale 48h+ · 86 idle producers.
+
+### §38.5 · The 192-stale-48h+ leak is now first-class-visible
+This number — the leak that previously sat hidden in `/dashboard/applicants` — is now on the front fold in two places:
+1. Inside the HERO month-depth strip (`Uncontacted · 198 / 192 stale 48h+`)
+2. On the 3-lane pipeline strip (with the animated urgent pulse)
+
+That's the recruiting leverage being made visible. 192 applicants waiting to be touched > 48 hours = $$ on the floor.
+
+---
+
+## §39 · What's still queued for the next execution slice
+
+These are concrete items called out in Sam's BIG PROMPT message that didn't make the v6.1 ship slice (because they overlap with broader pages, not just /dashboard):
+
+- **Per-manager hires breakdown** — needs a new `v_hires_by_manager_mtd` view + a dedicated tile in the HERO or a new "Manager Hires · MTD" mini-row. Held until Sam sees v6.1 land + confirms shape.
+- **Per-agent hires breakdown** — same: needs view + tile.
+- **CONTRACTED process polish** — the "course bought" → "licensed" transition pipeline visualization. Held: needs richer view-level data + a dedicated panel beneath the 3-lane strip.
+- **Website-side panel** — Sam's note: "missing a lot of stuff like the website stuff." Held: needs marketing/funnel data flowing from `apex-financial.org` form submits into `apex_inbound_leads`. The data path exists; the visualization doesn't.
+
+These get the same canonical hero pattern (§31) when they ship.
+
+---
+
+## §40 · The v6.1 commit trail
+
+| Commit | What |
+|---|---|
+| `c022f85b` | v6 game-breaking HERO + 3-lane pipeline strip (canonical) |
+| `bb48bed7` | CRITICAL: applications query column fix (the silent-failure bug) |
+| `1d51f86a` | v6.1 BIG PROMPT execution (this section's worth of changes) |
+
+Every future Dashboard PR is judged against these three commits + the v6 §31/§32 specs.
+
+---
 
 > **Hold the Standard. Average is the disease.**

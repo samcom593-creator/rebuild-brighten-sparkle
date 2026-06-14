@@ -2178,3 +2178,105 @@ The head-to-toe checklist is now 23 items.
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v7.3 · THE APPLICATIONS DEFINITION (canonical) + CRM POLISH · 2026-06-15
+
+*Sam: "Applications should be from traffic generated from the website itself. Every application that's ever been generated unless it was completed or is marked into a different category. CRM is completely done. Make sure CRM is completely fixed."*
+
+---
+
+## §90 · The Applications Page · canonical definition
+
+The `/dashboard/applicants` page exists to surface **active website-funnel recruits** — every application from website traffic that hasn't been completed or moved to another category.
+
+### §90.1 · The definition
+
+```
+Applications page default view ≡ active applications WHERE:
+  - terminated_at IS NULL  (still in the system)
+  - closed_at IS NULL      (not hired yet · hired = different category)
+  - contracted_at IS NULL  (not contracted yet · contracted = different category)
+```
+
+In SQL terms: `438 in_funnel` of 523 total apps (per 2026-06-15 DB state).
+
+### §90.2 · The lifecycle chips
+
+The hero KPI strip is now **5 click-to-filter chips**:
+
+| Chip | Filter mode | Visible count | Purpose |
+|---|---|---|---|
+| **In Funnel** (default · amber highlight) | `!closed_at && !contracted_at` | 438 | Sam's "actual recruiting funnel" |
+| Course bought | `course_purchased_at OR license_progress IN (course_purchased, finished_course)` | 52 | Already paid, in pre-license |
+| Contracted | `contracted_at IS NOT NULL` | 22 | Already converted to agent |
+| Hired | `closed_at IS NOT NULL AND !contracted_at` | 72 | Closed/won but pre-contract |
+| Total Active (escape hatch · faded) | `terminated_at IS NULL` | 519 | All non-terminated · all 5 categories at once |
+
+Default opens at "In Funnel." Sam clicks Contracted or Hired to see the conversions explicitly.
+
+### §90.3 · The filter logic addition
+
+```ts
+const matchesStatus =
+  statusFilter === "all" ||
+  statusFilter === "terminated" ||
+  (statusFilter === "in_funnel" && !app.closed_at && !app.contracted_at) ||
+  (statusFilter === "course_bought" && Boolean(app.course_purchased_at)) ||
+  appStatus === statusFilter;
+```
+
+The diagnostic v7.1 Clear-filters button still resets `statusFilter` to `"all"` (not `in_funnel`) — that's the escape hatch when Sam wants to see everything.
+
+---
+
+## §91 · The CRM (ClientPipeline) · v7.3 polish
+
+The CRM at `/dashboard/clients` (`ClientPipeline.tsx` · sources from `agentlink_clients` table · 1632 rows) was running the **legacy flat 4-tile `<Kpi>` strip** + bare `EmptyState title="No clients yet"`. Now matches the canonical pattern.
+
+### §91.1 · Hero promotion
+
+The 4 flat slate `<Kpi>` tiles are gone. Replaced with the canonical v6 §31 premium gradient hero (emerald · because money/production):
+
+- **Total clients** (white · `+N new this week` sub)
+- **Sold policies** (emerald · `N% of book` sub)
+- **Working on it** (amber · `working + pitched + almost` sub)
+- **Callbacks · 24h** (rose · `upcoming callback windows` sub)
+
+`CLIENT PIPELINE · LIVE` pulse · `tracking-[0.32em]` luxury eyebrow · `{scopeLabel}` badge (agency-wide / your team / your book) for role context.
+
+### §91.2 · Diagnostic empty-state
+
+The funnel-section "No clients yet" `<EmptyState>` is now the v7.1 diagnostic:
+
+- `Fetched <count> clients from agentlink_clients`
+- If 0 fetched: rose likely-causes list (al_user_id NULL · sync dark · session expired)
+- If fetched but unstaged: amber note pointing at the **real bug** — *"All N clients have pipeline_stage = NULL upstream. AgentLink sync needs to populate stage data."*
+
+### §91.3 · The data hygiene finding
+
+Per bot-sql verification: 1632 clients · 788 SOLD · 34 NEW_INITIAL · 1 ALMOST_THERE · **809 with NULL pipeline_stage**. The NULL stages are an upstream AgentLink sync gap, not a code bug. The diagnostic empty-state now SAYS THAT directly so Sam can route the fix to the right layer.
+
+---
+
+## §92 · The Permanent Standing Rule (head-to-toe checklist items 24-25)
+
+24. Pages with a clear lifecycle (apps → hired → contracted → licensed) MUST default to the active-funnel view, not the full union. Conversions are surfaced as click-to-filter chips so they're visible but not mixed in by default.
+25. Every page must show the canonical v6 §31 premium gradient hero. No flat slate `<Kpi>` tile strips anywhere.
+
+Head-to-toe checklist now **25 items**.
+
+---
+
+## §93 · Persisted-to v7.3
+
+- This file (v7.3): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Reference: `src/pages/DashboardApplicants.tsx` commit `d90e1525` (Applications definition)
+- Reference: `src/pages/ClientPipeline.tsx` commit `04bd4df6` (CRM polish)
+
+---
+
+> **Hold the Standard. Average is the disease.**

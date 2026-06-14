@@ -202,9 +202,28 @@ export default function WhaleRecruiting() {
               <Skeleton className="h-20 w-full" />
             </>
           ) : ranked.length === 0 ? (
-            <p className="text-12 text-slate-500 py-8 text-center">
-              No active recruits yet — anyone who applies through the funnel shows up here.
-            </p>
+            /* 2026-06-15 v7.2 · Sam: "Use that technique across the entire website."
+               Diagnostic empty-state. No client-side filter on this page, so we
+               only report the fetched count + likely upstream causes when 0. */
+            <div className="py-8 text-center space-y-3 max-w-md mx-auto">
+              <Crown className="h-10 w-10 mx-auto text-muted-foreground/40" />
+              <h3 className="text-sm font-semibold">
+                No active recruits fetched
+              </h3>
+              <p className="text-13 text-muted-foreground">
+                Fetched <span className="font-bold text-foreground tabular-nums">{(whales.data ?? []).length.toLocaleString()}</span> applicant{(whales.data ?? []).length === 1 ? "" : "s"} from the database (last 50, active).
+              </p>
+              <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
+                Zero rows came back. Likely causes:
+                <ul className="list-disc list-inside mt-2">
+                  <li>Your session expired (try logging out + back in)</li>
+                  <li>You lost admin grant — this view is admin-only (check user_roles)</li>
+                  <li>Funnel intake is dark — no new applications hitting <span className="font-mono">applications</span> table</li>
+                  <li>RLS policy regression on applications (check Supabase logs)</li>
+                </ul>
+                <p className="mt-2 italic">Hold the Standard.</p>
+              </div>
+            </div>
           ) : (
             ranked.map((w) => (
               <WhaleRow

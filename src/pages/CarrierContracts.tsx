@@ -206,11 +206,26 @@ export default function CarrierContracts() {
           description={`Query failed: ${(contracts.error as any)?.message?.slice(0, 80) ?? "unknown error"}. Check Supabase RLS or v_apex_contracts_summary view.`}
         />
       ) : (contracts.data?.length ?? 0) === 0 ? (
-        <EmptyState
-          icon={<Award className="h-6 w-6" />}
-          title="No contracts synced yet"
-          description="Run the AgentLink sync from /admin or wait for the next cron tick. Contracts will surface here automatically."
-        />
+        /* 2026-06-15 v7.2 · Sam: "Use that technique across the entire website."
+           Diagnostic empty-state. No client-side filter on this grid, so we
+           only report the fetched count + likely upstream causes when 0. */
+        <div className="rounded-lg border border-border/60 bg-card/80 p-6 text-center space-y-3 max-w-md mx-auto">
+          <Award className="h-10 w-10 mx-auto text-muted-foreground/40" />
+          <h3 className="text-sm font-semibold">No contracts fetched</h3>
+          <p className="text-13 text-muted-foreground">
+            Fetched <span className="font-bold text-foreground tabular-nums">{(contracts.data?.length ?? 0).toLocaleString()}</span> rows from <span className="font-mono">v_apex_contracts_summary</span>.
+          </p>
+          <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
+            Zero rows came back. Likely causes:
+            <ul className="list-disc list-inside mt-2">
+              <li>Your session expired (try logging out + back in)</li>
+              <li>You lost admin grant — this grid is admin-only (check user_roles)</li>
+              <li>AgentLink sync is dark — run sync from <span className="font-mono">/admin</span> or wait for next cron tick</li>
+              <li><span className="font-mono">v_apex_contracts_summary</span> view broken (check Supabase logs)</li>
+            </ul>
+            <p className="mt-2 italic">Hold the Standard.</p>
+          </div>
+        </div>
       ) : (
         <>
           {/* v26 audit fix: 4-up KPI tile grid → single inline summary strip.
@@ -386,11 +401,24 @@ function MyContractsSection({
       {isLoading ? (
         <div className="space-y-2">{Array.from({length:3}).map((_,i) => <Skeleton key={i} className="h-16" />)}</div>
       ) : active.length === 0 && pending.length === 0 ? (
-        <EmptyState
-          icon={<Briefcase className="h-6 w-6" />}
-          title="No carrier contracts on file yet"
-          description="Once you contract through APEX, your writing numbers + levels show up here. Ask your manager to send you carrier invite links."
-        />
+        /* 2026-06-15 v7.2 · Diagnostic empty-state for per-agent contracts. */
+        <div className="rounded-lg border border-border/60 bg-card/80 p-6 text-center space-y-3 max-w-md mx-auto">
+          <Briefcase className="h-10 w-10 mx-auto text-muted-foreground/40" />
+          <h3 className="text-sm font-semibold">No carrier contracts on file yet</h3>
+          <p className="text-13 text-muted-foreground">
+            Fetched <span className="font-bold text-foreground tabular-nums">{rows.length.toLocaleString()}</span> contract row{rows.length === 1 ? "" : "s"} for your account.
+          </p>
+          <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
+            Zero contracts visible. Likely causes:
+            <ul className="list-disc list-inside mt-2">
+              <li>You haven't been invited to a carrier yet — ask your manager for an invite link</li>
+              <li>You haven't completed any carrier contracting flow yet</li>
+              <li>Your session expired (try logging out + back in)</li>
+              <li><span className="font-mono">v_my_carrier_contracts</span> view scoped wrong (check Supabase logs)</li>
+            </ul>
+            <p className="mt-2 italic">Hold the Standard.</p>
+          </div>
+        </div>
       ) : (
         <>
           {active.length > 0 && (

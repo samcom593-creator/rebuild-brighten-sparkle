@@ -962,12 +962,49 @@ export default function DashboardAgedLeads() {
           <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : filteredLeads.length === 0 ? (
-        <GlassCard variant="subtle" className="p-10 text-center">
-          <Archive className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-          <h3 className="text-sm font-medium mb-1">No Leads Found</h3>
-          <p className="text-xs text-muted-foreground">
-            {isAdmin ? "Import aged leads using the Import button" : "No aged leads assigned to you yet"}
+        /* 2026-06-15 v7.2 · Sam: "Use that technique across the entire website."
+           Diagnostic empty-state: fetched count + filter cause + Clear-filters
+           button when filters are hiding everything. Same pattern as fb19dcbd. */
+        <GlassCard variant="subtle" className="p-10 text-center max-w-md mx-auto space-y-3">
+          <Archive className="h-10 w-10 mx-auto text-muted-foreground/40" />
+          <h3 className="text-sm font-semibold">
+            {leads.length === 0 ? "No aged leads fetched" : "Filters are hiding everything"}
+          </h3>
+          <p className="text-13 text-muted-foreground">
+            Fetched <span className="font-bold text-foreground tabular-nums">{leads.length.toLocaleString()}</span> aged lead{leads.length === 1 ? "" : "s"} from the database.
           </p>
+          {leads.length === 0 ? (
+            <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
+              Zero rows came back from the database. Likely causes:
+              <ul className="list-disc list-inside mt-2">
+                <li>Your session expired (try logging out + back in)</li>
+                <li>Your role lost admin/manager grant (check user_roles)</li>
+                <li>No aged leads have been imported yet — use the Import button</li>
+                <li>aged_leads RLS policy regression (check Supabase logs)</li>
+              </ul>
+              <p className="mt-2 italic">Hold the Standard.</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-12 text-amber-600 dark:text-amber-400">
+                But the filters above match <span className="font-bold tabular-nums">0</span>.
+                The data IS there — your filters are hiding it.
+              </p>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm("");
+                  setStatusFilter("all");
+                  setLicenseFilter("all");
+                  setSourceFilter("all");
+                }}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950"
+              >
+                Clear all filters · show {leads.length.toLocaleString()} lead{leads.length === 1 ? "" : "s"}
+              </Button>
+            </>
+          )}
         </GlassCard>
       ) : (
         <>

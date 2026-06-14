@@ -447,9 +447,44 @@ export default function DashboardAccounts() {
               ))}
             </div>
           ) : filteredAccounts.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              {searchQuery ? "No accounts match your search." : "No accounts found."}
-            </p>
+            /* 2026-06-15 v7.2 · Sam: "Use that technique across the entire website."
+               Diagnostic empty-state: fetched count + filter cause + Clear-filters
+               button when the search is hiding everything. Same pattern as fb19dcbd. */
+            <div className="border border-border rounded-md p-10 text-center space-y-3 max-w-md mx-auto">
+              <Users className="h-10 w-10 text-muted-foreground mx-auto" />
+              <h3 className="text-base font-semibold">
+                {accounts.length === 0 ? "No accounts fetched" : "Search is hiding everything"}
+              </h3>
+              <p className="text-13 text-muted-foreground">
+                Fetched <span className="font-bold text-foreground tabular-nums">{accounts.length.toLocaleString()}</span> account{accounts.length === 1 ? "" : "s"} from the database.
+              </p>
+              {accounts.length === 0 ? (
+                <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
+                  Zero rows came back from the database. Likely causes:
+                  <ul className="list-disc list-inside mt-2">
+                    <li>Your session expired (try logging out + back in)</li>
+                    <li>Your role lost admin/manager grant (check user_roles)</li>
+                    <li>agents table RLS regression (check Supabase logs)</li>
+                  </ul>
+                  <p className="mt-2 italic">Hold the Standard.</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-12 text-amber-600 dark:text-amber-400">
+                    But your search "<span className="font-mono">{searchQuery}</span>" matches <span className="font-bold tabular-nums">0</span>.
+                    The data IS there — your filter is hiding it.
+                  </p>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setSearchQuery("")}
+                    className="bg-amber-500 hover:bg-amber-400 text-slate-950"
+                  >
+                    Clear search · show {accounts.length.toLocaleString()} account{accounts.length === 1 ? "" : "s"}
+                  </Button>
+                </>
+              )}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>

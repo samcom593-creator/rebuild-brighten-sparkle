@@ -195,6 +195,19 @@ export default function HiringPipeline() {
 
   // Top metrics — click to scroll/filter
   const totalApps = apps.length;
+  // 2026-06-15 v7.2 · diagnostic-empty-state pattern. Sum across all stage
+  // columns gives the post-filter visible count. When totalApps > 0 but
+  // totalFiltered === 0, the board is empty because filters are hiding
+  // every row (vs the database being dark).
+  const totalFiltered = (Object.keys(grouped) as StageKey[]).reduce(
+    (sum, k) => sum + grouped[k].length,
+    0,
+  );
+  const clearAllHiringFilters = () => {
+    setSearch("");
+    setActiveFilters(new Set());
+    setStateFilter("");
+  };
   const stalled = apps.filter((a: any) => {
     const last = a.last_response_at || a.updated_at || a.created_at;
     return differenceInDays(new Date(), new Date(last)) >= 7;
@@ -491,6 +504,50 @@ export default function HiringPipeline() {
           )}
         </div>
       </div>
+
+      {/* 2026-06-15 v7.2 · Diagnostic empty-state banner. Sam: "Use that
+          technique across the entire website." When totalApps > 0 but every
+          stage column rendered empty, the board reads as 'no applicants' when
+          really the filters above reduced 1,247 rows to 0. Banner makes that
+          visible + offers a one-tap reset. Same pattern as fb19dcbd. */}
+      {totalFiltered === 0 && (
+        <div className="rounded-lg border border-border/60 bg-card/80 p-5 shadow-sm space-y-3 max-w-2xl mx-auto text-center">
+          <Target className="h-8 w-8 mx-auto text-muted-foreground/50" />
+          <h3 className="text-sm font-semibold">
+            {totalApps === 0 ? "No active applications fetched" : "Filters are hiding everything"}
+          </h3>
+          <p className="text-13 text-muted-foreground">
+            Fetched <span className="font-bold text-foreground tabular-nums">{totalApps.toLocaleString()}</span> active application{totalApps === 1 ? "" : "s"} from the database.
+          </p>
+          {totalApps === 0 ? (
+            <div className="text-12 text-rose-600 dark:text-rose-400 text-left max-w-md mx-auto">
+              Zero rows came back from the database. Likely causes:
+              <ul className="list-disc list-inside mt-2">
+                <li>Your session expired (try logging out + back in)</li>
+                <li>You lost admin/manager grant (check user_roles)</li>
+                <li>Funnel intake is dark — no apps hitting <span className="font-mono">applications</span></li>
+                <li>RLS policy regression on applications (check Supabase logs)</li>
+              </ul>
+              <p className="mt-2 italic">Hold the Standard.</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-12 text-amber-600 dark:text-amber-400">
+                But the filters above match <span className="font-bold tabular-nums">0</span>.
+                The data IS there — your filters are hiding it.
+              </p>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={clearAllHiringFilters}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950"
+              >
+                Clear all filters · show {totalApps.toLocaleString()} application{totalApps === 1 ? "" : "s"}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Mobile stage picker — pill row, tap to switch the visible column. */}
       <div className="md:hidden overflow-x-auto -mx-4 px-4 pb-1">

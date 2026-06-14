@@ -1528,11 +1528,43 @@ export default function DashboardCRM() {
                 return (
                   <TabsContent key={section.key} value={section.key}>
                     {sectionAgents.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-10 gap-2">
+                      /* 2026-06-15 v7.2 · diagnostic empty-state for Pre-Licensed pipeline */
+                      <div className="flex flex-col items-center justify-center py-10 gap-3 max-w-md mx-auto text-center">
                         <div className={cn("p-3 rounded-full", section.headerBg)}>
                           <Users className={cn("h-6 w-6", section.iconColor, "opacity-50")} />
                         </div>
-                        <p className="text-sm text-muted-foreground">No unlicensed agents</p>
+                        <p className="text-sm font-semibold">
+                          {agents.length === 0 ? "No active agents fetched" : "Filters are hiding every unlicensed agent"}
+                        </p>
+                        <p className="text-13 text-muted-foreground">
+                          Fetched <span className="font-bold text-foreground tabular-nums">{agents.length.toLocaleString()}</span> agent{agents.length === 1 ? "" : "s"} from the database.
+                        </p>
+                        {agents.length === 0 ? (
+                          <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
+                            Zero rows came back from the database. Likely causes:
+                            <ul className="list-disc list-inside mt-2">
+                              <li>Your session expired (try logging out + back in)</li>
+                              <li>Your role lost admin/manager grant (check user_roles)</li>
+                              <li>RLS policy regression on agents (check Supabase logs)</li>
+                            </ul>
+                            <p className="mt-2 italic">Hold the Standard.</p>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-12 text-amber-600 dark:text-amber-400">
+                              But the filters above match <span className="font-bold tabular-nums">0</span> unlicensed agents.
+                              The data IS there — your filters are hiding it.
+                            </p>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={clearAllFilters}
+                              className="bg-amber-500 hover:bg-amber-400 text-slate-950"
+                            >
+                              Clear all filters · show {agents.length.toLocaleString()} agent{agents.length === 1 ? "" : "s"}
+                            </Button>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <motion.div
@@ -1700,11 +1732,45 @@ export default function DashboardCRM() {
               return (
                 <TabsContent key={section.key} value={section.key}>
                   {sectionAgents.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 gap-2">
+                    /* 2026-06-15 v7.2 · Sam: "Use that technique across the entire website."
+                       Diagnostic empty-state: fetched count + filter cause + Clear-filters
+                       button when filters are hiding everything. Same pattern as fb19dcbd. */
+                    <div className="flex flex-col items-center justify-center py-10 gap-3 max-w-md mx-auto text-center">
                       <div className={cn("p-3 rounded-full", section.headerBg)}>
                         <Users className={cn("h-6 w-6", section.iconColor, "opacity-50")} />
                       </div>
-                      <p className="text-sm text-muted-foreground">No agents in this stage yet</p>
+                      <p className="text-sm font-semibold">
+                        {agents.length === 0 ? "No active agents fetched" : "Filters are hiding everything in this stage"}
+                      </p>
+                      <p className="text-13 text-muted-foreground">
+                        Fetched <span className="font-bold text-foreground tabular-nums">{agents.length.toLocaleString()}</span> agent{agents.length === 1 ? "" : "s"} from the database.
+                      </p>
+                      {agents.length === 0 ? (
+                        <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
+                          Zero rows came back from the database. Likely causes:
+                          <ul className="list-disc list-inside mt-2">
+                            <li>Your session expired (try logging out + back in)</li>
+                            <li>Your role lost admin/manager grant (check user_roles)</li>
+                            <li>RLS policy regression on agents (check Supabase logs)</li>
+                          </ul>
+                          <p className="mt-2 italic">Hold the Standard.</p>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-12 text-amber-600 dark:text-amber-400">
+                            But the filters above match <span className="font-bold tabular-nums">0</span> in this stage.
+                            The data IS there — your filters are hiding it.
+                          </p>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={clearAllFilters}
+                            className="bg-amber-500 hover:bg-amber-400 text-slate-950"
+                          >
+                            Clear all filters · show {agents.length.toLocaleString()} agent{agents.length === 1 ? "" : "s"}
+                          </Button>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <motion.div

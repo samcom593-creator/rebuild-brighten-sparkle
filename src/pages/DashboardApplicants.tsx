@@ -1156,6 +1156,37 @@ export default function DashboardApplicants() {
                   err: {(queryError as any)?.message?.slice(0, 80) ?? String(queryError).slice(0, 80)}
                 </span>
               )}
+              <button
+                onClick={async () => {
+                  // 2026-06-15 v7.11 · scientific probe.
+                  // Bypasses ALL the page's filter logic. Just asks Supabase:
+                  // SELECT count(*) FROM applications WHERE terminated_at IS NULL
+                  // with the current session. Shows result verbatim.
+                  try {
+                    const sess = await supabase.auth.getSession();
+                    const hasToken = !!sess.data.session?.access_token;
+                    const tokenExp = sess.data.session?.expires_at
+                      ? new Date(sess.data.session.expires_at * 1000).toISOString()
+                      : "n/a";
+                    const { count, data, error } = await supabase
+                      .from("applications")
+                      .select("id", { count: "exact" })
+                      .is("terminated_at", null)
+                      .limit(3);
+                    const result = error
+                      ? `❌ ${error.message} · code:${(error as any).code ?? "?"} · token:${hasToken ? "Y" : "N"} · exp:${tokenExp}`
+                      : `✅ count=${count} · sample=${(data ?? []).length} · token:${hasToken ? "Y" : "N"} · exp:${tokenExp}`;
+                    console.info("[PROBE]", { count, data, error, hasToken, tokenExp });
+                    toast.message(result, { duration: 15000 });
+                  } catch (e: any) {
+                    toast.error(`Probe threw: ${e?.message ?? String(e)}`);
+                    console.error("[PROBE threw]", e);
+                  }
+                }}
+                className="px-2 py-0.5 rounded bg-rose-500 hover:bg-rose-400 text-white text-11 font-bold"
+              >
+                Probe DB
+              </button>
             </div>
           )}
         </div>

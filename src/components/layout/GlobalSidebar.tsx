@@ -201,10 +201,26 @@ export function GlobalSidebar({
         { icon: Archive, label: "Old Licensed Recruiters", href: "/dashboard/old-applicants/licensed-recruiters" },
       );
     } else {
+      // AGENT role — every parity item must be available
       primary.push(
+        { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
         { icon: BarChart3, label: "Production", href: "/numbers" },
         { icon: Briefcase, label: "Applicants", href: "/recruit-pipeline" },
+        { icon: Trophy, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
+        { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },
+      );
+      more.push(
+        { icon: Briefcase, label: "Book", href: "/dashboard/book-of-business" },
+        { icon: Briefcase, label: "Carrier Resources", href: "/dashboard/carriers" },
+        { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
+        { icon: UserCog, label: "Producer Profile", href: "/dashboard/profile" },
+        { icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" },
+        { icon: ArrowRightLeft, label: "Transfer Requests", href: "/dashboard/transfers" },
+        { icon: Percent, label: "Commission Grids", href: "/dashboard/commission-grids" },
+        { icon: HelpCircle, label: "Help Center", href: "/dashboard/help" },
         { icon: GraduationCap, label: "Training", href: "/course-progress" },
+        { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
+        { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
       );
     }
 

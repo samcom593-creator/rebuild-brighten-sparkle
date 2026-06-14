@@ -1427,14 +1427,22 @@ export default function NotificationHub() {
   // P8: showArchived toggle reveals the spam-filtered rows so Sam can audit
   // what the filter is hiding. Default false = only actionable notifications.
   const [showArchived, setShowArchived] = useState(false);
+  // Section 10: role-scoped recipient filter (admin/manager/agent) backed by
+  // v_notification_log_with_role (LEFT JOIN user_roles via recipient_user_id).
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const { data: logs = [], isLoading } = useQuery({
-    queryKey: ["notification-logs", showArchived],
+    queryKey: ["notification-logs", showArchived, roleFilter],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("notification_log")
+      let q = supabase
+        .from("v_notification_log_with_role" as any)
         .select("*")
         .order("created_at", { ascending: false })
         .limit(500);
+      if (roleFilter !== "all") {
+        q = q.eq("recipient_role", roleFilter);
+      }
+      const { data, error } = await q;
+      // Throw rather than catch-and-return-empty so the UI can't render a fake 0.
       if (error) throw error;
       setLastRefreshed(new Date());
       const rows = (data || []) as any[];
@@ -1580,6 +1588,17 @@ export default function NotificationHub() {
                 <SelectItem value="sent">Sent</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Recipient role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="agent">Agent</SelectItem>
               </SelectContent>
             </Select>
           </div>

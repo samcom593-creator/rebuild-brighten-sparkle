@@ -21,6 +21,7 @@ interface NotifRow {
   link: string | null;
   read_at: string | null;
   created_at: string | null;
+  priority: string | null;
 }
 
 export default function MyNotifications() {
@@ -96,6 +97,9 @@ export default function MyNotifications() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium">{n.title ?? "Notification"}</span>
                     {!n.read_at && <Badge variant="default" className="text-[10px]">new</Badge>}
+                    {n.priority === "high" && (
+                      <Badge variant="destructive" className="text-[10px]">high</Badge>
+                    )}
                     {n.type && <Badge variant="outline" className="text-[10px]">{n.type}</Badge>}
                   </div>
                   {n.body && (

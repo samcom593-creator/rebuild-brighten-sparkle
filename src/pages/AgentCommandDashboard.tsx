@@ -2180,6 +2180,15 @@ function AgencyCommandView() {
       */}
       <ParityGapPanels />
 
+      {/* 2026-06-15 v6.5 · 4 MORE PANELS · "push all four" — Sam unblocked the
+          data-deferred panels with creative joins:
+          5. State Production (via agents.al_user_id → applications.state)
+          6. Time-of-Day Production Heat (snapshot_at hour in Phoenix tz)
+          7. Commission Projection MTD (annual_premium × FY%)
+          8. 12-Week Hire Pace (real agents.created_at data)
+      */}
+      <ExtendedParityPanels />
+
       {/* ── Footer · health stats + quick actions in ONE section ─── */}
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -3226,6 +3235,461 @@ function RecruiterContactSlaPanel() {
               </tbody>
             </table>
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// EXTENDED PARITY PANELS · 2026-06-15 · v6.5
+// Sam: "push all four" — unblocked the deferred data items with joins:
+//   5. State Production (deal user_id → agents → applications.state)
+//   6. Time-of-Day Production Heat (snapshot_at hour in Phoenix tz)
+//   7. Commission Projection MTD (annual_premium × FY%)
+//   8. 12-Week Hire Pace (real agents.created_at data)
+// ─────────────────────────────────────────────────────────────────────
+
+function ExtendedParityPanels() {
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      <StateProductionPanel />
+      <TimeOfDayProductionPanel />
+      <CommissionProjectionPanel />
+      <HirePace12WPanel />
+    </div>
+  );
+}
+
+// ── PANEL · STATE PRODUCTION (emerald) ─────────────────────────────
+// Unblock: deal.user_id → agents.al_user_id → applications (joined on
+// recruiter_id or assigned_agent_id) → applications.state.
+// Reveals: WI 912 / TX 157 / FL 129 / CA 76 in last 30d (real data).
+function StateProductionPanel() {
+  const stateMix = useQuery({
+    queryKey: ["state-production-mix"],
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      // Pull last-30-day deals + their al_user_id
+      const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const [dealsRes, agentsRes, appsRes] = await Promise.all([
+        supabase.from("agentlink_deals_snapshot" as never)
+          .select("user_id, annual_premium, effective_date")
+          .gte("effective_date", cutoff),
+        supabase.from("agents" as never).select("id, al_user_id"),
+        supabase.from("applications" as never)
+          .select("assigned_agent_id, recruiter_id, state")
+          .not("state", "is", null),
+      ]);
+
+      const deals = (dealsRes.data ?? []) as Array<{ user_id: number | null; annual_premium: number | string | null }>;
+      const agents = (agentsRes.data ?? []) as Array<{ id: string; al_user_id: number | null }>;
+      const apps = (appsRes.data ?? []) as Array<{ assigned_agent_id: string | null; recruiter_id: string | null; state: string | null }>;
+
+      // agentId → state map (prefer assigned_agent_id, fallback recruiter_id)
+      const agentIdToState = new Map<string, string>();
+      for (const a of apps) {
+        const k = a.assigned_agent_id ?? a.recruiter_id;
+        if (k && a.state && !agentIdToState.has(k)) agentIdToState.set(k, a.state);
+      }
+
+      // al_user_id → state map
+      const alUidToState = new Map<number, string>();
+      for (const ag of agents) {
+        if (ag.al_user_id == null) continue;
+        const st = agentIdToState.get(ag.id);
+        if (st) alUidToState.set(ag.al_user_id, st);
+      }
+
+      // Aggregate
+      const buckets = new Map<string, { deals: number; ap: number }>();
+      for (const d of deals) {
+        if (d.user_id == null) continue;
+        const state = alUidToState.get(d.user_id);
+        if (!state) continue;
+        const b = buckets.get(state) ?? { deals: 0, ap: 0 };
+        b.deals += 1;
+        b.ap += Number(d.annual_premium ?? 0);
+        buckets.set(state, b);
+      }
+
+      const list = Array.from(buckets.entries())
+        .map(([state, v]) => ({ state, deals: v.deals, ap: v.ap }))
+        .sort((a, b) => b.ap - a.ap)
+        .slice(0, 10);
+      const totalAp = list.reduce((s, x) => s + x.ap, 0);
+      return { list, totalAp };
+    },
+  });
+
+  const d = stateMix.data;
+  const max = d?.list[0]?.ap ?? 0;
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">STATE PRODUCTION · 30d</p>
+          </div>
+          {d && (
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+              {fmtUsd(d.totalAp, true)} · {d.list.length} states
+            </Badge>
+          )}
+        </div>
+        {stateMix.isLoading ? (
+          <div className="space-y-2">{Array.from({length:6}).map((_,i)=><Skeleton key={i} className="h-7 bg-white/[0.04]" />)}</div>
+        ) : !d || d.list.length === 0 ? (
+          <p className="text-12 text-white/60 italic">Production map unlocks on first state-attributed deal.</p>
+        ) : (
+          <div className="space-y-2">
+            {d.list.map((r) => {
+              const pct = max > 0 ? (r.ap / max) * 100 : 0;
+              const totalPct = d.totalAp > 0 ? (r.ap / d.totalAp) * 100 : 0;
+              return (
+                <div key={r.state} className="space-y-0.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold tabular-nums text-white/85 w-8">{r.state}</span>
+                    <span className="tabular-nums font-bold text-emerald-300 ml-auto">{fmtUsd(r.ap, true)}</span>
+                    <span className="tabular-nums text-white/40 ml-2 w-16 text-right">{r.deals} · {totalPct.toFixed(0)}%</span>
+                  </div>
+                  <div className="relative h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
+                    <div className="h-full bg-emerald-400/70" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── PANEL · TIME-OF-DAY PRODUCTION HEAT (amber) ─────────────────────
+// Unblock: snapshot_at is TIMESTAMPTZ → derive hour-of-day in Phoenix tz.
+// 7 weekday rows × 6 time bins (Early/Morn/Mid/Aft/Eve/Night).
+function TimeOfDayProductionPanel() {
+  const heat = useQuery({
+    queryKey: ["time-of-day-production"],
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+      const { data } = await supabase
+        .from("agentlink_deals_snapshot" as never)
+        .select("snapshot_at, annual_premium")
+        .gte("snapshot_at", cutoff);
+      const rows = (data ?? []) as Array<{ snapshot_at: string; annual_premium: number | string | null }>;
+      // Bin: dow (Mon=0..Sun=6) × time bin (0-5)
+      const binLabel = ["00-04", "04-08", "08-12", "12-16", "16-20", "20-24"];
+      const dayLabel = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      const grid: number[][] = Array.from({length:7}, () => Array(6).fill(0));
+      let maxCount = 0;
+      let peakDay = 0, peakBin = 0;
+      let totalDeals = 0;
+      for (const r of rows) {
+        const d = new Date(r.snapshot_at);
+        // Phoenix is UTC-7 (no DST)
+        const phx = new Date(d.getTime() - 7 * 3600 * 1000);
+        // dayOfWeek: 0=Sun → shift to Mon=0
+        const dow = (phx.getUTCDay() + 6) % 7;
+        const bin = Math.min(5, Math.floor(phx.getUTCHours() / 4));
+        grid[dow][bin] += 1;
+        totalDeals += 1;
+        if (grid[dow][bin] > maxCount) {
+          maxCount = grid[dow][bin];
+          peakDay = dow;
+          peakBin = bin;
+        }
+      }
+      return { grid, binLabel, dayLabel, maxCount, totalDeals, peakLabel: `${dayLabel[peakDay]} ${binLabel[peakBin]}` };
+    },
+  });
+
+  const h = heat.data;
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.20)]">
+      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">TIME-OF-DAY HEAT · 30d</p>
+          </div>
+          {h && h.totalDeals > 0 && (
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
+              peak: {h.peakLabel}
+            </Badge>
+          )}
+        </div>
+        {heat.isLoading ? (
+          <Skeleton className="h-40 w-full bg-white/[0.04]" />
+        ) : !h || h.totalDeals === 0 ? (
+          <p className="text-12 text-white/60 italic">First deal heats the grid.</p>
+        ) : (
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-7 gap-0.5 text-[9px] uppercase text-white/40 mb-1">
+              <span></span>
+              {h.binLabel.map((b) => <span key={b} className="text-center tabular-nums">{b}</span>)}
+            </div>
+            {h.grid.map((row, dow) => (
+              <div key={dow} className="grid grid-cols-7 gap-0.5 items-center">
+                <span className="text-[10px] uppercase text-white/40 font-bold">{h.dayLabel[dow]}</span>
+                {row.map((count, bin) => {
+                  const intensity = h.maxCount > 0 ? count / h.maxCount : 0;
+                  return (
+                    <div
+                      key={bin}
+                      className="h-6 rounded flex items-center justify-center text-[10px] font-bold tabular-nums transition-colors"
+                      style={{
+                        backgroundColor: count === 0
+                          ? "rgba(255,255,255,0.02)"
+                          : `hsl(45 85% 55% / ${0.15 + intensity * 0.65})`,
+                        color: intensity > 0.6 ? "#0f0a06" : "#fef3c7",
+                      }}
+                      title={`${h.dayLabel[dow]} ${h.binLabel[bin]} · ${count} deals`}
+                    >
+                      {count > 0 ? count : ""}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            <p className="text-[10px] text-white/40 mt-2 tabular-nums">{h.totalDeals} deal posts · derived from snapshot_at hour-of-day</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── PANEL · COMMISSION PROJECTION MTD (emerald) ─────────────────────
+// Unblock: commission_ledger is thin ($0 paid). DERIVE projected commission
+// from agentlink_deals_snapshot.annual_premium × estimated FY% from
+// qe_commission_schedules.
+function CommissionProjectionPanel() {
+  const proj = useQuery({
+    queryKey: ["commission-projection"],
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+      const today = now.toISOString().slice(0, 10);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+
+      const [mtdRes, lmtdRes, schedRes, paidRes] = await Promise.all([
+        supabase.from("agentlink_deals_snapshot" as never)
+          .select("annual_premium")
+          .gte("effective_date", monthStart)
+          .lte("effective_date", today),
+        supabase.from("agentlink_deals_snapshot" as never)
+          .select("annual_premium")
+          .gte("effective_date", lastMonthStart)
+          .lte("effective_date", lastMonthEnd),
+        supabase.from("qe_commission_schedules" as never)
+          .select("first_year_pct"),
+        supabase.from("commission_ledger" as never)
+          .select("amount, status")
+          .gte("created_at", monthStart),
+      ]);
+
+      const sum = (rows: any) => (rows ?? []).reduce((s: number, r: any) => s + Number(r.annual_premium ?? 0), 0);
+      const mtdAp = sum(mtdRes.data);
+      const lmtdAp = sum(lmtdRes.data);
+
+      // Avg FY% across schedules (excluding 0% blacklisted)
+      const scheds = (schedRes.data ?? []) as Array<{ first_year_pct: number | string | null }>;
+      const validPcts = scheds.map(s => Number(s.first_year_pct ?? 0)).filter(p => p > 0);
+      const avgFyPct = validPcts.length > 0 ? validPcts.reduce((s, p) => s + p, 0) / validPcts.length : 100;
+
+      const projectedMtd = mtdAp * (avgFyPct / 100);
+      const projectedLmtd = lmtdAp * (avgFyPct / 100);
+
+      const paidRows = (paidRes.data ?? []) as Array<{ amount: number | string | null; status: string | null }>;
+      const actualPaid = paidRows.filter(r => r.status === "paid").reduce((s, r) => s + Number(r.amount ?? 0), 0);
+      const actualPending = paidRows.filter(r => r.status === "pending").reduce((s, r) => s + Number(r.amount ?? 0), 0);
+
+      const daysIntoMonth = now.getDate();
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const eomProjection = daysIntoMonth > 0 ? (projectedMtd / daysIntoMonth) * daysInMonth : 0;
+      const variancePct = projectedLmtd > 0 ? ((eomProjection - projectedLmtd) / projectedLmtd) * 100 : 0;
+
+      return { mtdAp, lmtdAp, projectedMtd, projectedLmtd, eomProjection, actualPaid, actualPending, avgFyPct, variancePct };
+    },
+  });
+
+  const p = proj.data;
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">COMMISSION · PROJECTED MTD</p>
+          </div>
+          {p && (
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+              {p.avgFyPct.toFixed(0)}% avg FY rate
+            </Badge>
+          )}
+        </div>
+        {proj.isLoading ? (
+          <div className="space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} className="h-12 bg-white/[0.04]" />)}</div>
+        ) : !p ? (
+          <p className="text-12 text-white/60 italic">Run a deal · the ledger will sing.</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="p-3 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">MTD PROJECTED</p>
+                <p className="text-[26px] leading-none font-black tabular-nums text-emerald-300">{fmtUsd(p.projectedMtd, true)}</p>
+                <p className="text-[10px] text-white/40 tabular-nums">from {fmtUsd(p.mtdAp, true)} AP</p>
+              </div>
+              <div className="p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">EOM PROJECTION</p>
+                <p className="text-[26px] leading-none font-black tabular-nums text-amber-300">{fmtUsd(p.eomProjection, true)}</p>
+                <p className="text-[10px] text-white/40 tabular-nums">
+                  vs LMTD {fmtUsd(p.projectedLmtd, true)} ·
+                  <span className={p.variancePct >= 0 ? "text-emerald-300" : "text-rose-300"}>
+                    {" "}{p.variancePct >= 0 ? "+" : ""}{p.variancePct.toFixed(0)}%
+                  </span>
+                </p>
+              </div>
+            </div>
+            <div className="pt-3 border-t border-white/[0.06] text-[11px] flex items-center justify-between">
+              <span className="text-white/40 uppercase tracking-widest text-[10px]">Ledger actual</span>
+              <span className="tabular-nums">
+                <span className="text-emerald-300 font-bold">{fmtUsd(p.actualPaid)}</span>
+                <span className="text-white/40 mx-1">paid</span>
+                <span className="mx-2 text-white/20">·</span>
+                <span className="text-amber-300 font-bold">{fmtUsd(p.actualPending)}</span>
+                <span className="text-white/40 mx-1">pending</span>
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── PANEL · 12-WEEK HIRE PACE (amber) ───────────────────────────────
+// Unblock: applications.licensed_at only has 2 rows. USE agents.created_at
+// as the canonical hire-date proxy — each agent row IS a hire.
+function HirePace12WPanel() {
+  const pace = useQuery({
+    queryKey: ["hire-pace-12w"],
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const cutoff = new Date(Date.now() - 84 * 86400000).toISOString();
+      const { data } = await supabase
+        .from("agents" as never)
+        .select("created_at")
+        .gte("created_at", cutoff);
+      const rows = (data ?? []) as Array<{ created_at: string }>;
+      // Bucket by week start (Monday)
+      const now = new Date();
+      const buckets = new Map<string, number>();
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now); d.setDate(now.getDate() - i * 7);
+        const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
+        d.setDate(d.getDate() - dow);
+        const k = d.toISOString().slice(0, 10);
+        buckets.set(k, 0);
+      }
+      for (const r of rows) {
+        const d = new Date(r.created_at);
+        const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
+        const monday = new Date(d); monday.setDate(d.getDate() - dow);
+        const k = monday.toISOString().slice(0, 10);
+        if (buckets.has(k)) buckets.set(k, (buckets.get(k) ?? 0) + 1);
+      }
+      const list = Array.from(buckets.entries())
+        .map(([week, count]) => ({ week, count, label: new Date(week).toLocaleDateString("en-US", { month: "short", day: "numeric" }) }))
+        .sort((a, b) => a.week.localeCompare(b.week));
+      const total = list.reduce((s, x) => s + x.count, 0);
+      const avg = list.length > 0 ? total / list.length : 0;
+      const thisWeek = list[list.length - 1]?.count ?? 0;
+      const lastWeek = list[list.length - 2]?.count ?? 0;
+      const wow = lastWeek > 0 ? ((thisWeek - lastWeek) / lastWeek) * 100 : 0;
+      return { list, total, avg, thisWeek, lastWeek, wow };
+    },
+  });
+
+  const d = pace.data;
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.20)]">
+      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">HIRE PACE · 12 WEEKS</p>
+          </div>
+          {d && (
+            <Badge variant="outline" className={`text-[10px] uppercase tracking-widest ${d.wow >= 0 ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200" : "border-rose-400/40 bg-rose-400/10 text-rose-200"}`}>
+              {d.wow >= 0 ? "▲" : "▼"} {Math.abs(d.wow).toFixed(0)}% WoW
+            </Badge>
+          )}
+        </div>
+        {pace.isLoading ? (
+          <Skeleton className="h-40 w-full bg-white/[0.04]" />
+        ) : !d || d.total === 0 ? (
+          <p className="text-12 text-white/60 italic">First hire opens the chart.</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL · 12W</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-white">{d.total}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">AVG / WEEK</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-amber-300">{d.avg.toFixed(1)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">THIS WEEK</p>
+                <p className="text-[24px] leading-none font-black tabular-nums text-emerald-300">{d.thisWeek}</p>
+                <p className="text-[10px] text-white/40 tabular-nums">last: {d.lastWeek}</p>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={120}>
+              <BarChart data={d.list}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="label" fontSize={9} stroke="rgba(255,255,255,0.4)" />
+                <YAxis fontSize={9} stroke="rgba(255,255,255,0.4)" />
+                <Tooltip
+                  contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(45 85% 55% / 0.4)", borderRadius: 12, color: "#fff", fontSize: 11 }}
+                  formatter={(v: number) => [`${v} hires`, "Hires"]}
+                />
+                <Bar dataKey="count" fill="hsl(45 85% 55%)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </>
         )}
       </div>
     </div>

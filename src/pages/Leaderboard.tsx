@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Crown, Loader2, Medal, TrendingUp, Calendar, Clock3, Target, Users, Activity, CalendarDays, Trophy } from "lucide-react";
+import { Crown, Loader2, Medal, TrendingUp, Calendar, Clock3, Target, Users, Activity, CalendarDays, Trophy, DollarSign, TrendingDown } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDistanceToNowStrict } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
@@ -90,6 +91,71 @@ export default function Leaderboard() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
   const bounds = useMemo(() => getBounds(period, customFrom, customTo), [period, customFrom, customTo]);
+
+  // v6 §31 hero data — agency production this month vs prior month, source of
+  // truth is agentlink_deals_snapshot (NOT legacy deals). Phoenix tz for
+  // month boundaries per Sam's permanent memory rule.
+  const heroData = useQuery({
+    queryKey: ["leaderboard-hero-agency-production"],
+    refetchInterval: 60_000,
+    staleTime: 55_000,
+    queryFn: async () => {
+      const monthBounds = getMetricBounds("month");
+      // Prior month window — shift back 1 month from current month start.
+      const monthStart = new Date(monthBounds.startIso);
+      const priorEnd = new Date(monthStart);
+      const priorStart = new Date(monthStart);
+      priorStart.setMonth(priorStart.getMonth() - 1);
+
+      const curStartDate = monthBounds.startIso.slice(0, 10);
+      const curEndDate = monthBounds.endIso.slice(0, 10);
+      const priorStartDate = priorStart.toISOString().slice(0, 10);
+      const priorEndDate = priorEnd.toISOString().slice(0, 10);
+
+      // Day-of-month for pace calc (Phoenix tz to match Sam's rule)
+      const phoenixNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
+      const dayOfMonth = phoenixNow.getDate();
+      const daysInMonth = new Date(phoenixNow.getFullYear(), phoenixNow.getMonth() + 1, 0).getDate();
+
+      const [{ data: cur }, { data: prior }] = await Promise.all([
+        supabase
+          .from("agentlink_deals_snapshot" as any)
+          .select("annual_premium, user_id")
+          .gte("effective_date", curStartDate)
+          .lte("effective_date", curEndDate),
+        supabase
+          .from("agentlink_deals_snapshot" as any)
+          .select("annual_premium")
+          .gte("effective_date", priorStartDate)
+          .lt("effective_date", priorEndDate.slice(0, 10)),
+      ]);
+
+      const curRows = (cur ?? []) as Array<{ annual_premium: number | string | null; user_id: number | null }>;
+      const priorRows = (prior ?? []) as Array<{ annual_premium: number | string | null }>;
+
+      const totalAp = curRows.reduce((s, r) => s + Number(r.annual_premium ?? 0), 0);
+      const priorAp = priorRows.reduce((s, r) => s + Number(r.annual_premium ?? 0), 0);
+      const producers = new Set(curRows.map((r) => r.user_id).filter((v) => v != null)).size;
+      const avgPerProducer = producers > 0 ? totalAp / producers : 0;
+      const dealCount = curRows.length;
+
+      // Pace projection: linearly extrapolate to full month
+      const projected = dayOfMonth > 0 ? (totalAp / dayOfMonth) * daysInMonth : totalAp;
+      const paceDelta = priorAp > 0 ? ((projected - priorAp) / priorAp) * 100 : 0;
+
+      return {
+        totalAp,
+        producers,
+        avgPerProducer,
+        dealCount,
+        priorAp,
+        projected,
+        paceDelta,
+        dayOfMonth,
+        daysInMonth,
+      };
+    },
+  });
 
   const buildRows = useCallback(async (ids: string[], grouped: Map<string, { primary: number; secondary: number; tertiary: number }>) => {
     if (ids.length === 0) return [];
@@ -355,6 +421,92 @@ export default function Leaderboard() {
         )}
       />
 
+      {/* v6 §31 canonical hero — production = money = emerald gradient.
+          Truth source: agentlink_deals_snapshot (Sam's permanent memory).
+          Shows month-to-date agency AP, producer count, avg per producer,
+          and projected pace vs prior month. */}
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_64px_-12px_hsl(168_70%_45%/0.35)]">
+        <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,hsl(168_70%_45%/0.06),transparent_60%)] pointer-events-none" />
+        <div className="relative p-5 sm:p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">AGENCY PRODUCTION · LIVE</p>
+          </div>
+
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <DollarSign className="h-3 w-3 text-emerald-400" />
+                <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">MONTH-TO-DATE AP</p>
+              </div>
+              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
+                {heroData.isLoading ? "—" : formatMoney(heroData.data?.totalAp ?? 0)}
+              </p>
+              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+                {heroData.data?.dealCount ?? 0} deals · day {heroData.data?.dayOfMonth ?? "—"}/{heroData.data?.daysInMonth ?? "—"}
+              </p>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Users className="h-3 w-3 text-amber-400" />
+                <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">PRODUCERS</p>
+              </div>
+              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-amber-300">
+                {heroData.isLoading ? "—" : (heroData.data?.producers ?? 0).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+                {heroData.data?.producers === 1 ? "agent posting deals" : "agents posting deals"}
+              </p>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Target className="h-3 w-3 text-emerald-400" />
+                <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">AVG / PRODUCER</p>
+              </div>
+              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-emerald-300">
+                {heroData.isLoading ? "—" : formatMoney(heroData.data?.avgPerProducer ?? 0)}
+              </p>
+              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+                month-to-date per active producer
+              </p>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                {(heroData.data?.paceDelta ?? 0) >= 0 ? (
+                  <TrendingUp className="h-3 w-3 text-emerald-400" />
+                ) : (
+                  <TrendingDown className="h-3 w-3 text-rose-400" />
+                )}
+                <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">PACE VS PRIOR MO</p>
+              </div>
+              <p className={cn(
+                "text-[32px] sm:text-[40px] leading-none font-black tabular-nums",
+                (heroData.data?.paceDelta ?? 0) >= 0 ? "text-emerald-300" : "text-rose-300",
+              )}>
+                {heroData.isLoading
+                  ? "—"
+                  : `${(heroData.data?.paceDelta ?? 0) >= 0 ? "+" : ""}${(heroData.data?.paceDelta ?? 0).toFixed(0)}%`}
+              </p>
+              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+                proj {formatMoney(heroData.data?.projected ?? 0)} · prior {formatMoney(heroData.data?.priorAp ?? 0)}
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-4 text-[10px] text-white/40 tracking-wide">
+            Source · agentlink_deals_snapshot · America/Phoenix month window · refreshes every 60s
+          </p>
+        </div>
+      </div>
+
       <p className="text-xs text-muted-foreground">
         {sourceHint}
         {board === "production" && productionMode === "top_legs" && (
@@ -411,8 +563,14 @@ export default function Leaderboard() {
                 ))}
               </div>
             ) : rows.length === 0 ? (
-              <GlassCard className="p-12 text-center text-muted-foreground">
-                No {BOARD_META[tab].label.toLowerCase()} leaderboard data in this window. This is a true empty state from live tables.
+              <GlassCard className="p-12 text-center">
+                <p className="text-sm font-semibold text-foreground">
+                  {tab === "production" && "No deals posted this window · Hold the Standard · Get on the phones"}
+                  {tab === "recruiting" && "No new applications this window · Open the funnel · Run the source"}
+                  {tab === "referrals" && "No referrals this window · Activate the network · Ask every closer"}
+                  {tab === "activity" && "No activity logged this window · Dial in · Earn the board"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">Average is the disease.</p>
               </GlassCard>
             ) : (
               <GlassCard className="overflow-hidden p-0">
@@ -422,16 +580,15 @@ export default function Leaderboard() {
                     const rankColor = RANK_ICONS[row.rank]?.color ?? "text-muted-foreground";
                     const highlight = row.rank <= 3;
 
-                    // PL-051: stronger top-3 contrast. #1 gets a gold ring +
-                    // full amber bg tint, #2/#3 get tier-appropriate fills so
-                    // the podium scans cleanly even on small viewports.
+                    // v6 §31 Sam: #1 amber-glow ring, #2 slate, #3 amber-700,
+                    // rest neutral. Stronger top-3 contrast for the podium.
                     const podiumStyle =
                       row.rank === 1
-                        ? "bg-amber-500/15 ring-1 ring-amber-400/60 "
+                        ? "bg-amber-500/15 ring-1 ring-amber-400/60 shadow-[0_0_24px_-8px_hsl(45_90%_55%/0.45)]"
                         : row.rank === 2
-                        ? "bg-slate-300/10 ring-1 ring-slate-300/40"
+                        ? "bg-slate-400/10 ring-1 ring-slate-300/40"
                         : row.rank === 3
-                        ? "bg-rose-500/10 ring-1 ring-orange-300/40"
+                        ? "bg-amber-700/15 ring-1 ring-amber-700/50"
                         : "";
                     return (
                       <div
@@ -453,12 +610,17 @@ export default function Leaderboard() {
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <div className={cn("truncate font-semibold", highlight && "text-foreground")}>{row.agent_name ?? "Unknown agent"}</div>
+                          <div className={cn("truncate font-semibold", highlight && "text-foreground")}>{row.agent_name ?? "—"}</div>
                           <div className={cn("text-xs", highlight ? "text-foreground/75" : "text-muted-foreground")}>{subValue(row)}</div>
                         </div>
                         <div className="text-right">
-                          <div className={cn("font-bold tabular-nums", highlight ? "text-emerald-300" : "text-emerald-400")}>{primaryValue(row)}</div>
-                          <div className="mt-0.5 flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                          <div className={cn(
+                            "text-[26px] leading-none font-black tabular-nums",
+                            highlight ? "text-emerald-300" : "text-emerald-400",
+                          )}>
+                            {primaryValue(row)}
+                          </div>
+                          <div className="mt-1 flex items-center justify-end gap-1 text-[10px] uppercase tracking-widest text-muted-foreground">
                             <Clock3 className="h-3 w-3" />
                             {BOARD_META[tab].label}
                           </div>

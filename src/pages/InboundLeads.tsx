@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
+  Activity,
   AlertCircle,
   ArrowRight,
   CalendarClock,
@@ -17,11 +18,14 @@ import {
   Save,
   Search,
   ShieldCheck,
+  Timer,
   Trash2,
   User,
+  Users,
   Zap,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -496,6 +500,96 @@ export default function InboundLeads() {
     return { total, hot, followUps, solved };
   }, [leads]);
 
+  // 2026-06-14 v6 §31 canonical AMBER HERO — live data via useQuery.
+  // 4 metrics: Calls today · Avg pickup-time · Connect rate · Active calling agents.
+  // Phoenix tz per Sam's permanent rule. Source = inbound_leads truth table.
+  const heroLive = useQuery({
+    queryKey: ["inbound-leads", "hero-live", user?.id ?? "anon"],
+    queryFn: async () => {
+      // Pull the last 7d of leads — enough surface to compute today/week and trends.
+      const sinceIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await (supabase as any)
+        .from("inbound_leads")
+        .select("id,created_at,updated_at,stage,urgency,created_by_user_id,owner_agent_id,next_action_at")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{
+        id: string;
+        created_at: string;
+        updated_at: string;
+        stage: InboundStage;
+        urgency: Urgency;
+        created_by_user_id: string | null;
+        owner_agent_id: string | null;
+        next_action_at: string | null;
+      }>;
+
+      // Phoenix tz today bounds — Sam's permanent rule for any today/week query.
+      const fmt = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Phoenix",
+        year: "numeric", month: "2-digit", day: "2-digit",
+      });
+      const phxToday = fmt.format(new Date());
+      const phxOfRow = (iso: string) => fmt.format(new Date(iso));
+
+      const todayRows = rows.filter((r) => phxOfRow(r.created_at) === phxToday);
+      const weekRows = rows; // already last 7d
+
+      // Connect rate = leads that moved past "new" (any other stage = first touch made).
+      const connectedToday = todayRows.filter((r) => r.stage && r.stage !== "new").length;
+      const connectRate = todayRows.length > 0 ? Math.round((connectedToday / todayRows.length) * 100) : 0;
+
+      // Avg pickup-time = median seconds from created_at → updated_at for rows that moved
+      // out of "new". Falls back to "—" if no connected rows yet today.
+      const pickupSeconds: number[] = todayRows
+        .filter((r) => r.stage && r.stage !== "new")
+        .map((r) => {
+          const start = new Date(r.created_at).getTime();
+          const moved = new Date(r.updated_at).getTime();
+          return Math.max(0, Math.round((moved - start) / 1000));
+        })
+        .filter((s) => s >= 0 && s < 60 * 60 * 24); // sanity ceiling 24h
+      pickupSeconds.sort((a, b) => a - b);
+      const medianPickup = pickupSeconds.length
+        ? pickupSeconds[Math.floor(pickupSeconds.length / 2)]
+        : null;
+
+      // Active calling agents = distinct created_by_user_id touching a lead today.
+      const activeAgents = new Set(
+        todayRows.map((r) => r.created_by_user_id).filter((v): v is string => !!v),
+      ).size;
+
+      // Sub-stats for the inner glass band
+      const hotToday = todayRows.filter((r) => r.urgency === "hot").length;
+      const wonWeek = weekRows.filter((r) => r.stage === "won").length;
+      const followUpsOpen = weekRows.filter((r) => r.stage === "follow_up").length;
+      const lostWeek = weekRows.filter((r) => r.stage === "lost").length;
+
+      return {
+        callsToday: todayRows.length,
+        callsWeek: weekRows.length,
+        medianPickupSec: medianPickup,
+        connectRatePct: connectRate,
+        activeAgents,
+        hotToday,
+        wonWeek,
+        followUpsOpen,
+        lostWeek,
+      };
+    },
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+
+  const fmtPickup = (sec: number | null) => {
+    if (sec == null) return "—";
+    if (sec < 60) return `${sec}s`;
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return s ? `${m}m ${s}s` : `${m}m`;
+  };
+
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
     return leads.filter((lead) => {
@@ -958,12 +1052,107 @@ export default function InboundLeads() {
         }
       />
 
-      {/* v26 overhaul: 3 tiles (was 4) · dropped "Solved" since closed
-          leads are visible by switching the filter. Less clutter. */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Metric icon={PhoneCall} label="Inbound clients" value={stats.total} sub={loading ? "Syncing..." : "Saved intake records"} />
-        <Metric icon={Zap} label="Hot right now" value={stats.hot} sub="Urgent or same-day need" />
-        <Metric icon={CalendarClock} label="Follow-ups" value={stats.followUps} sub="Needs next touch" />
+      {/* 2026-06-14 BIG PROMPT execution · canonical v6 §31 AMBER HERO replaces
+          the flat 3-tile KPI strip (Sam: "kinda duplicate" rule). 4 metrics
+          live from inbound_leads: Calls today / Avg pickup-time / Connect rate /
+          Active calling agents. Phoenix tz. Refetch every 30s. */}
+      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_64px_-12px_hsl(168_70%_45%/0.35)]">
+        {/* glow accents — 2 blurs + 1 radial */}
+        <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,hsl(168_70%_45%/0.06),transparent_60%)] pointer-events-none" />
+
+        <div className="relative p-5 sm:p-6">
+          {/* Header row · LIVE ping + eyebrow */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">INBOUND COCKPIT · LIVE</p>
+            </div>
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
+              {heroLive.isLoading ? "Syncing…" : "Today · Phoenix"}
+            </Badge>
+          </div>
+
+          {/* The 4 big numbers */}
+          <div className="grid gap-5 grid-cols-2 sm:grid-cols-4 mb-5">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Calls today</p>
+              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
+                {(heroLive.data?.callsToday ?? 0).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+                {(heroLive.data?.callsWeek ?? 0).toLocaleString()} last 7d
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Avg pickup-time</p>
+              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-emerald-300">
+                {fmtPickup(heroLive.data?.medianPickupSec ?? null)}
+              </p>
+              <p className="text-[10px] text-white/50 mt-1 tabular-nums">median · new → diagnosing</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Connect rate</p>
+              <p className={cn(
+                "text-[32px] sm:text-[40px] leading-none font-black tabular-nums",
+                (heroLive.data?.connectRatePct ?? 0) >= 60 ? "text-emerald-300" :
+                (heroLive.data?.connectRatePct ?? 0) >= 30 ? "text-amber-300" : "text-rose-300",
+              )}>
+                {heroLive.data?.callsToday ? `${heroLive.data?.connectRatePct ?? 0}%` : "—"}
+              </p>
+              <p className="text-[10px] text-white/50 mt-1 tabular-nums">moved past "new"</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Active calling agents</p>
+              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-amber-300">
+                {(heroLive.data?.activeAgents ?? 0).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-white/50 mt-1 tabular-nums">touched a lead today</p>
+            </div>
+          </div>
+
+          {/* Inner glass band · 4 sub-stats */}
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Hot · today</p>
+              <p className={cn(
+                "text-[22px] leading-none font-bold tabular-nums",
+                (heroLive.data?.hotToday ?? 0) > 0 ? "text-rose-300" : "text-white/70",
+              )}>
+                {(heroLive.data?.hotToday ?? 0).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-white/40 tabular-nums">same-day need</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Follow-ups open</p>
+              <p className="text-[22px] leading-none font-bold tabular-nums text-amber-300">
+                {(heroLive.data?.followUpsOpen ?? 0).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-white/40 tabular-nums">queued · 7d window</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Won · 7d</p>
+              <p className="text-[22px] leading-none font-bold tabular-nums text-emerald-300">
+                {(heroLive.data?.wonWeek ?? 0).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-white/40 tabular-nums">solved + sold</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Lost · 7d</p>
+              <p className={cn(
+                "text-[22px] leading-none font-bold tabular-nums",
+                (heroLive.data?.lostWeek ?? 0) > (heroLive.data?.wonWeek ?? 0) ? "text-rose-300" : "text-white/70",
+              )}>
+                {(heroLive.data?.lostWeek ?? 0).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-white/40 tabular-nums">closed · no sale</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <GlassCard className="p-4">

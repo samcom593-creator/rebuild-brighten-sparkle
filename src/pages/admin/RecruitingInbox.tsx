@@ -176,15 +176,27 @@ export default function RecruitingInbox() {
     });
   }, [rows, isAdmin, showAllOwners, showContacted, search, myAgent?.id]);
 
-  const counts = useMemo(() => {
-    const list = filtered;
+  // Leak-posture hero stats — computed from raw rows (unfiltered) so the hero
+  // reflects the true queue health, not the current search/owner filter view.
+  const heroStats = useMemo(() => {
+    const list = rows ?? [];
+    const ownerScoped =
+      !isAdmin || !showAllOwners
+        ? myAgent?.id
+          ? list.filter((r) => r.owner_agent_id === myAgent.id)
+          : []
+        : list;
+    const uncontacted = ownerScoped.filter((r) => r.urgency !== "contacted");
+    const stale48 = uncontacted.filter((r) => r.hours_since_applied >= 48).length;
+    const stale7d = uncontacted.filter((r) => r.hours_since_applied >= 168).length;
+    const last24 = ownerScoped.filter((r) => r.hours_since_applied < 24).length;
     return {
-      total: list.length,
-      critical: list.filter((r) => r.urgency === "CRITICAL_48H_PLUS").length,
-      overdue: list.filter((r) => r.urgency === "overdue_24h").length,
-      fresh: list.filter((r) => r.urgency === "fresh" || r.urgency === "cooling").length,
+      uncontacted: uncontacted.length,
+      stale48,
+      stale7d,
+      last24,
     };
-  }, [filtered]);
+  }, [rows, isAdmin, showAllOwners, myAgent?.id]);
 
   if (isLoading) {
     return (
@@ -196,28 +208,78 @@ export default function RecruitingInbox() {
 
   return (
     <div className="container mx-auto max-w-6xl p-4 sm:p-6 space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Inbox className="h-6 w-6 text-primary" /> Recruiting Inbox
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Uncontacted first. Tap the row to call. Mark Contacted when you've reached them.
-          </p>
-        </div>
-        <Link to="/admin/my-applicants">
-          <Button variant="outline" size="sm">
-            <Users className="h-4 w-4 mr-2" /> My Pipeline
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        </Link>
-      </div>
+      {/* v6 §31 ROSE LEAK-POSTURE HERO — live recruiting inbox health */}
+      <div className="rounded-3xl border border-rose-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950 text-white shadow-[0_0_64px_-12px_hsl(168_70%_45%/0.35)] overflow-hidden relative">
+        <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,hsl(168_70%_45%/0.06),transparent_60%)] pointer-events-none" />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatTile label="Total in queue" value={counts.total} />
-        <StatTile label="48h+ critical" value={counts.critical} variant={counts.critical > 0 ? "danger" : "default"} />
-        <StatTile label="24h+ overdue" value={counts.overdue} variant={counts.overdue > 0 ? "warning" : "default"} />
-        <StatTile label="Fresh & cooling" value={counts.fresh} variant="success" />
+        <div className="relative p-6 sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                </span>
+                <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">RECRUITING INBOX · LIVE</p>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black flex items-center gap-2 text-white">
+                <Inbox className="h-7 w-7 text-rose-300" /> Uncontacted Queue
+              </h1>
+              <p className="text-sm text-white/60 mt-1.5">
+                Uncontacted first. Tap to call. Mark Contacted when you've reached them.
+              </p>
+            </div>
+            <Link to="/admin/my-applicants">
+              <Button variant="outline" size="sm" className="border-white/20 bg-white/[0.04] text-white hover:bg-white/[0.08] hover:text-white">
+                <Users className="h-4 w-4 mr-2" /> My Pipeline
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </div>
+
+          {/* Primary metric — uncontacted total */}
+          <div className="mb-6">
+            <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">UNCONTACTED TOTAL</p>
+            <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
+              {heroStats.uncontacted}
+            </p>
+            <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+              {heroStats.uncontacted === 0
+                ? "Inbox zero. Hold the Standard."
+                : `${heroStats.uncontacted} applicant${heroStats.uncontacted === 1 ? "" : "s"} waiting on first contact`}
+            </p>
+          </div>
+
+          {/* Leak posture sub-stats */}
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
+            <div className="group p-3 rounded-xl bg-rose-500/[0.08] border border-rose-500/20 hover:border-rose-400/50 transition-all">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <AlertTriangle className="h-3 w-3 text-rose-400" />
+                <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">STALE 48H+</p>
+              </div>
+              <p className="text-[22px] leading-none font-black tabular-nums text-rose-300">{heroStats.stale48}</p>
+              <p className="text-[10px] text-white/40 tabular-nums mt-1">cold leak</p>
+            </div>
+            <div className="group p-3 rounded-xl bg-rose-500/[0.08] border border-rose-500/20 hover:border-rose-400/50 transition-all">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Clock className="h-3 w-3 text-rose-400" />
+                <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">STALE 7D+</p>
+              </div>
+              <p className="text-[22px] leading-none font-black tabular-nums text-rose-300">{heroStats.stale7d}</p>
+              <p className="text-[10px] text-white/40 tabular-nums mt-1">dead unless rescued</p>
+            </div>
+            <div className="group p-3 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20 hover:border-emerald-400/50 transition-all col-span-2 sm:col-span-1">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">IN LAST 24H</p>
+              </div>
+              <p className="text-[22px] leading-none font-black tabular-nums text-emerald-300">{heroStats.last24}</p>
+              <p className="text-[10px] text-white/40 tabular-nums mt-1">fresh — call now</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -267,10 +329,19 @@ export default function RecruitingInbox() {
               <tbody>
                 {filtered.map((r) => {
                   const contactedHrs = hoursSince(r.contacted_at);
+                  const isStale = !r.contacted_at && r.hours_since_applied >= 48;
                   return (
                     <tr key={r.application_id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-3">
-                        <div className="font-medium">{r.applicant_name || "(no name)"}</div>
+                        <div className="font-medium flex items-center gap-2">
+                          {isStale ? (
+                            <span className="relative flex h-2 w-2 flex-shrink-0" title="Stale 48h+ — call now">
+                              <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
+                              <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500" />
+                            </span>
+                          ) : null}
+                          {r.applicant_name || "(no name)"}
+                        </div>
                         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-1">
                           {r.phone ? (
                             <a href={`tel:${r.phone}`} className="flex items-center gap-1 hover:text-primary">
@@ -332,12 +403,20 @@ export default function RecruitingInbox() {
                 })}
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                      {search
-                        ? "No matches."
-                        : showContacted
-                        ? "Queue is clear. Hold the Standard."
-                        : "Inbox zero. Every applicant has been contacted."}
+                    <td colSpan={5} className="p-10 text-center">
+                      {search ? (
+                        <div className="text-sm text-muted-foreground">No matches.</div>
+                      ) : showContacted ? (
+                        <div>
+                          <div className="text-base font-bold text-emerald-300">Queue is clear.</div>
+                          <div className="text-xs text-muted-foreground mt-1">Hold the Standard. Average is the disease.</div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="text-base font-bold text-emerald-300">Inbox zero.</div>
+                          <div className="text-xs text-muted-foreground mt-1">Every applicant has been contacted. Hold the Standard.</div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ) : null}
@@ -350,27 +429,3 @@ export default function RecruitingInbox() {
   );
 }
 
-function StatTile({
-  label,
-  value,
-  variant = "default",
-}: {
-  label: string;
-  value: number;
-  variant?: "default" | "warning" | "success" | "danger";
-}) {
-  const cls =
-    variant === "danger"
-      ? "border-rose-600/40 text-rose-200"
-      : variant === "warning"
-      ? "border-amber-500/40 text-amber-200"
-      : variant === "success"
-      ? "border-emerald-500/40 text-emerald-200"
-      : "border-border text-foreground";
-  return (
-    <div className={`rounded-md border bg-card/50 p-3 ${cls}`}>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="text-2xl font-bold tabular-nums mt-1">{value}</div>
-    </div>
-  );
-}

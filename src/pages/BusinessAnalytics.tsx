@@ -254,89 +254,203 @@ export default function BusinessAnalytics() {
         }
       />
 
-      {/* WAVE B1 + FINAL · AI-Powered Sales Challenges · AgentLink-grade
-          mirror. 4 tiles: Daily / Weekly / Monthly / Quarterly. Each shows
-          % to target, premium progress, deal count, time remaining, AND a
-          motivational copy line that adapts to progress bucket (matches
-          AgentLink's "Almost there, maintain your momentum" pattern).
-          Targets are formula-driven: daily = MTD pace, weekly = last week,
-          monthly/quarterly = prior period × 1.1. */}
-      {challenges.isLoading ? (
-        <div className="grid gap-3 md:grid-cols-4">
-          <Skeleton className="h-32" /><Skeleton className="h-32" />
-          <Skeleton className="h-32" /><Skeleton className="h-32" />
-        </div>
-      ) : (challenges.data?.length ?? 0) > 0 ? (
-        <div>
-          <div className="flex items-baseline justify-between mb-1 px-0.5">
-            <h2 className="text-12 uppercase tracking-wider font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5" />
-              AI-Powered Sales Challenges
-            </h2>
-            <span className="text-11 text-muted-foreground">live · auto-targets from your pace</span>
-          </div>
-          <p className="text-11 text-muted-foreground mb-2.5 px-0.5">
-            Personalized challenges based on your performance history and market trends
-          </p>
-          <div className="grid gap-3 md:grid-cols-4">
-            {["daily","weekly","monthly","quarterly"].map((p) => {
-              const c = challenges.data!.find((x) => x.period === p);
-              if (!c) return null;
-              return <ChallengeTile key={p} challenge={c} />;
-            })}
-          </div>
-        </div>
-      ) : null}
+      {/* WAVE v6 §31 · CANONICAL AMBER HERO · single source of truth for
+          Business Analytics top-of-page. Replaces the previous 4-tile sales
+          challenge grid + Trophy Cabinet banner ("kinda duplicate" per Sam).
+          4 hero metrics: Trophy wins · Active challenges · Needs-Attention ·
+          Learn-From. 3-lane challenge strip below: Daily / Weekly / Monthly
+          (rose if not started · amber if in progress · emerald if complete).
+          All LIVE via useQuery. */}
+      {(summary.isLoading || trophy.isLoading || challenges.isLoading) ? (
+        <Skeleton className="h-64 w-full rounded-3xl" />
+      ) : (
+        <div className="rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_64px_-12px_hsl(168_70%_45%/0.35)] overflow-hidden relative">
+          <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,hsl(168_70%_45%/0.06),transparent_60%)] pointer-events-none" />
 
-      {/* WAVE 100x · Trophy Cabinet UPGRADED · mirrors AgentLink's actual layout.
-          AgentLink shows: "20 Total · Daily 16 · Weekly 4 · Monthly 0 · Quarterly 0"
-          Ours: cumulative win counts from v_trophy_cabinet (live SQL). PERFECT
-          gold treatment when current streak = days elapsed.
-          Win definitions:
-          - Daily = days this month with ≥1 deal
-          - Weekly = weeks YTD with ≥5 deals
-          - Monthly = months YTD that beat the prior month's premium
-          - Quarterly = quarters YTD that beat the prior quarter's premium */}
-      {insights.isLoading || trophy.isLoading ? (
-        <Skeleton className="h-24 w-full rounded-md" />
-      ) : ins && tc ? (
-        <div className={`rounded-md border-2 p-4 ${
-          Number(ins.streak_days) >= Number(ins.days_in_month_elapsed) - 1
-            ? "border-amber-400 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-amber-500/15 dark:from-amber-500/20 dark:to-amber-500/20" // bg-gradient-card-allow:trophy-cabinet-perfect-month-gold-banner
-            : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-        }`}>
-          <div className="flex items-start gap-4 flex-wrap">
-            <span className="text-2xl shrink-0">🏆</span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <p className="text-11 uppercase tracking-wider font-bold text-amber-700 dark:text-amber-300">Trophy Cabinet</p>
-                <span className="text-22 font-extrabold tabular-nums text-amber-600 dark:text-amber-400">{tc.total_wins}</span>
-                <span className="text-11 text-muted-foreground uppercase tracking-wide">Total wins</span>
-                <a href="/dashboard/team-analytics" className="text-11 text-amber-700 dark:text-amber-400 font-semibold underline-offset-2 hover:underline ml-1">View all →</a>
-                {Number(ins.streak_days) >= Number(ins.days_in_month_elapsed) - 1 && (
-                  <span className="text-11 text-amber-600 dark:text-amber-400 font-bold">· PERFECT MONTH</span>
-                )}
+          <div className="relative p-6 sm:p-7">
+            {/* LIVE indicator row */}
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                </span>
+                <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">BUSINESS ANALYTICS · LIVE</p>
               </div>
-              <div className="flex flex-wrap gap-4 mt-2 text-12">
-                <span><span className="font-bold tabular-nums">{tc.daily_wins}</span> <span className="text-muted-foreground">Daily</span></span>
-                <span className="text-muted-foreground">·</span>
-                <span><span className="font-bold tabular-nums">{tc.weekly_wins}</span> <span className="text-muted-foreground">Weekly</span></span>
-                <span className="text-muted-foreground">·</span>
-                <span><span className="font-bold tabular-nums">{tc.monthly_wins}</span> <span className="text-muted-foreground">Monthly</span></span>
-                <span className="text-muted-foreground">·</span>
-                <span><span className="font-bold tabular-nums">{tc.quarterly_wins}</span> <span className="text-muted-foreground">Quarterly</span></span>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                <p className="text-[11px] uppercase tracking-widest font-bold text-amber-300">
+                  AI · Personalized per producer
+                </p>
               </div>
-              <p className="text-11 text-muted-foreground mt-1.5">
-                Streak: <span className="font-semibold text-foreground tabular-nums">{ins.streak_days}/{ins.days_in_month_elapsed}</span> days with a deal this month
-              </p>
             </div>
-            <div className="text-right shrink-0">
-              <p className="text-11 uppercase tracking-wider font-semibold text-slate-500">MTD Premium</p>
-              <p className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{fmtUsd(Number(ins.team_premium_30d), true)}</p>
+
+            {/* 4 hero metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 sm:gap-6 mb-5">
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Trophy className="h-3 w-3 text-amber-300" />
+                  <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">TROPHY WINS</p>
+                </div>
+                <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
+                  {fmtNum(tc?.total_wins ?? 0)}
+                </p>
+                <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+                  {fmtNum(tc?.daily_wins ?? 0)}D · {fmtNum(tc?.weekly_wins ?? 0)}W · {fmtNum(tc?.monthly_wins ?? 0)}M · {fmtNum(tc?.quarterly_wins ?? 0)}Q
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Target className="h-3 w-3 text-emerald-300" />
+                  <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">ACTIVE CHALLENGES</p>
+                </div>
+                <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-emerald-300">
+                  {fmtNum(challenges.data?.length ?? 0)}
+                </p>
+                <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+                  {ins ? `${ins.streak_days}/${ins.days_in_month_elapsed} day streak` : "auto-targeted"}
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <AlertTriangle className="h-3 w-3 text-rose-300" />
+                  <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">NEEDS ATTENTION</p>
+                </div>
+                <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-rose-300">
+                  {fmtNum(needsAttention.data?.length ?? 0)}
+                </p>
+                <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+                  {(needsAttention.data?.length ?? 0) > 0 ? "agents below team avg" : "Roster healthy"}
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <GraduationCap className="h-3 w-3 text-amber-300" />
+                  <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">LEARN FROM</p>
+                </div>
+                <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-amber-300">
+                  {fmtNum(learnFrom.data?.length ?? 0)}
+                </p>
+                <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+                  {(learnFrom.data?.length ?? 0) > 0 ? "top performers · share playbook" : "Coach to exam"}
+                </p>
+              </div>
+            </div>
+
+            {/* Inner glass band · MTD totals */}
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 mb-5 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">MTD PREMIUM</p>
+                <p className="text-[22px] leading-none font-bold tabular-nums text-emerald-300">
+                  {fmtUsd(totalPremium, true)}
+                </p>
+                <p className="text-[10px] text-white/40 tabular-nums">{fmtUsd(totalPremium)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">DEALS MTD</p>
+                <p className="text-[22px] leading-none font-bold tabular-nums text-white">
+                  {fmtNum(s?.total_deals_mtd)}
+                </p>
+                <p className="text-[10px] text-white/40 tabular-nums">avg {fmtUsd(Number(s?.avg_deal_size ?? 0))}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PRODUCERS · 30d</p>
+                <p className="text-[22px] leading-none font-bold tabular-nums text-amber-300">
+                  {fmtNum(s?.active_producers_30d)}
+                </p>
+                <p className="text-[10px] text-white/40 tabular-nums">active</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">MoM GROWTH</p>
+                <p className={`text-[22px] leading-none font-bold tabular-nums ${growthPositive ? "text-emerald-300" : "text-rose-300"}`}>
+                  {growthPositive ? "+" : ""}{growth}%
+                </p>
+                <p className="text-[10px] text-white/40 tabular-nums">
+                  vs {fmtUsd(Number(s?.premium_last_month ?? 0), true)}
+                </p>
+              </div>
+            </div>
+
+            {/* 3-LANE CHALLENGE STRIP · Daily / Weekly / Monthly with status tones */}
+            <div className="grid gap-3 sm:grid-cols-3">
+              {(["daily", "weekly", "monthly"] as const).map((period) => {
+                const c = challenges.data?.find((x) => x.period === period);
+                const cur = Number(c?.current_premium ?? 0);
+                const tgt = Number(c?.target_premium ?? 0) || 1;
+                const pct = c ? Math.min(150, Math.round((cur / tgt) * 100)) : 0;
+                // rose if not started · amber if in progress · emerald if complete
+                const complete = pct >= 100;
+                const inProgress = pct > 0 && pct < 100;
+                const tone = complete ? "emerald" : inProgress ? "amber" : "rose";
+                const toneClass =
+                  tone === "emerald"
+                    ? "border-emerald-400/40 bg-emerald-500/[0.08]"
+                    : tone === "amber"
+                    ? "border-amber-400/40 bg-amber-500/[0.08]"
+                    : "border-rose-400/40 bg-rose-500/[0.08]";
+                const dotClass =
+                  tone === "emerald" ? "bg-emerald-400" : tone === "amber" ? "bg-amber-400" : "bg-rose-400";
+                const textClass =
+                  tone === "emerald" ? "text-emerald-300" : tone === "amber" ? "text-amber-300" : "text-rose-300";
+                const label = period.charAt(0).toUpperCase() + period.slice(1);
+                const status = complete ? "Complete" : inProgress ? "In progress" : "Not started";
+                const coaching = complete
+                  ? "Locked · push the bonus"
+                  : inProgress
+                  ? "Maintain your momentum"
+                  : "Close one deal · break the seal";
+                return (
+                  <div
+                    key={period}
+                    className={`relative rounded-2xl border ${toneClass} p-4 transition-all`}
+                  >
+                    {tone === "rose" && (
+                      <span className="absolute top-3 right-3 flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500" />
+                      </span>
+                    )}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} />
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-white/60">
+                        {label} Challenge
+                      </p>
+                    </div>
+                    <p className={`text-[22px] leading-none font-black tabular-nums ${textClass}`}>
+                      {c ? fmtUsd(cur, true) : "—"}
+                      <span className="text-[11px] font-normal text-white/40 ml-1">
+                        / {c ? fmtUsd(tgt, true) : "—"}
+                      </span>
+                    </p>
+                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden mt-2.5">
+                      <div
+                        className={`h-full transition-all ${
+                          tone === "emerald" ? "bg-emerald-400" : tone === "amber" ? "bg-amber-400" : "bg-rose-400"
+                        }`}
+                        style={{ width: `${Math.min(100, pct)}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <p className={`text-[10px] uppercase tracking-widest font-bold ${textClass}`}>
+                        {status} · {pct}%
+                      </p>
+                      <p className="text-[10px] text-white/40 tabular-nums">
+                        {c ? `${c.current_deals}/${c.target_deals} deals` : "—"}
+                      </p>
+                    </div>
+                    <p className="text-[11px] text-white/60 mt-2 leading-snug">{coaching}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
-      ) : null}
+      )}
 
       {/* WAVE B2 · 10-tab analytics strip · mirrors AgentLink's biz-analytics
           tab navigation. Overview is the default (shipped). Carriers + Trends
@@ -473,36 +587,6 @@ export default function BusinessAnalytics() {
             </CardContent>
           </Card>
         )}
-
-      {/* 4-KPI tile row */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi
-          icon={Trophy}
-          label="Total Deals · MTD"
-          value={fmtNum(s?.total_deals_mtd)}
-          loading={summary.isLoading}
-        />
-        <Kpi
-          icon={DollarSign}
-          label="Total Premium · MTD"
-          value={fmtUsd(totalPremium, true)}
-          sub={fmtUsd(totalPremium)}
-          loading={summary.isLoading}
-          color="text-emerald-600 dark:text-emerald-400"
-        />
-        <Kpi
-          icon={Users}
-          label="Active Producers · 30d"
-          value={fmtNum(s?.active_producers_30d)}
-          loading={summary.isLoading}
-        />
-        <Kpi
-          icon={Target}
-          label="Avg Deal Size"
-          value={fmtUsd(Number(s?.avg_deal_size ?? 0))}
-          loading={summary.isLoading}
-        />
-      </div>
 
       {/* 2-up stat band */}
       <div className="grid gap-3 sm:grid-cols-2">

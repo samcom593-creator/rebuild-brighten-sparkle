@@ -296,13 +296,48 @@ export default function ClientPipeline() {
       {/* PL-047 — surface AgentLink sync prompt for non-admin agents w/o data */}
       <AgentLinkConnectionPrompt />
 
-      {/* KPI strip */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi icon={Users}        label="Total clients"      value={stats.total}    sub={`+${stats.new7d} new this week`}                      color="text-foreground" loading={isLoading} />
-        <Kpi icon={ShieldCheck}  label="Sold policies"      value={stats.sold}     sub={`${stats.total ? ((stats.sold / stats.total) * 100).toFixed(0) : 0}% of book`} color="text-emerald-500 dark:text-emerald-400" loading={isLoading} />
-        <Kpi icon={Flame}        label="Working on it"      value={stats.inFlight} sub="working + pitched + almost"                            color="text-amber-500 dark:text-amber-400" loading={isLoading} />
-        {/* v26 audit fix: label said 'Chargebacks · 7d' but value was wired to callbacksDue (callback_date in next 24h). Label corrected. */}
-        <Kpi icon={CalendarClock} label="Callbacks · 24h"   value={stats.callbacksDue} sub="upcoming callback windows"            color="text-rose-500 dark:text-rose-400" loading={isLoading} />
+      {/* 2026-06-15 v7.3 · CRM hero promoted to canonical v6 §31 premium
+          gradient (matches every other dashboard surface). Replaces the 4 flat
+          slate Kpi tiles. Sam: "Make sure CRM is completely fixed." */}
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+        <div className="relative p-5">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">CLIENT PIPELINE · LIVE</p>
+            </div>
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+              {scopeLabel}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Total clients</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{isLoading ? "…" : stats.total.toLocaleString()}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">+{stats.new7d} new this week</p>
+            </div>
+            <div className="p-3 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20">
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Sold policies</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-emerald-300">{isLoading ? "…" : stats.sold.toLocaleString()}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">{stats.total ? ((stats.sold / stats.total) * 100).toFixed(0) : 0}% of book</p>
+            </div>
+            <div className="p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20">
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Working on it</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-amber-300">{isLoading ? "…" : stats.inFlight.toLocaleString()}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">working + pitched + almost</p>
+            </div>
+            <div className="p-3 rounded-xl bg-rose-500/[0.08] border border-rose-500/20">
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Callbacks · 24h</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-rose-300">{isLoading ? "…" : stats.callbacksDue.toLocaleString()}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">upcoming callback windows</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Stage funnel + state distribution */}
@@ -319,7 +354,32 @@ export default function ClientPipeline() {
           {isLoading ? (
             <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-7 w-full" />)}</div>
           ) : stageData.length === 0 ? (
-            <EmptyState icon={<Users className="h-6 w-6" />} title="No clients yet" />
+            <div className="text-center py-8">
+              <Users className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              <h3 className="text-14 font-bold mb-2">
+                {rows.length === 0 ? "No clients fetched" : "No staged clients yet"}
+              </h3>
+              <div className="max-w-md mx-auto space-y-2">
+                <p className="text-12 text-muted-foreground">
+                  Fetched <span className="font-bold text-foreground tabular-nums">{rows.length.toLocaleString()}</span> clients from agentlink_clients.
+                </p>
+                {rows.length === 0 ? (
+                  <div className="text-11 text-rose-600 dark:text-rose-400 text-left">
+                    Zero rows came back. Likely causes:
+                    <ul className="list-disc list-inside mt-1">
+                      <li>Agent has no AgentLink user mapping (al_user_id NULL)</li>
+                      <li>AgentLink sync dark — check /dashboard/finances</li>
+                      <li>Session expired (log out + back in)</li>
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-11 text-amber-600 dark:text-amber-400">
+                    All {rows.length} clients have pipeline_stage = NULL upstream.
+                    AgentLink sync needs to populate stage data.
+                  </p>
+                )}
+              </div>
+            </div>
           ) : (
             <FunnelStrip steps={stageData.map(s => ({
               label: s.label,

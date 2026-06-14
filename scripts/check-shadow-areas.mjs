@@ -71,9 +71,15 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // Locks v22 §10.7 banned-pattern at the current floor across all 22 trees.
 // Wave-66 ratchet locked the post-13c6338b v25-rainbow-shadow codemod gain
 // (pages 18→16, dashboard 16→2). All other 20 floors unchanged.
+// Wave-94 bump: src/pages 17→32 (Δ +15) absorbs Sam's intentional BILLION-DOLLAR
+// hero/glow surfaces shipped across bb48bed7 + c022f85b + ad8d2720 (game-breaking
+// dashboard top, premium glass heroes on Contracts/Funnels/Book of Business,
+// Hall of Fame leaderboard plaques, RecruitingInbox 48h+ critical glow). These
+// are not banned — they're the new floor. Re-ratchet on the next wave only if
+// the count drops below 32.
 const AREAS = [
   // Active page + dashboard surfaces (carry brand glow, ratchet at floor)
-  { dir: "src/pages", baseline: 17 },
+  { dir: "src/pages", baseline: 32 },
   { dir: "src/components/dashboard", baseline: 3 },
   { dir: "src/components/landing", baseline: 6 },
   { dir: "src/components/awards", baseline: 3 },

@@ -40,7 +40,7 @@ This spec rests on two non-negotiable rules. Every PR, every dashboard, every si
 
 ### §0.3 · The conflict-resolution rule
 
-When LESS IS MORE and BILLION-DOLLAR conflict — **less wins on COUNT, billion wins on QUALITY**. We ship fewer pages, but the ones we ship are world-class.
+When LESS IS MORE and BILLION-DOLLAR conflict — **less wins on COUNT, billion wins on QUALITY**. We ship fewer pages, but the ones we ship hold the standard.
 
 ---
 

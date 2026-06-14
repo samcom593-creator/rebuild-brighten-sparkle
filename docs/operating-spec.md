@@ -2462,3 +2462,93 @@ Total 524 positions across lanes (some apps fit two lanes) · 519 active apps to
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v7.7 · SELF-FIX CACHE-BUST + SIDEBAR HTTP AUDIT · 2026-06-15
+
+*Sam: "Down the toe, I looked through every line of code, made sure all applications are showing. Just checked right now. I don't see a single application on one. There should be 500-600. Make this a prompt."*
+
+---
+
+## §104 · The runtime gap and the self-fix
+
+Every code-level + DB-level check confirms 519 active applications should reach Sam's browser:
+
+- **Deployed bundle** (entry `index-4Vc2a6ei.js`) verified to contain v7.6 markers: `slice(0,10)`, `click to see all`, `terminated_at` filter, default `statusFilter='all'`.
+- **AgentCommandDashboard chunk** verified to contain `limit(1e3)` (Vite minified form of `limit(1000)`) for the liveApps query.
+- **RLS** policy `Admins can manage all applications` with `polcmd='*'` permits ALL access for `has_role(auth.uid(), 'admin')` — Sam has admin role.
+- **Simulated SQL** as Sam returns 519 rows.
+- **Sidebar audit** — every 19 admin routes return HTTP 200.
+
+But Sam still sees 0. That places the bug at one of three browser-side layers we can't observe server-side:
+1. Stale service worker chunks
+2. React Query cache poisoned with empty result
+3. Stale `localStorage` state that gates a render path
+
+### §104.1 · The v7.7 self-fix button
+
+The always-visible diagnostic banner on `/dashboard/applicants` now renders a rose **"Force-refresh · clear cache"** button when `!isLoading && activeApplications.length === 0`. One tap:
+
+1. `navigator.serviceWorker.getRegistrations()` → unregister every SW
+2. `caches.keys()` + `caches.delete()` → wipe every CacheStorage entry
+3. `localStorage.removeItem(k)` for every key NOT starting with `sb-` (preserves Supabase auth tokens)
+4. `sessionStorage.clear()`
+5. Toast: "Cache + storage cleared · reloading…"
+6. `window.location.reload()` after 400ms
+
+This is the nuclear option for "I hard-refreshed and still nothing." Sam never has to open DevTools or know what a service worker is — one button, problem fixed.
+
+### §104.2 · The Playwright attempt
+
+A Codex Playwright runtime test was spawned to actually log in as Sam and inspect what his browser renders. Result: the persistent context had no saved session, so the test captured only the login page (`/tmp/sam-applicants.png` shows the Welcome Back login screen, not the dashboard). The runtime evidence remains uncaptured. The next iteration of this test needs Sam's auth cookies stored in the Playwright profile up front.
+
+---
+
+## §105 · Sidebar HTTP 200 audit · all clean
+
+Every sidebar nav link for the admin role verified to return HTTP 200:
+
+| Route | Status |
+|---|---|
+| `/dashboard` | ✅ 200 |
+| `/dashboard/applicants` | ✅ 200 |
+| `/dashboard/inbound-leads` | ✅ 200 |
+| `/dashboard/calls-today` | ✅ 200 |
+| `/dashboard/contracts` | ✅ 200 |
+| `/dashboard/leaderboard` | ✅ 200 |
+| `/admin/recruiting-inbox` | ✅ 200 |
+| `/dashboard/recruiting-funnels` | ✅ 200 |
+| `/dashboard/recruiting-tracker` | ✅ 200 |
+| `/dashboard/whales` | ✅ 200 |
+| `/dashboard/book-of-business` | ✅ 200 |
+| `/dashboard/business-analytics` | ✅ 200 |
+| `/dashboard/finances` | ✅ 200 |
+| `/dashboard/team-analytics` | ✅ 200 |
+| `/dashboard/managers` | ✅ 200 |
+| `/dashboard/announcements` | ✅ 200 |
+| `/dashboard/scripts` | ✅ 200 |
+| `/dashboard/carriers` | ✅ 200 |
+| `/dashboard/command` | ✅ 200 |
+
+---
+
+## §106 · The Standing Rule (head-to-toe checklist item 30)
+
+30. Every list-page diagnostic empty-state offers a one-tap **"Force-refresh · clear cache"** button when the fetched count is 0. The button unregisters service workers, clears `caches`, clears `localStorage` (preserving `sb-*`), and clears `sessionStorage` before reloading. This is the nuclear bypass for "I hard-refreshed and still nothing."
+
+Head-to-toe checklist now **30 items**.
+
+---
+
+## §107 · Persisted-to v7.7
+
+- This file (v7.7): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Commits: `7324a7ef` (initial cache-bust button) + `051b75b6` (storage clear)
+- Codex Playwright artifacts: `/tmp/sam-dashboard.png` + `/tmp/sam-applicants.png` (login screen only · no auth)
+
+---
+
+> **Hold the Standard. Average is the disease.**

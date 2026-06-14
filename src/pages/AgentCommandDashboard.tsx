@@ -1757,7 +1757,14 @@ function AgencyCommandView() {
                 <p className="text-12 text-muted-foreground italic">{tip}</p>
               ) : (
                 <div className="space-y-1.5">
-                  {items.slice(0, 4).map((a) => {
+                  {/* 2026-06-15 v7.6 · Sam: "I'm seeing a lot of people left
+                      off · all the applications is not there." Was slice(0,4)
+                      → bumped to (0,10) so 198 uncontacted shows 10 names
+                      instead of 4, the +N more link is now a prominent
+                      button-style banner not a thin text link, and the
+                      overflow link includes the FULL count so Sam can SEE
+                      the data is there. */}
+                  {items.slice(0, 10).map((a) => {
                     const name = [a.first_name, a.last_name].filter(Boolean).join(" ") || "—";
                     const initials = (name === "—" ? "?" : name).split(" ").map((s) => s[0]).slice(0, 2).join("");
                     return (
@@ -1774,9 +1781,9 @@ function AgencyCommandView() {
                       </Link>
                     );
                   })}
-                  {items.length > 4 && (
-                    <Link to={href} className={`text-11 ${t.text} hover:underline font-semibold inline-block`}>
-                      + {items.length - 4} more →
+                  {items.length > 10 && (
+                    <Link to={href} className={`block text-12 ${t.text} hover:bg-white/30 dark:hover:bg-black/30 rounded-lg px-2 py-1.5 font-bold text-center border ${t.border} mt-2`}>
+                      + {(items.length - 10).toLocaleString()} more · click to see all {items.length.toLocaleString()} →
                     </Link>
                   )}
                 </div>

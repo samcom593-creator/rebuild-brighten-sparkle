@@ -160,6 +160,16 @@ export default function DashboardApplicants() {
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
   const [hotLeadsOnly, setHotLeadsOnly] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(true);
+  // Section 9 (2026-06-15) · Sam asked for richer filters on the applicant pipeline.
+  //   - agentFilter   → recruiter_id (the agent who referred the applicant)
+  //   - uplineFilter  → recruiter's manager_id (two-hop upline)
+  //   - interviewFilter → 'scheduled' (has row in scheduled_interviews status='scheduled')
+  //                       'none' (no scheduled interview row)
+  //   - needsFollowupOnly → toggle: created_at > 48h AND no contacted_at AND no last_contacted_at
+  const [agentFilter, setAgentFilter] = useState<string>("all");
+  const [uplineFilter, setUplineFilter] = useState<string>("all");
+  const [interviewFilter, setInterviewFilter] = useState<string>("all");
+  const [needsFollowupOnly, setNeedsFollowupOnly] = useState(false);
   // Notes modal state
   const [notesApp, setNotesApp] = useState<Application | null>(null);
   
@@ -369,12 +379,32 @@ export default function DashboardApplicants() {
       }
     }
 
+    // Section 9 · scheduled_interviews lookup. Map<application_id, status>.
+    // Only 2 rows in prod today; cheap query, no pagination concern.
+    const interviewMap = new Map<string, string>();
+    const allAppIds = allFetchedApps.map(a => a.id);
+    if (allAppIds.length > 0) {
+      const { data: interviewRows, error: interviewErr } = await supabase
+        .from("scheduled_interviews")
+        .select("application_id, status")
+        .in("application_id", allAppIds);
+      if (interviewErr) {
+        // Don't fail the page over an interview lookup. Log + continue.
+        console.warn("[DashboardApplicants] scheduled_interviews lookup failed:", interviewErr);
+      } else {
+        (interviewRows || []).forEach((row: any) => {
+          if (row.application_id) interviewMap.set(row.application_id, row.status ?? "scheduled");
+        });
+      }
+    }
+
     return {
       apps: fetchedApps,
       terminatedApps: terminatedResult.rows,
       names: nameMap,
       recruiters: recruiterMap,
       uplines: uplineMap,
+      interviews: interviewMap,
       myAgentId: agentData?.id || null,
     };
   }, [user?.id, isAdmin, isManager, managerFilter]);
@@ -392,7 +422,41 @@ export default function DashboardApplicants() {
   const recruiterDirectory =
     queryData?.recruiters || new Map<string, { name: string; uplineId: string | null }>();
   const uplineNames = queryData?.uplines || new Map<string, string>();
+  const interviewByAppId = queryData?.interviews || new Map<string, string>();
   const agentId = queryData?.myAgentId || null;
+
+  // Section 9 · Build dropdown options.
+  //   - recruiterOptions: every distinct recruiter_id that appears on a fetched
+  //     application, mapped to its display name from recruiterDirectory.
+  //   - uplineOptions: every distinct upline (recruiter's manager_id) that
+  //     appears, mapped to its display name from uplineNames.
+  // Both sort alphabetically; "—" is never shown — empty/unknown collapse.
+  const recruiterOptions = useMemo(() => {
+    const ids = new Set<string>();
+    applications.forEach(a => { if (a.recruiter_id) ids.add(a.recruiter_id); });
+    archivedApplications.forEach(a => { if (a.recruiter_id) ids.add(a.recruiter_id); });
+    return Array.from(ids)
+      .map(id => ({ id, name: recruiterDirectory.get(id)?.name || "—" }))
+      .filter(o => o.name && o.name !== "—")
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [applications, archivedApplications, recruiterDirectory]);
+
+  const uplineOptions = useMemo(() => {
+    const ids = new Set<string>();
+    const collect = (appList: Application[]) => {
+      appList.forEach(a => {
+        if (!a.recruiter_id) return;
+        const upId = recruiterDirectory.get(a.recruiter_id)?.uplineId;
+        if (upId) ids.add(upId);
+      });
+    };
+    collect(applications);
+    collect(archivedApplications);
+    return Array.from(ids)
+      .map(id => ({ id, name: uplineNames.get(id) || "—" }))
+      .filter(o => o.name && o.name !== "—")
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [applications, archivedApplications, recruiterDirectory, uplineNames]);
 
   const fetchApplications = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["applicants"] });
@@ -673,25 +737,121 @@ export default function DashboardApplicants() {
   );
   const terminatedApplications = archivedApplications;
 
-  // Map applications to PipelineCardData for Kanban
+  // Section 9 · shared filter predicate so list view + kanban view honor the
+  // same filter chips. Pure function; depends on the live filter state above.
+  const applicationMatchesFilters = useCallback((app: Application): boolean => {
+    const q = searchQuery.toLowerCase();
+    const name = `${app.first_name} ${app.last_name}`.toLowerCase();
+    const matchesSearch = !q || name.includes(q) ||
+      app.email.toLowerCase().includes(q) ||
+      (app.phone && app.phone.includes(q));
+
+    const appStatus = getApplicationStatus(app);
+    const lowerStatus = (app.status ?? "").toLowerCase();
+    const matchesStatus =
+      statusFilter === "all" ||
+      statusFilter === "terminated" ||
+      (statusFilter === "in_funnel" && !app.closed_at && !app.contracted_at) ||
+      (statusFilter === "course_bought" && Boolean(app.course_purchased_at)) ||
+      (statusFilter === "rejected" && (lowerStatus === "rejected" || lowerStatus === "disqualified")) ||
+      appStatus === statusFilter;
+    const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
+    const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
+    const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
+    const matchesDuplicates = showDuplicates || !app.is_duplicate;
+
+    // Section 9 · agent filter = filter by recruiter_id.
+    const matchesAgent = agentFilter === "all" || app.recruiter_id === agentFilter;
+
+    // Section 9 · upline filter = recruiter's manager_id matches the picked upline.
+    let matchesUpline = true;
+    if (uplineFilter !== "all") {
+      const recruiter = app.recruiter_id ? recruiterDirectory.get(app.recruiter_id) : null;
+      matchesUpline = recruiter?.uplineId === uplineFilter;
+    }
+
+    // Section 9 · interview filter.
+    //   'scheduled' → application has a row in scheduled_interviews with status='scheduled'
+    //   'none'      → no row in scheduled_interviews at all
+    let matchesInterview = true;
+    if (interviewFilter !== "all") {
+      const intStatus = interviewByAppId.get(app.id);
+      if (interviewFilter === "scheduled") matchesInterview = intStatus === "scheduled";
+      else if (interviewFilter === "none") matchesInterview = !intStatus;
+      else matchesInterview = intStatus === interviewFilter;
+    }
+
+    // Section 9 · needs-follow-up toggle.
+    //   created_at older than 48h AND no contacted_at AND no last_contacted_at.
+    let matchesNeedsFollowup = true;
+    if (needsFollowupOnly) {
+      const ageMs = Date.now() - new Date(app.created_at).getTime();
+      const hasContact = Boolean(app.contacted_at) || Boolean((app as any).last_contacted_at);
+      matchesNeedsFollowup = ageMs > 48 * 60 * 60 * 1000 && !hasContact;
+    }
+
+    // ?contacted=untouched → only rows where contacted_at AND last_contacted_at are null
+    // ?contacted=recent → rows touched in last 24h
+    const matchesContacted =
+      contactedParam === "untouched"
+        ? !app.contacted_at && !(app as any).last_contacted_at
+        : contactedParam === "recent"
+        ? (app as any).last_contacted_at && new Date((app as any).last_contacted_at).getTime() > Date.now() - 86_400_000
+        : true;
+
+    // Stage filter from query string (?stage=in_course etc.)
+    let matchesStage = true;
+    if (stageFilter) {
+      const lp = (app as any).license_progress;
+      const map: Record<string, string[]> = {
+        pre_course: ["unlicensed", "not_started", "applied"],
+        course_bought: ["course_purchased", "in_course", "studying"],
+        in_course: ["course_purchased", "in_course", "studying"],
+        exam_scheduled: ["test_scheduled", "exam_scheduled"],
+        passed: ["passed_test", "exam_passed", "test_passed"],
+        pending_state: ["fingerprints_done", "waiting_on_license", "pending_state"],
+      };
+      const allowed = map[stageFilter] || [];
+      if (stageFilter === "pre_course") {
+        matchesStage = !lp || allowed.includes(lp);
+      } else if (stageFilter === "course_bought") {
+        matchesStage = Boolean(app.course_purchased_at) || allowed.includes(lp);
+      } else {
+        matchesStage = allowed.includes(lp);
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot &&
+      matchesDuplicates && matchesAgent && matchesUpline && matchesInterview &&
+      matchesNeedsFollowup && matchesStage && matchesContacted;
+  }, [
+    searchQuery, statusFilter, licenseFilter, myDirectsOnly, hotLeadsOnly, showDuplicates,
+    agentFilter, uplineFilter, interviewFilter, needsFollowupOnly,
+    contactedParam, stageFilter, agentId, recruiterDirectory, interviewByAppId,
+  ]);
+
+  // Map applications to PipelineCardData for Kanban — now respects all filters
+  // so list-view chips and kanban share state.
   const kanbanApps: PipelineCardData[] = useMemo(() =>
-    activeApplications.map((app) => ({
-      id: app.id,
-      first_name: app.first_name,
-      last_name: app.last_name,
-      email: app.email,
-      phone: app.phone,
-      license_progress: app.license_progress,
-      license_status: app.license_status,
-      last_contacted_at: (app as any).last_contacted_at || null,
-      contacted_at: app.contacted_at,
-      created_at: app.created_at,
-      assigned_agent_id: app.assigned_agent_id,
-      lead_score: (app as any).lead_score || null,
-      next_action_type: (app as any).next_action_type || null,
-      assigned_manager_name: app.assigned_agent_id ? managerNames.get(app.assigned_agent_id) || null : null,
-    })),
-    [activeApplications, managerNames]
+    activeApplications
+      .filter(applicationMatchesFilters)
+      .map((app) => ({
+        id: app.id,
+        first_name: app.first_name,
+        last_name: app.last_name,
+        email: app.email,
+        phone: app.phone,
+        license_progress: app.license_progress,
+        license_status: app.license_status,
+        last_contacted_at: (app as any).last_contacted_at || null,
+        contacted_at: app.contacted_at,
+        created_at: app.created_at,
+        assigned_agent_id: app.assigned_agent_id,
+        lead_score: (app as any).lead_score || null,
+        next_action_type: (app as any).next_action_type || null,
+        assigned_manager_name: app.assigned_agent_id ? managerNames.get(app.assigned_agent_id) || null : null,
+      })),
+    [activeApplications, managerNames, applicationMatchesFilters]
   );
 
   // When status filter is "terminated", filter from terminated list instead
@@ -699,67 +859,26 @@ export default function DashboardApplicants() {
 
   const filteredApplications = useMemo(() =>
     baseApplications
-      .filter((app) => {
-        const q = searchQuery.toLowerCase();
-        const name = `${app.first_name} ${app.last_name}`.toLowerCase();
-        const matchesSearch = !q || name.includes(q) ||
-          app.email.toLowerCase().includes(q) ||
-          (app.phone && app.phone.includes(q));
-
-        const appStatus = getApplicationStatus(app);
-        const lowerStatus = (app.status ?? "").toLowerCase();
-        const matchesStatus =
-          statusFilter === "all" ||
-          statusFilter === "terminated" ||
-          (statusFilter === "in_funnel" && !app.closed_at && !app.contracted_at) ||
-          (statusFilter === "course_bought" && Boolean(app.course_purchased_at)) ||
-          (statusFilter === "rejected" && (lowerStatus === "rejected" || lowerStatus === "disqualified")) ||
-          appStatus === statusFilter;
-        const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
-        const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
-        const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
-        const matchesDuplicates = showDuplicates || !app.is_duplicate;
-
-        // ?contacted=untouched → only rows where contacted_at AND last_contacted_at are null
-        // ?contacted=recent → rows touched in last 24h
-        const matchesContacted =
-          contactedParam === "untouched"
-            ? !app.contacted_at && !(app as any).last_contacted_at
-            : contactedParam === "recent"
-            ? (app as any).last_contacted_at && new Date((app as any).last_contacted_at).getTime() > Date.now() - 86_400_000
-            : true;
-
-        // Stage filter from query string (?stage=in_course etc.)
-        let matchesStage = true;
-        if (stageFilter) {
-          const lp = (app as any).license_progress;
-          const map: Record<string, string[]> = {
-            pre_course: ["unlicensed", "not_started", "applied"],
-            course_bought: ["course_purchased", "in_course", "studying"],
-            in_course: ["course_purchased", "in_course", "studying"],
-            exam_scheduled: ["test_scheduled", "exam_scheduled"],
-            passed: ["passed_test", "exam_passed", "test_passed"],
-            pending_state: ["fingerprints_done", "waiting_on_license", "pending_state"],
-          };
-          const allowed = map[stageFilter] || [];
-          if (stageFilter === "pre_course") {
-            matchesStage = !lp || allowed.includes(lp);
-          } else if (stageFilter === "course_bought") {
-            matchesStage = Boolean(app.course_purchased_at) || allowed.includes(lp);
-          } else {
-            matchesStage = allowed.includes(lp);
-          }
-        }
-
-        return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot && matchesDuplicates && matchesStage && matchesContacted;
-      })
+      .filter(applicationMatchesFilters)
       .sort((a, b) => {
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
         return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
       }),
-    [baseApplications, searchQuery, statusFilter, licenseFilter, myDirectsOnly, hotLeadsOnly, showDuplicates, contactedParam, stageFilter, sortOrder, agentId]
+    [baseApplications, applicationMatchesFilters, sortOrder]
   );
+
+  // Section 9 · count of rows the "Needs follow-up" toggle would surface, so
+  // the toggle pill can advertise the queue size (matches the rest of the UX).
+  const needsFollowupCount = useMemo(() => {
+    let n = 0;
+    for (const a of activeApplications) {
+      const ageMs = Date.now() - new Date(a.created_at).getTime();
+      const hasContact = Boolean(a.contacted_at) || Boolean((a as any).last_contacted_at);
+      if (ageMs > 48 * 60 * 60 * 1000 && !hasContact) n++;
+    }
+    return n;
+  }, [activeApplications]);
 
   const activeDuplicateCount = useMemo(
     () => activeApplications.filter(app => app.is_duplicate).length,
@@ -1496,6 +1615,63 @@ export default function DashboardApplicants() {
             <SelectItem value="oldest">Oldest First</SelectItem>
           </SelectContent>
         </Select>
+        {/* Section 9 (2026-06-15) · Agent (recruiter) filter dropdown.
+            Only renders when there's at least one recruiter on the loaded set,
+            otherwise it would just be a noisy empty pill. */}
+        {recruiterOptions.length > 0 && (
+          <Select value={agentFilter} onValueChange={setAgentFilter}>
+            <SelectTrigger className="w-full sm:w-44 bg-input">
+              <Users className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Agent" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Agents</SelectItem>
+              {recruiterOptions.map(opt => (
+                <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {/* Section 9 · Upline (recruiter's manager) filter dropdown. Hidden
+            when no upline hierarchy is populated on the loaded set. */}
+        {uplineOptions.length > 0 && (
+          <Select value={uplineFilter} onValueChange={setUplineFilter}>
+            <SelectTrigger className="w-full sm:w-44 bg-input">
+              <Users className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Upline" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Uplines</SelectItem>
+              {uplineOptions.map(opt => (
+                <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {/* Section 9 · Interview status filter. Reads from scheduled_interviews
+            (only 2 prod rows today, but cheap to expose). */}
+        <Select value={interviewFilter} onValueChange={setInterviewFilter}>
+          <SelectTrigger className="w-full sm:w-44 bg-input">
+            <Calendar className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Interview" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Interview Status</SelectItem>
+            <SelectItem value="scheduled">Interview scheduled</SelectItem>
+            <SelectItem value="none">No interview yet</SelectItem>
+          </SelectContent>
+        </Select>
+        {/* Section 9 · Needs follow-up toggle. created_at > 48h AND no contact. */}
+        <Button
+          variant={needsFollowupOnly ? "default" : "outline"}
+          size="sm"
+          onClick={() => setNeedsFollowupOnly(!needsFollowupOnly)}
+          className={cn("gap-1.5 whitespace-nowrap", needsFollowupOnly && "bg-amber-500 hover:bg-amber-400 text-slate-950")}
+          title="Created over 48h ago with no contact attempt yet"
+        >
+          <Clock className="h-3.5 w-3.5" />
+          Needs follow-up ({needsFollowupCount.toLocaleString()})
+        </Button>
         <Button
           variant={hotLeadsOnly ? "default" : "outline"}
           size="sm"
@@ -1847,6 +2023,12 @@ export default function DashboardApplicants() {
                             setMyDirectsOnly(false);
                             setHotLeadsOnly(false);
                             setShowDuplicates(true);
+                            // Section 9 · also reset the new filters so the
+                            // "show everything" button actually shows everything.
+                            setAgentFilter("all");
+                            setUplineFilter("all");
+                            setInterviewFilter("all");
+                            setNeedsFollowupOnly(false);
                             // Clear URL params that may also be filtering
                             const params = new URLSearchParams(searchParams);
                             params.delete("status");

@@ -1028,6 +1028,53 @@ export default function DashboardApplicants() {
             : null
         }
       />
+
+      {/* 2026-06-15 v7.4 · MANAGER REFERRAL LINK · Sam: "Bring referral links to
+          all work too as well so managers can have their referral links sent to
+          me so that I can copy and paste it automatically, mark them down as
+          the referral." Apply.tsx already accepts ?ref=<agent_code> → resolves
+          via resolve-ref-slug edge fn → sets recruiter_id on insert. This
+          banner surfaces the link prominently so managers can grab it in one tap. */}
+      {(isAdmin || isManager) && agentId && (
+        <ReferralLinkBanner agentId={agentId} />
+      )}
+
+      {/* 2026-06-15 v7.4 · ALWAYS-VISIBLE LOAD STATUS · directly under header.
+          Sam: "I can't even see if it's in the application." This banner
+          fires even if everything below crashes so Sam can see the count. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06]">
+        <div className="flex items-center gap-3 text-13">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+          </span>
+          {isLoading ? (
+            <span className="font-semibold text-amber-600 dark:text-amber-400">Loading applications…</span>
+          ) : (
+            <>
+              <span className="font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                {activeApplications.length.toLocaleString()}
+              </span>
+              <span className="text-foreground/85 font-medium">active applications loaded from the database</span>
+              {terminatedApplications.length > 0 && (
+                <span className="text-muted-foreground tabular-nums">
+                  · {terminatedApplications.length.toLocaleString()} terminated
+                </span>
+              )}
+              <span className="text-muted-foreground">
+                · showing <span className="font-bold tabular-nums text-foreground">{filteredApplications.length.toLocaleString()}</span>
+              </span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-11 text-muted-foreground">
+          <span className="font-mono">v7.4</span>
+          {statusFilter !== "all" && (
+            <Badge variant="outline" className="text-11">filter: {statusFilter}</Badge>
+          )}
+        </div>
+      </div>
+
       <div className="mb-5">
         <div className="flex items-center justify-end flex-wrap gap-3">
           <div className="flex items-center gap-2">
@@ -1622,5 +1669,82 @@ export default function DashboardApplicants() {
       {/* Lead Qualification Chat */}
       <LeadQualificationChat />
     </>
+  );
+}
+
+/* 2026-06-15 v7.4 · MANAGER REFERRAL LINK BANNER
+ * Sam: "Managers should have their referral links so they can copy + paste
+ * automatically, mark them down as the referral."
+ * Reads the manager's agent_code from `agents` table · constructs the public
+ * apply URL · shows copy + click-to-open + share buttons. */
+function ReferralLinkBanner({ agentId }: { agentId: string }) {
+  const [copied, setCopied] = useState(false);
+  const codeQuery = useQuery({
+    queryKey: ["referral-agent-code", agentId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agents")
+        .select("agent_code, display_name")
+        .eq("id", agentId)
+        .maybeSingle();
+      return data as { agent_code: string | null; display_name: string | null } | null;
+    },
+    staleTime: 30 * 60_000,
+  });
+  const agentCode = codeQuery.data?.agent_code ?? null;
+  if (!agentCode) return null;
+  const base = typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org";
+  const url = `${base}/apply?ref=${encodeURIComponent(agentCode)}`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success("Referral link copied · ready to paste");
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      toast.error("Couldn't copy · select the link manually");
+    }
+  };
+  const shareIfSupported = async () => {
+    if (typeof navigator !== "undefined" && (navigator as any).share) {
+      try {
+        await (navigator as any).share({
+          title: "Apply to APEX Financial",
+          text: "Apply to APEX — fast-track your insurance career.",
+          url,
+        });
+      } catch {
+        // user canceled · ignore
+      }
+    } else {
+      copy();
+    }
+  };
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border border-amber-500/30 bg-amber-500/[0.06]">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <Award className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="text-11 uppercase tracking-widest text-muted-foreground mb-0.5">Your referral link · paste anywhere</p>
+          <p className="text-13 font-mono truncate text-foreground">{url}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <Button size="sm" variant={copied ? "default" : "outline"} onClick={copy} className={copied ? "bg-emerald-600 hover:bg-emerald-700" : ""}>
+          <Copy className="h-3.5 w-3.5 mr-1.5" />
+          {copied ? "Copied" : "Copy"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={shareIfSupported}>
+          <Send className="h-3.5 w-3.5 mr-1.5" />
+          Share
+        </Button>
+        <Button asChild size="sm" variant="outline">
+          <a href={url} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+            Open
+          </a>
+        </Button>
+      </div>
+    </div>
   );
 }

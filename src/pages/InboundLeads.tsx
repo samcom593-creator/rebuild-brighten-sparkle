@@ -747,9 +747,13 @@ export default function InboundLeads() {
 
   const startListening = async (opts?: { withTabAudio?: boolean }) => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error("Voice dictation is not available in this browser.");
-      return;
+    // 2026-06-15 v7.4 BUG FIX: was an EARLY RETURN that blocked the recorder
+    // entirely on browsers without webkitSpeechRecognition (Firefox, some
+    // Safari builds). Sam: "I'm clicking the recorder. It's not recording the
+    // audio." Now: skip dictation if unavailable, but RECORDING STILL FIRES.
+    const hasDictation = !!SpeechRecognition;
+    if (!hasDictation) {
+      toast.warning("Dictation not supported in this browser — recording audio only.");
     }
 
     // v26 BUG FIX · MIC RECORDING DIRECT (no AudioContext mixing by default)
@@ -827,7 +831,14 @@ export default function InboundLeads() {
           console.error("[recorder] error:", e);
           toast.error("Recording stopped unexpectedly. Mic may have been revoked.");
         };
-        recorder.start(1000);
+        // 2026-06-15 v7.4 BUG FIX: was recorder.start(1000) which means a deal
+        // recorded under 1 second would emit ZERO chunks → empty audio file.
+        // Sam: "I'm clicking the recorder. It's not recording the audio."
+        // 250ms timeslice ensures even short utterances generate at least 1
+        // chunk before stop() fires.
+        recorder.start(250);
+        // Surface success so Sam knows the recorder ACTUALLY started
+        toast.success("🔴 Recording started · mic live");
         mediaRecorderRef.current = recorder;
         recordingStartRef.current = Date.now();
         (recorder as any)._sourceStreams = [micStream, displayStream].filter(Boolean);
@@ -838,24 +849,26 @@ export default function InboundLeads() {
       toast.error(`Audio capture error: ${err?.message?.slice(0, 60) ?? "unknown"}`);
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-    recognition.onresult = (event: any) => {
-      let transcript = form.transcript ? `${form.transcript} ` : "";
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        transcript += event.results[i][0].transcript;
-      }
-      setForm((prev) => applyTranscriptHints(transcript.trim(), prev));
-    };
-    recognition.onend = () => setListening(false);
-    recognition.onerror = () => {
-      setListening(false);
-      toast.error("Voice capture stopped. You can keep typing manually.");
-    };
-    recognitionRef.current = recognition;
-    recognition.start();
+    if (hasDictation) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+      recognition.onresult = (event: any) => {
+        let transcript = form.transcript ? `${form.transcript} ` : "";
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          transcript += event.results[i][0].transcript;
+        }
+        setForm((prev) => applyTranscriptHints(transcript.trim(), prev));
+      };
+      recognition.onend = () => setListening(false);
+      recognition.onerror = () => {
+        setListening(false);
+        toast.error("Voice capture stopped. You can keep typing manually.");
+      };
+      recognitionRef.current = recognition;
+      try { recognition.start(); } catch (e) { console.error("[dictation] start failed", e); }
+    }
     setListening(true);
   };
 
@@ -875,8 +888,25 @@ export default function InboundLeads() {
   /**
    * Returns the recorded audio Blob (webm/mp4) or null if no recording was made.
    * Used by saveLead to upload the audio after persisting the lead row.
+   *
+   * 2026-06-15 v7.4 BUG FIX: was synchronous · MediaRecorder.stop() is async ·
+   * the final `dataavailable` event fires AFTER stop() returns. So calling
+   * harvestAudio synchronously right after stop() missed the last chunk.
+   * Now: wait for the recorder to fully flush before reading chunks.
+   * Sam: "I'm clicking the recorder. It's not recording the audio."
    */
-  const harvestAudio = (): { blob: Blob; durationSec: number } | null => {
+  const harvestAudio = async (): Promise<{ blob: Blob; durationSec: number } | null> => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      await new Promise<void>((resolve) => {
+        const finish = () => resolve();
+        recorder.addEventListener("stop", finish, { once: true });
+        try { recorder.requestData?.(); } catch {/* not supported */}
+        try { recorder.stop(); } catch { resolve(); }
+        // Hard timeout · don't hang forever if the recorder is broken
+        setTimeout(resolve, 1500);
+      });
+    }
     const chunks = audioChunksRef.current;
     if (chunks.length === 0) return null;
     const blob = new Blob(chunks, { type: chunks[0].type || "audio/webm" });
@@ -912,11 +942,14 @@ export default function InboundLeads() {
     // v25 BUG FIX: stop mic + harvest audio IMMEDIATELY so the recording
     // doesn't keep capturing during the network round-trip + Sam can
     // start the next call without waiting on upload to finish.
+    // 2026-06-15 v7.4 · harvestAudio is now async (awaits final chunk
+    // before reading) so do NOT pre-call recorder.stop() here · let
+    // harvestAudio drive the lifecycle so it can listen for the stop
+    // event before reading chunks.
     recognitionRef.current?.stop?.();
-    mediaRecorderRef.current?.stop?.();
-    mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
     setListening(false);
-    const audio = harvestAudio();
+    const audio = await harvestAudio();
+    mediaRecorderRef.current?.stream?.getTracks().forEach((t) => t.stop());
 
     const now = new Date().toISOString();
     const draft: InboundLead = {

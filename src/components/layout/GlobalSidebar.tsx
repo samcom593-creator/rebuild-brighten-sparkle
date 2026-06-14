@@ -163,7 +163,6 @@ export function GlobalSidebar({
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
         { icon: DollarSign, label: "Finances · CFO", href: "/dashboard/finances", special: true },
-        { icon: Percent, label: "Commission Grids", href: "/dashboard/commission-grids" },
         // Franchise mgmt (Sam owns · managers run their own)
         { icon: Users, label: "Team Analytics", href: "/dashboard/team-analytics" },
         { icon: Network, label: "Builders + Managers", href: "/dashboard/managers" },
@@ -196,7 +195,6 @@ export function GlobalSidebar({
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
-        { icon: Percent, label: "Commission Grids", href: "/dashboard/commission-grids" },
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements" },
         { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
         { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
@@ -224,7 +222,6 @@ export function GlobalSidebar({
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
         { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
         { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
-        { icon: Percent, label: "Commission Grids", href: "/dashboard/commission-grids" },
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
       );

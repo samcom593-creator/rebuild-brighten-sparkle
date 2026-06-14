@@ -3,7 +3,6 @@
 // dedup now resolved at DB layer (wave-93) via v_agent_canonical_map →
 // v_recruiting_leaderboard + v_recruiter_pipeline canonicalize SJAMES01/02 et al.
 
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {

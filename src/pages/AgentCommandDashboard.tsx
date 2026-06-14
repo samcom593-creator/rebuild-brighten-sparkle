@@ -1298,14 +1298,173 @@ function AgencyCommandView() {
         </div>
       )}
 
-      {/* 2026-06-14 Sam-directive · LESS-IS-MORE: leaks + apps belong front.
-          Two bands inserted before the 4 KPI tiles:
-            §A · LEAKS STRIP (v_cfo_snapshot) — ghost AP · stuck · idle · sync
-            §B · LIVE APPLICATIONS panel — Sam: "applications always should be the highest"
+      {/* 2026-06-14 EVENING · GAME-BREAKING REBUILD (Sam: 'should look game breaking
+          · 10x better than AgentLink · sting simple · less is more · agents wanna
+          transfer TO this'). Replaced the v4 LEAKS+APPS bands with a 3-zone
+          composition:
+            §A · AGENCY HERO — premium gradient band with live big-number panel
+            §B · APPLICATION PIPELINE LANES — 3-col strip (uncontacted/course/licensed)
+                 with name chips · click-to-focus
+            §C · LEAKS · single-row glass strip · clickable to CFO
       */}
 
-      {/* §A · LEAKS STRIP ────────────────────────────────────────────── */}
-      <div className="rounded-md border border-rose-500/20 bg-rose-500/[0.03] dark:bg-rose-500/[0.05] p-3">
+      {/* §A · AGENCY HERO ─────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_64px_-12px_hsl(168_70%_45%/0.35)]">
+        {/* glow accents */}
+        <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,hsl(168_70%_45%/0.06),transparent_60%)] pointer-events-none" />
+
+        <div className="relative p-5 sm:p-6">
+          {/* Header row · LIVE pulse + brand wordmark */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">APEX AGENCY · LIVE</p>
+            </div>
+            {periodSummary.totalAp > 0 && (
+              <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
+                {periodBounds.label}
+              </Badge>
+            )}
+          </div>
+
+          {/* The numbers · 4 big metrics */}
+          <div className="grid gap-5 grid-cols-2 sm:grid-cols-4 mb-5">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Annual Premium</p>
+              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
+                {fmtUsd(periodSummary.totalAp, true)}
+              </p>
+              <p className="text-[10px] text-white/50 mt-1 tabular-nums">{periodBounds.label}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Deals</p>
+              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-emerald-300">
+                {fmtNum(periodSummary.dealCount)}
+              </p>
+              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+                {fmtUsd(periodSummary.dealCount ? periodSummary.totalAp / periodSummary.dealCount : 0, true)} avg
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Producers</p>
+              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-amber-300">
+                {fmtNum(periodSummary.producingAgents)}
+              </p>
+              <p className="text-[10px] text-white/50 mt-1 tabular-nums">{fmtNum(tight.data?.active10d ?? 0)} active 10d</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Licensed · MTD</p>
+              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
+                {fmtNum(tight.data?.licensedMtd ?? 0)}
+              </p>
+              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
+                {fmtNum(tight.data?.contractedMtd ?? 0)} contracted
+              </p>
+            </div>
+          </div>
+
+          {/* Pre-license pipeline mini-bar */}
+          <div className="flex items-center gap-3 text-[11px]">
+            <p className="text-white/50 uppercase tracking-widest text-[10px]">License Pipeline</p>
+            <div className="flex-1 flex items-center gap-1.5">
+              <Badge variant="outline" className="text-[10px] border-rose-400/40 bg-rose-400/10 text-rose-200">
+                {fmtNum(tight.data?.pleInCourse ?? 0)} in course
+              </Badge>
+              <span className="text-white/30">→</span>
+              <Badge variant="outline" className="text-[10px] border-amber-400/40 bg-amber-400/10 text-amber-200">
+                {fmtNum(tight.data?.pleExamScheduled ?? 0)} exam scheduled
+              </Badge>
+              <span className="text-white/30">→</span>
+              <Badge variant="outline" className="text-[10px] border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+                {fmtNum(tight.data?.pleFinished ?? 0)} finished
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* §B · APPLICATION PIPELINE · 3-LANE STRIP ─────────────────────── */}
+      {(() => {
+        const uncontacted = apps.filter((a) => !a.contacted_at);
+        const inCourse = apps.filter((a) => a.course_purchased_at && !a.licensed_at);
+        const licensed = apps.filter((a) => a.licensed_at);
+        const inProgress = apps.filter((a) => a.contacted_at && !a.course_purchased_at && !a.licensed_at);
+        const Lane = ({
+          title, count, tone, items, tip,
+        }: { title: string; count: number; tone: "rose" | "amber" | "emerald" | "slate"; items: typeof apps; tip: string }) => {
+          const tones: Record<typeof tone, { border: string; bg: string; text: string; chip: string }> = {
+            rose:    { border: "border-rose-500/30",    bg: "bg-rose-500/[0.06]",    text: "text-rose-700 dark:text-rose-300",       chip: "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30" },
+            amber:   { border: "border-amber-500/30",   bg: "bg-amber-500/[0.06]",   text: "text-amber-700 dark:text-amber-300",     chip: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30" },
+            emerald: { border: "border-emerald-500/30", bg: "bg-emerald-500/[0.06]", text: "text-emerald-700 dark:text-emerald-300", chip: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" },
+            slate:   { border: "border-slate-500/30",   bg: "bg-slate-500/[0.06]",   text: "text-slate-700 dark:text-slate-300",     chip: "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30" },
+          };
+          const t = tones[tone];
+          return (
+            <div className={`rounded-2xl border ${t.border} ${t.bg} p-4`}>
+              <div className="flex items-center justify-between mb-2">
+                <p className={`text-[10px] uppercase tracking-widest font-bold ${t.text}`}>{title}</p>
+                <span className={`text-13 tabular-nums font-bold ${t.text}`}>{count}</span>
+              </div>
+              {items.length === 0 ? (
+                <p className="text-12 text-muted-foreground italic">{tip}</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {items.slice(0, 4).map((a) => {
+                    const name = [a.first_name, a.last_name].filter(Boolean).join(" ") || "—";
+                    const initials = (name === "—" ? "?" : name).split(" ").map((s) => s[0]).slice(0, 2).join("");
+                    return (
+                      <Link
+                        key={a.id}
+                        to={`/dashboard/applicants?focus=${a.id}`}
+                        className="flex items-center gap-2 text-12 group hover:bg-white/30 dark:hover:bg-black/20 rounded-lg px-1.5 py-1 transition-colors"
+                      >
+                        <span className={`h-6 w-6 rounded-full text-[10px] font-bold flex items-center justify-center ${t.chip}`}>
+                          {initials.toUpperCase()}
+                        </span>
+                        <span className="flex-1 truncate font-medium">{name}</span>
+                        {a.state && <span className="text-[10px] text-muted-foreground tabular-nums">{a.state}</span>}
+                      </Link>
+                    );
+                  })}
+                  {items.length > 4 && (
+                    <Link to="/dashboard/applicants" className={`text-11 ${t.text} hover:underline font-semibold inline-block`}>
+                      + {items.length - 4} more →
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        };
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-13 font-bold flex items-center gap-2">
+                <Briefcase className="h-3.5 w-3.5 text-amber-500" />
+                Active Applications
+                <Badge variant="outline" className="text-11">{apps.length}</Badge>
+              </h3>
+              <Link to="/dashboard/applicants" className="text-11 text-muted-foreground hover:text-foreground">
+                Full pipeline →
+              </Link>
+            </div>
+            <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <Lane title="Uncontacted" count={uncontacted.length} tone="rose" items={uncontacted} tip="Inbox zero." />
+              <Lane title="Contacted · in progress" count={inProgress.length} tone="amber" items={inProgress} tip="Move them forward." />
+              <Lane title="Course bought" count={inCourse.length} tone="emerald" items={inCourse} tip="Coach to exam." />
+              <Lane title="Licensed" count={licensed.length} tone="emerald" items={licensed} tip="Onboard fast." />
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* §C · LEAKS · single-row sleek glass strip ─────────────────────── */}
+      <div className="rounded-2xl border border-rose-500/20 bg-rose-500/[0.03] dark:bg-rose-500/[0.05] p-3">
         <div className="flex items-center gap-2 mb-2">
           <span className="h-2 w-2 rounded-full bg-rose-500" />
           <p className="text-[11px] uppercase tracking-widest font-bold text-rose-700 dark:text-rose-300">LIVE LEAKS · CFO bot</p>
@@ -1353,46 +1512,7 @@ function AgencyCommandView() {
         )}
       </div>
 
-      {/* §B · LIVE APPLICATIONS (Sam: "applications always should be the highest") */}
-      <div className="rounded-md border border-amber-500/30 bg-amber-500/[0.04] p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <Briefcase className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-          <p className="text-[11px] uppercase tracking-widest font-bold text-amber-700 dark:text-amber-300">
-            ACTIVE APPLICATIONS · LIVE ({apps.length})
-          </p>
-          <Link to="/dashboard/applicants" className="text-[11px] text-muted-foreground hover:text-foreground ml-auto">
-            Full pipeline →
-          </Link>
-        </div>
-        {liveApps.isLoading ? (
-          <div className="space-y-1">{Array.from({length:4}).map((_,i) => <Skeleton key={i} className="h-7" />)}</div>
-        ) : apps.length === 0 ? (
-          <p className="text-12 text-muted-foreground py-2">No active applications.</p>
-        ) : (
-          <div className="grid gap-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {apps.slice(0, 12).map((a) => {
-              const name = [a.first_name, a.last_name].filter(Boolean).join(" ") || "—";
-              const stage = a.licensed_at ? "LICENSED" : a.course_purchased_at ? "course bought" : a.contacted_at ? (a.license_progress ?? a.status ?? "contacted") : "uncontacted";
-              const tone = a.licensed_at ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
-                : a.course_purchased_at ? "text-emerald-600 dark:text-emerald-400"
-                : !a.contacted_at ? "text-rose-600 dark:text-rose-400"
-                : "text-amber-600 dark:text-amber-400";
-              const applied = a.created_at ? format(new Date(a.created_at), "MMM d") : "—";
-              return (
-                <Link
-                  key={a.id}
-                  to={`/dashboard/applicants?focus=${a.id}`}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-border/40 hover:border-amber-500/40 hover:bg-amber-500/5 transition-colors text-12"
-                >
-                  <span className="truncate font-medium flex-1">{name}</span>
-                  <span className={`text-[10px] tabular-nums font-bold uppercase ${tone}`}>{stage}</span>
-                  <span className="text-[10px] text-muted-foreground tabular-nums">{applied}</span>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      {/* (former §B · LIVE APPLICATIONS — superseded by the 3-lane pipeline strip above) */}
 
       {/* ── 4 KPI TILES (real verified numbers) ─────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

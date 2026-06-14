@@ -2065,3 +2065,116 @@ When Sam asks for breadth-and-depth at scale, the routing rule is **Codex for th
 ---
 
 > **Hold the Standard. Average is the disease.**
+
+
+---
+
+# v7.2 · THE DIAGNOSTIC EMPTY-STATE PATTERN (canonical) · 2026-06-15
+
+*Sam: "Use that technique across the entire website. Applications should be there. All info needed. Make it look perfect." The v7.1 empty-state pattern (introduced on DashboardApplicants) is now the standing rule for every list+filter page across APEX.*
+
+---
+
+## §86 · The Canonical Pattern
+
+When a list page renders an "empty" state, it MUST tell the user WHY. Never bare "No X found." Every empty state must answer three questions in this order:
+
+1. **"How many did we actually fetch?"** — show the real count from the DB (not the filtered count).
+2. **If fetched > 0 but filtered === 0:** "Your filters are hiding it" + an amber **Clear all filters · show N items** button that resets every local filter state setter AND removes the relevant URL params via `setSearchParams`.
+3. **If fetched === 0:** an explicit list of likely causes specific to that page (session expired · role lost the grant · upstream sync dark · RLS regression · upstream view missing).
+
+### §86.1 · The reference shape (TSX)
+
+```tsx
+<div className="text-center py-12">
+  <Icon className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+  <h3 className="text-15 font-bold mb-2">
+    {fetched.length === 0 ? "No X fetched" : "Filters are hiding everything"}
+  </h3>
+  <div className="max-w-md mx-auto space-y-3">
+    <p className="text-13 text-muted-foreground">
+      Fetched <span className="font-bold text-foreground tabular-nums">{fetched.length.toLocaleString()}</span> X from the database.
+    </p>
+    {fetched.length === 0 ? (
+      <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
+        Zero rows came back. Likely causes:
+        <ul className="list-disc list-inside mt-2">
+          <li>Session expired (log out + back in)</li>
+          <li>Your role lost the X grant (check user_roles)</li>
+          <li>Upstream source dark — &lt;page-specific guidance&gt;</li>
+        </ul>
+      </div>
+    ) : (
+      <>
+        <p className="text-12 text-amber-600 dark:text-amber-400">
+          But the filters above match <span className="font-bold tabular-nums">0</span>.
+          The data IS there — your filters are hiding it.
+        </p>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => {
+            // reset every filter state setter
+            setSearchQuery("");
+            setStatusFilter("all");
+            // ... and clear URL params
+            const params = new URLSearchParams(searchParams);
+            params.delete("status");
+            params.delete("license");
+            setSearchParams(params, { replace: true });
+          }}
+          className="bg-amber-500 hover:bg-amber-400 text-slate-950"
+        >
+          Clear all filters · show {fetched.length.toLocaleString()} X
+        </Button>
+      </>
+    )}
+  </div>
+</div>
+```
+
+### §86.2 · Variable naming rule
+
+`fetched` is the REAL count from the database query — NOT the post-filter count.
+`filtered` is the count after client-side filters are applied.
+Most pages already had a `filtered` useMemo that was reducing N rows to 0 silently.
+
+If a page has no client-side filters (e.g. WhaleRecruiting, CarrierContracts), the pattern collapses to: fetched count + likely upstream causes. No Clear-filters button.
+
+---
+
+## §87 · The Sweep Receipt (commits)
+
+| Commit | Page | Notes |
+|---|---|---|
+| `fb19dcbd` | DashboardApplicants.tsx | The original v7.1 · diagnostic + Clear-filters + 4 filter states + 4 URL params reset |
+| `9cefcc58` | RecruitingFunnels.tsx + RecruitingTracker.tsx + Leaderboard.tsx + admin/RecruitingInbox.tsx | Parallel agent · 4 files · adapted for query-tab pattern (Leaderboard) and multi-component pattern (Funnels' EmptyHero extension) |
+| `1c4c3a51` | BookOfBusiness.tsx | Solo · cell colSpan=11 · resets search + source + stage |
+| `b74d9736` | DashboardCRM.tsx + DashboardAccounts.tsx + DashboardAgedLeads.tsx + WhaleRecruiting.tsx + HiringPipeline.tsx + CarrierContracts.tsx | Parallel agent · 6 files · DashboardClients.tsx skipped (file doesn't exist) · WhaleRecruiting + CarrierContracts use minimal pattern (no client filter) |
+
+**Total pages patched:** 12
+**Total commits:** 4
+**tsc --noEmit:** clean
+**HTTP 200:** all 12 routes verified
+
+---
+
+## §88 · The Standing Rule (added to §71 head-to-toe checklist as items 22-23)
+
+22. Every list page's empty-state shows fetched count + cause (no bare "No X found")
+23. When a Clear-filters button is offered, it MUST reset every local filter state setter AND remove every relevant URL search param
+
+The head-to-toe checklist is now 23 items.
+
+---
+
+## §89 · Persisted-to v7.2
+
+- This file (v7.2): `/Users/samjames/business-ops/master-prompts/125-apex-100x-dashboard-atlas.md`
+- Repo mirror: `docs/operating-spec.md`
+- Reference implementation: `src/pages/DashboardApplicants.tsx` (commit `fb19dcbd`)
+- 4 sweep commits: `fb19dcbd · 9cefcc58 · 1c4c3a51 · b74d9736`
+
+---
+
+> **Hold the Standard. Average is the disease.**

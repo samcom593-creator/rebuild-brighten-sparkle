@@ -403,20 +403,48 @@ export default function RecruitingInbox() {
                 })}
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-10 text-center">
-                      {search ? (
-                        <div className="text-sm text-muted-foreground">No matches.</div>
-                      ) : showContacted ? (
-                        <div>
-                          <div className="text-base font-bold text-emerald-300">Queue is clear.</div>
-                          <div className="text-xs text-muted-foreground mt-1">Hold the Standard. Average is the disease.</div>
+                    <td colSpan={5} className="p-0">
+                      {/* 2026-06-15 v7.2 diagnostic empty-state · mirror DashboardApplicants pattern.
+                          Tell the user WHY the table is empty: fetched count vs filtered count. */}
+                      <div className="text-center py-12">
+                        <Inbox className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">
+                          {(rows ?? []).length === 0 ? "No inbox rows fetched" : "Filters are hiding everything"}
+                        </h3>
+                        <div className="space-y-3 max-w-md mx-auto">
+                          <p className="text-13 text-muted-foreground">
+                            Fetched <span className="font-bold text-foreground tabular-nums">{(rows ?? []).length.toLocaleString()}</span> rows from v_recruiting_inbox.
+                          </p>
+                          {(rows ?? []).length === 0 ? (
+                            <div className="text-12 text-rose-600 dark:text-rose-400">
+                              Zero rows came back from the database. Likely causes:
+                              <ul className="list-disc list-inside mt-2 text-left">
+                                <li>Your session expired (try logging out + back in)</li>
+                                <li>Your role lost agent/admin grant (check user_roles)</li>
+                                <li>v_recruiting_inbox RLS regression (check Supabase logs)</li>
+                              </ul>
+                              <p className="mt-2 font-semibold">Hold the Standard.</p>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-12 text-amber-600 dark:text-amber-400">
+                                But the filters above match <span className="font-bold tabular-nums">0</span> · data IS there.
+                              </p>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setSearch("");
+                                  setShowContacted(true);
+                                  if (isAdmin) setShowAllOwners(true);
+                                }}
+                                className="bg-amber-500 hover:bg-amber-400 text-slate-950"
+                              >
+                                Clear all filters · show {(rows ?? []).length.toLocaleString()} rows
+                              </Button>
+                            </>
+                          )}
                         </div>
-                      ) : (
-                        <div>
-                          <div className="text-base font-bold text-emerald-300">Inbox zero.</div>
-                          <div className="text-xs text-muted-foreground mt-1">Every applicant has been contacted. Hold the Standard.</div>
-                        </div>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 ) : null}

@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -563,14 +564,39 @@ export default function Leaderboard() {
                 ))}
               </div>
             ) : rows.length === 0 ? (
-              <GlassCard className="p-12 text-center">
-                <p className="text-sm font-semibold text-foreground">
-                  {tab === "production" && "No deals posted this window · Hold the Standard · Get on the phones"}
-                  {tab === "recruiting" && "No new applications this window · Open the funnel · Run the source"}
-                  {tab === "referrals" && "No referrals this window · Activate the network · Ask every closer"}
-                  {tab === "activity" && "No activity logged this window · Dial in · Earn the board"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">Average is the disease.</p>
+              <GlassCard className="p-0">
+                {/* 2026-06-15 v7.2 diagnostic empty-state · Sam's mandate: never leave
+                    the user wondering WHY. Tell them: fetched count + what's been queried
+                    + a one-tap fallback to widen the window. */}
+                <div className="text-center py-12">
+                  <Trophy className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    {rows.length === 0 ? `No ${BOARD_META[tab].label.toLowerCase()} rows fetched` : "Filters are hiding everything"}
+                  </h3>
+                  <div className="space-y-3 max-w-md mx-auto">
+                    <p className="text-13 text-muted-foreground">
+                      Fetched <span className="font-bold text-foreground tabular-nums">{rows.length.toLocaleString()}</span> ranked rows for the <span className="font-bold">{period}</span> window.
+                    </p>
+                    <div className="text-12 text-rose-600 dark:text-rose-400">
+                      Zero rows in this window. Likely causes:
+                      <ul className="list-disc list-inside mt-2 text-left">
+                        <li>The current {period} window genuinely has no {BOARD_META[tab].label.toLowerCase()} yet</li>
+                        <li>Source ({BOARD_META[tab].source}) is dark or RLS-restricted</li>
+                        <li>Your role can't see other agents' rows on this view</li>
+                      </ul>
+                      <p className="mt-2 font-semibold">Hold the Standard.</p>
+                    </div>
+                    {period !== "monthly" && (
+                      <Button
+                        size="sm"
+                        onClick={() => setPeriod("monthly")}
+                        className="bg-amber-500 hover:bg-amber-400 text-slate-950"
+                      >
+                        Widen window · switch to monthly
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </GlassCard>
             ) : (
               <GlassCard className="overflow-hidden p-0">

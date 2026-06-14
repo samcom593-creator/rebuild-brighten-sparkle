@@ -492,7 +492,28 @@ export default function RecruitingTracker() {
               {Array.from({length:6}).map((_,i)=><Skeleton key={i} className="h-44 bg-white/5" />)}
             </div>
           ) : cardRecruiterIds.length === 0 ? (
-            <p className="text-13 text-amber-100/70">Pipeline opens with the first applicant. Hold the Standard.</p>
+            // 2026-06-15 v7.2 diagnostic empty-state · mirror DashboardApplicants pattern.
+            // Even though there are no client-side filters here, surface the fetched
+            // counts from pipeline + leaders + likely causes so Sam never wonders WHY.
+            <div className="text-center py-12">
+              <Users className="h-10 w-10 text-amber-200/40 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2 text-white">No recruiter scorecards</h3>
+              <div className="space-y-3 max-w-md mx-auto">
+                <p className="text-13 text-amber-100/70">
+                  Fetched <span className="font-bold text-white tabular-nums">{(pipeline.data ?? []).length.toLocaleString()}</span> pipeline rows ·{" "}
+                  <span className="font-bold text-white tabular-nums">{(leaders.data ?? []).length.toLocaleString()}</span> leaderboard rows from the database.
+                </p>
+                <div className="text-12 text-rose-300">
+                  Zero recruiters with last_30d activity OR active pipeline. Likely causes:
+                  <ul className="list-disc list-inside mt-2 text-left">
+                    <li>Genuinely no recruiting activity in the window (intake dark)</li>
+                    <li>v_recruiter_pipeline / v_recruiting_leaderboard RLS regression</li>
+                    <li>agentlink_deals_snapshot or applications upstream sync dark</li>
+                  </ul>
+                  <p className="mt-2 font-semibold">Hold the Standard.</p>
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {cardRecruiterIds.slice(0, 24).map((rid) => {

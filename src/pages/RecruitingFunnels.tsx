@@ -360,6 +360,8 @@ function StageStrip({ data, loading }: { data: StageRow | undefined; loading: bo
         color="amber"
         title="Pipeline is empty"
         line="First applicant of the week opens the board."
+        fetched={data?.total ?? 0}
+        source="applications · 180d window"
       />
     );
   }
@@ -452,6 +454,8 @@ function SourceGrid({ data, loading }: { data: SourceFunnel[] | undefined; loadi
         color="amber"
         title="No referral source tagged"
         line="UTM the next link · attribution opens the playbook."
+        fetched={data?.length ?? 0}
+        source="applications.referral_source · 180d window"
       />
     );
   }
@@ -554,6 +558,8 @@ function WeeklyTrendChart({ data, loading }: { data: WeeklyTrendRow[] | undefine
         color="emerald"
         title="First week of data opens the chart"
         line="Hold the Standard. Average is the disease."
+        fetched={data?.length ?? 0}
+        source="applications · 12-week window"
       />
     );
   }
@@ -649,6 +655,8 @@ function DropoffHeatmap({ data, loading }: { data: WeeklyTrendRow[] | undefined;
         color="rose"
         title="Heatmap warms up next week"
         line="Once a stage clogs · this panel calls it."
+        fetched={data?.length ?? 0}
+        source="applications · 8-week stage transitions"
       />
     );
   }
@@ -754,8 +762,17 @@ function DropoffHeatmap({ data, loading }: { data: WeeklyTrendRow[] | undefined;
 }
 
 function EmptyHero({
-  eyebrow, color, title, line,
-}: { eyebrow: string; color: "amber" | "emerald" | "rose"; title: string; line: string }) {
+  eyebrow, color, title, line, fetched, source,
+}: {
+  eyebrow: string;
+  color: "amber" | "emerald" | "rose";
+  title: string;
+  line: string;
+  // 2026-06-15 v7.2 · diagnostic mode: when supplied we render the count +
+  // likely causes (mirroring the DashboardApplicants pattern fb19dcbd).
+  fetched?: number;
+  source?: string;
+}) {
   const ring =
     color === "amber"   ? "border-amber-500/25 to-amber-950 shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]" :
     color === "emerald" ? "border-emerald-500/25 to-emerald-950 shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]" :
@@ -770,13 +787,32 @@ function EmptyHero({
     "text-rose-300";
   return (
     <div className={`relative overflow-hidden rounded-3xl border bg-gradient-to-br from-slate-950 via-slate-900 ${ring} text-white`}>
-      <div className="relative p-6">
-        <div className="flex items-center gap-2.5 mb-2">
+      <div className="relative p-6 text-center py-12">
+        <Users className="h-10 w-10 text-white/40 mx-auto mb-4" />
+        <div className="flex items-center justify-center gap-2.5 mb-2">
           <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${dot}`} />
           <p className={`text-[11px] uppercase tracking-[0.32em] font-bold ${eye}`}>{eyebrow}</p>
         </div>
         <p className="text-lg font-bold">{title}</p>
         <p className="text-sm text-white/70 mt-1">{line}</p>
+        {fetched != null && (
+          <div className="max-w-md mx-auto mt-4 space-y-3">
+            <p className="text-13 text-white/60">
+              Fetched <span className="font-bold text-white tabular-nums">{fetched.toLocaleString()}</span> rows from {source ?? "applications"}.
+            </p>
+            {fetched === 0 && (
+              <div className="text-12 text-rose-300">
+                Zero rows came back. Likely causes:
+                <ul className="list-disc list-inside mt-2 text-left">
+                  <li>180d window is genuinely empty (intake dark · check apply form)</li>
+                  <li>Your role lost admin/manager grant (check user_roles)</li>
+                  <li>RLS regression on applications (check Supabase logs)</li>
+                </ul>
+                <p className="mt-2 font-semibold">Hold the Standard.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

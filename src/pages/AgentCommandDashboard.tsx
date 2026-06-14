@@ -15,14 +15,15 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Activity, AlertTriangle, ArrowRight, BarChart3, Briefcase, Calendar, ChevronRight,
-  CircleDollarSign, Clock, Crown, DollarSign, Flame, ShieldAlert, ShieldCheck, Sparkles,
-  Target, TrendingDown, TrendingUp, Trophy, UserPlus, Users, Wallet,
+  Activity, AlertTriangle, ArrowRight, BarChart3, Briefcase, Building2, Calendar, ChevronRight,
+  CircleDollarSign, Clock, Crown, DollarSign, Filter, Flame, Layers, Radio,
+  ShieldAlert, ShieldCheck, Sparkles,
+  Target, TrendingDown, TrendingUp, Trophy, UserPlus, Users, Wallet, Zap,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip,
-  CartesianGrid,
+  CartesianGrid, PieChart, Pie, Cell,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -1275,6 +1276,249 @@ function AgencyCommandView() {
     },
   });
 
+  // ── 2026-06-14 DENSIFICATION · 6 NEW PANELS ─────────────────────────────
+  // Sam: "Command Center pretty trash because it only shows annual premium."
+  // Each query is bounded to real DB columns audited via bot-sql.
+
+  // PANEL 1 · CARRIER MIX (this month, top 6) — emerald hero · donut + table
+  const carrierMix = useQuery({
+    queryKey: ["agency-carrier-mix-mtd"],
+    refetchInterval: 5 * 60_000,
+    staleTime: 4 * 60_000,
+    queryFn: async () => {
+      const tzNow = new Date();
+      const monthStart = new Date(tzNow.getFullYear(), tzNow.getMonth(), 1)
+        .toISOString().slice(0, 10);
+      const today = new Date(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate())
+        .toISOString().slice(0, 10);
+      const { data: dealRows, error } = await supabase
+        .from("agentlink_deals_snapshot" as any)
+        .select("carrier_id, annual_premium")
+        .gte("effective_date", monthStart)
+        .lte("effective_date", today);
+      if (error) throw error;
+      const rows = (dealRows ?? []) as Array<{ carrier_id: number | null; annual_premium: number | string | null }>;
+      const carrierIds = Array.from(new Set(rows.map((r) => r.carrier_id).filter((v): v is number => v != null)));
+      const nameById = new Map<number, string>();
+      if (carrierIds.length > 0) {
+        const { data: carriers } = await supabase
+          .from("agentlink_carriers" as any)
+          .select("id, name")
+          .in("id", carrierIds);
+        for (const c of (carriers ?? []) as Array<{ id: number; name: string | null }>) {
+          nameById.set(c.id, c.name ?? `Carrier #${c.id}`);
+        }
+      }
+      const byCarrier = new Map<string, { name: string; ap: number; deals: number }>();
+      let totalAp = 0;
+      for (const row of rows) {
+        const ap = Number(row.annual_premium ?? 0);
+        totalAp += ap;
+        const name = row.carrier_id != null ? (nameById.get(row.carrier_id) ?? "Unmapped") : "Unmapped";
+        const cur = byCarrier.get(name) ?? { name, ap: 0, deals: 0 };
+        byCarrier.set(name, { name, ap: cur.ap + ap, deals: cur.deals + 1 });
+      }
+      const sorted = Array.from(byCarrier.values()).sort((a, b) => b.ap - a.ap);
+      const top = sorted.slice(0, 6);
+      const otherAp = sorted.slice(6).reduce((s, r) => s + r.ap, 0);
+      const otherDeals = sorted.slice(6).reduce((s, r) => s + r.deals, 0);
+      return {
+        carriers: top,
+        otherAp,
+        otherDeals,
+        totalAp,
+        carrierCount: byCarrier.size,
+      };
+    },
+  });
+
+  // PANEL 2 · TOP MOVERS · this week vs last week (WoW production growth)
+  const topMovers = useQuery({
+    queryKey: ["agency-top-movers-wow"],
+    refetchInterval: 60_000,
+    staleTime: 55_000,
+    queryFn: async () => {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().slice(0, 10);
+      const weekAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
+      const twoWeeksAgo = new Date(now.getTime() - 14 * 86_400_000).toISOString().slice(0, 10);
+      const { data, error } = await supabase
+        .from("agentlink_deals_snapshot" as any)
+        .select("user_id, annual_premium, effective_date")
+        .gte("effective_date", twoWeeksAgo)
+        .lte("effective_date", today);
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{ user_id: number | null; annual_premium: number | string | null; effective_date: string | null }>;
+      const byUser = new Map<number, { thisWk: number; lastWk: number }>();
+      for (const r of rows) {
+        if (r.user_id == null || !r.effective_date) continue;
+        const cur = byUser.get(r.user_id) ?? { thisWk: 0, lastWk: 0 };
+        const ap = Number(r.annual_premium ?? 0);
+        if (r.effective_date >= weekAgo) cur.thisWk += ap; else cur.lastWk += ap;
+        byUser.set(r.user_id, cur);
+      }
+      const userIds = Array.from(byUser.keys());
+      if (userIds.length === 0) return [] as Array<{ agentId: string; name: string; code: string | null; thisWk: number; lastWk: number; delta: number; pct: number | null }>;
+      const { data: agents } = await supabase
+        .from("agents")
+        .select("id, al_user_id, display_name, agent_code")
+        .in("al_user_id", userIds);
+      const agentByAl = new Map<number, { id: string; display_name: string | null; agent_code: string | null }>();
+      for (const a of (agents ?? []) as Array<{ id: string; al_user_id: number | null; display_name: string | null; agent_code: string | null }>) {
+        if (a.al_user_id != null) agentByAl.set(a.al_user_id, a);
+      }
+      const movers = Array.from(byUser.entries())
+        .map(([uid, v]) => {
+          const a = agentByAl.get(uid);
+          if (!a?.display_name) return null;
+          const delta = v.thisWk - v.lastWk;
+          const pct = v.lastWk > 0 ? (delta / v.lastWk) * 100 : (v.thisWk > 0 ? null : 0);
+          return { agentId: a.id, name: a.display_name, code: a.agent_code, thisWk: v.thisWk, lastWk: v.lastWk, delta, pct };
+        })
+        .filter((r): r is { agentId: string; name: string; code: string | null; thisWk: number; lastWk: number; delta: number; pct: number | null } => r !== null)
+        .sort((a, b) => b.delta - a.delta)
+        .slice(0, 5);
+      return movers;
+    },
+  });
+
+  // PANEL 3 · CONVERSION FUNNEL · last 90 days (created → contacted → course → exam → licensed)
+  const funnel = useQuery({
+    queryKey: ["agency-conversion-funnel-90d"],
+    refetchInterval: 5 * 60_000,
+    staleTime: 4 * 60_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 90 * 86_400_000).toISOString();
+      const [createdRes, contactedRes, courseRes, examRes, licensedRes] = await Promise.all([
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .gte("created_at", since).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .gte("created_at", since).is("terminated_at", null).not("contacted_at", "is", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .gte("created_at", since).is("terminated_at", null).not("course_purchased_at", "is", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .gte("created_at", since).is("terminated_at", null).not("exam_passed_at", "is", null),
+        supabase.from("applications").select("id", { count: "exact", head: true })
+          .gte("created_at", since).is("terminated_at", null).not("licensed_at", "is", null),
+      ]);
+      return {
+        created: createdRes.count ?? 0,
+        contacted: contactedRes.count ?? 0,
+        course: courseRes.count ?? 0,
+        exam: examRes.count ?? 0,
+        licensed: licensedRes.count ?? 0,
+      };
+    },
+  });
+
+  // PANEL 4 · ACTIVITY FEED · last 12 culture_events (live deals as they post)
+  const activity = useQuery({
+    queryKey: ["agency-activity-feed"],
+    refetchInterval: 60_000,
+    staleTime: 55_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("culture_events" as any)
+        .select("id, event_type, agent_id, annual_premium, product_sold, created_at")
+        .order("created_at", { ascending: false })
+        .limit(12);
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{
+        id: number;
+        event_type: string | null;
+        agent_id: string | null;
+        annual_premium: number | string | null;
+        product_sold: string | null;
+        created_at: string | null;
+      }>;
+      const agentIds = Array.from(new Set(rows.map((r) => r.agent_id).filter((v): v is string => !!v)));
+      const nameById = new Map<string, string>();
+      if (agentIds.length > 0) {
+        const { data: agents } = await supabase
+          .from("agents")
+          .select("id, display_name")
+          .in("id", agentIds);
+        for (const a of (agents ?? []) as Array<{ id: string; display_name: string | null }>) {
+          nameById.set(a.id, a.display_name ?? "—");
+        }
+      }
+      return rows.map((r) => ({
+        ...r,
+        agent_name: r.agent_id ? (nameById.get(r.agent_id) ?? "—") : "—",
+      }));
+    },
+  });
+
+  // PANEL 5 · SOURCE ATTRIBUTION ROI · 180 days (replaces State Production, which has no data)
+  // DB AUDIT: agentlink_deals_snapshot.payload is empty (no state). State panel SKIPPED.
+  // Source attribution is the next-most-valuable hidden dataset per the audit.
+  const sourceRoi = useQuery({
+    queryKey: ["agency-source-roi-180d"],
+    refetchInterval: 5 * 60_000,
+    staleTime: 4 * 60_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 180 * 86_400_000).toISOString();
+      const { data, error } = await supabase
+        .from("applications")
+        .select("source, course_purchased_at, licensed_at")
+        .gte("created_at", since)
+        .is("terminated_at", null);
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{ source: string | null; course_purchased_at: string | null; licensed_at: string | null }>;
+      const bySrc = new Map<string, { apps: number; course: number; licensed: number }>();
+      for (const r of rows) {
+        const src = (r.source ?? "other").trim().toLowerCase() || "other";
+        const cur = bySrc.get(src) ?? { apps: 0, course: 0, licensed: 0 };
+        cur.apps += 1;
+        if (r.course_purchased_at) cur.course += 1;
+        if (r.licensed_at) cur.licensed += 1;
+        bySrc.set(src, cur);
+      }
+      return Array.from(bySrc.entries())
+        .map(([src, v]) => ({
+          source: src,
+          apps: v.apps,
+          course: v.course,
+          licensed: v.licensed,
+          coursePct: v.apps > 0 ? (v.course / v.apps) * 100 : 0,
+        }))
+        .sort((a, b) => b.apps - a.apps)
+        .slice(0, 8);
+    },
+  });
+
+  // PANEL 6 · MONEY FLOW · commission_ledger this month
+  const moneyFlow = useQuery({
+    queryKey: ["agency-money-flow-mtd"],
+    refetchInterval: 5 * 60_000,
+    staleTime: 4 * 60_000,
+    queryFn: async () => {
+      const tzNow = new Date();
+      const monthStart = new Date(tzNow.getFullYear(), tzNow.getMonth(), 1).toISOString();
+      const { data, error } = await supabase
+        .from("commission_ledger" as any)
+        .select("amount, status, expected_paid_date, actual_paid_date")
+        .gte("created_at", monthStart);
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{
+        amount: number | string | null;
+        status: string | null;
+        expected_paid_date: string | null;
+        actual_paid_date: string | null;
+      }>;
+      let pending = 0, paid = 0, voided = 0, total = 0;
+      for (const r of rows) {
+        const amt = Number(r.amount ?? 0);
+        total += amt;
+        const s = (r.status ?? "").toLowerCase();
+        if (s === "paid") paid += amt;
+        else if (s === "voided" || s === "void") voided += amt;
+        else pending += amt;
+      }
+      return { total, pending, paid, voided, count: rows.length };
+    },
+  });
+
   const leak = cfoLive.data;
   const apps = liveApps.data ?? [];
   const depth = monthDepth.data;
@@ -1896,6 +2140,37 @@ function AgencyCommandView() {
         </Tabs>
       </GlassCard>
 
+      {/* ── 2026-06-14 SIX NEW DENSE PANELS (v6 §31 premium hero pattern) ───
+          Sam: "Command Center pretty trash because it only shows annual
+          premium · had to go basic everything." This block adds carrier
+          mix, top movers WoW, conversion funnel, live activity, source
+          attribution ROI, and money flow — all from real DB columns
+          audited via bot-sql. State production panel SKIPPED because
+          agentlink_deals_snapshot.payload is empty (no geo data); the
+          replacement panel is Source Attribution ROI, the next-most-
+          valuable hidden dataset.
+      */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* PANEL 1 · CARRIER MIX (emerald) ────────────────────────── */}
+        <CarrierMixPanel data={carrierMix.data} loading={carrierMix.isLoading} />
+
+        {/* PANEL 2 · TOP MOVERS WoW (amber) ────────────────────────── */}
+        <TopMoversPanel data={topMovers.data ?? []} loading={topMovers.isLoading} />
+
+        {/* PANEL 3 · CONVERSION FUNNEL 90d (rose) ──────────────────── */}
+        <ConversionFunnelPanel data={funnel.data} loading={funnel.isLoading} />
+
+        {/* PANEL 4 · ACTIVITY FEED (slate / emerald) ───────────────── */}
+        <ActivityFeedPanel data={activity.data ?? []} loading={activity.isLoading} />
+
+        {/* PANEL 5 · SOURCE ATTRIBUTION ROI (amber) — replaces State Production
+            (state column not in agentlink_deals_snapshot payload per DB audit) */}
+        <SourceRoiPanel data={sourceRoi.data ?? []} loading={sourceRoi.isLoading} />
+
+        {/* PANEL 6 · MONEY FLOW (emerald) ──────────────────────────── */}
+        <MoneyFlowPanel data={moneyFlow.data} loading={moneyFlow.isLoading} />
+      </div>
+
       {/* ── Footer · health stats + quick actions in ONE section ─── */}
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -1937,6 +2212,480 @@ function AgencyCommandView() {
       </div>
 
       <LapsesDrilldownModal open={lapsesOpen} onOpenChange={setLapsesOpen} />
+    </div>
+  );
+}
+
+// ─── 2026-06-14 SIX NEW DENSE PANEL COMPONENTS (v6 §31 premium hero) ───────
+
+const TITLE_CASE = (s: string): string =>
+  s.replace(/\b\w/g, (c) => c.toUpperCase()).replace(/-/g, " ");
+
+// PANEL 1 · CARRIER MIX MTD
+function CarrierMixPanel({ data, loading }: {
+  data: { carriers: Array<{ name: string; ap: number; deals: number }>; otherAp: number; otherDeals: number; totalAp: number; carrierCount: number } | undefined;
+  loading: boolean;
+}) {
+  const palette = ["#10b981", "#06b6d4", "#3b82f6", "#a78bfa", "#f59e0b", "#fb7185", "#94a3b8"];
+  const chartData = useMemo(() => {
+    if (!data) return [] as Array<{ name: string; value: number; deals: number; pct: number }>;
+    const rows = data.carriers.map((c, i) => ({
+      name: c.name,
+      value: c.ap,
+      deals: c.deals,
+      pct: data.totalAp > 0 ? (c.ap / data.totalAp) * 100 : 0,
+    }));
+    if (data.otherAp > 0) {
+      rows.push({ name: "Other", value: data.otherAp, deals: data.otherDeals, pct: data.totalAp > 0 ? (data.otherAp / data.totalAp) * 100 : 0 });
+    }
+    return rows;
+  }, [data]);
+  const topConcentration = chartData[0];
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+      <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">CARRIER MIX · MTD</p>
+          </div>
+          {data && data.totalAp > 0 && (
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+              {fmtUsd(data.totalAp, true)} AP
+            </Badge>
+          )}
+        </div>
+
+        {loading ? (
+          <Skeleton className="h-40 w-full bg-white/5" />
+        ) : !data || chartData.length === 0 ? (
+          <div className="py-6 text-center">
+            <p className="text-[26px] font-black text-white/90">First deal opens the board</p>
+            <p className="text-[11px] text-white/50 mt-1">No carrier production this month yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-center">
+            <div className="sm:col-span-2 h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={36}
+                    outerRadius={64}
+                    paddingAngle={2}
+                    stroke="none"
+                  >
+                    {chartData.map((_, i) => (
+                      <Cell key={i} fill={palette[i % palette.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: "rgba(15,23,42,0.95)", border: "1px solid rgba(16,185,129,0.4)", borderRadius: 8, fontSize: 11, color: "white" }}
+                    formatter={(value: number, _name, props: any) => [`${fmtUsd(value, true)} · ${props.payload.deals} deals`, props.payload.name]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="sm:col-span-3 space-y-1.5">
+              {chartData.slice(0, 6).map((row, i) => (
+                <div key={row.name} className="flex items-center justify-between gap-2 text-[11px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="h-2 w-2 rounded-full shrink-0" style={{ background: palette[i % palette.length] }} />
+                    <span className="text-white/85 truncate font-medium">{row.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 tabular-nums">
+                    <span className="text-white/60">{row.deals}d</span>
+                    <span className="text-white font-semibold">{fmtUsd(row.value, true)}</span>
+                    <span className="text-emerald-300 w-10 text-right">{row.pct.toFixed(0)}%</span>
+                  </div>
+                </div>
+              ))}
+              {topConcentration && topConcentration.pct >= 50 && (
+                <p className="text-[10px] text-amber-300/80 mt-2 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" /> {topConcentration.name} = {topConcentration.pct.toFixed(0)}% concentration risk
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// PANEL 2 · TOP MOVERS WoW
+function TopMoversPanel({ data, loading }: {
+  data: Array<{ agentId: string; name: string; code: string | null; thisWk: number; lastWk: number; delta: number; pct: number | null }>;
+  loading: boolean;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.25)]">
+      <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">TOP MOVERS · WoW</p>
+          </div>
+          <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
+            Week vs prior week
+          </Badge>
+        </div>
+
+        {loading ? (
+          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-9 w-full bg-white/5" />)}</div>
+        ) : data.length === 0 ? (
+          <div className="py-6 text-center">
+            <p className="text-[26px] font-black text-white/90">Momentum starts Monday</p>
+            <p className="text-[11px] text-white/50 mt-1">No production deltas to surface yet this week.</p>
+          </div>
+        ) : (
+          <ol className="space-y-1.5">
+            {data.map((m, i) => {
+              const initials = m.name.split(" ").filter(Boolean).slice(0, 2).map((s) => s[0]).join("").toUpperCase();
+              const pctClass = m.delta > 0 ? "text-emerald-300 bg-emerald-500/15 border-emerald-400/30"
+                : m.delta < 0 ? "text-rose-300 bg-rose-500/15 border-rose-400/30"
+                : "text-white/60 bg-white/5 border-white/10";
+              const pctText = m.pct == null ? "NEW" : `${m.delta >= 0 ? "+" : ""}${m.pct.toFixed(0)}%`;
+              return (
+                <li key={m.agentId} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] w-4 text-white/40 tabular-nums">{i + 1}</span>
+                    <span className="h-7 w-7 rounded-full bg-amber-500/20 border border-amber-400/30 grid place-items-center text-[10px] font-bold text-amber-200 shrink-0">
+                      {initials || "—"}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-semibold text-white truncate">{m.name}</p>
+                      <p className="text-[10px] text-white/45 tabular-nums">
+                        {fmtUsd(m.lastWk, true)} → <span className="text-white/85">{fmtUsd(m.thisWk, true)}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[11px] font-bold text-white tabular-nums">
+                      {m.delta >= 0 ? "+" : ""}{fmtUsd(m.delta, true)}
+                    </span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border tabular-nums ${pctClass}`}>
+                      {pctText}
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// PANEL 3 · CONVERSION FUNNEL · 90 days
+function ConversionFunnelPanel({ data, loading }: {
+  data: { created: number; contacted: number; course: number; exam: number; licensed: number } | undefined;
+  loading: boolean;
+}) {
+  const stages = useMemo(() => {
+    if (!data) return [] as Array<{ key: string; label: string; count: number; pctOfTop: number; pctOfPrior: number | null }>;
+    const top = data.created;
+    const arr = [
+      { key: "created", label: "Created", count: data.created },
+      { key: "contacted", label: "Contacted", count: data.contacted },
+      { key: "course", label: "Course bought", count: data.course },
+      { key: "exam", label: "Exam passed", count: data.exam },
+      { key: "licensed", label: "Licensed", count: data.licensed },
+    ];
+    return arr.map((s, i) => {
+      const prior = i === 0 ? null : arr[i - 1].count;
+      return {
+        ...s,
+        pctOfTop: top > 0 ? (s.count / top) * 100 : 0,
+        pctOfPrior: prior == null ? null : (prior > 0 ? (s.count / prior) * 100 : 0),
+      };
+    });
+  }, [data]);
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-rose-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950 text-white shadow-[0_0_48px_-12px_hsl(355_75%_55%/0.25)]">
+      <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-rose-300">CONVERSION FUNNEL · 90d</p>
+          </div>
+          {data && data.created > 0 && (
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-rose-400/40 bg-rose-400/10 text-rose-200">
+              {data.created} apps in
+            </Badge>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-full bg-white/5" />)}</div>
+        ) : !data || data.created === 0 ? (
+          <div className="py-6 text-center">
+            <p className="text-[26px] font-black text-white/90">Funnel boots on first application</p>
+            <p className="text-[11px] text-white/50 mt-1">No new applications in the last 90 days.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {stages.map((s, i) => {
+              const dropOff = s.pctOfPrior == null ? null : 100 - s.pctOfPrior;
+              return (
+                <div key={s.key}>
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className="text-white/85 font-semibold">{s.label}</span>
+                    <span className="tabular-nums text-white/70">
+                      <span className="text-white font-bold">{fmtNum(s.count)}</span>
+                      <span className="text-white/40 ml-2">{s.pctOfTop.toFixed(1)}% of top</span>
+                      {s.pctOfPrior != null && (
+                        <span className={`ml-2 ${dropOff! > 50 ? "text-rose-300" : "text-emerald-300"}`}>
+                          {s.pctOfPrior.toFixed(0)}% from prior
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-500 transition-all"
+                      style={{ width: `${Math.max(2, s.pctOfTop)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            <p className="text-[10px] text-white/40 mt-3 flex items-center gap-1.5">
+              <AlertTriangle className="h-3 w-3 text-amber-400" />
+              Licensed-stage data thin — backfill licensed_at to trust the bottom.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// PANEL 4 · ACTIVITY FEED
+function ActivityFeedPanel({ data, loading }: {
+  data: Array<{ id: number; event_type: string | null; agent_id: string | null; annual_premium: number | string | null; product_sold: string | null; created_at: string | null; agent_name: string }>;
+  loading: boolean;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+      <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">LIVE ACTIVITY · CULTURE FEED</p>
+          </div>
+          <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+            <Radio className="h-2.5 w-2.5 mr-1" /> 60s refresh
+          </Badge>
+        </div>
+
+        {loading ? (
+          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-9 w-full bg-white/5" />)}</div>
+        ) : data.length === 0 ? (
+          <div className="py-6 text-center">
+            <p className="text-[26px] font-black text-white/90">Inbox zero. Hold the Standard.</p>
+            <p className="text-[11px] text-white/50 mt-1">No culture events posted yet.</p>
+          </div>
+        ) : (
+          <ul className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+            {data.map((e) => {
+              const initials = e.agent_name.split(" ").filter(Boolean).slice(0, 2).map((s) => s[0]).join("").toUpperCase();
+              const ap = Number(e.annual_premium ?? 0);
+              const when = e.created_at ? formatDistanceToNow(new Date(e.created_at), { addSuffix: true }) : "—";
+              const verb = e.event_type === "deal_posted" ? "posted" : (e.event_type ?? "event")?.replaceAll("_", " ");
+              return (
+                <li key={e.id} className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5">
+                  <span className="h-7 w-7 rounded-full bg-emerald-500/20 border border-emerald-400/30 grid place-items-center text-[10px] font-bold text-emerald-200 shrink-0">
+                    {initials || "—"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] text-white truncate">
+                      <span className="font-semibold">{e.agent_name}</span>
+                      <span className="text-white/55"> {verb} </span>
+                      <span className="text-white/85">{e.product_sold ?? "deal"}</span>
+                    </p>
+                    <p className="text-[10px] text-white/40">{when}</p>
+                  </div>
+                  {ap > 0 && (
+                    <span className="text-[11px] font-bold text-emerald-300 tabular-nums shrink-0">
+                      {fmtUsd(ap, true)}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// PANEL 5 · SOURCE ATTRIBUTION ROI (replaces State Production — no state data)
+function SourceRoiPanel({ data, loading }: {
+  data: Array<{ source: string; apps: number; course: number; licensed: number; coursePct: number }>;
+  loading: boolean;
+}) {
+  const maxApps = Math.max(1, ...data.map((d) => d.apps));
+  const topSource = data.reduce<{ source: string; coursePct: number } | null>(
+    (best, r) => (r.apps >= 10 && (!best || r.coursePct > best.coursePct) ? r : best),
+    null,
+  );
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.25)]">
+      <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">SOURCE ATTRIBUTION · 180d</p>
+          </div>
+          <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
+            ROI by source
+          </Badge>
+        </div>
+
+        {loading ? (
+          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-7 w-full bg-white/5" />)}</div>
+        ) : data.length === 0 ? (
+          <div className="py-6 text-center">
+            <p className="text-[26px] font-black text-white/90">Tag your sources, win the funnel</p>
+            <p className="text-[11px] text-white/50 mt-1">No attribution data in the last 180 days.</p>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {data.map((r) => {
+              const widthPct = (r.apps / maxApps) * 100;
+              const isWinner = topSource && r.source === topSource.source;
+              return (
+                <div key={r.source} className="grid grid-cols-12 items-center gap-2 text-[11px]">
+                  <div className="col-span-3 truncate text-white/80 font-medium">{TITLE_CASE(r.source)}</div>
+                  <div className="col-span-5 h-2 rounded-full bg-white/5 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${isWinner ? "bg-gradient-to-r from-emerald-400 to-amber-400" : "bg-amber-500/60"}`}
+                      style={{ width: `${Math.max(3, widthPct)}%` }}
+                    />
+                  </div>
+                  <div className="col-span-4 flex items-center justify-end gap-2 tabular-nums">
+                    <span className="text-white/60">{r.apps} apps</span>
+                    <span className={`font-bold ${r.coursePct >= 5 ? "text-emerald-300" : "text-white/70"}`}>
+                      {r.coursePct.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+            {topSource && (
+              <p className="text-[10px] text-emerald-300/80 mt-2 flex items-center gap-1.5">
+                <Zap className="h-3 w-3" /> {TITLE_CASE(topSource.source)} converts {topSource.coursePct.toFixed(1)}% — double down here.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// PANEL 6 · MONEY FLOW (commission_ledger MTD)
+function MoneyFlowPanel({ data, loading }: {
+  data: { total: number; pending: number; paid: number; voided: number; count: number } | undefined;
+  loading: boolean;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+      <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+      <div className="relative p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">MONEY FLOW · MTD</p>
+          </div>
+          {data && (
+            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
+              {fmtNum(data.count)} ledger rows
+            </Badge>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-3 gap-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 bg-white/5" />)}</div>
+        ) : !data || data.count === 0 ? (
+          <div className="py-6 text-center">
+            <p className="text-[26px] font-black text-white/90">Wire the ledger, watch it flow</p>
+            <p className="text-[11px] text-white/50 mt-1">commission_ledger is unpopulated for this month.</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Pending</p>
+                <p className="text-[26px] sm:text-[32px] leading-none font-black tabular-nums text-amber-300">
+                  {fmtUsd(data.pending, true)}
+                </p>
+                <p className="text-[10px] text-white/50 mt-1">Awaiting carrier pay</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Paid</p>
+                <p className="text-[26px] sm:text-[32px] leading-none font-black tabular-nums text-emerald-300">
+                  {fmtUsd(data.paid, true)}
+                </p>
+                <p className="text-[10px] text-white/50 mt-1">Cash in hand</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Voided</p>
+                <p className="text-[26px] sm:text-[32px] leading-none font-black tabular-nums text-rose-300">
+                  {fmtUsd(data.voided, true)}
+                </p>
+                <p className="text-[10px] text-white/50 mt-1">Charged back</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-[11px]">
+              <span className="text-white/55">Total written MTD</span>
+              <span className="text-white font-bold tabular-nums">{fmtUsd(data.total)}</span>
+            </div>
+            {data.count < 20 && (
+              <p className="text-[10px] text-amber-300/80 mt-2 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> Ledger thin ({data.count} rows) — pipeline reconciliation needed.
+              </p>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

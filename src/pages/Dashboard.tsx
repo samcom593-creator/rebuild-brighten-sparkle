@@ -828,13 +828,15 @@ function ExecutiveDashboard({
 
 export default function Dashboard() {
   const { user, isLoading, isAdmin } = useAuth();
-
-  // /dashboard for admins now renders the new AgencyCommandView (real-time
-  // agency rollup) instead of the 800-line legacy CEO panel. Per Sam:
-  // owner-mode first, not yet-another-agent-dashboard.
-  if (isAdmin) return <AgentCommandDashboard />;
-
   const { effectiveRole, actualRole, isPreviewing } = useRolePreview();
+
+  // 2026-06-15 v6.9 BUG FIX: was `if (isAdmin) return <AgentCommandDashboard />`
+  // BEFORE useRolePreview() — Sam's role-preview bubbles (Agent View / Manager
+  // View / Admin View) set a previewRole URL param but this short-circuit
+  // ignored it. So toggling "Agent View" did nothing for admins.
+  // Now: respect effectiveRole. Admin defaults still see AgentCommandDashboard
+  // because effectiveRole === "admin" when no preview is active.
+  if (isAdmin && !isPreviewing) return <AgentCommandDashboard />;
   const currentAgent = useCurrentAgent(user?.id);
   const downline = useMyDownline();
   const [runningSystemCheck, setRunningSystemCheck] = useState(false);

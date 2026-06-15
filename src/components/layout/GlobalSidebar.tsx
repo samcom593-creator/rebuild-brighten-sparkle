@@ -42,6 +42,7 @@ import {
   TrendingUp,
   UserCog,
   Users,
+  Workflow,
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -208,15 +209,18 @@ export function GlobalSidebar({
         { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
         // Production + money
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
+        { icon: Heart, label: "CRM", href: "/dashboard/clients", special: true },
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
         { icon: DollarSign, label: "Finances · CFO", href: "/dashboard/finances", special: true },
         // Franchise mgmt (Sam owns · managers run their own)
         { icon: Users, label: "Team Analytics", href: "/dashboard/team-analytics" },
         { icon: Network, label: "Builders + Managers", href: "/dashboard/managers" },
+        { icon: Workflow, label: "Hierarchy", href: "/dashboard/hierarchy", special: true },
         // Culture + comms (drives momentum, low maintenance)
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },
         { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
         { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
+        { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         // Admin hub (everything that isn't daily flow)
         { icon: GitMerge, label: "Agent Duplicates", href: "/admin/agent-duplicates" },
         { icon: Settings, label: "Admin", href: "/dashboard/command" },
@@ -243,11 +247,14 @@ export function GlobalSidebar({
         { icon: CalendarDays, label: "Headhunters · Calendar", href: "/dashboard/headhunters-calendar", special: true },
         { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
+        { icon: Heart, label: "CRM", href: "/dashboard/clients", special: true },
+        { icon: Workflow, label: "Hierarchy", href: "/dashboard/hierarchy", special: true },
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements" },
         { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
         { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
+        { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
       );
       oldApplicants.push(
         { icon: Archive, label: "Old Managers", href: "/dashboard/old-applicants/managers" },

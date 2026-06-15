@@ -126,7 +126,7 @@ export default function TeamHierarchy() {
 
       return ((agentData || []) as any[]).map((a: any): AgentNode => ({
         id: a.id,
-        name: a.profile?.full_name || a.display_name || "Unknown",
+        name: a.profile?.full_name || a.display_name || "—",
         avatarUrl: a.profile?.avatar_url || null,
         userId: a.user_id,
         role: roleMap.get(a.user_id) || "agent",

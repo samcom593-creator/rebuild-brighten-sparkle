@@ -12,7 +12,7 @@ export function CarrierBreakdownCard({ agentId }: { agentId?: string | null }) {
   const breakdown = useMemo(() => {
     const map = new Map<string, { premium: number; commission: number; count: number }>();
     for (const p of policies.data ?? []) {
-      const key = p.carrier ?? "Unknown";
+      const key = p.carrier ?? "Carrier missing";
       const cur = map.get(key) ?? { premium: 0, commission: 0, count: 0 };
       cur.premium += Number(p.premium ?? 0);
       cur.commission += Number(p.commission ?? 0);

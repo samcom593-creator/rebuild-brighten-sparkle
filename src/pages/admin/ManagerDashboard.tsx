@@ -106,7 +106,7 @@ function RecruitingTab() {
               </tr></thead>
               <tbody>{rows.slice(0, 50).map(r => (
                 <tr key={r.id} className="border-t border-white/5">
-                  <td className="p-3">{[r.first_name, r.last_name].filter(Boolean).join(" ") || "Unknown"}</td>
+                  <td className="p-3">{[r.first_name, r.last_name].filter(Boolean).join(" ") || "—"}</td>
                   <td className="p-3">{r.state ?? "—"}</td>
                   <td className="p-3"><Badge variant="secondary">{r.status}</Badge></td>
                   <td className="p-3 text-xs">{r.assigned_agent_id ? agentMap.get(r.assigned_agent_id) ?? "—" : <span className="text-rose-400">unassigned</span>}</td>

@@ -206,8 +206,8 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
           ? (stats.contracted / stats.applications) * 100 
           : 0;
 
-        // Name fallback: profile_id profile -> user_id profile -> display_name -> Unknown
-        const displayName = profileViaId?.full_name || profileViaUserId?.full_name || agent.display_name || "Unknown";
+        // Name fallback: profile_id profile -> user_id profile -> display_name -> em-dash (Sam's v18 rule)
+        const displayName = profileViaId?.full_name || profileViaUserId?.full_name || agent.display_name || "—";
         const avatarUrl = profileViaId?.avatar_url || profileViaUserId?.avatar_url;
 
         return {

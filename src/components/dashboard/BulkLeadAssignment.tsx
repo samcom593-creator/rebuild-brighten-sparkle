@@ -93,11 +93,11 @@ export const BulkLeadAssignment = forwardRef<HTMLDivElement>(function BulkLeadAs
 
       agentList = agentsData.map((agent) => {
         const profile = profiles?.find((p) => p.user_id === agent.user_id);
-        agentNameMap[agent.id] = profile?.full_name || "Unknown";
+        agentNameMap[agent.id] = profile?.full_name || "—";
         agentEmailMap[agent.id] = profile?.email || "";
         return {
           id: agent.id,
-          name: profile?.full_name || "Unknown",
+          name: profile?.full_name || "—",
           email: profile?.email || "",
         };
       });
@@ -133,7 +133,7 @@ export const BulkLeadAssignment = forwardRef<HTMLDivElement>(function BulkLeadAs
         licenseStatus: app.license_status,
         createdAt: app.created_at,
         assignedToId: app.assigned_agent_id,
-        assignedToName: app.assigned_agent_id ? agentNameMap[app.assigned_agent_id] || "Unknown" : null,
+        assignedToName: app.assigned_agent_id ? agentNameMap[app.assigned_agent_id] || "—" : null,
       })),
       ...(agedLeads || []).map((lead) => ({
         id: lead.id,
@@ -145,7 +145,7 @@ export const BulkLeadAssignment = forwardRef<HTMLDivElement>(function BulkLeadAs
         licenseStatus: lead.license_status || "unknown",
         createdAt: lead.created_at || new Date().toISOString(),
         assignedToId: lead.assigned_manager_id,
-        assignedToName: lead.assigned_manager_id ? agentNameMap[lead.assigned_manager_id] || "Unknown" : null,
+        assignedToName: lead.assigned_manager_id ? agentNameMap[lead.assigned_manager_id] || "—" : null,
       })),
     ];
 

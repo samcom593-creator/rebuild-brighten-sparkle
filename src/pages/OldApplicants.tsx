@@ -232,7 +232,7 @@ export default function OldApplicants({ kind }: { kind: OldApplicantKind }) {
             <div className="p-10 text-center text-sm text-muted-foreground">Loading old applicants...</div>
           ) : appsQ.error ? (
             <div className="p-5 text-sm text-destructive">
-              View {viewName} could not load: {appsQ.error instanceof Error ? appsQ.error.message : "Unknown error"}
+              View {viewName} could not load: {appsQ.error instanceof Error ? appsQ.error.message : "something went wrong — refresh to try again"}
             </div>
           ) : rows.length === 0 ? (
             <EmptyState

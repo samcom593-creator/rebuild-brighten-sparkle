@@ -79,7 +79,7 @@ export function LeadPaymentTracker() {
         const pay = paymentMap.get(agent.id) || { standard: false, premium: false };
         return {
           agentId: agent.id,
-          name: profile?.full_name || "Unknown",
+          name: profile?.full_name || "—",
           email: profile?.email || "",
           standardPaid: pay.standard,
           premiumPaid: pay.premium,

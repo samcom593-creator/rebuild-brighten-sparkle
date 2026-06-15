@@ -120,7 +120,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
 
           const managerMap: Record<string, string> = {};
           managerAgents?.forEach(m => {
-            managerMap[m.id] = m.profile?.full_name || "Unknown Manager";
+            managerMap[m.id] = m.profile?.full_name || "—";
           });
 
           // Group by manager
@@ -168,7 +168,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
               .filter(t => t.profile?.full_name)
               .map(t => ({
                 id: t.id,
-                name: t.profile?.full_name || "Unknown",
+                name: t.profile?.full_name || "—",
               }));
             setTeamMembers(members);
           }

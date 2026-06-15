@@ -672,7 +672,7 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
                             <RadioGroupItem value={agent.id} id={agent.id} />
                             <div className="flex-1 min-w-0">
                               <Label htmlFor={agent.id} className="font-medium cursor-pointer">
-                                {agent.fullName || "Unknown"}
+                                {agent.fullName || "—"}
                               </Label>
                               <p className="text-xs text-muted-foreground truncate">
                                 {agent.email || "No email"}

@@ -413,8 +413,8 @@ export default function IntegrationsSettings() {
       toast.success("Discord test notification sent!");
     } catch (err: any) {
       setTestStatus("error");
-      setTestMsg(err?.message ?? "Unknown error");
-      toast.error("Discord test failed: " + (err?.message ?? "Unknown error"));
+      setTestMsg(err?.message ?? "Something went wrong — try again");
+      toast.error("Discord test failed: " + (err?.message ?? "something went wrong — try again"));
     }
   }
 

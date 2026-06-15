@@ -237,7 +237,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           : getCloseRate(totals.deals, totals.presentations);
 
         const rpcProfile = agent?.user_id ? profileByUserIdRpc.get(agent.user_id) : undefined;
-        const displayName = profileViaId?.full_name || profileViaUserId?.full_name || rpcProfile?.full_name || agent?.display_name || "Unknown Agent";
+        const displayName = profileViaId?.full_name || profileViaUserId?.full_name || rpcProfile?.full_name || agent?.display_name || "—";
         const avatarUrl = profileViaId?.avatar_url || profileViaUserId?.avatar_url || rpcProfile?.avatar_url;
 
         return {

@@ -106,7 +106,7 @@ function KanbanTab() {
                 {students.length === 0 && <div className="text-xs text-slate-600 dark:text-slate-300 italic p-2">—</div>}
                 {students.map(st => (
                   <div key={st.id} className="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-xs">
-                    <div className="font-medium">{[st.first_name, st.last_name].filter(Boolean).join(" ") || "Unknown"}</div>
+                    <div className="font-medium">{[st.first_name, st.last_name].filter(Boolean).join(" ") || "—"}</div>
                     <div className="text-slate-600 dark:text-slate-300 mt-0.5">{st.state ?? "—"} · {Math.round(st.days_in_stage)}d in stage</div>
                     <div className="mt-2">
                       <Select value={st.current_stage} onValueChange={(v) => moveStage.mutate({ id: st.id, stage: v as Stage })}>
@@ -170,7 +170,7 @@ function StalledTab() {
             <tbody>
               {rows.map(r => (
                 <tr key={r.id} className="border-t border-white/5">
-                  <td className="p-3">{[r.first_name, r.last_name].filter(Boolean).join(" ") || "Unknown"}</td>
+                  <td className="p-3">{[r.first_name, r.last_name].filter(Boolean).join(" ") || "—"}</td>
                   <td className="p-3">{r.state ?? "—"}</td>
                   <td className="p-3"><Badge variant="secondary">{r.current_stage}</Badge></td>
                   <td className="p-3 tabular-nums">{Math.round(r.days_in_stage)}d</td>

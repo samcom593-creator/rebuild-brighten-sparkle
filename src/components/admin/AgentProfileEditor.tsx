@@ -98,7 +98,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
 
       const managerList: Manager[] = agentsData.map(a => {
         const profile = profiles?.find(p => p.user_id === a.user_id);
-        return { id: a.id, name: profile?.full_name || "Unknown" };
+        return { id: a.id, name: profile?.full_name || "—" };
       });
 
       setManagers(managerList);

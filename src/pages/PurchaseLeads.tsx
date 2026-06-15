@@ -132,7 +132,7 @@ export default function PurchaseLeads() {
       }
     } catch (err: any) {
       console.error("Stripe checkout error:", err);
-      toast.error("Failed to start checkout: " + (err.message || "Unknown error"));
+      toast.error("Failed to start checkout: " + (err.message || "something went wrong — try again"));
       playSound("error");
     } finally {
       setCheckingOut(null);

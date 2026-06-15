@@ -288,7 +288,7 @@ export default function HeadhuntersCalendar() {
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
             <div>
               <p className="font-bold mb-1">Could not load interviews</p>
-              <p className="text-12 text-muted-foreground">{(calls.error as any)?.message ?? "Unknown error from Supabase. Refresh to try again."}</p>
+              <p className="text-12 text-muted-foreground">{(calls.error as any)?.message ?? "Something went wrong with Supabase — refresh to try again."}</p>
             </div>
           </CardContent>
         </Card>

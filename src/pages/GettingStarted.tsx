@@ -118,7 +118,7 @@ export default function GettingStarted() {
         .in("id", progressRows.map((p) => p.agent_id));
       return (data || []).map((a: any) => ({
         id: a.id,
-        display_name: a.profile?.full_name || a.display_name || "Unknown",
+        display_name: a.profile?.full_name || a.display_name || "—",
         email: a.profile?.email,
         phone: a.profile?.phone,
         avatar_url: a.profile?.avatar_url,

@@ -77,7 +77,7 @@ export default function MyPlaques() {
         const rewardCards: Card[] = ((rewardsRes as any).data ?? []).map((r: any) => ({
           id: `reward-${r.id}`,
           source: "reward",
-          agentName: (byId.get(r.agent_id) as any)?.full_name ?? "Unknown",
+          agentName: (byId.get(r.agent_id) as any)?.full_name ?? "—",
           avatarUrl: (byId.get(r.agent_id) as any)?.avatar_url ?? null,
           achievement: r.title,
           rank: r.rank,
@@ -89,7 +89,7 @@ export default function MyPlaques() {
         const plaqueCards: Card[] = ((plaquesRes as any).data ?? []).map((p: any) => ({
           id: `plaque-${p.id}`,
           source: "plaque",
-          agentName: (byId.get(p.agent_id) as any)?.full_name ?? "Unknown",
+          agentName: (byId.get(p.agent_id) as any)?.full_name ?? "—",
           avatarUrl: (byId.get(p.agent_id) as any)?.avatar_url ?? null,
           achievement: p.badge_label || p.milestone_type.replace(/_/g, " "),
           subtitle: p.amount ? `$${Number(p.amount).toLocaleString()}` : undefined,

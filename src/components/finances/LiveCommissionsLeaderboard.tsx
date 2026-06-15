@@ -56,13 +56,13 @@ export function LiveCommissionsLeaderboard() {
       const nameMap = new Map<string, { name: string; userId: string | null }>();
       for (const a of (agents ?? []) as any[]) {
         nameMap.set(a.id, {
-          name: a.display_name ?? a.profiles?.full_name ?? "Unknown",
+          name: a.display_name ?? a.profiles?.full_name ?? "—",
           userId: a.user_id ?? null,
         });
       }
 
       const rows: Row[] = [...seen.values()].map((s: any) => {
-        const meta = nameMap.get(s.agent_id) ?? { name: "Unknown", userId: null };
+        const meta = nameMap.get(s.agent_id) ?? { name: "—", userId: null };
         const amount =
           period === "today"
             ? Number(s.today_earnings ?? 0)

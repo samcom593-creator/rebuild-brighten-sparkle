@@ -88,7 +88,7 @@ const STAGE_META: Record<
   licensed_pre_contract: { label: "Licensed · pre-contract", tone: "warn", icon: GraduationCap },
   contracted_no_deal: { label: "Contracted · no deal yet", tone: "warn", icon: UserPlus },
   active_producer: { label: "Active producer", tone: "success", icon: Trophy },
-  unknown: { label: "Unknown", tone: "neutral", icon: CalendarClock },
+  unknown: { label: "Stage unclassified", tone: "neutral", icon: CalendarClock },
 };
 
 const TONE_CLS: Record<"neutral" | "warn" | "success" | "danger", string> = {

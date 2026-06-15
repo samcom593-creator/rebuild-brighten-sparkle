@@ -282,7 +282,7 @@ function daysAgo(value: string | null | undefined): string {
 }
 
 function agentName(agent: AgentDetailRow): string {
-  return agent.profile?.full_name || agent.display_name || "Unknown";
+  return agent.profile?.full_name || agent.display_name || "—";
 }
 
 function appName(app: ApplicationDetailRow): string {
@@ -649,7 +649,7 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
       {error ? (
         <Card className="border-destructive/40 bg-destructive/5">
           <CardContent className="p-4 text-sm text-destructive">
-            Builder dashboard could not load: {error instanceof Error ? error.message : "Unknown error"}
+            Builder dashboard could not load: {error instanceof Error ? error.message : "something went wrong — refresh to try again"}
           </CardContent>
         </Card>
       ) : null}

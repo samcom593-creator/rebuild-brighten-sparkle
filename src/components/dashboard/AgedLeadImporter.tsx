@@ -433,7 +433,7 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
         if (error.message?.includes("duplicate") || error.code === "23505") {
           toast.error("Some leads have duplicate emails that already exist in the system");
         } else {
-          toast.error("Failed to import leads: " + (error.message || "Unknown error"));
+          toast.error("Failed to import leads: " + (error.message || "something went wrong — try again"));
         }
       } finally {
         setImporting(false);

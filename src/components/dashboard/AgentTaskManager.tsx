@@ -94,7 +94,7 @@ export function AgentTaskManager({
 
       const agentList = (agentData || []).map((a: any) => ({
         id: a.id,
-        name: a.display_name || a.profiles?.full_name || "Unknown",
+        name: a.display_name || a.profiles?.full_name || "—",
       }));
       setAgents(agentList);
 
@@ -112,7 +112,7 @@ export function AgentTaskManager({
 
       const enriched = (taskData || []).map((t: any) => ({
         ...t,
-        agent_name: agentList.find((a) => a.id === t.agent_id)?.name || "Unknown",
+        agent_name: agentList.find((a) => a.id === t.agent_id)?.name || "—",
       }));
       setTasks(enriched);
     } catch (err) {

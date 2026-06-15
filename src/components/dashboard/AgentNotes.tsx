@@ -58,14 +58,14 @@ export function AgentNotes({ agentId, onNoteAdded, readOnly = false }: AgentNote
           .select("user_id, full_name")
           .in("user_id", creatorIds);
         
-        creatorMap = new Map(profiles?.map(p => [p.user_id, p.full_name || "Unknown"]) || []);
+        creatorMap = new Map(profiles?.map(p => [p.user_id, p.full_name || "—"]) || []);
       }
 
       const notesWithCreators: Note[] = (data || []).map(n => ({
         id: n.id,
         note: n.note,
         createdAt: n.created_at,
-        createdBy: n.created_by ? (creatorMap.get(n.created_by) || "Unknown") : "System",
+        createdBy: n.created_by ? (creatorMap.get(n.created_by) || "—") : "System",
       }));
 
       setNotes(notesWithCreators);

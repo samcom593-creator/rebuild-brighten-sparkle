@@ -107,7 +107,7 @@ export function DeactivateAgentDialog({
         .filter(agent => agent.id !== currentManagerId)
         .map(agent => ({
           id: agent.id,
-          name: profileMap.get(agent.user_id) || "Unknown Manager",
+          name: profileMap.get(agent.user_id) || "—",
         }));
 
       setManagers(managerList);
@@ -186,7 +186,7 @@ export function DeactivateAgentDialog({
               agentName,
               reason: removalReason || "No reason provided",
               requestedBy: user?.id,
-              requestedByName: profile?.full_name || "Unknown",
+              requestedByName: profile?.full_name || "—",
             }
           });
 

@@ -67,8 +67,8 @@ export function RecognitionQueue() {
 
       // Aggregate production
       production?.forEach((p) => {
-        const name = p.agents?.profiles?.full_name || "Unknown";
-        if (name === "Unknown" || !name.trim()) return;
+        const name = p.agents?.profiles?.full_name || "—";
+        if (name === "—" || !name.trim()) return;
 
         const existing = agentStats.get(p.agent_id) || {
           name,

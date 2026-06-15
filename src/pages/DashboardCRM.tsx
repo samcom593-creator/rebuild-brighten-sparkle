@@ -652,7 +652,7 @@ export default function DashboardCRM() {
       if (!managerAgents?.length) return;
       const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", managerUserIds);
       const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
-      setManagers(managerAgents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "Unknown" })));
+      setManagers(managerAgents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "—" })));
     } catch (error) { console.error("Error fetching managers:", error); }
     try {
       const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).maybeSingle();
@@ -729,7 +729,7 @@ export default function DashboardCRM() {
         const mUserIds = managerAgentsData.map((a: any) => a.user_id).filter(Boolean);
         const { data: mProfiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", mUserIds);
         const userToName = new Map(mProfiles?.map(p => [p.user_id, p.full_name]) || []);
-        managerAgentsData.forEach((ma: any) => { if (ma.user_id) managerProfileMap.set(ma.id, userToName.get(ma.user_id) || "Unknown"); });
+        managerAgentsData.forEach((ma: any) => { if (ma.user_id) managerProfileMap.set(ma.id, userToName.get(ma.user_id) || "—"); });
       }
 
       const weeklyProductionMap = new Map<string, { alp: number; presentations: number; deals: number }>();
@@ -859,7 +859,7 @@ export default function DashboardCRM() {
         }
 
         return {
-          id: agent.id, userId: agent.user_id || "", name: profile?.full_name || agent.display_name || "Unknown Agent",
+          id: agent.id, userId: agent.user_id || "", name: profile?.full_name || agent.display_name || "—",
           applicationId: licenseEntry?.appId || undefined,
           email: profile?.email || "", phone: profile?.phone || undefined, avatarUrl: profile?.avatar_url || undefined,
           instagramHandle: profile?.instagram_handle || undefined, onboardingStage: effectiveStage,
@@ -1007,7 +1007,7 @@ export default function DashboardCRM() {
       if (!managerAgents?.length) return [];
       const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", managerUserIds);
       const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
-      return managerAgents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "Unknown" }));
+      return managerAgents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "—" }));
     } catch (error) { console.error("Error fetching managers:", error); return []; }
   }, []);
 

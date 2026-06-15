@@ -310,7 +310,7 @@ export default function DeletedLeadsVault() {
                             : "bg-gray-500/20 text-gray-400 border-gray-500/30"
                         }
                       >
-                        {lead.license_status || "Unknown"}
+                        {lead.license_status || "—"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">

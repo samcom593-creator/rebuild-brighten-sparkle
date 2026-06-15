@@ -203,7 +203,7 @@ export default function LeadCenter() {
       const agentNameMap: Record<string, string> = {};
       agents?.forEach((agent) => {
         const profile = profiles?.find((p) => p.user_id === agent.user_id);
-        agentNameMap[agent.id] = profile?.full_name || "Unknown";
+        agentNameMap[agent.id] = profile?.full_name || "—";
       });
 
       // Transform apps
@@ -273,7 +273,7 @@ export default function LeadCenter() {
         if (count > 0) {
           managerList.push({
             id: agent.id,
-            name: agentNameMap[agent.id] || "Unknown",
+            name: agentNameMap[agent.id] || "—",
             leadCount: count,
           });
         }

@@ -99,7 +99,7 @@ export function CourseProgressPanel() {
 
         return {
           agentId: agent.id,
-          agentName: profile?.full_name || "Unknown",
+          agentName: profile?.full_name || "—",
           email: profile?.email || null,
           moduleProgress: percentComplete,
           totalModules,

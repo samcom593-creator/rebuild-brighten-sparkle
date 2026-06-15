@@ -110,7 +110,7 @@ export function AllLeadsPanel() {
       const profileByUserId = new Map((profiles || []).map((p) => [p.user_id, p]));
       const agentNameMap: Record<string, string> = {};
       agents?.forEach((agent) => {
-        agentNameMap[agent.id] = profileByUserId.get(agent.user_id)?.full_name || "Unknown";
+        agentNameMap[agent.id] = profileByUserId.get(agent.user_id)?.full_name || "—";
       });
 
       // Transform applications
@@ -152,7 +152,7 @@ export function AllLeadsPanel() {
         if (count > 0) {
           managerList.push({
             id: agent.id,
-            name: agentNameMap[agent.id] || "Unknown",
+            name: agentNameMap[agent.id] || "—",
             leadCount: count,
           });
         }

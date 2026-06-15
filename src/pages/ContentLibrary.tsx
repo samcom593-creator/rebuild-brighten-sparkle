@@ -177,7 +177,7 @@ export default function ContentLibrary() {
       .in("user_id", userIds);
     setAgents(agentsData.map(a => {
       const p = profiles?.find(pr => pr.user_id === a.user_id);
-      return { id: a.id, name: a.display_name || p?.full_name || "Unknown", avatarUrl: p?.avatar_url || undefined };
+      return { id: a.id, name: a.display_name || p?.full_name || "—", avatarUrl: p?.avatar_url || undefined };
     }));
   }, []);
 
@@ -411,7 +411,7 @@ export default function ContentLibrary() {
       setUploadFile(null);
       fetchContent();
     } catch (err: any) {
-      toast.error("Upload failed: " + (err.message || "Unknown error"));
+      toast.error("Upload failed: " + (err.message || "something went wrong — try again"));
     } finally {
       setUploading(false);
     }

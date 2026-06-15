@@ -165,7 +165,7 @@ export function OnboardingTracker({
       playSound("error");
       toast({
         title: "Error",
-        description: `Failed to update: ${err.message || "Unknown error"}`,
+        description: `Failed to update: ${err.message || "something went wrong — try again"}`,
         variant: "destructive",
       });
     } finally {

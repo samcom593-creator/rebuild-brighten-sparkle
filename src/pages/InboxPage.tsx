@@ -720,7 +720,7 @@ export default function InboxPage() {
                     <div className="mb-0.5 flex items-center gap-2">
                       {channelIcon(m.channel)}
                       <span className="flex-1 truncate text-xs font-medium">
-                        {m.recipient_email || m.recipient_phone || "Unknown"}
+                        {m.recipient_email || m.recipient_phone || "—"}
                       </span>
                       <span className="whitespace-nowrap text-[10px] text-muted-foreground">
                         {format(new Date(m.created_at), "MMM d, h:mm a")}

@@ -468,7 +468,7 @@ export default function LeadPayments() {
               </div>
             ) : paymentsQ.error ? (
               <div className="p-5 text-sm text-destructive">
-                Lead payments could not load: {paymentsQ.error instanceof Error ? paymentsQ.error.message : "Unknown error"}
+                Lead payments could not load: {paymentsQ.error instanceof Error ? paymentsQ.error.message : "something went wrong — refresh to try again"}
               </div>
             ) : filtered.length === 0 ? (
               <EmptyState icon={<Receipt className="h-6 w-6" />} title="No lead payments match this view" />
@@ -494,7 +494,7 @@ export default function LeadPayments() {
                     return (
                       <TableRow key={row.id}>
                         <TableCell>
-                          <div className="font-medium">{row.payer_name || agent?.name || "Unknown agent"}</div>
+                          <div className="font-medium">{row.payer_name || agent?.name || "—"}</div>
                           <div className="text-xs text-muted-foreground">{agent?.email || row.agent_id}</div>
                         </TableCell>
                         <TableCell>

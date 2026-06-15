@@ -702,7 +702,7 @@ export default function CalendarPage() {
                       const TypeIcon = typeIcons[iv.interview_type] || Calendar;
                       const name = iv.applications
                         ? `${iv.applications.first_name} ${iv.applications.last_name}`
-                        : "Unknown";
+                        : "—";
 
                       return (
                         <Card

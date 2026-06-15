@@ -42,7 +42,7 @@ export default function CompTiersSettings() {
       const roleMap = new Map((rolesRes.data || []).map((r: any) => [r.user_id, r.role]));
       return (data || []).map((a: any) => ({
         id: a.id,
-        name: a.profile?.full_name || a.display_name || "Unknown",
+        name: a.profile?.full_name || a.display_name || "—",
         role: (a.user_id && roleMap.get(a.user_id)) || "agent",
         contract_percentage: Number(a.contract_percentage) || 120,
         override_rate: Number(a.override_rate) || 0,

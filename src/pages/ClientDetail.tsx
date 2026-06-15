@@ -208,7 +208,7 @@ export default function ClientDetail() {
   const c = client.data;
   const displayName = useMemo(() => {
     const parts = [c?.first_name, c?.last_name].filter(Boolean);
-    return parts.join(" ") || "Unknown client";
+    return parts.join(" ") || "—";
   }, [c]);
 
   if (client.isLoading) {

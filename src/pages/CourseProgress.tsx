@@ -368,7 +368,7 @@ export default function CourseProgress() {
     },
     onError: (error: any) => {
       console.error("Unenroll error:", error);
-      toast.error(`Failed to unenroll agent: ${error?.message || "Unknown error"}`);
+      toast.error(`Failed to unenroll agent: ${error?.message || "something went wrong — try again"}`);
     },
   });
 

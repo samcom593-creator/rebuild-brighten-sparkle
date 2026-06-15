@@ -474,7 +474,7 @@ export default function BookReconciliation() {
               <RowCard key={q.agent_id} i={i}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-semibold truncate">{q.agent_name ?? "Unknown"}</p>
+                    <p className="font-semibold truncate">{q.agent_name ?? "—"}</p>
                     <Badge variant="outline" className="text-[10px]">{q.agent_code ?? "—"}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">

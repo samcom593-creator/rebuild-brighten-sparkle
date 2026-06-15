@@ -87,7 +87,7 @@ export function ManagerInviteLinks() {
 
       const linksWithNames = links.map((link) => {
         const userId = agentUserMap.get(link.manager_agent_id);
-        const managerName = (userId && profileNameMap.get(userId)) || "Unknown";
+        const managerName = (userId && profileNameMap.get(userId)) || "—";
         return { ...link, manager_name: managerName };
       });
 
@@ -125,12 +125,12 @@ export function ManagerInviteLinks() {
         const profile = agent.user_id ? profileMap.get(agent.user_id) : null;
         return {
           id: agent.id,
-          name: profile?.full_name || "Unknown",
+          name: profile?.full_name || "—",
           email: profile?.email || "",
         };
       });
 
-      setAgents(agentsWithNames.filter((a) => a.name !== "Unknown"));
+      setAgents(agentsWithNames.filter((a) => a.name !== "—"));
     } catch (error) {
       console.error("Error fetching agents:", error);
     }

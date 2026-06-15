@@ -143,7 +143,7 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
         return {
           rank: 0,
           agentId,
-          name: profile?.full_name || agent?.display_name || "Unknown Agent",
+          name: profile?.full_name || agent?.display_name || "—",
           referralsCaught: totals.referralsCaught,
           referralPresentations: totals.referralPresentations,
           bookedInHome: totals.bookedInHome,

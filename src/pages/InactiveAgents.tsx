@@ -121,7 +121,7 @@ export default function InactiveAgents() {
       }
       return (data || []).map((a: any) => ({
         id: a.id,
-        display_name: a.profile?.full_name || a.display_name || "Unknown",
+        display_name: a.profile?.full_name || a.display_name || "—",
         email: a.profile?.email,
         phone: a.profile?.phone,
         onboarding_stage: a.onboarding_stage,

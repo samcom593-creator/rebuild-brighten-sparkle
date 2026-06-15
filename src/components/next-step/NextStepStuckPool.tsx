@@ -80,7 +80,7 @@ export function NextStepStuckPool({ ownerUserId, limit = 8, heading, subheading 
         <ul className="divide-y divide-border/60">
           {data.map((row) => {
             const sev = SEVERITY_TONE[row.severity ?? "unknown"] ?? SEVERITY_TONE.unknown;
-            const fullName = [row.first_name, row.last_name].filter(Boolean).join(" ").trim() || "Unknown";
+            const fullName = [row.first_name, row.last_name].filter(Boolean).join(" ").trim() || "—";
             const daysLabel =
               row.days_in_stage >= 30
                 ? `${Math.round(row.days_in_stage)}d`

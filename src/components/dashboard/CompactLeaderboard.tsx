@@ -289,7 +289,7 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
         return {
           rank: 0,
           agentId,
-          name: profile?.full_name || agent?.display_name || "Unknown",
+          name: profile?.full_name || agent?.display_name || "—",
           avatarUrl: profile?.avatar_url,
           alp: totals.alp,
           deals: totals.deals,

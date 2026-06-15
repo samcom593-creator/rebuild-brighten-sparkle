@@ -151,7 +151,7 @@ export function AgentQuickEditDialog({
             phone: profile.phone || null,
             instagram_handle: profile.instagram_handle || null,
           });
-          if (profile.full_name && currentName === "Unknown Agent") {
+          if (profile.full_name && (currentName === "Unknown Agent" || currentName === "—")) {
             setDisplayName(profile.full_name);
           }
           if (profile.email) {
@@ -206,7 +206,7 @@ export function AgentQuickEditDialog({
       const matches: PossibleMatch[] = allAgents
         .map(agent => {
           const profile = profiles?.find(p => p.user_id === agent.user_id);
-          const name = profile?.full_name || agent.display_name || "Unknown";
+          const name = profile?.full_name || agent.display_name || "—";
           const stats = productionByAgent[agent.id] || { alp: 0, deals: 0 };
           
           return {
@@ -220,7 +220,7 @@ export function AgentQuickEditDialog({
         })
         .map(m => ({
           ...m,
-          name: m.name === "Unknown" ? `Agent ${m.id.slice(0, 6)} (no profile)` : m.name,
+          name: m.name === "—" ? `Agent ${m.id.slice(0, 6)} (no profile)` : m.name,
         }))
         .sort((a, b) => a.name.localeCompare(b.name))
         .slice(0, 50);

@@ -73,7 +73,7 @@ export function TerminatedAgentLeadsPanel() {
       const agentNameMap: Record<string, string> = {};
       terminatedAgents.forEach((agent) => {
         const profile = profiles?.find((p) => p.user_id === agent.user_id);
-        agentNameMap[agent.id] = profile?.full_name || "Unknown Agent";
+        agentNameMap[agent.id] = profile?.full_name || "—";
       });
 
       // Step 3: Get applications assigned to terminated agents (exclude terminated leads)
@@ -96,7 +96,7 @@ export function TerminatedAgentLeadsPanel() {
         licenseStatus: app.license_status,
         createdAt: app.created_at,
         formerAgentId: app.assigned_agent_id || "",
-        formerAgentName: agentNameMap[app.assigned_agent_id || ""] || "Unknown",
+        formerAgentName: agentNameMap[app.assigned_agent_id || ""] || "—",
       }));
 
       setLeads(formattedLeads);

@@ -77,7 +77,7 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
           const profile = a.user_id ? profileMap[a.user_id] : null;
           return {
             id: a.id,
-            name: a.display_name || profile?.full_name || "Unknown",
+            name: a.display_name || profile?.full_name || "—",
             email: profile?.email || "",
             managerId: null,
           };

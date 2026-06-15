@@ -271,7 +271,7 @@ export default function AwardProfilesPanel() {
           <div className="px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <AnimatePresence mode="popLayout">
               {filtered.map((agent, index) => {
-                const name = agent.award_display_name || agent.display_name || agent.profile_name || "Unknown";
+                const name = agent.award_display_name || agent.display_name || agent.profile_name || "—";
                 const photoUrl = agent.award_photo_url || agent.avatar_url;
                 const ig = agent.award_instagram || agent.profile_instagram;
                 const isEditMode = editingId === agent.id;

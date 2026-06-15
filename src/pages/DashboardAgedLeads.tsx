@@ -283,7 +283,7 @@ export default function DashboardAgedLeads() {
       if (!agents?.length) return;
       const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
       const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
-      setManagers(agents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "Unknown Manager" })));
+      setManagers(agents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "—" })));
     } catch (error) {
       console.error("Error fetching managers:", error);
     }
@@ -392,7 +392,7 @@ export default function DashboardAgedLeads() {
       setBanTarget(null);
     } catch (error: any) {
       console.error("Error banning prospect:", error);
-      toast.error("Failed to ban prospect: " + (error.message || "Unknown error"));
+      toast.error("Failed to ban prospect: " + (error.message || "something went wrong — try again"));
       playSound("error");
     } finally {
       setBanning(false);
@@ -428,7 +428,7 @@ export default function DashboardAgedLeads() {
       setDeleteTarget(null);
     } catch (error: any) {
       console.error("Error deleting lead:", error);
-      toast.error("Failed to delete lead: " + (error.message || "Unknown error"));
+      toast.error("Failed to delete lead: " + (error.message || "something went wrong — try again"));
       playSound("error");
     } finally {
       setDeleting(false);
@@ -547,7 +547,7 @@ export default function DashboardAgedLeads() {
       fetchLeads();
     } catch (error: any) {
       console.error("Error merging duplicates:", error);
-      toast.error("Failed to merge duplicates: " + (error.message || "Unknown error"));
+      toast.error("Failed to merge duplicates: " + (error.message || "something went wrong — try again"));
       playSound("error");
     } finally {
       setMerging(false);
@@ -632,7 +632,7 @@ export default function DashboardAgedLeads() {
       setLeads(prev => prev.filter(l => !selectedIds.has(l.id)));
     } catch (error: any) {
       console.error("Bulk delete error:", error);
-      toast.error("Failed to delete leads: " + (error.message || "Unknown error"));
+      toast.error("Failed to delete leads: " + (error.message || "something went wrong — try again"));
       playSound("error");
     } finally {
       setBulkDeleting(false);

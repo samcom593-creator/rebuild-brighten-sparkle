@@ -148,8 +148,8 @@ export default function DashboardAccounts() {
         return {
           id: agent.id,
           userId: agent.user_id!,
-          name: profile?.full_name || "Unknown",
-          email: profile?.email || "Unknown",
+          name: profile?.full_name || "—",
+          email: profile?.email || "—",
           role,
           status: agent.status,
           createdAt: agent.created_at,

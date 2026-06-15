@@ -198,7 +198,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
               className="rounded-md border border-white/5 bg-white/[0.02] p-3 flex flex-col gap-1.5"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate">{ev.agent_name ?? "Unknown"}</span>
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate">{ev.agent_name ?? "—"}</span>
                 <span className="text-[10px] text-slate-600 dark:text-slate-300 whitespace-nowrap">
                   {formatDistanceToNow(new Date(ev.created_at), { addSuffix: true })}
                 </span>

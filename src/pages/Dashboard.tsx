@@ -1,4 +1,4 @@
-import { useMemo, useState, type ElementType } from "react";
+import { lazy, Suspense, useMemo, useState, type ElementType, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -22,14 +22,46 @@ import {
   Zap,
 } from "lucide-react";
 
-import AgentCommandDashboard from "@/pages/AgentCommandDashboard";
-import { UnclaimedLeadsCommandCard } from "@/components/dashboard/UnclaimedLeadsCommandCard";
-import { XcelStalledCard } from "@/components/dashboard/XcelStalledCard";
-import { WhatShippedTodayBanner } from "@/components/dashboard/WhatShippedTodayBanner";
-import { LicensedHiresRange } from "@/components/dashboard/LicensedHiresRange";
-import { ManagerHierarchyMtdPanel } from "@/components/dashboard/ManagerHierarchyMtdPanel";
-import { JustHiredPanel } from "@/components/dashboard/JustHiredPanel";
-import { BuilderProgressDashboard } from "@/components/dashboard/BuilderProgressDashboard";
+// wave-103 (2026-06-15): INVESTOR-003 code-split. Dashboard.js was 444KB
+// because all role-specific + below-fold panels (esp. chart-heavy ones that
+// pull vendor-charts 428KB) shipped eagerly. Default admin path renders only
+// AgentCommandDashboard, so everything below moves into its own lazy chunk
+// per route condition.
+const AgentCommandDashboard = lazy(() => import("@/pages/AgentCommandDashboard"));
+const ManagerCommandView = lazy(() => import("@/pages/ManagerCommandView"));
+const UnclaimedLeadsCommandCard = lazy(() =>
+  import("@/components/dashboard/UnclaimedLeadsCommandCard").then((m) => ({ default: m.UnclaimedLeadsCommandCard })),
+);
+const XcelStalledCard = lazy(() =>
+  import("@/components/dashboard/XcelStalledCard").then((m) => ({ default: m.XcelStalledCard })),
+);
+const LicensedHiresRange = lazy(() =>
+  import("@/components/dashboard/LicensedHiresRange").then((m) => ({ default: m.LicensedHiresRange })),
+);
+const ManagerHierarchyMtdPanel = lazy(() =>
+  import("@/components/dashboard/ManagerHierarchyMtdPanel").then((m) => ({ default: m.ManagerHierarchyMtdPanel })),
+);
+const JustHiredPanel = lazy(() =>
+  import("@/components/dashboard/JustHiredPanel").then((m) => ({ default: m.JustHiredPanel })),
+);
+const BuilderProgressDashboard = lazy(() =>
+  import("@/components/dashboard/BuilderProgressDashboard").then((m) => ({ default: m.BuilderProgressDashboard })),
+);
+const AgentLinkBookTruthCard = lazy(() =>
+  import("@/components/dashboard/AgentLinkBookTruthCard").then((m) => ({ default: m.AgentLinkBookTruthCard })),
+);
+const CarrierBreakdownCard = lazy(() =>
+  import("@/components/dashboard/CarrierBreakdownCard").then((m) => ({ default: m.CarrierBreakdownCard })),
+);
+const BookTrendCard = lazy(() =>
+  import("@/components/dashboard/CarrierProductionCard").then((m) => ({ default: m.BookTrendCard })),
+);
+// wave-103: WhatShippedTodayBanner is 1126 lines (the SHIPPED receipts array
+// grows on every ship). It accounted for ~150KB of Dashboard.js raw. Lazy-load
+// so the banner shell paints fast and the receipts hydrate in.
+const WhatShippedTodayBanner = lazy(() =>
+  import("@/components/dashboard/WhatShippedTodayBanner").then((m) => ({ default: m.WhatShippedTodayBanner })),
+);
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,10 +72,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { useRolePreview, type RolePreview } from "@/hooks/useRolePreview";
 import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
-import { AgentLinkBookTruthCard } from "@/components/dashboard/AgentLinkBookTruthCard";
-import { CarrierBreakdownCard } from "@/components/dashboard/CarrierBreakdownCard";
-import { BookTrendCard } from "@/components/dashboard/CarrierProductionCard";
-import ManagerCommandView from "@/pages/ManagerCommandView";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
 import { getCloseRate, getLiveAgentCutoffIso, LIVE_AGENT_DEAL_WINDOW_DAYS, sumAnnualPremium } from "@/lib/metricTruth";
 import { cn } from "@/lib/utils";
@@ -155,6 +183,18 @@ function ageLabel(iso: string | null): string {
   const hours = Math.round(mins / 60);
   if (hours < 48) return `${hours}h ago`;
   return `${Math.round(hours / 24)}d ago`;
+}
+
+function LazyPanel({ children, minHeight = "h-24" }: { children: ReactNode; minHeight?: string }) {
+  return (
+    <Suspense
+      fallback={
+        <div className={cn("animate-pulse rounded-lg border border-border bg-muted/30", minHeight)} aria-hidden />
+      }
+    >
+      {children}
+    </Suspense>
+  );
 }
 
 async function getRows<T = any>(builder: any, label: string): Promise<T[]> {
@@ -609,7 +649,7 @@ function RecruitingGrid({ stats }: { stats: DashboardSnapshot["recruiting"] }) {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          <LicensedHiresRange />
+          <LazyPanel minHeight="h-16"><LicensedHiresRange /></LazyPanel>
           {rows.map(([label, value]) => (
             <div key={label} className="rounded-lg border border-border/70 p-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -726,14 +766,14 @@ function ExecutiveDashboard({
       {/* Pinned receipts banner — what shipped to the platform between
           this login and the last one. Sam reported "everything looks the
           same" despite 24+ commits; this makes the delta impossible to miss. */}
-      <WhatShippedTodayBanner />
+      <LazyPanel minHeight="h-20"><WhatShippedTodayBanner /></LazyPanel>
 
       {/* Funnel-leak command row — biggest two leaks live in one strip
           at the top of every admin dashboard load: unclaimed applicants
           (recruiting side) + stalled XCEL students (licensing side). */}
       <div className="grid gap-4 xl:grid-cols-2">
-        <UnclaimedLeadsCommandCard />
-        <XcelStalledCard />
+        <LazyPanel minHeight="h-32"><UnclaimedLeadsCommandCard /></LazyPanel>
+        <LazyPanel minHeight="h-32"><XcelStalledCard /></LazyPanel>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -781,25 +821,25 @@ function ExecutiveDashboard({
       {/* My Builders — Sam's #1 focus (2026-06-03): hold builders, run the line.
           Shows Sam-direct recruits, their builder tier, onboarding progress,
           producing flag. Reads v_sam_builders_dashboard. */}
-      <BuilderProgressDashboard />
+      <LazyPanel minHeight="h-48"><BuilderProgressDashboard /></LazyPanel>
 
       {/* Manager hierarchy MTD + top producers — replaces the weak "Recent deals"
           widget per Sam's 2026-05-22 punch ("dashboard literally empty, leaderboard
           empty, last 8 deals still there, doesn't have pipeline stats"). Reads
           v_manager_hierarchy_mtd + v_top_producers_mtd — real data only. */}
-      <ManagerHierarchyMtdPanel />
+      <LazyPanel minHeight="h-64"><ManagerHierarchyMtdPanel /></LazyPanel>
 
       {/* Just-hired-direct-to-Sam feed — surfaces last-30d hires routed to Sam
           (no manager). Sam's 2026-05-22 ask: "Just-hired direct-to-Sam feed". */}
-      <JustHiredPanel />
+      <LazyPanel minHeight="h-40"><JustHiredPanel /></LazyPanel>
 
-      <AgentLinkBookTruthCard />
+      <LazyPanel minHeight="h-48"><AgentLinkBookTruthCard /></LazyPanel>
 
       {/* v9 audit fix 2026-06-10: AgentLink-style carrier breakdown + by-month trend.
           Two-column grid at desktop, stacked on mobile. */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <CarrierBreakdownCard />
-        <BookTrendCard />
+        <LazyPanel minHeight="h-64"><CarrierBreakdownCard /></LazyPanel>
+        <LazyPanel minHeight="h-64"><BookTrendCard /></LazyPanel>
       </div>
 
       <WeekProductionCard snapshot={snapshot} />
@@ -870,7 +910,7 @@ export default function Dashboard() {
   };
 
   if (isLoading) {
-    return <PageLoadingSkeleton title="Loading command dashboard" />;
+    return <PageLoadingSkeleton />;
   }
 
   if (!user) return null;
@@ -881,11 +921,15 @@ export default function Dashboard() {
   // - previewRole=manager: ManagerCommandView
   // - previewRole=admin: ExecutiveDashboard
   if (shouldRenderDefaultAdminCommand) {
-    return <AgentCommandDashboard />;
+    return (
+      <Suspense fallback={<PageLoadingSkeleton />}>
+        <AgentCommandDashboard />
+      </Suspense>
+    );
   }
 
   if (currentAgent.isLoading || downline.isLoading) {
-    return <PageLoadingSkeleton title="Loading command dashboard" />;
+    return <PageLoadingSkeleton />;
   }
 
   if (effectiveRole === "agent") {
@@ -894,7 +938,9 @@ export default function Dashboard() {
         {isPreviewing && (
           <Badge variant="outline">Previewing Agent View from {actualRole}</Badge>
         )}
-        <AgentCommandDashboard />
+        <Suspense fallback={<PageLoadingSkeleton />}>
+          <AgentCommandDashboard />
+        </Suspense>
       </div>
     );
   }
@@ -905,13 +951,15 @@ export default function Dashboard() {
         {isPreviewing && (
           <Badge variant="outline">Previewing Manager View from {actualRole}</Badge>
         )}
-        <ManagerCommandView />
+        <Suspense fallback={<PageLoadingSkeleton />}>
+          <ManagerCommandView />
+        </Suspense>
       </div>
     );
   }
 
   if (snapshotQuery.isLoading || !snapshotQuery.data) {
-    return <PageLoadingSkeleton title="Loading live dashboard snapshot" />;
+    return <PageLoadingSkeleton />;
   }
 
   return (

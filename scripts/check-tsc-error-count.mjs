@@ -53,7 +53,9 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 //   stalled C11 agent: CompactLeaderboard dead-dep, ManagerInviteLinks
 //   missing Skeleton import, PersonalStatsCard custom-range cleanup per
 //   Sam 2026-06-01 directive, RecruiterDashboard missing useRef import).
-const BASELINE = 245;
+// 2026-06-15 08:50 UTC — wave-103 INVESTOR-003 Dashboard.js code-split swept
+//   5 pre-existing PageLoadingSkeleton title-prop typos (dropped 245 → 242).
+const BASELINE = 242;
 
 let stdout = "";
 let stderr = "";

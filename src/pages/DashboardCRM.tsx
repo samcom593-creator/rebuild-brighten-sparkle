@@ -38,6 +38,8 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { differenceInDays } from "date-fns";
 import { BulkComposeDrawer } from "@/components/dashboard/BulkComposeDrawer";
 import { AgentCredentialsPanel } from "@/components/dashboard/AgentCredentialsPanel";
+import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
+import { AgentTrainingStageBar } from "@/components/dashboard/AgentTrainingStageBar";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { getBusinessDayKey, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
@@ -366,6 +368,8 @@ function OnboardingExpandedRow({ agent, onRefresh, onStageUpdate, onGoLive, onDe
             {/* Onboarding stage tracker */}
             <OnboardingTracker agentId={agent.id} agentName={agent.name} currentStage={agent.onboardingStage}
               onStageUpdate={() => onStageUpdate(agent.id)} onGoLive={() => onGoLive(agent)} readOnly={false} />
+            {/* 2026-06-15 — per-agent training stage tracker (test/classroom/field/active) */}
+            <AgentTrainingStageBar agentId={agent.id} />
           </div>
           <div className="space-y-3">
             <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
@@ -1021,6 +1025,28 @@ export default function DashboardCRM() {
     staleTime: 120000,
   });
 
+  // 2026-06-15 — agency-wide 4-stage training counts. Read directly from
+  // v_agent_training_stage so the hero pipeline tile is the truth even before
+  // the row-level agents query resolves. Excludes deactivated agents.
+  const { data: stageCounts } = useQuery({
+    queryKey: ["agency-training-stage-counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_agent_training_stage" as any)
+        .select("stage, is_deactivated");
+      if (error) throw error;
+      const counts = { test: 0, classroom: 0, field: 0, active: 0, unknown: 0 };
+      for (const r of (data as any[]) ?? []) {
+        if (r.is_deactivated) continue;
+        const k = (r.stage as keyof typeof counts) ?? "unknown";
+        if (k in counts) counts[k]++;
+      }
+      return counts;
+    },
+    enabled: !authLoading && !!user,
+    staleTime: 60000,
+  });
+
   useEffect(() => { if (agentsData) setAgents(agentsData); }, [agentsData]);
   useEffect(() => { if (managersData) setManagers(managersData); }, [managersData]);
 
@@ -1579,6 +1605,27 @@ export default function DashboardCRM() {
           </div>
         )}
 
+        {/* 2026-06-15 — agency-wide training-stage pipeline.
+            Sam directive (voice): "It should have systems where it's easy to
+            see, check whether they're in field training, on court [classroom],
+            in classroom. Inventory borrowers active in the field — i.e. active
+            producing in the field."
+            Data: v_agent_training_stage (derived from license_status +
+            first_deal_at + field_training_started_at + onboarding_stage). */}
+        <motion.div {...surfaceMotion} transition={{ duration: 0.28, delay: 0.01, ease: "easeOut" }} className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          {[
+            { key: "test",      label: "In test",       count: stageCounts?.test ?? 0,      accent: "text-amber-600 dark:text-amber-400",   border: "border-amber-500/30",  glow: "bg-amber-500/5" },
+            { key: "classroom", label: "In classroom",  count: stageCounts?.classroom ?? 0, accent: "text-sky-600 dark:text-sky-400",       border: "border-sky-500/30",    glow: "bg-sky-500/5" },
+            { key: "field",     label: "In field",      count: stageCounts?.field ?? 0,     accent: "text-violet-600 dark:text-violet-400", border: "border-violet-500/30", glow: "bg-violet-500/5" },
+            { key: "active",    label: "Active",        count: stageCounts?.active ?? 0,    accent: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/30", glow: "bg-emerald-500/5" },
+          ].map((s) => (
+            <div key={s.key} className={cn("rounded-xl border bg-card/40 px-4 py-3 shadow-sm", s.border, s.glow)}>
+              <p className={cn("text-3xl font-black tabular-nums leading-none", s.accent)}>{s.count.toLocaleString()}</p>
+              <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{s.label}</p>
+            </div>
+          ))}
+        </motion.div>
+
         {/* 2026-06-15 — head-to-toe hero KPIs. 4 huge tabular-nums, phone-first
             grid (2 cols at 375px, 4 cols at lg). Truth: every "0" stays an
             actual 0 because Sam asked for honest counts (not em-dash) for
@@ -1793,7 +1840,10 @@ export default function DashboardCRM() {
                                       onClick={() => { setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id }); playSound("click"); }}>
                                       <AgentAvatar avatarUrl={getAvatarUrl(agent.avatarUrl)} name={agent.name} size="sm" className="ring-2 ring-background shadow-sm" />
                                       <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-semibold truncate leading-tight">{agent.name}</p>
+                                        {/* 2026-06-15 — clickable name opens AgentProfileDrawer (stops bubbling so the parent card click still navigates to application view when the rest of the card is tapped) */}
+                                        <p className="text-sm font-semibold truncate leading-tight">
+                                          <AgentNameLink agentId={agent.id}>{agent.name}</AgentNameLink>
+                                        </p>
                                         <div className="flex items-center gap-1 mt-0.5">
                                           {agent.aiScoreTier && (
                                             <Badge variant="outline" className={cn("text-[10px] h-3.5 px-1", {
@@ -2008,7 +2058,10 @@ export default function DashboardCRM() {
                                         )}
                                       </div>
                                       <div className="min-w-0">
-                                        <p className="font-medium text-xs truncate">{agent.name}</p>
+                                        {/* 2026-06-15 — clickable name opens AgentProfileDrawer in-place */}
+                                        <p className="font-medium text-xs truncate">
+                                          <AgentNameLink agentId={agent.id}>{agent.name}</AgentNameLink>
+                                        </p>
                                         <div className="flex items-center gap-1 mt-0.5">
                                           {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[10px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
                                           {!agent.avatarUrl && <Badge variant="outline" className="text-[10px] h-3.5 px-1 bg-red-500/10 text-red-500 border-red-500/20">📷 Photo</Badge>}

@@ -60,6 +60,7 @@ import {
 import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 
 interface GlobalSidebarProps {
   isOpen: boolean;
@@ -95,6 +96,10 @@ export function GlobalSidebar({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [showSearch, setShowSearch] = useState(false);
+  // 2026-06-15 — Sam directive (voice): "I tap their name, I should push a pull
+  // up that I'm inside the CRM." Search results now open the AgentProfileDrawer
+  // overlay instead of route-navigating to /agent/:id.
+  const openAgentProfile = useAgentProfileDrawer((s) => s.openAgent);
   const searchRef = useRef<HTMLDivElement>(null);
   const isTouch = useIsTouchDevice();
   const { playSound } = useSoundEffects();
@@ -516,7 +521,11 @@ export function GlobalSidebar({
                         <button
                           key={result.id}
                           onClick={() => {
-                            navigate(`/agent/${result.id}`);
+                            // Open deep-profile drawer overlay (in-place) instead
+                            // of navigating away. Sam stays on whatever page he
+                            // was on. Closing the drawer drops back to the same
+                            // surface.
+                            openAgentProfile(result.id);
                             setSearchQuery("");
                             setSearchResults([]);
                             setShowSearch(false);

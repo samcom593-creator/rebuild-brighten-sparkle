@@ -39,6 +39,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
+import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
 import { cn } from "@/lib/utils";
 
 type AgentRow = {
@@ -472,8 +473,10 @@ export default function Hierarchy() {
                     <AgentAvatar name={leg.display_name} size="md" />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
+                        {/* 2026-06-15 — clickable name opens AgentProfileDrawer
+                            in place (no route nav). */}
                         <h3 className="text-lg font-bold tracking-tight truncate">
-                          {leg.display_name}
+                          <AgentNameLink agentId={leg.id}>{leg.display_name}</AgentNameLink>
                         </h3>
                         {isTop && (
                           <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border border-amber-500/20 bg-amber-500/10 text-amber-400">

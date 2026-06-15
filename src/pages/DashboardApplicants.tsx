@@ -36,6 +36,7 @@ import { useAuth } from "@/hooks/useAuth";
 // DashboardLayout removed — AuthenticatedShell already provides SidebarLayout
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { GlassCard } from "@/components/ui/glass-card";
+import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
@@ -1833,9 +1834,12 @@ export default function DashboardApplicants() {
                           </td>
                           <td className="p-3 align-middle text-xs">
                             {app.assigned_agent_id ? (
-                              <Badge variant="outline" className="bg-violet-500/10 text-primary border-violet-500/30 text-[10px]">
-                                {managerNames.get(app.assigned_agent_id) || "Manager"}
-                              </Badge>
+                              // 2026-06-15 — click opens AgentProfileDrawer for the assigned recruiter
+                              <AgentNameLink agentId={app.assigned_agent_id} variant="bare">
+                                <Badge variant="outline" className="bg-violet-500/10 text-primary border-violet-500/30 text-[10px] hover:bg-violet-500/20 cursor-pointer">
+                                  {managerNames.get(app.assigned_agent_id) || "Manager"}
+                                </Badge>
+                              </AgentNameLink>
                             ) : (
                               <span className="text-muted-foreground">Unassigned</span>
                             )}
@@ -1866,13 +1870,26 @@ export default function DashboardApplicants() {
                                 );
                               }
                               return (
-                                <Badge
-                                  variant="outline"
-                                  className="bg-indigo-500/10 text-indigo-300 border-indigo-500/30 text-[10px]"
-                                  title={`Referred by ${recruiter.name} — under ${uplineName}`}
-                                >
-                                  {uplineName}
-                                </Badge>
+                                // 2026-06-15 — click opens AgentProfileDrawer for the upline manager
+                                recruiter?.uplineId ? (
+                                  <AgentNameLink agentId={recruiter.uplineId} variant="bare">
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-indigo-500/10 text-indigo-300 border-indigo-500/30 text-[10px] hover:bg-indigo-500/20 cursor-pointer"
+                                      title={`Referred by ${recruiter.name} — under ${uplineName}`}
+                                    >
+                                      {uplineName}
+                                    </Badge>
+                                  </AgentNameLink>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-indigo-500/10 text-indigo-300 border-indigo-500/30 text-[10px]"
+                                    title={`Referred by ${recruiter.name} — under ${uplineName}`}
+                                  >
+                                    {uplineName}
+                                  </Badge>
+                                )
                               );
                             })()}
                           </td>

@@ -285,10 +285,23 @@ function DeferredToasters() {
 // HeroSection.tsx wrap their own lazy Suspense blocks with LazyQueryRoot, so
 // landing renders eager content (h1 + video poster + carrier marquee) without
 // waiting for vendor-query to download.
+// AgentProfileDrawer host — lazy so the heavy Sheet primitive + zustand store
+// + agent profile components don't enter the cold-landing chain. Mounts inside
+// QueryShell so it inherits the lazy QueryClientProvider for its useQuery calls.
+const AgentProfileDrawer = lazy(() =>
+  import("@/components/dashboard/AgentProfileDrawer").then((m) => ({ default: m.AgentProfileDrawer })),
+);
+
 function QueryShell() {
   return (
     <LazyQueryRoot>
       <Outlet />
+      {/* Global agent profile drawer — any surface in the app can call
+          openAgentProfile(agentId) and the deep profile slides in over
+          whatever page Sam is on. 2026-06-15 directive. */}
+      <Suspense fallback={null}>
+        <AgentProfileDrawer />
+      </Suspense>
     </LazyQueryRoot>
   );
 }

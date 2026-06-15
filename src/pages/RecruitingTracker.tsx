@@ -38,6 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FunnelStageCard } from "@/components/recruiting/FunnelStageCard";
 import { FunnelConnector } from "@/components/recruiting/FunnelConnector";
 import { BottleneckCallout } from "@/components/recruiting/BottleneckCallout";
+import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
 
 interface PipelineRow {
   recruiter_id: string;
@@ -592,7 +593,10 @@ export default function RecruitingTracker() {
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold truncate">{prof?.name ?? "Recruiter"}</p>
+                          {/* 2026-06-15 — clickable recruiter name opens AgentProfileDrawer */}
+                          <p className="text-sm font-bold truncate">
+                            <AgentNameLink agentId={rid}>{prof?.name ?? "Recruiter"}</AgentNameLink>
+                          </p>
                           {prof?.agent_code && <p className="text-xs text-muted-foreground tabular-nums">{prof.agent_code}</p>}
                         </div>
                         <Badge className={`text-xs border ${badge.cls} shrink-0`}>
@@ -653,7 +657,9 @@ export default function RecruitingTracker() {
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium truncate">{prof?.name ?? "Recruiter"}</p>
+                            <p className="text-xs font-medium truncate">
+                              <AgentNameLink agentId={r.recruiter_id}>{prof?.name ?? "Recruiter"}</AgentNameLink>
+                            </p>
                             <p className="text-xs text-muted-foreground tabular-nums">{num(r.last_30d)} · 30d</p>
                           </div>
                         </div>
@@ -729,7 +735,11 @@ export default function RecruitingTracker() {
                               </div>
                             )}
                             <div className="min-w-0">
-                              <p className="text-sm font-bold truncate">{prof?.name ?? "Recruiter"}</p>
+                              <p className="text-sm font-bold truncate">
+                                <AgentNameLink agentId={r.recruiter_id} className="text-white hover:text-white">
+                                  {prof?.name ?? "Recruiter"}
+                                </AgentNameLink>
+                              </p>
                               {prof?.agent_code && <p className="text-xs text-white/60 tabular-nums">{prof.agent_code}</p>}
                             </div>
                           </div>

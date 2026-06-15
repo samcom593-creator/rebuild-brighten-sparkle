@@ -78,6 +78,9 @@ interface NavItem {
   special?: boolean;
 }
 
+const SIDEBAR_GROUPS_STORAGE_KEY = "apex.sidebar.collapsedGroups.v1";
+const COLLAPSIBLE_GROUP_LABELS = ["MORE", "OLD APPLICANTS"] as const;
+
 export function GlobalSidebar({
   isOpen,
   onToggle,
@@ -97,8 +100,6 @@ export function GlobalSidebar({
   // v7.15 Section 4 · collapsible sidebar groups (MORE / OLD APPLICANTS).
   // PRIMARY is never collapsible (always-visible daily flow).
   // State persists in localStorage so reload restores user preference.
-  const SIDEBAR_GROUPS_STORAGE_KEY = "apex.sidebar.collapsedGroups.v1";
-  const COLLAPSIBLE_GROUP_LABELS = ["MORE", "OLD APPLICANTS"] as const;
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try {
@@ -202,6 +203,7 @@ export function GlobalSidebar({
         { icon: Filter, label: "Headhunters Funnels", href: "/dashboard/recruiting-funnels", special: true },
         { icon: Trophy, label: "Headhunters Tracker", href: "/dashboard/recruiting-tracker", special: true },
         { icon: CalendarDays, label: "Headhunters · Calendar", href: "/dashboard/headhunters-calendar", special: true },
+        { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
         { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
         // Production + money
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
@@ -237,6 +239,7 @@ export function GlobalSidebar({
         { icon: Filter, label: "Headhunters Funnels", href: "/dashboard/recruiting-funnels" },
         { icon: Trophy, label: "Headhunters Tracker", href: "/dashboard/recruiting-tracker" },
         { icon: CalendarDays, label: "Headhunters · Calendar", href: "/dashboard/headhunters-calendar", special: true },
+        { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },

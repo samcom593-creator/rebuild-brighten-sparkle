@@ -122,6 +122,7 @@ const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 const LinksPage = lazy(() => import("./pages/LinksPage"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
 const HeadhuntersCalendar = lazy(() => import("./pages/HeadhuntersCalendar"));
+const InterviewCommandCenter = lazy(() => import("./pages/InterviewCommandCenter"));
 const AdminBoardAccess = lazy(() => import("./pages/AdminBoardAccess"));
 const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
 const SeminarPage = lazy(() => import("./pages/SeminarPage"));
@@ -465,6 +466,7 @@ const App = () => (
                      <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
                      <Route path="/dashboard/headhunters-calendar" element={<ProtectedRoute><HeadhuntersCalendar /></ProtectedRoute>} />
+                     <Route path="/dashboard/interviews" element={<ProtectedRoute requireAdmin allowManagers><InterviewCommandCenter /></ProtectedRoute>} />
                        <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
                        <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
                        <Route path="/dashboard/book-of-business" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />

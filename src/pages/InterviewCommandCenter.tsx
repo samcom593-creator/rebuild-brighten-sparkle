@@ -628,6 +628,27 @@ export default function InterviewCommandCenter() {
     staleTime: 30_000,
   });
 
+  // Assistant share token — RLS restricts to current user (or admin), so a
+  // plain SELECT only returns the signed-in user's own active token.
+  const assistantShareToken = useQuery({
+    queryKey: ["interview-command-assistant-share-token"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assistant_share_tokens" as never)
+        .select("token, label")
+        .eq("is_active", true)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error) {
+        // Non-fatal — just hide the card.
+        return null as { token: string; label: string } | null;
+      }
+      return (data as unknown) as { token: string; label: string } | null;
+    },
+    staleTime: 5 * 60_000,
+  });
+
   const candidates = useMemo(
     () => buildCandidates(INTERVIEW_EVENTS, manualInterviews.data ?? []),
     [manualInterviews.data],
@@ -889,6 +910,46 @@ export default function InterviewCommandCenter() {
         submitting={addSubmitting}
         onSubmit={submitAddInterview}
       />
+
+      {assistantShareToken.data?.token && (
+        <section className="rounded-md border bg-card/60 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              Share with your assistant
+            </div>
+            <div className="font-mono text-xs sm:text-sm truncate">
+              {`${window.location.origin}/assistant/interviews?t=${assistantShareToken.data.token}`}
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {assistantShareToken.data.label}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const url = `${window.location.origin}/assistant/interviews?t=${assistantShareToken.data!.token}`;
+                navigator.clipboard.writeText(url).then(
+                  () => toast.success("Link copied"),
+                  () => toast.error("Could not copy"),
+                );
+              }}
+            >
+              <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy
+            </Button>
+            <a
+              href={`${window.location.origin}/assistant/interviews?t=${assistantShareToken.data.token}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="ghost" size="sm">
+                <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Open
+              </Button>
+            </a>
+          </div>
+        </section>
+      )}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         <MetricTile icon={Users} label="Candidates" value={metrics.candidates} hint={`${metrics.events} calendar calls`} />

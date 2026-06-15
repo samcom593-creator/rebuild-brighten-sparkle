@@ -696,3 +696,6 @@ verify_jwt = false
 
 [functions.send-candidate-confirmation]
 verify_jwt = false
+
+[functions.assistant-add-interview]
+verify_jwt = false

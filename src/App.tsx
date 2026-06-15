@@ -65,6 +65,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 const Login = lazy(() => import("./pages/Login"));
 const Apply = lazy(() => import("./pages/Apply"));
+const AssistantInterviewForm = lazy(() => import("./pages/AssistantInterviewForm"));
 const StateCareerLanding = lazy(() => import("./pages/StateCareerLanding"));
 
 // Lazy loaded pages (heavy or less critical)
@@ -366,6 +367,10 @@ const App = () => (
                   <Route path="/agent/:userId" element={<PublicAgentLanding />} />
                   <Route path="/magic-login" element={<MagicLogin />} />
                   <Route path="/schedule-call" element={<ScheduleCall />} />
+                  {/* Public, token-gated assistant intake — Sam texts the link
+                      to his assistant; assistant submits a candidate + time and
+                      gets a one-tap Google Calendar TEMPLATE URL. No login. */}
+                  <Route path="/assistant/interviews" element={<AssistantInterviewForm />} />
                   <Route path="/pending-approval" element={<PendingApproval />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />

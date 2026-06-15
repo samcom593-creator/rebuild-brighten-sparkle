@@ -522,7 +522,7 @@ const App = () => (
                        <Route path="/dashboard/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
                        <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
                        <Route path="/dashboard/automation-health" element={<ProtectedRoute requireAdmin><AutomationHealth /></ProtectedRoute>} />
-                        <Route path="/dashboard/hierarchy" element={<ProtectedRoute><TeamHierarchy /></ProtectedRoute>} />
+                        {/* /dashboard/hierarchy = Hierarchy (line 473) per Sam's 2026-06-15 directive. Pre-existing TeamHierarchy retired here to kill duplicate-route landmine. */}
                         <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />
                          <Route path="/dashboard/instagram-automation" element={<ProtectedRoute requireAdmin><InstagramAutomation /></ProtectedRoute>} />
                           <Route path="/dashboard/content" element={<ProtectedRoute requireAdmin><ContentLibrary /></ProtectedRoute>} />

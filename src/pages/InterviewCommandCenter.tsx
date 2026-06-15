@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { format, formatDistanceToNowStrict } from "date-fns";
 import {
   AlertTriangle,
   BadgeCheck,
@@ -14,11 +14,14 @@ import {
   FileText,
   Filter,
   Instagram,
+  Mail,
+  Plus,
   PhoneCall,
   RefreshCw,
   RotateCcw,
   Save,
   Search,
+  Send,
   StickyNote,
   TrendingUp,
   UserCheck,
@@ -34,6 +37,14 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -90,6 +101,9 @@ interface Candidate {
   hasCallback: boolean;
   hasLeaderCall: boolean;
   hasLicensedCall: boolean;
+  manualRows: ManualInterviewRow[];
+  primaryEmail?: string;
+  primaryPhone?: string;
 }
 
 interface CandidateDraft {
@@ -121,6 +135,48 @@ interface ApplicationMatchRow {
   created_at: string | null;
   contracted_at: string | null;
 }
+
+interface ManualInterviewRow {
+  id: string;
+  candidate_name: string;
+  phone: string | null;
+  email: string | null;
+  instagram_handle: string | null;
+  scheduled_at: string;
+  interview_type: string;
+  notes: string | null;
+  confirmation_sent_at: string | null;
+  resend_message_id: string | null;
+  created_at: string;
+}
+
+interface NewInterviewForm {
+  candidateName: string;
+  phone: string;
+  email: string;
+  instagramHandle: string;
+  scheduledAt: string;
+  interviewType: InterviewKind;
+  notes: string;
+}
+
+const EMPTY_NEW_INTERVIEW: NewInterviewForm = {
+  candidateName: "",
+  phone: "",
+  email: "",
+  instagramHandle: "",
+  scheduledAt: "",
+  interviewType: "licensed_prospect",
+  notes: "",
+};
+
+const NEW_INTERVIEW_TYPE_OPTIONS: Array<{ key: InterviewKind; label: string }> = [
+  { key: "licensed_prospect", label: "Licensed Prospect Call" },
+  { key: "licensed_call", label: "Licensed Call" },
+  { key: "leader_call", label: "Leader Call (Unlicensed)" },
+  { key: "final_expense_review", label: "Final Expense Review" },
+  { key: "callback", label: "Callback" },
+];
 
 const STORAGE_KEY = "apex.interviewCommandCenter.v1";
 
@@ -399,11 +455,49 @@ function normalizeName(value: string): string {
     .replace(/\s+/g, " ");
 }
 
-function buildCandidates(events: InterviewEvent[]): Candidate[] {
+function manualKind(raw: string): InterviewKind {
+  switch (raw) {
+    case "licensed_prospect":
+    case "licensed_call":
+    case "leader_call":
+    case "final_expense_review":
+    case "callback":
+      return raw;
+    case "unlicensed_lead":
+      return "leader_call";
+    default:
+      return "licensed_prospect";
+  }
+}
+
+function manualToEvent(row: ManualInterviewRow): InterviewEvent {
+  const start = new Date(row.scheduled_at);
+  const end = new Date(start.getTime() + 15 * 60 * 1000);
+  return {
+    id: `manual-${row.id}`,
+    person: row.candidate_name,
+    startAt: row.scheduled_at,
+    endAt: end.toISOString(),
+    title: NEW_INTERVIEW_TYPE_OPTIONS.find((option) => option.key === manualKind(row.interview_type))?.label
+      ?? "Interview",
+    kind: manualKind(row.interview_type),
+    instagramHandle: row.instagram_handle ? normalizeHandle(row.instagram_handle) : undefined,
+  };
+}
+
+function buildCandidates(events: InterviewEvent[], manualRows: ManualInterviewRow[]): Candidate[] {
   const byPerson = new Map<string, InterviewEvent[]>();
+  const manualByPerson = new Map<string, ManualInterviewRow[]>();
+
   for (const event of events) {
     const key = normalizeName(event.person);
     byPerson.set(key, [...(byPerson.get(key) ?? []), event]);
+  }
+  for (const row of manualRows) {
+    const key = normalizeName(row.candidate_name);
+    if (!key) continue;
+    byPerson.set(key, [...(byPerson.get(key) ?? []), manualToEvent(row)]);
+    manualByPerson.set(key, [...(manualByPerson.get(key) ?? []), row]);
   }
 
   return Array.from(byPerson.entries())
@@ -411,6 +505,9 @@ function buildCandidates(events: InterviewEvent[]): Candidate[] {
       const sorted = [...personEvents].sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
       const seedInstagram = sorted.find((event) => event.instagramHandle)?.instagramHandle;
       const alias = sorted.find((event) => event.alias)?.alias;
+      const rows = manualByPerson.get(key) ?? [];
+      const primaryEmail = rows.find((row) => row.email && row.email.trim())?.email?.trim();
+      const primaryPhone = rows.find((row) => row.phone && row.phone.trim())?.phone?.trim();
       return {
         id: slugify(key),
         name: sorted[0].person,
@@ -423,6 +520,9 @@ function buildCandidates(events: InterviewEvent[]): Candidate[] {
         hasCallback: sorted.some((event) => event.kind === "callback"),
         hasLeaderCall: sorted.some((event) => event.kind === "leader_call"),
         hasLicensedCall: sorted.some((event) => event.kind === "licensed_call" || event.kind === "licensed_prospect"),
+        manualRows: rows,
+        primaryEmail,
+        primaryPhone,
       };
     })
     .sort((a, b) => Date.parse(b.latestAt) - Date.parse(a.latestAt));
@@ -505,11 +605,34 @@ function copyText(value: string, label: string) {
 export default function InterviewCommandCenter() {
   usePageTitle("Interviews · APEX");
 
-  const candidates = useMemo(() => buildCandidates(INTERVIEW_EVENTS), []);
+  const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, CandidateDraft>>(() => loadDrafts());
-  const [selectedId, setSelectedId] = useState(() => candidates[0]?.id ?? "");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "callbacks" | "licensed" | "leaders" | "open" | "done">("all");
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState<NewInterviewForm>(EMPTY_NEW_INTERVIEW);
+  const [addSubmitting, setAddSubmitting] = useState(false);
+  const [sendingConfirmationId, setSendingConfirmationId] = useState<string | null>(null);
+
+  const manualInterviews = useQuery({
+    queryKey: ["interview-command-manual-entries"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("manual_interview_entries")
+        .select("id, candidate_name, phone, email, instagram_handle, scheduled_at, interview_type, notes, confirmation_sent_at, resend_message_id, created_at")
+        .order("scheduled_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as unknown as ManualInterviewRow[];
+    },
+    staleTime: 30_000,
+  });
+
+  const candidates = useMemo(
+    () => buildCandidates(INTERVIEW_EVENTS, manualInterviews.data ?? []),
+    [manualInterviews.data],
+  );
+  const [selectedId, setSelectedId] = useState<string>(() => "");
 
   const applicationMatches = useQuery({
     queryKey: ["interview-command-application-matches"],
@@ -538,6 +661,12 @@ export default function InterviewCommandCenter() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
   }, [drafts]);
+
+  useEffect(() => {
+    if (!selectedId && candidates.length) {
+      setSelectedId(candidates[0].id);
+    }
+  }, [candidates, selectedId]);
 
   const selectedCandidate = candidates.find((candidate) => candidate.id === selectedId) ?? candidates[0];
   const selectedMatch = selectedCandidate ? matchesByName.get(normalizeName(selectedCandidate.name)) ?? null : null;
@@ -614,6 +743,89 @@ export default function InterviewCommandCenter() {
     toast.success("Candidate file reset");
   };
 
+  const resetAddForm = () => setAddForm(EMPTY_NEW_INTERVIEW);
+
+  const submitAddInterview = async () => {
+    const candidateName = addForm.candidateName.trim();
+    if (!candidateName) {
+      toast.error("Candidate name required");
+      return;
+    }
+    if (!addForm.scheduledAt) {
+      toast.error("Date & time required");
+      return;
+    }
+    const scheduledIso = new Date(addForm.scheduledAt).toISOString();
+    if (Number.isNaN(Date.parse(scheduledIso))) {
+      toast.error("Invalid date & time");
+      return;
+    }
+    setAddSubmitting(true);
+    try {
+      const payload = {
+        candidate_name: candidateName,
+        phone: addForm.phone.trim() || null,
+        email: addForm.email.trim() || null,
+        instagram_handle: addForm.instagramHandle.trim()
+          ? normalizeHandle(addForm.instagramHandle)
+          : null,
+        scheduled_at: scheduledIso,
+        interview_type: addForm.interviewType,
+        notes: addForm.notes.trim() || null,
+      };
+      const { error } = await supabase.from("manual_interview_entries").insert(payload);
+      if (error) throw error;
+      toast.success(`${candidateName} added`);
+      setAddOpen(false);
+      resetAddForm();
+      await queryClient.invalidateQueries({ queryKey: ["interview-command-manual-entries"] });
+      const slug = slugify(normalizeName(candidateName));
+      if (slug) setSelectedId(slug);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Could not add interview: ${msg}`);
+    } finally {
+      setAddSubmitting(false);
+    }
+  };
+
+  const sendConfirmationFor = async (row: ManualInterviewRow) => {
+    const email = (row.email ?? "").trim();
+    if (!email) {
+      toast.error("Add an email first");
+      return;
+    }
+    setSendingConfirmationId(row.id);
+    try {
+      const { data, error } = await supabase.functions.invoke<{
+        ok: boolean;
+        sent?: boolean;
+        resend_id?: string;
+        error?: string;
+        warning?: string;
+      }>("send-candidate-confirmation", {
+        body: {
+          interview_id: row.id,
+          candidate_email: email,
+          candidate_name: row.candidate_name,
+          scheduled_at: row.scheduled_at,
+        },
+      });
+      if (error) throw error;
+      if (!data?.ok || !data.sent) {
+        throw new Error(data?.error || "Send failed");
+      }
+      toast.success(`Confirmation sent to ${email}`);
+      if (data.warning) toast.warning(data.warning);
+      await queryClient.invalidateQueries({ queryKey: ["interview-command-manual-entries"] });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Send failed: ${msg}`);
+    } finally {
+      setSendingConfirmationId(null);
+    }
+  };
+
   if (!selectedCandidate) {
     return (
       <div className="px-4 sm:px-6 pb-24">
@@ -650,16 +862,32 @@ export default function InterviewCommandCenter() {
         accent="amber"
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" onClick={() => setAddOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Add Interview
+            </Button>
             <Button variant="outline" size="sm" onClick={() => applicationMatches.refetch()}>
               <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", applicationMatches.isFetching && "animate-spin")} />
               Match Apps
             </Button>
-            <Button size="sm" onClick={() => toast.success("Interview file saved")}>
+            <Button variant="outline" size="sm" onClick={() => toast.success("Interview file saved")}>
               <Save className="h-3.5 w-3.5 mr-1.5" />
               Save
             </Button>
           </div>
         }
+      />
+
+      <AddInterviewDialog
+        open={addOpen}
+        onOpenChange={(next) => {
+          setAddOpen(next);
+          if (!next) resetAddForm();
+        }}
+        form={addForm}
+        onFormChange={setAddForm}
+        submitting={addSubmitting}
+        onSubmit={submitAddInterview}
       />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
@@ -989,6 +1217,59 @@ export default function InterviewCommandCenter() {
                 </CardContent>
               </Card>
 
+              {selectedCandidate.manualRows.length > 0 && (
+                <Card>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-amber-400" />
+                      <h3 className="font-bold">Send Confirmation</h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Sends "I'll be there" email with reschedule link from Calendly.
+                    </p>
+                    <div className="space-y-2">
+                      {selectedCandidate.manualRows.map((row) => {
+                        const sentAt = row.confirmation_sent_at
+                          ? new Date(row.confirmation_sent_at)
+                          : null;
+                        const sentLabel = sentAt
+                          ? `Sent ${formatDistanceToNowStrict(sentAt, { addSuffix: true })}`
+                          : null;
+                        const disabled =
+                          !row.email || sendingConfirmationId === row.id;
+                        return (
+                          <div
+                            key={row.id}
+                            className="flex items-center justify-between gap-2 rounded-md border bg-background/60 p-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold">
+                                {format(new Date(row.scheduled_at), "EEE, MMM d · h:mm a")}
+                              </p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {row.email || "No email — add one to send"}
+                              </p>
+                              {sentLabel && (
+                                <p className="text-[11px] font-semibold text-emerald-400">{sentLabel}</p>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant={sentAt ? "outline" : "default"}
+                              disabled={disabled}
+                              onClick={() => sendConfirmationFor(row)}
+                            >
+                              <Send className="h-3.5 w-3.5 mr-1.5" />
+                              {sentAt ? "Resend" : "Send"}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center gap-2">
@@ -1078,6 +1359,129 @@ function InfoPill({
       </div>
       <p className="mt-1 text-sm font-bold">{value}</p>
     </div>
+  );
+}
+
+function AddInterviewDialog({
+  open,
+  onOpenChange,
+  form,
+  onFormChange,
+  submitting,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  form: NewInterviewForm;
+  onFormChange: (form: NewInterviewForm) => void;
+  submitting: boolean;
+  onSubmit: () => void;
+}) {
+  const setField = <K extends keyof NewInterviewForm>(key: K, value: NewInterviewForm[K]) => {
+    onFormChange({ ...form, [key]: value });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Add Interview</DialogTitle>
+          <DialogDescription>
+            Add a candidate to the interview workspace. Once added you can send a confirmation email.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="add-candidate-name">Candidate name</Label>
+            <Input
+              id="add-candidate-name"
+              value={form.candidateName}
+              onChange={(event) => setField("candidateName", event.target.value)}
+              placeholder="First Last"
+              autoFocus
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="add-email">Email</Label>
+              <Input
+                id="add-email"
+                type="email"
+                value={form.email}
+                onChange={(event) => setField("email", event.target.value)}
+                placeholder="name@email.com"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-phone">Phone</Label>
+              <Input
+                id="add-phone"
+                type="tel"
+                value={form.phone}
+                onChange={(event) => setField("phone", event.target.value)}
+                placeholder="+1 555 555 0123"
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="add-ig">Instagram</Label>
+              <Input
+                id="add-ig"
+                value={form.instagramHandle}
+                onChange={(event) => setField("instagramHandle", event.target.value)}
+                placeholder="@handle"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="add-when">Date &amp; time</Label>
+              <Input
+                id="add-when"
+                type="datetime-local"
+                value={form.scheduledAt}
+                onChange={(event) => setField("scheduledAt", event.target.value)}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Interview type</Label>
+            <Select
+              value={form.interviewType}
+              onValueChange={(value) => setField("interviewType", value as InterviewKind)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {NEW_INTERVIEW_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.key} value={option.key}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="add-notes">Notes</Label>
+            <Textarea
+              id="add-notes"
+              value={form.notes}
+              onChange={(event) => setField("notes", event.target.value)}
+              placeholder="Where the lead came from, what to ask, anything else..."
+              className="min-h-[80px]"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button onClick={onSubmit} disabled={submitting}>
+            {submitting ? "Adding..." : "Add Interview"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

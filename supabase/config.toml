@@ -693,3 +693,6 @@ verify_jwt = false
 
 [functions.send-agent-onboarding-email]
 verify_jwt = false
+
+[functions.send-candidate-confirmation]
+verify_jwt = false

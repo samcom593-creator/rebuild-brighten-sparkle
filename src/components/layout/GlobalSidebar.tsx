@@ -17,6 +17,7 @@ import {
   ArrowRightLeft,
   CreditCard,
   Filter,
+  GitMerge,
   Globe,
   GraduationCap,
   Heart,
@@ -217,6 +218,7 @@ export function GlobalSidebar({
         { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
         { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
         // Admin hub (everything that isn't daily flow)
+        { icon: GitMerge, label: "Agent Duplicates", href: "/admin/agent-duplicates" },
         { icon: Settings, label: "Admin", href: "/dashboard/command" },
       );
       oldApplicants.push(

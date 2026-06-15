@@ -132,6 +132,7 @@ const InboxPage = lazy(() => import("./pages/InboxPage"));
 const MyApplicants = lazy(() => import("./pages/admin/MyApplicants"));
 const AddReferral = lazy(() => import("./pages/admin/AddReferral"));
 const RecruitingInbox = lazy(() => import("./pages/admin/RecruitingInbox"));
+const AgentDuplicates = lazy(() => import("./pages/admin/AgentDuplicates"));
 const AutomationHub = lazy(() => import("./pages/AutomationHub"));
 const AutomationHealth = lazy(() => import("./pages/AutomationHealth"));
 const TeamHierarchy = lazy(() => import("./pages/TeamHierarchy"));
@@ -395,6 +396,8 @@ const App = () => (
                     <Route path="/admin/add-referral" element={<ProtectedRoute allowManagers><AddReferral /></ProtectedRoute>} />
                     {/* PL-SAM-2026-06-03-001: uncontacted-first recruiting queue. v_recruiting_inbox is SECURITY INVOKER so RLS scopes rows per role. */}
                     <Route path="/admin/recruiting-inbox" element={<ProtectedRoute allowManagers><RecruitingInbox /></ProtectedRoute>} />
+                    {/* wave-100: Sam-adjudication for unresolved same-display_name agent dup pairs. */}
+                    <Route path="/admin/agent-duplicates" element={<ProtectedRoute requireAdmin><AgentDuplicates /></ProtectedRoute>} />
                     {/* Stale-recovery panel — admins/managers only. v_stale_applicants
                         feeds it. Additive: doesn't touch DashboardApplicants. */}
                     <Route path="/dashboard/stale-recovery" element={<ProtectedRoute allowManagers><StaleRecovery /></ProtectedRoute>} />

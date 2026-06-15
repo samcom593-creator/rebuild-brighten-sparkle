@@ -273,3 +273,18 @@ if match '^(src/(pages|components/(dashboard|landing|recruiter|admin|agent|award
   echo "[pre-commit] Tracked component-tree change — running check:hex-color-areas…"
   node scripts/check-hex-color-areas.mjs
 fi
+
+# ---------- check-tsc-error-count (C11 wave-1) ----------
+# Trigger: any *.ts / *.tsx / tsconfig*.json staged file, or the script itself.
+# Walks the project-reference graph via `tsc -b --noEmit --force` and ratchets
+# the total TypeScript-error count at the C11 lock baseline. Cost when fired:
+# ~3-15s depending on cache state. Why this exists: the root tsconfig.json has
+# `files: []` and only project-references, so `npx tsc --noEmit` exits 0
+# silently without checking anything — every "tsc 0 errors" report in recent
+# shipping was a lie at the type-check layer. This gate makes it truthful.
+# Future commits CAN'T raise the count. They CAN (and should) lower it; when
+# they do, drop BASELINE in scripts/check-tsc-error-count.mjs in the same PR.
+if match '^(src/.*\.(tsx?|jsx?)$|tsconfig.*\.json$|scripts/check-tsc-error-count\.mjs$)'; then
+  echo "[pre-commit] TypeScript-affecting file staged — running check:tsc-error-count…"
+  node scripts/check-tsc-error-count.mjs
+fi

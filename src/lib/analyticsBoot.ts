@@ -26,31 +26,32 @@ function loadGA4(measurementId: string): void {
   s.async = true;
   s.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
   document.head.appendChild(s);
-  // @ts-expect-error — installing the global gtag bridge
-  window.dataLayer = window.dataLayer || [];
-  // @ts-expect-error — installing the global gtag bridge
-  window.gtag = function () { window.dataLayer.push(arguments); };
-  // @ts-expect-error — calling the global gtag bridge
-  window.gtag("js", new Date());
-  // @ts-expect-error — calling the global gtag bridge
-  window.gtag("config", measurementId, { anonymize_ip: true, send_page_view: true });
+  // C11: removed 4× unused @ts-expect-error directives. Under strict:false +
+  // noImplicitAny:false (tsconfig.app.json), window.dataLayer / window.gtag
+  // resolve via ambient any-indexing — the suppression was dead code.
+  const w = window as unknown as { dataLayer: unknown[]; gtag: (...args: unknown[]) => void };
+  w.dataLayer = w.dataLayer || [];
+  w.gtag = function () { w.dataLayer.push(arguments); };
+  w.gtag("js", new Date());
+  w.gtag("config", measurementId, { anonymize_ip: true, send_page_view: true });
 }
 
 function loadMetaPixel(pixelId: string): void {
   if (typeof document === "undefined" || (window as { fbq?: unknown }).fbq) return;
-  // Standard Meta Pixel snippet, condensed.
+  // Standard Meta Pixel snippet, condensed. We cast `window` to `any` for the
+  // vendor IIFE because the snippet attaches multiple globals (fbq, _fbq) that
+  // are not in lib.dom.d.ts. Wider cast > one @ts-expect-error per access.
   /* eslint-disable */
-  // @ts-expect-error — vendor pixel snippet wires globals
-  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  const w = window as any;
+  const d = document as any;
+  !function(f: any,b: any,e: any,v: any,n?: any,t?: any,s?: any){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
   n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
   n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
-  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
-  document,'script','https://connect.facebook.net/en_US/fbevents.js');
+  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(w,
+  d,'script','https://connect.facebook.net/en_US/fbevents.js');
   /* eslint-enable */
-  // @ts-expect-error — vendor pixel global
-  window.fbq("init", pixelId);
-  // @ts-expect-error — vendor pixel global
-  window.fbq("track", "PageView");
+  w.fbq("init", pixelId);
+  w.fbq("track", "PageView");
 }
 
 async function loadPostHog(key: string, host: string): Promise<void> {

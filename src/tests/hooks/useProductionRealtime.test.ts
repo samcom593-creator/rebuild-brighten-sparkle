@@ -27,14 +27,22 @@ const PRODUCTION_EVENT = "production-realtime-update";
 // Fresh supabase.channel mock per test — records every .on() call
 function buildChannelMock() {
   const onCalls: { event: string; schema: string; table: string }[] = [];
-  const mock = {
-    on: vi.fn((event: string, filter: { event: string; schema: string; table: string }) => {
-      onCalls.push({ event, schema: filter.schema, table: filter.table });
-      return mock;
-    }),
-    subscribe: vi.fn().mockReturnValue(mock),
+  // C11: split mock build so .subscribe() can reference `mock` without
+  // triggering TS2448 "used before declaration".
+  const mock: {
+    on: ReturnType<typeof vi.fn>;
+    subscribe: ReturnType<typeof vi.fn>;
+    _onCalls: typeof onCalls;
+  } = {
+    on: vi.fn(),
+    subscribe: vi.fn(),
     _onCalls: onCalls,
   };
+  mock.on = vi.fn((event: string, filter: { event: string; schema: string; table: string }) => {
+    onCalls.push({ event, schema: filter.schema, table: filter.table });
+    return mock;
+  });
+  mock.subscribe = vi.fn().mockReturnValue(mock);
   return mock;
 }
 

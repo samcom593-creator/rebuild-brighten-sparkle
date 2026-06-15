@@ -103,12 +103,8 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
       // ALP + deals from deals table (Agent Link truth, status submitted/
       // active by posted_at). Presentations stay on daily_production
       // — only authoritative source.
-      const bounds = getMetricBounds(
-        timePeriod === "custom" ? "custom" : timePeriod,
-        customDateRange.from && customDateRange.to
-          ? { from: customDateRange.from, to: customDateRange.to }
-          : undefined,
-      );
+      // Sam-feedback 2026-06-01: Custom tab killed; custom range params removed.
+      const bounds = getMetricBounds(timePeriod);
       const [presRes, dealsRes] = await Promise.all([
         supabase
           .from("daily_production")
@@ -234,7 +230,8 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
     day: "Today",
     week: "This Week",
     month: "This Month",
-    custom: "Custom Range",
+    last_month: "Last Month",
+    ytd: "Year to Date",
   };
 
   // Dynamic title based on role

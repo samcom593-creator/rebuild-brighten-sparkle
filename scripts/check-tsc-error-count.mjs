@@ -47,10 +47,13 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 //   exist), TS2589 (29 — excessive Supabase generic depth).
 //
 // Lower this number when fixes land. NEVER raise it.
-// 2026-06-15 21:55 — initial ship dropped 266 → 256 (10 fixes:
-// src/lib/analyticsBoot.ts removed dead @ts-expect-error directives +
-// src/tests/hooks/useProductionRealtime.test.ts TS2448 use-before-decl).
-const BASELINE = 256;
+// 2026-06-15 21:55 — initial ship dropped 266 → 256 (analyticsBoot.ts dead
+//   @ts-expect-error removed + useProductionRealtime.test.ts TS2448 fix).
+// 2026-06-16 01:15 — C11 wave-2 dropped 256 → 245 (4 quick wins from the
+//   stalled C11 agent: CompactLeaderboard dead-dep, ManagerInviteLinks
+//   missing Skeleton import, PersonalStatsCard custom-range cleanup per
+//   Sam 2026-06-01 directive, RecruiterDashboard missing useRef import).
+const BASELINE = 245;
 
 let stdout = "";
 let stderr = "";

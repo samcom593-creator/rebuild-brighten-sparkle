@@ -309,7 +309,7 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
     } finally {
       setLoading(false);
     }
-  }, [period, currentAgentId, customRange, refreshKey]);
+  }, [period, currentAgentId, refreshKey]);
 
   useEffect(() => {
     fetchLeaderboard();

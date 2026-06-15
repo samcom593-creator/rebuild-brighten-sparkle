@@ -28,7 +28,7 @@ const SHIPPED: ShippedItem[] = [
     ts: "today",
     label: "Interviews command center LIVE at /dashboard/interviews — side-nav of every pasted Calendly interview grouped by candidate, with contracted/hired toggles, outcome + status fields, transcript box, notes, production + legs, Instagram match, and copyable AI brief.",
     detail: "Codex built InterviewCommandCenter.tsx (~1,104 LOC) + lazy-imported it in src/App.tsx + added 'Interviews' admin/manager sidebar entry in GlobalSidebar.tsx — but never committed or pushed, so production didn't have it. This ship is the commit that actually lands the file on apex-financial.org. Page is admin-only + manager-allowed via <ProtectedRoute requireAdmin allowManagers>. Seeds @masendinh and tries to match each pasted interview to a Supabase applications row for IG handle + contact backfill. Editable fields per interview: status (scheduled/completed/no-show/conflict/in-progress), contracted toggle, hired toggle, outcome textarea, transcript textarea, notes textarea, production count, legs count, Instagram handle. AI-brief generator stitches everything into a copyable summary. Verified: tsc clean, npm run build clean, zero 'Unknown' strings in the new file, zero @ts-ignore, zero console.log. Sidebar entry shows up under the admin + manager 'MORE' group (now collapsible per wave-25cc12ba). Follow-ups: (1) Google Calendar live-sync so future interviews auto-flow into the workspace instead of needing a paste-in. (2) Wire Instagram lookup via vidIQ MCP for follower count + recent reel context per candidate. (3) Persist edits to a new interview_workspace table (currently editable state lives in component state).",
-    commit: "PENDING",
+    commit: "d227783d",
   },
   {
     ts: "today",

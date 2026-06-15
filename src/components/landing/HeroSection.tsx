@@ -1,7 +1,11 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { ArrowRight, Shield, TrendingUp, Users, Sparkles, Play } from "lucide-react";
 import { track, getVariant } from "@/lib/analytics";
+// S11 fix (2026-06-15): build the CTA href with ?ref= when the slug is
+// present so the landing -> /apply hop relays the referral via the URL
+// (the primary signal). The Index.tsx localStorage relay is the fallback.
+import { applyHrefWithRef } from "@/lib/refSlug";
 // wave-23 (2026-06-06): wraps the below-LCP-fold proof Suspense blocks so
 // QueryClientProvider arrives via a lazy chunk alongside LiveStats + RecentHires
 // rather than being pulled into the eager entry static graph.
@@ -95,6 +99,11 @@ const stats = [
 
 export function HeroSection() {
   const titleRef = useRef<HTMLHeadingElement | null>(null);
+  // S11 fix: relay ?ref= through the hero CTA so the slug survives the
+  // landing -> /apply hop. Index.tsx already persists it to localStorage
+  // for visitors whose CTA path forgets the wiring.
+  const [searchParams] = useSearchParams();
+  const applyHref = applyHrefWithRef(searchParams.get("ref"));
 
   // Parallax: subtly translate the headline based on scroll
   useEffect(() => {
@@ -253,7 +262,7 @@ export function HeroSection() {
               gives skeptics a softer first action. */}
           <div className="landing-fade-up landing-delay-300 flex flex-col items-center justify-center gap-3 mb-14">
             <Link
-              to="/apply"
+              to={applyHref}
               onClick={() => track("hero_cta_click", { position: "hero", cta_label: "Start My Application" })}
               className="group relative"
             >

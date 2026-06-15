@@ -1,9 +1,14 @@
-import { Suspense, lazy } from "react";
-import { Navigate } from "react-router-dom";
+import { Suspense, lazy, useEffect } from "react";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { DealsTicker } from "@/components/landing/DealsTicker";
+// S11 fix (2026-06-15): capture `?ref=` on landing mount + persist with 24h
+// TTL so the slug survives the landing -> /apply CTA hop even when the CTA
+// href forgets to relay it. Belt-and-suspenders to the href-with-ref pattern
+// already wired in Hero/Sticky/CTASection.
+import { setRefSlug } from "@/lib/refSlug";
 // wave-23 (2026-06-06): vendor-query out of cold-landing modulepreload.
 // Wrapping the below-fold lazy Suspense block in LazyQueryRoot keeps QueryClientProvider
 // (and the 28 KB raw / 7.95 KB gz vendor-query chunk it pulls) off the entry static graph.
@@ -35,6 +40,16 @@ function SectionFallback() {
 
 const Index = () => {
   const { user, isLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const urlRefSlug = searchParams.get("ref");
+
+  // S11 fix: stash the slug before the dashboard redirect (logged-in case) or
+  // before the visitor clicks a CTA that might forget to relay `?ref=`. The
+  // helper validates format + handles SSR/quota errors silently.
+  useEffect(() => {
+    if (urlRefSlug) setRefSlug(urlRefSlug);
+  }, [urlRefSlug]);
+
   // Logged-in users land on their personalized dashboard, not the public marketing page.
   if (!isLoading && user) return <Navigate to="/dashboard" replace />;
   return (

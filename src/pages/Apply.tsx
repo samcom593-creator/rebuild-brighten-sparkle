@@ -38,6 +38,11 @@ import { US_STATES, AVAILABILITY_OPTIONS, REFERRAL_SOURCES } from "@/lib/constan
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
 import { track } from "@/lib/analytics";
 import { QuickQualifyStep } from "@/pages/apply/QuickQualifyStep";
+// S11 fix (2026-06-15): when the landing -> /apply hop dropped `?ref=` from
+// the CTA href, fall back to the localStorage relay captured on landing
+// mount. Cleared on successful submit so it doesn't leak into a second
+// application from the same browser.
+import { getRefSlug, clearRefSlug } from "@/lib/refSlug";
 
 const applicationSchema = z.object({
   // Step 1: Personal Info
@@ -128,7 +133,10 @@ export default function Apply() {
   usePageTitle("Apply to APEX Financial · Insurance Career Pathway");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const refSlug = searchParams.get("ref");
+  // S11 fix: prefer URL ?ref= when present, fall back to the localStorage
+  // relay set by Index.tsx on landing mount. getRefSlug() handles validation
+  // + TTL expiry + SSR safety internally.
+  const refSlug = getRefSlug(searchParams.get("ref"));
   const sourceParam = searchParams.get("source")?.trim().toLowerCase() ?? "";
   const utmMediumParam = searchParams.get("utm_medium")?.trim().toLowerCase() ?? "";
   const isQuickQualifyTraffic = sourceParam === "ad" || utmMediumParam === "paid_social";
@@ -321,6 +329,11 @@ export default function Apply() {
       sessionStorage.removeItem(STORAGE_KEY_STEP);
       sessionStorage.removeItem(STORAGE_KEY_STATES);
       sessionStorage.removeItem(STORAGE_KEY_QUICK_APP);
+      // S11 fix: the referral relay has served its purpose now that the
+      // application landed with the right recruiter credited. Clearing here
+      // keeps a follow-up application from the same browser from inheriting
+      // an old slug.
+      clearRefSlug();
     } catch (err) {
       console.error("Error marking as converted:", err);
     }

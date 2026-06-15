@@ -1,8 +1,11 @@
 import { forwardRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
+// S11 fix (2026-06-15): relay ?ref= through the closing CTA so the slug
+// survives the landing -> /apply hop on the bottom-of-page conversion path.
+import { applyHrefWithRef } from "@/lib/refSlug";
 // wave-42 (2026-06-08): supabase dynamic-imported inside queryFn so the chunk graph
 // has no static edge to vendor-supabase. Wave-43 (2026-06-08): wave-42 wasn't enough —
 // useQuery still fires queryFn sync-on-mount, which runs the dynamic import inside
@@ -27,6 +30,8 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
   // never claims a number that isn't true. Prior copy said "thousands of
   // agents" — actual roster is ~95. Fake-success killer.
   const gateOpen = useInteractionGate();
+  const [searchParams] = useSearchParams();
+  const applyHref = applyHrefWithRef(searchParams.get("ref"));
   const { data: liveStats } = useQuery({
     queryKey: ["landing_live_stats"],
     queryFn: async (): Promise<LandingLiveStats | null> => {
@@ -79,7 +84,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
 
           {/* Two CTA Buttons Side by Side */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/apply">
+            <Link to={applyHref}>
               <button className="inline-flex items-center justify-center gap-2 px-10 py-5 text-xl rounded-lg font-bold font-display bg-[#22d3a5] text-[#030712] hover: transition-all duration-200 animate-pulse-glow group">
                 Start Your Application
                 <ArrowRight className="h-5 w-5 transition-base group-hover:translate-x-1" />

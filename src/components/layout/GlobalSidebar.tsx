@@ -61,6 +61,7 @@ import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
+import { toast } from "sonner";
 
 interface GlobalSidebarProps {
   isOpen: boolean;
@@ -523,7 +524,19 @@ export function GlobalSidebar({
                             // of navigating away. Sam stays on whatever page he
                             // was on. Closing the drawer drops back to the same
                             // surface.
-                            openAgentProfile(result.id);
+                            // 2026-06-16 Sam-feedback: "search doesn't pull up
+                            // their shit." Wiring is correct — adding immediate
+                            // toast feedback so the click is unambiguously visible
+                            // and (if the drawer fails to render) the regression
+                            // narrows to drawer-side vs click-side.
+                            toast.success(`Opening ${result.name}…`);
+                            try {
+                              openAgentProfile(result.id);
+                            } catch (err) {
+                              toast.error(`Drawer crashed: ${err instanceof Error ? err.message : String(err)}`);
+                              // eslint-disable-next-line no-console
+                              console.error("[sidebar-search] openAgentProfile threw", err);
+                            }
                             setSearchQuery("");
                             setSearchResults([]);
                             setShowSearch(false);

@@ -408,12 +408,11 @@ const App = () => (
                     <Route path="/dashboard/settings" element={<Settings />} />
                     <Route path="/dashboard/settings/deleted-leads" element={<ProtectedRoute requireAdmin><DeletedLeadsVault /></ProtectedRoute>} />
                     <Route path="/dashboard/team" element={<Navigate to="/dashboard/hierarchy" replace />} />
-                    {/* Wave F v9: canonical CRM is /dashboard/clients (alias of ClientPipeline).
-                        Legacy /dashboard/crm + /dashboard/client-pipeline redirect to it so
-                        existing bookmarks survive. DashboardCRM.tsx kept for one cycle then
-                        removable; the redirect makes its component unreachable in practice. */}
+                    {/* 2026-06-15 — Sam clarified by voice: "CRM" in his head = AGENT CRM
+                        (the team view at DashboardCRM), NOT the client book of business.
+                        Restored direct mount; /dashboard/clients stays for the client pipeline. */}
                     <Route path="/dashboard/clients" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
-                    <Route path="/dashboard/crm" element={<Navigate to="/dashboard/clients" replace />} />
+                    <Route path="/dashboard/crm" element={<ProtectedRoute requireAdmin allowManagers><DashboardCRM /></ProtectedRoute>} />
                     <Route path="/dashboard/aged-leads" element={<DashboardAgedLeads />} />
                     <Route path="/dashboard/command" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     <Route path="/dashboard/team/next-step" element={<ProtectedRoute requireAdmin allowManagers><ManagerNextStepBoard /></ProtectedRoute>} />

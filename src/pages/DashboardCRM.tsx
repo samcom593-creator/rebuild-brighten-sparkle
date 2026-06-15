@@ -37,6 +37,7 @@ import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialo
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { differenceInDays } from "date-fns";
 import { BulkComposeDrawer } from "@/components/dashboard/BulkComposeDrawer";
+import { AgentCredentialsPanel } from "@/components/dashboard/AgentCredentialsPanel";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { getBusinessDayKey, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
@@ -99,6 +100,14 @@ interface AgentCRM {
   lastContactedAt: string | null; standardPaid: boolean; premiumPaid: boolean;
   licenseProgress: string | null; testScheduledDate: string | null; agentLicenseStatus: string;
   aiScoreTier?: string | null;
+  // 2026-06-15 — head-to-toe rebuild: derived signals for the new "Hasn't
+  // sold" + "Missing" tabs and the credential vault hero.
+  lifetimeDeals: number;
+  lifetimeALP: number;
+  lastActivityAt: string | null;
+  daysSinceHire: number | null;
+  hasReadymodeCreds: boolean;
+  createdAt: string | null;
   // Recruit detail surface — populated for Pre-Licensed cards via applications + xcel_events joins
   recruit?: {
     appliedAt?: string | null;
@@ -195,6 +204,12 @@ const SECTIONS = [
   { key: "below_10k", bucket: "licensed" as PipelineBucket, label: "Below $20K (last 30d)", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
   { key: "live", bucket: "licensed" as PipelineBucket, label: "Live", icon: Briefcase, stages: ["live", "evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
   { key: "needs_followup", bucket: "licensed" as PipelineBucket, label: "Needs Follow-Up", icon: AlertTriangle, stages: ["need_followup"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
+  // 2026-06-15 — head-to-toe rebuild: "Hasn't sold" + "Missing/Silent" tabs.
+  // stages: [] sentinel so the default SECTIONS-loop fallback (which filters
+  // by `stages.includes(...)`) does NOT match anyone — agentsBySection
+  // hard-codes both buckets above the fallback so the lists are honest.
+  { key: "hasnt_sold", bucket: "licensed" as PipelineBucket, label: "Hasn't Sold Yet", icon: AlertTriangle, stages: [] as OnboardingStage[], accent: "border-l-rose-500", headerBg: "bg-rose-500/5", iconColor: "text-rose-500" },
+  { key: "missing", bucket: "licensed" as PipelineBucket, label: "Missing / Silent", icon: Clock, stages: [] as OnboardingStage[], accent: "border-l-slate-500", headerBg: "bg-slate-500/5", iconColor: "text-slate-500" },
   { key: "inactive", bucket: "licensed" as PipelineBucket, label: "Inactive", icon: UserX, stages: ["inactive"] as OnboardingStage[], accent: "border-l-gray-500", headerBg: "bg-gray-500/5", iconColor: "text-gray-500" },
 ];
 
@@ -784,6 +799,38 @@ export default function DashboardCRM() {
         if (!lastProdMap.has(p.agent_id)) lastProdMap.set(p.agent_id, p.production_date);
       }
 
+      // 2026-06-15 — lifetime production + ReadyMode credential coverage so the
+      // new "Hasn't sold" / "Missing" tabs + hero KPIs render truthful counts.
+      const [lifetimeRes, credsRes] = await Promise.all([
+        allAgentIds.length > 0
+          ? supabase
+              .from("agent_lifetime_production")
+              .select("agent_id, lifetime_alp, lifetime_deals, last_production_date")
+              .in("agent_id", allAgentIds)
+          : Promise.resolve({ data: [] as any[] }),
+        // RLS hard-blocks non-admin reads — this returns 0 rows for managers
+        // (and renders the hasReadymodeCreds flag as false, which is honest).
+        allAgentIds.length > 0
+          ? supabase
+              .from("agent_credentials")
+              .select("agent_id, service")
+              .in("agent_id", allAgentIds)
+              .eq("service", "readymode")
+              .not("password_encrypted", "is", null)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+      const lifetimeMap = new Map<string, { deals: number; alp: number; lastProd: string | null }>();
+      for (const row of (lifetimeRes.data as any[]) || []) {
+        lifetimeMap.set(row.agent_id, {
+          deals: Number(row.lifetime_deals) || 0,
+          alp: Number(row.lifetime_alp) || 0,
+          lastProd: row.last_production_date || null,
+        });
+      }
+      const readymodeCredSet = new Set<string>(
+        ((credsRes.data as any[]) || []).map((r) => r.agent_id),
+      );
+
       const DORMANT_DAYS = 35;
       const now = Date.now();
 
@@ -829,6 +876,29 @@ export default function DashboardCRM() {
           licenseProgress: licenseEntry?.progress || null, testScheduledDate: licenseEntry?.testDate || null,
           agentLicenseStatus: agent.license_status || "unlicensed",
           aiScoreTier: licenseEntry?.aiScore || null,
+          lifetimeDeals: lifetimeMap.get(agent.id)?.deals ?? 0,
+          lifetimeALP: lifetimeMap.get(agent.id)?.alp ?? 0,
+          lastActivityAt: (() => {
+            const candidates = [
+              lifetimeMap.get(agent.id)?.lastProd ?? null,
+              lastProdMap.get(agent.id) ?? null,
+              lastContactMap.get(agent.id) ?? null,
+              agent.updated_at ?? null,
+            ].filter(Boolean) as string[];
+            if (candidates.length === 0) return null;
+            const newest = candidates
+              .map((d) => new Date(d).getTime())
+              .filter((t) => !Number.isNaN(t))
+              .sort((a, b) => b - a)[0];
+            return newest ? new Date(newest).toISOString() : null;
+          })(),
+          daysSinceHire: agent.start_date
+            ? Math.max(0, Math.floor((now - new Date(agent.start_date).getTime()) / (1000 * 60 * 60 * 24)))
+            : (agent.created_at
+                ? Math.max(0, Math.floor((now - new Date(agent.created_at).getTime()) / (1000 * 60 * 60 * 24)))
+                : null),
+          hasReadymodeCreds: readymodeCredSet.has(agent.id),
+          createdAt: agent.created_at || null,
         };
       });
 
@@ -898,6 +968,14 @@ export default function DashboardCRM() {
           licenseProgress: app.license_progress || null, testScheduledDate: app.test_scheduled_date || null,
           agentLicenseStatus: app.license_status || "unlicensed",
           aiScoreTier: app.ai_score_tier || null,
+          lifetimeDeals: 0,
+          lifetimeALP: 0,
+          lastActivityAt: app.created_at || null,
+          daysSinceHire: app.created_at
+            ? Math.max(0, Math.floor((Date.now() - new Date(app.created_at).getTime()) / (1000 * 60 * 60 * 24)))
+            : null,
+          hasReadymodeCreds: false,
+          createdAt: app.created_at || null,
           recruit: {
             appliedAt:       app.created_at || null,
             state:           app.state || null,
@@ -1093,6 +1171,33 @@ export default function DashboardCRM() {
       a.onboardingStage === "transfer" ||
       (a.hasTrainingCourse && a.agentLicenseStatus === "licensed" && !liveStages.includes(a.onboardingStage))
     ));
+    // 2026-06-15 — "Hasn't sold yet": licensed, active, zero lifetime deals.
+    // Sorted by daysSinceHire DESC so the oldest unsold sit at the top —
+    // they're the biggest red flag and the loudest coaching signal.
+    map.set("hasnt_sold", filteredAgents.filter(a =>
+      a.agentLicenseStatus === "licensed"
+      && !a.isDeactivated
+      && !a.isInactive
+      && a.onboardingStage !== "inactive"
+      && a.lifetimeDeals === 0
+    ).sort((a, b) => (b.daysSinceHire ?? 0) - (a.daysSinceHire ?? 0)));
+    // 2026-06-15 — "Missing / Silent": active agents whose freshest signal
+    // (lifetime last_production_date / daily_production / last_contacted_at
+    // / agents.updated_at) is older than 7 days. Sorted by silence duration
+    // DESC so the longest-quiet agents are first.
+    map.set("missing", filteredAgents.filter(a => {
+      if (a.isDeactivated || a.isInactive) return false;
+      if (a.onboardingStage === "inactive") return false;
+      if (a.onboardingStage === "applied" || a.onboardingStage === "meeting_attendance") return false;
+      const lastTs = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : null;
+      if (lastTs === null) return false;
+      const days = (Date.now() - lastTs) / (1000 * 60 * 60 * 24);
+      return days >= 7;
+    }).sort((a, b) => {
+      const at = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0;
+      const bt = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : 0;
+      return at - bt; // oldest first
+    }));
     for (const sec of SECTIONS) {
       if (!map.has(sec.key)) {
         map.set(sec.key, filteredAgents.filter(a => sec.stages.includes(a.onboardingStage)).sort((a, b) => {
@@ -1139,6 +1244,17 @@ export default function DashboardCRM() {
   const needsFollowUpCount = (agentsBySection.get("needs_followup") ?? []).length;
   const inactiveCount = filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive).length;
   const staleCount = filteredAgents.filter(isStaleAgent).length;
+  // 2026-06-15 — hero tile counts
+  const activeAgentCount = filteredAgents.filter(a =>
+    !a.isDeactivated && !a.isInactive && a.onboardingStage !== "inactive"
+  ).length;
+  const hasntSoldCount = (agentsBySection.get("hasnt_sold") ?? []).length;
+  const missingSilentCount = (agentsBySection.get("missing") ?? []).length;
+  const newThisWeekCount = filteredAgents.filter(a => {
+    if (!a.createdAt) return false;
+    const days = (Date.now() - new Date(a.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    return days <= 7;
+  }).length;
 
   // Section-specific table headers
   const getTableHeaders = (sectionKey: string) => {
@@ -1155,6 +1271,10 @@ export default function DashboardCRM() {
         return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Prev Week</TableHead><TableHead className="w-[60px] text-right">Deals</TableHead><TableHead className="w-[80px]">Attend.</TableHead><TableHead className="w-[80px]">Days Live</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "needs_followup":
         return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Last Activity</TableHead><TableHead className="w-[80px]">Days Stale</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+      case "hasnt_sold":
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">License</TableHead><TableHead className="w-[80px] text-right">Days since hire</TableHead><TableHead className="w-[80px] text-right">Lifetime deals</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+      case "missing":
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">Last activity</TableHead><TableHead className="w-[80px] text-right">Days silent</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "applied":
       case "transfer":
       case "below_10k":
@@ -1273,6 +1393,38 @@ export default function DashboardCRM() {
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
+      case "hasnt_sold": {
+        return (<>
+          <TableCell className="py-2">
+            <Badge variant="outline" className={cn("text-[10px]", agent.agentLicenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : "bg-muted text-muted-foreground")}>
+              {agent.agentLicenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
+            </Badge>
+          </TableCell>
+          <TableCell className="py-2 text-right">
+            <span className="text-xs font-bold tabular-nums">{agent.daysSinceHire !== null ? `${agent.daysSinceHire}d` : "—"}</span>
+          </TableCell>
+          <TableCell className="py-2 text-right">
+            <Badge variant="outline" className="text-[10px] tabular-nums bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20">0</Badge>
+          </TableCell>
+          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+        </>);
+      }
+      case "missing": {
+        const daysSilent = agent.lastActivityAt
+          ? Math.floor((Date.now() - new Date(agent.lastActivityAt).getTime()) / (1000 * 60 * 60 * 24))
+          : null;
+        return (<>
+          <TableCell className="py-2"><span className="text-xs">{agent.lastActivityAt ? getTimeAgo(agent.lastActivityAt) : "—"}</span></TableCell>
+          <TableCell className="py-2 text-right">
+            <Badge variant="outline" className={cn("text-[10px] tabular-nums", daysSilent !== null && daysSilent >= 30 ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20" : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20")}>
+              {daysSilent !== null ? `${daysSilent}d` : "—"}
+            </Badge>
+          </TableCell>
+          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+        </>);
+      }
       case "applied":
       case "transfer":
       case "below_10k":
@@ -1299,19 +1451,45 @@ export default function DashboardCRM() {
       onRecord: setRecorderAgent, onEditLogin: setEditLoginAgent,
       onAgentUpdate, playSound, sendingCourseLogin, setSendingCourseLogin, currentAgentId,
     };
+    let inner: React.ReactNode = null;
     switch (sectionKey) {
-      case "meeting_attendance": return <OnboardingExpandedRow {...commonProps} />;
-      case "applied": return <OnboardingExpandedRow {...commonProps} />;
-      case "onboarding": return <OnboardingExpandedRow {...commonProps} />;
-      case "pre_licensed": return <OnboardingExpandedRow {...commonProps} />;
-      case "transfer": return <OnboardingExpandedRow {...commonProps} />;
-      case "in_training": return <TrainingExpandedRow {...commonProps} />;
-      case "below_10k": return <LiveExpandedRow {...commonProps} />;
-      case "live": return <LiveExpandedRow {...commonProps} />;
-      case "needs_followup": return <FollowUpExpandedRow {...commonProps} />;
-      case "inactive": return <FollowUpExpandedRow {...commonProps} />;
-      default: return null;
+      case "meeting_attendance": inner = <OnboardingExpandedRow {...commonProps} />; break;
+      case "applied":            inner = <OnboardingExpandedRow {...commonProps} />; break;
+      case "onboarding":         inner = <OnboardingExpandedRow {...commonProps} />; break;
+      case "pre_licensed":       inner = <OnboardingExpandedRow {...commonProps} />; break;
+      case "transfer":           inner = <OnboardingExpandedRow {...commonProps} />; break;
+      case "in_training":        inner = <TrainingExpandedRow {...commonProps} />; break;
+      case "below_10k":          inner = <LiveExpandedRow {...commonProps} />; break;
+      case "live":               inner = <LiveExpandedRow {...commonProps} />; break;
+      case "needs_followup":     inner = <FollowUpExpandedRow {...commonProps} />; break;
+      case "inactive":           inner = <FollowUpExpandedRow {...commonProps} />; break;
+      // 2026-06-15 — new "Hasn't sold" + "Missing" tabs reuse FollowUp layout
+      // (contact actions + AgentNotes) plus the credentials panel below.
+      case "hasnt_sold":         inner = <FollowUpExpandedRow {...commonProps} />; break;
+      case "missing":            inner = <FollowUpExpandedRow {...commonProps} />; break;
+      default:                   inner = null;
     }
+    // 2026-06-15 — credential vault rendered behind a <details> disclosure on
+    // every expanded row so it never crowds the first paint but is always one
+    // tap away. Admin-only — the component itself shows a "admin only" badge
+    // for non-admin viewers (defense in depth — RLS also denies them).
+    return (
+      <>
+        {inner}
+        <div className="px-4 pb-4">
+          <details className="group">
+            <summary className="cursor-pointer select-none text-[11px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground flex items-center gap-1.5 py-2">
+              <KeyRound className="h-3 w-3 text-amber-500" />
+              Access &amp; Credentials
+              <ChevronRight className="h-3 w-3 transition-base group-open:rotate-90" />
+            </summary>
+            <div className="pt-2">
+              <AgentCredentialsPanel agentId={agent.id} agentName={agent.name} agentEmail={agent.email} />
+            </div>
+          </details>
+        </div>
+      </>
+    );
   };
 
   if (authLoading) {
@@ -1329,13 +1507,9 @@ export default function DashboardCRM() {
           <div className="absolute inset-x-0 top-0 h-1 bg-white dark:bg-slate-900" />
           <PageHeader
             accent="cyan"
-            eyebrow="CRM · Agents"
-            title="Agent CRM"
-            subtitle={
-              staleCount > 0
-                ? `${filteredAgents.length} agents · ${staleCount} need follow-up`
-                : `${filteredAgents.length} agents · all up to date`
-            }
+            eyebrow="Team"
+            title="CRM"
+            subtitle="Every agent · status · production · access"
             actions={
               <>
                 {(isAdmin || isManager) && (
@@ -1404,6 +1578,24 @@ export default function DashboardCRM() {
             )}
           </div>
         )}
+
+        {/* 2026-06-15 — head-to-toe hero KPIs. 4 huge tabular-nums, phone-first
+            grid (2 cols at 375px, 4 cols at lg). Truth: every "0" stays an
+            actual 0 because Sam asked for honest counts (not em-dash) for
+            top-line agency health. */}
+        <motion.div {...surfaceMotion} transition={{ duration: 0.28, delay: 0.02, ease: "easeOut" }} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: "Active agents",   count: activeAgentCount,   accent: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/30", glow: "bg-emerald-500/5" },
+            { label: "Hasn't sold yet", count: hasntSoldCount,     accent: "text-rose-600 dark:text-rose-400",       border: "border-rose-500/30",    glow: "bg-rose-500/5" },
+            { label: "Missing 7d+",     count: missingSilentCount, accent: "text-amber-600 dark:text-amber-400",     border: "border-amber-500/30",   glow: "bg-amber-500/5" },
+            { label: "New this week",   count: newThisWeekCount,   accent: "text-sky-600 dark:text-sky-400",         border: "border-sky-500/30",     glow: "bg-sky-500/5" },
+          ].map(tile => (
+            <div key={tile.label} className={cn("rounded-3xl border bg-card/40 px-6 py-7 shadow-sm", tile.border, tile.glow)}>
+              <p className={cn("text-5xl font-black tabular-nums leading-none", tile.accent)}>{tile.count.toLocaleString()}</p>
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{tile.label}</p>
+            </div>
+          ))}
+        </motion.div>
 
         <motion.div {...surfaceMotion} transition={{ duration: 0.28, delay: 0.04, ease: "easeOut" }} className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
           {[

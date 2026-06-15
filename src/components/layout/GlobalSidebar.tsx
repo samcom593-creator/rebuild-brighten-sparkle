@@ -209,7 +209,7 @@ export function GlobalSidebar({
         { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
         // Production + money
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
-        { icon: Heart, label: "CRM", href: "/dashboard/clients", special: true },
+        { icon: Heart, label: "CRM", href: "/dashboard/crm", special: true },
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
         { icon: DollarSign, label: "Finances · CFO", href: "/dashboard/finances", special: true },
         // Franchise mgmt (Sam owns · managers run their own)
@@ -247,7 +247,7 @@ export function GlobalSidebar({
         { icon: CalendarDays, label: "Headhunters · Calendar", href: "/dashboard/headhunters-calendar", special: true },
         { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
-        { icon: Heart, label: "CRM", href: "/dashboard/clients", special: true },
+        { icon: Heart, label: "CRM", href: "/dashboard/crm", special: true },
         { icon: Workflow, label: "Hierarchy", href: "/dashboard/hierarchy", special: true },
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },

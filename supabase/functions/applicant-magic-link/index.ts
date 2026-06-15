@@ -2,10 +2,19 @@
  * applicant-magic-link — creates an auth user for a warm applicant (if
  * missing) and returns a Supabase NATIVE magic-link URL. Native = no custom
  * verify-magic-link round-trip; the URL logs them in directly via Supabase
- * Auth and lands at /dashboard.
+ * Auth and lands at the requested `redirectPath`.
  *
- * Input:  { applicationId: string }  — OR  { email: string, firstName?: string }
- * Output: { success, email, action_link, created_user: boolean }
+ * Input:  { applicationId?: string, email?: string, firstName?: string,
+ *           redirectPath?: '/dashboard' | '/onboarding-course' | string }
+ * Output: { success, email, action_link, created_user: boolean,
+ *           redirect_url: string }
+ *
+ * Default redirect is /dashboard. The post-application "Start your course"
+ * flow passes redirectPath: '/onboarding-course' so the magic link drops
+ * the newly-applied applicant straight into the training course in an
+ * authenticated session (Sam directive 2026-06-15: "they're logged in and
+ * everything like that. They should have the course click — point and
+ * clear").
  *
  * Use it as the "send them the link" path mentioned by Sam 2026-04-23.
  */
@@ -20,7 +29,32 @@ const corsHeaders = {
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_SRV = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const REDIRECT = "https://apex-financial.org/dashboard";
+const BASE_URL = "https://apex-financial.org";
+const DEFAULT_REDIRECT_PATH = "/dashboard";
+// Whitelist of acceptable redirect paths. Hard guard against open-redirect:
+// the action_link is a high-trust magic-login URL, so we never let arbitrary
+// caller-controlled redirect targets through.
+const ALLOWED_REDIRECT_PATHS = new Set<string>([
+  "/dashboard",
+  "/onboarding-course",
+  "/apex-daily-numbers",
+  "/dashboard/clients",
+  "/agent-portal",
+]);
+
+function resolveRedirectUrl(rawPath: unknown): string {
+  if (typeof rawPath !== "string" || rawPath.length === 0) {
+    return `${BASE_URL}${DEFAULT_REDIRECT_PATH}`;
+  }
+  // Only allow same-origin paths from the whitelist.
+  if (!rawPath.startsWith("/") || rawPath.startsWith("//")) {
+    return `${BASE_URL}${DEFAULT_REDIRECT_PATH}`;
+  }
+  if (!ALLOWED_REDIRECT_PATHS.has(rawPath)) {
+    return `${BASE_URL}${DEFAULT_REDIRECT_PATH}`;
+  }
+  return `${BASE_URL}${rawPath}`;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -29,6 +63,7 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => ({} as any));
   let email: string | null = body.email ?? null;
   let firstName: string | null = body.firstName ?? null;
+  const REDIRECT = resolveRedirectUrl(body.redirectPath);
 
   if (body.applicationId) {
     const { data } = await sb.from("applications")
@@ -88,5 +123,6 @@ Deno.serve(async (req) => {
 
   return new Response(JSON.stringify({
     success: true, email, firstName, action_link, created_user: createdUser,
+    redirect_url: REDIRECT,
   }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });

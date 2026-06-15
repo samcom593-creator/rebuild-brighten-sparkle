@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
 import { SCHEDULING_LINKS, getCalendlyHostName } from "@/lib/apexConfig";
 import { useApplicationStatus } from "@/hooks/useApplicationStatus";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Stage 1 final success page.
@@ -46,6 +47,54 @@ export function ApplicationConfirmationV2({
     ? `https://t.me/${TG_BOT}?start=apply_${applicationId}`
     : `https://t.me/${TG_BOT}`;
 
+  // Mint a one-click magic-login URL the moment we have an applicationId.
+  // Sam directive 2026-06-15 (voice): "Whenever I click the referral link,
+  // they're logged in and everything like that. They should have the course
+  // click — point and clear."
+  //
+  // The action_link is a Supabase NATIVE magic link — clicking it auto-logs
+  // the applicant in and redirects to /onboarding-course (unlicensed) or
+  // /dashboard (licensed). If the mint fails for any reason we fall back to
+  // the regular non-authenticated CTAs below — never break the flow.
+  const [autoLoginUrl, setAutoLoginUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!applicationId) {
+      setAutoLoginUrl(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+    // The edge fn looks up email by applicationId server-side — we don't
+    // need to wait for the status snapshot to load.
+    const redirectPath =
+      license === "licensed" ? "/dashboard" : "/onboarding-course";
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "applicant-magic-link",
+          { body: { applicationId, redirectPath } },
+        );
+        if (cancelled) return;
+        if (error) {
+          // Non-fatal — leave autoLoginUrl null so CTA falls back to /get-licensed.
+          return;
+        }
+        const link = (data as any)?.action_link;
+        if (typeof link === "string" && link.startsWith("http")) {
+          setAutoLoginUrl(link);
+        }
+      } catch {
+        // Non-fatal: keep the legacy CTA as the fallback path.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applicationId, license]);
+
   // Sticky-bottom CTA on mobile so it never gets lost in scroll.
   return (
     <div className="min-h-screen bg-background py-6 sm:py-10 px-3 sm:px-4 pb-24 sm:pb-10">
@@ -73,8 +122,8 @@ export function ApplicationConfirmationV2({
           </div>
 
           {/* Branched body */}
-          {license === "licensed" ? <LicensedBody applicationId={applicationId} showCalendly={showCalendly} tgDeepLink={tgDeepLink} /> : null}
-          {license === "unlicensed" ? <UnlicensedBody firstName={firstName} email={snap?.email ?? ""} tgDeepLink={tgDeepLink} /> : null}
+          {license === "licensed" ? <LicensedBody applicationId={applicationId} showCalendly={showCalendly} tgDeepLink={tgDeepLink} autoLoginUrl={autoLoginUrl} /> : null}
+          {license === "unlicensed" ? <UnlicensedBody firstName={firstName} email={snap?.email ?? ""} tgDeepLink={tgDeepLink} autoLoginUrl={autoLoginUrl} /> : null}
           {license === "pending" ? <PendingBody tgDeepLink={tgDeepLink} /> : null}
 
           {/* Culture line — small, no CTA, no buttons */}
@@ -89,11 +138,28 @@ export function ApplicationConfirmationV2({
 
 // ---------- Unlicensed ----------
 
-function UnlicensedBody({ firstName, email, tgDeepLink }: { firstName: string; email: string; tgDeepLink: string }) {
+function UnlicensedBody({
+  firstName,
+  email,
+  tgDeepLink,
+  autoLoginUrl,
+}: {
+  firstName: string;
+  email: string;
+  tgDeepLink: string;
+  autoLoginUrl: string | null;
+}) {
   // Pre-fill applicant email into the get-licensed URL so XCEL recognizes them.
   const courseUrl = email
     ? `/get-licensed?email=${encodeURIComponent(email)}`
     : "/get-licensed";
+
+  // Primary CTA: when the magic-link mint succeeded, clicking the button
+  // auto-logs the applicant in and drops them straight onto
+  // /onboarding-course. When it failed (or hasn't returned yet) we fall
+  // back to the legacy /get-licensed link so the page never blocks.
+  const primaryHref = autoLoginUrl ?? courseUrl;
+  const primaryIsExternal = !!autoLoginUrl;
 
   return (
     <div className="space-y-6">
@@ -101,17 +167,26 @@ function UnlicensedBody({ firstName, email, tgDeepLink }: { firstName: string; e
       <div className="rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Your 3-step path</p>
         <Step done label="Application received" />
-        <Step current label="Start your prelicensing course" detail="~$120, refundable when you produce. 3 days to license." />
+        <Step current label="Start your prelicensing course" detail={autoLoginUrl ? "One click. You're already logged in." : "~$120, refundable when you produce. 3 days to license."} />
         <Step label="Hire call unlocks the moment you pass" />
       </div>
 
-      {/* Primary CTA */}
-      <Link to={courseUrl} className="block">
-        <GradientButton className="w-full text-base h-14" size="lg">
-          <Sparkles className="h-5 w-5 mr-2" />
-          Start your prelicensing course
-        </GradientButton>
-      </Link>
+      {/* Primary CTA — auto-login + course when the magic link is ready */}
+      {primaryIsExternal ? (
+        <a href={primaryHref} className="block">
+          <GradientButton className="w-full text-base h-14" size="lg">
+            <Sparkles className="h-5 w-5 mr-2" />
+            Start the course
+          </GradientButton>
+        </a>
+      ) : (
+        <Link to={primaryHref} className="block">
+          <GradientButton className="w-full text-base h-14" size="lg">
+            <Sparkles className="h-5 w-5 mr-2" />
+            Start your prelicensing course
+          </GradientButton>
+        </Link>
+      )}
 
       {/* Secondary CTA: Telegram bot */}
       <a href={tgDeepLink} target="_blank" rel="noopener noreferrer" className="block">
@@ -134,10 +209,12 @@ function LicensedBody({
   applicationId,
   showCalendly,
   tgDeepLink,
+  autoLoginUrl,
 }: {
   applicationId: string | null;
   showCalendly: boolean;
   tgDeepLink: string;
+  autoLoginUrl: string | null;
 }) {
   // v9 wave-C complaint #6: applicants land on a Calendly with no idea who
   // they're booking with. Derive host name from the URL slug.
@@ -171,6 +248,19 @@ function LicensedBody({
           </GradientButton>
         </a>
       )}
+
+      {/* One-click auto-login into the agent portal — Sam directive
+          2026-06-15: "They're logged in and everything like that." For
+          licensed applicants the destination is /dashboard (training course
+          is for unlicensed). Hidden until the magic-link mint returns. */}
+      {autoLoginUrl ? (
+        <a href={autoLoginUrl} className="block">
+          <GradientButton variant="outline" className="w-full" size="lg">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Enter your APEX portal
+          </GradientButton>
+        </a>
+      ) : null}
 
       {/* Secondary CTA: Telegram bot */}
       <a href={tgDeepLink} target="_blank" rel="noopener noreferrer" className="block">

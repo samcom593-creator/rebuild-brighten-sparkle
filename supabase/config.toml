@@ -690,3 +690,6 @@ verify_jwt = false
 
 [functions.metricool-sync]
 verify_jwt = false
+
+[functions.send-agent-onboarding-email]
+verify_jwt = false

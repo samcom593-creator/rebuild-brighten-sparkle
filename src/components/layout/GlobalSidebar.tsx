@@ -200,7 +200,7 @@ export function GlobalSidebar({
       primary.push(
         { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
-        { icon: PhoneCall, label: "Calls Today", href: "/dashboard/calls-today", special: true },
+        // Sam 2026-06-16: Calls Today killed from all 3 role nav (admin/manager/agent) — "point blank useless"
         { icon: Award, label: "Contracts", href: "/dashboard/contracts", special: true },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );
@@ -241,7 +241,6 @@ export function GlobalSidebar({
       primary.push(
         { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
-        { icon: PhoneCall, label: "Calls Today", href: "/dashboard/calls-today", special: true },
         { icon: Users, label: "My Team", href: "/dashboard/my-team", special: true },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );
@@ -274,7 +273,6 @@ export function GlobalSidebar({
       // in the dialer dock, not nav).
       primary.push(
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
-        { icon: PhoneCall, label: "Calls Today", href: "/dashboard/calls-today", special: true },
         { icon: BarChart3, label: "Production", href: "/numbers" },
         { icon: Trophy, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },

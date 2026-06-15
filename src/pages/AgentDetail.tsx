@@ -153,7 +153,7 @@ export default function AgentDetail() {
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold truncate">{agent.full_name ?? "Unknown"}</h1>
+          <h1 className="text-2xl font-bold truncate">{agent.full_name ?? "—"}</h1>
           <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 mt-1">
             {agent.email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{agent.email}</span>}
             {agent.phone && <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{agent.phone}</span>}

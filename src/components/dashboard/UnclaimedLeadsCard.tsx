@@ -141,7 +141,7 @@ export function UnclaimedLeadsCard() {
               {data.sample.map((row) => (
                 <li key={row.id} className="flex items-center justify-between text-sm">
                   <span className="font-medium">
-                    {(row.first_name || "Unknown").toString()}
+                    {(row.first_name || "—").toString()}
                   </span>
                   <span className="text-[11px] text-muted-foreground tabular-nums">
                     {row.age_hours < 48

@@ -116,7 +116,7 @@ export function AbandonedLeadsPanel() {
     }
     if (lead.firstName) return lead.firstName;
     if (lead.email) return lead.email.split("@")[0];
-    return "Unknown";
+    return "—";
   };
 
   return (

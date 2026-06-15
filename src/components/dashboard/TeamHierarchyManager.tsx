@@ -201,14 +201,14 @@ export function TeamHierarchyManager() {
           const managerAgent = agentsData.find(a => a.id === agent.invited_by_manager_id);
           if (managerAgent) {
             const managerProfile = profiles?.find(p => p.user_id === managerAgent.user_id);
-            managerName = managerProfile?.full_name || "Unknown";
+            managerName = managerProfile?.full_name || "—";
           }
         }
 
         return {
           id: agent.id,
           profileId: agent.profile_id,
-          name: profile?.full_name || "Unknown",
+          name: profile?.full_name || "—",
           email: profile?.email || "",
           phone: profile?.phone || null,
           managerId: agent.invited_by_manager_id,
@@ -606,7 +606,7 @@ export function TeamHierarchyManager() {
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{agent.name}</p>
                           <p className="text-xs text-muted-foreground truncate">
-                            Manager: {agent.managerName || "Unknown"}
+                            Manager: {agent.managerName || "—"}
                           </p>
                         </div>
                         <Select

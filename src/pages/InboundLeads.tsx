@@ -440,6 +440,21 @@ export default function InboundLeads() {
   const [form, setForm] = useState(() => loadDraft() ?? { ...EMPTY_FORM });
   const [listening, setListening] = useState(false);
   const [callElapsed, setCallElapsed] = useState(0); // live timer (sec)
+  // 2026-06-16 BUG-1 v7.5 — visible debug HUD so Sam SEES recording state.
+  // Sam: "audio recording in inbounds still not working" — code is sound +
+  // bucket has 0 files. Either the click never fires startListening OR chunks
+  // are empty OR Save Lead is never pressed (audio uploads only on save).
+  // This HUD removes the ambiguity by showing every state change live.
+  const [debugHud, setDebugHud] = useState<{
+    clicks: number;
+    lastClickAt: string | null;
+    micGranted: boolean | null;
+    recorderState: string;
+    chunksCount: number;
+    chunksBytes: number;
+    mimeType: string;
+    lastError: string | null;
+  }>({ clicks: 0, lastClickAt: null, micGranted: null, recorderState: "idle", chunksCount: 0, chunksBytes: 0, mimeType: "", lastError: null });
   const recognitionRef = useRef<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -870,6 +885,10 @@ export default function InboundLeads() {
   }, [form]);
 
   const startListening = async (opts?: { withTabAudio?: boolean }) => {
+    // 2026-06-16 BUG-1 v7.5 instrumentation
+    setDebugHud((h) => ({ ...h, clicks: h.clicks + 1, lastClickAt: new Date().toLocaleTimeString(), lastError: null }));
+    // eslint-disable-next-line no-console
+    console.log("[BUG-1] startListening() fired · click count incrementing");
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     // 2026-06-15 v7.4 BUG FIX: was an EARLY RETURN that blocked the recorder
     // entirely on browsers without webkitSpeechRecognition (Firefox, some
@@ -901,9 +920,11 @@ export default function InboundLeads() {
       }).catch((err) => {
         // Mic permission denied or device not available — surface it
         console.error("[mic] getUserMedia failed:", err);
+        setDebugHud((h) => ({ ...h, micGranted: false, lastError: `getUserMedia: ${err?.name ?? "unknown"}` }));
         toast.error(`Mic blocked: ${err?.name ?? "unknown"}. Click the lock icon → allow microphone.`);
         return null;
       });
+      setDebugHud((h) => ({ ...h, micGranted: !!micStream }));
 
       if (!micStream) {
         // Continue with transcript-only flow — no audio file will be saved
@@ -948,13 +969,26 @@ export default function InboundLeads() {
           ? "audio/mp4"
           : "";
         const recorder = new MediaRecorder(recordStream, mimeType ? { mimeType } : undefined);
+        setDebugHud((h) => ({ ...h, mimeType: mimeType || "(default)", recorderState: recorder.state }));
         recorder.ondataavailable = (e) => {
-          if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+          // eslint-disable-next-line no-console
+          console.log("[BUG-1] ondataavailable · size=", e?.data?.size ?? "no-data");
+          if (e.data && e.data.size > 0) {
+            audioChunksRef.current.push(e.data);
+            setDebugHud((h) => ({
+              ...h,
+              chunksCount: audioChunksRef.current.length,
+              chunksBytes: audioChunksRef.current.reduce((sum, c) => sum + c.size, 0),
+            }));
+          }
         };
         recorder.onerror = (e: any) => {
           console.error("[recorder] error:", e);
+          setDebugHud((h) => ({ ...h, lastError: `recorder.onerror: ${e?.error?.name ?? "unknown"}`, recorderState: recorder.state }));
           toast.error("Recording stopped unexpectedly. Mic may have been revoked.");
         };
+        recorder.onstart = () => setDebugHud((h) => ({ ...h, recorderState: "recording" }));
+        recorder.onstop = () => setDebugHud((h) => ({ ...h, recorderState: "stopped" }));
         // 2026-06-15 v7.4 BUG FIX: was recorder.start(1000) which means a deal
         // recorded under 1 second would emit ZERO chunks → empty audio file.
         // Sam: "I'm clicking the recorder. It's not recording the audio."
@@ -1739,6 +1773,19 @@ export default function InboundLeads() {
                     <p className="text-xs text-muted-foreground">
                       Tap the mic during a call. It will capture transcript text and auto-fill obvious fields.
                     </p>
+                    {/* 2026-06-16 BUG-1 v7.5 · Persistent debug HUD so Sam SEES every recorder state — investor-day diagnostic */}
+                    <div className="mt-2 grid grid-cols-2 gap-1 text-[10px] tabular-nums font-mono text-muted-foreground/80 leading-snug">
+                      <span>clicks: <span className="text-foreground">{debugHud.clicks}</span></span>
+                      <span>last: <span className="text-foreground">{debugHud.lastClickAt ?? "—"}</span></span>
+                      <span>mic-granted: <span className={debugHud.micGranted === true ? "text-emerald-500" : debugHud.micGranted === false ? "text-rose-500" : "text-foreground"}>{debugHud.micGranted === null ? "—" : debugHud.micGranted ? "✓" : "✗"}</span></span>
+                      <span>recorder: <span className={debugHud.recorderState === "recording" ? "text-emerald-500" : "text-foreground"}>{debugHud.recorderState}</span></span>
+                      <span>chunks: <span className="text-foreground">{debugHud.chunksCount}</span></span>
+                      <span>bytes: <span className="text-foreground">{(debugHud.chunksBytes / 1024).toFixed(1)}k</span></span>
+                      <span className="col-span-2">mime: <span className="text-foreground">{debugHud.mimeType || "—"}</span></span>
+                      {debugHud.lastError && (
+                        <span className="col-span-2 text-rose-500">err: {debugHud.lastError}</span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {/* v25 live call timer · visible only while mic recording */}
@@ -1752,7 +1799,15 @@ export default function InboundLeads() {
                       type="button"
                       variant={listening ? "destructive" : "outline"}
                       className="gap-2"
-                      onClick={() => listening ? stopListening() : void startListening()}
+                      onClick={() => {
+                        // 2026-06-16 BUG-1 v7.5 — visible click receipt before any async work
+                        toast.info(listening ? "🛑 Stop tapped" : "🎤 Mic tapped");
+                        if (listening) {
+                          stopListening();
+                        } else {
+                          void startListening();
+                        }
+                      }}
                     >
                       {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                       {listening ? "Stop" : "Mic"}

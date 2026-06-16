@@ -3392,14 +3392,11 @@ function RecruiterContactSlaPanel() {
 // ─────────────────────────────────────────────────────────────────────
 
 function ExtendedParityPanels() {
-  // 2026-06-15 v6.6: State / Commission / HirePace moved to DashboardPulseGroup
-  // up top per Sam directive. TimeOfDay stays here as a deep-dive heat-map
-  // (still valuable but doesn't need to be in the headline row).
-  return (
-    <div className="grid gap-3 lg:grid-cols-2">
-      <TimeOfDayProductionPanel />
-    </div>
-  );
+  // 2026-06-16 Sam directive: "remove the whole [time-of-day] dashboard.
+  // I don't know what purpose it serves nor does it actually even fucking work."
+  // TimeOfDayProductionPanel hidden from the rendered tree. Component still
+  // exists in this file for archeology but no longer mounts.
+  return null;
 }
 
 // ── PANEL · STATE PRODUCTION (emerald) ─────────────────────────────

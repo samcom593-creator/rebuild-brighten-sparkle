@@ -459,6 +459,10 @@ export default function InboundLeads() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartRef = useRef<number | null>(null);
+  // 2026-06-16 BUG-1 v7.6 — orphan recording tracker. stopListening uploads
+  // every recording immediately to call-recordings/orphan/{ts}.{ext}. If Sam
+  // then saves a lead, the lead row gets a pointer to this orphan path.
+  const lastOrphanRecordingRef = useRef<{ path: string; durationSec: number; ts: number } | null>(null);
   const draftRestored = !!loadDraft();
 
   // v25 hot-fix: auto-save draft to localStorage on every form change so
@@ -1041,6 +1045,41 @@ export default function InboundLeads() {
     });
     try { recorder?._audioCtx?.close?.(); } catch { /* already closed */ }
     setListening(false);
+
+    // 2026-06-16 BUG-1 v7.6 — Sam's audio recording was structurally broken
+    // because uploads ONLY fired inside saveLead(). If Sam recorded but never
+    // saved the lead (which he often doesn't during quick test calls), the
+    // audio was discarded. Now: upload on STOP, independent of lead save.
+    // Lands in call-recordings/orphan/{ts}.{ext} and gets re-attributed when
+    // the lead is eventually saved.
+    void (async () => {
+      try {
+        const audio = await harvestAudio();
+        if (!audio || audio.blob.size === 0) {
+          setDebugHud((h) => ({ ...h, lastError: "harvestAudio returned empty (0 chunks)" }));
+          return;
+        }
+        const ext = audio.blob.type.includes("mp4") ? "mp4" : "webm";
+        const ts = Date.now();
+        const path = `orphan/${ts}.${ext}`;
+        setDebugHud((h) => ({ ...h, lastError: `uploading ${(audio.blob.size / 1024).toFixed(1)}k → ${path}` }));
+        const { error: upErr } = await (supabase as any).storage
+          .from("call-recordings")
+          .upload(path, audio.blob, { contentType: audio.blob.type, upsert: false });
+        if (upErr) {
+          setDebugHud((h) => ({ ...h, lastError: `upload failed: ${upErr.message?.slice(0, 60) ?? "unknown"}` }));
+          toast.error(`Audio upload failed: ${upErr.message?.slice(0, 60) ?? "unknown"}`);
+          return;
+        }
+        // Remember this orphan path so saveLead() can re-attribute it.
+        lastOrphanRecordingRef.current = { path, durationSec: audio.durationSec, ts };
+        setDebugHud((h) => ({ ...h, lastError: null }));
+        toast.success(`📼 Recording saved (${audio.durationSec}s)`);
+      } catch (e: any) {
+        setDebugHud((h) => ({ ...h, lastError: `stop-upload threw: ${e?.message?.slice(0, 60) ?? "unknown"}` }));
+        toast.error(`Stop-upload error: ${e?.message?.slice(0, 60) ?? "unknown"}`);
+      }
+    })();
   };
 
   /**
@@ -1163,6 +1202,29 @@ export default function InboundLeads() {
       toast.success(audio && audio.blob.size > 0
         ? `Lead saved · audio (${audio.durationSec}s) uploading in background.`
         : "Inbound lead saved.");
+
+      // 2026-06-16 BUG-1 v7.6 — if stopListening already uploaded the orphan
+      // recording (the normal path now), just re-attribute it to the saved
+      // lead instead of double-uploading.
+      const orphan = lastOrphanRecordingRef.current;
+      if (orphan && (!audio || audio.blob.size === 0)) {
+        void (async () => {
+          try {
+            const { data: signed } = await (supabase as any).storage
+              .from("call-recordings")
+              .createSignedUrl(orphan.path, 60 * 60 * 24 * 365);
+            await (supabase as any).from("inbound_leads").update({
+              recording_url: signed?.signedUrl ?? orphan.path,
+              recording_duration_sec: orphan.durationSec,
+              recording_started_at: new Date(orphan.ts - orphan.durationSec * 1000).toISOString(),
+            }).eq("id", saved.id);
+            toast.success(`Audio attached to ${leadName(saved)}`);
+            lastOrphanRecordingRef.current = null;
+          } catch (e: any) {
+            toast.warning(`Orphan-relink error: ${e?.message?.slice(0, 60) ?? "unknown"}`);
+          }
+        })();
+      }
 
       // v25 BUG FIX: audio upload is FIRE-AND-FORGET so Sam can take
       // the next call immediately. Was blocking 1-4s on the round-trip.

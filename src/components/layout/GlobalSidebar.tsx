@@ -201,7 +201,8 @@ export function GlobalSidebar({
       primary.push(
         { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
-        // Sam 2026-06-16: Calls Today killed from all 3 role nav (admin/manager/agent) — "point blank useless"
+        // Sam 2026-06-16 directive: "CRM, put it way higher up." → CRM hoisted to PRIMARY
+        { icon: Heart, label: "CRM", href: "/dashboard/crm", special: true },
         { icon: Award, label: "Contracts", href: "/dashboard/contracts", special: true },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );
@@ -210,21 +211,20 @@ export function GlobalSidebar({
         { icon: Inbox, label: "Headhunters Inbox", href: "/admin/recruiting-inbox", special: true },
         { icon: Filter, label: "Headhunters Funnels", href: "/dashboard/recruiting-funnels", special: true },
         { icon: Trophy, label: "Headhunters Tracker", href: "/dashboard/recruiting-tracker", special: true },
-        { icon: CalendarDays, label: "Headhunters · Calendar", href: "/dashboard/headhunters-calendar", special: true },
+        // Sam 2026-06-16: Headhunters Calendar removed — "remove headhunter's calendar as a whole"
         { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
-        { icon: Crown, label: "Whales", href: "/dashboard/whales", special: true },
+        // Sam 2026-06-16: Whales removed — "remove whales as a whole"
         // Production + money
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
-        { icon: Heart, label: "CRM", href: "/dashboard/crm", special: true },
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
-        { icon: DollarSign, label: "Finances · CFO", href: "/dashboard/finances", special: true },
+        // Sam 2026-06-16: Finances · CFO removed — "remove the finance as CFO"
         // Franchise mgmt (Sam owns · managers run their own)
         { icon: Users, label: "Team Analytics", href: "/dashboard/team-analytics" },
         { icon: Network, label: "Builders + Managers", href: "/dashboard/managers" },
         { icon: Workflow, label: "Hierarchy", href: "/dashboard/hierarchy", special: true },
         // Culture + comms (drives momentum, low maintenance)
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },
-        { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
+        // Sam 2026-06-16: Scripts removed — "scripts you can also remove those"
         { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         // Admin hub (everything that isn't daily flow)
@@ -242,6 +242,7 @@ export function GlobalSidebar({
       primary.push(
         { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
+        { icon: Heart, label: "CRM", href: "/dashboard/crm", special: true },
         { icon: Users, label: "My Team", href: "/dashboard/my-team", special: true },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );
@@ -249,15 +250,14 @@ export function GlobalSidebar({
         { icon: Inbox, label: "Headhunters Inbox", href: "/admin/recruiting-inbox", special: true },
         { icon: Filter, label: "Headhunters Funnels", href: "/dashboard/recruiting-funnels" },
         { icon: Trophy, label: "Headhunters Tracker", href: "/dashboard/recruiting-tracker" },
-        { icon: CalendarDays, label: "Headhunters · Calendar", href: "/dashboard/headhunters-calendar", special: true },
+        // Sam 2026-06-16: Headhunters Calendar removed for manager nav too
         { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
-        { icon: Heart, label: "CRM", href: "/dashboard/crm", special: true },
         { icon: Workflow, label: "Hierarchy", href: "/dashboard/hierarchy", special: true },
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements" },
-        { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
+        // Sam 2026-06-16: Scripts removed for manager nav too
         { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
       );
@@ -281,7 +281,7 @@ export function GlobalSidebar({
       more.push(
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
-        { icon: ScrollText, label: "Scripts", href: "/dashboard/scripts" },
+        // Sam 2026-06-16: Scripts removed for agent nav too
         { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },

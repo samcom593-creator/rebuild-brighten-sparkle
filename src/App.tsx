@@ -55,6 +55,7 @@ const SupabaseHealthBanner = lazy(() =>
 import { initTelemetry } from "@/shared/telemetry/track";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { RecruitingShortLink } from "@/components/RecruitingShortLink";
 
 initTelemetry();
 
@@ -426,6 +427,12 @@ const App = () => (
                     <Route path="/dashboard/settings" element={<Settings />} />
                     <Route path="/dashboard/settings/deleted-leads" element={<ProtectedRoute requireAdmin><DeletedLeadsVault /></ProtectedRoute>} />
                     <Route path="/dashboard/team" element={<Navigate to="/dashboard/hierarchy" replace />} />
+                    {/* 2026-06-16 Sam directive: short recruiting links.
+                        apex-financial.org/r/sjames01 → /apply?ref=sjames01
+                        Resolves via the existing resolve-ref-slug edge fn so
+                        every variant Sam shares (uppercase, lowercase, with
+                        or without spaces) lands on the right recruiter. */}
+                    <Route path="/r/:code" element={<RecruitingShortLink />} />
                     {/* 2026-06-15 — Sam clarified by voice: "CRM" in his head = AGENT CRM
                         (the team view at DashboardCRM), NOT the client book of business.
                         Restored direct mount; /dashboard/clients stays for the client pipeline. */}

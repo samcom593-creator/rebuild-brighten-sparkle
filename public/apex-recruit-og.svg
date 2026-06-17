@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b1220"/>
+      <stop offset="50%" stop-color="#10182c"/>
+      <stop offset="100%" stop-color="#1a2444"/>
+    </linearGradient>
+    <linearGradient id="apex" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.4" r="0.6">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Apex mountain mark -->
+  <g transform="translate(150 200)">
+    <polygon points="0,200 80,40 160,200" fill="url(#apex)" opacity="0.95"/>
+    <polygon points="80,40 100,80 60,80" fill="#fff" opacity="0.95"/>
+    <polygon points="140,200 220,80 300,200" fill="url(#apex)" opacity="0.7"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="600" y="220" font-family="Inter, system-ui, sans-serif" font-weight="900" font-size="120" fill="#ffffff" text-anchor="middle" letter-spacing="6">APEX</text>
+  <text x="600" y="290" font-family="Inter, system-ui, sans-serif" font-weight="600" font-size="50" fill="url(#apex)" text-anchor="middle" letter-spacing="10">FINANCIAL</text>
+
+  <!-- Tagline -->
+  <text x="600" y="395" font-family="Inter, system-ui, sans-serif" font-weight="700" font-size="38" fill="#e5e7eb" text-anchor="middle">Build Your Empire.</text>
+  <text x="600" y="445" font-family="Inter, system-ui, sans-serif" font-weight="400" font-size="28" fill="#94a3b8" text-anchor="middle">Uncapped commissions • Warm leads • Free training</text>
+
+  <!-- CTA bar -->
+  <rect x="380" y="500" width="440" height="80" rx="40" fill="url(#apex)"/>
+  <text x="600" y="552" font-family="Inter, system-ui, sans-serif" font-weight="800" font-size="32" fill="#0b1220" text-anchor="middle" letter-spacing="2">START YOUR APPLICATION</text>
+
+  <!-- Hold the standard -->
+  <text x="600" y="610" font-family="Inter, system-ui, sans-serif" font-weight="500" font-size="18" fill="#64748b" text-anchor="middle" letter-spacing="3">HOLD THE STANDARD · AVERAGE IS THE DISEASE</text>
+</svg>

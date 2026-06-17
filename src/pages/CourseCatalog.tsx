@@ -173,54 +173,13 @@ export default function CourseCatalog() {
 
   if (loading || provisioningInProgress || checkingAvatar) return <SkeletonLoader variant="page" />;
 
-  if (agentNotFound) {
-    return (
-      <div className="max-w-4xl mx-auto text-center py-20">
-        <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-        <h1 className="text-2xl font-bold mb-2" style={{ fontFamily: "Syne" }}>Course Access Pending</h1>
-        <p className="text-muted-foreground mb-6">Your manager hasn't enrolled you yet. Contact your manager for access.</p>
-        <Button onClick={() => navigate("/agent-login")} className="gap-2">Sign In Manually</Button>
-      </div>
-    );
-  }
-
-  // PL-067: Course catalog is for LICENSED agents only.
-  // Sam: "the course catalog... should only be for applicants who have
-  // their license already." Unlicensed users are routed back to pre-licensing.
-  if (licenseCheckLoading) {
-    return <div className="max-w-4xl mx-auto py-20 text-center text-muted-foreground">Checking your license status…</div>;
-  }
-  if (!isLicensed) {
-    return (
-      <div className="max-w-3xl mx-auto text-center py-20 space-y-5">
-        <Lock className="h-14 w-14 mx-auto text-amber-400" />
-        <h1 className="text-2xl font-bold" style={{ fontFamily: "Syne" }}>Pre-licensing comes first</h1>
-        <p className="text-muted-foreground">
-          The APEX course catalog is for licensed agents only. Finish your
-          pre-licensing course, pass the state exam, and we'll unlock this for you.
-        </p>
-        <div className="flex flex-wrap justify-center gap-2 pt-2">
-          <Button onClick={() => navigate("/get-licensed")} variant="outline">Pre-licensing path</Button>
-          <Button onClick={() => navigate("/dashboard")}>Back to dashboard</Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!avatarUrl) {
-    return (
-      <div className="max-w-lg mx-auto text-center py-20 space-y-6">
-        <div className="h-24 w-24 rounded-full bg-muted mx-auto flex items-center justify-center">
-          <Camera className="h-10 w-10 text-muted-foreground" />
-        </div>
-        <h1 className="text-2xl font-bold" style={{ fontFamily: "Syne" }}>Profile Photo Required</h1>
-        <p className="text-muted-foreground">Upload a professional profile photo to unlock the training course.</p>
-        <div className="flex justify-center">
-          <AvatarUpload currentAvatarUrl={null} onAvatarChange={(url) => { if (url) setAvatarUrl(url); }} userId={user?.id || ""} />
-        </div>
-      </div>
-    );
-  }
+  // 2026-06-16 Sam directive: "any agent should be in dashboard, be able to
+  // access that course at any time. Just never lock it." ALL gates removed:
+  // - agentNotFound (no-agent-row block) → REMOVED
+  // - PL-067 license gate → REMOVED
+  // - Photo gate → REMOVED
+  // Catalog renders the modules for ANY authenticated user; progress
+  // tracking gracefully degrades to in-memory when no agent row exists.
 
   const completedCount = modules.filter(m => progress[m.id]?.passed).length;
   const modulesLeft = modules.length - completedCount;

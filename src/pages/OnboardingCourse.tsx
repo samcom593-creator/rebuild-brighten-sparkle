@@ -160,55 +160,29 @@ export default function OnboardingCourse() {
     return <SkeletonLoader variant="page" />;
   }
 
-  if (agentNotFound) {
+  // 2026-06-16 Sam directive: "any agent should be in dashboard, be able to
+  // access that course at any time. Just never lock it."
+  // All access gates removed — agentNotFound + photo gate + empty-modules
+  // block all ripped out. The course content renders for ANY authenticated
+  // user (or even unauthenticated if RLS permits). Progress tracking falls
+  // back to agentId=null → in-memory only when no agent row exists, but the
+  // VIDEOS + QUIZZES are immediately viewable.
+  if (modules.length === 0 && !loading) {
+    // Render with a polite header but DON'T block — course videos are
+    // hosted on YouTube, so even with no module rows the page is usable.
     return (
-      <>
-        <div className="max-w-4xl mx-auto text-center py-20">
-          <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Course Access Pending</h1>
-          <p className="text-muted-foreground mb-6">
-            Your manager hasn't marked you as licensed yet. Once you're marked as licensed, you'll have full access to the training course. Contact your manager for help.
-          </p>
-          <Button onClick={() => navigate("/agent-login")} className="gap-2">
-            Sign In Manually
-          </Button>
-        </div>
-      </>
-    );
-  }
-
-  if (modules.length === 0) {
-    return (
-      <>
-        <div className="max-w-4xl mx-auto text-center py-20">
-          <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h1 className="text-2xl font-bold mb-2">No modules assigned to you yet</h1>
-          <p className="text-muted-foreground mb-6">
-            Your manager hasn't published a module for your stage yet. Once they do, it lands here automatically.
-          </p>
-        </div>
-      </>
-    );
-  }
-
-  // Photo gate — must upload profile photo before accessing course
-  if (!avatarUrl) {
-    return (
-      <div className="max-w-lg mx-auto text-center py-20 space-y-6">
-        <div className="h-24 w-24 rounded-full bg-muted mx-auto flex items-center justify-center">
-          <Camera className="h-10 w-10 text-muted-foreground" />
-        </div>
-        <h1 className="text-2xl font-bold" style={{ fontFamily: "Syne" }}>Profile Photo Required</h1>
-        <p className="text-muted-foreground">
-          Before you can access the training course, please upload a professional profile photo. This will be used across the platform.
+      <div className="max-w-4xl mx-auto text-center py-20">
+        <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+        <h1 className="text-2xl font-bold mb-2">Apex Sales Training Course</h1>
+        <p className="text-muted-foreground mb-6">
+          Course modules are being prepared. Check back in a few minutes — or
+          watch the master Apex playlist directly on YouTube.
         </p>
-        <div className="flex justify-center">
-          <AvatarUpload
-            currentAvatarUrl={null}
-            onAvatarChange={(url) => { if (url) setAvatarUrl(url); }}
-            userId={user?.id || ""}
-          />
-        </div>
+        <Button asChild className="gap-2">
+          <a href="https://www.youtube.com/@SamuelJamesHQ" target="_blank" rel="noreferrer">
+            Open Apex Playlist on YouTube
+          </a>
+        </Button>
       </div>
     );
   }

@@ -60,7 +60,10 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 //   next-step/useNextStepData.ts 13). Lock the new floor + queue sweep back
 //   down per docs/tsc-error-backlog.md. Same commit ships Call Center
 //   sidebar entry (Sam directive 2026-06-17 "I see no call center").
-const BASELINE = 256;
+// 2026-06-17 22:50 CDT — BASELINE dropped 256 → 246. Codex's InterviewCommand
+//   Center declutter (1691 → 643 lines, commit 9949e1e8) shed 10 errors
+//   alongside the panel kills. Lock the new floor.
+const BASELINE = 246;
 
 let stdout = "";
 let stderr = "";

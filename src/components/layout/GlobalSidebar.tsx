@@ -8,6 +8,7 @@ import {
   BookOpen,
   Briefcase,
   Calculator,
+  CalendarCheck,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
@@ -185,6 +186,10 @@ export function GlobalSidebar({
     // OLD: only renders if there are archive entries
     const primary: NavItem[] = [
       { icon: LayoutDashboard, label: "Command Center", href: "/dashboard", special: true },
+      // 2026-06-17 — Sam directive: "biggest problem is the calendars and the
+      // user what to do list ... I could just tap circles and just mark that
+      // done shit." Native daily flow surface, replaces Todoist dep.
+      { icon: CalendarCheck, label: "Today", href: "/dashboard/today", special: true },
     ];
     const more: NavItem[] = [];
     const oldApplicants: NavItem[] = [];
@@ -201,6 +206,8 @@ export function GlobalSidebar({
       primary.push(
         { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
+        // Sam 2026-06-17 directive: "I see no call center make sure all is live"
+        { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center", special: true },
         // Sam 2026-06-16 directive: "CRM, put it way higher up." → CRM hoisted to PRIMARY
         { icon: Heart, label: "CRM", href: "/dashboard/crm", special: true },
         { icon: Award, label: "Contracts", href: "/dashboard/contracts", special: true },
@@ -242,6 +249,7 @@ export function GlobalSidebar({
       primary.push(
         { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
+        { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center", special: true },
         { icon: Heart, label: "CRM", href: "/dashboard/crm", special: true },
         { icon: Users, label: "My Team", href: "/dashboard/my-team", special: true },
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
@@ -274,6 +282,7 @@ export function GlobalSidebar({
       // in the dialer dock, not nav).
       primary.push(
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
+        { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center", special: true },
         { icon: BarChart3, label: "Production", href: "/numbers" },
         { icon: Trophy, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },

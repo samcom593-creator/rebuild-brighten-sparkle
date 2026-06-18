@@ -5,26 +5,19 @@ import {
   Users,
   Phone,
   Mail,
-  MapPin,
   Clock,
   Filter,
   Search,
   Instagram,
-  CheckCircle,
   UserCheck,
   MessageCircle,
   Award,
-  GraduationCap,
   ExternalLink,
   StickyNote,
   Mic,
-  Building2,
   XCircle,
-  ChevronDown,
-  ChevronUp,
   RotateCcw,
   Send,
-  FileCheck,
   Calendar,
   LayoutGrid,
   List,
@@ -33,9 +26,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-// DashboardLayout removed — AuthenticatedShell already provides SidebarLayout
 import { useSoundEffects } from "@/hooks/useSoundEffects";
-import { GlassCard } from "@/components/ui/glass-card";
 import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -62,15 +53,10 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ApplicantNotes } from "@/components/dashboard/ApplicantNotes";
 import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
-import { ApplicantSummary } from "@/components/dashboard/ApplicantSummary";
 import { LeadQualificationChat } from "@/components/dashboard/LeadQualificationChat";
-import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
-import { LastContactedBadge } from "@/components/dashboard/LastContactedBadge";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
-import { ContractedModal } from "@/components/dashboard/ContractedModal";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
-import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { KanbanBoard, type KanbanStage } from "@/components/pipeline/KanbanBoard";
 import type { PipelineCardData } from "@/components/pipeline/PipelineCard";
 import { logLeadActivity } from "@/lib/logLeadActivity";
@@ -110,16 +96,6 @@ interface Application {
   first_contact_attempt_at?: string | null;
 }
 
-// 2026-06-15 v7.14 · THE ACTUAL ROOT CAUSE Sam was hitting:
-// This SELECT referenced 3 columns that DO NOT EXIST in applications:
-//   - onboarding_stage  (never existed)
-//   - recruiter         (column is recruiter_id · dropped the _id)
-//   - last_contact_at   (column is last_contacted_at · missing the 'ed')
-// Postgres rejected the ENTIRE SELECT with code 42703 column-not-found.
-// Pre-v7.12 fetchScopedApplications swallowed the error and returned [].
-// Sam saw "0 applications" for hours regardless of RLS · JWT · SW state.
-// FIX: drop the 3 invalid identifiers + rename last_contact_at →
-// last_contacted_at to match information_schema.columns.
 const APPLICATION_SELECT =
   "id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contacted_at, next_step_due_at, referral_source";
 
@@ -143,62 +119,30 @@ export default function DashboardApplicants() {
   const highlightedLeadId = searchParams.get("lead") || searchParams.get("id");
   const managerFilter = searchParams.get("manager");
   const stageFilter = searchParams.get("stage");
-  // Deep-link filters from engine emails: ?license=licensed&status=new&contacted=untouched
   const licenseParam = searchParams.get("license");
   const statusParam = searchParams.get("status");
-  const contactedParam = searchParams.get("contacted"); // 'untouched' | 'recent'
+  const contactedParam = searchParams.get("contacted");
 
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
-  // 2026-06-15 v7.5 · Sam reverted v7.3: "see every single application ever
-  // instead [of in_funnel]." Default back to "all" so the sidebar Applications
-  // click shows everything — 519 active. The 5-chip strip (In Funnel · Course
-  // bought · Contracted · Hired · Total Active) is still there so Sam can
-  // filter down when he wants, but the default is ALL.
   const [statusFilter, setStatusFilter] = useState<string>(statusParam || "all");
   const [licenseFilter, setLicenseFilter] = useState<string>(licenseParam || "all");
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
   const [hotLeadsOnly, setHotLeadsOnly] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(true);
-  // Section 9 (2026-06-15) · Sam asked for richer filters on the applicant pipeline.
-  //   - agentFilter   → recruiter_id (the agent who referred the applicant)
-  //   - uplineFilter  → recruiter's manager_id (two-hop upline)
-  //   - interviewFilter → 'scheduled' (has row in scheduled_interviews status='scheduled')
-  //                       'none' (no scheduled interview row)
-  //   - needsFollowupOnly → toggle: created_at > 48h AND no contacted_at AND no last_contacted_at
   const [agentFilter, setAgentFilter] = useState<string>("all");
   const [uplineFilter, setUplineFilter] = useState<string>("all");
   const [interviewFilter, setInterviewFilter] = useState<string>("all");
   const [needsFollowupOnly, setNeedsFollowupOnly] = useState(false);
-  // Notes modal state
   const [notesApp, setNotesApp] = useState<Application | null>(null);
-  
-  // Interview recorder state
   const [recorderApp, setRecorderApp] = useState<Application | null>(null);
-
-  // Terminate modal state
   const [terminateApp, setTerminateApp] = useState<Application | null>(null);
   const [terminateReason, setTerminateReason] = useState("");
   const [isTerminating, setIsTerminating] = useState(false);
 
-  // Terminated section expanded state
-  const [showTerminated, setShowTerminated] = useState(false);
-
-  // Manual follow-up state
-  const [sendingFollowupId, setSendingFollowupId] = useState<string | null>(null);
-
-  // Contracted modal state
-  const [contractedApp, setContractedApp] = useState<Application | null>(null);
-  const [schedulerApp, setSchedulerApp] = useState<Application | null>(null);
-  const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   
-  // 2026-06-15 v7.9 · AUTO-HEAL on mount + after-load detection
-  // The global AuthenticatedShell session-refresh runs first. This per-page
-  // hook is the second-chance · if after 3 seconds the queryData has loaded
-  // but returned ZERO apps, treat it as a JWT death and auto-trigger the
-  // refresh path. No user action needed.
   const autoHealedRef = useRef(false);
   useEffect(() => {
     let cancelled = false;
@@ -219,7 +163,6 @@ export default function DashboardApplicants() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When deep linking, clear filters to ensure lead is visible
   useEffect(() => {
     if (highlightedLeadId) {
       setStatusFilter("all");
@@ -227,9 +170,6 @@ export default function DashboardApplicants() {
       setSearchQuery("");
     }
   }, [highlightedLeadId]);
-  
-  // Scroll to highlighted lead — moved after applications declaration
-
   const fetchApplicationsQuery = useCallback(async () => {
     if (!user) {
       return {
@@ -240,9 +180,6 @@ export default function DashboardApplicants() {
       };
     }
 
-    // 2026-06-14 BUG FIX: was .single() which errors when a user has multiple
-    // agent rows (Sam has SJAMES01 + SJAMES02). Switched to maybeSingle with
-    // limit(1) — even if the error path triggers, isAdmin still passes through.
     const { data: agentData, error: agentLookupError } = await supabase
       .from("agents")
       .select("id")
@@ -256,17 +193,9 @@ export default function DashboardApplicants() {
 
     let fetchedApps: Application[] = [];
 
-    // Attribution can live in any of 3 columns (assigned_agent_id,
-    // referral_manager_id, recruiter_id). Always filter with .or() so a lead
-    // credited via the referral column still shows up to the right agent.
     const orForAgentId = (id: string) =>
       `assigned_agent_id.eq.${id},referral_manager_id.eq.${id},recruiter_id.eq.${id}`;
 
-    // 2026-06-15 v7.12 · Codex audit rule #4: do NOT catch Supabase errors
-    // and return [] / 0. RLS denial looked identical to "no data exists" ·
-    // diagnostic banner couldn't distinguish · Sam saw "Fetched 0" forever.
-    // Now: errors THROW · React Query catches them · queryError surfaces in
-    // the evidence line · Sam sees the actual cause (RLS code, network, auth).
     const fetchScopedApplications = async (includeTerminated: boolean) => {
       let query = supabase
         .from("applications")
@@ -291,8 +220,6 @@ export default function DashboardApplicants() {
 
       const { data, error, count } = await query.order("created_at", { ascending: false });
       if (error) {
-        // Surface verbatim · don't swallow. React Query sets queryError ·
-        // evidence line shows it · Sam knows what to fix.
         const tag = `[DashboardApplicants] ${includeTerminated ? "terminated" : "active"} fetch failed`;
         console.error(tag, { error, managerFilter, isAdmin, isManager });
         throw Object.assign(
@@ -324,7 +251,6 @@ export default function DashboardApplicants() {
       managerFilter: managerFilter || null,
     });
 
-    // Batch fetch manager names for all assigned agents
     const nameMap = new Map<string, string>();
     const allFetchedApps = [...fetchedApps, ...terminatedResult.rows];
     const assignedIds = [...new Set(allFetchedApps.map(a => a.assigned_agent_id).filter(Boolean))] as string[];
@@ -338,13 +264,6 @@ export default function DashboardApplicants() {
       });
     }
 
-    // Section 8 (2026-06-14): Upline attribution — for every applicant credited
-    // to a recruiter, surface the recruiter's manager. Two-hop lookup:
-    //   applications.recruiter_id (agent) -> agents.manager_id -> agents
-    //   -> profiles.full_name.
-    // 26/156 agents currently have manager_id set, so most upline cells will
-    // render "—" until Sam fills out the hierarchy; that's correct truth, not
-    // a bug.
     const recruiterMap = new Map<string, { name: string; uplineId: string | null }>();
     const uplineMap = new Map<string, string>();
     const recruiterIds = [
@@ -380,8 +299,6 @@ export default function DashboardApplicants() {
       }
     }
 
-    // Section 9 · scheduled_interviews lookup. Map<application_id, status>.
-    // Only 2 rows in prod today; cheap query, no pagination concern.
     const interviewMap = new Map<string, string>();
     const allAppIds = allFetchedApps.map(a => a.id);
     if (allAppIds.length > 0) {
@@ -426,12 +343,6 @@ export default function DashboardApplicants() {
   const interviewByAppId = queryData?.interviews || new Map<string, string>();
   const agentId = queryData?.myAgentId || null;
 
-  // Section 9 · Build dropdown options.
-  //   - recruiterOptions: every distinct recruiter_id that appears on a fetched
-  //     application, mapped to its display name from recruiterDirectory.
-  //   - uplineOptions: every distinct upline (recruiter's manager_id) that
-  //     appears, mapped to its display name from uplineNames.
-  // Both sort alphabetically; "—" is never shown — empty/unknown collapse.
   const recruiterOptions = useMemo(() => {
     const ids = new Set<string>();
     applications.forEach(a => { if (a.recruiter_id) ids.add(a.recruiter_id); });
@@ -463,15 +374,11 @@ export default function DashboardApplicants() {
     queryClient.invalidateQueries({ queryKey: ["applicants"] });
   }, [queryClient]);
 
-  // 2026-06-15 v7.9 · AUTO-HEAL trigger
-  // If the query has loaded (queryData defined) AND returned 0 apps AND we
-  // haven't already tried to auto-heal, fire one self-fix attempt. This
-  // gives Sam the fix WITHOUT requiring him to tap any button.
   useEffect(() => {
     if (autoHealedRef.current) return;
     if (isLoading) return;
-    if (!queryData) return; // wait for first fetch to complete
-    if (applications.length > 0) return; // already healthy
+    if (!queryData) return;
+    if (applications.length > 0) return;
 
     autoHealedRef.current = true;
     console.warn("[DashboardApplicants] auto-heal: 0 apps fetched · refreshing session + retrying");
@@ -493,7 +400,6 @@ export default function DashboardApplicants() {
     })();
   }, [queryData, applications.length, isLoading, queryClient]);
 
-  // Scroll to highlighted lead when data loads
   useEffect(() => {
     if (highlightedLeadId && applications.length > 0) {
       const timer = setTimeout(() => {
@@ -501,20 +407,6 @@ export default function DashboardApplicants() {
         if (leadElement) {
           leadElement.scrollIntoView({ behavior: "smooth", block: "center" });
           setTimeout(() => setSearchParams({}), 2000);
-        } else {
-          const isTerminatedLead = applications.find(
-            app => app.id === highlightedLeadId && app.terminated_at
-          );
-          if (isTerminatedLead) {
-            setShowTerminated(true);
-            setTimeout(() => {
-              const leadEl = document.getElementById(`lead-${highlightedLeadId}`);
-              if (leadEl) {
-                leadEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                setTimeout(() => setSearchParams({}), 2000);
-              }
-            }, 300);
-          }
         }
       }, 100);
       return () => clearTimeout(timer);
@@ -565,7 +457,6 @@ export default function DashboardApplicants() {
     playSound("celebrate");
     fetchApplications();
     
-    // Send hire email to recruit (fire and forget)
     supabase.functions.invoke("send-post-call-followup", {
       body: {
         firstName: app.first_name,
@@ -578,14 +469,12 @@ export default function DashboardApplicants() {
       if (emailErr) console.error("Failed to send hire email:", emailErr);
     });
 
-    // Broadcast hire announcement to all managers
     supabase.functions.invoke("notify-hire-announcement", {
       body: { applicationId: id, agentId }
     }).then(({ error: announceErr }) => {
       if (announceErr) console.error("Failed to send hire announcement:", announceErr);
     });
 
-    // Auto-create agent + enroll in course for LICENSED applicants
     if (app.license_status === "licensed") {
       supabase.functions.invoke("add-agent", {
         body: {
@@ -608,7 +497,6 @@ export default function DashboardApplicants() {
         }
       });
     } else {
-      // Send licensing instructions for unlicensed/unknown applicants
       supabase.functions.invoke("send-licensing-instructions", {
         body: {
           email: app.email,
@@ -643,7 +531,6 @@ export default function DashboardApplicants() {
       toast.error("Could not terminate this lead — you may not have permission");
       playSound("error");
     } else {
-      // Optimistic — just refetch
       fetchApplications();
       toast.success("Lead terminated");
       playSound("success");
@@ -684,7 +571,6 @@ export default function DashboardApplicants() {
     }
   };
 
-  // Kanban stage change handler with activity logging
   const handleKanbanStageChange = async (applicationId: string, newStage: KanbanStage) => {
     const dbStage = newStage === "new_applicant" || newStage === "dormant" ? "unlicensed" : newStage;
 
@@ -710,36 +596,12 @@ export default function DashboardApplicants() {
     fetchApplications();
   };
 
-  
-
-  const handleManualFollowup = async (applicationId: string) => {
-    setSendingFollowupId(applicationId);
-    try {
-      const { error } = await supabase.functions.invoke("send-manual-followup", {
-        body: { applicationId, agentId }
-      });
-      
-      if (error) throw error;
-      
-      toast.success("Follow-up email sent!");
-      fetchApplications();
-    } catch (err) {
-      console.error("Failed to send follow-up:", err);
-      toast.error("Failed to send follow-up email");
-    } finally {
-      setSendingFollowupId(null);
-    }
-  };
-
-  // Split applications into active and terminated — stable refs via useMemo
   const activeApplications = useMemo(
     () => applications.filter(app => !app.terminated_at),
     [applications]
   );
   const terminatedApplications = archivedApplications;
 
-  // Section 9 · shared filter predicate so list view + kanban view honor the
-  // same filter chips. Pure function; depends on the live filter state above.
   const applicationMatchesFilters = useCallback((app: Application): boolean => {
     const q = searchQuery.toLowerCase();
     const name = `${app.first_name} ${app.last_name}`.toLowerCase();
@@ -761,19 +623,14 @@ export default function DashboardApplicants() {
     const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
     const matchesDuplicates = showDuplicates || !app.is_duplicate;
 
-    // Section 9 · agent filter = filter by recruiter_id.
     const matchesAgent = agentFilter === "all" || app.recruiter_id === agentFilter;
 
-    // Section 9 · upline filter = recruiter's manager_id matches the picked upline.
     let matchesUpline = true;
     if (uplineFilter !== "all") {
       const recruiter = app.recruiter_id ? recruiterDirectory.get(app.recruiter_id) : null;
       matchesUpline = recruiter?.uplineId === uplineFilter;
     }
 
-    // Section 9 · interview filter.
-    //   'scheduled' → application has a row in scheduled_interviews with status='scheduled'
-    //   'none'      → no row in scheduled_interviews at all
     let matchesInterview = true;
     if (interviewFilter !== "all") {
       const intStatus = interviewByAppId.get(app.id);
@@ -782,8 +639,6 @@ export default function DashboardApplicants() {
       else matchesInterview = intStatus === interviewFilter;
     }
 
-    // Section 9 · needs-follow-up toggle.
-    //   created_at older than 48h AND no contacted_at AND no last_contacted_at.
     let matchesNeedsFollowup = true;
     if (needsFollowupOnly) {
       const ageMs = Date.now() - new Date(app.created_at).getTime();
@@ -791,8 +646,6 @@ export default function DashboardApplicants() {
       matchesNeedsFollowup = ageMs > 48 * 60 * 60 * 1000 && !hasContact;
     }
 
-    // ?contacted=untouched → only rows where contacted_at AND last_contacted_at are null
-    // ?contacted=recent → rows touched in last 24h
     const matchesContacted =
       contactedParam === "untouched"
         ? !app.contacted_at && !(app as any).last_contacted_at
@@ -800,7 +653,6 @@ export default function DashboardApplicants() {
         ? (app as any).last_contacted_at && new Date((app as any).last_contacted_at).getTime() > Date.now() - 86_400_000
         : true;
 
-    // Stage filter from query string (?stage=in_course etc.)
     let matchesStage = true;
     if (stageFilter) {
       const lp = (app as any).license_progress;
@@ -831,8 +683,6 @@ export default function DashboardApplicants() {
     contactedParam, stageFilter, agentId, recruiterDirectory, interviewByAppId,
   ]);
 
-  // Map applications to PipelineCardData for Kanban — now respects all filters
-  // so list-view chips and kanban share state.
   const kanbanApps: PipelineCardData[] = useMemo(() =>
     activeApplications
       .filter(applicationMatchesFilters)
@@ -855,7 +705,6 @@ export default function DashboardApplicants() {
     [activeApplications, managerNames, applicationMatchesFilters]
   );
 
-  // When status filter is "terminated", filter from terminated list instead
   const baseApplications = statusFilter === "terminated" ? terminatedApplications : activeApplications;
 
   const filteredApplications = useMemo(() =>
@@ -869,8 +718,6 @@ export default function DashboardApplicants() {
     [baseApplications, applicationMatchesFilters, sortOrder]
   );
 
-  // Section 9 · count of rows the "Needs follow-up" toggle would surface, so
-  // the toggle pill can advertise the queue size (matches the rest of the UX).
   const needsFollowupCount = useMemo(() => {
     let n = 0;
     for (const a of activeApplications) {
@@ -889,17 +736,11 @@ export default function DashboardApplicants() {
   const counterTotal = statusFilter === "terminated" ? terminatedApplications.length : activeApplications.length;
   const counterLabel = statusFilter === "terminated" ? "terminated applications" : "active applications";
 
-  // Stats - exclude terminated from active stats — single pass
   const { totalLeads, hired, coursePurchased, inFunnel, rejected, todayCount } = useMemo(() => {
-    // 2026-06-15 v7.10 · Sam: "524 apps · 109 today · 17 rejected · remove
-    // contract portion." Removed contracted counter. Added rejected =
-    // status IN ('rejected','disqualified') and today = created today.
     const tzNow = new Date();
     const todayDate = new Date(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate());
     const todayIso = todayDate.toISOString().slice(0, 10);
     let hired = 0, coursePurchased = 0, inFunnel = 0, rejected = 0, todayCount = 0;
-    // Walk ALL applications (active + terminated) so rejected count is
-    // accurate even when rejected apps have terminated_at set.
     const all = [...activeApplications, ...terminatedApplications];
     for (const a of all) {
       if (a.closed_at && !a.contracted_at) hired++;
@@ -912,353 +753,6 @@ export default function DashboardApplicants() {
     }
     return { totalLeads: activeApplications.length, hired, coursePurchased, inFunnel, rejected, todayCount };
   }, [activeApplications, terminatedApplications]);
-
-  // Helper for urgency badge
-  const getUrgencyBadge = (app: Application) => {
-    if (app.contacted_at || app.terminated_at) return null;
-    const daysSinceCreated = Math.floor(
-      (new Date().getTime() - new Date(app.created_at).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    if (daysSinceCreated >= 3) {
-      return <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px] gap-1">🔴 {daysSinceCreated}d uncontacted</Badge>;
-    }
-    if (daysSinceCreated >= 2) {
-      return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-[10px] gap-1">🟡 {daysSinceCreated}d uncontacted</Badge>;
-    }
-    return null;
-  };
-
-  const renderApplicationCard = (app: Application, index: number, isTerminated = false) => {
-    const status = getApplicationStatus(app);
-    const isHighlighted = highlightedLeadId === app.id;
-    return (
-      <div
-        key={app.id}
-        id={`lead-${app.id}`}
-        className="opacity-100"
-      >
-        <GlassCard className={cn(
-          "p-4 hover:bg-muted/50 transition-all duration-300 card-hover-lift",
-          isTerminated && "opacity-60",
-          isHighlighted && "ring-2 ring-primary shadow-lg shadow-primary/20 animate-pulse"
-        )}>
-          <div className="flex flex-col gap-4">
-            {/* Top Row: Avatar, Name, Contact Info, Badges */}
-            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-              {/* Avatar & Name */}
-              <div className="flex items-center gap-4 flex-1">
-                <div className={cn(
-                  "w-12 h-12 rounded-full flex items-center justify-center",
-                  isTerminated ? "bg-red-500/20" : "bg-primary/20"
-                )}>
-                  <Users className={cn("h-6 w-6", isTerminated ? "text-red-400" : "text-primary")} />
-                </div>
-                <div>
-                   <h3 className="font-semibold">{app.first_name} {app.last_name}</h3>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    <span>{getTimeAgo(app.created_at)}</span>
-                    {getUrgencyBadge(app)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Info */}
-              <div className="flex flex-wrap gap-4 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Mail className="h-4 w-4" />
-                  <span>{app.email}</span>
-                </div>
-                {app.phone && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Phone className="h-4 w-4" />
-                    <span className="select-all cursor-text" title="Click to copy">{app.phone}</span>
-                  </div>
-                )}
-                {app.city && app.state && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    <span>{app.city}, {app.state}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Badges */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className={cn("capitalize", statusColors[status])}>
-                  {status}
-                </Badge>
-                
-                {/* License Progress Selector (replaces static badge for unlicensed leads) */}
-                {!isTerminated && app.license_status !== "licensed" ? (
-                  <LicenseProgressSelector
-                    applicationId={app.id}
-                    currentProgress={app.license_progress}
-                    onProgressUpdated={fetchApplications}
-                  />
-                ) : (
-                  <Badge variant="outline" className={cn("capitalize", licenseColors[app.license_status])}>
-                    {app.license_status === "licensed" && <Award className="h-3 w-3 mr-1" />}
-                    {app.license_status === "unlicensed" && <GraduationCap className="h-3 w-3 mr-1" />}
-                    {app.license_status}
-                  </Badge>
-                )}
-                
-                {app.started_training && (
-                  <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
-                    Started Training
-                  </Badge>
-                )}
-
-                {/* Manager Assignment Badge */}
-                {app.assigned_agent_id ? (
-                  <Badge variant="outline" className="bg-violet-500/10 text-primary border-violet-500/30 text-[10px]">
-                    <Users className="h-3 w-3 mr-1" />
-                    Under {managerNames.get(app.assigned_agent_id) || "Manager"}
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-muted-foreground border-border text-[10px]">
-                    Unassigned
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            {/* Previous Experience Row */}
-            {app.has_insurance_experience && app.previous_company && (
-              <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/50 w-fit">
-                <Building2 className="h-4 w-4 text-amber-500" />
-                <span className="text-sm text-muted-foreground">
-                  Previously at <span className="text-foreground font-medium">{app.previous_company}</span>
-                  {app.years_experience && app.years_experience > 0 && (
-                    <span className="text-muted-foreground"> • {app.years_experience} yr{app.years_experience > 1 ? 's' : ''} exp</span>
-                  )}
-                </span>
-              </div>
-            )}
-
-            {/* Termination Reason */}
-            {isTerminated && app.termination_reason && (
-              <div className="text-sm text-red-400 bg-red-500/10 rounded-md px-3 py-2 border-l-2 border-red-500/50">
-                <span className="font-medium">Reason:</span> {app.termination_reason}
-              </div>
-            )}
-
-            {/* Notes Preview */}
-            {app.notes && !isTerminated && (
-              <div className="text-sm text-muted-foreground bg-muted/30 rounded-md px-3 py-2 border-l-2 border-primary/50">
-                <span className="line-clamp-2">{app.notes}</span>
-              </div>
-            )}
-
-            {/* AI Summary */}
-            {!isTerminated && (
-              <ApplicantSummary 
-                applicant={{
-                  id: app.id,
-                  full_name: `${app.first_name} ${app.last_name}`,
-                  email: app.email,
-                  phone: app.phone,
-                  city: app.city || '',
-                  state: app.state || '',
-                  instagram_handle: app.instagram_handle || '',
-                  has_license: app.license_status === 'licensed',
-                  years_experience: app.years_experience?.toString() || '',
-                  current_occupation: app.previous_company || '',
-                  why_join: '',
-                  status: status,
-                  created_at: app.created_at,
-                }}
-              />
-            )}
-
-            {/* Actions Row */}
-            <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-border/50">
-              {/* Last contacted badge */}
-              <LastContactedBadge applicationId={app.id} />
-              
-              {app.instagram_handle && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-foreground hover:text-pink-300 hover:bg-rose-500/10"
-                  onClick={() => openInstagram(app.instagram_handle!)}
-                  title={`@${app.instagram_handle}`}
-                  aria-label="Open Instagram"
-                >
-                  <Instagram className="h-4 w-4" />
-                </Button>
-              )}
-
-              {!isTerminated && app.phone && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                  title={`Call ${app.phone}`}
-                  aria-label="Call"
-                  asChild
-                >
-                  <a href={`tel:${app.phone}`}>
-                    <Phone className="h-4 w-4" />
-                  </a>
-                </Button>
-              )}
-
-              {!isTerminated && app.phone && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                  title={`Text ${app.phone}`}
-                  aria-label="Text"
-                  asChild
-                >
-                  <a href={`sms:${app.phone}`}>
-                    <MessageCircle className="h-4 w-4" />
-                  </a>
-                </Button>
-              )}
-
-              {!isTerminated && app.email && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                  title={`Email ${app.email}`}
-                  aria-label="Email"
-                  asChild
-                >
-                  <a href={`mailto:${app.email}`}>
-                    <Mail className="h-4 w-4" />
-                  </a>
-                </Button>
-              )}
-              
-              {!isTerminated && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground",
-                      app.notes && "text-primary"
-                    )}
-                    onClick={() => setNotesApp(app)}
-                    title="Notes"
-                    aria-label="Notes"
-                  >
-                    <StickyNote className="h-4 w-4" />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                    onClick={() => setRecorderApp(app)}
-                    title="Record"
-                    aria-label="Record"
-                  >
-                    <Mic className="h-4 w-4" />
-                  </Button>
-
-                  {app.license_status !== "licensed" && (
-                    <ResendLicensingButton
-                      recipientEmail={app.email}
-                      recipientName={app.first_name}
-                      licenseStatus={app.license_status}
-                      agentId={app.assigned_agent_id || undefined}
-                    />
-                  )}
-
-                  {status !== "closed" && (
-                    <QuickEmailMenu
-                      applicationId={app.id}
-                      agentId={agentId}
-                      licenseStatus={app.license_status}
-                      recipientEmail={app.email}
-                      recipientName={`${app.first_name} ${app.last_name}`}
-                      onEmailSent={fetchApplications}
-                      displayMode="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-primary"
-                    />
-                  )}
-
-                  {/* Admin-only quick assign */}
-                  {isAdmin && (
-                    <QuickAssignMenu
-                      applicationId={app.id}
-                      currentAgentId={app.assigned_agent_id}
-                      onAssigned={fetchApplications}
-                      displayMode="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-primary"
-                    />
-                  )}
-                </>
-              )}
-              
-              <div className="flex-1" />
-
-              {isTerminated ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleRestoreLead(app.id)}
-                  className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
-                >
-                  <RotateCcw className="h-4 w-4 mr-1" />
-                  Restore
-                </Button>
-              ) : (
-                <>
-                  {/* Hired button */}
-                  {status !== "hired" && status !== "contracted" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-emerald-400 hover:bg-emerald-500/10"
-                      onClick={() => handleMarkAsHired(app.id)}
-                      title="Mark as Hired"
-                      aria-label="Hired"
-                    >
-                      <UserCheck className="h-4 w-4" />
-                    </Button>
-                  )}
-
-                  {/* Contracted button */}
-                  {!app.contracted_at && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-primary hover:bg-violet-500/10"
-                      onClick={() => setContractedApp(app)}
-                      title="Contract"
-                      aria-label="Contracted"
-                    >
-                      <FileCheck className="h-4 w-4" />
-                    </Button>
-                  )}
-
-                  {status !== "hired" && status !== "contracted" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-red-400 hover:bg-red-500/10"
-                      onClick={() => setTerminateApp(app)}
-                      title="Terminate"
-                      aria-label="Terminate"
-                    >
-                      <XCircle className="h-4 w-4" />
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </GlassCard>
-      </div>
-    );
-  };
 
   if (isLoading && applications.length === 0) {
     return <PageLoadingSkeleton variant="cards" />;
@@ -1287,287 +781,51 @@ export default function DashboardApplicants() {
         }
       />
 
-      {/* 2026-06-15 v7.4 · MANAGER REFERRAL LINK · Sam: "Bring referral links to
-          all work too as well so managers can have their referral links sent to
-          me so that I can copy and paste it automatically, mark them down as
-          the referral." Apply.tsx already accepts ?ref=<agent_code> → resolves
-          via resolve-ref-slug edge fn → sets recruiter_id on insert. This
-          banner surfaces the link prominently so managers can grab it in one tap. */}
       {(isAdmin || isManager) && agentId && (
         <ReferralLinkBanner agentId={agentId} />
       )}
 
-      {/* 2026-06-15 v7.4 · ALWAYS-VISIBLE LOAD STATUS · directly under header.
-          Sam: "I can't even see if it's in the application." This banner
-          fires even if everything below crashes so Sam can see the count. */}
-      <div className={`mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border ${activeApplications.length === 0 && !isLoading ? "border-rose-500/40 bg-rose-500/[0.06]" : "border-emerald-500/30 bg-emerald-500/[0.06]"}`}>
-        <div className="flex flex-col gap-1 text-13 min-w-0 flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="relative flex h-2 w-2">
-              <span className={`absolute inline-flex h-full w-full rounded-full ${activeApplications.length === 0 && !isLoading ? "bg-rose-400" : "bg-emerald-400"} opacity-75 animate-ping`} />
-              <span className={`relative inline-flex h-2 w-2 rounded-full ${activeApplications.length === 0 && !isLoading ? "bg-rose-500" : "bg-emerald-500"}`} />
-            </span>
-            {isLoading ? (
-              <span className="font-semibold text-amber-600 dark:text-amber-400">Loading applications…</span>
-            ) : (
-              <>
-                <span className="font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
-                  {activeApplications.length.toLocaleString()}
-                </span>
-                <span className="text-foreground/85 font-medium">active applications loaded from the database</span>
-                {todayCount > 0 && (
-                  <span className="text-amber-700 dark:text-amber-400 tabular-nums font-semibold">
-                    · <span className="font-bold">{todayCount.toLocaleString()}</span> today
-                  </span>
-                )}
-                {rejected > 0 && (
-                  <span className="text-rose-700 dark:text-rose-400 tabular-nums">
-                    · <span className="font-bold">{rejected.toLocaleString()}</span> rejected
-                  </span>
-                )}
-                {terminatedApplications.length > 0 && (
-                  <span className="text-muted-foreground tabular-nums">
-                    · {terminatedApplications.length.toLocaleString()} terminated
-                  </span>
-                )}
-                <span className="text-muted-foreground">
-                  · showing <span className="font-bold tabular-nums text-foreground">{filteredApplications.length.toLocaleString()}</span>
-                </span>
-              </>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card/70 px-3 py-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+          <span className="font-semibold text-foreground tabular-nums">{filteredApplications.length.toLocaleString()} / {counterTotal.toLocaleString()}</span>
+          <span>{counterLabel}</span>
+          {todayCount > 0 && <Badge variant="outline">{todayCount.toLocaleString()} today</Badge>}
+          {rejected > 0 && <Badge variant="outline" className="border-rose-500/30 text-rose-500">{rejected.toLocaleString()} rejected</Badge>}
+          {terminatedApplications.length > 0 && <Badge variant="outline">{terminatedApplications.length.toLocaleString()} terminated</Badge>}
+          {queryError && <span className="max-w-md truncate text-rose-600">{(queryError as any)?.message?.slice(0, 100) ?? String(queryError).slice(0, 100)}</span>}
+        </div>
+        <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+          <Button variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="h-7 px-2" onClick={() => setViewMode("list")}>
+            <List className="h-3.5 w-3.5" />
+            List
+          </Button>
+          <Button variant={viewMode === "kanban" ? "default" : "ghost"} size="sm" className="h-7 px-2" onClick={() => setViewMode("kanban")}>
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Kanban
+          </Button>
+        </div>
+      </div>
+
+      <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-5">
+        {[
+          { label: "Total Active", value: totalLeads, filter: "all" },
+          { label: "In Funnel", value: inFunnel, filter: "in_funnel" },
+          { label: "Course bought", value: coursePurchased, filter: "course_bought" },
+          { label: "Hired", value: hired, filter: "hired" },
+          { label: "Rejected", value: rejected, filter: "rejected" },
+        ].map((stat) => (
+          <button
+            key={stat.label}
+            onClick={() => setStatusFilter(stat.filter)}
+            className={cn(
+              "rounded-lg border bg-card px-3 py-2 text-left transition-colors hover:bg-muted/70",
+              statusFilter === stat.filter && "border-primary bg-primary/10"
             )}
-          </div>
-          {/* 2026-06-15 v7.10 · EVIDENCE LINE. Shows the actual session
-              identity + any query error so Sam can SEE what's wrong instead
-              of guessing. */}
-          {!isLoading && (
-            <div className="text-11 text-muted-foreground font-mono flex items-center gap-3 flex-wrap">
-              <span>uid: <span className="text-foreground">{(user as any)?.id?.slice(0, 8) ?? "ANONYMOUS"}</span></span>
-              <span>email: <span className="text-foreground">{(user as any)?.email ?? "—"}</span></span>
-              <span>role: <span className="text-foreground">{isAdmin ? "admin" : isManager ? "manager" : "agent"}</span></span>
-              {queryError && (
-                <span className="text-rose-600 dark:text-rose-400 truncate max-w-md">
-                  err: {(queryError as any)?.message?.slice(0, 80) ?? String(queryError).slice(0, 80)}
-                </span>
-              )}
-              <button
-                onClick={async () => {
-                  // 2026-06-15 v7.11 · scientific probe.
-                  // Bypasses ALL the page's filter logic. Just asks Supabase:
-                  // SELECT count(*) FROM applications WHERE terminated_at IS NULL
-                  // with the current session. Shows result verbatim.
-                  try {
-                    const sess = await supabase.auth.getSession();
-                    const hasToken = !!sess.data.session?.access_token;
-                    const tokenExp = sess.data.session?.expires_at
-                      ? new Date(sess.data.session.expires_at * 1000).toISOString()
-                      : "n/a";
-                    const { count, data, error } = await supabase
-                      .from("applications")
-                      .select("id", { count: "exact" })
-                      .is("terminated_at", null)
-                      .limit(3);
-                    const result = error
-                      ? `❌ ${error.message} · code:${(error as any).code ?? "?"} · token:${hasToken ? "Y" : "N"} · exp:${tokenExp}`
-                      : `✅ count=${count} · sample=${(data ?? []).length} · token:${hasToken ? "Y" : "N"} · exp:${tokenExp}`;
-                    console.info("[PROBE]", { count, data, error, hasToken, tokenExp });
-                    toast.message(result, { duration: 15000 });
-                  } catch (e: any) {
-                    toast.error(`Probe threw: ${e?.message ?? String(e)}`);
-                    console.error("[PROBE threw]", e);
-                  }
-                }}
-                className="px-2 py-0.5 rounded bg-rose-500 hover:bg-rose-400 text-white text-11 font-bold"
-              >
-                Probe DB
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2 text-11 text-muted-foreground">
-          {/* 2026-06-15 v7.8 · DIAGNOSED ROOT CAUSE: Sam's last_sign_in was
-              20h ago. Supabase JWT lifetime is 1h. When refresh token chain
-              breaks, the client sends an expired/anon token → RLS returns 0
-              rows → 'No applications.' useAuth still has cached isAdmin=true
-              from previous fetch, so the page LOOKS like Sam is admin but
-              he's effectively anonymous to Postgres.
-              FIX: when 0 fetched, offer (a) force session refresh and
-              (b) full sign-out + redirect to /login. */}
-          {!isLoading && activeApplications.length === 0 && (
-            <>
-              <Button
-                size="sm"
-                variant="default"
-                className="h-7 bg-amber-500 hover:bg-amber-400 text-slate-950"
-                onClick={async () => {
-                  try {
-                    const { data, error } = await supabase.auth.refreshSession();
-                    if (error || !data?.session) {
-                      toast.error("Session expired · signing out");
-                      await supabase.auth.signOut();
-                      window.location.href = "/login";
-                      return;
-                    }
-                    toast.success("Session refreshed · reloading data");
-                    queryClient.invalidateQueries({ queryKey: ["applicants"] });
-                    fetchApplications();
-                  } catch (e) {
-                    console.error("[session-refresh]", e);
-                    toast.error("Refresh failed · please sign out + back in");
-                  }
-                }}
-              >
-                Refresh session
-              </Button>
-              <Button
-                size="sm"
-                variant="default"
-                className="h-7 bg-rose-500 hover:bg-rose-400 text-white"
-                onClick={async () => {
-                  try {
-                    if ("serviceWorker" in navigator) {
-                      const regs = await navigator.serviceWorker.getRegistrations();
-                      await Promise.all(regs.map((r) => r.unregister()));
-                    }
-                    if (typeof caches !== "undefined") {
-                      const names = await caches.keys();
-                      await Promise.all(names.map((n) => caches.delete(n)));
-                    }
-                    try {
-                      const keysToKill: string[] = [];
-                      for (let i = 0; i < localStorage.length; i++) {
-                        const k = localStorage.key(i);
-                        if (k) keysToKill.push(k); // nuke EVERYTHING incl. sb-* tokens
-                      }
-                      keysToKill.forEach((k) => localStorage.removeItem(k));
-                      sessionStorage.clear();
-                    } catch {/* private mode · ignore */}
-                    await supabase.auth.signOut();
-                    toast.success("Full reset · signing in fresh");
-                  } catch (e) {
-                    console.error("[full-reset]", e);
-                  } finally {
-                    setTimeout(() => { window.location.href = "/login"; }, 400);
-                  }
-                }}
-              >
-                Full reset + sign in
-              </Button>
-            </>
-          )}
-          <span className="font-mono">v7.7</span>
-          {statusFilter !== "all" && (
-            <Badge variant="outline" className="text-11">filter: {statusFilter}</Badge>
-          )}
-        </div>
-      </div>
-
-      <div className="mb-5">
-        <div className="flex items-center justify-end flex-wrap gap-3">
-          <div className="flex items-center gap-2">
-            {/* (header buttons relocated to PageHeader actions; this row keeps the toolbar below) */}
-          {/* View Toggle */}
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              className="h-8 px-3"
-              onClick={() => setViewMode("list")}
-            >
-              <List className="h-4 w-4 mr-1" />
-              List
-            </Button>
-            <Button
-              variant={viewMode === "kanban" ? "default" : "ghost"}
-              size="sm"
-              className="h-8 px-3"
-              onClick={() => setViewMode("kanban")}
-            >
-              <LayoutGrid className="h-4 w-4 mr-1" />
-              Kanban
-            </Button>
-          </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2026-06-14 v6.2 BIG-PROMPT · Premium hero band replacing the 4 flat GlassCards.
-          Sam: "Applications · 0/0/0/0 · No applicants found" while 519 active in DB.
-          The flat-row design hid the bug behind 4 gray tiles. New design surfaces
-          the actual data PLUS makes the page look unrecognizable per v6 §31. */}
-      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.25)] mb-5">
-        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-
-        <div className="relative p-5">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
-              </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">RECRUITING PIPELINE · LIVE</p>
-            </div>
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
-              click to filter
-            </Badge>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {/* 2026-06-15 v7.10 · Sam: "524 apps · 109 today · 17 rejected ·
-                remove that contract portion." Removed Contracted chip. Added
-                Rejected (status=rejected OR disqualified · matches Sam's 17). */}
-            {[
-              { label: "Total Active", value: totalLeads,   color: "text-white",         tone: "bg-amber-500/[0.10] border-amber-500/30 hover:border-amber-400/60",       filter: "all" },
-              { label: "In Funnel",    value: inFunnel,     color: "text-white",         tone: "bg-white/[0.04] border-white/[0.06] hover:border-white/20",               filter: "in_funnel" },
-              { label: "Course bought", value: coursePurchased, color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50", filter: "course_bought" },
-              { label: "Hired",        value: hired,        color: "text-emerald-300", tone: "bg-emerald-500/[0.08] border-emerald-500/20 hover:border-emerald-400/50",   filter: "hired" },
-              { label: "Rejected",     value: rejected,     color: "text-rose-300",    tone: "bg-rose-500/[0.08] border-rose-500/20 hover:border-rose-400/50",            filter: "rejected" },
-            ].map((stat) => (
-              <button
-                key={stat.label}
-                onClick={() => setStatusFilter(stat.filter === "terminated" ? "all" : stat.filter)}
-                className={cn(
-                  "group p-4 rounded-2xl border transition-all text-left",
-                  stat.tone,
-                  statusFilter === stat.filter && "ring-2 ring-amber-400/60 ring-offset-2 ring-offset-slate-950"
-                )}
-              >
-                <p className="text-[10px] uppercase tracking-widest text-white/50 mb-1.5 font-bold">{stat.label}</p>
-                <p className={cn("text-[32px] leading-none font-black tabular-nums", stat.color)}>{stat.value}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 2026-06-14 BIG-PROMPT · Visible counter so Sam can SEE every applicant is loaded.
-          Sam's repeating complaint: "missing applications". This proves none are hidden. */}
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-          </span>
-          <p className="text-xs sm:text-sm font-semibold text-white tabular-nums">
-            Showing <span className="text-amber-300 font-black">{filteredApplications.length.toLocaleString()}</span>
-            <span className="text-white/60"> of </span>
-            <span className="text-emerald-300 font-black">{counterTotal.toLocaleString()}</span>
-            <span className="text-white/60"> total {counterLabel}</span>
-            {statusFilter !== "terminated" && (
-              <>
-                <span className="text-white/30"> · </span>
-                <span className="text-white/60">duplicates </span>
-                <span className="text-amber-300 font-black">{activeDuplicateCount.toLocaleString()}</span>
-                <span className="text-white/60">{showDuplicates ? " shown" : " hidden"}</span>
-              </>
-            )}
-          </p>
-        </div>
-        {filteredApplications.length < counterTotal && (
-          <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
-            {counterTotal - filteredApplications.length} hidden by filters
-          </Badge>
-        )}
+          >
+            <span className="block text-[11px] font-medium text-muted-foreground">{stat.label}</span>
+            <span className="text-lg font-semibold tabular-nums">{stat.value.toLocaleString()}</span>
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -1616,9 +874,6 @@ export default function DashboardApplicants() {
             <SelectItem value="oldest">Oldest First</SelectItem>
           </SelectContent>
         </Select>
-        {/* Section 9 (2026-06-15) · Agent (recruiter) filter dropdown.
-            Only renders when there's at least one recruiter on the loaded set,
-            otherwise it would just be a noisy empty pill. */}
         {recruiterOptions.length > 0 && (
           <Select value={agentFilter} onValueChange={setAgentFilter}>
             <SelectTrigger className="w-full sm:w-44 bg-input">
@@ -1633,8 +888,6 @@ export default function DashboardApplicants() {
             </SelectContent>
           </Select>
         )}
-        {/* Section 9 · Upline (recruiter's manager) filter dropdown. Hidden
-            when no upline hierarchy is populated on the loaded set. */}
         {uplineOptions.length > 0 && (
           <Select value={uplineFilter} onValueChange={setUplineFilter}>
             <SelectTrigger className="w-full sm:w-44 bg-input">
@@ -1649,8 +902,6 @@ export default function DashboardApplicants() {
             </SelectContent>
           </Select>
         )}
-        {/* Section 9 · Interview status filter. Reads from scheduled_interviews
-            (only 2 prod rows today, but cheap to expose). */}
         <Select value={interviewFilter} onValueChange={setInterviewFilter}>
           <SelectTrigger className="w-full sm:w-44 bg-input">
             <Calendar className="h-4 w-4 mr-2" />
@@ -1662,7 +913,6 @@ export default function DashboardApplicants() {
             <SelectItem value="none">No interview yet</SelectItem>
           </SelectContent>
         </Select>
-        {/* Section 9 · Needs follow-up toggle. created_at > 48h AND no contact. */}
         <Button
           variant={needsFollowupOnly ? "default" : "outline"}
           size="sm"
@@ -1716,23 +966,17 @@ export default function DashboardApplicants() {
         )}
       </div>
 
-      {/* Kanban View */}
       {viewMode === "kanban" ? (
         <div>
           <KanbanBoard
             applications={kanbanApps}
             onStageChange={handleKanbanStageChange}
             onCardClick={(app) => setNotesApp(applications.find(a => a.id === app.id) || null)}
-            onScheduleInterview={(app) => {
-              setSchedulerApp(applications.find(a => a.id === app.id) || null);
-              setSchedulerOpen(true);
-            }}
             readOnly={!isAdmin && !isManager}
           />
         </div>
       ) : (
         <>
-          {/* Applicants Table */}
           <div>
             {filteredApplications.length > 0 ? (
               <div className="relative w-full overflow-auto border border-border rounded-md max-h-[calc(100vh-280px)] overflow-y-auto">
@@ -1834,7 +1078,6 @@ export default function DashboardApplicants() {
                           </td>
                           <td className="p-3 align-middle text-xs">
                             {app.assigned_agent_id ? (
-                              // 2026-06-15 — click opens AgentProfileDrawer for the assigned recruiter
                               <AgentNameLink agentId={app.assigned_agent_id} variant="bare">
                                 <Badge variant="outline" className="bg-violet-500/10 text-primary border-violet-500/30 text-[10px] hover:bg-violet-500/20 cursor-pointer">
                                   {managerNames.get(app.assigned_agent_id) || "Manager"}
@@ -1846,10 +1089,6 @@ export default function DashboardApplicants() {
                           </td>
                           <td className="p-3 align-middle text-xs">
                             {(() => {
-                              // Upline = recruiter's manager. Two-hop: applicant
-                              // -> recruiter -> recruiter.manager_id -> name.
-                              // Sam never wants "Unknown" anywhere — show "—" if
-                              // any hop is missing (no recruiter, no hierarchy).
                               const recruiter = app.recruiter_id
                                 ? recruiterDirectory.get(app.recruiter_id)
                                 : null;
@@ -1870,7 +1109,6 @@ export default function DashboardApplicants() {
                                 );
                               }
                               return (
-                                // 2026-06-15 — click opens AgentProfileDrawer for the upline manager
                                 recruiter?.uplineId ? (
                                   <AgentNameLink agentId={recruiter.uplineId} variant="bare">
                                     <Badge
@@ -2000,103 +1238,39 @@ export default function DashboardApplicants() {
                 </table>
               </div>
             ) : (
-              <div className="border border-border rounded-md p-12 text-center">
-                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  {isLoading ? "Loading applications…" : activeApplications.length === 0 ? "No active applications fetched" : "Filters are hiding everything"}
-                </h3>
-                {/* 2026-06-15 v7.1 · Sam: "I still see no applications." 99% of
-                    the time the fetch returned hundreds of rows but client-side
-                    filters reduced them to 0. Diagnostic panel below makes that
-                    visible + offers a one-tap reset. */}
-                {!isLoading && (
-                  <div className="space-y-3 max-w-md mx-auto">
-                    <p className="text-13 text-muted-foreground">
-                      Fetched <span className="font-bold text-foreground tabular-nums">{activeApplications.length.toLocaleString()}</span> active applications
-                      from the database{terminatedApplications.length > 0 && <> · <span className="font-bold text-foreground tabular-nums">{terminatedApplications.length.toLocaleString()}</span> terminated</>}.
-                    </p>
-                    {activeApplications.length === 0 ? (
-                      <div className="text-12 text-rose-600 dark:text-rose-400">
-                        Zero rows came back from the database. Likely causes:
-                        <ul className="list-disc list-inside mt-2 text-left">
-                          <li>Your session expired (try logging out + back in)</li>
-                          <li>Your role lost admin grant (check user_roles)</li>
-                          <li>RLS policy regression (check Supabase logs)</li>
-                        </ul>
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-12 text-amber-600 dark:text-amber-400">
-                          But the filters below match <span className="font-bold tabular-nums">0</span>.
-                          The data IS there — your filters are hiding it.
-                        </p>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => {
-                            setSearchQuery("");
-                            setStatusFilter("all"); // Clear-filters button shows everything
-                            setLicenseFilter("all");
-                            setMyDirectsOnly(false);
-                            setHotLeadsOnly(false);
-                            setShowDuplicates(true);
-                            // Section 9 · also reset the new filters so the
-                            // "show everything" button actually shows everything.
-                            setAgentFilter("all");
-                            setUplineFilter("all");
-                            setInterviewFilter("all");
-                            setNeedsFollowupOnly(false);
-                            // Clear URL params that may also be filtering
-                            const params = new URLSearchParams(searchParams);
-                            params.delete("status");
-                            params.delete("license");
-                            params.delete("contacted");
-                            params.delete("stage");
-                            setSearchParams(params, { replace: true });
-                          }}
-                          className="bg-amber-500 hover:bg-amber-400 text-slate-950"
-                        >
-                          Clear all filters · show {activeApplications.length.toLocaleString()} applications
-                        </Button>
-                      </>
-                    )}
-                  </div>
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border px-4 py-3 text-sm">
+                <span className="text-muted-foreground">
+                  {activeApplications.length === 0 ? "No active applications fetched." : "No applicants match the current filters."}
+                </span>
+                {activeApplications.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setStatusFilter("all");
+                      setLicenseFilter("all");
+                      setMyDirectsOnly(false);
+                      setHotLeadsOnly(false);
+                      setShowDuplicates(true);
+                      setAgentFilter("all");
+                      setUplineFilter("all");
+                      setInterviewFilter("all");
+                      setNeedsFollowupOnly(false);
+                      const params = new URLSearchParams(searchParams);
+                      ["status", "license", "contacted", "stage"].forEach((key) => params.delete(key));
+                      setSearchParams(params, { replace: true });
+                    }}
+                  >
+                    Clear filters
+                  </Button>
                 )}
               </div>
             )}
           </div>
-
-      {/* Terminated Leads Section - Only show when not filtering by terminated */}
-      {statusFilter !== "terminated" && terminatedApplications.length > 0 && (
-        <div className="mt-8">
-          <button
-            onClick={() => setShowTerminated(!showTerminated)}
-            className="w-full flex items-center justify-between p-4 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <XCircle className="h-5 w-5 text-red-400" />
-              <span className="font-semibold text-red-400">
-                Terminated Leads ({terminatedApplications.length})
-              </span>
-            </div>
-            {showTerminated ? (
-              <ChevronUp className="h-5 w-5 text-red-400" />
-            ) : (
-              <ChevronDown className="h-5 w-5 text-red-400" />
-            )}
-          </button>
-
-          {showTerminated && (
-            <div className="space-y-4 mt-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
-              {terminatedApplications.map((app, index) => renderApplicationCard(app, index, true))}
-            </div>
-          )}
-        </div>
-      )}
         </>
       )}
 
-      {/* Notes Modal */}
       {notesApp && (
         <ApplicantNotes
           applicationId={notesApp.id}
@@ -2107,7 +1281,6 @@ export default function DashboardApplicants() {
         />
       )}
 
-      {/* Interview Recorder Modal */}
       {recorderApp && agentId && (
         <InterviewRecorder
           applicationId={recorderApp.id}
@@ -2118,7 +1291,6 @@ export default function DashboardApplicants() {
         />
       )}
 
-      {/* Terminate Confirmation Modal */}
       <Dialog open={!!terminateApp} onOpenChange={(open) => !open && setTerminateApp(null)}>
         <DialogContent>
           <DialogHeader>
@@ -2158,30 +1330,11 @@ export default function DashboardApplicants() {
         </DialogContent>
       </Dialog>
 
-      {/* Contracted Modal */}
-      {contractedApp && agentId && (
-        <ContractedModal
-          open={!!contractedApp}
-          onOpenChange={(open) => !open && setContractedApp(null)}
-          application={contractedApp}
-          agentId={agentId}
-          onSuccess={() => {
-            fetchApplications();
-          }}
-        />
-      )}
-
-      {/* Lead Qualification Chat */}
       <LeadQualificationChat />
     </>
   );
 }
 
-/* 2026-06-15 v7.4 · MANAGER REFERRAL LINK BANNER
- * Sam: "Managers should have their referral links so they can copy + paste
- * automatically, mark them down as the referral."
- * Reads the manager's agent_code from `agents` table · constructs the public
- * apply URL · shows copy + click-to-open + share buttons. */
 function ReferralLinkBanner({ agentId }: { agentId: string }) {
   const [copied, setCopied] = useState(false);
   const codeQuery = useQuery({
@@ -2219,7 +1372,7 @@ function ReferralLinkBanner({ agentId }: { agentId: string }) {
           url,
         });
       } catch {
-        // user canceled · ignore
+        void 0;
       }
     } else {
       copy();

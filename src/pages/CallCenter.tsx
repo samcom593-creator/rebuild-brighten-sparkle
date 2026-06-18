@@ -119,10 +119,16 @@ export default function CallCenter() {
 
       // Fetch aged leads if source filter allows
       if (sourceFilter === "all" || sourceFilter === "aged_leads") {
+        // 2026-06-17 Sam directive: "the button as they start calling runs
+        // way too slow." Was unbounded query against 899 aged_leads + 550
+        // applications + JOIN — ~1500 rows fetched per tap. Cap at 500
+        // (covers ~3 days of dial throughput for a single seat) and load
+        // more on scroll if Sam needs it.
         let query = supabase
           .from("aged_leads")
           .select("id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status, created_at, status, contacted_at, last_contacted_at, assigned_manager_id, agents!aged_leads_assigned_manager_id_fkey(display_name)")
-          .order("created_at", { ascending: sortOrder === "oldest_first" });
+          .order("created_at", { ascending: sortOrder === "oldest_first" })
+          .limit(500);
 
         // Status filter (source-of-truth = contact timestamps)
         if (statusFilter === "new") {
@@ -188,7 +194,8 @@ export default function CallCenter() {
         let appQuery = supabase
           .from("applications")
           .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, hiring_manager_user_id, referral_manager_id, terminated_at, contracted_at, closed_at, agents!applications_assigned_agent_id_fkey(display_name)")
-          .order("created_at", { ascending: sortOrder === "oldest_first" });
+          .order("created_at", { ascending: sortOrder === "oldest_first" })
+          .limit(500);
 
         // Referrer filter — "mine" matches if the agent is the referrer via
         // ANY attribution column (assigned_agent_id / referral_manager_id /

@@ -58,6 +58,7 @@ import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { PromoteApplicantButton } from "@/components/applicants/PromoteApplicantButton";
 import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton";
+import { InlineEditApplicantField } from "@/components/applicants/InlineEditApplicantField";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { KanbanBoard, type KanbanStage } from "@/components/pipeline/KanbanBoard";
 import type { PipelineCardData } from "@/components/pipeline/PipelineCard";
@@ -1047,15 +1048,24 @@ export default function DashboardApplicants() {
                               <span className="text-muted-foreground text-xs">—</span>
                             )}
                           </td>
-                          <td className="p-3 align-middle">
-                            <span className="text-muted-foreground">{app.email}</span>
+                          <td className="p-3 align-middle text-muted-foreground">
+                            {/* 2026-06-17 Sam: inline-edit any applicant field. */}
+                            <InlineEditApplicantField
+                              applicationId={app.id}
+                              field="email"
+                              value={app.email}
+                              placeholder="email"
+                              onSaved={fetchApplications}
+                            />
                           </td>
-                          <td className="p-3 align-middle">
-                            {app.phone ? (
-                              <span className="text-muted-foreground select-all cursor-text" onClick={(e) => e.stopPropagation()}>{app.phone}</span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
+                          <td className="p-3 align-middle text-muted-foreground">
+                            <InlineEditApplicantField
+                              applicationId={app.id}
+                              field="phone"
+                              value={app.phone}
+                              placeholder="phone"
+                              onSaved={fetchApplications}
+                            />
                           </td>
                           <td className="p-3 align-middle">
                             <Badge variant="outline" className={cn("capitalize text-[10px]", statusColors[status])}>

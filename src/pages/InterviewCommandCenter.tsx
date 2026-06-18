@@ -180,9 +180,15 @@ export default function InterviewCommandCenter() {
     const timestamp = value ?? new Date().toISOString();
     setSavingKey(key);
     try {
+      // For application source the row.id is `application:<uuid>` — unwrap for the RPC.
+      const realId = row.source === "application" && typeof row.id === "string" && row.id.startsWith("application:")
+        ? row.id.slice("application:".length)
+        : row.source === "calendly" && typeof row.id === "string" && row.id.startsWith("calendly:")
+          ? row.id.slice("calendly:".length)
+          : row.id;
       const { error } = await (supabase as any).rpc("disposition_interview", {
         p_source: row.source,
-        p_id: row.id,
+        p_id: realId,
         p_field: field,
         p_value: field === "notes" ? value ?? "" : timestamp,
       });
@@ -199,6 +205,71 @@ export default function InterviewCommandCenter() {
       if (field === "notes") patchCachedRow(row, { outcome_notes: value?.trim() || null });
 
       toast.success(successLabel(field));
+
+      // 2026-06-18 Sam directive: clicking Contracted or Hired must
+      // (a) auto-promote the applicant to an agent (creates the CRM row),
+      // (b) auto-queue + fire course + Discord emails,
+      // (c) open the AgentLink contractor/invite link in a new tab so
+      //     Sam can finish the AgentLink-side flow.
+      if (field === "contracted" || field === "hired") {
+        try {
+          let newAgentId: string | null = null;
+          if (row.source === "application") {
+            // Source application — promote it.
+            const { data, error: promErr } = await (supabase as any).rpc("promote_applicant_to_agent", {
+              p_application_id: realId,
+            });
+            if (!promErr && data) {
+              newAgentId = data as string;
+              toast.success(`${row.candidate_name} promoted to Agent`);
+            }
+          }
+          // For manual entries linked to an application, the source_application_id
+          // points at the underlying application.
+          if (!newAgentId && row.source === "manual") {
+            const { data: link } = await (supabase as any)
+              .from("manual_interview_entries")
+              .select("source_application_id")
+              .eq("id", realId)
+              .maybeSingle();
+            const appId = (link as any)?.source_application_id;
+            if (appId) {
+              const { data, error: promErr } = await (supabase as any).rpc("promote_applicant_to_agent", {
+                p_application_id: appId,
+              });
+              if (!promErr && data) {
+                newAgentId = data as string;
+                toast.success(`${row.candidate_name} promoted to Agent`);
+              }
+            }
+          }
+
+          // Queue + fire course + Discord regardless of whether we just
+          // promoted (idempotent — upsert + drain).
+          if (newAgentId) {
+            await (supabase as any)
+              .from("agent_onboarding_queue")
+              .upsert(
+                [
+                  { agent_id: newAgentId, email_kind: "course",  target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
+                  { agent_id: newAgentId, email_kind: "discord", target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
+                ],
+                { onConflict: "agent_id,email_kind" },
+              );
+            await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
+            toast.success("Course + Discord emails fired");
+          }
+
+          // Open AgentLink contractor / invite page in a new tab so Sam can
+          // finish the AgentLink-side contracting flow.
+          const agentlinkInviteUrl = "https://agentlink.insuracloud.ai/admin/agents/invite";
+          window.open(agentlinkInviteUrl, "_blank", "noopener,noreferrer");
+        } catch (autoErr: any) {
+          // Don't block the disposition save on the automation; just toast.
+          toast.error(`Auto-onboarding partial: ${autoErr?.message?.slice(0, 80) ?? "unknown"}`);
+        }
+      }
+
       await queryClient.invalidateQueries({ queryKey: ["interviews-unified", JUNE_START] });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Update failed";

@@ -60,7 +60,11 @@ const AREAS = [
   // touches DashboardApplicants.tsx fetch logic (zero new gradients).
   // This bump reflects current measured state without introducing any
   // new gradient · prevents pre-commit drift-block on unrelated commits.
-  { dir: "src/pages", baseline: 68 },
+  // 2026-06-18 Sam directive: 'Make interviews look way better to the eyes,
+  // more UX effects, more pleasant.' InterviewCommandCenter card tone
+  // gradients + avatar gradients added 13 decorative bg-gradients (one per
+  // disposition state × 2 surfaces — card bg + avatar). Bumped 68→81.
+  { dir: "src/pages", baseline: 81 },
   { dir: "src/components/landing", baseline: 0 },
   { dir: "src/components/recruiter", baseline: 0 },
   // wave-64 (v24/v25 codemod-cleaned sibling component trees, all at 0)

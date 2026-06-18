@@ -345,36 +345,81 @@ function InterviewCard({
   const handle = normalizeHandle(row.instagram_handle);
   const tone = rowTone(row);
 
+  // 2026-06-18 UI polish: avatar from initials, bigger header, hover lift.
+  const initials = (row.candidate_name ?? "—")
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   return (
-    <article className={cn("overflow-hidden rounded-md border bg-card p-3 transition-colors sm:p-4", tone.card)}>
-      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h2 className={cn("min-w-0 truncate text-xl font-black leading-tight", tone.title)}>
-              {row.candidate_name}
-            </h2>
-            <Badge variant="outline" className="shrink-0 text-[11px]">
-              {typeLabel(row.interview_type)}
-            </Badge>
-            <Badge variant="outline" className={cn("shrink-0 text-[11px]", sourceTone(row.source))}>
-              {SOURCE_LABEL[row.source]}
-            </Badge>
+    <article className={cn(
+      "group relative overflow-hidden rounded-2xl border bg-card p-4 sm:p-5 transition-all duration-200",
+      "hover:shadow-xl hover:-translate-y-0.5 hover:border-opacity-100",
+      tone.card,
+    )}>
+      {/* subtle glow on hover */}
+      <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-white/[0.02] to-transparent" />
+
+      <div className="relative flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex items-start gap-3 flex-1">
+          {/* Initials avatar */}
+          <div className={cn(
+            "shrink-0 h-11 w-11 rounded-full ring-2 ring-background flex items-center justify-center font-black tabular-nums text-base select-none",
+            tone.avatarBg ?? "bg-gradient-to-br from-slate-700 to-slate-800 text-slate-100",
+          )}>
+            {initials || "—"}
           </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <Badge variant="secondary" className="text-[11px]">
-              {formatBusinessTimeWithDay(row.scheduled_at)}
-            </Badge>
-            <Badge variant="outline" className="text-[11px]">
-              {formatRelativeFromNow(row.scheduled_at)}
-            </Badge>
-            {row.contracted_at && (
-              <Badge variant="outline" className="border-violet-500/30 bg-violet-500/10 text-[11px] text-violet-300">
-                Contracted
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <h2 className={cn("min-w-0 truncate text-xl sm:text-2xl font-black leading-tight tracking-tight", tone.title)}>
+                {row.candidate_name}
+              </h2>
+              <Badge variant="outline" className="shrink-0 text-[10px] uppercase tracking-wider font-bold">
+                {typeLabel(row.interview_type)}
               </Badge>
-            )}
+              <Badge variant="outline" className={cn("shrink-0 text-[10px] uppercase tracking-wider font-bold", sourceTone(row.source))}>
+                {SOURCE_LABEL[row.source]}
+              </Badge>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <Badge variant="secondary" className="text-[11px] font-mono tabular-nums">
+                {formatBusinessTimeWithDay(row.scheduled_at)}
+              </Badge>
+              <Badge variant="outline" className="text-[11px] font-semibold text-amber-400 border-amber-400/30 bg-amber-400/5">
+                {formatRelativeFromNow(row.scheduled_at)}
+              </Badge>
+              {row.contracted_at && (
+                <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/15 text-[11px] text-emerald-300 font-bold">
+                  ✅ Contracted
+                </Badge>
+              )}
+              {row.hired_at && !row.contracted_at && (
+                <Badge variant="outline" className="border-amber-500/40 bg-amber-500/15 text-[11px] text-amber-200 font-bold">
+                  🎯 Hired
+                </Badge>
+              )}
+              {row.no_show_at && (
+                <Badge variant="outline" className="border-rose-500/40 bg-rose-500/15 text-[11px] text-rose-200 font-bold">
+                  🚫 No-show
+                </Badge>
+              )}
+              {row.passed_at && (
+                <Badge variant="outline" className="border-slate-500/40 bg-slate-500/15 text-[11px] text-slate-300 font-bold">
+                  Pass
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
-        {busy && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />}
+        {busy && (
+          <div className="shrink-0 flex items-center gap-1.5 text-muted-foreground text-xs">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>saving…</span>
+          </div>
+        )}
       </div>
 
       {/* 2026-06-17 Sam directive: extended dispositions — Contacted (initial
@@ -606,53 +651,60 @@ function InterviewSkeleton() {
 }
 
 function rowTone(row: UnifiedInterview) {
-  // 2026-06-18 — extended tones to match the 8 disposition states shipped in
-  // 30a002eb. Order matters: terminal states first, then in-progress.
+  // 2026-06-18 polish: extended tones include avatar background gradient.
   if (row.no_show_at) {
     return {
-      card: "border-rose-500/40 bg-rose-500/10",
+      card: "border-rose-500/40 bg-gradient-to-br from-rose-500/10 to-rose-500/5",
       title: "text-rose-100",
+      avatarBg: "bg-gradient-to-br from-rose-500 to-rose-700 text-white shadow-rose-500/40 shadow-md",
     };
   }
   if (row.passed_at) {
     return {
       card: "border-slate-500/25 bg-slate-500/5 opacity-75",
       title: "text-slate-200",
+      avatarBg: "bg-gradient-to-br from-slate-600 to-slate-800 text-slate-200",
     };
   }
   if (row.contracted_at) {
     return {
-      card: "border-emerald-500/55 bg-emerald-500/15",
+      card: "border-emerald-500/55 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5",
       title: "text-emerald-50",
+      avatarBg: "bg-gradient-to-br from-emerald-400 to-emerald-700 text-white shadow-emerald-500/40 shadow-md",
     };
   }
   if (row.hired_at) {
     return {
-      card: "border-amber-500/45 bg-amber-500/10",
+      card: "border-amber-500/45 bg-gradient-to-br from-amber-500/10 to-amber-500/5",
       title: "text-amber-100",
+      avatarBg: "bg-gradient-to-br from-amber-400 to-amber-700 text-white shadow-amber-500/40 shadow-md",
     };
   }
   if (row.rescheduled_at && !row.called_at) {
     return {
-      card: "border-violet-500/40 bg-violet-500/10",
+      card: "border-violet-500/40 bg-gradient-to-br from-violet-500/10 to-violet-500/5",
       title: "text-violet-100",
+      avatarBg: "bg-gradient-to-br from-violet-500 to-violet-700 text-white",
     };
   }
   if (row.called_at) {
     return {
-      card: "border-emerald-500/40 bg-emerald-500/10",
+      card: "border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5",
       title: "text-emerald-100",
+      avatarBg: "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white",
     };
   }
   if (row.contacted_at) {
     return {
-      card: "border-sky-500/40 bg-sky-500/10",
+      card: "border-sky-500/40 bg-gradient-to-br from-sky-500/10 to-sky-500/5",
       title: "text-sky-100",
+      avatarBg: "bg-gradient-to-br from-sky-500 to-sky-700 text-white",
     };
   }
   return {
-    card: "border-border",
+    card: "border-border bg-gradient-to-br from-card/80 to-card/40",
     title: "text-foreground",
+    avatarBg: "bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 text-amber-950 shadow-md shadow-amber-500/30",
   };
 }
 

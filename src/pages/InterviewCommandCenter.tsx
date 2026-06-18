@@ -1,52 +1,34 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, formatDistanceToNowStrict } from "date-fns";
 import {
-  AlertTriangle,
-  BadgeCheck,
-  Briefcase,
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
-  Clock,
-  Copy,
-  ExternalLink,
   FileText,
   Filter,
   Instagram,
+  Loader2,
   Mail,
-  Plus,
+  Phone,
   PhoneCall,
   RefreshCw,
-  RotateCcw,
-  Save,
   Search,
-  Send,
   StickyNote,
-  TrendingUp,
-  UserCheck,
-  Users,
+  Trophy,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { formatBusinessTimeWithDay, formatRelativeFromNow } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -54,1467 +36,204 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 
-type InterviewKind =
-  | "licensed_prospect"
-  | "licensed_call"
-  | "leader_call"
-  | "final_expense_review"
-  | "callback";
+type InterviewSource = "manual" | "calendly" | "application";
+type SourceFilter = InterviewSource | "all";
+type DateFilter = "today" | "week" | "month";
+type DispositionField = "called" | "hired" | "passed" | "notes";
 
-type ReviewStatus =
-  | "needs_review"
-  | "contacted"
-  | "follow_up"
-  | "selected"
-  | "contracted"
-  | "hired"
-  | "passed"
-  | "no_show"
-  | "not_fit"
-  | "ghosted";
-
-interface InterviewEvent {
+interface UnifiedInterview {
   id: string;
-  person: string;
-  startAt: string;
-  endAt: string;
-  title: string;
-  kind: InterviewKind;
-  alias?: string;
-  instagramHandle?: string;
-  conflict?: boolean;
-}
-
-interface Candidate {
-  id: string;
-  name: string;
-  alias?: string;
-  seedInstagram?: string;
-  events: InterviewEvent[];
-  firstAt: string;
-  latestAt: string;
-  hasConflict: boolean;
-  hasCallback: boolean;
-  hasLeaderCall: boolean;
-  hasLicensedCall: boolean;
-  manualRows: ManualInterviewRow[];
-  primaryEmail?: string;
-  primaryPhone?: string;
-}
-
-interface CandidateDraft {
-  reviewStatus: ReviewStatus;
-  contracted: boolean;
-  hired: boolean;
-  outcome: string;
-  instagramHandle: string;
-  monthlyProduction: string;
-  legs: string;
-  sourceNotes: string;
-  transcription: string;
-  leaderNotes: string;
-  nextStep: string;
-  updatedAt: string;
-}
-
-interface ApplicationMatchRow {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  email: string | null;
-  phone: string | null;
-  state: string | null;
-  license_status: string | null;
-  status: string | null;
-  license_progress: string | null;
-  instagram_handle: string | null;
-  created_at: string | null;
-  contracted_at: string | null;
-}
-
-interface ManualInterviewRow {
-  id: string;
+  source: InterviewSource;
   candidate_name: string;
   phone: string | null;
   email: string | null;
   instagram_handle: string | null;
   scheduled_at: string;
-  interview_type: string;
-  notes: string | null;
-  confirmation_sent_at: string | null;
-  resend_message_id: string | null;
-  created_at: string;
+  interview_type: string | null;
+  status: string | null;
+  called_at: string | null;
+  hired_at: string | null;
+  passed_at: string | null;
+  contracted_at: string | null;
+  outcome_notes: string | null;
+  agent_id_if_known: string | null;
+  created_at: string | null;
 }
 
-interface NewInterviewForm {
-  candidateName: string;
-  phone: string;
-  email: string;
-  instagramHandle: string;
-  scheduledAt: string;
-  interviewType: InterviewKind;
-  notes: string;
-}
+const JUNE_START = "2026-06-01T00:00:00.000Z";
 
-const EMPTY_NEW_INTERVIEW: NewInterviewForm = {
-  candidateName: "",
-  phone: "",
-  email: "",
-  instagramHandle: "",
-  scheduledAt: "",
-  interviewType: "licensed_prospect",
-  notes: "",
+const DATE_FILTERS: Array<{ key: DateFilter; label: string }> = [
+  { key: "today", label: "Today" },
+  { key: "week", label: "Week" },
+  { key: "month", label: "Month" },
+];
+
+const SOURCE_OPTIONS: Array<{ key: SourceFilter; label: string }> = [
+  { key: "all", label: "All sources" },
+  { key: "manual", label: "Manual" },
+  { key: "calendly", label: "Calendly" },
+  { key: "application", label: "Application" },
+];
+
+const SOURCE_LABEL: Record<InterviewSource, string> = {
+  manual: "Manual",
+  calendly: "Calendly",
+  application: "Application",
 };
-
-const NEW_INTERVIEW_TYPE_OPTIONS: Array<{ key: InterviewKind; label: string }> = [
-  { key: "licensed_prospect", label: "Licensed Prospect Call" },
-  { key: "licensed_call", label: "Licensed Call" },
-  { key: "leader_call", label: "Leader Call (Unlicensed)" },
-  { key: "final_expense_review", label: "Final Expense Review" },
-  { key: "callback", label: "Callback" },
-];
-
-const STORAGE_KEY = "apex.interviewCommandCenter.v1";
-
-const REVIEW_STATUS_OPTIONS: Array<{ key: ReviewStatus; label: string; tone: string }> = [
-  { key: "needs_review", label: "Needs Review", tone: "border-slate-500/30 bg-slate-500/10 text-slate-300" },
-  { key: "contacted", label: "Contacted", tone: "border-sky-500/30 bg-sky-500/10 text-sky-300" },
-  { key: "follow_up", label: "Follow-Up", tone: "border-amber-500/30 bg-amber-500/10 text-amber-300" },
-  { key: "selected", label: "Selected", tone: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300" },
-  { key: "contracted", label: "Contracted", tone: "border-violet-500/30 bg-violet-500/10 text-violet-300" },
-  { key: "hired", label: "Hired", tone: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" },
-  { key: "passed", label: "Passed", tone: "border-zinc-500/30 bg-zinc-500/10 text-zinc-300" },
-  { key: "no_show", label: "No-Show", tone: "border-orange-500/30 bg-orange-500/10 text-orange-300" },
-  { key: "not_fit", label: "Not Fit", tone: "border-rose-500/30 bg-rose-500/10 text-rose-300" },
-  { key: "ghosted", label: "Ghosted", tone: "border-red-500/30 bg-red-500/10 text-red-300" },
-];
-
-const OUTCOME_OPTIONS = [
-  "Unset",
-  "Strong hire",
-  "Contracting next",
-  "Needs follow-up",
-  "Licensed producer",
-  "Leader candidate",
-  "Call-back booked",
-  "No-show",
-  "Not a fit",
-  "Do not pursue",
-];
-
-const INTERVIEW_EVENTS: InterviewEvent[] = [
-  {
-    id: "isaac-foster-2026-05-31-0945",
-    person: "Isaac Foster",
-    startAt: "2026-05-31T09:45:00-07:00",
-    endAt: "2026-05-31T10:00:00-07:00",
-    title: "Licensed Prospect Call",
-    kind: "licensed_prospect",
-  },
-  {
-    id: "taylor-2026-06-02-1345",
-    person: "Taylor",
-    startAt: "2026-06-02T13:45:00-07:00",
-    endAt: "2026-06-02T14:00:00-07:00",
-    title: "Licensed Prospect Call",
-    kind: "licensed_prospect",
-  },
-  {
-    id: "moises-camacho-2026-06-03-1300",
-    person: "Moises Camacho",
-    startAt: "2026-06-03T13:00:00-07:00",
-    endAt: "2026-06-03T13:15:00-07:00",
-    title: "Licensed Prospect Call",
-    kind: "licensed_prospect",
-  },
-  {
-    id: "moises-camacho-2026-06-03-1315",
-    person: "Moises Camacho",
-    startAt: "2026-06-03T13:15:00-07:00",
-    endAt: "2026-06-03T13:30:00-07:00",
-    title: "Licensed Prospect Call",
-    kind: "licensed_prospect",
-  },
-  {
-    id: "pranac-kodali-2026-06-04-1000",
-    person: "Pranac Kodali",
-    startAt: "2026-06-04T10:00:00-07:00",
-    endAt: "2026-06-04T10:15:00-07:00",
-    title: "Licensed Prospect Call",
-    kind: "licensed_prospect",
-  },
-  {
-    id: "francisco-palomares-2026-06-09-1415",
-    person: "Francisco Palomares",
-    startAt: "2026-06-09T14:15:00-07:00",
-    endAt: "2026-06-09T14:30:00-07:00",
-    title: "Licensed Prospect Call",
-    kind: "licensed_prospect",
-  },
-  {
-    id: "ibrahiim-dixon-2026-06-09-2130",
-    person: "Ibrahiim Dixon",
-    startAt: "2026-06-09T21:30:00-07:00",
-    endAt: "2026-06-09T21:45:00-07:00",
-    title: "Licensed Prospect Call",
-    kind: "licensed_prospect",
-    conflict: true,
-  },
-  {
-    id: "anthony-chinn-2026-06-11-2000",
-    person: "Anthony Chinn",
-    startAt: "2026-06-11T20:00:00-07:00",
-    endAt: "2026-06-11T20:15:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "ibrahiim-dixon-2026-06-12-1145",
-    person: "Ibrahiim Dixon",
-    startAt: "2026-06-12T11:45:00-07:00",
-    endAt: "2026-06-12T12:00:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "mase-2026-06-12-1200",
-    person: "Mase",
-    startAt: "2026-06-12T12:00:00-07:00",
-    endAt: "2026-06-12T12:15:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-    instagramHandle: "masendinh",
-  },
-  {
-    id: "moe-swole-2026-06-12-1400",
-    person: "Moe Swole",
-    startAt: "2026-06-12T14:00:00-07:00",
-    endAt: "2026-06-12T14:15:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "colin-jackson-2026-06-12-1430",
-    person: "Colin Jackson",
-    startAt: "2026-06-12T14:30:00-07:00",
-    endAt: "2026-06-12T14:45:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "taysakk-2026-06-12-1530",
-    person: "Taysakk",
-    alias: "LONEWOLF",
-    startAt: "2026-06-12T15:30:00-07:00",
-    endAt: "2026-06-12T15:45:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "haylee-ashe-2026-06-12-1600",
-    person: "Haylee Ashe",
-    startAt: "2026-06-12T16:00:00-07:00",
-    endAt: "2026-06-12T16:15:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "jaymin-matthes-2026-06-12-1615",
-    person: "Jaymin Matthes",
-    startAt: "2026-06-12T16:15:00-07:00",
-    endAt: "2026-06-12T16:30:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "reid-weckwerth-2026-06-12-1630",
-    person: "Reid Weckwerth",
-    startAt: "2026-06-12T16:30:00-07:00",
-    endAt: "2026-06-12T16:45:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "haylee-ashe-2026-06-12-1700",
-    person: "Haylee Ashe",
-    startAt: "2026-06-12T17:00:00-07:00",
-    endAt: "2026-06-12T17:15:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "merice-caleb-2026-06-12-1715",
-    person: "merice caleb",
-    startAt: "2026-06-12T17:15:00-07:00",
-    endAt: "2026-06-12T17:30:00-07:00",
-    title: "Preferred Final Expense Review",
-    kind: "final_expense_review",
-  },
-  {
-    id: "eugene-tomanpos-2026-06-12-1830",
-    person: "Eugene Tomanpos",
-    startAt: "2026-06-12T18:30:00-07:00",
-    endAt: "2026-06-12T18:45:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "joshghuncho-2026-06-12-2000",
-    person: "JoshgHuncho",
-    startAt: "2026-06-12T20:00:00-07:00",
-    endAt: "2026-06-12T20:15:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "mj-2026-06-13-1200",
-    person: "MJ",
-    startAt: "2026-06-13T12:00:00-07:00",
-    endAt: "2026-06-13T12:15:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "derek-fredrick-2026-06-13-1300",
-    person: "Derek Fredrick",
-    startAt: "2026-06-13T13:00:00-07:00",
-    endAt: "2026-06-13T13:15:00-07:00",
-    title: "Licensed Call",
-    kind: "licensed_call",
-  },
-  {
-    id: "matthew-2026-06-13-1400",
-    person: "Matthew",
-    startAt: "2026-06-13T14:00:00-07:00",
-    endAt: "2026-06-13T14:15:00-07:00",
-    title: "Leader Call",
-    kind: "leader_call",
-  },
-  {
-    id: "annas-yassin-2026-06-13-2200",
-    person: "Annas Yassin",
-    startAt: "2026-06-13T22:00:00-07:00",
-    endAt: "2026-06-13T22:15:00-07:00",
-    title: "Leader Call",
-    kind: "leader_call",
-  },
-  {
-    id: "mj-2026-06-14-1100",
-    person: "MJ",
-    startAt: "2026-06-14T11:00:00-07:00",
-    endAt: "2026-06-14T11:20:00-07:00",
-    title: "CALL: MJ (Licensed Call-Back)",
-    kind: "callback",
-  },
-  {
-    id: "derek-fredrick-2026-06-14-1120",
-    person: "Derek Fredrick",
-    startAt: "2026-06-14T11:20:00-07:00",
-    endAt: "2026-06-14T11:40:00-07:00",
-    title: "CALL: Derek Fredrick (Licensed Call-Back)",
-    kind: "callback",
-  },
-  {
-    id: "matthew-2026-06-14-1140",
-    person: "Matthew",
-    startAt: "2026-06-14T11:40:00-07:00",
-    endAt: "2026-06-14T12:00:00-07:00",
-    title: "CALL: Matthew (Leader Call - Unlicensed)",
-    kind: "callback",
-  },
-  {
-    id: "annas-yassin-2026-06-14-1200",
-    person: "Annas Yassin",
-    startAt: "2026-06-14T12:00:00-07:00",
-    endAt: "2026-06-14T12:20:00-07:00",
-    title: "CALL: Annas Yassin (Leader Call - Spain)",
-    kind: "callback",
-  },
-];
-
-function normalizeHandle(handle: string): string {
-  return handle.trim().replace(/^@+/, "");
-}
-
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-function normalizeName(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-function manualKind(raw: string): InterviewKind {
-  switch (raw) {
-    case "licensed_prospect":
-    case "licensed_call":
-    case "leader_call":
-    case "final_expense_review":
-    case "callback":
-      return raw;
-    case "unlicensed_lead":
-      return "leader_call";
-    default:
-      return "licensed_prospect";
-  }
-}
-
-function manualToEvent(row: ManualInterviewRow): InterviewEvent {
-  const start = new Date(row.scheduled_at);
-  const end = new Date(start.getTime() + 15 * 60 * 1000);
-  return {
-    id: `manual-${row.id}`,
-    person: row.candidate_name,
-    startAt: row.scheduled_at,
-    endAt: end.toISOString(),
-    title: NEW_INTERVIEW_TYPE_OPTIONS.find((option) => option.key === manualKind(row.interview_type))?.label
-      ?? "Interview",
-    kind: manualKind(row.interview_type),
-    instagramHandle: row.instagram_handle ? normalizeHandle(row.instagram_handle) : undefined,
-  };
-}
-
-function buildCandidates(events: InterviewEvent[], manualRows: ManualInterviewRow[]): Candidate[] {
-  const byPerson = new Map<string, InterviewEvent[]>();
-  const manualByPerson = new Map<string, ManualInterviewRow[]>();
-
-  for (const event of events) {
-    const key = normalizeName(event.person);
-    byPerson.set(key, [...(byPerson.get(key) ?? []), event]);
-  }
-  for (const row of manualRows) {
-    const key = normalizeName(row.candidate_name);
-    if (!key) continue;
-    byPerson.set(key, [...(byPerson.get(key) ?? []), manualToEvent(row)]);
-    manualByPerson.set(key, [...(manualByPerson.get(key) ?? []), row]);
-  }
-
-  return Array.from(byPerson.entries())
-    .map(([key, personEvents]) => {
-      const sorted = [...personEvents].sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
-      const seedInstagram = sorted.find((event) => event.instagramHandle)?.instagramHandle;
-      const alias = sorted.find((event) => event.alias)?.alias;
-      const rows = manualByPerson.get(key) ?? [];
-      const primaryEmail = rows.find((row) => row.email && row.email.trim())?.email?.trim();
-      const primaryPhone = rows.find((row) => row.phone && row.phone.trim())?.phone?.trim();
-      return {
-        id: slugify(key),
-        name: sorted[0].person,
-        alias,
-        seedInstagram,
-        events: sorted,
-        firstAt: sorted[0].startAt,
-        latestAt: sorted[sorted.length - 1].startAt,
-        hasConflict: sorted.some((event) => event.conflict),
-        hasCallback: sorted.some((event) => event.kind === "callback"),
-        hasLeaderCall: sorted.some((event) => event.kind === "leader_call"),
-        hasLicensedCall: sorted.some((event) => event.kind === "licensed_call" || event.kind === "licensed_prospect"),
-        manualRows: rows,
-        primaryEmail,
-        primaryPhone,
-      };
-    })
-    .sort((a, b) => Date.parse(b.latestAt) - Date.parse(a.latestAt));
-}
-
-function defaultDraft(candidate?: Candidate, match?: ApplicationMatchRow | null): CandidateDraft {
-  return {
-    reviewStatus: "needs_review",
-    contracted: Boolean(match?.contracted_at),
-    hired: false,
-    outcome: "Unset",
-    instagramHandle: normalizeHandle(candidate?.seedInstagram ?? match?.instagram_handle ?? ""),
-    monthlyProduction: "",
-    legs: "",
-    sourceNotes: "",
-    transcription: "",
-    leaderNotes: "",
-    nextStep: "",
-    updatedAt: "",
-  };
-}
-
-function loadDrafts(): Record<string, CandidateDraft> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return parsed as Record<string, CandidateDraft>;
-  } catch {
-    return {};
-  }
-}
-
-function formatEventWindow(event: InterviewEvent): string {
-  const start = new Date(event.startAt);
-  const end = new Date(event.endAt);
-  return `${format(start, "EEE, MMM d")} · ${format(start, "h:mm a")} - ${format(end, "h:mm a")}`;
-}
-
-function minutesBetween(startAt: string, endAt: string): number {
-  return Math.max(0, Math.round((Date.parse(endAt) - Date.parse(startAt)) / 60000));
-}
-
-function kindLabel(kind: InterviewKind): string {
-  switch (kind) {
-    case "licensed_prospect":
-      return "Licensed Prospect";
-    case "licensed_call":
-      return "Licensed";
-    case "leader_call":
-      return "Leader";
-    case "final_expense_review":
-      return "Final Expense";
-    case "callback":
-      return "Callback";
-    default:
-      return "Interview";
-  }
-}
-
-function statusMeta(status: ReviewStatus) {
-  return REVIEW_STATUS_OPTIONS.find((option) => option.key === status) ?? REVIEW_STATUS_OPTIONS[0];
-}
-
-function moneyLabel(value: string): string {
-  const n = Number(String(value).replace(/[^0-9.]/g, ""));
-  if (!Number.isFinite(n) || n <= 0) return "$0";
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-}
-
-function copyText(value: string, label: string) {
-  navigator.clipboard.writeText(value).then(
-    () => toast.success(`${label} copied`),
-    () => toast.error("Could not copy"),
-  );
-}
 
 export default function InterviewCommandCenter() {
   usePageTitle("Interviews · APEX");
 
   const queryClient = useQueryClient();
-  const [drafts, setDrafts] = useState<Record<string, CandidateDraft>>(() => loadDrafts());
+  const [dateFilter, setDateFilter] = useState<DateFilter>("month");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "callbacks" | "licensed" | "leaders" | "open" | "done">("all");
-  const [addOpen, setAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState<NewInterviewForm>(EMPTY_NEW_INTERVIEW);
-  const [addSubmitting, setAddSubmitting] = useState(false);
-  const [sendingConfirmationId, setSendingConfirmationId] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
 
-  const manualInterviews = useQuery({
-    queryKey: ["interview-command-manual-entries"],
+  const interviews = useQuery({
+    queryKey: ["interviews-unified", JUNE_START],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("manual_interview_entries")
-        .select("id, candidate_name, phone, email, instagram_handle, scheduled_at, interview_type, notes, confirmation_sent_at, resend_message_id, created_at")
+      const { data, error } = await (supabase as any)
+        .from("v_interviews_unified")
+        .select(
+          "id, source, candidate_name, phone, email, instagram_handle, scheduled_at, interview_type, status, called_at, hired_at, passed_at, contracted_at, outcome_notes, agent_id_if_known, created_at",
+        )
+        .gte("scheduled_at", JUNE_START)
         .order("scheduled_at", { ascending: false })
-        .limit(500);
+        .limit(1500);
       if (error) throw error;
-      return (data ?? []) as unknown as ManualInterviewRow[];
+      return (data ?? []) as UnifiedInterview[];
     },
     staleTime: 30_000,
   });
 
-  // Assistant share token — RLS restricts to current user (or admin), so a
-  // plain SELECT only returns the signed-in user's own active token.
-  const assistantShareToken = useQuery({
-    queryKey: ["interview-command-assistant-share-token"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("assistant_share_tokens" as never)
-        .select("token, label")
-        .eq("is_active", true)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (error) {
-        // Non-fatal — just hide the card.
-        return null as { token: string; label: string } | null;
-      }
-      return (data as unknown) as { token: string; label: string } | null;
-    },
-    staleTime: 5 * 60_000,
-  });
-
-  const candidates = useMemo(
-    () => buildCandidates(INTERVIEW_EVENTS, manualInterviews.data ?? []),
-    [manualInterviews.data],
-  );
-  const [selectedId, setSelectedId] = useState<string>(() => "");
-
-  const applicationMatches = useQuery({
-    queryKey: ["interview-command-application-matches"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("applications")
-        .select("id, first_name, last_name, email, phone, state, license_status, status, license_progress, instagram_handle, created_at, contracted_at")
-        .gte("created_at", "2026-05-01T00:00:00-07:00")
-        .limit(1500);
-      if (error) throw error;
-      return (data ?? []) as unknown as ApplicationMatchRow[];
-    },
-    staleTime: 120_000,
-  });
-
-  const matchesByName = useMemo(() => {
-    const map = new Map<string, ApplicationMatchRow>();
-    for (const row of applicationMatches.data ?? []) {
-      const fullName = normalizeName(`${row.first_name ?? ""} ${row.last_name ?? ""}`);
-      if (fullName && !map.has(fullName)) map.set(fullName, row);
-    }
-    return map;
-  }, [applicationMatches.data]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
-  }, [drafts]);
-
-  useEffect(() => {
-    if (!selectedId && candidates.length) {
-      setSelectedId(candidates[0].id);
-    }
-  }, [candidates, selectedId]);
-
-  const selectedCandidate = candidates.find((candidate) => candidate.id === selectedId) ?? candidates[0];
-  const selectedMatch = selectedCandidate ? matchesByName.get(normalizeName(selectedCandidate.name)) ?? null : null;
-  const selectedDraft = selectedCandidate
-    ? { ...defaultDraft(selectedCandidate, selectedMatch), ...(drafts[selectedCandidate.id] ?? {}) }
-    : defaultDraft();
-
-  const filteredCandidates = useMemo(() => {
-    const term = normalizeName(search);
-    return candidates.filter((candidate) => {
-      const draft = { ...defaultDraft(candidate, matchesByName.get(normalizeName(candidate.name))), ...(drafts[candidate.id] ?? {}) };
-      if (term) {
-        const hay = normalizeName([
-          candidate.name,
-          candidate.alias,
-          candidate.seedInstagram,
-          draft.instagramHandle,
-          draft.outcome,
-          draft.leaderNotes,
-        ].filter(Boolean).join(" "));
-        if (!hay.includes(term)) return false;
-      }
-      if (filter === "callbacks" && !candidate.hasCallback) return false;
-      if (filter === "licensed" && !candidate.hasLicensedCall) return false;
-      if (filter === "leaders" && !candidate.hasLeaderCall) return false;
-      if (filter === "open" && ["hired", "contracted", "passed", "not_fit"].includes(draft.reviewStatus)) return false;
-      if (filter === "done" && !["hired", "contracted", "passed", "not_fit"].includes(draft.reviewStatus)) return false;
-      return true;
+  const scopedRows = useMemo(() => {
+    const rows = interviews.data ?? [];
+    return rows.filter((row) => {
+      if (sourceFilter !== "all" && row.source !== sourceFilter) return false;
+      return isInDateFilter(row.scheduled_at, dateFilter);
     });
-  }, [candidates, drafts, filter, matchesByName, search]);
+  }, [dateFilter, interviews.data, sourceFilter]);
 
-  useEffect(() => {
-    if (!filteredCandidates.length) return;
-    if (!filteredCandidates.some((candidate) => candidate.id === selectedId)) {
-      setSelectedId(filteredCandidates[0].id);
-    }
-  }, [filteredCandidates, selectedId]);
+  const visibleRows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return scopedRows;
+    return scopedRows.filter((row) =>
+      [
+        row.candidate_name,
+        row.email,
+        row.phone,
+        row.instagram_handle,
+        row.interview_type,
+        row.status,
+        row.outcome_notes,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(term),
+    );
+  }, [scopedRows, search]);
 
-  const metrics = useMemo(() => {
-    const draftList = candidates.map((candidate) => ({
-      candidate,
-      draft: { ...defaultDraft(candidate, matchesByName.get(normalizeName(candidate.name))), ...(drafts[candidate.id] ?? {}) },
-    }));
+  const stats = useMemo(() => {
+    const todayStart = startOfToday();
+    const weekStart = startOfWeek(todayStart);
     return {
-      candidates: candidates.length,
-      events: INTERVIEW_EVENTS.length,
-      callbacks: candidates.filter((candidate) => candidate.hasCallback).length,
-      leaders: candidates.filter((candidate) => candidate.hasLeaderCall).length,
-      contracted: draftList.filter(({ draft }) => draft.contracted || draft.reviewStatus === "contracted").length,
-      hired: draftList.filter(({ draft }) => draft.hired || draft.reviewStatus === "hired").length,
+      total: scopedRows.length,
+      calledToday: scopedRows.filter((row) => row.called_at && new Date(row.called_at) >= todayStart).length,
+      hiredThisWeek: scopedRows.filter((row) => row.hired_at && new Date(row.hired_at) >= weekStart).length,
+      pendingCall: scopedRows.filter((row) => !row.called_at && !row.hired_at && !row.passed_at).length,
     };
-  }, [candidates, drafts, matchesByName]);
+  }, [scopedRows]);
 
-  const patchDraft = (patch: Partial<CandidateDraft>) => {
-    if (!selectedCandidate) return;
-    setDrafts((prev) => ({
-      ...prev,
-      [selectedCandidate.id]: {
-        ...defaultDraft(selectedCandidate, selectedMatch),
-        ...(prev[selectedCandidate.id] ?? {}),
-        ...patch,
-        updatedAt: new Date().toISOString(),
-      },
-    }));
+  const patchCachedRow = (row: UnifiedInterview, patch: Partial<UnifiedInterview>) => {
+    queryClient.setQueryData<UnifiedInterview[]>(["interviews-unified", JUNE_START], (current) =>
+      (current ?? []).map((item) =>
+        item.source === row.source && item.id === row.id ? { ...item, ...patch } : item,
+      ),
+    );
   };
 
-  const resetSelected = () => {
-    if (!selectedCandidate) return;
-    setDrafts((prev) => {
-      const next = { ...prev };
-      delete next[selectedCandidate.id];
-      return next;
-    });
-    toast.success("Candidate file reset");
-  };
-
-  const resetAddForm = () => setAddForm(EMPTY_NEW_INTERVIEW);
-
-  const submitAddInterview = async () => {
-    const candidateName = addForm.candidateName.trim();
-    if (!candidateName) {
-      toast.error("Candidate name required");
-      return;
-    }
-    if (!addForm.scheduledAt) {
-      toast.error("Date & time required");
-      return;
-    }
-    const scheduledIso = new Date(addForm.scheduledAt).toISOString();
-    if (Number.isNaN(Date.parse(scheduledIso))) {
-      toast.error("Invalid date & time");
-      return;
-    }
-    setAddSubmitting(true);
+  const saveDisposition = async (
+    row: UnifiedInterview,
+    field: DispositionField,
+    value?: string,
+  ) => {
+    const key = `${row.source}:${row.id}:${field}`;
+    const timestamp = value ?? new Date().toISOString();
+    setSavingKey(key);
     try {
-      const payload = {
-        candidate_name: candidateName,
-        phone: addForm.phone.trim() || null,
-        email: addForm.email.trim() || null,
-        instagram_handle: addForm.instagramHandle.trim()
-          ? normalizeHandle(addForm.instagramHandle)
-          : null,
-        scheduled_at: scheduledIso,
-        interview_type: addForm.interviewType,
-        notes: addForm.notes.trim() || null,
-      };
-      const { error } = await supabase.from("manual_interview_entries").insert(payload);
-      if (error) throw error;
-      toast.success(`${candidateName} added`);
-      setAddOpen(false);
-      resetAddForm();
-      await queryClient.invalidateQueries({ queryKey: ["interview-command-manual-entries"] });
-      const slug = slugify(normalizeName(candidateName));
-      if (slug) setSelectedId(slug);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      toast.error(`Could not add interview: ${msg}`);
-    } finally {
-      setAddSubmitting(false);
-    }
-  };
-
-  const sendConfirmationFor = async (row: ManualInterviewRow) => {
-    const email = (row.email ?? "").trim();
-    if (!email) {
-      toast.error("Add an email first");
-      return;
-    }
-    setSendingConfirmationId(row.id);
-    try {
-      const { data, error } = await supabase.functions.invoke<{
-        ok: boolean;
-        sent?: boolean;
-        resend_id?: string;
-        error?: string;
-        warning?: string;
-      }>("send-candidate-confirmation", {
-        body: {
-          interview_id: row.id,
-          candidate_email: email,
-          candidate_name: row.candidate_name,
-          scheduled_at: row.scheduled_at,
-        },
+      const { error } = await (supabase as any).rpc("disposition_interview", {
+        p_source: row.source,
+        p_id: row.id,
+        p_field: field,
+        p_value: field === "notes" ? value ?? "" : timestamp,
       });
       if (error) throw error;
-      if (!data?.ok || !data.sent) {
-        throw new Error(data?.error || "Send failed");
-      }
-      toast.success(`Confirmation sent to ${email}`);
-      if (data.warning) toast.warning(data.warning);
-      await queryClient.invalidateQueries({ queryKey: ["interview-command-manual-entries"] });
+
+      if (field === "called") patchCachedRow(row, { called_at: timestamp, status: "called" });
+      if (field === "hired") patchCachedRow(row, { hired_at: timestamp, passed_at: null, status: "hired" });
+      if (field === "passed") patchCachedRow(row, { passed_at: timestamp, hired_at: null, status: "passed" });
+      if (field === "notes") patchCachedRow(row, { outcome_notes: value?.trim() || null });
+
+      toast.success(successLabel(field));
+      await queryClient.invalidateQueries({ queryKey: ["interviews-unified", JUNE_START] });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      toast.error(`Send failed: ${msg}`);
+      const message = err instanceof Error ? err.message : "Update failed";
+      toast.error(message);
     } finally {
-      setSendingConfirmationId(null);
+      setSavingKey(null);
     }
   };
 
-  if (!selectedCandidate) {
-    return (
-      <div className="px-4 sm:px-6 pb-24">
-        <PageHeader title="Interviews" subtitle="No interview records are loaded." accent="amber" />
-      </div>
-    );
-  }
+  const openNotes = (row: UnifiedInterview) => {
+    setNoteDrafts((prev) => ({ ...prev, [rowKey(row)]: row.outcome_notes ?? "" }));
+  };
 
-  const currentStatus = statusMeta(selectedDraft.reviewStatus);
-  const selectedInstagram = normalizeHandle(selectedDraft.instagramHandle);
-  const latestEvent = selectedCandidate.events[selectedCandidate.events.length - 1];
-  const promptPack = [
-    `Candidate: ${selectedCandidate.name}${selectedCandidate.alias ? ` (${selectedCandidate.alias})` : ""}`,
-    `Interview timeline: ${selectedCandidate.events.map(formatEventWindow).join("; ")}`,
-    `Status: ${currentStatus.label}`,
-    `Contracted: ${selectedDraft.contracted ? "yes" : "no"}`,
-    `Hired: ${selectedDraft.hired ? "yes" : "no"}`,
-    `Outcome: ${selectedDraft.outcome}`,
-    `Instagram: ${selectedInstagram ? `@${selectedInstagram}` : "unknown"}`,
-    `Monthly production: ${moneyLabel(selectedDraft.monthlyProduction)}`,
-    `Legs: ${selectedDraft.legs || "0"}`,
-    `Notes: ${selectedDraft.leaderNotes || "none"}`,
-    `Transcript: ${selectedDraft.transcription || "none"}`,
-    `Next step: ${selectedDraft.nextStep || "none"}`,
-  ].join("\n");
+  const saveNotes = async (row: UnifiedInterview) => {
+    const key = rowKey(row);
+    const draft = noteDrafts[key] ?? "";
+    if ((row.outcome_notes ?? "") === draft.trim()) {
+      setNoteDrafts((prev) => omitKey(prev, key));
+      return;
+    }
+    await saveDisposition(row, "notes", draft);
+    setNoteDrafts((prev) => omitKey(prev, key));
+  };
 
   return (
-    <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+    <div className="page-enter px-3 pb-24 sm:px-6">
       <PageHeader
         eyebrow="Interviews"
         eyebrowIcon={<ClipboardCheck className="h-3 w-3" />}
         title="Interview Command Center"
-        subtitle="Leader review files for the May 31 through June 14 recruiting calls. Pick a candidate, review the calendar timeline, capture the transcript, and mark the decision."
+        subtitle="June interviews with tap-to-disposition tracking."
         accent="amber"
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" onClick={() => setAddOpen(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" />
-              Add Interview
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => applicationMatches.refetch()}>
-              <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", applicationMatches.isFetching && "animate-spin")} />
-              Match Apps
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => toast.success("Interview file saved")}>
-              <Save className="h-3.5 w-3.5 mr-1.5" />
-              Save
-            </Button>
-          </div>
-        }
-      />
-
-      <AddInterviewDialog
-        open={addOpen}
-        onOpenChange={(next) => {
-          setAddOpen(next);
-          if (!next) resetAddForm();
-        }}
-        form={addForm}
-        onFormChange={setAddForm}
-        submitting={addSubmitting}
-        onSubmit={submitAddInterview}
-      />
-
-      {assistantShareToken.data?.token && (
-        <section className="rounded-md border bg-card/60 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              Share with your assistant
-            </div>
-            <div className="font-mono text-xs sm:text-sm truncate">
-              {`${window.location.origin}/assistant/interviews?t=${assistantShareToken.data.token}`}
-            </div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              {assistantShareToken.data.label}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const url = `${window.location.origin}/assistant/interviews?t=${assistantShareToken.data!.token}`;
-                navigator.clipboard.writeText(url).then(
-                  () => toast.success("Link copied"),
-                  () => toast.error("Could not copy"),
-                );
-              }}
-            >
-              <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy
-            </Button>
-            <a
-              href={`${window.location.origin}/assistant/interviews?t=${assistantShareToken.data.token}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="ghost" size="sm">
-                <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Open
-              </Button>
-            </a>
-          </div>
-        </section>
-      )}
-
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-        <MetricTile icon={Users} label="Candidates" value={metrics.candidates} hint={`${metrics.events} calendar calls`} />
-        <MetricTile icon={PhoneCall} label="Callbacks" value={metrics.callbacks} hint="June 14 queue" tone="sky" />
-        <MetricTile icon={UserCheck} label="Leader Calls" value={metrics.leaders} hint="manager path" tone="cyan" />
-        <MetricTile icon={BadgeCheck} label="Contracted" value={metrics.contracted} hint="marked here" tone="violet" />
-        <MetricTile icon={CheckCircle2} label="Hired" value={metrics.hired} hint="marked here" tone="emerald" />
-        <MetricTile icon={AlertTriangle} label="Conflicts" value={candidates.filter((candidate) => candidate.hasConflict).length} hint="calendar flag" tone="rose" />
-      </section>
-
-      <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <aside className="xl:sticky xl:top-4 xl:self-start space-y-3">
-          <div className="rounded-md border bg-card p-3 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <h2 className="text-base font-bold">Interview Side Nav</h2>
-                <p className="text-xs text-muted-foreground">{filteredCandidates.length} visible</p>
-              </div>
-              <Filter className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search candidate, IG, note..."
-                className="pl-8"
-              />
-            </div>
-            <Select value={filter} onValueChange={(value) => setFilter(value as typeof filter)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter interviews" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All interviews</SelectItem>
-                <SelectItem value="callbacks">Callbacks</SelectItem>
-                <SelectItem value="licensed">Licensed calls</SelectItem>
-                <SelectItem value="leaders">Leader calls</SelectItem>
-                <SelectItem value="open">Open files</SelectItem>
-                <SelectItem value="done">Decided files</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2 max-h-[68vh] overflow-y-auto pr-1">
-            {filteredCandidates.map((candidate) => {
-              const match = matchesByName.get(normalizeName(candidate.name));
-              const draft = { ...defaultDraft(candidate, match), ...(drafts[candidate.id] ?? {}) };
-              const meta = statusMeta(draft.reviewStatus);
-              const active = candidate.id === selectedCandidate.id;
-              const handle = normalizeHandle(draft.instagramHandle);
-              return (
-                <button
-                  key={candidate.id}
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <div className="grid grid-cols-3 gap-1 rounded-md border bg-card p-1">
+              {DATE_FILTERS.map((filter) => (
+                <Button
+                  key={filter.key}
                   type="button"
-                  onClick={() => setSelectedId(candidate.id)}
-                  className={cn(
-                    "w-full rounded-md border bg-card p-3 text-left transition-all hover:border-amber-400/50 hover:bg-amber-500/5",
-                    active && "border-amber-400 bg-amber-500/10",
-                  )}
+                  size="sm"
+                  variant={dateFilter === filter.key ? "default" : "ghost"}
+                  className="h-8 px-2 text-xs"
+                  onClick={() => setDateFilter(filter.key)}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold">{candidate.name}</p>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {format(new Date(candidate.latestAt), "MMM d, h:mm a")}
-                        {candidate.alias ? ` · ${candidate.alias}` : ""}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className={cn("shrink-0 text-[10px]", meta.tone)}>
-                      {meta.label}
-                    </Badge>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    <Badge variant="outline" className="text-[10px]">{candidate.events.length} calls</Badge>
-                    {candidate.hasCallback && <Badge variant="outline" className="border-sky-500/30 bg-sky-500/10 text-[10px] text-sky-300">callback</Badge>}
-                    {candidate.hasLeaderCall && <Badge variant="outline" className="border-cyan-500/30 bg-cyan-500/10 text-[10px] text-cyan-300">leader</Badge>}
-                    {candidate.hasConflict && <Badge variant="outline" className="border-rose-500/30 bg-rose-500/10 text-[10px] text-rose-300">conflict</Badge>}
-                    {handle && <Badge variant="outline" className="border-pink-500/30 bg-pink-500/10 text-[10px] text-pink-300">@{handle}</Badge>}
-                    {draft.contracted && <Badge variant="outline" className="border-violet-500/30 bg-violet-500/10 text-[10px] text-violet-300">contracted</Badge>}
-                    {draft.hired && <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-[10px] text-emerald-300">hired</Badge>}
-                  </div>
-                </button>
-              );
-            })}
-            {!filteredCandidates.length && (
-              <div className="rounded-md border bg-card p-4 text-sm text-muted-foreground">
-                No interview files match that filter.
-              </div>
-            )}
-          </div>
-        </aside>
-
-        <main className="space-y-4 min-w-0">
-          <section className="rounded-md border bg-card p-4 sm:p-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className={cn("text-xs", currentStatus.tone)}>{currentStatus.label}</Badge>
-                  {selectedCandidate.hasCallback && <Badge variant="outline" className="border-sky-500/30 bg-sky-500/10 text-sky-300">Callback</Badge>}
-                  {selectedCandidate.hasLeaderCall && <Badge variant="outline" className="border-cyan-500/30 bg-cyan-500/10 text-cyan-300">Leader</Badge>}
-                  {selectedCandidate.hasConflict && <Badge variant="outline" className="border-rose-500/30 bg-rose-500/10 text-rose-300">Conflict</Badge>}
-                </div>
-                <h2 className="mt-3 text-2xl font-extrabold leading-tight">{selectedCandidate.name}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Latest touch: {formatEventWindow(latestEvent)}
-                  {selectedCandidate.alias ? ` · Alias: ${selectedCandidate.alias}` : ""}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {selectedInstagram && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={`https://instagram.com/${selectedInstagram}`} target="_blank" rel="noopener noreferrer">
-                      <Instagram className="h-3.5 w-3.5 mr-1.5" />
-                      @{selectedInstagram}
-                    </a>
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={() => copyText(promptPack, "Candidate brief")}>
-                  <Copy className="h-3.5 w-3.5 mr-1.5" />
-                  Copy Brief
+                  {filter.label}
                 </Button>
-                <Button variant="outline" size="sm" onClick={resetSelected}>
-                  <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-                  Reset
-                </Button>
-              </div>
+              ))}
             </div>
-
-            <div className="mt-5 grid gap-3 md:grid-cols-4">
-              <InfoPill icon={CalendarDays} label="First Interview" value={format(new Date(selectedCandidate.firstAt), "MMM d, h:mm a")} />
-              <InfoPill icon={Clock} label="Total Call Time" value={`${selectedCandidate.events.reduce((sum, event) => sum + minutesBetween(event.startAt, event.endAt), 0)} min`} />
-              <InfoPill icon={Briefcase} label="Production" value={moneyLabel(selectedDraft.monthlyProduction)} />
-              <InfoPill icon={TrendingUp} label="Legs" value={selectedDraft.legs || "0"} />
-            </div>
-          </section>
-
-          {applicationMatches.isLoading ? (
-            <Skeleton className="h-16 rounded-md" />
-          ) : selectedMatch ? (
-            <section className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="text-sm font-bold text-emerald-300">Matched to application record</p>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedMatch.email || "No email"} · {selectedMatch.phone || "No phone"} · {selectedMatch.state || "No state"} · {selectedMatch.status || "No status"}
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={`/dashboard/applicants?focus=${selectedMatch.id}`}>
-                    Open Application
-                    <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
-                  </a>
-                </Button>
-              </div>
-            </section>
-          ) : (
-            <section className="rounded-md border bg-muted/30 p-4">
-              <p className="text-sm font-semibold">No exact application match yet</p>
-              <p className="text-xs text-muted-foreground">Use the Instagram and notes fields below until the applicant record exists or the name is normalized.</p>
-            </section>
-          )}
-
-          <section className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
-            <div className="space-y-4">
-              <Card>
-                <CardContent className="p-4 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <ClipboardCheck className="h-4 w-4 text-amber-400" />
-                    <h3 className="font-bold">Decision File</h3>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Review status</Label>
-                      <Select value={selectedDraft.reviewStatus} onValueChange={(value) => patchDraft({ reviewStatus: value as ReviewStatus })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {REVIEW_STATUS_OPTIONS.map((option) => (
-                            <SelectItem key={option.key} value={option.key}>{option.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Outcome</Label>
-                      <Select value={selectedDraft.outcome} onValueChange={(value) => patchDraft({ outcome: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {OUTCOME_OPTIONS.map((option) => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <ToggleRow
-                      icon={BadgeCheck}
-                      label="Contracted"
-                      checked={selectedDraft.contracted}
-                      onCheckedChange={(checked) => patchDraft({ contracted: checked, reviewStatus: checked ? "contracted" : selectedDraft.reviewStatus })}
-                    />
-                    <ToggleRow
-                      icon={CheckCircle2}
-                      label="Hired"
-                      checked={selectedDraft.hired}
-                      onCheckedChange={(checked) => patchDraft({ hired: checked, reviewStatus: checked ? "hired" : selectedDraft.reviewStatus })}
-                    />
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="ig-handle">Instagram</Label>
-                      <div className="relative">
-                        <Instagram className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          id="ig-handle"
-                          value={selectedDraft.instagramHandle}
-                          onChange={(event) => patchDraft({ instagramHandle: normalizeHandle(event.target.value) })}
-                          placeholder="handle"
-                          className="pl-8"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="production">Monthly production</Label>
-                      <Input
-                        id="production"
-                        inputMode="numeric"
-                        value={selectedDraft.monthlyProduction}
-                        onChange={(event) => patchDraft({ monthlyProduction: event.target.value })}
-                        placeholder="20000"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="legs">Legs</Label>
-                      <Input
-                        id="legs"
-                        inputMode="numeric"
-                        value={selectedDraft.legs}
-                        onChange={(event) => patchDraft({ legs: event.target.value })}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="what-happened">What happened</Label>
-                    <Textarea
-                      id="what-happened"
-                      value={selectedDraft.sourceNotes}
-                      onChange={(event) => patchDraft({ sourceNotes: event.target.value })}
-                      placeholder="Showed, missed, asked for callback, strong closer, needs licensing, already writing business..."
-                      className="min-h-[88px]"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="next-step">Next step</Label>
-                    <Textarea
-                      id="next-step"
-                      value={selectedDraft.nextStep}
-                      onChange={(event) => patchDraft({ nextStep: event.target.value })}
-                      placeholder="Who owns the next touch, by when, and what needs to happen?"
-                      className="min-h-[88px]"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-sky-400" />
-                      <h3 className="font-bold">Transcription</h3>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => copyText(selectedDraft.transcription || "", "Transcript")}>
-                      <Copy className="h-3.5 w-3.5 mr-1.5" />
-                      Copy
-                    </Button>
-                  </div>
-                  <Textarea
-                    value={selectedDraft.transcription}
-                    onChange={(event) => patchDraft({ transcription: event.target.value })}
-                    placeholder="Drop the transcript here after the call."
-                    className="min-h-[220px]"
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="space-y-4">
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-cyan-400" />
-                    <h3 className="font-bold">Call Timeline</h3>
-                  </div>
-                  <div className="space-y-2">
-                    {selectedCandidate.events.map((event) => (
-                      <div key={event.id} className="rounded-md border bg-background/60 p-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold">{event.title}</p>
-                            <p className="text-xs text-muted-foreground">{formatEventWindow(event)} · {minutesBetween(event.startAt, event.endAt)} min</p>
-                          </div>
-                          <Badge variant="outline" className="shrink-0 text-[10px]">{kindLabel(event.kind)}</Badge>
-                        </div>
-                        {(event.conflict || event.alias || event.instagramHandle) && (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {event.conflict && <Badge variant="outline" className="border-rose-500/30 bg-rose-500/10 text-[10px] text-rose-300">Conflict</Badge>}
-                            {event.alias && <Badge variant="outline" className="text-[10px]">Alias: {event.alias}</Badge>}
-                            {event.instagramHandle && <Badge variant="outline" className="border-pink-500/30 bg-pink-500/10 text-[10px] text-pink-300">@{event.instagramHandle}</Badge>}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {selectedCandidate.manualRows.length > 0 && (
-                <Card>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-amber-400" />
-                      <h3 className="font-bold">Send Confirmation</h3>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Sends "I'll be there" email with reschedule link from Calendly.
-                    </p>
-                    <div className="space-y-2">
-                      {selectedCandidate.manualRows.map((row) => {
-                        const sentAt = row.confirmation_sent_at
-                          ? new Date(row.confirmation_sent_at)
-                          : null;
-                        const sentLabel = sentAt
-                          ? `Sent ${formatDistanceToNowStrict(sentAt, { addSuffix: true })}`
-                          : null;
-                        const disabled =
-                          !row.email || sendingConfirmationId === row.id;
-                        return (
-                          <div
-                            key={row.id}
-                            className="flex items-center justify-between gap-2 rounded-md border bg-background/60 p-3"
-                          >
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold">
-                                {format(new Date(row.scheduled_at), "EEE, MMM d · h:mm a")}
-                              </p>
-                              <p className="truncate text-xs text-muted-foreground">
-                                {row.email || "No email — add one to send"}
-                              </p>
-                              {sentLabel && (
-                                <p className="text-[11px] font-semibold text-emerald-400">{sentLabel}</p>
-                              )}
-                            </div>
-                            <Button
-                              size="sm"
-                              variant={sentAt ? "outline" : "default"}
-                              disabled={disabled}
-                              onClick={() => sendConfirmationFor(row)}
-                            >
-                              <Send className="h-3.5 w-3.5 mr-1.5" />
-                              {sentAt ? "Resend" : "Send"}
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <StickyNote className="h-4 w-4 text-emerald-400" />
-                    <h3 className="font-bold">Leader Notes</h3>
-                  </div>
-                  <Textarea
-                    value={selectedDraft.leaderNotes}
-                    onChange={(event) => patchDraft({ leaderNotes: event.target.value })}
-                    placeholder="Fit, attitude, follow-through, licensing risk, production standard, leader read..."
-                    className="min-h-[180px]"
-                  />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Copy className="h-4 w-4 text-violet-400" />
-                    <h3 className="font-bold">AI Brief</h3>
-                  </div>
-                  <Textarea value={promptPack} readOnly className="min-h-[180px] text-xs" />
-                  <Button variant="outline" className="w-full" onClick={() => copyText(promptPack, "AI brief")}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy candidate brief
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </section>
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function MetricTile({
-  icon: Icon,
-  label,
-  value,
-  hint,
-  tone = "amber",
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: number | string;
-  hint: string;
-  tone?: "amber" | "sky" | "cyan" | "violet" | "emerald" | "rose";
-}) {
-  const tones = {
-    amber: "text-amber-400 bg-amber-500/10 border-amber-500/25",
-    sky: "text-sky-400 bg-sky-500/10 border-sky-500/25",
-    cyan: "text-cyan-400 bg-cyan-500/10 border-cyan-500/25",
-    violet: "text-violet-400 bg-violet-500/10 border-violet-500/25",
-    emerald: "text-emerald-400 bg-emerald-500/10 border-emerald-500/25",
-    rose: "text-rose-400 bg-rose-500/10 border-rose-500/25",
-  };
-
-  return (
-    <div className={cn("rounded-md border bg-card p-4", tones[tone])}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-black tabular-nums text-foreground">{value}</p>
-          <p className="text-xs text-muted-foreground">{hint}</p>
-        </div>
-        <Icon className="h-5 w-5 shrink-0" />
-      </div>
-    </div>
-  );
-}
-
-function InfoPill({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-md border bg-background/60 p-3">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="h-4 w-4" />
-        <span className="text-xs font-semibold">{label}</span>
-      </div>
-      <p className="mt-1 text-sm font-bold">{value}</p>
-    </div>
-  );
-}
-
-function AddInterviewDialog({
-  open,
-  onOpenChange,
-  form,
-  onFormChange,
-  submitting,
-  onSubmit,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  form: NewInterviewForm;
-  onFormChange: (form: NewInterviewForm) => void;
-  submitting: boolean;
-  onSubmit: () => void;
-}) {
-  const setField = <K extends keyof NewInterviewForm>(key: K, value: NewInterviewForm[K]) => {
-    onFormChange({ ...form, [key]: value });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Add Interview</DialogTitle>
-          <DialogDescription>
-            Add a candidate to the interview workspace. Once added you can send a confirmation email.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="add-candidate-name">Candidate name</Label>
-            <Input
-              id="add-candidate-name"
-              value={form.candidateName}
-              onChange={(event) => setField("candidateName", event.target.value)}
-              placeholder="First Last"
-              autoFocus
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="add-email">Email</Label>
-              <Input
-                id="add-email"
-                type="email"
-                value={form.email}
-                onChange={(event) => setField("email", event.target.value)}
-                placeholder="name@email.com"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="add-phone">Phone</Label>
-              <Input
-                id="add-phone"
-                type="tel"
-                value={form.phone}
-                onChange={(event) => setField("phone", event.target.value)}
-                placeholder="+1 555 555 0123"
-              />
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="add-ig">Instagram</Label>
-              <Input
-                id="add-ig"
-                value={form.instagramHandle}
-                onChange={(event) => setField("instagramHandle", event.target.value)}
-                placeholder="@handle"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="add-when">Date &amp; time</Label>
-              <Input
-                id="add-when"
-                type="datetime-local"
-                value={form.scheduledAt}
-                onChange={(event) => setField("scheduledAt", event.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Interview type</Label>
-            <Select
-              value={form.interviewType}
-              onValueChange={(value) => setField("interviewType", value as InterviewKind)}
-            >
-              <SelectTrigger>
+            <Select value={sourceFilter} onValueChange={(value) => setSourceFilter(value as SourceFilter)}>
+              <SelectTrigger className="h-10 w-full sm:w-[168px]" aria-label="Source filter">
+                <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {NEW_INTERVIEW_TYPE_OPTIONS.map((option) => (
+                {SOURCE_OPTIONS.map((option) => (
                   <SelectItem key={option.key} value={option.key}>
                     {option.label}
                   </SelectItem>
@@ -1522,48 +241,403 @@ function AddInterviewDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="add-notes">Notes</Label>
-            <Textarea
-              id="add-notes"
-              value={form.notes}
-              onChange={(event) => setField("notes", event.target.value)}
-              placeholder="Where the lead came from, what to ask, anything else..."
-              className="min-h-[80px]"
-            />
-          </div>
+        }
+      />
+
+      <section className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <StatTile icon={CalendarDays} label="Total" value={stats.total} />
+        <StatTile icon={PhoneCall} label="Called Today" value={stats.calledToday} tone="emerald" />
+        <StatTile icon={Trophy} label="Hired this Week" value={stats.hiredThisWeek} tone="amber" />
+        <StatTile icon={CheckCircle2} label="Pending Call" value={stats.pendingCall} tone="sky" />
+      </section>
+
+      <div className="mt-4 flex items-center gap-2 rounded-md border bg-card px-3 py-2">
+        <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search name, phone, email, IG"
+          className="h-9 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={() => interviews.refetch()}
+          aria-label="Refresh interviews"
+        >
+          <RefreshCw className={cn("h-4 w-4", interviews.isFetching && "animate-spin")} />
+        </Button>
+      </div>
+
+      {interviews.isLoading ? (
+        <InterviewSkeleton />
+      ) : interviews.isError ? (
+        <div className="mt-4 rounded-md border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+          Could not load interviews.
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button onClick={onSubmit} disabled={submitting}>
-            {submitting ? "Adding..." : "Add Interview"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      ) : (
+        <section className="mt-4 grid gap-3 xl:grid-cols-2">
+          {visibleRows.map((row) => (
+            <InterviewCard
+              key={`${row.source}:${row.id}`}
+              row={row}
+              savingKey={savingKey}
+              noteDraft={noteDrafts[rowKey(row)]}
+              onDisposition={saveDisposition}
+              onOpenNotes={openNotes}
+              onNoteChange={(value) =>
+                setNoteDrafts((prev) => ({ ...prev, [rowKey(row)]: value }))
+              }
+              onNoteBlur={() => saveNotes(row)}
+            />
+          ))}
+          {!visibleRows.length && (
+            <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground">
+              No interviews match this view.
+            </div>
+          )}
+        </section>
+      )}
+    </div>
   );
 }
 
-function ToggleRow({
+function InterviewCard({
+  row,
+  savingKey,
+  noteDraft,
+  onDisposition,
+  onOpenNotes,
+  onNoteChange,
+  onNoteBlur,
+}: {
+  row: UnifiedInterview;
+  savingKey: string | null;
+  noteDraft: string | undefined;
+  onDisposition: (row: UnifiedInterview, field: DispositionField, value?: string) => Promise<void>;
+  onOpenNotes: (row: UnifiedInterview) => void;
+  onNoteChange: (value: string) => void;
+  onNoteBlur: () => void;
+}) {
+  const busy = savingKey?.startsWith(`${row.source}:${row.id}:`) ?? false;
+  const handle = normalizeHandle(row.instagram_handle);
+  const tone = rowTone(row);
+
+  return (
+    <article className={cn("overflow-hidden rounded-md border bg-card p-3 transition-colors sm:p-4", tone.card)}>
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h2 className={cn("min-w-0 truncate text-xl font-black leading-tight", tone.title)}>
+              {row.candidate_name}
+            </h2>
+            <Badge variant="outline" className="shrink-0 text-[11px]">
+              {typeLabel(row.interview_type)}
+            </Badge>
+            <Badge variant="outline" className={cn("shrink-0 text-[11px]", sourceTone(row.source))}>
+              {SOURCE_LABEL[row.source]}
+            </Badge>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <Badge variant="secondary" className="text-[11px]">
+              {formatBusinessTimeWithDay(row.scheduled_at)}
+            </Badge>
+            <Badge variant="outline" className="text-[11px]">
+              {formatRelativeFromNow(row.scheduled_at)}
+            </Badge>
+            {row.contracted_at && (
+              <Badge variant="outline" className="border-violet-500/30 bg-violet-500/10 text-[11px] text-violet-300">
+                Contracted
+              </Badge>
+            )}
+          </div>
+        </div>
+        {busy && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />}
+      </div>
+
+      <div className="mt-3 grid grid-cols-4 gap-1.5">
+        <DispositionButton
+          active={!!row.called_at}
+          disabled={busy}
+          icon={PhoneCall}
+          label="Called"
+          tone="emerald"
+          onClick={() => onDisposition(row, "called")}
+        />
+        <DispositionButton
+          active={!!row.hired_at}
+          disabled={busy}
+          icon={Trophy}
+          label="Hired"
+          tone="amber"
+          onClick={() => onDisposition(row, "hired")}
+        />
+        <DispositionButton
+          active={!!row.passed_at}
+          disabled={busy}
+          icon={XCircle}
+          label="Pass"
+          tone="slate"
+          onClick={() => onDisposition(row, "passed")}
+        />
+        <DispositionButton
+          active={noteDraft !== undefined || !!row.outcome_notes}
+          disabled={busy}
+          icon={StickyNote}
+          label="Notes"
+          tone="sky"
+          onClick={() => onOpenNotes(row)}
+        />
+      </div>
+
+      {noteDraft !== undefined && (
+        <Textarea
+          value={noteDraft}
+          onChange={(event) => onNoteChange(event.target.value)}
+          onBlur={onNoteBlur}
+          placeholder="Result, objection, next call, or hiring note"
+          className="mt-3 min-h-[84px]"
+          autoFocus
+        />
+      )}
+
+      {row.outcome_notes && noteDraft === undefined && (
+        <div className="mt-3 rounded-md border bg-background/70 p-3 text-sm text-muted-foreground">
+          <FileText className="mr-2 inline h-3.5 w-3.5" />
+          {row.outcome_notes}
+        </div>
+      )}
+
+      <div className="mt-3 flex min-w-0 flex-wrap gap-2">
+        <ContactLink
+          icon={Mail}
+          label={row.email || "No email"}
+          href={row.email ? `mailto:${row.email}` : null}
+        />
+        <ContactLink
+          icon={Phone}
+          label={row.phone || "No phone"}
+          href={row.phone ? `tel:${phoneHref(row.phone)}` : null}
+        />
+        <ContactLink
+          icon={Instagram}
+          label={handle ? `@${handle}` : "No IG"}
+          href={handle ? `https://instagram.com/${handle}` : null}
+        />
+      </div>
+    </article>
+  );
+}
+
+function DispositionButton({
+  active,
+  disabled,
   icon: Icon,
   label,
-  checked,
-  onCheckedChange,
+  tone,
+  onClick,
+}: {
+  active: boolean;
+  disabled: boolean;
+  icon: React.ElementType;
+  label: string;
+  tone: "emerald" | "amber" | "slate" | "sky";
+  onClick: () => void;
+}) {
+  const activeTone = {
+    emerald: "border-emerald-500/50 bg-emerald-500/15 text-emerald-200",
+    amber: "border-amber-500/50 bg-amber-500/15 text-amber-200",
+    slate: "border-slate-400/40 bg-slate-500/15 text-slate-200",
+    sky: "border-sky-500/50 bg-sky-500/15 text-sky-200",
+  }[tone];
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      disabled={disabled}
+      className={cn("h-10 gap-1 px-1 text-[11px] sm:text-xs", active && activeTone)}
+      onClick={onClick}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">{label}</span>
+    </Button>
+  );
+}
+
+function ContactLink({
+  icon: Icon,
+  label,
+  href,
 }: {
   icon: React.ElementType;
   label: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
+  href: string;
+} | {
+  icon: React.ElementType;
+  label: string;
+  href: null;
 }) {
+  const className =
+    "inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md border bg-background/70 px-2.5 py-1.5 text-xs text-muted-foreground";
+  const content = (
+    <>
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="min-w-0 truncate">{label}</span>
+    </>
+  );
+
+  if (!href) return <span className={cn(className, "opacity-60")}>{content}</span>;
+
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border bg-background/60 p-3">
-      <div className="flex min-w-0 items-center gap-2">
-        <Icon className={cn("h-4 w-4 shrink-0", checked ? "text-emerald-400" : "text-muted-foreground")} />
-        <span className="text-sm font-semibold">{label}</span>
+    <a href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className={className}>
+      {content}
+    </a>
+  );
+}
+
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+  tone = "slate",
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: number;
+  tone?: "slate" | "emerald" | "amber" | "sky";
+}) {
+  const tones = {
+    slate: "border-slate-500/20 bg-slate-500/5 text-slate-300",
+    emerald: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+    amber: "border-amber-500/25 bg-amber-500/10 text-amber-300",
+    sky: "border-sky-500/25 bg-sky-500/10 text-sky-300",
+  };
+
+  return (
+    <div className={cn("rounded-md border p-3", tones[tone])}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+        <Icon className="h-4 w-4 shrink-0" />
       </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+      <div className="mt-1 text-2xl font-black tabular-nums text-foreground">{value}</div>
     </div>
   );
+}
+
+function InterviewSkeleton() {
+  return (
+    <section className="mt-4 grid gap-3 xl:grid-cols-2">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={index} className="rounded-md border bg-card p-4">
+          <Skeleton className="h-6 w-2/3" />
+          <div className="mt-3 grid grid-cols-4 gap-1.5">
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+          </div>
+          <Skeleton className="mt-3 h-8 w-full" />
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function rowTone(row: UnifiedInterview) {
+  if (row.passed_at) {
+    return {
+      card: "border-slate-500/25 bg-slate-500/5 opacity-75",
+      title: "text-slate-200",
+    };
+  }
+  if (row.hired_at) {
+    return {
+      card: "border-amber-500/45 bg-amber-500/10",
+      title: "text-amber-100",
+    };
+  }
+  if (row.called_at) {
+    return {
+      card: "border-emerald-500/40 bg-emerald-500/10",
+      title: "text-emerald-100",
+    };
+  }
+  return {
+    card: "border-border",
+    title: "text-foreground",
+  };
+}
+
+function sourceTone(source: InterviewSource) {
+  if (source === "manual") return "border-cyan-500/30 bg-cyan-500/10 text-cyan-300";
+  if (source === "calendly") return "border-sky-500/30 bg-sky-500/10 text-sky-300";
+  return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+}
+
+function successLabel(field: DispositionField) {
+  if (field === "called") return "Marked called";
+  if (field === "hired") return "Marked hired";
+  if (field === "passed") return "Marked passed";
+  return "Notes saved";
+}
+
+function typeLabel(value: string | null) {
+  if (!value) return "Interview";
+  return value
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function rowKey(row: UnifiedInterview) {
+  return `${row.source}:${row.id}`;
+}
+
+function omitKey<T>(record: Record<string, T>, key: string) {
+  const next = { ...record };
+  delete next[key];
+  return next;
+}
+
+function normalizeHandle(value: string | null) {
+  return (value ?? "").trim().replace(/^@+/, "");
+}
+
+function phoneHref(value: string) {
+  return value.replace(/[^\d+]/g, "");
+}
+
+function startOfToday() {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function startOfWeek(todayStart = startOfToday()) {
+  const date = new Date(todayStart);
+  const day = date.getDay();
+  const diff = day === 0 ? 6 : day - 1;
+  date.setDate(date.getDate() - diff);
+  return date;
+}
+
+function isInDateFilter(value: string, filter: DateFilter) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+
+  const todayStart = startOfToday();
+  if (filter === "today") {
+    const tomorrow = new Date(todayStart);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return date >= todayStart && date < tomorrow;
+  }
+
+  if (filter === "week") return date >= startOfWeek(todayStart);
+
+  const monthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+  return date >= monthStart;
 }

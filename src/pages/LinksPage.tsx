@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Crown, Instagram, MessageCircle, Video, Users, Sparkles, ArrowRight,
+  Crown, Instagram, Video, Users, Sparkles, ArrowRight,
   Loader2, CheckCircle2, X, Dumbbell, Heart
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -26,7 +26,6 @@ const waitlistSchema = z.object({
 const socialLinks = [
   { icon: Instagram, label: "Instagram", href: "https://instagram.com/theprincejamez", gradient: "from-pink-500 to-purple-600", hoverGlow: "hover:" },
   { icon: Video, label: "TikTok", href: "https://tiktok.com/@theprincejamez", gradient: "from-cyan-400 to-pink-500", hoverGlow: "hover:" },
-  { icon: MessageCircle, label: "Snapchat", href: "https://snapchat.com/add/theprincejamez", gradient: "from-yellow-400 to-yellow-500", hoverGlow: "hover:" },
 ];
 
 const offerCards = [

@@ -28,7 +28,7 @@
  */
 
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
   Phone,
@@ -180,6 +180,7 @@ function statusBadgeColor(status: string | null | undefined): string {
 export function AgentProfileDrawer() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const agentId = useAgentProfileDrawer((s) => s.agentId);
   const close = useAgentProfileDrawer((s) => s.close);
 
@@ -378,14 +379,59 @@ export function AgentProfileDrawer() {
                   <Badge variant="outline" className={cn("text-[10px]", statusBadgeColor(agent.status))}>
                     {agent.status ?? "—"}
                   </Badge>
+                  {/* 2026-06-18 Sam directive 'make sure their license to go ahead
+                      and start that coursework' — license badge is now a click-to-flip
+                      toggle. Tap unlicensed → flips to licensed (fires course email
+                      via existing trg_agents_hired_licensed_enqueue trigger). */}
                   {isLicensed ? (
-                    <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                    <button
+                      onClick={async () => {
+                        if (!agent?.id) return;
+                        const ok = window.confirm(`Mark ${agent.display_name ?? "this agent"} as unlicensed?`);
+                        if (!ok) return;
+                        const { error } = await (supabase as any)
+                          .from("agents")
+                          .update({ license_status: "unlicensed", updated_at: new Date().toISOString() })
+                          .eq("id", agent.id);
+                        if (error) toast.error(`Update failed: ${error.message.slice(0, 80)}`);
+                        else {
+                          toast.success(`${agent.display_name} → unlicensed`);
+                          qc.invalidateQueries({ queryKey: ["agent-profile-drawer"] });
+                        }
+                      }}
+                      className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                      title="Tap to flip back to unlicensed"
+                    >
                       <ShieldCheck className="h-3 w-3 mr-0.5" /> licensed
-                    </Badge>
+                    </button>
                   ) : (
-                    <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
-                      <ShieldAlert className="h-3 w-3 mr-0.5" /> {agent.license_status ?? "unlicensed"}
-                    </Badge>
+                    <button
+                      onClick={async () => {
+                        if (!agent?.id) return;
+                        const ok = window.confirm(`Mark ${agent.display_name ?? "this agent"} as LICENSED? This fires the course email.`);
+                        if (!ok) return;
+                        const { error } = await (supabase as any)
+                          .from("agents")
+                          .update({
+                            license_status: "licensed",
+                            licensed_at: new Date().toISOString(),
+                            onboarding_stage: "onboarding",
+                            updated_at: new Date().toISOString(),
+                          })
+                          .eq("id", agent.id);
+                        if (error) toast.error(`Update failed: ${error.message.slice(0, 80)}`);
+                        else {
+                          toast.success(`✅ ${agent.display_name} → LICENSED · course email queued`);
+                          // Drain the queue immediately
+                          await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
+                          qc.invalidateQueries({ queryKey: ["agent-profile-drawer"] });
+                        }
+                      }}
+                      className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+                      title="Tap to mark licensed (fires course email)"
+                    >
+                      <ShieldAlert className="h-3 w-3 mr-0.5" /> {agent.license_status ?? "unlicensed"} <span className="ml-1 opacity-60">→ tap to flip</span>
+                    </button>
                   )}
                   {agent.is_deactivated && (
                     <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">deactivated</Badge>

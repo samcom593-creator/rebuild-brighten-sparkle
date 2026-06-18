@@ -56,6 +56,7 @@ import { Badge } from "@/components/ui/badge";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { AgentTrainingStageBar } from "@/components/dashboard/AgentTrainingStageBar";
 import { AgentOnboardingEmailStatus } from "@/components/dashboard/AgentOnboardingEmailStatus";
+import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton";
 import { AgentCredentialsPanel } from "@/components/dashboard/AgentCredentialsPanel";
 import { AgentNotes } from "@/components/dashboard/AgentNotes";
 import { supabase } from "@/integrations/supabase/client";
@@ -405,6 +406,22 @@ export function AgentProfileDrawer() {
                 course_sent_at. Resend-now button manually fires for THIS agent
                 via the send-agent-onboarding-email edge fn. */}
             <AgentOnboardingEmailStatus agentId={agent.id} />
+
+            {/* 2026-06-17 Sam directive: "change the manager's things" —
+                inline manager reassign on every agent. */}
+            <div className="flex items-center justify-between rounded-3xl border border-border bg-card/40 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Manager</p>
+                <p className="text-sm font-medium truncate">
+                  {agent.manager?.profile?.full_name || "—"}
+                </p>
+              </div>
+              <ReassignManagerButton
+                kind="agent"
+                targetId={agent.id}
+                currentManagerId={agent.manager_id ?? null}
+              />
+            </div>
 
 
 

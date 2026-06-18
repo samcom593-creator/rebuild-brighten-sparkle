@@ -57,6 +57,7 @@ import { LeadQualificationChat } from "@/components/dashboard/LeadQualificationC
 import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { PromoteApplicantButton } from "@/components/applicants/PromoteApplicantButton";
+import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { KanbanBoard, type KanbanStage } from "@/components/pipeline/KanbanBoard";
 import type { PipelineCardData } from "@/components/pipeline/PipelineCard";
@@ -1146,6 +1147,14 @@ export default function DashboardApplicants() {
                                     applicationId={app.id}
                                     applicantName={`${app.first_name} ${app.last_name}`}
                                     compact
+                                  />
+                                  {/* 2026-06-17 Sam: "change the manager's things" */}
+                                  <ReassignManagerButton
+                                    kind="applicant"
+                                    targetId={app.id}
+                                    currentManagerId={app.assigned_agent_id ?? null}
+                                    compact
+                                    onReassigned={() => fetchApplications()}
                                   />
                                   {app.instagram_handle && (
                                     <Button

@@ -17,6 +17,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatInTimeZone } from "date-fns-tz";
 import { isToday, isThisWeek, isPast } from "date-fns";
+import { formatRelativeFromNow } from "@/lib/dateUtils";
 import {
   CalendarDays, RefreshCw, Filter, Save, Clock, Phone, Mail, User,
   CheckCircle2, XCircle, AlertCircle, Loader2, Search,
@@ -36,7 +37,11 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
-const PHX_TZ = "America/Phoenix";
+// 2026-06-17 Sam directive: "with the Calendly link, the CDT time is just
+// fucking up my head completely." Calendly is set to America/Chicago; the
+// page was hardcoded to America/Phoenix + "MST" label. Switched to Chicago
+// + dynamic tz abbr (CDT/CST) + added a "starting in 2h 15m" chip below.
+const CAL_TZ = "America/Chicago";
 
 interface ScheduledCallRow {
   id: number;
@@ -308,10 +313,12 @@ export default function HeadhuntersCalendar() {
             const isSaving = savingId === r.id;
             const meta = statusMeta(r.status);
             const host = parseHost(r.summary, r.prospect_name);
-            const dateLabel = start ? formatInTimeZone(start, PHX_TZ, "EEE MMM d") : "—";
+            const dateLabel = start ? formatInTimeZone(start, CAL_TZ, "EEE MMM d") : "—";
+            const tzAbbr = start ? formatInTimeZone(start, CAL_TZ, "zzz") : "CT";
             const timeLabel = start
-              ? `${formatInTimeZone(start, PHX_TZ, "h:mm a")}${end ? ` – ${formatInTimeZone(end, PHX_TZ, "h:mm a")}` : ""} MST`
+              ? `${formatInTimeZone(start, CAL_TZ, "h:mm a")}${end ? ` – ${formatInTimeZone(end, CAL_TZ, "h:mm a")}` : ""} ${tzAbbr}`
               : "—";
+            const relativeLabel = start ? formatRelativeFromNow(start) : "";
 
             return (
               <Card key={r.id} className="hover:bg-muted/20 transition-base">
@@ -335,6 +342,12 @@ export default function HeadhuntersCalendar() {
                       <p className="text-11 text-muted-foreground tabular-nums flex items-center gap-1 justify-end">
                         <Clock className="h-3 w-3" /> {timeLabel}
                       </p>
+                      {/* 2026-06-17 Sam: kill CDT confusion with explicit "in 2h 15m" chip */}
+                      {relativeLabel && relativeLabel !== "—" && (
+                        <p className="text-10 mt-0.5 tabular-nums font-semibold text-amber-500 dark:text-amber-400 text-right">
+                          {relativeLabel}
+                        </p>
+                      )}
                     </div>
                   </div>
 

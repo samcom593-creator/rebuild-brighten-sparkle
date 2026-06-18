@@ -1,10 +1,13 @@
 import { forwardRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Crown, Mail, Phone, MapPin } from "lucide-react";
+import { applyHrefWithRef } from "@/lib/refSlug";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 export const Footer = forwardRef<HTMLElement>((_, ref) => {
+  const [searchParams] = useSearchParams();
+  const applyHref = applyHrefWithRef(searchParams.get("ref"));
   return (
     <footer ref={ref} className="py-12 border-t border-[#1e293b] bg-white dark:bg-[#030712]">
       <div className="container mx-auto px-4">
@@ -38,7 +41,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
               <li><a href="#benefits" className="hover:text-[#22d3a5] transition-colors">Benefits</a></li>
               <li><a href="#earnings" className="hover:text-[#22d3a5] transition-colors">Earnings</a></li>
               <li><a href="#testimonials" className="hover:text-[#22d3a5] transition-colors">Receipts</a></li>
-              <li><Link to="/apply" className="hover:text-[#22d3a5] transition-colors">Apply Now</Link></li>
+              <li><Link to={applyHref} className="hover:text-[#22d3a5] transition-colors">Apply Now</Link></li>
             </ul>
           </div>
 

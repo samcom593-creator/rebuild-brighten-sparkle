@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Menu, X, Crown, Search } from "lucide-react";
+import { applyHrefWithRef } from "@/lib/refSlug";
 
 // Sam-feedback 2026-06-03: removed #testimonials and #systems — no matching
 // section IDs on the landing, so taps did nothing. Five real anchors only.
@@ -15,6 +16,8 @@ export function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const [searchParams] = useSearchParams();
+  const applyHref = applyHrefWithRef(searchParams.get("ref"));
 
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus();
@@ -110,7 +113,7 @@ export function Navbar() {
                 Login
               </button>
             </Link>
-            <Link to="/apply">
+            <Link to={applyHref}>
               <button className="px-6 py-2.5 text-sm font-bold font-display bg-[#22d3a5] text-[#030712] rounded-lg hover:bg-[#1cb88f] hover:shadow-lg transition-all duration-200">
                 Apply Now
               </button>
@@ -159,7 +162,7 @@ export function Navbar() {
                   Login
                 </button>
               </Link>
-              <Link to="/apply" onClick={() => setIsOpen(false)}>
+              <Link to={applyHref} onClick={() => setIsOpen(false)}>
                 <button className="w-full py-3 text-sm font-bold font-display bg-[#22d3a5] text-[#030712] rounded-lg hover:bg-[#1cb88f] transition-colors shadow-md">
                   Apply Now
                 </button>

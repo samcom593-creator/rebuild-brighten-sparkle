@@ -198,3 +198,50 @@ export function getBusinessMonthProjectionContext(date: Date = new Date()): {
     daysInMonth: endOfMonth(businessNow).getDate(),
   };
 }
+
+/**
+ * 2026-06-17 Sam directive: "with the Calendly link, the CDT time is just
+ * fucking up my head completely." Calendly bookings show up across the site
+ * as raw UTC ISO strings. Render them in America/Chicago (the recruiting
+ * timezone — Calendly's configured tz) with both the absolute label AND a
+ * "starting in 2h 15m" relative chip so Sam can read his schedule without
+ * doing timezone math.
+ *
+ * formatBusinessTimeWithDay → "Wed Jun 18 · 9:30 AM CDT"
+ *   Single line, sortable, includes the tz abbr so it's never ambiguous.
+ */
+export function formatBusinessTimeWithDay(date: Date | string | null | undefined): string {
+  if (!date) return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "—";
+  // formatInTimeZone uses date-fns tokens; `zzz` emits "CDT"/"CST".
+  return formatInTimeZone(d, BUSINESS_TIMEZONE, "EEE MMM d · h:mm a zzz");
+}
+
+/**
+ * formatRelativeFromNow → "in 2h 15m" / "starting now" / "started 4m ago"
+ *   Computes purely off epoch-ms delta so it's tz-agnostic and stable.
+ *   Buckets: <1 min = "starting now", <1 h = minutes, <1 d = h+m, else d+h.
+ */
+export function formatRelativeFromNow(date: Date | string | null | undefined, nowMs: number = Date.now()): string {
+  if (!date) return "—";
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "—";
+  const deltaSec = (d.getTime() - nowMs) / 1000;
+  if (deltaSec > -60 && deltaSec < 60) return "starting now";
+  const future = deltaSec > 0;
+  const abs = Math.abs(deltaSec);
+  let body: string;
+  if (abs < 3600) {
+    body = `${Math.round(abs / 60)}m`;
+  } else if (abs < 86400) {
+    const h = Math.floor(abs / 3600);
+    const m = Math.floor((abs % 3600) / 60);
+    body = m ? `${h}h ${m}m` : `${h}h`;
+  } else {
+    const days = Math.floor(abs / 86400);
+    const h = Math.floor((abs % 86400) / 3600);
+    body = h ? `${days}d ${h}h` : `${days}d`;
+  }
+  return future ? `in ${body}` : `${body} ago`;
+}

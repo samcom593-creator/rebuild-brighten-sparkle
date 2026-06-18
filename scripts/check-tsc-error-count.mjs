@@ -63,7 +63,10 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // 2026-06-17 22:50 CDT — BASELINE dropped 256 → 246. Codex's InterviewCommand
 //   Center declutter (1691 → 643 lines, commit 9949e1e8) shed 10 errors
 //   alongside the panel kills. Lock the new floor.
-const BASELINE = 246;
+// 2026-06-18 — BASELINE dropped 246 → 244 after the leaderboard/book-truth
+//   follow-up and B1 link-audit tooling kept the type graph below the prior
+//   floor. Lock the new floor.
+const BASELINE = 244;
 
 let stdout = "";
 let stderr = "";

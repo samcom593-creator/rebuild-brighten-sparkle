@@ -687,13 +687,14 @@ export function AgentProfileDrawer() {
         )}
 
         {/* 2026-06-18 Sam directive: 'I want all the UI perfect'.
-            Sticky footer with the three actions Sam taps most: Call · Text ·
-            Open in CRM. Always visible regardless of scroll depth. */}
+            Sticky footer with the four actions Sam taps most: Call · Text ·
+            CRM · Send Course (added 2026-06-18 — re-fire course/discord
+            emails even if license is already set). Always visible. */}
         {agent && (
-          <div className="border-t border-border bg-card/80 backdrop-blur-sm px-4 py-3 flex gap-2">
+          <div className="border-t border-border bg-card/80 backdrop-blur-sm px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
             <Button
               size="sm"
-              className="flex-1 h-9 gap-1.5"
+              className="h-9 gap-1.5"
               disabled={!phone}
               onClick={() => phone && (window.location.href = `tel:${phone}`)}
               title={phone ? `Call ${phone}` : "No phone on file"}
@@ -703,7 +704,7 @@ export function AgentProfileDrawer() {
             <Button
               size="sm"
               variant="outline"
-              className="flex-1 h-9 gap-1.5"
+              className="h-9 gap-1.5"
               disabled={!phone}
               onClick={() => phone && (window.location.href = `sms:${phone}`)}
               title={phone ? `Text ${phone}` : "No phone on file"}
@@ -713,7 +714,7 @@ export function AgentProfileDrawer() {
             <Button
               size="sm"
               variant="outline"
-              className="flex-1 h-9 gap-1.5"
+              className="h-9 gap-1.5"
               onClick={() => {
                 close();
                 navigate(`/agent/${agent.id}`);
@@ -721,6 +722,33 @@ export function AgentProfileDrawer() {
               title="Open full CRM page"
             >
               <ExternalLink className="h-3.5 w-3.5" /> CRM
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
+              onClick={async () => {
+                if (!agent?.id) return;
+                try {
+                  await (supabase as any)
+                    .from("agent_onboarding_queue")
+                    .upsert(
+                      [
+                        { agent_id: agent.id, email_kind: "course",  target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
+                        { agent_id: agent.id, email_kind: "discord", target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
+                      ],
+                      { onConflict: "agent_id,email_kind" },
+                    );
+                  const { data } = await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
+                  const sent = (data as any)?.sent ?? 0;
+                  toast.success(`Course + Discord re-sent (${sent} delivered)`);
+                } catch (e: any) {
+                  toast.error(`Send failed: ${e?.message?.slice(0, 80) ?? "unknown"}`);
+                }
+              }}
+              title="Re-fire course + Discord emails (idempotent)"
+            >
+              <Mail className="h-3.5 w-3.5" /> Course
             </Button>
           </div>
         )}

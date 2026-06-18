@@ -246,16 +246,33 @@ export default function Leaderboard() {
       }
 
       if (board === "production") {
-        const [{ data: dealRows }, { data: syncRow }] = await Promise.all([
-          // RLS-bypass leaderboard view — regular agents only see their own
-          // deals from the base table (deals_own_read policy), which broke
-          // leaderboard visibility. v_deals_leaderboard exposes only the
-          // 5 non-PII cols needed for ranking and grants SELECT to everyone.
+        // 2026-06-18 Sam directive: 'I'm still missing Daniel and more people
+        // inside the leaderboards.' Daniel + 15+ other producers have their
+        // deals in agentlink_deals_snapshot (book of business) not the local
+        // deals table. The website-side deals table only contains rows that
+        // were manually entered or sync'd into Apex. Switch the production
+        // board to source from book of business (joined via agents.al_user_id
+        // → user_id) so the Production leaderboard matches AgentLink truth.
+        // Falls back to v_deals_leaderboard for any agent without al_user_id
+        // (so a producer who only has local entries still shows).
+        const [bookRes, localRes, agentsLink, { data: syncRow }] = await Promise.all([
+          // Book of business — the truth.
+          supabase
+            .from("agentlink_deals_snapshot" as any)
+            .select("user_id, annual_premium, effective_date")
+            .gte("effective_date", bounds.startIso.slice(0, 10))
+            .lt("effective_date", bounds.endIso.slice(0, 10)),
+          // Local fallback — for agents whose deals haven't synced to AgentLink.
           supabase
             .from("v_deals_leaderboard" as any)
             .select("agent_id, annual_premium, posted_at")
             .gte("posted_at", bounds.startIso)
             .lt("posted_at", bounds.endIso),
+          // Map user_id (int) → agents.id (uuid) for the book half.
+          supabase
+            .from("agents")
+            .select("id, al_user_id")
+            .not("al_user_id", "is", null),
           supabase
             .from("agentlink_sync_log" as any)
             .select("finished_at, started_at")
@@ -264,9 +281,23 @@ export default function Leaderboard() {
             .limit(1)
             .maybeSingle(),
         ]);
+        const alUserIdToAgentId = new Map<number, string>(
+          ((agentsLink.data ?? []) as Array<{ id: string; al_user_id: number }>)
+            .map((r) => [Number(r.al_user_id), r.id])
+        );
         const premiumRows = new Map<string, Array<{ annual_premium?: number | null }>>();
-        for (const deal of (dealRows ?? []) as any[]) {
+        // Book of business — preferred source.
+        for (const deal of (bookRes.data ?? []) as Array<{ user_id: number; annual_premium: number | string | null }>) {
+          const agentId = alUserIdToAgentId.get(Number(deal.user_id));
+          if (!agentId) continue;
+          if (!premiumRows.has(agentId)) premiumRows.set(agentId, []);
+          premiumRows.get(agentId)!.push({ annual_premium: Number(deal.annual_premium ?? 0) });
+        }
+        // Local deals — only for agents WITHOUT al_user_id (no double count).
+        const linkedAgentIds = new Set(alUserIdToAgentId.values());
+        for (const deal of (localRes.data ?? []) as any[]) {
           if (!deal.agent_id) continue;
+          if (linkedAgentIds.has(deal.agent_id)) continue;
           if (!premiumRows.has(deal.agent_id)) premiumRows.set(deal.agent_id, []);
           premiumRows.get(deal.agent_id)!.push({ annual_premium: deal.annual_premium });
         }

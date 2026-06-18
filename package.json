@@ -34,6 +34,7 @@
     "typecheck:count": "tsc -b --noEmit --force 2>&1 | grep -cE 'error TS[0-9]+' || true",
     "smoke": "node scripts/route-smoke.mjs",
     "smoke:prod": "BASE=https://apex-financial.org node scripts/route-smoke.mjs",
+    "audit:links": "node scripts/link-audit.mjs",
     "lighthouse:prod": "node scripts/lighthouse-prod.mjs",
     "test": "vitest run",
     "test:watch": "vitest",

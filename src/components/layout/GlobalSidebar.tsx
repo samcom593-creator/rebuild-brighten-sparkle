@@ -242,6 +242,8 @@ export function GlobalSidebar({
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         // Admin hub (everything that isn't daily flow)
         { icon: GitMerge, label: "Agent Duplicates", href: "/admin/agent-duplicates" },
+        // 2026-06-18 Sam: June hires punch list with inline edit + Send Course.
+        { icon: UserCog, label: "June Hires Punch List", href: "/admin/june-hires", special: true },
         { icon: Settings, label: "Admin", href: "/dashboard/command" },
       );
       oldApplicants.push(

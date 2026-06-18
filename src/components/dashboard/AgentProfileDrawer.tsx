@@ -100,6 +100,13 @@ interface MonthlyProductionRow {
   legs: number | null;
 }
 
+interface PaceVerdictRow {
+  agent_id: string;
+  ap_mtd: number | null;
+  projected_eom_ap: number | null;
+  pace_verdict: "hit_20k" | "on_pace_20k" | "below_pace" | "new_hire_grace" | "zero_mtd" | string;
+}
+
 interface CallTimelineRow {
   source: "call" | "note" | string;
   id: string;
@@ -279,6 +286,25 @@ export function AgentProfileDrawer() {
     staleTime: 30_000,
   });
 
+  // 2026-06-18 — pace_verdict from v_agent_20k_target_leaderboard.
+  // Shows "Hit $20K" / "On pace $20K" / "Below pace" / etc. as a colored pill
+  // so Sam instantly sees if an agent is tracking for the $20K MTD target.
+  const { data: pace } = useQuery<PaceVerdictRow | null>({
+    queryKey: ["agent-profile-drawer-pace", agentId],
+    enabled: !!agentId,
+    queryFn: async () => {
+      if (!agentId) return null;
+      const { data, error } = await supabase
+        .from("v_agent_20k_target_leaderboard" as any)
+        .select("agent_id, ap_mtd, projected_eom_ap, pace_verdict")
+        .eq("agent_id", agentId)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data as any;
+    },
+    staleTime: 60_000,
+  });
+
   // Call notes timeline: merged call_activity + agent_notes via SECURITY INVOKER RPC.
   // Sam directive 2026-06-16 voice — "notes from the call" surfaced in profile.
   const { data: timeline } = useQuery<CallTimelineRow[]>({
@@ -367,28 +393,63 @@ export function AgentProfileDrawer() {
               </div>
             </div>
 
+            {/* 2026-06-18 — pace verdict from v_agent_20k_target_leaderboard.
+                Instant visual: 🔥 hit_20k · 📈 on_pace_20k · 📉 below_pace ·
+                🆕 new_hire_grace · 😴 zero_mtd. */}
+            {pace && pace.pace_verdict && (
+              <div className={cn(
+                "rounded-full border px-3 py-2 flex items-center justify-between gap-2 text-xs",
+                pace.pace_verdict === "hit_20k" && "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
+                pace.pace_verdict === "on_pace_20k" && "border-sky-500/40 bg-sky-500/10 text-sky-500",
+                pace.pace_verdict === "below_pace" && "border-amber-500/40 bg-amber-500/10 text-amber-500",
+                pace.pace_verdict === "new_hire_grace" && "border-slate-500/40 bg-slate-500/10 text-slate-400",
+                pace.pace_verdict === "zero_mtd" && "border-rose-500/40 bg-rose-500/10 text-rose-500",
+              )}>
+                <span className="font-semibold tabular-nums">
+                  {pace.pace_verdict === "hit_20k" && "🔥 Hit $20K MTD"}
+                  {pace.pace_verdict === "on_pace_20k" && "📈 On pace for $20K"}
+                  {pace.pace_verdict === "below_pace" && "📉 Below $20K pace"}
+                  {pace.pace_verdict === "new_hire_grace" && "🆕 New hire grace"}
+                  {pace.pace_verdict === "zero_mtd" && "😴 0 MTD"}
+                </span>
+                {pace.projected_eom_ap != null && pace.pace_verdict !== "new_hire_grace" && (
+                  <span className="text-muted-foreground tabular-nums">
+                    EOM proj {fmtUSDCompact(pace.projected_eom_ap)}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Hero IT / AV / Legs row — Sam directive 2026-06-16 voice:
                 "I want their how much production they're doing monthly,
                  whether it's IT or AV, how many legs they have, and then
-                 obviously notes from the call." Phone-first big tiles. */}
-            <div className="rounded-3xl border border-border bg-card/40 px-4 py-4 grid grid-cols-3 gap-3">
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">IT</p>
-                <p className="text-3xl font-black tabular-nums leading-none">
+                 obviously notes from the call."
+                2026-06-18 polish: color-accent each tile so the eye scans
+                items vs money vs downline instantly. */}
+            <div className="rounded-3xl border border-border bg-card/40 grid grid-cols-3 divide-x divide-border overflow-hidden">
+              <div className="min-w-0 px-3 py-4">
+                <p className="text-[10px] uppercase tracking-wider text-emerald-500/80 font-semibold flex items-center gap-1">
+                  <Calendar className="h-2.5 w-2.5" /> IT
+                </p>
+                <p className="mt-1 text-3xl font-black tabular-nums leading-none text-emerald-500 dark:text-emerald-400">
                   {(monthly?.items_this_month ?? 0).toLocaleString()}
                 </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">this month</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">items · this month</p>
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">AV</p>
-                <p className="text-3xl font-black tabular-nums leading-none">
+              <div className="min-w-0 px-3 py-4">
+                <p className="text-[10px] uppercase tracking-wider text-amber-500/80 font-semibold flex items-center gap-1">
+                  <TrendingUp className="h-2.5 w-2.5" /> AV
+                </p>
+                <p className="mt-1 text-3xl font-black tabular-nums leading-none text-amber-500 dark:text-amber-400">
                   {fmtUSDCompact(monthly?.annual_volume_this_month ?? 0)}
                 </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">this month</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">premium · this month</p>
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Legs</p>
-                <p className="text-3xl font-black tabular-nums leading-none">
+              <div className="min-w-0 px-3 py-4">
+                <p className="text-[10px] uppercase tracking-wider text-sky-500/80 font-semibold flex items-center gap-1">
+                  <Users className="h-2.5 w-2.5" /> Legs
+                </p>
+                <p className="mt-1 text-3xl font-black tabular-nums leading-none text-sky-500 dark:text-sky-400">
                   {(monthly?.legs ?? 0).toLocaleString()}
                 </p>
                 <p className="mt-1 text-[10px] text-muted-foreground">downline</p>

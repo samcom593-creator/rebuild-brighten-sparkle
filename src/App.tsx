@@ -84,6 +84,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ApexControl = lazy(() => import("./pages/ApexControl"));
 const BuildersDashboard = lazy(() => import("./pages/BuildersDashboard"));
 const DashboardApplicants = lazy(() => import("./pages/DashboardApplicants"));
+const DashboardToday = lazy(() => import("./pages/DashboardToday"));
 const DashboardAccounts = lazy(() => import("./pages/DashboardAccounts"));
 const OffersPage = lazy(() => import("./pages/OffersPage"));
 const Storefront = lazy(() => import("./pages/Storefront"));
@@ -94,6 +95,7 @@ const DashboardCommandCenter = lazy(() => import("./pages/DashboardCommandCenter
 const ManagerNextStepBoard = lazy(() => import("./pages/ManagerNextStepBoard"));
 const AdminStuckPool = lazy(() => import("./pages/AdminStuckPool"));
 const AdminFunnelHealth = lazy(() => import("./pages/AdminFunnelHealth"));
+const AdminEmailGaps = lazy(() => import("./pages/AdminEmailGaps"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const ScheduleCall = lazy(() => import("./pages/ScheduleCall"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -110,6 +112,7 @@ const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Disclosures = lazy(() => import("./pages/Disclosures"));
 const Install = lazy(() => import("./pages/Install"));
+const Press = lazy(() => import("./pages/Press"));
 const CourseProgress = lazy(() => import("./pages/CourseProgress"));
 const CourseContent = lazy(() => import("./pages/CourseContent"));
 const PurchaseLeads = lazy(() => import("./pages/PurchaseLeads"));
@@ -377,6 +380,7 @@ const App = () => (
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/disclosures" element={<Disclosures />} />
                   <Route path="/install" element={<Install />} />
+                  <Route path="/press" element={<Press />} />
                   {/* /apex-daily-numbers is internal-only — was publicly exposing
                       production-entry UI. Now requires a logged-in user (any role). */}
                   <Route path="/apex-daily-numbers" element={<ProtectedRoute><LogNumbers /></ProtectedRoute>} />
@@ -410,6 +414,9 @@ const App = () => (
                     <Route path="/dashboard/managers" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="managers" /></ProtectedRoute>} />
                     <Route path="/dashboard/agency-owners" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="agencyOwners" /></ProtectedRoute>} />
                     <Route path="/dashboard/legacy" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
+                    {/* 2026-06-17 Sam directive: native daily flow at /dashboard/today
+                        (replaces Todoist dep). Tap-circle UI · phone-first. */}
+                    <Route path="/dashboard/today" element={<ProtectedRoute><DashboardToday /></ProtectedRoute>} />
                     <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
                     {/* Manager self-serve: view their referrals + drop new ones (Sam 2026-06-03) */}
                     <Route path="/admin/my-applicants" element={<ProtectedRoute allowManagers><MyApplicants /></ProtectedRoute>} />
@@ -443,6 +450,8 @@ const App = () => (
                     <Route path="/dashboard/team/next-step" element={<ProtectedRoute requireAdmin allowManagers><ManagerNextStepBoard /></ProtectedRoute>} />
                     <Route path="/admin/next-step/stuck" element={<ProtectedRoute requireAdmin><AdminStuckPool /></ProtectedRoute>} />
                     <Route path="/admin/next-step/funnel-health" element={<ProtectedRoute requireAdmin><AdminFunnelHealth /></ProtectedRoute>} />
+                    {/* 2026-06-17 Sam: surface every licensed agent missing course email + bulk send */}
+                    <Route path="/admin/email-gaps" element={<ProtectedRoute requireAdmin><AdminEmailGaps /></ProtectedRoute>} />
                     <Route path="/dashboard/clients/:clientId" element={<ProtectedRoute><ClientDetail /></ProtectedRoute>} />
                     {/* Seminar control: admins, managers, and flagged presenters
                         such as KJ (agents.is_presenting=true). */}

@@ -2,17 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
-  Activity,
-  AlertCircle,
   ArrowRight,
-  BarChart3,
   CalendarClock,
   CheckCircle2,
   ChevronRight,
-  ClipboardList,
   DollarSign,
-  Mail,
-  MapPin,
   Mic,
   MicOff,
   PhoneCall,
@@ -20,401 +14,54 @@ import {
   Save,
   Search,
   ShieldCheck,
-  Timer,
   Trash2,
-  User,
-  Users,
-  Zap,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { EmptyState } from "@/components/ui/empty-state";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  appendNote,
+  applyTranscriptHints,
+  BUCKETS,
+  bucketOf,
+  clearDraft,
+  createId,
+  EMPTY_FORM,
+  fmtCallTimer,
+  formatPhone,
+  inferStateFromPhone,
+  leadName,
+  loadDraft,
+  loadLocalLeads,
+  PROBLEM_OPTIONS,
+  QUICK_FACTS,
+  saveDraft,
+  saveLocalLeads,
+} from "@/lib/inboundLeads";
+import type { DisplayBucket, InboundLead, InboundStage, Urgency } from "@/lib/inboundLeads";
 import { cn } from "@/lib/utils";
 
-type InboundStage = "new" | "diagnosing" | "quoted" | "follow_up" | "won" | "lost";
-type Urgency = "hot" | "warm" | "normal";
-
-interface InboundLead {
-  id: string;
-  client_first_name: string;
-  client_last_name: string;
-  phone: string;
-  email: string;
-  state: string;
-  city: string;
-  problem_type: string;
-  urgency: Urgency;
-  current_coverage: string;
-  desired_solution: string;
-  budget: string;
-  household: string;
-  notes: string;
-  transcript: string;
-  stage: InboundStage;
-  next_action_at: string;
-  source: string;
-  created_at: string;
-  updated_at: string;
-  saved_to_supabase?: boolean;
-}
-
-const STORAGE_KEY = "apex:inbound-leads:v1";
-const DRAFT_KEY = "apex:inbound-leads:active-draft:v1";
-
-// v25 hot-fix advantages for live calls:
-//   - Auto-save form draft to localStorage on every change (survive reload)
-//   - Restore draft on mount (don't lose mid-call work)
-//   - Quick fact chips append to notes ("Married", "Has kids", etc)
-//   - Live call duration timer
-//   - Age inference from "I'm 56" type voice clues
-// v26 overhaul: trimmed from 14 chips to 7 most-used. Less visual
-// weight above the Notes textarea. Sam can still type the rest.
-const QUICK_FACTS = [
-  "Married", "Has kids", "Owns home", "Smoker",
-  "Pre-existing condition", "Wants no exam", "Veteran",
-] as const;
-
-function loadDraft(): typeof EMPTY_FORM | null {
-  if (typeof window === "undefined" || !window.localStorage) return null;
-  try {
-    const raw = window.localStorage.getItem(DRAFT_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    // sanity check — must have the EMPTY_FORM shape keys
-    if (typeof parsed === "object" && parsed && "client_first_name" in parsed) return parsed;
-    return null;
-  } catch { return null; }
-}
-
-function saveDraft(form: typeof EMPTY_FORM) {
-  if (typeof window === "undefined" || !window.localStorage) return;
-  try {
-    // Only persist if there's at least one populated field — empty drafts
-    // get a clear (so a saved+reset cycle doesn't leak the prior draft)
-    const hasContent = Object.values(form).some((v) => typeof v === "string" ? v.trim().length > 0 : false);
-    if (hasContent) {
-      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
-    } else {
-      window.localStorage.removeItem(DRAFT_KEY);
-    }
-  } catch { /* private mode etc */ }
-}
-
-function clearDraft() {
-  if (typeof window === "undefined" || !window.localStorage) return;
-  try { window.localStorage.removeItem(DRAFT_KEY); } catch {}
-}
-
-function appendNote(notes: string, fact: string): string {
-  // Idempotent: if fact already in notes, remove it (toggle off)
-  const existing = notes.split(/[·\n]/).map((s) => s.trim()).filter(Boolean);
-  if (existing.includes(fact)) {
-    return existing.filter((s) => s !== fact).join(" · ");
-  }
-  return existing.length === 0 ? fact : `${existing.join(" · ")} · ${fact}`;
-}
-
-function fmtCallTimer(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-// v25 SWITCH CENTER SCRIPT · Sam's live call playbook (provided 2026-06-10)
-// Shown in the New Client dialog so Sam sees the next prompt + has
-// one-tap-to-notes cheat-sheet rebuttals for the 7 common situations.
-const SWITCH_CENTER_SCRIPT: Array<{ step: string; prompt: string }> = [
-  { step: "Open",          prompt: "This is Samuel with the policy adjustment center · who I have the pleasure of speaking with today?" },
-  { step: "Product",       prompt: "Is it a whole life policy or term?" },
-  { step: "Reason",        prompt: "How can I assist you today?" },
-  { step: "Pull profile",  prompt: "Okay perfect · let me pull up your profile · can you confirm the spelling of your first and last name?" },
-  { step: "DOB",           prompt: "And then perfect · what's your DOB?" },
-  { step: "Monthly",       prompt: "Approximately how much were they charging you a month?" },
-  { step: "Address",       prompt: "And the address on file?" },
-];
-
-const SWITCH_CENTER_REBUTTALS: Array<{ trigger: string; response: string }> = [
-  { trigger: "Missed payment",
-    response: "Yes I see that and we sent you over a lapse notice in the mail · good news is we can get this updated for you and I see a note here that you were eligible for the preferred option which should drop down the payment · I'll have the billing department explain that to you." },
-  { trigger: "Is this {Carrier}?",
-    response: "This is the switch center to help you avoid long wait times. (NOW GO BACK TO THE QUESTIONS)" },
-  { trigger: "Policy packet missing",
-    response: "Okay · I do see here that for beneficiary there's nothing here, we do need to get you one so we don't have to do a lost policy statement · but also I see that you were marked as standard health not preferred but on my end it shows you're eligible · let's get all this fixed. Let me transfer you over." },
-  { trigger: "Cancellation",
-    response: "Okay and what was the reason for the cancellation · well that makes sense you have been overpaying · you were supposed to be in the preferred option · let's reduce that payment so you can keep the cash value." },
-  { trigger: "Change address",
-    response: "Okay perfect · I see here that we do need to update this because we've been sending letters in the mail · have you not received them? You were supposed to be in the preferred option and it should've saved you some money · I'm going to have the correct department fix the address and put you on the preferred option. One moment let me transfer you." },
-  { trigger: "Change banking",
-    response: "Yes I see here that it looks like you're not on automatic draft · we're going to switch it to automatic billing and it should drop down your payment as well · but give me one moment let me transfer you to the billing department." },
-  { trigger: "Change beneficiary",
-    response: "Yes let me get you to the right department but before I do that I see a note that we've been sending you letters in the mail that you were supposed to be in the preferred option. Did you receive those letters? Well let me get this transferred out to the right department to put you in the preferred option and change the beneficiary as well as we get you a new policy packet in the mail so you see the change." },
-];
-
-// v25 area-code → state hint table (top 200 NANP area codes).
-// Used to suggest a state when Sam types the phone number and the
-// state slot is still empty. Compact map — not authoritative, just a
-// fast hint so he doesn't have to type the state if it matches.
-const AREA_CODE_STATE: Record<string, string> = {
-  "201":"NJ","202":"DC","203":"CT","205":"AL","206":"WA","207":"ME","208":"ID","209":"CA","210":"TX","212":"NY","213":"CA","214":"TX","215":"PA","216":"OH","217":"IL","218":"MN","219":"IN",
-  "224":"IL","225":"LA","228":"MS","229":"GA","231":"MI","234":"OH","239":"FL","240":"MD","248":"MI","251":"AL","252":"NC","253":"WA","254":"TX","256":"AL","260":"IN","262":"WI","267":"PA","269":"MI","270":"KY","272":"PA","276":"VA","281":"TX",
-  "301":"MD","302":"DE","303":"CO","304":"WV","305":"FL","307":"WY","308":"NE","309":"IL","310":"CA","312":"IL","313":"MI","314":"MO","315":"NY","316":"KS","317":"IN","318":"LA","319":"IA","320":"MN","321":"FL","323":"CA","325":"TX","330":"OH","331":"IL","334":"AL","336":"NC","337":"LA","339":"MA","341":"CA","346":"TX","347":"NY","351":"MA","352":"FL","360":"WA","361":"TX","364":"KY","380":"OH","385":"UT","386":"FL",
-  "401":"RI","402":"NE","404":"GA","405":"OK","406":"MT","407":"FL","408":"CA","409":"TX","410":"MD","412":"PA","413":"MA","414":"WI","415":"CA","417":"MO","419":"OH","423":"TN","424":"CA","425":"WA","430":"TX","432":"TX","434":"VA","435":"UT","440":"OH","442":"CA","443":"MD","458":"OR","463":"IN","469":"TX","470":"GA","475":"CT","478":"GA","479":"AR","480":"AZ","484":"PA",
-  "501":"AR","502":"KY","503":"OR","504":"LA","505":"NM","507":"MN","508":"MA","509":"WA","510":"CA","512":"TX","513":"OH","515":"IA","516":"NY","517":"MI","518":"NY","520":"AZ","530":"CA","531":"NE","534":"WI","539":"OK","540":"VA","541":"OR","551":"NJ","557":"MO","559":"CA","561":"FL","562":"CA","563":"IA","564":"WA","567":"OH","570":"PA","571":"VA","573":"MO","574":"IN","575":"NM","580":"OK","585":"NY","586":"MI","601":"MS","602":"AZ","603":"NH","605":"SD","606":"KY","607":"NY","608":"WI","609":"NJ","610":"PA","612":"MN","614":"OH","615":"TN","616":"MI","617":"MA","618":"IL","619":"CA","620":"KS","623":"AZ","626":"CA","628":"CA","629":"TN","630":"IL","631":"NY","636":"MO","640":"NJ","641":"IA","646":"NY","650":"CA","651":"MN","657":"CA","660":"MO","661":"CA","662":"MS","667":"MD","669":"CA","678":"GA","681":"WV","682":"TX","689":"FL",
-  "701":"ND","702":"NV","703":"VA","704":"NC","706":"GA","707":"CA","708":"IL","712":"IA","713":"TX","714":"CA","715":"WI","716":"NY","717":"PA","718":"NY","719":"CO","720":"CO","724":"PA","725":"NV","727":"FL","731":"TN","732":"NJ","734":"MI","737":"TX","740":"OH","743":"NC","747":"CA","754":"FL","757":"VA","760":"CA","762":"GA","763":"MN","765":"IN","769":"MS","770":"GA","772":"FL","773":"IL","774":"MA","775":"NV","779":"IL","781":"MA","785":"KS","786":"FL",
-  "801":"UT","802":"VT","803":"SC","804":"VA","805":"CA","806":"TX","808":"HI","810":"MI","812":"IN","813":"FL","814":"PA","815":"IL","816":"MO","817":"TX","818":"CA","828":"NC","830":"TX","831":"CA","843":"SC","845":"NY","847":"IL","848":"NJ","850":"FL","854":"SC","856":"NJ","857":"MA","858":"CA","859":"KY","860":"CT","862":"NJ","863":"FL","864":"SC","865":"TN","870":"AR","872":"IL","878":"PA","901":"TN","903":"TX","904":"FL","906":"MI","907":"AK","908":"NJ","909":"CA","910":"NC","912":"GA","913":"KS","914":"NY","915":"TX","916":"CA","917":"NY","918":"OK","919":"NC","920":"WI","925":"CA","928":"AZ","929":"NY","930":"IN","931":"TN","936":"TX","937":"OH","938":"AL","940":"TX","941":"FL","947":"MI","949":"CA","951":"CA","952":"MN","954":"FL","956":"TX","959":"CT","970":"CO","971":"OR","972":"TX","973":"NJ","978":"MA","979":"TX","980":"NC","984":"NC","985":"LA","989":"MI",
+const STAGE_META: Record<InboundStage, { label: string; icon: typeof PhoneCall }> = {
+  new: { label: "New", icon: PhoneCall },
+  diagnosing: { label: "New", icon: PhoneCall },
+  quoted: { label: "Quoted", icon: DollarSign },
+  follow_up: { label: "Follow-up", icon: CalendarClock },
+  won: { label: "Closed", icon: CheckCircle2 },
+  lost: { label: "Closed", icon: ShieldCheck },
 };
-
-function inferStateFromPhone(phone: string): string | null {
-  const digits = phone.replace(/\D/g, "");
-  // Handle leading 1 (NANP country code)
-  const area = digits.length === 11 && digits.startsWith("1") ? digits.slice(1, 4)
-             : digits.length === 10 ? digits.slice(0, 3)
-             : digits.length >= 3 ? digits.slice(0, 3) : null;
-  return area ? AREA_CODE_STATE[area] ?? null : null;
-}
-
-// v24 palette restraint: kill the 6-color rainbow (cyan/violet/amber/blue/
-// emerald/slate). Stage chips read MONO via shared neutral tint; the dot
-// is the only color carrier. 4 dot colors: slate (in-progress) / amber
-// (waiting on Sam) / emerald (closed-won) / rose (closed-lost).
-// v26 overhaul: Sam wants 4 stages · New / Quoted / Follow-up / Closed.
-// Enum still has 6 values for existing data compat · `diagnosing` rolls
-// into New visually and `won`/`lost` both render under Closed.
-const STAGE_META: Record<InboundStage, { label: string; tint: string; dot: string; icon: typeof PhoneCall }> = {
-  new:        { label: "New",       tint: "border-border bg-muted text-foreground",   dot: "bg-slate-400",   icon: PhoneCall },
-  diagnosing: { label: "New",       tint: "border-border bg-muted text-foreground",   dot: "bg-slate-400",   icon: PhoneCall },
-  quoted:     { label: "Quoted",    tint: "border-border bg-muted text-foreground",   dot: "bg-amber-500",   icon: DollarSign },
-  follow_up:  { label: "Follow-up", tint: "border-border bg-muted text-foreground",   dot: "bg-amber-400",   icon: CalendarClock },
-  won:        { label: "Closed",    tint: "border-border bg-muted text-foreground",   dot: "bg-emerald-500", icon: CheckCircle2 },
-  lost:       { label: "Closed",    tint: "border-border bg-muted text-foreground",   dot: "bg-rose-400",    icon: ShieldCheck },
-};
-
-// 4 user-visible buckets · each maps to one or more raw stage values
-type DisplayBucket = "new" | "quoted" | "follow_up" | "closed";
-const BUCKETS: Array<{ key: DisplayBucket; label: string; stages: InboundStage[]; canonical: InboundStage }> = [
-  { key: "new",       label: "New",       stages: ["new", "diagnosing"], canonical: "new" },
-  { key: "quoted",    label: "Quoted",    stages: ["quoted"],             canonical: "quoted" },
-  { key: "follow_up", label: "Follow-up", stages: ["follow_up"],          canonical: "follow_up" },
-  { key: "closed",    label: "Closed",    stages: ["won", "lost"],        canonical: "won" },
-];
-const bucketOf = (s: InboundStage): DisplayBucket =>
-  s === "diagnosing" ? "new" : s === "won" || s === "lost" ? "closed" : (s as DisplayBucket);
-
-const STAGE_ORDER: InboundStage[] = ["new", "diagnosing", "quoted", "follow_up", "won", "lost"];
-
-const PROBLEM_OPTIONS = [
-  "Final expense",
-  "Mortgage protection",
-  "Life insurance review",
-  "Retirement / IUL",
-  "Child coverage",
-  "Debt protection",
-  "Existing policy issue",
-  "Business protection",
-  "Change bank",
-  "Add beneficiary",
-  "Other",
-];
-
-const EMPTY_FORM: Omit<InboundLead, "id" | "created_at" | "updated_at" | "source" | "saved_to_supabase"> = {
-  client_first_name: "",
-  client_last_name: "",
-  phone: "",
-  email: "",
-  state: "",
-  city: "",
-  problem_type: "",
-  urgency: "normal",
-  current_coverage: "",
-  desired_solution: "",
-  budget: "",
-  household: "",
-  notes: "",
-  transcript: "",
-  stage: "new",
-  next_action_at: "",
-};
-
-// All 50 US states, full names and common phrasings.
-const STATE_ALIASES: Record<string, string> = {
-  alabama:"AL", alaska:"AK", arizona:"AZ", arkansas:"AR", california:"CA",
-  colorado:"CO", connecticut:"CT", delaware:"DE", florida:"FL", georgia:"GA",
-  hawaii:"HI", idaho:"ID", illinois:"IL", indiana:"IN", iowa:"IA", kansas:"KS",
-  kentucky:"KY", louisiana:"LA", maine:"ME", maryland:"MD", massachusetts:"MA",
-  michigan:"MI", minnesota:"MN", mississippi:"MS", missouri:"MO", montana:"MT",
-  nebraska:"NE", nevada:"NV", "new hampshire":"NH", "new jersey":"NJ",
-  "new mexico":"NM", "new york":"NY", "north carolina":"NC", "north dakota":"ND",
-  ohio:"OH", oklahoma:"OK", oregon:"OR", pennsylvania:"PA", "rhode island":"RI",
-  "south carolina":"SC", "south dakota":"SD", tennessee:"TN", texas:"TX",
-  utah:"UT", vermont:"VT", virginia:"VA", washington:"WA", "west virginia":"WV",
-  wisconsin:"WI", wyoming:"WY",
-};
-
-const ALL_STATE_ABBR =
-  "AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY";
-
-function formatPhone(value: string): string {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
-}
-
-function loadLocalLeads(): InboundLead[] {
-  if (typeof window === "undefined" || !window.localStorage) return [];
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveLocalLeads(leads: InboundLead[]) {
-  if (typeof window === "undefined" || !window.localStorage) return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(leads.slice(0, 300)));
-  } catch {
-    // Some browser/privacy contexts block localStorage. The in-memory board still works.
-  }
-}
-
-function createId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  return `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function leadName(lead: Pick<InboundLead, "client_first_name" | "client_last_name">): string {
-  return [lead.client_first_name, lead.client_last_name].filter(Boolean).join(" ") || "Unnamed caller";
-}
-
-/**
- * Local transcript parser. Extracts caller info from a freeform note or
- * voice transcript and auto-fills the form. No LLM needed; pure regex +
- * keyword scoring tuned for Apex's typical inbound call vocabulary.
- *
- * Filled fields override only when the form slot is empty (won't clobber
- * something Sam already typed). Always rewrites `transcript`.
- */
-function applyTranscriptHints(
-  transcript: string,
-  current: Omit<InboundLead, "id" | "created_at" | "updated_at" | "source" | "saved_to_supabase">,
-) {
-  const text = transcript.toLowerCase();
-  const next = { ...current, transcript };
-
-  // EMAIL
-  const email = transcript.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
-  if (email && !next.email) next.email = email.toLowerCase();
-
-  // PHONE — 10-digit US, tolerant of separators
-  const phone = transcript.match(/(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}/)?.[0];
-  if (phone && !next.phone) next.phone = formatPhone(phone);
-
-  // NAME — multiple intro patterns
-  const namePatterns = [
-    /(?:my\s+name\s+is|name\s+is|this\s+is|client\s+is|caller\s+is|i'?m|it'?s)\s+([A-Z][a-z]+)(?:\s+([A-Z][a-z]+))?/,
-    /(?:calling\s+for|for)\s+([A-Z][a-z]+)(?:\s+([A-Z][a-z]+))?/,
-  ];
-  for (const pat of namePatterns) {
-    const m = transcript.match(pat);
-    if (m) {
-      if (!next.client_first_name) next.client_first_name = m[1] || "";
-      if (!next.client_last_name && m[2]) next.client_last_name = m[2];
-      if (m[1]) break;
-    }
-  }
-
-  // STATE — full names first (more reliable)
-  for (const [name, abbr] of Object.entries(STATE_ALIASES)) {
-    if (!next.state && text.includes(name)) { next.state = abbr; break; }
-  }
-  // Then 2-letter abbreviations (all 50)
-  if (!next.state) {
-    const stateAbbr = transcript.match(new RegExp(`\\b(${ALL_STATE_ABBR})\\b`));
-    if (stateAbbr) next.state = stateAbbr[1];
-  }
-
-  // CITY — "in <City>" pattern, plus city-comma-state
-  if (!next.city) {
-    const cityMatch =
-      transcript.match(/(?:in|from|live\s+in|based\s+in)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)(?:,|\s|\.|$)/) ||
-      transcript.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),\s*(?:[A-Z]{2}|\w+)/);
-    if (cityMatch?.[1] && cityMatch[1].length < 30) next.city = cityMatch[1];
-  }
-
-  // BUDGET — both monthly and lump-sum
-  if (!next.budget) {
-    const monthly = transcript.match(/\$?\b(\d{2,4})\b\s*(?:dollars|bucks)?\s*(?:a\s+month|monthly|per\s+month|\/mo|\/month)/i);
-    const lumpSum = transcript.match(/(?:budget|spend|afford|paying)\s+(?:up\s+to\s+|around\s+|about\s+)?\$?(\d{2,5})/i);
-    if (monthly) next.budget = `$${monthly[1]}/mo`;
-    else if (lumpSum) next.budget = `$${lumpSum[1]}`;
-  }
-
-  // PROBLEM TYPE — scoring across multiple keywords for each category
-  if (!next.problem_type) {
-    const scores: Record<string, number> = {};
-    const cat = (k: string, n = 1) => { scores[k] = (scores[k] || 0) + n; };
-    if (/\b(mortgage|home\s*loan|house\s*payment)\b/.test(text)) cat("Mortgage protection", 2);
-    if (/\b(final\s*expense|burial|funeral|cremation|cover\s+my\s+funeral)\b/.test(text)) cat("Final expense", 2);
-    if (/\b(retirement|iul|index(ed)?\s*universal|401\s*k|roth|ira|annuity)\b/.test(text)) cat("Retirement / IUL", 2);
-    if (/\b(child|children|kid|kids|grandkid|grandchild)\b/.test(text)) cat("Child coverage", 1);
-    if (/\b(business|llc|s-?corp|company|partner)\b/.test(text)) cat("Business protection", 1);
-    if (/\b(policy|coverage|insur\w+)\b/.test(text)) cat("Life insurance review", 1);
-    if (/\b(debt|credit\s*card|loan|owe)\b/.test(text)) cat("Debt protection", 1);
-    if (/\b(existing|already\s+have|current\s+policy|review\s+my\s+policy|cancel)\b/.test(text)) cat("Existing policy issue", 1);
-    const top = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
-    if (top && top[1] > 0) next.problem_type = top[0];
-  }
-
-  // CURRENT COVERAGE
-  if (!next.current_coverage) {
-    if (/\b(no\s+coverage|no\s+insurance|don'?t\s+have\s+(?:any\s+)?(?:coverage|insurance|policy)|never\s+had\s+(?:coverage|insurance))\b/.test(text)) {
-      next.current_coverage = "No current coverage";
-    } else if (/\b(already\s+have|existing\s+policy|got\s+a\s+policy|currently\s+covered|with\s+\w+(?:\s+insurance|\s+life))\b/.test(text)) {
-      next.current_coverage = "Has existing coverage";
-    } else if (/\b(group\s+(?:life|coverage)|through\s+work|employer\s+plan|company\s+plan)\b/.test(text)) {
-      next.current_coverage = "Group/employer plan only";
-    }
-  }
-
-  // HOUSEHOLD — marital + kids
-  if (!next.household) {
-    const bits: string[] = [];
-    if (/\b(married|wife|husband|spouse)\b/.test(text)) bits.push("married");
-    else if (/\b(single|divorced|widow(?:ed|er)?)\b/.test(text)) bits.push(text.match(/\b(single|divorced|widow(?:ed|er)?)\b/)![1]);
-    const kidMatch = text.match(/\b(\d+|one|two|three|four|five)\s+(?:kid|kids|child|children|grandkid)/);
-    if (kidMatch) bits.push(`${kidMatch[1]} ${kidMatch[1] === "1" || kidMatch[1] === "one" ? "kid" : "kids"}`);
-    if (bits.length) next.household = bits.join(", ");
-  }
-
-  // NEXT ACTION — "call back <day>", "follow up <time>"
-  if (!next.next_action_at) {
-    const followup = transcript.match(/(?:call\s+(?:me\s+)?back|follow(?:\s+up)?|reach\s+out)\s+(?:on\s+|by\s+|next\s+)?(\w+(?:\s+at\s+[\d:]+\s*(?:am|pm)?)?)/i);
-    if (followup?.[1]) next.next_action_at = followup[1].slice(0, 60);
-  }
-
-  // URGENCY — graded
-  if (/\b(urgent|asap|right\s+away|today|tonight|emergency|immediately)\b/.test(text)) next.urgency = "hot";
-  else if (/\b(this\s+week|soon|few\s+days|by\s+(?:monday|tuesday|wednesday|thursday|friday)|in\s+the\s+next\s+(?:couple|few)\s+days)\b/.test(text)) next.urgency = "warm";
-  else if (next.urgency === undefined as unknown as string) next.urgency = "normal";
-
-  return next;
-}
 
 export default function InboundLeads() {
   usePageTitle("Inbound Leads · APEX");
@@ -440,21 +87,6 @@ export default function InboundLeads() {
   const [form, setForm] = useState(() => loadDraft() ?? { ...EMPTY_FORM });
   const [listening, setListening] = useState(false);
   const [callElapsed, setCallElapsed] = useState(0); // live timer (sec)
-  // 2026-06-16 BUG-1 v7.5 — visible debug HUD so Sam SEES recording state.
-  // Sam: "audio recording in inbounds still not working" — code is sound +
-  // bucket has 0 files. Either the click never fires startListening OR chunks
-  // are empty OR Save Lead is never pressed (audio uploads only on save).
-  // This HUD removes the ambiguity by showing every state change live.
-  const [debugHud, setDebugHud] = useState<{
-    clicks: number;
-    lastClickAt: string | null;
-    micGranted: boolean | null;
-    recorderState: string;
-    chunksCount: number;
-    chunksBytes: number;
-    mimeType: string;
-    lastError: string | null;
-  }>({ clicks: 0, lastClickAt: null, micGranted: null, recorderState: "idle", chunksCount: 0, chunksBytes: 0, mimeType: "", lastError: null });
   const recognitionRef = useRef<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -557,104 +189,6 @@ export default function InboundLeads() {
     return () => { cancelled = true; };
   }, [refSlug]);
 
-  const stats = useMemo(() => {
-    const total = leads.length;
-    const hot = leads.filter((lead) => lead.urgency === "hot" && !["won", "lost"].includes(lead.stage)).length;
-    const followUps = leads.filter((lead) => lead.stage === "follow_up").length;
-    const solved = leads.filter((lead) => lead.stage === "won").length;
-    return { total, hot, followUps, solved };
-  }, [leads]);
-
-  // 2026-06-14 v6 §31 canonical AMBER HERO — live data via useQuery.
-  // 4 metrics: Calls today · Avg pickup-time · Connect rate · Active calling agents.
-  // Phoenix tz per Sam's permanent rule. Source = inbound_leads truth table.
-  const heroLive = useQuery({
-    queryKey: ["inbound-leads", "hero-live", user?.id ?? "anon"],
-    queryFn: async () => {
-      // Pull the last 7d of leads — enough surface to compute today/week and trends.
-      const sinceIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const { data, error } = await (supabase as any)
-        .from("inbound_leads")
-        .select("id,created_at,updated_at,stage,urgency,created_by_user_id,owner_agent_id,next_action_at")
-        .gte("created_at", sinceIso)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      const rows = (data ?? []) as Array<{
-        id: string;
-        created_at: string;
-        updated_at: string;
-        stage: InboundStage;
-        urgency: Urgency;
-        created_by_user_id: string | null;
-        owner_agent_id: string | null;
-        next_action_at: string | null;
-      }>;
-
-      // Phoenix tz today bounds — Sam's permanent rule for any today/week query.
-      const fmt = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "America/Phoenix",
-        year: "numeric", month: "2-digit", day: "2-digit",
-      });
-      const phxToday = fmt.format(new Date());
-      const phxOfRow = (iso: string) => fmt.format(new Date(iso));
-
-      const todayRows = rows.filter((r) => phxOfRow(r.created_at) === phxToday);
-      const weekRows = rows; // already last 7d
-
-      // Connect rate = leads that moved past "new" (any other stage = first touch made).
-      const connectedToday = todayRows.filter((r) => r.stage && r.stage !== "new").length;
-      const connectRate = todayRows.length > 0 ? Math.round((connectedToday / todayRows.length) * 100) : 0;
-
-      // Avg pickup-time = median seconds from created_at → updated_at for rows that moved
-      // out of "new". Falls back to "—" if no connected rows yet today.
-      const pickupSeconds: number[] = todayRows
-        .filter((r) => r.stage && r.stage !== "new")
-        .map((r) => {
-          const start = new Date(r.created_at).getTime();
-          const moved = new Date(r.updated_at).getTime();
-          return Math.max(0, Math.round((moved - start) / 1000));
-        })
-        .filter((s) => s >= 0 && s < 60 * 60 * 24); // sanity ceiling 24h
-      pickupSeconds.sort((a, b) => a - b);
-      const medianPickup = pickupSeconds.length
-        ? pickupSeconds[Math.floor(pickupSeconds.length / 2)]
-        : null;
-
-      // Active calling agents = distinct created_by_user_id touching a lead today.
-      const activeAgents = new Set(
-        todayRows.map((r) => r.created_by_user_id).filter((v): v is string => !!v),
-      ).size;
-
-      // Sub-stats for the inner glass band
-      const hotToday = todayRows.filter((r) => r.urgency === "hot").length;
-      const wonWeek = weekRows.filter((r) => r.stage === "won").length;
-      const followUpsOpen = weekRows.filter((r) => r.stage === "follow_up").length;
-      const lostWeek = weekRows.filter((r) => r.stage === "lost").length;
-
-      return {
-        callsToday: todayRows.length,
-        callsWeek: weekRows.length,
-        medianPickupSec: medianPickup,
-        connectRatePct: connectRate,
-        activeAgents,
-        hotToday,
-        wonWeek,
-        followUpsOpen,
-        lostWeek,
-      };
-    },
-    refetchInterval: 30_000,
-    staleTime: 15_000,
-  });
-
-  const fmtPickup = (sec: number | null) => {
-    if (sec == null) return "—";
-    if (sec < 60) return `${sec}s`;
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return s ? `${m}m ${s}s` : `${m}m`;
-  };
-
   // Section 11 (2026-06-14): admin-only Lead Source Attribution by Month.
   // Pulls last 6 months of inbound_leads, buckets by Phoenix-month + source,
   // shows totals and Won counts per cell. Surfaces which channels Sam should
@@ -749,19 +283,6 @@ export default function InboundLeads() {
       ].some((value) => String(value ?? "").toLowerCase().includes(q));
     });
   }, [leads, search, stageFilter]);
-
-  const columns = useMemo(() => {
-    const grouped: Record<InboundStage, InboundLead[]> = {
-      new: [],
-      diagnosing: [],
-      quoted: [],
-      follow_up: [],
-      won: [],
-      lost: [],
-    };
-    for (const lead of filteredLeads) grouped[lead.stage || "new"].push(lead);
-    return grouped;
-  }, [filteredLeads]);
 
   const updateForm = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -889,10 +410,6 @@ export default function InboundLeads() {
   }, [form]);
 
   const startListening = async (opts?: { withTabAudio?: boolean }) => {
-    // 2026-06-16 BUG-1 v7.5 instrumentation
-    setDebugHud((h) => ({ ...h, clicks: h.clicks + 1, lastClickAt: new Date().toLocaleTimeString(), lastError: null }));
-    // eslint-disable-next-line no-console
-    console.log("[BUG-1] startListening() fired · click count incrementing");
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     // 2026-06-15 v7.4 BUG FIX: was an EARLY RETURN that blocked the recorder
     // entirely on browsers without webkitSpeechRecognition (Firefox, some
@@ -924,11 +441,9 @@ export default function InboundLeads() {
       }).catch((err) => {
         // Mic permission denied or device not available — surface it
         console.error("[mic] getUserMedia failed:", err);
-        setDebugHud((h) => ({ ...h, micGranted: false, lastError: `getUserMedia: ${err?.name ?? "unknown"}` }));
         toast.error(`Mic blocked: ${err?.name ?? "unknown"}. Click the lock icon → allow microphone.`);
         return null;
       });
-      setDebugHud((h) => ({ ...h, micGranted: !!micStream }));
 
       if (!micStream) {
         // Continue with transcript-only flow — no audio file will be saved
@@ -973,26 +488,17 @@ export default function InboundLeads() {
           ? "audio/mp4"
           : "";
         const recorder = new MediaRecorder(recordStream, mimeType ? { mimeType } : undefined);
-        setDebugHud((h) => ({ ...h, mimeType: mimeType || "(default)", recorderState: recorder.state }));
         recorder.ondataavailable = (e) => {
           // eslint-disable-next-line no-console
           console.log("[BUG-1] ondataavailable · size=", e?.data?.size ?? "no-data");
           if (e.data && e.data.size > 0) {
             audioChunksRef.current.push(e.data);
-            setDebugHud((h) => ({
-              ...h,
-              chunksCount: audioChunksRef.current.length,
-              chunksBytes: audioChunksRef.current.reduce((sum, c) => sum + c.size, 0),
-            }));
           }
         };
         recorder.onerror = (e: any) => {
           console.error("[recorder] error:", e);
-          setDebugHud((h) => ({ ...h, lastError: `recorder.onerror: ${e?.error?.name ?? "unknown"}`, recorderState: recorder.state }));
           toast.error("Recording stopped unexpectedly. Mic may have been revoked.");
         };
-        recorder.onstart = () => setDebugHud((h) => ({ ...h, recorderState: "recording" }));
-        recorder.onstop = () => setDebugHud((h) => ({ ...h, recorderState: "stopped" }));
         // 2026-06-15 v7.4 BUG FIX: was recorder.start(1000) which means a deal
         // recorded under 1 second would emit ZERO chunks → empty audio file.
         // Sam: "I'm clicking the recorder. It's not recording the audio."
@@ -1056,27 +562,22 @@ export default function InboundLeads() {
       try {
         const audio = await harvestAudio();
         if (!audio || audio.blob.size === 0) {
-          setDebugHud((h) => ({ ...h, lastError: "harvestAudio returned empty (0 chunks)" }));
           return;
         }
         const ext = audio.blob.type.includes("mp4") ? "mp4" : "webm";
         const ts = Date.now();
         const path = `orphan/${ts}.${ext}`;
-        setDebugHud((h) => ({ ...h, lastError: `uploading ${(audio.blob.size / 1024).toFixed(1)}k → ${path}` }));
         const { error: upErr } = await (supabase as any).storage
           .from("call-recordings")
           .upload(path, audio.blob, { contentType: audio.blob.type, upsert: false });
         if (upErr) {
-          setDebugHud((h) => ({ ...h, lastError: `upload failed: ${upErr.message?.slice(0, 60) ?? "unknown"}` }));
           toast.error(`Audio upload failed: ${upErr.message?.slice(0, 60) ?? "unknown"}`);
           return;
         }
         // Remember this orphan path so saveLead() can re-attribute it.
         lastOrphanRecordingRef.current = { path, durationSec: audio.durationSec, ts };
-        setDebugHud((h) => ({ ...h, lastError: null }));
         toast.success(`📼 Recording saved (${audio.durationSec}s)`);
       } catch (e: any) {
-        setDebugHud((h) => ({ ...h, lastError: `stop-upload threw: ${e?.message?.slice(0, 60) ?? "unknown"}` }));
         toast.error(`Stop-upload error: ${e?.message?.slice(0, 60) ?? "unknown"}`);
       }
     })();
@@ -1316,112 +817,6 @@ export default function InboundLeads() {
         }
       />
 
-      {/* 2026-06-14 BIG PROMPT execution · canonical v6 §31 AMBER HERO replaces
-          the flat 3-tile KPI strip (Sam: "kinda duplicate" rule). 4 metrics
-          live from inbound_leads: Calls today / Avg pickup-time / Connect rate /
-          Active calling agents. Phoenix tz. Refetch every 30s. */}
-      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_64px_-12px_hsl(168_70%_45%/0.35)]">
-        {/* glow accents — 2 blurs + 1 radial */}
-        <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,hsl(168_70%_45%/0.06),transparent_60%)] pointer-events-none" />
-
-        <div className="relative p-5 sm:p-6">
-          {/* Header row · LIVE ping + eyebrow */}
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">INBOUND COCKPIT · LIVE</p>
-            </div>
-            <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-amber-400/40 bg-amber-400/10 text-amber-200">
-              {heroLive.isLoading ? "Syncing…" : "Today · Phoenix"}
-            </Badge>
-          </div>
-
-          {/* The 4 big numbers */}
-          <div className="grid gap-5 grid-cols-2 sm:grid-cols-4 mb-5">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Calls today</p>
-              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
-                {(heroLive.data?.callsToday ?? 0).toLocaleString()}
-              </p>
-              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
-                {(heroLive.data?.callsWeek ?? 0).toLocaleString()} last 7d
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Avg pickup-time</p>
-              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-emerald-300">
-                {fmtPickup(heroLive.data?.medianPickupSec ?? null)}
-              </p>
-              <p className="text-[10px] text-white/50 mt-1 tabular-nums">median · new → diagnosing</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Connect rate</p>
-              <p className={cn(
-                "text-[32px] sm:text-[40px] leading-none font-black tabular-nums",
-                (heroLive.data?.connectRatePct ?? 0) >= 60 ? "text-emerald-300" :
-                (heroLive.data?.connectRatePct ?? 0) >= 30 ? "text-amber-300" : "text-rose-300",
-              )}>
-                {heroLive.data?.callsToday ? `${heroLive.data?.connectRatePct ?? 0}%` : "—"}
-              </p>
-              <p className="text-[10px] text-white/50 mt-1 tabular-nums">moved past "new"</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1.5">Active calling agents</p>
-              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-amber-300">
-                {(heroLive.data?.activeAgents ?? 0).toLocaleString()}
-              </p>
-              <p className="text-[10px] text-white/50 mt-1 tabular-nums">touched a lead today</p>
-            </div>
-          </div>
-
-          {/* Inner glass band · 4 sub-stats */}
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Hot · today</p>
-              <p className={cn(
-                "text-[22px] leading-none font-bold tabular-nums",
-                (heroLive.data?.hotToday ?? 0) > 0 ? "text-rose-300" : "text-white/70",
-              )}>
-                {(heroLive.data?.hotToday ?? 0).toLocaleString()}
-              </p>
-              <p className="text-[10px] text-white/40 tabular-nums">same-day need</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Follow-ups open</p>
-              <p className="text-[22px] leading-none font-bold tabular-nums text-amber-300">
-                {(heroLive.data?.followUpsOpen ?? 0).toLocaleString()}
-              </p>
-              <p className="text-[10px] text-white/40 tabular-nums">queued · 7d window</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Won · 7d</p>
-              <p className="text-[22px] leading-none font-bold tabular-nums text-emerald-300">
-                {(heroLive.data?.wonWeek ?? 0).toLocaleString()}
-              </p>
-              <p className="text-[10px] text-white/40 tabular-nums">solved + sold</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Lost · 7d</p>
-              <p className={cn(
-                "text-[22px] leading-none font-bold tabular-nums",
-                (heroLive.data?.lostWeek ?? 0) > (heroLive.data?.wonWeek ?? 0) ? "text-rose-300" : "text-white/70",
-              )}>
-                {(heroLive.data?.lostWeek ?? 0).toLocaleString()}
-              </p>
-              <p className="text-[10px] text-white/40 tabular-nums">closed · no sale</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Section 11: routing banner — visible only when ?ref=<slug> is
-          present on the URL and resolved to an agent. Sam sees who every
-          captured call on this tab will be credited to. */}
       {refSlug && (
         <GlassCard className="p-3">
           <div className="flex items-center gap-2 text-12">
@@ -1429,9 +824,13 @@ export default function InboundLeads() {
             {routedAgentId ? (
               <span>
                 Routing every saved lead to{" "}
-                <span className="font-semibold text-emerald-600 dark:text-emerald-300">
+                <AgentNameLink
+                  agentId={routedAgentId}
+                  variant="bare"
+                  className="font-semibold text-emerald-600 dark:text-emerald-300 hover:underline"
+                >
                   {routedAgentName ?? "the referring agent"}
-                </span>{" "}
+                </AgentNameLink>{" "}
                 <span className="text-muted-foreground">(?ref={refSlug})</span>
               </span>
             ) : (
@@ -1471,17 +870,9 @@ export default function InboundLeads() {
         </div>
       </GlassCard>
 
-      {/* v9 audit fix 2026-06-10: replaced 6-col kanban with single-column list.
-          Sam said "very old style ugly, very clunky compared to AgentLink".
-          New layout: one list, stage = chip on each row, urgency = dot,
-          newest first. Stage column-by-column kanban removed entirely. */}
       {filteredLeads.length === 0 ? (
-        <GlassCard className="p-10">
-          <EmptyState
-            icon={<PhoneCall className="h-6 w-6" />}
-            title="No inbound calls yet"
-            description="When a call comes in, hit New Client. The transcript box auto-fills name, phone, state, problem, urgency, household, and follow-up time."
-          />
+        <GlassCard className="p-4 text-13 text-muted-foreground">
+          No inbound calls yet.
         </GlassCard>
       ) : (
         <GlassCard className="overflow-hidden p-0">
@@ -1578,7 +969,6 @@ export default function InboundLeads() {
       {isAdmin && (
         <GlassCard className="p-4">
           <div className="mb-3 flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-amber-500" />
             <p className="text-13 font-bold">Lead source attribution · last 6 months</p>
             <Badge variant="outline" className="ml-auto text-10 uppercase tracking-widest">
               Admin · Phoenix
@@ -1835,19 +1225,6 @@ export default function InboundLeads() {
                     <p className="text-xs text-muted-foreground">
                       Tap the mic during a call. It will capture transcript text and auto-fill obvious fields.
                     </p>
-                    {/* 2026-06-16 BUG-1 v7.5 · Persistent debug HUD so Sam SEES every recorder state — investor-day diagnostic */}
-                    <div className="mt-2 grid grid-cols-2 gap-1 text-[10px] tabular-nums font-mono text-muted-foreground/80 leading-snug">
-                      <span>clicks: <span className="text-foreground">{debugHud.clicks}</span></span>
-                      <span>last: <span className="text-foreground">{debugHud.lastClickAt ?? "—"}</span></span>
-                      <span>mic-granted: <span className={debugHud.micGranted === true ? "text-emerald-500" : debugHud.micGranted === false ? "text-rose-500" : "text-foreground"}>{debugHud.micGranted === null ? "—" : debugHud.micGranted ? "✓" : "✗"}</span></span>
-                      <span>recorder: <span className={debugHud.recorderState === "recording" ? "text-emerald-500" : "text-foreground"}>{debugHud.recorderState}</span></span>
-                      <span>chunks: <span className="text-foreground">{debugHud.chunksCount}</span></span>
-                      <span>bytes: <span className="text-foreground">{(debugHud.chunksBytes / 1024).toFixed(1)}k</span></span>
-                      <span className="col-span-2">mime: <span className="text-foreground">{debugHud.mimeType || "—"}</span></span>
-                      {debugHud.lastError && (
-                        <span className="col-span-2 text-rose-500">err: {debugHud.lastError}</span>
-                      )}
-                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {/* v25 live call timer · visible only while mic recording */}
@@ -1862,7 +1239,6 @@ export default function InboundLeads() {
                       variant={listening ? "destructive" : "outline"}
                       className="gap-2"
                       onClick={() => {
-                        // 2026-06-16 BUG-1 v7.5 — visible click receipt before any async work
                         toast.info(listening ? "🛑 Stop tapped" : "🎤 Mic tapped");
                         if (listening) {
                           stopListening();
@@ -1894,24 +1270,6 @@ export default function InboundLeads() {
                   placeholder="Transcript lands here. You can also paste call notes and the parser will fill what it can."
                   className="mt-4 min-h-[260px]"
                 />
-              </GlassCard>
-
-              {/* Switch Center script — read-only reference panel.
-                  Sam asked tap-to-copy + cheat-sheet REMOVED · just show the flow. */}
-              <GlassCard className="p-4" variant="subtle">
-                <p className="text-sm font-bold mb-3">Switch Center · script</p>
-                <ol className="space-y-2 text-13">
-                  {SWITCH_CENTER_SCRIPT.map((step, idx) => (
-                    <li key={step.step} className="flex items-start gap-2">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-11 font-bold text-primary tabular-nums">
-                        {idx + 1}
-                      </span>
-                      <span className="text-foreground/90">
-                        <span className="font-semibold">{step.step}:</span> {step.prompt}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
               </GlassCard>
 
               <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -2020,32 +1378,5 @@ function CallSnapshot({ form }: { form: typeof EMPTY_FORM }) {
         ))}
       </ul>
     </div>
-  );
-}
-
-function Metric({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  tone = "text-primary",
-}: {
-  icon: typeof PhoneCall;
-  label: string;
-  value: number;
-  sub: string;
-  tone?: string;
-}) {
-  return (
-    <GlassCard className="p-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">{label}</p>
-          <p className={cn("mt-1 text-3xl font-bold tabular-nums", tone)}>{value.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground">{sub}</p>
-        </div>
-        <Icon className={cn("h-7 w-7 opacity-75", tone)} />
-      </div>
-    </GlassCard>
   );
 }

@@ -96,6 +96,7 @@ const ManagerNextStepBoard = lazy(() => import("./pages/ManagerNextStepBoard"));
 const AdminStuckPool = lazy(() => import("./pages/AdminStuckPool"));
 const AdminFunnelHealth = lazy(() => import("./pages/AdminFunnelHealth"));
 const AdminEmailGaps = lazy(() => import("./pages/AdminEmailGaps"));
+const AdminJuneHires = lazy(() => import("./pages/AdminJuneHires"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const ScheduleCall = lazy(() => import("./pages/ScheduleCall"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -450,6 +451,8 @@ const App = () => (
                     <Route path="/admin/next-step/funnel-health" element={<ProtectedRoute requireAdmin><AdminFunnelHealth /></ProtectedRoute>} />
                     {/* 2026-06-17 Sam: surface every licensed agent missing course email + bulk send */}
                     <Route path="/admin/email-gaps" element={<ProtectedRoute requireAdmin><AdminEmailGaps /></ProtectedRoute>} />
+                    {/* 2026-06-18 Sam: punch list of June hires needing email/phone/account/AgentLink */}
+                    <Route path="/admin/june-hires" element={<ProtectedRoute requireAdmin><AdminJuneHires /></ProtectedRoute>} />
                     <Route path="/dashboard/clients/:clientId" element={<ProtectedRoute><ClientDetail /></ProtectedRoute>} />
                     {/* Seminar control: admins, managers, and flagged presenters
                         such as KJ (agents.is_presenting=true). */}

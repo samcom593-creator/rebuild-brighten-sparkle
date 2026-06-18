@@ -4,17 +4,20 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
+  Clock,
   FileText,
   Filter,
   Instagram,
   Loader2,
   Mail,
+  MessageCircle,
   Phone,
   PhoneCall,
   RefreshCw,
   Search,
   StickyNote,
   Trophy,
+  UserX,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,7 +43,15 @@ import {
 type InterviewSource = "manual" | "calendly" | "application";
 type SourceFilter = InterviewSource | "all";
 type DateFilter = "today" | "week" | "month";
-type DispositionField = "called" | "hired" | "passed" | "notes";
+type DispositionField =
+  | "called"
+  | "hired"
+  | "passed"
+  | "contracted"
+  | "rescheduled"
+  | "no_show"
+  | "contacted"
+  | "notes";
 
 interface UnifiedInterview {
   id: string;
@@ -56,6 +67,10 @@ interface UnifiedInterview {
   hired_at: string | null;
   passed_at: string | null;
   contracted_at: string | null;
+  // 2026-06-17 Sam directive: "another type of Hired Pass Called · more info"
+  rescheduled_at: string | null;
+  no_show_at: string | null;
+  contacted_at: string | null;
   outcome_notes: string | null;
   agent_id_if_known: string | null;
   created_at: string | null;
@@ -98,7 +113,7 @@ export default function InterviewCommandCenter() {
       const { data, error } = await (supabase as any)
         .from("v_interviews_unified")
         .select(
-          "id, source, candidate_name, phone, email, instagram_handle, scheduled_at, interview_type, status, called_at, hired_at, passed_at, contracted_at, outcome_notes, agent_id_if_known, created_at",
+          "id, source, candidate_name, phone, email, instagram_handle, scheduled_at, interview_type, status, called_at, hired_at, passed_at, contracted_at, rescheduled_at, no_show_at, contacted_at, outcome_notes, agent_id_if_known, created_at",
         )
         .gte("scheduled_at", JUNE_START)
         .order("scheduled_at", { ascending: false })
@@ -176,6 +191,11 @@ export default function InterviewCommandCenter() {
       if (field === "called") patchCachedRow(row, { called_at: timestamp, status: "called" });
       if (field === "hired") patchCachedRow(row, { hired_at: timestamp, passed_at: null, status: "hired" });
       if (field === "passed") patchCachedRow(row, { passed_at: timestamp, hired_at: null, status: "passed" });
+      // 2026-06-17 Sam directive: extended dispositions.
+      if (field === "rescheduled") patchCachedRow(row, { rescheduled_at: timestamp, status: "rescheduled" });
+      if (field === "no_show") patchCachedRow(row, { no_show_at: timestamp, status: "no_show" });
+      if (field === "contacted") patchCachedRow(row, { contacted_at: timestamp, status: "contacted" });
+      if (field === "contracted") patchCachedRow(row, { contracted_at: timestamp, status: "contracted" });
       if (field === "notes") patchCachedRow(row, { outcome_notes: value?.trim() || null });
 
       toast.success(successLabel(field));
@@ -357,7 +377,18 @@ function InterviewCard({
         {busy && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />}
       </div>
 
-      <div className="mt-3 grid grid-cols-4 gap-1.5">
+      {/* 2026-06-17 Sam directive: extended dispositions — Contacted (initial
+          outreach before Called) · Called · Hired · Contracted · Rescheduled ·
+          No-Show · Pass · Notes. */}
+      <div className="mt-3 grid grid-cols-4 sm:grid-cols-4 gap-1.5">
+        <DispositionButton
+          active={!!row.contacted_at}
+          disabled={busy}
+          icon={MessageCircle}
+          label="Contacted"
+          tone="sky"
+          onClick={() => onDisposition(row, "contacted")}
+        />
         <DispositionButton
           active={!!row.called_at}
           disabled={busy}
@@ -367,12 +398,38 @@ function InterviewCard({
           onClick={() => onDisposition(row, "called")}
         />
         <DispositionButton
+          active={!!row.rescheduled_at}
+          disabled={busy}
+          icon={Clock}
+          label="Reschd"
+          tone="violet"
+          onClick={() => onDisposition(row, "rescheduled")}
+        />
+        <DispositionButton
+          active={!!row.no_show_at}
+          disabled={busy}
+          icon={UserX}
+          label="No-show"
+          tone="rose"
+          onClick={() => onDisposition(row, "no_show")}
+        />
+      </div>
+      <div className="mt-1.5 grid grid-cols-4 sm:grid-cols-4 gap-1.5">
+        <DispositionButton
           active={!!row.hired_at}
           disabled={busy}
           icon={Trophy}
           label="Hired"
           tone="amber"
           onClick={() => onDisposition(row, "hired")}
+        />
+        <DispositionButton
+          active={!!row.contracted_at}
+          disabled={busy}
+          icon={CheckCircle2}
+          label="Contracted"
+          tone="emerald"
+          onClick={() => onDisposition(row, "contracted")}
         />
         <DispositionButton
           active={!!row.passed_at}
@@ -443,7 +500,7 @@ function DispositionButton({
   disabled: boolean;
   icon: React.ElementType;
   label: string;
-  tone: "emerald" | "amber" | "slate" | "sky";
+  tone: "emerald" | "amber" | "slate" | "sky" | "violet" | "rose";
   onClick: () => void;
 }) {
   const activeTone = {
@@ -451,6 +508,8 @@ function DispositionButton({
     amber: "border-amber-500/50 bg-amber-500/15 text-amber-200",
     slate: "border-slate-400/40 bg-slate-500/15 text-slate-200",
     sky: "border-sky-500/50 bg-sky-500/15 text-sky-200",
+    violet: "border-violet-500/50 bg-violet-500/15 text-violet-200",
+    rose: "border-rose-500/50 bg-rose-500/15 text-rose-200",
   }[tone];
 
   return (
@@ -581,6 +640,10 @@ function successLabel(field: DispositionField) {
   if (field === "called") return "Marked called";
   if (field === "hired") return "Marked hired";
   if (field === "passed") return "Marked passed";
+  if (field === "contracted") return "Marked contracted";
+  if (field === "rescheduled") return "Marked rescheduled";
+  if (field === "no_show") return "Marked no-show";
+  if (field === "contacted") return "Marked contacted";
   return "Notes saved";
 }
 

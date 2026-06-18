@@ -112,7 +112,6 @@ const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Disclosures = lazy(() => import("./pages/Disclosures"));
 const Install = lazy(() => import("./pages/Install"));
-const Press = lazy(() => import("./pages/Press"));
 const CourseProgress = lazy(() => import("./pages/CourseProgress"));
 const CourseContent = lazy(() => import("./pages/CourseContent"));
 const PurchaseLeads = lazy(() => import("./pages/PurchaseLeads"));
@@ -380,7 +379,6 @@ const App = () => (
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/disclosures" element={<Disclosures />} />
                   <Route path="/install" element={<Install />} />
-                  <Route path="/press" element={<Press />} />
                   {/* /apex-daily-numbers is internal-only — was publicly exposing
                       production-entry UI. Now requires a logged-in user (any role). */}
                   <Route path="/apex-daily-numbers" element={<ProtectedRoute><LogNumbers /></ProtectedRoute>} />

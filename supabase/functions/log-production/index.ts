@@ -19,60 +19,109 @@ Deno.serve(async (req) => {
 
     const { action, ...params } = await req.json();
 
-    // ACTION: search — find agents by name/email
+    // ACTION: search — universal name/email/phone search
+    // 2026-06-17 Sam directive: "search any number, any name in the search bar,
+    // pull up their data, send them course links". Now searches BOTH agents
+    // and applications. Em-dash on missing fields per the never-Unknown rule.
     if (action === "search") {
-      const query = (params.query || "").toLowerCase().trim();
-      if (!query) {
-        return new Response(JSON.stringify({ agents: [] }), {
+      const rawQuery = (params.query || "").toString().trim();
+      if (!rawQuery || rawQuery.length < 2) {
+        return new Response(JSON.stringify({ agents: [], applicants: [] }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      const query = rawQuery.toLowerCase();
+      // Strip non-digits for phone comparison so '(555) 123-4567' matches '5551234567'.
+      const queryDigits = rawQuery.replace(/\D/g, "");
 
+      // --- AGENTS ---
       const { data: agents, error } = await supabaseAdmin
         .from("agents")
         .select(`
           id,
+          display_name,
+          agent_code,
           onboarding_stage,
+          license_status,
+          status,
           user_id,
           profile_id,
-          profile:profiles!agents_profile_id_fkey(full_name, email)
-        `)
-        ;
-
+          profile:profiles!agents_profile_id_fkey(full_name, email, phone)
+        `);
       if (error) throw error;
 
-      // Also fetch profiles by user_id for agents without profile_id
       const agentsMissingProfile = (agents || []).filter((a: any) => !a.profile?.full_name && a.user_id);
-      const userIdProfileMap = new Map<string, { full_name: string; email: string }>();
+      const userIdProfileMap = new Map<string, { full_name: string; email: string; phone: string }>();
       if (agentsMissingProfile.length > 0) {
         const userIds = agentsMissingProfile.map((a: any) => a.user_id);
         const { data: extraProfiles } = await supabaseAdmin
           .from("profiles")
-          .select("user_id, full_name, email")
+          .select("user_id, full_name, email, phone")
           .in("user_id", userIds);
         (extraProfiles || []).forEach((p: any) => {
-          if (p.user_id) userIdProfileMap.set(p.user_id, { full_name: p.full_name, email: p.email });
+          if (p.user_id) userIdProfileMap.set(p.user_id, { full_name: p.full_name, email: p.email, phone: p.phone });
         });
       }
 
-      const matches = (agents || [])
+      const agentMatches = (agents || [])
         .filter((a: any) => {
           const profileData = a.profile || (a.user_id ? userIdProfileMap.get(a.user_id) : null);
-          const name = profileData?.full_name?.toLowerCase() || "";
-          const email = profileData?.email?.toLowerCase() || "";
-          return name.includes(query) || email.includes(query);
+          const name = (a.display_name || profileData?.full_name || "").toLowerCase();
+          const email = (profileData?.email || "").toLowerCase();
+          const phoneDigits = (profileData?.phone || "").replace(/\D/g, "");
+          const code = (a.agent_code || "").toLowerCase();
+          return (
+            name.includes(query) ||
+            email.includes(query) ||
+            code.includes(query) ||
+            (queryDigits.length >= 4 && phoneDigits.includes(queryDigits))
+          );
         })
+        .slice(0, 20)
         .map((a: any) => {
           const profileData = a.profile || (a.user_id ? userIdProfileMap.get(a.user_id) : null);
           return {
             id: a.id,
-            name: profileData?.full_name || "Unknown",
+            name: a.display_name || profileData?.full_name || "—",
             email: profileData?.email || "",
-            onboardingStage: a.onboarding_stage,
+            phone: profileData?.phone || "",
+            agentCode: a.agent_code || null,
+            licenseStatus: a.license_status || null,
+            status: a.status || null,
+            onboardingStage: a.onboarding_stage || null,
           };
         });
 
-      return new Response(JSON.stringify({ agents: matches }), {
+      // --- APPLICATIONS ---
+      const { data: applications, error: appErr } = await supabaseAdmin
+        .from("applications")
+        .select("id, first_name, last_name, email, phone, license_status, status, created_at")
+        .order("created_at", { ascending: false })
+        .limit(2000);
+      if (appErr) throw appErr;
+
+      const applicantMatches = (applications || [])
+        .filter((a: any) => {
+          const name = `${a.first_name || ""} ${a.last_name || ""}`.toLowerCase();
+          const email = (a.email || "").toLowerCase();
+          const phoneDigits = (a.phone || "").replace(/\D/g, "");
+          return (
+            name.includes(query) ||
+            email.includes(query) ||
+            (queryDigits.length >= 4 && phoneDigits.includes(queryDigits))
+          );
+        })
+        .slice(0, 20)
+        .map((a: any) => ({
+          id: a.id,
+          name: `${a.first_name || ""} ${a.last_name || ""}`.trim() || "—",
+          email: a.email || "",
+          phone: a.phone || "",
+          licenseStatus: a.license_status || null,
+          status: a.status || null,
+        }));
+
+      return new Response(JSON.stringify({ agents: agentMatches, applicants: applicantMatches }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

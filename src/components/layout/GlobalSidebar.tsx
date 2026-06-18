@@ -96,7 +96,7 @@ export function GlobalSidebar({
   const location = useLocation();
   const { user, isAdmin, isManager } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [searchResults, setSearchResults] = useState<Array<{ id: string; name: string; email: string; kind: "agent" | "applicant"; licenseStatus?: string | null; phone?: string }>>([]);
   const [showSearch, setShowSearch] = useState(false);
   // 2026-06-15 — Sam directive (voice): "I tap their name, I should push a pull
   // up that I'm inside the CRM." Search results now open the AgentProfileDrawer
@@ -156,18 +156,24 @@ export function GlobalSidebar({
         const { data, error } = await supabase.functions.invoke("log-production", {
           body: { action: "search", query: searchQuery.trim() },
         });
-        if (error || !data?.agents) {
+        if (error || !data) {
           setSearchResults([]);
           return;
         }
-        const results = (data.agents as Array<{ id: string; name: string; email: string }>)
-          .slice(0, 6)
-          .map((agent) => ({ id: agent.id, name: agent.name, email: agent.email }));
-        setSearchResults(results);
+        // 2026-06-17 Sam directive: search now returns BOTH agents + applicants.
+        // Agents tap → AgentProfileDrawer (IT/AV/Legs + email-status + Send-now).
+        // Applicants tap → /dashboard/applicants?focus=<id> for inline edit/promote.
+        const agents = ((data.agents as Array<{ id: string; name: string; email: string; phone?: string; licenseStatus?: string }>) ?? [])
+          .slice(0, 8)
+          .map((a) => ({ ...a, kind: "agent" as const }));
+        const applicants = ((data.applicants as Array<{ id: string; name: string; email: string; phone?: string; licenseStatus?: string }>) ?? [])
+          .slice(0, 8)
+          .map((a) => ({ ...a, kind: "applicant" as const }));
+        setSearchResults([...agents, ...applicants]);
       } catch {
         setSearchResults([]);
       }
-    }, 300);
+    }, 250);
     return () => clearTimeout(timeout);
   }, [searchQuery]);
 
@@ -524,36 +530,49 @@ export function GlobalSidebar({
                     )}
                   </div>
                   {showSearch && searchResults.length > 0 && (
-                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-800 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-800 rounded-lg shadow-lg max-h-72 overflow-y-auto">
                       {searchResults.map((result) => (
                         <button
-                          key={result.id}
+                          key={`${result.kind}:${result.id}`}
                           onClick={() => {
-                            // Open deep-profile drawer overlay (in-place) instead
-                            // of navigating away. Sam stays on whatever page he
-                            // was on. Closing the drawer drops back to the same
-                            // surface.
-                            // 2026-06-16 Sam-feedback: "search doesn't pull up
-                            // their shit." Wiring is correct — adding immediate
-                            // toast feedback so the click is unambiguously visible
-                            // and (if the drawer fails to render) the regression
-                            // narrows to drawer-side vs click-side.
-                            toast.success(`Opening ${result.name}…`);
-                            try {
-                              openAgentProfile(result.id);
-                            } catch (err) {
-                              toast.error(`Drawer crashed: ${err instanceof Error ? err.message : String(err)}`);
-                              // eslint-disable-next-line no-console
-                              console.error("[sidebar-search] openAgentProfile threw", err);
-                            }
+                            // 2026-06-17 Sam directive: "search any name, pull up
+                            // their data, send them course links."
+                            // Agent tap → AgentProfileDrawer (IT/AV/Legs + email
+                            // status + Send Course Link button — all already there).
+                            // Applicant tap → /dashboard/applicants?focus=<id> so
+                            // Sam lands on the row he can edit + Promote-to-Agent.
                             setSearchQuery("");
                             setSearchResults([]);
                             setShowSearch(false);
+                            if (result.kind === "agent") {
+                              try {
+                                openAgentProfile(result.id);
+                              } catch (err) {
+                                toast.error(`Drawer crashed: ${err instanceof Error ? err.message : String(err)}`);
+                              }
+                            } else {
+                              navigate(`/dashboard/applicants?focus=${result.id}`);
+                            }
                           }}
-                          className="w-full text-left px-3 py-2 hover:bg-white/[0.04] transition-colors"
+                          className="w-full text-left px-3 py-2 hover:bg-white/[0.04] transition-colors flex items-center gap-2"
                         >
-                          <p className="text-sm font-medium truncate text-slate-200">{result.name}</p>
-                          <p className="text-xs text-slate-400 truncate">{result.email}</p>
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide tabular-nums",
+                              result.kind === "agent"
+                                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                                : "border-amber-500/40 bg-amber-500/10 text-amber-300",
+                            )}
+                          >
+                            {result.kind === "agent" ? "Agent" : "Applicant"}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate text-slate-200">{result.name}</p>
+                            <p className="text-xs text-slate-400 truncate">
+                              {result.email || result.phone || "—"}
+                              {result.licenseStatus ? ` · ${result.licenseStatus}` : ""}
+                            </p>
+                          </span>
                         </button>
                       ))}
                     </div>

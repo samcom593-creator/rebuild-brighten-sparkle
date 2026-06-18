@@ -42,6 +42,7 @@ import {
   Users,
   Calendar,
   TrendingUp,
+  MessageCircle,
 } from "lucide-react";
 import {
   Sheet,
@@ -54,6 +55,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { AgentTrainingStageBar } from "@/components/dashboard/AgentTrainingStageBar";
+import { AgentOnboardingEmailStatus } from "@/components/dashboard/AgentOnboardingEmailStatus";
 import { AgentCredentialsPanel } from "@/components/dashboard/AgentCredentialsPanel";
 import { AgentNotes } from "@/components/dashboard/AgentNotes";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,6 +93,21 @@ interface ActivityRow {
   downline_count: number | null;
 }
 
+interface MonthlyProductionRow {
+  items_this_month: number | null;
+  annual_volume_this_month: number | null;
+  legs: number | null;
+}
+
+interface CallTimelineRow {
+  source: "call" | "note" | string;
+  id: string;
+  occurred_at: string;
+  outcome: string | null;
+  notes: string | null;
+  logged_by_name: string | null;
+}
+
 function copyToClipboard(text: string, label: string) {
   if (!text) return;
   try {
@@ -104,6 +121,33 @@ function copyToClipboard(text: string, label: string) {
 function fmtUSD(n: number | null | undefined): string {
   if (n == null) return "—";
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}
+
+function fmtUSDCompact(n: number | null | undefined): string {
+  if (n == null) return "—";
+  if (n >= 1000) {
+    return `$${(n / 1000).toLocaleString("en-US", { maximumFractionDigits: 1 })}k`;
+  }
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}
+
+function fmtRelative(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    const now = Date.now();
+    const diffMs = now - d.getTime();
+    const mins = Math.round(diffMs / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.round(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.round(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  } catch {
+    return "—";
+  }
 }
 
 function fmtDate(iso: string | null | undefined): string {
@@ -211,6 +255,47 @@ export function AgentProfileDrawer() {
     staleTime: 30_000,
   });
 
+  // Monthly production: IT (deals this month), AV (annual volume this month), Legs.
+  // Sam directive 2026-06-16 voice — recruit profile DB hero tiles.
+  const { data: monthly } = useQuery<MonthlyProductionRow | null>({
+    queryKey: ["agent-profile-drawer-monthly", agentId],
+    enabled: !!agentId,
+    queryFn: async () => {
+      if (!agentId) return null;
+      const { data, error } = await supabase
+        .from("v_agent_monthly_production" as any)
+        .select("items_this_month, annual_volume_this_month, legs")
+        .eq("agent_id", agentId)
+        .maybeSingle();
+      if (error) {
+        // Graceful: never block the drawer if the view is missing in dev.
+        // eslint-disable-next-line no-console
+        console.warn("[AgentProfileDrawer] monthly production query failed", error);
+        return { items_this_month: 0, annual_volume_this_month: 0, legs: 0 };
+      }
+      return (data as any) ?? { items_this_month: 0, annual_volume_this_month: 0, legs: 0 };
+    },
+    staleTime: 30_000,
+  });
+
+  // Call notes timeline: merged call_activity + agent_notes via SECURITY INVOKER RPC.
+  // Sam directive 2026-06-16 voice — "notes from the call" surfaced in profile.
+  const { data: timeline } = useQuery<CallTimelineRow[]>({
+    queryKey: ["agent-profile-drawer-timeline", agentId],
+    enabled: !!agentId,
+    queryFn: async () => {
+      if (!agentId) return [];
+      const { data, error } = await supabase.rpc("agent_call_activity" as any, { p_agent_id: agentId });
+      if (error) {
+        // eslint-disable-next-line no-console
+        console.warn("[AgentProfileDrawer] timeline rpc failed", error);
+        return [];
+      }
+      return ((data as any) ?? []) as CallTimelineRow[];
+    },
+    staleTime: 30_000,
+  });
+
   const open = !!agentId;
   const name = agent?.display_name || agent?.profile?.full_name || "—";
   const email = agent?.profile?.email ?? null;
@@ -281,8 +366,47 @@ export function AgentProfileDrawer() {
               </div>
             </div>
 
+            {/* Hero IT / AV / Legs row — Sam directive 2026-06-16 voice:
+                "I want their how much production they're doing monthly,
+                 whether it's IT or AV, how many legs they have, and then
+                 obviously notes from the call." Phone-first big tiles. */}
+            <div className="rounded-3xl border border-border bg-card/40 px-4 py-4 grid grid-cols-3 gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">IT</p>
+                <p className="text-3xl font-black tabular-nums leading-none">
+                  {(monthly?.items_this_month ?? 0).toLocaleString()}
+                </p>
+                <p className="mt-1 text-[10px] text-muted-foreground">this month</p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">AV</p>
+                <p className="text-3xl font-black tabular-nums leading-none">
+                  {fmtUSDCompact(monthly?.annual_volume_this_month ?? 0)}
+                </p>
+                <p className="mt-1 text-[10px] text-muted-foreground">this month</p>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Legs</p>
+                <p className="text-3xl font-black tabular-nums leading-none">
+                  {(monthly?.legs ?? 0).toLocaleString()}
+                </p>
+                <p className="mt-1 text-[10px] text-muted-foreground">downline</p>
+              </div>
+            </div>
+
             {/* Training stage tracker (NEW) */}
             <AgentTrainingStageBar agentId={agent.id} />
+
+            {/* Onboarding email status — Sam directive 2026-06-17:
+                "people who are saying they're not getting emails after I...
+                 like, for example, I have someone who just says he didn't
+                 get the email after he just signed up and logged up with me."
+                v_agents_onboarding_status returns course_state + last_error +
+                course_sent_at. Resend-now button manually fires for THIS agent
+                via the send-agent-onboarding-email edge fn. */}
+            <AgentOnboardingEmailStatus agentId={agent.id} />
+
+
 
             {/* One-tap actions */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -364,6 +488,64 @@ export function AgentProfileDrawer() {
                 </div>
                 <p className="text-sm font-bold tabular-nums">{(activity?.downline_count ?? 0).toLocaleString()}</p>
               </div>
+            </div>
+
+            {/* Call Notes Timeline — Sam directive 2026-06-16 voice:
+                "notes from the call." Merges call_activity + agent_notes via
+                agent_call_activity(uuid) RPC. Stays empty-graceful so the
+                drawer never crashes when the timeline is empty. */}
+            <div className="rounded-lg border border-border bg-card/60 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <MessageCircle className="h-3.5 w-3.5 text-amber-500" />
+                <h3 className="text-xs font-bold uppercase tracking-wide">Call notes timeline</h3>
+                {(timeline?.length ?? 0) > 0 && (
+                  <Badge variant="outline" className="text-[10px] ml-auto">
+                    {timeline?.length ?? 0}
+                  </Badge>
+                )}
+              </div>
+              {!timeline || timeline.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">
+                  No calls or notes logged yet.
+                </p>
+              ) : (
+                <ul className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {timeline.slice(0, 6).map((row) => (
+                    <li
+                      key={`${row.source}-${row.id}`}
+                      className="rounded-md border border-border/60 bg-background/40 p-2 text-xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[9px] uppercase tracking-wide shrink-0",
+                              row.source === "call"
+                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                : "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+                            )}
+                          >
+                            {row.source === "call" ? "call" : "note"}
+                          </Badge>
+                          {row.outcome && (
+                            <span className="text-[10px] font-semibold truncate">{row.outcome}</span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                          {fmtRelative(row.occurred_at)}
+                        </span>
+                      </div>
+                      {row.notes && (
+                        <p className="mt-1 text-[11px] text-muted-foreground line-clamp-3">{row.notes}</p>
+                      )}
+                      <p className="mt-1 text-[10px] text-muted-foreground/70">
+                        by {row.logged_by_name ?? "—"}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* Credentials (admin only — the existing AgentCredentialsPanel

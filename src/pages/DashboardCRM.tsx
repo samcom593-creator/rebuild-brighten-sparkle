@@ -3,10 +3,10 @@ import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Users, Search, RefreshCw, Clock, AlertTriangle, ChevronDown, ChevronRight,
-  Mail, Phone, UserX, Filter, Mic, BookOpen, GraduationCap, Briefcase, Sparkles,
+  Users, Search, RefreshCw, Clock, AlertTriangle, ChevronRight,
+  Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles,
   Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText,
-  CheckCircle2, KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck,
+  KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck,
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,22 +15,16 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { OnboardingTracker } from "@/components/dashboard/OnboardingTracker";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
-import { AttendanceGrid } from "@/components/dashboard/AttendanceGrid";
 import { AgentNotes } from "@/components/dashboard/AgentNotes";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
-import { InstagramPromptDialog } from "@/components/dashboard/InstagramPromptDialog";
 import { BulkStageActions, AgentSelectCheckbox } from "@/components/crm/BulkStageActions";
 import { cn } from "@/lib/utils";
-import { BackgroundGlow } from "@/components/ui/BackgroundGlow";
 import { Database } from "@/integrations/supabase/types";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
-import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
@@ -45,7 +39,6 @@ import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { getBusinessDayKey, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
 import { getCloseRate, sumAnnualPremium } from "@/lib/metricTruth";
 import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
-import { motion } from "framer-motion";
 
 /** Feature flag: hide destructive bulk delete by default. Set VITE_ENABLE_CRM_BULK_DELETE=true to enable. */
 const ENABLE_BULK_DELETE = import.meta.env.VITE_ENABLE_CRM_BULK_DELETE === "true";
@@ -102,27 +95,12 @@ interface AgentCRM {
   lastContactedAt: string | null; standardPaid: boolean; premiumPaid: boolean;
   licenseProgress: string | null; testScheduledDate: string | null; agentLicenseStatus: string;
   aiScoreTier?: string | null;
-  // 2026-06-15 — head-to-toe rebuild: derived signals for the new "Hasn't
-  // sold" + "Missing" tabs and the credential vault hero.
   lifetimeDeals: number;
   lifetimeALP: number;
   lastActivityAt: string | null;
   daysSinceHire: number | null;
   hasReadymodeCreds: boolean;
   createdAt: string | null;
-  // Recruit detail surface — populated for Pre-Licensed cards via applications + xcel_events joins
-  recruit?: {
-    appliedAt?: string | null;
-    state?: string | null;
-    licenseStates?: string[] | null;
-    yearsExperience?: number | null;
-    previousCompany?: string | null;
-    desiredIncome?: number | null;
-    availability?: string | null;
-    referralSource?: string | null;
-    xcelEnrollments?: { state_line: string; event_at: string }[];
-    xcelCompletion?: { state_line: string; event_at: string } | null;
-  };
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {
@@ -131,16 +109,6 @@ const attendanceColors: Record<AttendanceStatus, string> = {
   critical: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
 };
 const attendanceLabels: Record<AttendanceStatus, string> = { good: "Good", warning: "Warning", critical: "Critical" };
-
-const AVATAR_COLORS = [
-  "from-primary to-cyan-500", "from-violet-500 to-purple-500", "from-rose-500 to-pink-500",
-  "from-amber-500 to-orange-500", "from-emerald-500 to-teal-500", "from-blue-500 to-indigo-500",
-  "from-fuchsia-500 to-pink-500", "from-cyan-500 to-blue-500",
-];
-const getAvatarColor = (name: string) => {
-  const hash = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
-};
 
 const getTimeAgo = (dateString: string): string => {
   const date = new Date(dateString);
@@ -174,18 +142,13 @@ const getContactInfo = (agent: AgentCRM) => {
   return { label: getTimeAgo(agent.lastContactedAt), color: "text-red-500 dark:text-red-400" };
 };
 
-// Each section carries a bucket: 'unlicensed' (in process of getting licensed)
-// or 'licensed' (already licensed + operating). The top-level CRM toggle folds
-// the tab list to show only one bucket at a time.
 type PipelineBucket = "unlicensed" | "licensed";
 
-// Module-level Set for O(1) pre-licensed progress lookups — avoids per-render array creation
 const PRELICENSED_PROGRESS = new Set([
   "unlicensed", "course_purchased", "finished_course", "test_scheduled",
   "passed_test", "fingerprints_done", "waiting_fingerprints", "waiting_on_license",
 ]);
 
-// Module-level label map — avoids per-row object creation in getTableCells
 const PROGRESS_LABELS: Record<string, string> = {
   unlicensed: "Not Started",
   course_purchased: "In Course",
@@ -206,34 +169,15 @@ const SECTIONS = [
   { key: "below_10k", bucket: "licensed" as PipelineBucket, label: "Below $20K (last 30d)", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
   { key: "live", bucket: "licensed" as PipelineBucket, label: "Live", icon: Briefcase, stages: ["live", "evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
   { key: "needs_followup", bucket: "licensed" as PipelineBucket, label: "Needs Follow-Up", icon: AlertTriangle, stages: ["need_followup"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
-  // 2026-06-15 — head-to-toe rebuild: "Hasn't sold" + "Missing/Silent" tabs.
-  // stages: [] sentinel so the default SECTIONS-loop fallback (which filters
-  // by `stages.includes(...)`) does NOT match anyone — agentsBySection
-  // hard-codes both buckets above the fallback so the lists are honest.
   { key: "hasnt_sold", bucket: "licensed" as PipelineBucket, label: "Hasn't Sold Yet", icon: AlertTriangle, stages: [] as OnboardingStage[], accent: "border-l-rose-500", headerBg: "bg-rose-500/5", iconColor: "text-rose-500" },
   { key: "missing", bucket: "licensed" as PipelineBucket, label: "Missing / Silent", icon: Clock, stages: [] as OnboardingStage[], accent: "border-l-slate-500", headerBg: "bg-slate-500/5", iconColor: "text-slate-500" },
   { key: "inactive", bucket: "licensed" as PipelineBucket, label: "Inactive", icon: UserX, stages: ["inactive"] as OnboardingStage[], accent: "border-l-gray-500", headerBg: "bg-gray-500/5", iconColor: "text-gray-500" },
 ];
 
-const UNLICENSED_COLUMNS = [
-  { key: "unlicensed", label: "Course Not Purchased", progress: ["unlicensed"] },
-  { key: "course_purchased", label: "Course Purchased", progress: ["course_purchased"] },
-  { key: "finished_course", label: "Course Finished", progress: ["finished_course"] },
-  { key: "test_scheduled", label: "Test Scheduled", progress: ["test_scheduled", "passed_test"] },
-  { key: "waiting_on_license", label: "Waiting on License", progress: ["fingerprints_done", "waiting_on_license"] },
-];
-
-const surfaceMotion = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.28, ease: "easeOut" },
-};
-
-// ─── Contact buttons row ─────────────────────────────────────────────────
-function ContactActions({ agent, onViewApp, onRecord, onEditLogin, onDeactivate, onAgentUpdate, currentAgentId }: {
-  agent: AgentCRM; onViewApp: (id: string) => void; onRecord: (a: AgentCRM) => void;
+function ContactActions({ agent, onViewApp, onEditLogin, onDeactivate, onAgentUpdate }: {
+  agent: AgentCRM; onViewApp: (id: string) => void;
   onEditLogin: (a: AgentCRM) => void; onDeactivate: (a: AgentCRM) => void;
-  onAgentUpdate: (id: string, updates: Partial<AgentCRM>) => void; currentAgentId: string | null;
+  onAgentUpdate: (id: string, updates: Partial<AgentCRM>) => void;
 }) {
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
@@ -299,24 +243,24 @@ function ContactActions({ agent, onViewApp, onRecord, onEditLogin, onDeactivate,
   );
 }
 
-// ─── ONBOARDING Expanded Row ──────────────────────────────────────────────
-function OnboardingExpandedRow({ agent, onRefresh, onStageUpdate, onGoLive, onDeactivate, onViewApp, onRecord, onEditLogin, onAgentUpdate, playSound, sendingCourseLogin, setSendingCourseLogin, currentAgentId }: any) {
+function CompactExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onEditLogin, onAgentUpdate }: {
+  agent: AgentCRM;
+  onRefresh: () => void;
+  onDeactivate: (agent: AgentCRM) => void;
+  onViewApp: (id: string) => void;
+  onEditLogin: (agent: AgentCRM) => void;
+  onAgentUpdate: (id: string, updates: Partial<AgentCRM>) => void;
+}) {
   return (
-    <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
-      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80  shadow-inner border-l-2 border-l-primary">
-        <ContactActions agent={agent} onViewApp={onViewApp} onRecord={onRecord} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} currentAgentId={currentAgentId} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="space-y-3">
-            {/* License status badge */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground w-16">License:</span>
-              <Badge variant="outline" className={cn("text-xs", agent.agentLicenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-muted text-muted-foreground")}>
-                {agent.agentLicenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
-              </Badge>
-            </div>
-            {/* License Progress selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground w-16">Progress:</span>
+    <div className="border-t border-border bg-card/80 px-4 py-3">
+      <ContactActions agent={agent} onViewApp={onViewApp} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} />
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className={cn("text-xs", agent.agentLicenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-muted text-muted-foreground")}>
+              {agent.agentLicenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
+            </Badge>
+            {agent.agentLicenseStatus !== "licensed" && (
               <LicenseProgressSelector
                 applicationId={agent.applicationId || agent.id}
                 agentId={agent.userId ? agent.id : undefined}
@@ -325,236 +269,33 @@ function OnboardingExpandedRow({ agent, onRefresh, onStageUpdate, onGoLive, onDe
                 onProgressUpdated={onRefresh}
                 className="h-6 text-xs"
               />
-              {agent.licenseProgress !== "licensed" && (
-                <ResendLicensingButton recipientEmail={agent.email} recipientName={agent.name} licenseStatus="unlicensed" />
-              )}
-            </div>
-            {/* Course progress dots */}
-            <div className="space-y-1">
-              <p className="text-[10px] text-muted-foreground font-medium">Course Progress</p>
-              <div className="flex items-center gap-1">
-                {["unlicensed", "course_purchased", "finished_course", "test_scheduled", "licensed"].map((step, i) => {
-                  const progress = agent.licenseProgress || "unlicensed";
-                  const steps = ["unlicensed", "course_purchased", "finished_course", "test_scheduled", "licensed"];
-                  const currentIdx = steps.indexOf(progress);
-                  const isComplete = i <= currentIdx;
-                  return (
-                    <div key={step} className="flex items-center gap-1">
-                      <div className={cn("h-2.5 w-2.5 rounded-full border", isComplete ? "bg-primary border-primary" : "bg-muted border-border")} />
-                      {i < 4 && <div className={cn("h-0.5 w-4", isComplete ? "bg-primary" : "bg-border")} />}
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="text-[10px] text-muted-foreground capitalize">{(agent.licenseProgress || "unlicensed").replace(/_/g, " ")}</p>
-            </div>
-            {/* Resend course login */}
-            <Button variant="outline" size="sm" className="w-full h-7 text-xs gap-1.5"
-              disabled={sendingCourseLogin === agent.id}
-              onClick={async () => {
-                setSendingCourseLogin(agent.id);
-                try {
-                  const { data, error } = await supabase.functions.invoke("send-course-enrollment-email", { body: { agentId: agent.id } });
-                  if (error) throw error;
-                  if (data?.success === false) throw new Error(data.error || "Failed");
-                  toast.success(`Course login sent to ${agent.name}`);
-                  playSound("success");
-                } catch { toast.error("Failed to send"); }
-                finally { setSendingCourseLogin(null); }
-              }}>
-              {sendingCourseLogin === agent.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-              Resend Course Login
-            </Button>
-            {/* Onboarding stage tracker */}
-            <OnboardingTracker agentId={agent.id} agentName={agent.name} currentStage={agent.onboardingStage}
-              onStageUpdate={() => onStageUpdate(agent.id)} onGoLive={() => onGoLive(agent)} readOnly={false} />
-            {/* 2026-06-15 — per-agent training stage tracker (test/classroom/field/active) */}
-            <AgentTrainingStageBar agentId={agent.id} />
+            )}
+            {agent.agentLicenseStatus !== "licensed" && (
+              <ResendLicensingButton recipientEmail={agent.email} recipientName={agent.name} licenseStatus="unlicensed" />
+            )}
           </div>
-          <div className="space-y-3">
-            <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
-          </div>
+          {agent.userId && <AgentTrainingStageBar agentId={agent.id} />}
+          <details className="group">
+            <summary className="flex cursor-pointer select-none items-center gap-1.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">
+              <KeyRound className="h-3 w-3 text-amber-500" />
+              Access &amp; Credentials
+              <ChevronRight className="h-3 w-3 transition-base group-open:rotate-90" />
+            </summary>
+            <AgentCredentialsPanel agentId={agent.id} agentName={agent.name} agentEmail={agent.email} />
+          </details>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── IN-FIELD TRAINING Expanded Row ───────────────────────────────────────
-function TrainingExpandedRow({ agent, onRefresh, onStageUpdate, onGoLive, onDeactivate, onViewApp, onRecord, onEditLogin, onAgentUpdate, currentAgentId }: any) {
-  return (
-    <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
-      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80  shadow-inner border-l-2 border-l-amber-500">
-        <ContactActions agent={agent} onViewApp={onViewApp} onRecord={onRecord} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} currentAgentId={currentAgentId} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground">📋 Attendance</p>
-            <AttendanceGrid agentId={agent.id} type="training" label="Training" onMarkAbsent={() => {}} />
-            <AttendanceGrid agentId={agent.id} type="onboarded_meeting" label="Meetings" onMarkAbsent={() => {}} />
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground">📝 Homework</p>
-            <AttendanceGrid agentId={agent.id} type="daily_sale" label="Homework" onMarkAbsent={() => {}} />
-            <OnboardingTracker agentId={agent.id} agentName={agent.name} currentStage={agent.onboardingStage}
-              onStageUpdate={() => onStageUpdate(agent.id)} onGoLive={() => onGoLive(agent)} readOnly={false} />
-            <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── LIVE Expanded Row ────────────────────────────────────────────────────
-function LiveExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onRecord, onEditLogin, onAgentUpdate, currentAgentId }: any) {
-  return (
-    <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
-      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80  shadow-inner border-l-2 border-l-emerald-500">
-        <ContactActions agent={agent} onViewApp={onViewApp} onRecord={onRecord} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} currentAgentId={currentAgentId} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="space-y-2">
-            {/* Production stats */}
-            <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
-              <div>
-                <p className="text-[10px] text-muted-foreground">Week ALP</p>
-                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">${agent.weeklyALP.toLocaleString()}</p>
-              </div>
-              <div className="w-px h-8 bg-border" />
-              <div>
-                <p className="text-[10px] text-muted-foreground">Prev Week</p>
-                <p className="text-sm font-bold">${agent.prevWeekALP.toLocaleString()}</p>
-              </div>
-              <div className="w-px h-8 bg-border" />
-              <div>
-                <p className="text-[10px] text-muted-foreground">Deals</p>
-                <p className="text-sm font-bold">{agent.weeklyDeals}</p>
-              </div>
-            </div>
-            <p className="text-xs font-semibold text-muted-foreground">📋 Attendance</p>
-            <AttendanceGrid agentId={agent.id} type="onboarded_meeting" label="Meeting" onMarkAbsent={() => {}} />
-            <AttendanceGrid agentId={agent.id} type="daily_sale" label="Sold" onMarkAbsent={() => {}} />
-          </div>
-          <div className="space-y-2">
-            <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── NEEDS FOLLOW-UP Expanded Row ─────────────────────────────────────────
-function FollowUpExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onRecord, onEditLogin, onAgentUpdate, onStageUpdate, onGoLive, currentAgentId }: any) {
-  const daysSinceContact = agent.lastContactedAt ? Math.floor((Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
-  return (
-    <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
-      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80  shadow-inner border-l-2 border-l-red-500">
-        <ContactActions agent={agent} onViewApp={onViewApp} onRecord={onRecord} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} currentAgentId={currentAgentId} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs bg-red-500/10 text-red-500 border-red-500/20">
-                <Clock className="h-3 w-3 mr-1" />
-                {daysSinceContact !== null ? `${daysSinceContact}d since contact` : "Never contacted"}
-              </Badge>
-              <Badge variant="outline" className="text-xs">
-                Stage: {agent.onboardingStage.replace(/_/g, " ")}
-              </Badge>
-            </div>
-            <OnboardingTracker agentId={agent.id} agentName={agent.name} currentStage={agent.onboardingStage}
-              onStageUpdate={() => onStageUpdate(agent.id)} onGoLive={() => onGoLive(agent)} readOnly={false} />
-          </div>
-          <div className="space-y-2">
-            <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Inline Notes Quick Input ─────────────────────────────────────────────
-function InlineNotesButton({ agent }: { agent: AgentCRM }) {
-  const [open, setOpen] = useState(false);
-  const [noteText, setNoteText] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [latestNote, setLatestNote] = useState<string | null>(null);
-  const ref = React.useRef<HTMLDivElement>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
-
-  // Fetch latest note on mount
-  React.useEffect(() => {
-    supabase.from("agent_notes").select("note").eq("agent_id", agent.id).order("created_at", { ascending: false }).limit(1)
-      .then(({ data }) => { if (data?.[0]) setLatestNote(data[0].note); });
-  }, [agent.id]);
-
-  // Close on outside click
-  React.useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  // Auto-focus input when opened
-  React.useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 50);
-  }, [open]);
-
-  const handleSubmit = async () => {
-    if (!noteText.trim() || saving) return;
-    setSaving(true);
-    try {
-      const { error } = await supabase.from("agent_notes").insert({ agent_id: agent.id, note: noteText.trim() });
-      if (error) throw error;
-      setLatestNote(noteText.trim());
-      setNoteText("");
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 1200);
-    } catch { toast.error("Failed to save note"); }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <div className="relative flex items-center gap-1" ref={ref} onClick={e => e.stopPropagation()}>
-      {latestNote && !open && (
-        <span className="text-[10px] text-muted-foreground truncate max-w-[80px]" title={latestNote}>
-          {latestNote.slice(0, 20)}{latestNote.length > 20 ? "…" : ""}
-        </span>
-      )}
-      <Button variant="ghost" size="sm" className={cn("h-6 w-6 p-0 transition-colors", showSuccess && "text-emerald-500")} onClick={() => setOpen(!open)}>
-        {showSuccess ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 animate-in zoom-in-50 duration-300" /> : <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />}
-      </Button>
-      {open && (
-        <div className="absolute right-0 top-8 z-50 w-[320px] bg-card border border-border rounded-md shadow-xl p-3 animate-in fade-in-0 slide-in-from-top-2 duration-150">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold">Notes — {agent.name}</span>
-            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setOpen(false)}>
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-          {/* Quick add input */}
-          <div className="flex gap-1.5 mb-2">
-            <Input
-              ref={inputRef}
-              value={noteText}
-              onChange={e => setNoteText(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
-              placeholder="Quick note… (Enter to save)"
-              className="h-7 text-xs flex-1"
-              disabled={saving}
-            />
-            <Button size="sm" className="h-7 px-2 text-xs" onClick={handleSubmit} disabled={!noteText.trim() || saving}>
-              {saving ? <RefreshCw className="h-3 w-3 animate-spin" /> : "Add"}
-            </Button>
-          </div>
+        <div>
           <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
         </div>
-      )}
+      </div>
     </div>
+  );
+}
+function InlineNotesButton({ agent }: { agent: AgentCRM }) {
+  return (
+    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title={`Open notes for ${agent.name}`}>
+      <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+    </Button>
   );
 }
 
@@ -573,20 +314,16 @@ export default function DashboardCRM() {
   const [showDeactivated, setShowDeactivated] = useState(persistedFilters.showDeactivated);
   const [showInactive, setShowInactive] = useState(persistedFilters.showInactive);
   const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);
-  const [instagramPromptAgent, setInstagramPromptAgent] = useState<AgentCRM | null>(null);
   const [sendingBulkLogins, setSendingBulkLogins] = useState(false);
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeChannel, setComposeChannel] = useState<"sms" | "email">("email");
   const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [sendingCourseLogin, setSendingCourseLogin] = useState<string | null>(null);
-  const [recorderAgent, setRecorderAgent] = useState<AgentCRM | null>(null);
   const [viewAppTarget, setViewAppTarget] = useState<{ agentId?: string; applicationId?: string } | null>(null);
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
   const [editLoginAgent, setEditLoginAgent] = useState<AgentCRM | null>(null);
   const [activeStageTab, setActiveStageTab] = useState<string>("meeting_attendance");
-  const [activeBucket, setActiveBucket] = useState<"all" | "unlicensed" | "licensed">("all");
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [meetingAttendance, setMeetingAttendance] = useState<Map<string, "present" | "absent" | "unmarked">>(new Map());
   const [searchParams] = useSearchParams();
@@ -914,7 +651,7 @@ export default function DashboardCRM() {
       // Widened status filter so "new" and "reviewing" apps also show up —
       // agents were complaining their own application wasn't visible at all.
       let appQuery = supabase.from("applications")
-        .select("id, first_name, last_name, email, phone, state, license_status, license_progress, licensed_states, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier, user_id, assigned_agent_id, referral_manager_id, recruiter_id, hiring_manager_user_id, years_experience, previous_company, desired_income, availability, referral_source, created_at")
+        .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier, user_id, assigned_agent_id, referral_manager_id, recruiter_id, hiring_manager_user_id, created_at")
         .is("terminated_at", null).neq("license_status", "licensed");
       if (!isAdmin) {
         // Visibility OR — applicant is the user themselves, OR I am the
@@ -937,23 +674,6 @@ export default function DashboardCRM() {
       }
 
       const { data: unlicensedApplicants } = await appQuery;
-
-      // Pull xcel_events for every applicant so pre-licensed cards can show real progress
-      const applicantEmails = (unlicensedApplicants || []).map((a: any) => (a.email ?? "").toLowerCase()).filter(Boolean);
-      const { data: xcelRows } = applicantEmails.length
-        ? await supabase.from("xcel_events" as any).select("kind, student_email, state_line, event_at").in("student_email", applicantEmails)
-        : { data: [] };
-      const xcelByEmail = new Map<string, { enrollments: any[]; completion: any | null }>();
-      for (const row of (xcelRows as any[] ?? [])) {
-        const key = (row.student_email ?? "").toLowerCase();
-        const cur = xcelByEmail.get(key) || { enrollments: [], completion: null };
-        if (row.kind === "completion") {
-          if (!cur.completion || new Date(row.event_at) > new Date(cur.completion.event_at)) cur.completion = row;
-        } else {
-          cur.enrollments.push(row);
-        }
-        xcelByEmail.set(key, cur);
-      }
 
       const existingEmails = new Set(crmAgents.map(a => a.email?.toLowerCase()).filter(Boolean));
       const newApplicants: AgentCRM[] = (unlicensedApplicants || [])
@@ -980,36 +700,11 @@ export default function DashboardCRM() {
             : null,
           hasReadymodeCreds: false,
           createdAt: app.created_at || null,
-          recruit: {
-            appliedAt:       app.created_at || null,
-            state:           app.state || null,
-            licenseStates:   app.licensed_states || null,
-            yearsExperience: app.years_experience ?? null,
-            previousCompany: app.previous_company || null,
-            desiredIncome:   app.desired_income ?? null,
-            availability:    app.availability || null,
-            referralSource:  app.referral_source || null,
-            xcelEnrollments: xcelByEmail.get((app.email ?? "").toLowerCase())?.enrollments ?? [],
-            xcelCompletion:  xcelByEmail.get((app.email ?? "").toLowerCase())?.completion ?? null,
-          },
         }));
 
       return [...crmAgents, ...newApplicants];
     } catch (error) { console.error("Error fetching CRM agents:", error); toast.error("Failed to load agents"); return []; }
   }, [user?.id, isAdmin, isManager]);
-
-  const fetchManagersQuery = useCallback(async () => {
-    try {
-      const { data: managerRoles } = await supabase.from("user_roles").select("user_id").eq("role", "manager");
-      if (!managerRoles?.length) return [];
-      const managerUserIds = managerRoles.map(r => r.user_id);
-      const { data: managerAgents } = await supabase.from("agents").select("id, user_id").in("user_id", managerUserIds).eq("status", "active");
-      if (!managerAgents?.length) return [];
-      const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", managerUserIds);
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
-      return managerAgents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "—" }));
-    } catch (error) { console.error("Error fetching managers:", error); return []; }
-  }, []);
 
   const { data: agentsData, isLoading: agentsLoading } = useQuery({
     queryKey: ["crm-agents", user?.id, isAdmin, isManager],
@@ -1018,37 +713,7 @@ export default function DashboardCRM() {
     staleTime: 60000,
   });
 
-  const { data: managersData } = useQuery({
-    queryKey: ["crm-managers"],
-    queryFn: fetchManagersQuery,
-    enabled: !authLoading && !!user && isAdmin,
-    staleTime: 120000,
-  });
-
-  // 2026-06-15 — agency-wide 4-stage training counts. Read directly from
-  // v_agent_training_stage so the hero pipeline tile is the truth even before
-  // the row-level agents query resolves. Excludes deactivated agents.
-  const { data: stageCounts } = useQuery({
-    queryKey: ["agency-training-stage-counts"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("v_agent_training_stage" as any)
-        .select("stage, is_deactivated");
-      if (error) throw error;
-      const counts = { test: 0, classroom: 0, field: 0, active: 0, unknown: 0 };
-      for (const r of (data as any[]) ?? []) {
-        if (r.is_deactivated) continue;
-        const k = (r.stage as keyof typeof counts) ?? "unknown";
-        if (k in counts) counts[k]++;
-      }
-      return counts;
-    },
-    enabled: !authLoading && !!user,
-    staleTime: 60000,
-  });
-
   useEffect(() => { if (agentsData) setAgents(agentsData); }, [agentsData]);
-  useEffect(() => { if (managersData) setManagers(managersData); }, [managersData]);
 
   // Fetch today's meeting attendance
   const todayStr = useMemo(() => {
@@ -1097,13 +762,6 @@ export default function DashboardCRM() {
   useRealtimeTable({ table: "applications", channelSuffix: "crm" }, () => {
     queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
   });
-
-  const handleOptimisticStageUpdate = async (agentId: string) => {
-    try {
-      const { data } = await supabase.from("agents").select("onboarding_stage, onboarding_completed_at, field_training_started_at").eq("id", agentId).maybeSingle();
-      if (data) setAgents(prev => prev.map(a => a.id === agentId ? { ...a, onboardingStage: data.onboarding_stage || a.onboardingStage, fieldTrainingStartedAt: data.field_training_started_at || a.fieldTrainingStartedAt, onboardingCompletedAt: data.onboarding_completed_at || a.onboardingCompletedAt } : a));
-    } catch (err) { console.error("Error refreshing agent stage:", err); }
-  };
 
   const handleBulkSendPortalLogins = async () => {
     if (!confirm(`Send portal login emails to all active agents?`)) return;
@@ -1250,39 +908,6 @@ export default function DashboardCRM() {
     return dupeIds;
   }, [activeAgents]);
 
-  const meetingAgents = useMemo(
-    () => filteredAgents.filter(a => a.agentLicenseStatus === "licensed"),
-    [filteredAgents]
-  );
-  const meetingAgentIds = useMemo(() => new Set(meetingAgents.map(a => a.id)), [meetingAgents]);
-  const meetingPresentCount = Array.from(meetingAttendance.entries()).filter(([id, v]) => v === "present" && meetingAgentIds.has(id)).length;
-  const appliedCount = filteredAgents.filter(a => a.onboardingStage === "applied").length;
-  const onboardingCount = filteredAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
-  const preLicensedCount = filteredAgents.filter(a => {
-    if (a.agentLicenseStatus === "licensed") return false;
-    const p = (a as any).licenseProgress || "unlicensed";
-    return PRELICENSED_PROGRESS.has(p);
-  }).length;
-  const transferCount = filteredAgents.filter(a => a.onboardingStage === "transfer").length;
-  const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;
-  const below10kCount = (agentsBySection.get("below_10k") ?? []).length;
-  const liveCount = (agentsBySection.get("live") ?? []).length;
-  const needsFollowUpCount = (agentsBySection.get("needs_followup") ?? []).length;
-  const inactiveCount = filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive).length;
-  const staleCount = filteredAgents.filter(isStaleAgent).length;
-  // 2026-06-15 — hero tile counts
-  const activeAgentCount = filteredAgents.filter(a =>
-    !a.isDeactivated && !a.isInactive && a.onboardingStage !== "inactive"
-  ).length;
-  const hasntSoldCount = (agentsBySection.get("hasnt_sold") ?? []).length;
-  const missingSilentCount = (agentsBySection.get("missing") ?? []).length;
-  const newThisWeekCount = filteredAgents.filter(a => {
-    if (!a.createdAt) return false;
-    const days = (Date.now() - new Date(a.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-    return days <= 7;
-  }).length;
-
-  // Section-specific table headers
   const getTableHeaders = (sectionKey: string) => {
     switch (sectionKey) {
       case "meeting_attendance":
@@ -1468,55 +1093,19 @@ export default function DashboardCRM() {
     }
   };
 
-  // Render the correct expanded row based on section
-  const renderExpandedRow = (sectionKey: string, agent: AgentCRM) => {
-    const commonProps = {
-      agent, onRefresh: fetchAgents, onStageUpdate: handleOptimisticStageUpdate,
-      onGoLive: setInstagramPromptAgent, onDeactivate: setDeactivateAgent,
-      onViewApp: (id: string) => { const a = agents.find(ag => ag.id === id); setViewAppTarget({ agentId: id, applicationId: a?.applicationId }); },
-      onRecord: setRecorderAgent, onEditLogin: setEditLoginAgent,
-      onAgentUpdate, playSound, sendingCourseLogin, setSendingCourseLogin, currentAgentId,
-    };
-    let inner: React.ReactNode = null;
-    switch (sectionKey) {
-      case "meeting_attendance": inner = <OnboardingExpandedRow {...commonProps} />; break;
-      case "applied":            inner = <OnboardingExpandedRow {...commonProps} />; break;
-      case "onboarding":         inner = <OnboardingExpandedRow {...commonProps} />; break;
-      case "pre_licensed":       inner = <OnboardingExpandedRow {...commonProps} />; break;
-      case "transfer":           inner = <OnboardingExpandedRow {...commonProps} />; break;
-      case "in_training":        inner = <TrainingExpandedRow {...commonProps} />; break;
-      case "below_10k":          inner = <LiveExpandedRow {...commonProps} />; break;
-      case "live":               inner = <LiveExpandedRow {...commonProps} />; break;
-      case "needs_followup":     inner = <FollowUpExpandedRow {...commonProps} />; break;
-      case "inactive":           inner = <FollowUpExpandedRow {...commonProps} />; break;
-      // 2026-06-15 — new "Hasn't sold" + "Missing" tabs reuse FollowUp layout
-      // (contact actions + AgentNotes) plus the credentials panel below.
-      case "hasnt_sold":         inner = <FollowUpExpandedRow {...commonProps} />; break;
-      case "missing":            inner = <FollowUpExpandedRow {...commonProps} />; break;
-      default:                   inner = null;
-    }
-    // 2026-06-15 — credential vault rendered behind a <details> disclosure on
-    // every expanded row so it never crowds the first paint but is always one
-    // tap away. Admin-only — the component itself shows a "admin only" badge
-    // for non-admin viewers (defense in depth — RLS also denies them).
-    return (
-      <>
-        {inner}
-        <div className="px-4 pb-4">
-          <details className="group">
-            <summary className="cursor-pointer select-none text-[11px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground flex items-center gap-1.5 py-2">
-              <KeyRound className="h-3 w-3 text-amber-500" />
-              Access &amp; Credentials
-              <ChevronRight className="h-3 w-3 transition-base group-open:rotate-90" />
-            </summary>
-            <div className="pt-2">
-              <AgentCredentialsPanel agentId={agent.id} agentName={agent.name} agentEmail={agent.email} />
-            </div>
-          </details>
-        </div>
-      </>
-    );
-  };
+  const renderExpandedRow = (_sectionKey: string, agent: AgentCRM) => (
+    <CompactExpandedRow
+      agent={agent}
+      onRefresh={fetchAgents}
+      onDeactivate={setDeactivateAgent}
+      onViewApp={(id) => {
+        const a = agents.find(ag => ag.id === id);
+        setViewAppTarget({ agentId: id, applicationId: a?.applicationId });
+      }}
+      onEditLogin={setEditLoginAgent}
+      onAgentUpdate={onAgentUpdate}
+    />
+  );
 
   if (authLoading) {
     return <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
@@ -1525,41 +1114,33 @@ export default function DashboardCRM() {
   return (
     <>
       <div className="space-y-5 page-enter relative p-4 md:p-6">
-        <BackgroundGlow accent="teal" intensity="subtle" />
-        <motion.div
-          {...surfaceMotion}
-          className="relative overflow-hidden rounded-lg border border-slate-900/10 bg-white dark:bg-slate-950 px-4 py-4 text-white shadow-xl shadow-slate-950/10 dark:border-white/10 md:px-5"
-        >
-          <div className="absolute inset-x-0 top-0 h-1 bg-white dark:bg-slate-900" />
-          <PageHeader
-            accent="cyan"
-            eyebrow="Team"
-            title="CRM"
-            subtitle="Every agent · status · production · access"
-            actions={
-              <>
-                {(isAdmin || isManager) && (
-                  <Button variant={bulkMode ? "secondary" : "outline"} size="sm" className="gap-1.5 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => { setBulkMode(!bulkMode); setSelectedAgents(new Set()); }}>
-                    <CheckSquare className="h-3.5 w-3.5" /> {bulkMode ? "Exit Bulk" : "Bulk Actions"}
-                  </Button>
-                )}
-                {isAdmin && (
-                  <Button onClick={handleBulkSendPortalLogins} variant="outline" size="sm" className="gap-1.5 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white" disabled={sendingBulkLogins}>
-                    <Mail className="h-3.5 w-3.5" /> {sendingBulkLogins ? "Sending..." : "Email All Logins"}
-                  </Button>
-                )}
-                <AddAgentModal onAgentAdded={fetchAgents} />
-                <Button variant="outline" size="sm" className="gap-1.5 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                  onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into WhatsApp"); }}>
-                  <Link2 className="h-3.5 w-3.5" /> Check-In Link
+        <PageHeader
+          accent="cyan"
+          eyebrow="Team"
+          title="CRM"
+          subtitle="Every agent · status · production · access"
+          actions={
+            <>
+              {(isAdmin || isManager) && (
+                <Button variant={bulkMode ? "secondary" : "outline"} size="sm" className="gap-1.5" onClick={() => { setBulkMode(!bulkMode); setSelectedAgents(new Set()); }}>
+                  <CheckSquare className="h-3.5 w-3.5" /> {bulkMode ? "Exit Bulk" : "Bulk Actions"}
                 </Button>
-                <Button onClick={fetchAgents} variant="outline" size="sm" className="gap-1.5 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white">
-                  <RefreshCw className="h-3.5 w-3.5" /> Refresh
+              )}
+              {isAdmin && (
+                <Button onClick={handleBulkSendPortalLogins} variant="outline" size="sm" className="gap-1.5" disabled={sendingBulkLogins}>
+                  <Mail className="h-3.5 w-3.5" /> {sendingBulkLogins ? "Sending..." : "Email All Logins"}
                 </Button>
-              </>
-            }
-          />
-        </motion.div>
+              )}
+              <AddAgentModal onAgentAdded={fetchAgents} />
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into WhatsApp"); }}>
+                <Link2 className="h-3.5 w-3.5" /> Check-In Link
+              </Button>
+              <Button onClick={fetchAgents} variant="outline" size="sm" className="gap-1.5">
+                <RefreshCw className="h-3.5 w-3.5" /> Refresh
+              </Button>
+            </>
+          }
+        />
 
         {bulkMode && (
           <div className="space-y-2">
@@ -1605,67 +1186,7 @@ export default function DashboardCRM() {
           </div>
         )}
 
-        {/* 2026-06-15 — agency-wide training-stage pipeline.
-            Sam directive (voice): "It should have systems where it's easy to
-            see, check whether they're in field training, on court [classroom],
-            in classroom. Inventory borrowers active in the field — i.e. active
-            producing in the field."
-            Data: v_agent_training_stage (derived from license_status +
-            first_deal_at + field_training_started_at + onboarding_stage). */}
-        <motion.div {...surfaceMotion} transition={{ duration: 0.28, delay: 0.01, ease: "easeOut" }} className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {[
-            { key: "test",      label: "In test",       count: stageCounts?.test ?? 0,      accent: "text-amber-600 dark:text-amber-400",   border: "border-amber-500/30",  glow: "bg-amber-500/5" },
-            { key: "classroom", label: "In classroom",  count: stageCounts?.classroom ?? 0, accent: "text-sky-600 dark:text-sky-400",       border: "border-sky-500/30",    glow: "bg-sky-500/5" },
-            { key: "field",     label: "In field",      count: stageCounts?.field ?? 0,     accent: "text-violet-600 dark:text-violet-400", border: "border-violet-500/30", glow: "bg-violet-500/5" },
-            { key: "active",    label: "Active",        count: stageCounts?.active ?? 0,    accent: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/30", glow: "bg-emerald-500/5" },
-          ].map((s) => (
-            <div key={s.key} className={cn("rounded-xl border bg-card/40 px-4 py-3 shadow-sm", s.border, s.glow)}>
-              <p className={cn("text-3xl font-black tabular-nums leading-none", s.accent)}>{s.count.toLocaleString()}</p>
-              <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{s.label}</p>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* 2026-06-15 — head-to-toe hero KPIs. 4 huge tabular-nums, phone-first
-            grid (2 cols at 375px, 4 cols at lg). Truth: every "0" stays an
-            actual 0 because Sam asked for honest counts (not em-dash) for
-            top-line agency health. */}
-        <motion.div {...surfaceMotion} transition={{ duration: 0.28, delay: 0.02, ease: "easeOut" }} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[
-            { label: "Active agents",   count: activeAgentCount,   accent: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/30", glow: "bg-emerald-500/5" },
-            { label: "Hasn't sold yet", count: hasntSoldCount,     accent: "text-rose-600 dark:text-rose-400",       border: "border-rose-500/30",    glow: "bg-rose-500/5" },
-            { label: "Missing 7d+",     count: missingSilentCount, accent: "text-amber-600 dark:text-amber-400",     border: "border-amber-500/30",   glow: "bg-amber-500/5" },
-            { label: "New this week",   count: newThisWeekCount,   accent: "text-sky-600 dark:text-sky-400",         border: "border-sky-500/30",     glow: "bg-sky-500/5" },
-          ].map(tile => (
-            <div key={tile.label} className={cn("rounded-3xl border bg-card/40 px-6 py-7 shadow-sm", tile.border, tile.glow)}>
-              <p className={cn("text-5xl font-black tabular-nums leading-none", tile.accent)}>{tile.count.toLocaleString()}</p>
-              <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{tile.label}</p>
-            </div>
-          ))}
-        </motion.div>
-
-        <motion.div {...surfaceMotion} transition={{ duration: 0.28, delay: 0.04, ease: "easeOut" }} className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
-          {[
-            { label: "Present", count: meetingPresentCount, icon: ClipboardCheck, color: "text-sky-500", borderColor: "border-t-sky-500", bgGlow: "bg-sky-500/5" },
-            { label: "Onboarding", count: onboardingCount, icon: BookOpen, color: "text-primary", borderColor: "border-t-primary", bgGlow: "bg-primary/5" },
-            { label: "Pre-Licensed", count: preLicensedCount, icon: GraduationCap, color: "text-primary", borderColor: "border-t-violet-500", bgGlow: "bg-violet-500/5" },
-            { label: "Transfer", count: transferCount, icon: Users, color: "text-amber-500", borderColor: "border-t-orange-500", bgGlow: "bg-orange-500/5" },
-            { label: "Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500", borderColor: "border-t-amber-500", bgGlow: "bg-amber-500/5" },
-            { label: "Below $40K/mo", count: below10kCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
-            { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
-            { label: "Needs F/U", count: needsFollowUpCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
-          ].map(s => (
-            <div key={s.label} className={cn("group flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/70 bg-card/95 shadow-sm border-t-2 transition-all .5 hover:border-foreground/20 hover:shadow-md cursor-default", s.borderColor, s.bgGlow)}>
-              <div className="p-1.5 rounded-md bg-background/80 ring-1 ring-border/60 transition-base group-hover:bg-slate-50 dark:hover:bg-slate-800/50"><s.icon className={cn("h-4 w-4", s.color)} /></div>
-              <div>
-                <p className="text-xl font-extrabold leading-none tabular-nums">{s.count}</p>
-                <p className="text-[10px] text-muted-foreground font-semibold mt-0.5 uppercase tracking-wide">{s.label}</p>
-              </div>
-            </div>
-          ))}
-        </motion.div>
-
-        <motion.div {...surfaceMotion} transition={{ duration: 0.28, delay: 0.08, ease: "easeOut" }} className="flex flex-col sm:flex-row gap-2 flex-wrap p-3 rounded-lg bg-card/95 shadow-sm border border-border/70">
+        <div className="flex flex-col sm:flex-row gap-2 flex-wrap p-3 rounded-lg bg-card/95 border border-border/70">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Search agents..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 h-8 text-sm" />
@@ -1717,36 +1238,15 @@ export default function DashboardCRM() {
               </Badge>
             </Button>
           )}
-        </motion.div>
+        </div>
 
         {loading ? (
           <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>
         ) : (
           <>
-          {/* Bucket toggle — fold pipeline into Licensed vs Unlicensed groups */}
-          <motion.div
-            {...surfaceMotion}
-            transition={{ duration: 0.28, delay: 0.12, ease: "easeOut" }}
-            className="flex w-full flex-col gap-2 rounded-lg border border-border/70 bg-card/95 p-2 shadow-sm sm:w-fit sm:flex-row sm:items-center"
-          >
-            {(["all","unlicensed","licensed"] as const).map(b => {
-              const count = b === "all"
-                ? SECTIONS.reduce((s, sec) => s + (agentsBySection.get(sec.key)?.length ?? 0), 0)
-                : SECTIONS.filter(sec => sec.bucket === b).reduce((s, sec) => s + (agentsBySection.get(sec.key)?.length ?? 0), 0);
-              const active = activeBucket === b;
-              return (
-                <button key={b} onClick={() => setActiveBucket(b)}
-                  className={cn("flex items-center justify-between gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-all",
-                    active ? "bg-white dark:bg-slate-950 text-white shadow-sm dark:bg-white dark:text-slate-950" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")}>
-                  {b === "all" ? "All" : b === "unlicensed" ? "Getting Licensed" : "Licensed & Selling"}
-                  <Badge variant="outline" className="ml-2 text-[10px] h-4 px-1 font-bold">{count}</Badge>
-                </button>
-              );
-            })}
-          </motion.div>
           <Tabs value={activeStageTab} onValueChange={(v) => { setActiveStageTab(v); playSound("click"); }} className="space-y-3">
             <TabsList className="w-full justify-start flex-wrap h-auto gap-1.5 rounded-lg border border-border/70 bg-card/95 p-1.5 shadow-sm">
-              {SECTIONS.filter(s => activeBucket === "all" || s.bucket === activeBucket).map(section => {
+              {SECTIONS.map(section => {
                 const count = (agentsBySection.get(section.key) ?? []).length;
                 const Icon = section.icon;
                 return (
@@ -1759,266 +1259,24 @@ export default function DashboardCRM() {
               })}
             </TabsList>
 
-            {SECTIONS.filter(s => activeBucket === "all" || s.bucket === activeBucket).map(section => {
+            {SECTIONS.map(section => {
               const sectionAgents = agentsBySection.get(section.key) ?? [];
-
-              // Pre-Licensed tab renders as 5-column pipeline
-              if (section.key === "pre_licensed") {
-                return (
-                  <TabsContent key={section.key} value={section.key}>
-                    {sectionAgents.length === 0 ? (
-                      /* 2026-06-15 v7.2 · diagnostic empty-state for Pre-Licensed pipeline */
-                      <div className="flex flex-col items-center justify-center py-10 gap-3 max-w-md mx-auto text-center">
-                        <div className={cn("p-3 rounded-full", section.headerBg)}>
-                          <Users className={cn("h-6 w-6", section.iconColor, "opacity-50")} />
-                        </div>
-                        <p className="text-sm font-semibold">
-                          {agents.length === 0 ? "No active agents fetched" : "Filters are hiding every unlicensed agent"}
-                        </p>
-                        <p className="text-13 text-muted-foreground">
-                          Fetched <span className="font-bold text-foreground tabular-nums">{agents.length.toLocaleString()}</span> agent{agents.length === 1 ? "" : "s"} from the database.
-                        </p>
-                        {agents.length === 0 ? (
-                          <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
-                            Zero rows came back from the database. Likely causes:
-                            <ul className="list-disc list-inside mt-2">
-                              <li>Your session expired (try logging out + back in)</li>
-                              <li>Your role lost admin/manager grant (check user_roles)</li>
-                              <li>RLS policy regression on agents (check Supabase logs)</li>
-                            </ul>
-                            <p className="mt-2 italic">Hold the Standard.</p>
-                          </div>
-                        ) : (
-                          <>
-                            <p className="text-12 text-amber-600 dark:text-amber-400">
-                              But the filters above match <span className="font-bold tabular-nums">0</span> unlicensed agents.
-                              The data IS there — your filters are hiding it.
-                            </p>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={clearAllFilters}
-                              className="bg-amber-500 hover:bg-amber-400 text-slate-950"
-                            >
-                              Clear all filters · show {agents.length.toLocaleString()} agent{agents.length === 1 ? "" : "s"}
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <motion.div
-                        {...surfaceMotion}
-                        className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5"
-                      >
-                        {UNLICENSED_COLUMNS.map(col => {
-                          const colAgents = sectionAgents.filter(a => col.progress.includes(a.licenseProgress || "unlicensed"));
-                          const colColors: Record<string, string> = {
-                            unlicensed: "border-t-red-500 bg-red-500/3",
-                            course_purchased: "border-t-amber-500 bg-amber-500/3",
-                            finished_course: "border-t-blue-500 bg-blue-500/3",
-                            test_scheduled: "border-t-violet-500 bg-violet-500/3",
-                            waiting_on_license: "border-t-emerald-500 bg-emerald-500/3",
-                          };
-                          return (
-                            <div key={col.key} className={cn("rounded-lg border border-border/70 overflow-hidden border-t-4 bg-card/95 shadow-sm", colColors[col.key])}>
-                              <div className="px-3 py-2.5 bg-white dark:bg-slate-950 text-white border-b border-border flex items-center justify-between">
-                                <span className="text-xs font-bold uppercase tracking-wide">{col.label}</span>
-                                <Badge variant="outline" className="text-[10px] h-5 font-bold tabular-nums">{colAgents.length}</Badge>
-                              </div>
-                              <div className="p-2 space-y-2 overflow-y-auto" style={{ maxHeight: "calc(100vh - 220px)" }}>
-                                {colAgents.length === 0 ? (
-                                  <p className="text-xs text-muted-foreground text-center py-6 italic">No agents here</p>
-                                ) : colAgents.map(agent => (
-                                  <motion.div
-                                    key={agent.id}
-                                    whileHover={{ y: -2 }}
-                                    transition={{ duration: 0.16 }}
-                                    className="rounded-lg border border-border/70 bg-background/95 shadow-sm hover:border-foreground/20 hover:bg-muted/30 transition-colors group overflow-hidden"
-                                  >
-                                    {/* Agent Header */}
-                                    <div className="flex items-center gap-2.5 p-2.5 cursor-pointer"
-                                      onClick={() => { setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id }); playSound("click"); }}>
-                                      <AgentAvatar avatarUrl={getAvatarUrl(agent.avatarUrl)} name={agent.name} size="sm" className="ring-2 ring-background shadow-sm" />
-                                      <div className="min-w-0 flex-1">
-                                        {/* 2026-06-15 — clickable name opens AgentProfileDrawer (stops bubbling so the parent card click still navigates to application view when the rest of the card is tapped) */}
-                                        <p className="text-sm font-semibold truncate leading-tight">
-                                          <AgentNameLink agentId={agent.id}>{agent.name}</AgentNameLink>
-                                        </p>
-                                        <div className="flex items-center gap-1 mt-0.5">
-                                          {agent.aiScoreTier && (
-                                            <Badge variant="outline" className={cn("text-[10px] h-3.5 px-1", {
-                                              "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
-                                              "bg-orange-500/10 text-amber-500 border-orange-500/20": agent.aiScoreTier === "warm",
-                                              "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
-                                              "bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20": agent.aiScoreTier === "cold",
-                                            })}>
-                                              {agent.aiScoreTier === "hot" ? "🔥" : agent.aiScoreTier === "warm" ? "☀️" : agent.aiScoreTier === "cool" ? "❄️" : "🧊"} {agent.aiScoreTier}
-                                            </Badge>
-                                          )}
-                                          {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
-                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    {/* Contact Row */}
-                                    <div className="flex items-center gap-1 px-2.5 pb-1">
-                                      {agent.phone && (
-                                        <a href={`tel:${agent.phone}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors">
-                                          <Phone className="h-2.5 w-2.5" /> Call
-                                        </a>
-                                      )}
-                                      <a href={`mailto:${agent.email}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors">
-                                        <Mail className="h-2.5 w-2.5" /> Email
-                                      </a>
-                                      {agent.instagramHandle && (
-                                        <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-rose-500/10 text-foreground dark:text-foreground hover:bg-rose-500/20 transition-colors">
-                                          <Instagram className="h-2.5 w-2.5" />
-                                        </a>
-                                      )}
-                                    </div>
-                                    {/* Phone number visible */}
-                                    {agent.phone && (
-                                      <p className="text-[10px] text-muted-foreground px-2.5 pb-1 select-all cursor-text font-mono">{agent.phone}</p>
-                                    )}
-
-                                    {/* ── Recruit detail strip (applied date · state · income · referral · XCEL) ── */}
-                                    {agent.recruit && (
-                                      <div className="mx-2.5 mb-2 p-2 rounded-md bg-muted/40 border border-border/30 space-y-1">
-                                        <div className="flex flex-wrap gap-1.5 text-[10px]">
-                                          {agent.recruit.appliedAt && (
-                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5">
-                                              Applied {getTimeAgo(agent.recruit.appliedAt)}
-                                            </Badge>
-                                          )}
-                                          {agent.recruit.state && (
-                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5">
-                                              📍 {agent.recruit.state}
-                                            </Badge>
-                                          )}
-                                          {agent.recruit.desiredIncome != null && agent.recruit.desiredIncome > 0 && (
-                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-                                              💰 ${Number(agent.recruit.desiredIncome).toLocaleString()} goal
-                                            </Badge>
-                                          )}
-                                          {agent.recruit.yearsExperience != null && agent.recruit.yearsExperience > 0 && (
-                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5">
-                                              🧑‍💼 {agent.recruit.yearsExperience}y exp
-                                            </Badge>
-                                          )}
-                                          {agent.recruit.previousCompany && (
-                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5" title="Previous company">
-                                              🏢 {agent.recruit.previousCompany.slice(0, 18)}{agent.recruit.previousCompany.length > 18 ? "…" : ""}
-                                            </Badge>
-                                          )}
-                                          {agent.recruit.availability && (
-                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5" title="Availability">
-                                              ⏰ {agent.recruit.availability.slice(0, 14)}
-                                            </Badge>
-                                          )}
-                                          {agent.recruit.referralSource && (
-                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-violet-500/10 text-primary dark:text-primary border-violet-500/20" title="Referral source">
-                                              📣 {agent.recruit.referralSource.slice(0, 16)}
-                                            </Badge>
-                                          )}
-                                        </div>
-
-                                        {/* XCEL progress — the real licensing signal */}
-                                        {agent.recruit.xcelCompletion ? (
-                                          <div className="flex items-center gap-1 text-[10px] text-emerald-500 font-semibold pt-0.5 border-t border-border/20 mt-1">
-                                            <CheckCircle2 className="h-3 w-3" />
-                                            <span>Course done — {agent.recruit.xcelCompletion.state_line}</span>
-                                            <span className="text-muted-foreground ml-auto">{getTimeAgo(agent.recruit.xcelCompletion.event_at)}</span>
-                                          </div>
-                                        ) : agent.recruit.xcelEnrollments && agent.recruit.xcelEnrollments.length > 0 ? (
-                                          <div className="flex items-center gap-1 text-[10px] text-amber-500 pt-0.5 border-t border-border/20 mt-1">
-                                            <GraduationCap className="h-3 w-3" />
-                                            <span>Enrolled — {agent.recruit.xcelEnrollments[0].state_line}</span>
-                                            <span className="text-muted-foreground ml-auto">{getTimeAgo(agent.recruit.xcelEnrollments[0].event_at)}</span>
-                                          </div>
-                                        ) : (
-                                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70 pt-0.5 border-t border-border/20 mt-1">
-                                            <AlertTriangle className="h-3 w-3" />
-                                            <span>No XCEL enrollment yet</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                    {/* License Progress Selector */}
-                                    <div className="px-2.5 pb-2" onClick={e => e.stopPropagation()}>
-                                      <LicenseProgressSelector
-                                        applicationId={agent.applicationId || agent.id}
-                                        agentId={agent.userId ? agent.id : undefined}
-                                        currentProgress={(agent.licenseProgress || "unlicensed") as any}
-                                        testScheduledDate={agent.testScheduledDate}
-                                        onProgressUpdated={fetchAgents}
-                                        className="h-6 text-[10px] w-full"
-                                      />
-                                    </div>
-                                    {/* Inline Quick Note */}
-                                    <div className="px-2.5 pb-2" onClick={e => e.stopPropagation()}>
-                                      <InlineNotesButton agent={agent} />
-                                    </div>
-                                  </motion.div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </motion.div>
-                    )}
-                  </TabsContent>
-                );
-              }
 
               return (
                 <TabsContent key={section.key} value={section.key}>
                   {sectionAgents.length === 0 ? (
-                    /* 2026-06-15 v7.2 · Sam: "Use that technique across the entire website."
-                       Diagnostic empty-state: fetched count + filter cause + Clear-filters
-                       button when filters are hiding everything. Same pattern as fb19dcbd. */
-                    <div className="flex flex-col items-center justify-center py-10 gap-3 max-w-md mx-auto text-center">
-                      <div className={cn("p-3 rounded-full", section.headerBg)}>
-                        <Users className={cn("h-6 w-6", section.iconColor, "opacity-50")} />
-                      </div>
-                      <p className="text-sm font-semibold">
-                        {agents.length === 0 ? "No active agents fetched" : "Filters are hiding everything in this stage"}
-                      </p>
-                      <p className="text-13 text-muted-foreground">
-                        Fetched <span className="font-bold text-foreground tabular-nums">{agents.length.toLocaleString()}</span> agent{agents.length === 1 ? "" : "s"} from the database.
-                      </p>
-                      {agents.length === 0 ? (
-                        <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
-                          Zero rows came back from the database. Likely causes:
-                          <ul className="list-disc list-inside mt-2">
-                            <li>Your session expired (try logging out + back in)</li>
-                            <li>Your role lost admin/manager grant (check user_roles)</li>
-                            <li>RLS policy regression on agents (check Supabase logs)</li>
-                          </ul>
-                          <p className="mt-2 italic">Hold the Standard.</p>
-                        </div>
-                      ) : (
-                        <>
-                          <p className="text-12 text-amber-600 dark:text-amber-400">
-                            But the filters above match <span className="font-bold tabular-nums">0</span> in this stage.
-                            The data IS there — your filters are hiding it.
-                          </p>
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={clearAllFilters}
-                            className="bg-amber-500 hover:bg-amber-400 text-slate-950"
-                          >
-                            Clear all filters · show {agents.length.toLocaleString()} agent{agents.length === 1 ? "" : "s"}
-                          </Button>
-                        </>
+                    <div className="flex items-center justify-between gap-3 rounded-md border border-border px-4 py-3 text-sm">
+                      <span className="text-muted-foreground">
+                        {agents.length === 0 ? "No active agents fetched." : "No agents match this stage and filter set."}
+                      </span>
+                      {agents.length > 0 && (
+                        <Button variant="outline" size="sm" onClick={clearAllFilters}>
+                          Clear filters
+                        </Button>
                       )}
                     </div>
                   ) : (
-                    <motion.div
-                      {...surfaceMotion}
-                      className={cn("rounded-lg border border-border/70 bg-card/95 shadow-sm overflow-x-auto", section.accent, "border-l-4")}
-                    >
+                    <div className={cn("rounded-lg border border-border/70 bg-card/95 overflow-x-auto", section.accent, "border-l-4")}>
                       <Table className="min-w-[900px]">
                         <TableHeader className="bg-white dark:bg-slate-950">
                           <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-transparent [&_th]:h-10 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide">
@@ -2045,7 +1303,12 @@ export default function DashboardCRM() {
                                   {bulkMode && (
                                     <TableCell className="py-2" onClick={e => e.stopPropagation()}>
                                       <AgentSelectCheckbox agentId={agent.id} isSelected={selectedAgents.has(agent.id)}
-                                        onToggle={(id) => { const s = new Set(selectedAgents); s.has(id) ? s.delete(id) : s.add(id); setSelectedAgents(s); }}
+                                        onToggle={(id) => {
+                                          const s = new Set(selectedAgents);
+                                          if (s.has(id)) s.delete(id);
+                                          else s.add(id);
+                                          setSelectedAgents(s);
+                                        }}
                                         isEnabled={bulkMode} />
                                     </TableCell>
                                   )}
@@ -2099,7 +1362,7 @@ export default function DashboardCRM() {
                           })}
                         </TableBody>
                       </Table>
-                    </motion.div>
+                    </div>
                   )}
                 </TabsContent>
               );
@@ -2113,10 +1376,6 @@ export default function DashboardCRM() {
 
       <ApplicationDetailSheet open={!!viewAppTarget} onOpenChange={(o) => !o && setViewAppTarget(null)} applicationId={viewAppTarget?.applicationId} agentId={viewAppTarget?.agentId} onRefresh={fetchAgents} />
       <DeactivateAgentDialog open={!!deactivateAgent} onOpenChange={(o) => !o && setDeactivateAgent(null)} agentId={deactivateAgent?.id || ""} agentName={deactivateAgent?.name || ""} currentManagerId={deactivateAgent?.managerId} onComplete={fetchAgents} />
-      <InstagramPromptDialog open={!!instagramPromptAgent} onOpenChange={(o) => !o && setInstagramPromptAgent(null)} agentId={instagramPromptAgent?.id || ""} agentName={instagramPromptAgent?.name || ""} onComplete={fetchAgents} />
-      {recorderAgent && user && (
-        <InterviewRecorder applicationId={recorderAgent.id} agentId={recorderAgent.id} applicantName={recorderAgent.name} onClose={() => setRecorderAgent(null)} onTranscriptionSaved={fetchAgents} />
-      )}
       {editLoginAgent && (
         <AgentQuickEditDialog open={!!editLoginAgent} onOpenChange={(o) => !o && setEditLoginAgent(null)} agentId={editLoginAgent.id} currentName={editLoginAgent.name} onUpdate={fetchAgents} />
       )}

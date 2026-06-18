@@ -91,9 +91,10 @@ export function AgentActionsMenu({
     }
     setSubmittingSlot(slotDate);
     try {
+      // 2026-06-18 zero-Unknown sweep: pass em-dash, not "Unknown" placeholder.
       const { error } = await (supabase.rpc as any)("register_for_seminar", {
-        p_first_name: person.firstName || "Unknown",
-        p_last_name: person.lastName || "Agent",
+        p_first_name: person.firstName || "—",
+        p_last_name: person.lastName || "—",
         p_email: person.email.trim().toLowerCase(),
         p_phone: person.phone ?? "",
         p_seminar_date: slotDate,

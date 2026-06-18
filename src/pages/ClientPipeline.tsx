@@ -500,7 +500,7 @@ export default function ClientPipeline() {
           />
           <HousingPill
             icon={HelpCircle}
-            label="Unknown housing"
+            label="Housing —"
             count={housingCounts.unknown}
             active={housingFilter === "unknown"}
             disabled={false}

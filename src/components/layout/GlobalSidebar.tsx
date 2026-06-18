@@ -530,50 +530,83 @@ export function GlobalSidebar({
                     )}
                   </div>
                   {showSearch && searchResults.length > 0 && (
-                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-800 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-800 rounded-lg shadow-lg max-h-[24rem] overflow-y-auto">
                       {searchResults.map((result) => (
-                        <button
+                        <div
                           key={`${result.kind}:${result.id}`}
-                          onClick={() => {
-                            // 2026-06-17 Sam directive: "search any name, pull up
-                            // their data, send them course links."
-                            // Agent tap → AgentProfileDrawer (IT/AV/Legs + email
-                            // status + Send Course Link button — all already there).
-                            // Applicant tap → /dashboard/applicants?focus=<id> so
-                            // Sam lands on the row he can edit + Promote-to-Agent.
-                            setSearchQuery("");
-                            setSearchResults([]);
-                            setShowSearch(false);
-                            if (result.kind === "agent") {
-                              try {
-                                openAgentProfile(result.id);
-                              } catch (err) {
-                                toast.error(`Drawer crashed: ${err instanceof Error ? err.message : String(err)}`);
-                              }
-                            } else {
-                              navigate(`/dashboard/applicants?focus=${result.id}`);
-                            }
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-white/[0.04] transition-colors flex items-center gap-2"
+                          className="px-2 py-1.5 hover:bg-white/[0.04] transition-colors flex items-center gap-2 border-b border-slate-800/50 last:border-b-0"
                         >
-                          <span
-                            className={cn(
-                              "shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide tabular-nums",
-                              result.kind === "agent"
-                                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                                : "border-amber-500/40 bg-amber-500/10 text-amber-300",
-                            )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // 2026-06-17 Sam: search → drawer / applicant detail.
+                              setSearchQuery("");
+                              setSearchResults([]);
+                              setShowSearch(false);
+                              if (result.kind === "agent") {
+                                try { openAgentProfile(result.id); }
+                                catch (err) { toast.error(`Drawer crashed: ${err instanceof Error ? err.message : String(err)}`); }
+                              } else {
+                                navigate(`/dashboard/applicants?focus=${result.id}`);
+                              }
+                            }}
+                            className="flex-1 min-w-0 text-left flex items-center gap-2"
                           >
-                            {result.kind === "agent" ? "Agent" : "Applicant"}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <p className="text-sm font-medium truncate text-slate-200">{result.name}</p>
-                            <p className="text-xs text-slate-400 truncate">
-                              {result.email || result.phone || "—"}
-                              {result.licenseStatus ? ` · ${result.licenseStatus}` : ""}
-                            </p>
-                          </span>
-                        </button>
+                            <span
+                              className={cn(
+                                "shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide tabular-nums",
+                                result.kind === "agent"
+                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                                  : "border-amber-500/40 bg-amber-500/10 text-amber-300",
+                              )}
+                            >
+                              {result.kind === "agent" ? "Agent" : "Applicant"}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate text-slate-200">{result.name}</p>
+                              <p className="text-xs text-slate-400 truncate">
+                                {result.email || result.phone || "—"}
+                                {result.licenseStatus ? ` · ${result.licenseStatus}` : ""}
+                              </p>
+                            </span>
+                          </button>
+                          {/* 2026-06-18 Sam: 'send course' button right from search */}
+                          <button
+                            type="button"
+                            title="Send course + Discord email to this person"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const target = e.currentTarget;
+                              target.setAttribute("data-busy", "1");
+                              try {
+                                if (result.kind === "agent") {
+                                  await supabase.from("agent_onboarding_queue" as any).upsert(
+                                    [
+                                      { agent_id: result.id, email_kind: "course",  target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
+                                      { agent_id: result.id, email_kind: "discord", target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
+                                    ],
+                                    { onConflict: "agent_id,email_kind" },
+                                  );
+                                  await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
+                                  toast.success(`Course + Discord sent to ${result.name}`);
+                                } else {
+                                  // Applicant: promote → agent → fires onboarding queue automatically.
+                                  const { data: newAgentId } = await (supabase as any).rpc("promote_applicant_to_agent", { p_application_id: result.id });
+                                  await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
+                                  toast.success(`Promoted + course sent to ${result.name}`);
+                                  if (newAgentId) openAgentProfile(newAgentId);
+                                }
+                              } catch (err: any) {
+                                toast.error(`Send failed: ${err?.message?.slice(0, 80) ?? "unknown"}`);
+                              } finally {
+                                target.removeAttribute("data-busy");
+                              }
+                            }}
+                            className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors data-[busy=1]:opacity-50"
+                          >
+                            <Megaphone className="h-3 w-3" />
+                          </button>
+                        </div>
                       ))}
                     </div>
                   )}

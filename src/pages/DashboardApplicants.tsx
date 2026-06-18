@@ -1028,7 +1028,25 @@ export default function DashboardApplicants() {
                                 <Users className={cn("h-4 w-4", isTerminated ? "text-destructive" : "text-primary")} />
                               </div>
                               <div className="min-w-0 flex items-center gap-1.5">
-                                <p className="font-medium truncate">{app.first_name} {app.last_name}</p>
+                                {/* 2026-06-18 Sam: inline-edit first + last name */}
+                                <div className="flex flex-col min-w-0">
+                                  <InlineEditApplicantField
+                                    applicationId={app.id}
+                                    field="first_name"
+                                    value={app.first_name}
+                                    placeholder="First name"
+                                    className="font-medium"
+                                    onSaved={fetchApplications}
+                                  />
+                                  <InlineEditApplicantField
+                                    applicationId={app.id}
+                                    field="last_name"
+                                    value={app.last_name}
+                                    placeholder="Last name"
+                                    className="text-xs text-muted-foreground"
+                                    onSaved={fetchApplications}
+                                  />
+                                </div>
                                 {app.is_duplicate && <Badge variant="outline" className="text-[9px] bg-amber-500/20 text-amber-400 border-amber-500/30 px-1">DUP</Badge>}
                                 {app.is_ghosted && <Badge variant="outline" className="text-[9px] bg-red-500/20 text-red-400 border-red-500/30 px-1">👻</Badge>}
                               </div>

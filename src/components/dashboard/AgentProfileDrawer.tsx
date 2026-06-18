@@ -339,7 +339,8 @@ export function AgentProfileDrawer() {
         className={cn(
           // Mobile-first: full-screen on phones (override Sheet primitive's
           // default w-3/4 + sm:max-w-sm). Desktop: ~480px rail.
-          "w-full max-w-full p-0 sm:max-w-[480px] overflow-y-auto",
+          // 2026-06-18: flex column so the sticky footer hugs the bottom.
+          "w-full max-w-full p-0 sm:max-w-[480px] flex flex-col h-full",
         )}
       >
         <SheetHeader className="px-4 pt-4 pb-2 border-b border-border bg-card/60 sticky top-0 z-10 backdrop-blur-sm">
@@ -350,13 +351,13 @@ export function AgentProfileDrawer() {
         </SheetHeader>
 
         {isLoading || !agent ? (
-          <div className="flex items-center justify-center py-16">
+          <div className="flex-1 flex items-center justify-center py-16">
             {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : (
               <p className="text-sm text-muted-foreground">Agent not found.</p>
             )}
           </div>
         ) : (
-          <div className="px-4 py-4 space-y-4">
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
             {/* Identity */}
             <div className="flex items-start gap-3">
               <AgentAvatar avatarUrl={avatarUrl ?? undefined} name={name} size="lg" className="ring-2 ring-background shadow-sm" />
@@ -634,6 +635,47 @@ export function AgentProfileDrawer() {
 
             {/* Notes */}
             <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
+            {/* Bottom spacer so the sticky footer doesn't cover the last note. */}
+            <div className="h-2" />
+          </div>
+        )}
+
+        {/* 2026-06-18 Sam directive: 'I want all the UI perfect'.
+            Sticky footer with the three actions Sam taps most: Call · Text ·
+            Open in CRM. Always visible regardless of scroll depth. */}
+        {agent && (
+          <div className="border-t border-border bg-card/80 backdrop-blur-sm px-4 py-3 flex gap-2">
+            <Button
+              size="sm"
+              className="flex-1 h-9 gap-1.5"
+              disabled={!phone}
+              onClick={() => phone && (window.location.href = `tel:${phone}`)}
+              title={phone ? `Call ${phone}` : "No phone on file"}
+            >
+              <Phone className="h-3.5 w-3.5" /> Call
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 h-9 gap-1.5"
+              disabled={!phone}
+              onClick={() => phone && (window.location.href = `sms:${phone}`)}
+              title={phone ? `Text ${phone}` : "No phone on file"}
+            >
+              <MessageSquare className="h-3.5 w-3.5" /> Text
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 h-9 gap-1.5"
+              onClick={() => {
+                close();
+                navigate(`/agent/${agent.id}`);
+              }}
+              title="Open full CRM page"
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> CRM
+            </Button>
           </div>
         )}
       </SheetContent>

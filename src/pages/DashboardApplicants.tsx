@@ -56,6 +56,7 @@ import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { LeadQualificationChat } from "@/components/dashboard/LeadQualificationChat";
 import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
+import { PromoteApplicantButton } from "@/components/applicants/PromoteApplicantButton";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { KanbanBoard, type KanbanStage } from "@/components/pipeline/KanbanBoard";
 import type { PipelineCardData } from "@/components/pipeline/PipelineCard";
@@ -1138,6 +1139,14 @@ export default function DashboardApplicants() {
                             <div className="flex items-center justify-end gap-1">
                               {!isTerminated && (
                                 <>
+                                  {/* 2026-06-17 Sam directive: "I didn't type in
+                                      anybody in CRM. I took the applicant and
+                                      pushed them through." One-tap Promote → Agent. */}
+                                  <PromoteApplicantButton
+                                    applicationId={app.id}
+                                    applicantName={`${app.first_name} ${app.last_name}`}
+                                    compact
+                                  />
                                   {app.instagram_handle && (
                                     <Button
                                       variant="ghost"

@@ -606,10 +606,24 @@ function InterviewSkeleton() {
 }
 
 function rowTone(row: UnifiedInterview) {
+  // 2026-06-18 — extended tones to match the 8 disposition states shipped in
+  // 30a002eb. Order matters: terminal states first, then in-progress.
+  if (row.no_show_at) {
+    return {
+      card: "border-rose-500/40 bg-rose-500/10",
+      title: "text-rose-100",
+    };
+  }
   if (row.passed_at) {
     return {
       card: "border-slate-500/25 bg-slate-500/5 opacity-75",
       title: "text-slate-200",
+    };
+  }
+  if (row.contracted_at) {
+    return {
+      card: "border-emerald-500/55 bg-emerald-500/15",
+      title: "text-emerald-50",
     };
   }
   if (row.hired_at) {
@@ -618,10 +632,22 @@ function rowTone(row: UnifiedInterview) {
       title: "text-amber-100",
     };
   }
+  if (row.rescheduled_at && !row.called_at) {
+    return {
+      card: "border-violet-500/40 bg-violet-500/10",
+      title: "text-violet-100",
+    };
+  }
   if (row.called_at) {
     return {
       card: "border-emerald-500/40 bg-emerald-500/10",
       title: "text-emerald-100",
+    };
+  }
+  if (row.contacted_at) {
+    return {
+      card: "border-sky-500/40 bg-sky-500/10",
+      title: "text-sky-100",
     };
   }
   return {

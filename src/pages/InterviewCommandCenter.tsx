@@ -123,55 +123,42 @@ export default function InterviewCommandCenter() {
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
 
-  // 2026-06-18 MP-214: source from v_command_center_queue (canonical).
-  // Falls back to v_interviews_unified if the new view isn't live yet
-  // (e.g. brief deploy window during the canonical migration).
+  // MP-214 canonical view. Tested live (Noor Shams roundtrip 2026-06-18).
+  // No fallback — if this query fails, the error surface is the right
+  // signal vs a silently-degrading dead path.
   const interviews = useQuery({
     queryKey: ["interviews-unified", JUNE_START],
     queryFn: async () => {
-      // Try canonical view first
-      const canonical = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("v_command_center_queue")
         .select(
-          "entity_id, entity_type, source_application_id, candidate_name, phone, email, instagram_handle, scheduled_at_utc, interview_type, contacted_at, called_at, rescheduled_at, no_show_at, hired_at, contracted_at, passed_at, outcome_notes, created_at, computed_status, computed_is_active, computed_is_done, agent_id_if_promoted",
+          "entity_id, entity_type, candidate_name, phone, email, instagram_handle, scheduled_at_utc, interview_type, contacted_at, called_at, rescheduled_at, no_show_at, hired_at, contracted_at, passed_at, outcome_notes, created_at, computed_status, agent_id_if_promoted",
         )
         .gte("scheduled_at_utc", JUNE_START)
         .order("scheduled_at_utc", { ascending: false })
         .limit(1500);
-      if (!canonical.error && canonical.data) {
-        return (canonical.data as any[]).map((r: any) => ({
-          id: r.entity_id,
-          source: r.entity_type,
-          candidate_name: r.candidate_name,
-          phone: r.phone,
-          email: r.email,
-          instagram_handle: r.instagram_handle,
-          scheduled_at: r.scheduled_at_utc,
-          interview_type: r.interview_type,
-          status: r.computed_status,
-          called_at: r.called_at,
-          hired_at: r.hired_at,
-          passed_at: r.passed_at,
-          contracted_at: r.contracted_at,
-          rescheduled_at: r.rescheduled_at,
-          no_show_at: r.no_show_at,
-          contacted_at: r.contacted_at,
-          outcome_notes: r.outcome_notes,
-          agent_id_if_known: r.agent_id_if_promoted,
-          created_at: r.created_at,
-        })) as UnifiedInterview[];
-      }
-      // Fallback
-      const fallback = await (supabase as any)
-        .from("v_interviews_unified")
-        .select(
-          "id, source, candidate_name, phone, email, instagram_handle, scheduled_at, interview_type, status, called_at, hired_at, passed_at, contracted_at, rescheduled_at, no_show_at, contacted_at, outcome_notes, agent_id_if_known, created_at",
-        )
-        .gte("scheduled_at", JUNE_START)
-        .order("scheduled_at", { ascending: false })
-        .limit(1500);
-      if (fallback.error) throw fallback.error;
-      return (fallback.data ?? []) as UnifiedInterview[];
+      if (error) throw error;
+      return (data as any[]).map((r: any) => ({
+        id: r.entity_id,
+        source: r.entity_type,
+        candidate_name: r.candidate_name,
+        phone: r.phone,
+        email: r.email,
+        instagram_handle: r.instagram_handle,
+        scheduled_at: r.scheduled_at_utc,
+        interview_type: r.interview_type,
+        status: r.computed_status,
+        called_at: r.called_at,
+        hired_at: r.hired_at,
+        passed_at: r.passed_at,
+        contracted_at: r.contracted_at,
+        rescheduled_at: r.rescheduled_at,
+        no_show_at: r.no_show_at,
+        contacted_at: r.contacted_at,
+        outcome_notes: r.outcome_notes,
+        agent_id_if_known: r.agent_id_if_promoted,
+        created_at: r.created_at,
+      })) as UnifiedInterview[];
     },
     staleTime: 30_000,
   });
@@ -229,10 +216,8 @@ export default function InterviewCommandCenter() {
     const todayStart = startOfToday();
     const weekStart = startOfWeek(todayStart);
     return {
-      total: scopedRows.length,
       calledToday: scopedRows.filter((row) => row.called_at && new Date(row.called_at) >= todayStart).length,
       hiredThisWeek: scopedRows.filter((row) => row.hired_at && new Date(row.hired_at) >= weekStart).length,
-      pendingCall: scopedRows.filter((row) => !row.called_at && !row.hired_at && !row.passed_at).length,
     };
   }, [scopedRows]);
 
@@ -468,11 +453,12 @@ export default function InterviewCommandCenter() {
         }
       />
 
-      <section className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        <StatTile icon={CalendarDays} label="Total" value={stats.total} />
+      {/* MP-214 cleanup: dropped Total (= All pill) + Pending Call (= Active pill).
+          Kept Called Today (productivity signal) + Hired this Week (brag metric).
+          Every tile must earn its pixel. */}
+      <section className="mt-4 grid grid-cols-2 gap-2">
         <StatTile icon={PhoneCall} label="Called Today" value={stats.calledToday} tone="emerald" />
         <StatTile icon={Trophy} label="Hired this Week" value={stats.hiredThisWeek} tone="amber" />
-        <StatTile icon={CheckCircle2} label="Pending Call" value={stats.pendingCall} tone="sky" />
       </section>
 
       {/* 2026-06-18 Sam directive: 'I click contract and it stays there'.

@@ -489,8 +489,6 @@ export default function InboundLeads() {
           : "";
         const recorder = new MediaRecorder(recordStream, mimeType ? { mimeType } : undefined);
         recorder.ondataavailable = (e) => {
-          // eslint-disable-next-line no-console
-          console.log("[BUG-1] ondataavailable · size=", e?.data?.size ?? "no-data");
           if (e.data && e.data.size > 0) {
             audioChunksRef.current.push(e.data);
           }

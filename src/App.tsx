@@ -142,7 +142,8 @@ const RecruitingInbox = lazy(() => import("./pages/admin/RecruitingInbox"));
 const AgentDuplicates = lazy(() => import("./pages/admin/AgentDuplicates"));
 const AutomationHub = lazy(() => import("./pages/AutomationHub"));
 const AutomationHealth = lazy(() => import("./pages/AutomationHealth"));
-const TeamHierarchy = lazy(() => import("./pages/TeamHierarchy"));
+// 2026-06-18 cruft strip: TeamHierarchy was retired in favor of Hierarchy
+// (see line ~563 comment). The lazy import was orphaned. Removed.
 const AgentPipelineSimple = lazy(() => import("./pages/AgentPipelineSimple"));
 const InstagramAutomation = lazy(() => import("./pages/InstagramAutomation"));
 const ContentLibrary = lazy(() => import("./pages/ContentLibrary"));
@@ -185,7 +186,10 @@ const ClientPipeline = lazy(() => import("./pages/ClientPipeline"));
 const InboundLeads = lazy(() => import("./pages/InboundLeads"));
 const SocialDashboard = lazy(() => import("./pages/SocialDashboard"));
 const CallsTodayCockpit = lazy(() => import("./pages/CallsTodayCockpit"));
-const ManagerCommandView = lazy(() => import("./pages/ManagerCommandView"));
+// 2026-06-18 cruft strip: ManagerCommandView's lazy() entry in this file was
+// duplicate — Dashboard.tsx already lazy-imports it for the manager-role view
+// path (see src/pages/Dashboard.tsx:31). Removing the App.tsx duplicate avoids
+// two parallel chunks for the same module without losing the role-routed render.
 const WhaleRecruiting = lazy(() => import("./pages/WhaleRecruiting"));
 const CarrierContracts = lazy(() => import("./pages/CarrierContracts"));
 const Challenges = lazy(() => import("./pages/Challenges"));

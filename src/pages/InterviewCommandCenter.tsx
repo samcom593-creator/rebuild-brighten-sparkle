@@ -244,11 +244,17 @@ export default function InterviewCommandCenter() {
         : row.source === "calendly" && typeof row.id === "string" && row.id.startsWith("calendly:")
           ? row.id.slice("calendly:".length)
           : row.id;
-      const { error } = await (supabase as any).rpc("disposition_interview", {
-        p_source: row.source,
-        p_id: realId,
+      // MP-214 v5 (Codex hardening): single round-trip via cc_dispose.
+      // The RPC owns the disposition update + auto-promote chain +
+      // course/Discord queue + (in v5) the Calendly source_app_id derivation.
+      // Replaces the previous client-side chain that was 3 round-trips + a
+      // partial-failure risk between them.
+      const { data: dispResult, error } = await (supabase as any).rpc("cc_dispose", {
+        p_entity_type: row.source,
+        p_entity_id: row.id,
         p_field: field,
-        p_value: field === "notes" ? value ?? "" : timestamp,
+        p_value: field === "notes" ? null : timestamp,
+        p_notes: field === "notes" ? (value ?? "") : null,
       });
       if (error) throw error;
 
@@ -297,11 +303,14 @@ export default function InterviewCommandCenter() {
           label: "Undo",
           onClick: async () => {
             try {
-              await (supabase as any).rpc("disposition_interview", {
-                p_source: row.source,
-                p_id: realId,
+              // MP-214 v5: cc_dispose with __clear__ nulls the timestamp.
+              // If priorValue had a non-null value, restore that; else clear.
+              await (supabase as any).rpc("cc_dispose", {
+                p_entity_type: row.source,
+                p_entity_id: row.id,
                 p_field: field,
-                p_value: priorValue ?? "",
+                p_value: priorValue ? priorValue : "__clear__",
+                p_notes: null,
               });
               // Reverse the cache patch
               const reverse: Partial<UnifiedInterview> = {};
@@ -324,68 +333,20 @@ export default function InterviewCommandCenter() {
         description: isTerminal ? "Row moved to ✅ Done. Tap Undo to bring it back." : undefined,
       });
 
-      // 2026-06-18 Sam directive: clicking Contracted or Hired must
-      // (a) auto-promote the applicant to an agent (creates the CRM row),
-      // (b) auto-queue + fire course + Discord emails,
-      // (c) open the AgentLink contractor/invite link in a new tab so
-      //     Sam can finish the AgentLink-side flow.
+      // MP-214 v5: cc_dispose already did the promote + queue atomically.
+      // The result tells us what happened. Surface to Sam + open AgentLink.
       if (field === "contracted" || field === "hired") {
-        try {
-          let newAgentId: string | null = null;
-          if (row.source === "application") {
-            // Source application — promote it.
-            const { data, error: promErr } = await (supabase as any).rpc("promote_applicant_to_agent", {
-              p_application_id: realId,
-            });
-            if (!promErr && data) {
-              newAgentId = data as string;
-              toast.success(`${row.candidate_name} promoted to Agent`);
-            }
-          }
-          // For manual entries linked to an application, the source_application_id
-          // points at the underlying application.
-          if (!newAgentId && row.source === "manual") {
-            const { data: link } = await (supabase as any)
-              .from("manual_interview_entries")
-              .select("source_application_id")
-              .eq("id", realId)
-              .maybeSingle();
-            const appId = (link as any)?.source_application_id;
-            if (appId) {
-              const { data, error: promErr } = await (supabase as any).rpc("promote_applicant_to_agent", {
-                p_application_id: appId,
-              });
-              if (!promErr && data) {
-                newAgentId = data as string;
-                toast.success(`${row.candidate_name} promoted to Agent`);
-              }
-            }
-          }
-
-          // Queue + fire course + Discord regardless of whether we just
-          // promoted (idempotent — upsert + drain).
-          if (newAgentId) {
-            await (supabase as any)
-              .from("agent_onboarding_queue")
-              .upsert(
-                [
-                  { agent_id: newAgentId, email_kind: "course",  target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
-                  { agent_id: newAgentId, email_kind: "discord", target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
-                ],
-                { onConflict: "agent_id,email_kind" },
-              );
-            await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
-            toast.success("Course + Discord emails fired");
-          }
-
-          // Open AgentLink contractor / invite page in a new tab so Sam can
-          // finish the AgentLink-side contracting flow.
-          const agentlinkInviteUrl = "https://agentlink.insuracloud.ai/admin/agents/invite";
-          window.open(agentlinkInviteUrl, "_blank", "noopener,noreferrer");
-        } catch (autoErr: any) {
-          // Don't block the disposition save on the automation; just toast.
-          toast.error(`Auto-onboarding partial: ${autoErr?.message?.slice(0, 80) ?? "unknown"}`);
+        const r = (dispResult ?? {}) as { promoted?: boolean; emails_queued?: number; promoted_agent_id?: string };
+        if (r.promoted && r.promoted_agent_id) {
+          toast.success(`${row.candidate_name} promoted to Agent`);
         }
+        if (r.emails_queued && r.emails_queued > 0) {
+          // Drain the queue immediately
+          try { await supabase.functions.invoke("send-agent-onboarding-email", { body: {} }); } catch { /* drained on cron tick anyway */ }
+          toast.success("Course + Discord emails fired");
+        }
+        // Open AgentLink invite for Sam to finish the AgentLink-side contracting flow.
+        window.open("https://agentlink.insuracloud.ai/admin/agents/invite", "_blank", "noopener,noreferrer");
       }
 
       await queryClient.invalidateQueries({ queryKey: ["interviews-unified", JUNE_START] });

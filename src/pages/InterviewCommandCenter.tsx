@@ -235,7 +235,7 @@ export default function InterviewCommandCenter() {
 
   const stats = useMemo(() => {
     const todayStart = startOfToday();
-    const weekStart = startOfWeek(todayStart);
+    const weekStart = startOfWeek();
     return {
       calledToday: scopedRows.filter((row) => row.called_at && new Date(row.called_at) >= todayStart).length,
       hiredThisWeek: scopedRows.filter((row) => row.hired_at && new Date(row.hired_at) >= weekStart).length,
@@ -511,6 +511,10 @@ export default function InterviewCommandCenter() {
             return (
               <div
                 key={rk}
+                data-entity-type={row.source}
+                data-entity-id={row.id}
+                data-cc-status={row.hired_at || row.contracted_at || row.passed_at || row.no_show_at ? "done" : "active"}
+                aria-busy={isExiting}
                 className={cn(
                   "transition-all duration-300 ease-out",
                   isExiting && "opacity-0 scale-95 max-h-0 overflow-hidden",
@@ -571,19 +575,36 @@ export default function InterviewCommandCenter() {
                   key={field}
                   size="sm"
                   variant="outline"
-                  className="h-8 text-xs gap-1"
+                  className="min-h-[44px] h-11 text-xs gap-1"
                   disabled={!bulkSelected.size}
-                  onClick={async () => {
+                  aria-label={`Apply ${field === "no_show" ? "No-Show" : field} to ${bulkSelected.size} selected interviews`}
+                  data-cc-bulk={field}
+                  onClick={() => {
                     const targets = visibleRows.filter((r) => bulkSelected.has(`${r.source}:${r.id}`));
                     if (!targets.length) return;
                     const label = field === "no_show" ? "No-Show" : field[0].toUpperCase() + field.slice(1);
-                    if (!window.confirm(`Apply ${label} to ${targets.length} row${targets.length === 1 ? "" : "s"}?`)) return;
-                    for (const row of targets) {
-                      try { await saveDisposition(row, field); } catch { /* keep going */ }
-                    }
-                    setBulkMode(false);
-                    setBulkSelected(new Set());
-                    toast.success(`✅ ${label} applied to ${targets.length}`);
+                    // MP-214 v5 (Codex P1): non-blocking toast confirm.
+                    // window.confirm() blocks the main thread on mobile and
+                    // ignores Sam's typed-out reason — bad UX. Toast confirm
+                    // gives him a 5s window to undo, and stays inline.
+                    const id = toast.message(
+                      `Apply ${label} to ${targets.length} row${targets.length === 1 ? "" : "s"}?`,
+                      {
+                        duration: 5000,
+                        action: {
+                          label: `Yes · ${label} All`,
+                          onClick: async () => {
+                            for (const row of targets) {
+                              try { await saveDisposition(row, field); } catch { /* keep going */ }
+                            }
+                            setBulkMode(false);
+                            setBulkSelected(new Set());
+                            toast.success(`✅ ${label} applied to ${targets.length}`);
+                            toast.dismiss(id);
+                          },
+                        },
+                      },
+                    );
                   }}
                 >
                   {field === "contracted" ? "✅ Contract" : field === "hired" ? "🎯 Hire" : field === "passed" ? "Pass" : "🚫 No-Show"} All
@@ -1084,33 +1105,83 @@ function phoneHref(value: string) {
   return value.replace(/[^\d+]/g, "");
 }
 
-function startOfToday() {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
+// MP-214 v5 (Codex P0): date filters MUST use America/Chicago, not browser
+// local time. APEX is Chicago-based — Sam triages from anywhere (Phoenix
+// during flights, Atlanta with family, etc), and 'Today' must mean the
+// Chicago calendar day or hires-this-week sits on the wrong row.
+const CHICAGO = "America/Chicago";
+
+// Return Chicago calendar date as YYYY-MM-DD. Lexicographically comparable.
+function chicagoYMD(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: CHICAGO,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }
 
-function startOfWeek(todayStart = startOfToday()) {
-  const date = new Date(todayStart);
-  const day = date.getDay();
-  const diff = day === 0 ? 6 : day - 1;
-  date.setDate(date.getDate() - diff);
-  return date;
+// Return the Chicago YMD of the Monday on or before the given Chicago YMD.
+function chicagoStartOfWeekYMD(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  // Compute weekday at noon Chicago (avoid DST midnight ambiguity).
+  const probe = new Date(Date.UTC(y, m - 1, d, 18, 0, 0));
+  const dayName = new Intl.DateTimeFormat("en-US", {
+    timeZone: CHICAGO,
+    weekday: "short",
+  }).format(probe);
+  const offset = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }[dayName] ?? 0;
+  const monday = new Date(Date.UTC(y, m - 1, d - offset, 18, 0, 0));
+  return chicagoYMD(monday);
 }
 
-function isInDateFilter(value: string, filter: DateFilter) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return false;
+function startOfToday(): Date {
+  // Kept for stats compute (uses Date comparison via UTC). Returns the UTC
+  // instant corresponding to Chicago-midnight today.
+  const ymd = chicagoYMD(new Date());
+  const [y, m, d] = ymd.split("-").map(Number);
+  // 00:00 Chicago is 05:00 UTC (CDT) or 06:00 UTC (CST). DST-aware via probe.
+  const probe = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const offsetStr = new Intl.DateTimeFormat("en-US", {
+    timeZone: CHICAGO,
+    timeZoneName: "shortOffset",
+  })
+    .formatToParts(probe)
+    .find((p) => p.type === "timeZoneName")
+    ?.value.replace(/^GMT/, "");
+  const offsetMin = -(offsetStr ? offsetStr.split(":").reduce((acc, n, i) => acc + Number(n) * (i === 0 ? 60 : 1), 0) : -360);
+  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0) + offsetMin * 60_000);
+}
 
-  const todayStart = startOfToday();
-  if (filter === "today") {
-    const tomorrow = new Date(todayStart);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return date >= todayStart && date < tomorrow;
+function startOfWeek(): Date {
+  const ymd = chicagoStartOfWeekYMD(chicagoYMD(new Date()));
+  const [y, m, d] = ymd.split("-").map(Number);
+  const probe = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  const offsetStr = new Intl.DateTimeFormat("en-US", {
+    timeZone: CHICAGO,
+    timeZoneName: "shortOffset",
+  })
+    .formatToParts(probe)
+    .find((p) => p.type === "timeZoneName")
+    ?.value.replace(/^GMT/, "");
+  const offsetMin = -(offsetStr ? offsetStr.split(":").reduce((acc, n, i) => acc + Number(n) * (i === 0 ? 60 : 1), 0) : -360);
+  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0) + offsetMin * 60_000);
+}
+
+function isInDateFilter(value: string, filter: DateFilter): boolean {
+  const candidate = new Date(value);
+  if (Number.isNaN(candidate.getTime())) return false;
+  const cYMD = chicagoYMD(candidate);
+  const todayYMD = chicagoYMD(new Date());
+
+  if (filter === "today") return cYMD === todayYMD;
+
+  if (filter === "week") {
+    const weekStartYMD = chicagoStartOfWeekYMD(todayYMD);
+    return cYMD >= weekStartYMD;
   }
 
-  if (filter === "week") return date >= startOfWeek(todayStart);
-
-  const monthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
-  return date >= monthStart;
+  // month
+  const monthStartYMD = todayYMD.slice(0, 7) + "-01";
+  return cYMD >= monthStartYMD;
 }

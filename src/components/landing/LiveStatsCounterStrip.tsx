@@ -31,12 +31,14 @@ interface LiveStats {
 }
 
 const CACHE_KEY = "apex_live_stats_last_good";
-// wave-88 (2026-06-13): df6798e4 commit message claimed 95→104 but only the
-// commit message changed — the constant stayed at 95. Bumped here for real;
-// also bumped CTASection + CareerPathwaySection `?? 95` fallbacks + HeroSection
-// number-variant subhead "95+" → "100+" in the same wave so the landing never
-// quotes a roster smaller than the truth-floor while the gate-or-timer waits.
-const HARDCODED_FLOOR = { active_agents: 104, applications_30d: 131, carriers_partnered: 22 } as const;
+// wave-X (2026-06-19): feb05b97 fixed landing_live_stats() to return truth=41
+// active_agents (was 123 due to inactive+XAGENT placeholder pollution). But the
+// HARDCODED_FLOOR.active_agents was 104 and pick() upgraded any live<floor to
+// floor — so the strip kept rendering 104 even after the DB told the truth.
+// Floor now mirrors known truth-floor (40, one below current 41) and pick()
+// trusts any real positive RPC result. Lying upward is the same disease as
+// lying downward: it just kills trust later instead of now.
+const HARDCODED_FLOOR = { active_agents: 40, applications_30d: 131, carriers_partnered: 22 } as const;
 
 function readCache(): Partial<LiveStats> | null {
   try {
@@ -47,11 +49,11 @@ function readCache(): Partial<LiveStats> | null {
 function writeCache(d: LiveStats) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...d, _cached_at: Date.now() })); } catch { /* swallow */ }
 }
-// Treat 0 / null / undefined as "no data yet" — never render a zero above the fold.
-// A real count we trust is anything ≥ HARDCODED_FLOOR.<key> (we only ever grow).
+// Live RPC wins whenever it returns a real positive count. Cache is the warm
+// fallback. Floor is the cold-render-only safety net. Never clamp truth upward.
 function pick(live: number | undefined, cached: number | undefined, floor: number): number {
-  if (typeof live === "number" && live >= floor) return live;
-  if (typeof cached === "number" && cached >= floor) return cached;
+  if (typeof live === "number" && live >= 1) return live;
+  if (typeof cached === "number" && cached >= 1) return cached;
   return floor;
 }
 
@@ -92,10 +94,10 @@ export function LiveStatsCounterStrip() {
   });
 
   const cached = useMemo(() => readCache(), []);
-  // Persist any RPC result whose values clear the floor so the next cold load
-  // shows real numbers instead of falling through to the hard-coded base.
+  // Persist any positive RPC result. Caching truth — even when truth is lower
+  // than the prior cache — keeps the strip honest after roster shrinks.
   useEffect(() => {
-    if (data && (data.active_agents ?? 0) >= HARDCODED_FLOOR.active_agents) {
+    if (data && (data.active_agents ?? 0) >= 1) {
       writeCache(data);
     }
   }, [data]);

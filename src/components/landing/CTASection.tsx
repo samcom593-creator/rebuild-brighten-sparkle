@@ -44,8 +44,10 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });
-  // wave-88 (2026-06-13): truth-floor sync with LiveStatsCounterStrip (95 → 104).
-  const activeAgents = liveStats?.active_agents ?? 104;
+  // 2026-06-19: feb05b97 truth-floor sync — landing_live_stats now returns
+  // 41 active (was 123 due to placeholder pollution). 40 is the cold-render
+  // floor; live RPC is the source of truth and always wins when present.
+  const activeAgents = liveStats?.active_agents ?? 40;
 
   return (
     <section ref={ref} className="py-24 relative overflow-hidden bg-white dark:bg-[#030712]">

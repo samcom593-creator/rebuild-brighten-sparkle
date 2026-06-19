@@ -267,8 +267,9 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
 
   // Fall back to the same canonical numbers the LiveStatsCounterStrip uses,
   // so the cards never render "0" or "..." even before the RPC resolves.
-  // wave-88 (2026-06-13): truth-floor sync (95 → 104).
-  const activeAgents = liveStats?.active_agents ?? 104;
+  // 2026-06-19: feb05b97 truth-floor sync — RPC is authoritative (truth=41
+  // active); 40 is the cold-render floor only.
+  const activeAgents = liveStats?.active_agents ?? 40;
   const carriers = liveStats?.carriers_partnered ?? 22;
   const phases = useMemo(() => buildPhases(carriers), [carriers]);
 

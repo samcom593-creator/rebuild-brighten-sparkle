@@ -114,11 +114,55 @@ export default function InterviewCommandCenter() {
   const [search, setSearch] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  // 2026-06-18 MP-214: per-row exit animation. When a row is dispositioned to
+  // a terminal state, it stays mounted for 280ms with opacity 0 + height 0
+  // so React can animate the collapse before the state filter hides it.
+  const [exitingRows, setExitingRows] = useState<Set<string>>(new Set());
+  // 2026-06-18 MP-214: bulk select mode. Long-press any row → enter bulk
+  // mode → tap to add/remove → sticky bottom bar applies the dispo to all.
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
 
+  // 2026-06-18 MP-214: source from v_command_center_queue (canonical).
+  // Falls back to v_interviews_unified if the new view isn't live yet
+  // (e.g. brief deploy window during the canonical migration).
   const interviews = useQuery({
     queryKey: ["interviews-unified", JUNE_START],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      // Try canonical view first
+      const canonical = await (supabase as any)
+        .from("v_command_center_queue")
+        .select(
+          "entity_id, entity_type, source_application_id, candidate_name, phone, email, instagram_handle, scheduled_at_utc, interview_type, contacted_at, called_at, rescheduled_at, no_show_at, hired_at, contracted_at, passed_at, outcome_notes, created_at, computed_status, computed_is_active, computed_is_done, agent_id_if_promoted",
+        )
+        .gte("scheduled_at_utc", JUNE_START)
+        .order("scheduled_at_utc", { ascending: false })
+        .limit(1500);
+      if (!canonical.error && canonical.data) {
+        return (canonical.data as any[]).map((r: any) => ({
+          id: r.entity_id,
+          source: r.entity_type,
+          candidate_name: r.candidate_name,
+          phone: r.phone,
+          email: r.email,
+          instagram_handle: r.instagram_handle,
+          scheduled_at: r.scheduled_at_utc,
+          interview_type: r.interview_type,
+          status: r.computed_status,
+          called_at: r.called_at,
+          hired_at: r.hired_at,
+          passed_at: r.passed_at,
+          contracted_at: r.contracted_at,
+          rescheduled_at: r.rescheduled_at,
+          no_show_at: r.no_show_at,
+          contacted_at: r.contacted_at,
+          outcome_notes: r.outcome_notes,
+          agent_id_if_known: r.agent_id_if_promoted,
+          created_at: r.created_at,
+        })) as UnifiedInterview[];
+      }
+      // Fallback
+      const fallback = await (supabase as any)
         .from("v_interviews_unified")
         .select(
           "id, source, candidate_name, phone, email, instagram_handle, scheduled_at, interview_type, status, called_at, hired_at, passed_at, contracted_at, rescheduled_at, no_show_at, contacted_at, outcome_notes, agent_id_if_known, created_at",
@@ -126,8 +170,8 @@ export default function InterviewCommandCenter() {
         .gte("scheduled_at", JUNE_START)
         .order("scheduled_at", { ascending: false })
         .limit(1500);
-      if (error) throw error;
-      return (data ?? []) as UnifiedInterview[];
+      if (fallback.error) throw fallback.error;
+      return (fallback.data ?? []) as UnifiedInterview[];
     },
     staleTime: 30_000,
   });
@@ -156,8 +200,10 @@ export default function InterviewCommandCenter() {
   const scopedRows = useMemo(() => {
     if (stateFilter === "all") return dateScopedRows;
     if (stateFilter === "done") return dateScopedRows.filter(isRowDone);
-    return dateScopedRows.filter((r) => !isRowDone(r));
-  }, [dateScopedRows, stateFilter]);
+    // For Active: keep rows that are still active OR currently exiting
+    // (so the fade-out animation can play before they vanish).
+    return dateScopedRows.filter((r) => !isRowDone(r) || exitingRows.has(`${r.source}:${r.id}`));
+  }, [dateScopedRows, stateFilter, exitingRows]);
 
   const visibleRows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -245,9 +291,21 @@ export default function InterviewCommandCenter() {
       if (field === "contracted") patchCachedRow(row, { contracted_at: timestamp, status: "contracted" });
       if (field === "notes") patchCachedRow(row, { outcome_notes: value?.trim() || null });
 
-      // 2026-06-18 Sam directive: dispositioned rows leave Active queue.
-      // Toast with Undo action so accidental taps are recoverable.
+      // 2026-06-18 MP-214: terminal disposition → fade row out over 280ms
+      // before the state filter removes it. Pure CSS via the exitingRows set.
       const isTerminal = field === "hired" || field === "contracted" || field === "passed" || field === "no_show";
+      if (isTerminal) {
+        const rowKey = `${row.source}:${row.id}`;
+        setExitingRows((prev) => new Set(prev).add(rowKey));
+        // Remove from exitingRows after the animation so the filter takes over.
+        setTimeout(() => {
+          setExitingRows((prev) => {
+            const next = new Set(prev);
+            next.delete(rowKey);
+            return next;
+          });
+        }, 320);
+      }
       toast.success(successLabel(field), {
         duration: 6000,
         action: {
@@ -471,26 +529,102 @@ export default function InterviewCommandCenter() {
         </div>
       ) : (
         <section className="mt-4 grid gap-3 xl:grid-cols-2">
-          {visibleRows.map((row) => (
-            <InterviewCard
-              key={`${row.source}:${row.id}`}
-              row={row}
-              savingKey={savingKey}
-              noteDraft={noteDrafts[rowKey(row)]}
-              onDisposition={saveDisposition}
-              onOpenNotes={openNotes}
-              onNoteChange={(value) =>
-                setNoteDrafts((prev) => ({ ...prev, [rowKey(row)]: value }))
-              }
-              onNoteBlur={() => saveNotes(row)}
-            />
-          ))}
+          {visibleRows.map((row) => {
+            const rk = `${row.source}:${row.id}`;
+            const isExiting = exitingRows.has(rk);
+            const isBulkSelected = bulkSelected.has(rk);
+            return (
+              <div
+                key={rk}
+                className={cn(
+                  "transition-all duration-300 ease-out",
+                  isExiting && "opacity-0 scale-95 max-h-0 overflow-hidden",
+                  !isExiting && "opacity-100 max-h-[800px]",
+                )}
+              >
+                <InterviewCard
+                  row={row}
+                  savingKey={savingKey}
+                  noteDraft={noteDrafts[rowKey(row)]}
+                  onDisposition={saveDisposition}
+                  onOpenNotes={openNotes}
+                  onNoteChange={(value) =>
+                    setNoteDrafts((prev) => ({ ...prev, [rowKey(row)]: value }))
+                  }
+                  onNoteBlur={() => saveNotes(row)}
+                  bulkMode={bulkMode}
+                  isBulkSelected={isBulkSelected}
+                  onToggleBulk={() => {
+                    setBulkSelected((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(rk)) next.delete(rk); else next.add(rk);
+                      return next;
+                    });
+                  }}
+                  onEnterBulk={() => {
+                    if (!bulkMode) {
+                      setBulkMode(true);
+                      setBulkSelected(new Set([rk]));
+                    }
+                  }}
+                />
+              </div>
+            );
+          })}
           {!visibleRows.length && (
             <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground">
               No interviews match this view.
             </div>
           )}
         </section>
+      )}
+
+      {/* 2026-06-18 MP-214: sticky bulk action bar. Long-press any row enters
+          bulk mode → tap others to add → tap a dispo to apply to all. */}
+      {bulkMode && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-40 border-t border-violet-500/30 bg-card/95 backdrop-blur-md shadow-2xl"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
+          <div className="mx-auto max-w-5xl flex flex-wrap items-center gap-2 px-3 py-3 sm:px-6">
+            <Badge variant="outline" className="bg-violet-500/20 text-violet-300 border-violet-500/40 text-sm font-bold">
+              {bulkSelected.size} selected
+            </Badge>
+            <div className="flex-1 min-w-0 flex flex-wrap gap-1">
+              {(["contracted", "hired", "passed", "no_show"] as DispositionField[]).map((field) => (
+                <Button
+                  key={field}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-1"
+                  disabled={!bulkSelected.size}
+                  onClick={async () => {
+                    const targets = visibleRows.filter((r) => bulkSelected.has(`${r.source}:${r.id}`));
+                    if (!targets.length) return;
+                    const label = field === "no_show" ? "No-Show" : field[0].toUpperCase() + field.slice(1);
+                    if (!window.confirm(`Apply ${label} to ${targets.length} row${targets.length === 1 ? "" : "s"}?`)) return;
+                    for (const row of targets) {
+                      try { await saveDisposition(row, field); } catch { /* keep going */ }
+                    }
+                    setBulkMode(false);
+                    setBulkSelected(new Set());
+                    toast.success(`✅ ${label} applied to ${targets.length}`);
+                  }}
+                >
+                  {field === "contracted" ? "✅ Contract" : field === "hired" ? "🎯 Hire" : field === "passed" ? "Pass" : "🚫 No-Show"} All
+                </Button>
+              ))}
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 text-xs"
+              onClick={() => { setBulkMode(false); setBulkSelected(new Set()); }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -504,6 +638,10 @@ function InterviewCard({
   onOpenNotes,
   onNoteChange,
   onNoteBlur,
+  bulkMode = false,
+  isBulkSelected = false,
+  onToggleBulk,
+  onEnterBulk,
 }: {
   row: UnifiedInterview;
   savingKey: string | null;
@@ -512,10 +650,23 @@ function InterviewCard({
   onOpenNotes: (row: UnifiedInterview) => void;
   onNoteChange: (value: string) => void;
   onNoteBlur: () => void;
+  bulkMode?: boolean;
+  isBulkSelected?: boolean;
+  onToggleBulk?: () => void;
+  onEnterBulk?: () => void;
 }) {
   const busy = savingKey?.startsWith(`${row.source}:${row.id}:`) ?? false;
   const handle = normalizeHandle(row.instagram_handle);
   const tone = rowTone(row);
+  // 2026-06-18 MP-214: long-press (600ms) triggers bulk-mode entry.
+  const longPressTimer = (typeof window !== 'undefined') ? { current: null as ReturnType<typeof setTimeout> | null } : { current: null };
+  const handleTouchStart = () => {
+    if (bulkMode) return;
+    longPressTimer.current = setTimeout(() => { onEnterBulk?.(); }, 600);
+  };
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  };
 
   // 2026-06-18 UI polish: avatar from initials, bigger header, hover lift.
   const initials = (row.candidate_name ?? "—")
@@ -527,13 +678,32 @@ function InterviewCard({
     .toUpperCase();
 
   return (
-    <article className={cn(
-      "group relative overflow-hidden rounded-2xl border bg-card p-4 sm:p-5 transition-all duration-200",
-      "hover:shadow-xl hover:-translate-y-0.5 hover:border-opacity-100",
-      tone.card,
-    )}>
+    <article
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchEnd}
+      onClick={bulkMode ? onToggleBulk : undefined}
+      className={cn(
+        "group relative overflow-hidden rounded-2xl border bg-card p-4 sm:p-5 transition-all duration-200",
+        "hover:shadow-xl hover:-translate-y-0.5 hover:border-opacity-100",
+        tone.card,
+        bulkMode && "cursor-pointer",
+        isBulkSelected && "ring-2 ring-violet-500 ring-offset-2 ring-offset-background",
+      )}
+    >
       {/* subtle glow on hover */}
       <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-white/[0.02] to-transparent" />
+      {/* 2026-06-18 MP-214: bulk-mode checkbox indicator (top-right). */}
+      {bulkMode && (
+        <div className={cn(
+          "absolute top-3 right-3 z-10 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors",
+          isBulkSelected
+            ? "bg-violet-500 border-violet-500 text-white"
+            : "border-muted-foreground/40 bg-card",
+        )}>
+          {isBulkSelected && <CheckCircle2 className="h-4 w-4" />}
+        </div>
+      )}
 
       <div className="relative flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex items-start gap-3 flex-1">

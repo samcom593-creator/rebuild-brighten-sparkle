@@ -43,6 +43,11 @@ import {
 type InterviewSource = "manual" | "calendly" | "application";
 type SourceFilter = InterviewSource | "all";
 type DateFilter = "today" | "week" | "month";
+// 2026-06-18 Sam directive: 'I click contract and the row just stays there'.
+// Default view is now ACTIVE only — pending/contacted/called/rescheduled rows.
+// Dispositioned terminal states (hired/contracted/passed/no_show) move to Done
+// pill. All shows everything. Tap counts shows the breakdown live.
+type StateFilter = "active" | "done" | "all";
 type DispositionField =
   | "called"
   | "hired"
@@ -103,6 +108,9 @@ export default function InterviewCommandCenter() {
   const queryClient = useQueryClient();
   const [dateFilter, setDateFilter] = useState<DateFilter>("month");
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
+  // 2026-06-18 Sam: default to ACTIVE — pending/in-progress only. Dispositioned
+  // rows hide so the queue empties as Sam taps through.
+  const [stateFilter, setStateFilter] = useState<StateFilter>("active");
   const [search, setSearch] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
@@ -124,13 +132,32 @@ export default function InterviewCommandCenter() {
     staleTime: 30_000,
   });
 
-  const scopedRows = useMemo(() => {
+  // 2026-06-18 Sam directive: 'I click contract and it just stays there'.
+  // A row is DONE when any terminal field is set: hired_at, contracted_at,
+  // passed_at, no_show_at. Otherwise it's ACTIVE (still in the queue).
+  const isRowDone = (row: UnifiedInterview): boolean =>
+    Boolean(row.hired_at || row.contracted_at || row.passed_at || row.no_show_at);
+
+  const dateScopedRows = useMemo(() => {
     const rows = interviews.data ?? [];
     return rows.filter((row) => {
       if (sourceFilter !== "all" && row.source !== sourceFilter) return false;
       return isInDateFilter(row.scheduled_at, dateFilter);
     });
   }, [dateFilter, interviews.data, sourceFilter]);
+
+  // Counts shown on the state pills (live — react to disposition cache patches).
+  const stateCounts = useMemo(() => ({
+    active: dateScopedRows.filter((r) => !isRowDone(r)).length,
+    done: dateScopedRows.filter(isRowDone).length,
+    all: dateScopedRows.length,
+  }), [dateScopedRows]);
+
+  const scopedRows = useMemo(() => {
+    if (stateFilter === "all") return dateScopedRows;
+    if (stateFilter === "done") return dateScopedRows.filter(isRowDone);
+    return dateScopedRows.filter((r) => !isRowDone(r));
+  }, [dateScopedRows, stateFilter]);
 
   const visibleRows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -194,6 +221,20 @@ export default function InterviewCommandCenter() {
       });
       if (error) throw error;
 
+      // Snapshot the prior field value for Undo. If Sam taps the Undo
+      // toast within 6s, we re-fire disposition_interview with the
+      // ORIGINAL value (or null) so the row pops back into Active.
+      const priorValue =
+        field === "called" ? row.called_at :
+        field === "hired" ? row.hired_at :
+        field === "passed" ? row.passed_at :
+        field === "rescheduled" ? row.rescheduled_at :
+        field === "no_show" ? row.no_show_at :
+        field === "contacted" ? row.contacted_at :
+        field === "contracted" ? row.contracted_at :
+        field === "notes" ? row.outcome_notes :
+        null;
+
       if (field === "called") patchCachedRow(row, { called_at: timestamp, status: "called" });
       if (field === "hired") patchCachedRow(row, { hired_at: timestamp, passed_at: null, status: "hired" });
       if (field === "passed") patchCachedRow(row, { passed_at: timestamp, hired_at: null, status: "passed" });
@@ -204,7 +245,41 @@ export default function InterviewCommandCenter() {
       if (field === "contracted") patchCachedRow(row, { contracted_at: timestamp, status: "contracted" });
       if (field === "notes") patchCachedRow(row, { outcome_notes: value?.trim() || null });
 
-      toast.success(successLabel(field));
+      // 2026-06-18 Sam directive: dispositioned rows leave Active queue.
+      // Toast with Undo action so accidental taps are recoverable.
+      const isTerminal = field === "hired" || field === "contracted" || field === "passed" || field === "no_show";
+      toast.success(successLabel(field), {
+        duration: 6000,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            try {
+              await (supabase as any).rpc("disposition_interview", {
+                p_source: row.source,
+                p_id: realId,
+                p_field: field,
+                p_value: priorValue ?? "",
+              });
+              // Reverse the cache patch
+              const reverse: Partial<UnifiedInterview> = {};
+              if (field === "called") reverse.called_at = priorValue as string | null;
+              if (field === "hired") reverse.hired_at = priorValue as string | null;
+              if (field === "passed") reverse.passed_at = priorValue as string | null;
+              if (field === "rescheduled") reverse.rescheduled_at = priorValue as string | null;
+              if (field === "no_show") reverse.no_show_at = priorValue as string | null;
+              if (field === "contacted") reverse.contacted_at = priorValue as string | null;
+              if (field === "contracted") reverse.contracted_at = priorValue as string | null;
+              if (field === "notes") reverse.outcome_notes = priorValue as string | null;
+              patchCachedRow(row, reverse);
+              toast.info(`↩️ Undid ${field} for ${row.candidate_name}`);
+              await queryClient.invalidateQueries({ queryKey: ["interviews-unified", JUNE_START] });
+            } catch (e: any) {
+              toast.error(`Undo failed: ${e?.message?.slice(0, 80) ?? "unknown"}`);
+            }
+          },
+        },
+        description: isTerminal ? "Row moved to ✅ Done. Tap Undo to bring it back." : undefined,
+      });
 
       // 2026-06-18 Sam directive: clicking Contracted or Hired must
       // (a) auto-promote the applicant to an agent (creates the CRM row),
@@ -341,6 +416,32 @@ export default function InterviewCommandCenter() {
         <StatTile icon={Trophy} label="Hired this Week" value={stats.hiredThisWeek} tone="amber" />
         <StatTile icon={CheckCircle2} label="Pending Call" value={stats.pendingCall} tone="sky" />
       </section>
+
+      {/* 2026-06-18 Sam directive: 'I click contract and it stays there'.
+          Active / Done / All pills with live counts so dispositioned rows
+          visibly LEAVE the active queue as Sam taps through. Default is
+          Active — terminal states (hired/contracted/passed/no_show) hide. */}
+      <div className="mt-3 inline-flex items-center gap-1 rounded-full border bg-card p-1 text-xs">
+        {(["active", "done", "all"] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setStateFilter(key)}
+            className={cn(
+              "px-3 py-1.5 rounded-full font-semibold transition-all tabular-nums",
+              stateFilter === key
+                ? key === "active"
+                  ? "bg-sky-500/20 text-sky-300 border border-sky-500/40"
+                  : key === "done"
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                    : "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {key === "active" ? "🔥 Active" : key === "done" ? "✅ Done" : "All"} ({stateCounts[key]})
+          </button>
+        ))}
+      </div>
 
       <div className="mt-4 flex items-center gap-2 rounded-md border bg-card px-3 py-2">
         <Search className="h-4 w-4 shrink-0 text-muted-foreground" />

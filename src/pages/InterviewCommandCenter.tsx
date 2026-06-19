@@ -205,6 +205,14 @@ export default function InterviewCommandCenter() {
     all: dateScopedRows.length,
   }), [dateScopedRows]);
 
+  // MP-214 v5: count distinct sources present in the current date scope so
+  // we can suppress the source filter when there's no real choice.
+  const sourcesPresent = useMemo(() => {
+    const seen = new Set<InterviewSource>();
+    for (const row of dateScopedRows) seen.add(row.source);
+    return seen.size;
+  }, [dateScopedRows]);
+
   const scopedRows = useMemo(() => {
     if (stateFilter === "all") return dateScopedRows;
     if (stateFilter === "done") return dateScopedRows.filter(isRowDone);
@@ -394,6 +402,38 @@ export default function InterviewCommandCenter() {
     setNoteDrafts((prev) => omitKey(prev, key));
   };
 
+  // MP-214 v5 P2: keyboard shortcuts for rapid triage. Sam's mental model
+  // is 'the top row IS the next one' — like Tinder for recruits. Pressing
+  // 1-7 disposes the top visible row in Active mode and the next row rises.
+  // Skip when:
+  //   - Bulk mode is active (kbd applies to selection then)
+  //   - Sam is typing in an input/textarea (no disposing during note edit)
+  //   - No visible rows
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (bulkMode) return;
+      if (!visibleRows.length) return;
+      const tag = (e.target as HTMLElement | null)?.tagName ?? "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement | null)?.isContentEditable) return;
+      const map: Record<string, DispositionField | undefined> = {
+        "1": "contacted",
+        "2": "called",
+        "3": "rescheduled",
+        "4": "no_show",
+        "5": "hired",
+        "6": "contracted",
+        "7": "passed",
+      };
+      const field = map[e.key];
+      if (!field) return;
+      e.preventDefault();
+      const target = visibleRows[0];
+      if (target) saveDisposition(target, field);
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [bulkMode, visibleRows]);
+
   return (
     <div className="page-enter px-3 pb-24 sm:px-6">
       <PageHeader
@@ -418,19 +458,24 @@ export default function InterviewCommandCenter() {
                 </Button>
               ))}
             </div>
-            <Select value={sourceFilter} onValueChange={(value) => setSourceFilter(value as SourceFilter)}>
-              <SelectTrigger className="h-10 w-full sm:w-[168px]" aria-label="Source filter">
-                <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SOURCE_OPTIONS.map((option) => (
-                  <SelectItem key={option.key} value={option.key}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* MP-214 v5: only show the source filter when >1 source is
+                populated. With Calendly at 0 (referrer filter) the dropdown
+                offered no choice that mattered — pure UI noise. */}
+            {sourcesPresent > 1 && (
+              <Select value={sourceFilter} onValueChange={(value) => setSourceFilter(value as SourceFilter)}>
+                <SelectTrigger className="h-10 w-full sm:w-[168px]" aria-label="Source filter">
+                  <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOURCE_OPTIONS.map((option) => (
+                    <SelectItem key={option.key} value={option.key}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         }
       />

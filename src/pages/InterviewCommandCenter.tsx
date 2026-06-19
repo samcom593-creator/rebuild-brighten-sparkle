@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
@@ -106,11 +106,32 @@ export default function InterviewCommandCenter() {
   usePageTitle("Interviews · APEX");
 
   const queryClient = useQueryClient();
-  const [dateFilter, setDateFilter] = useState<DateFilter>("month");
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
-  // 2026-06-18 Sam: default to ACTIVE — pending/in-progress only. Dispositioned
-  // rows hide so the queue empties as Sam taps through.
-  const [stateFilter, setStateFilter] = useState<StateFilter>("active");
+  // MP-214 v5 P2: persist filter preferences so a page reload keeps
+  // Sam's mental model intact. Default is still 'active' / 'month' / 'all'.
+  const [dateFilter, setDateFilter] = useState<DateFilter>(() => {
+    if (typeof window === "undefined") return "month";
+    const v = window.localStorage.getItem("cc.dateFilter") as DateFilter | null;
+    return v === "today" || v === "week" || v === "month" ? v : "month";
+  });
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>(() => {
+    if (typeof window === "undefined") return "all";
+    const v = window.localStorage.getItem("cc.sourceFilter") as SourceFilter | null;
+    return v === "manual" || v === "calendly" || v === "application" || v === "all" ? v : "all";
+  });
+  const [stateFilter, setStateFilter] = useState<StateFilter>(() => {
+    if (typeof window === "undefined") return "active";
+    const v = window.localStorage.getItem("cc.stateFilter") as StateFilter | null;
+    return v === "active" || v === "done" || v === "all" ? v : "active";
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem("cc.dateFilter", dateFilter); } catch { /* incognito */ }
+  }, [dateFilter]);
+  useEffect(() => {
+    try { window.localStorage.setItem("cc.sourceFilter", sourceFilter); } catch { /* incognito */ }
+  }, [sourceFilter]);
+  useEffect(() => {
+    try { window.localStorage.setItem("cc.stateFilter", stateFilter); } catch { /* incognito */ }
+  }, [stateFilter]);
   const [search, setSearch] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
@@ -426,26 +447,33 @@ export default function InterviewCommandCenter() {
           Active / Done / All pills with live counts so dispositioned rows
           visibly LEAVE the active queue as Sam taps through. Default is
           Active — terminal states (hired/contracted/passed/no_show) hide. */}
-      <div className="mt-3 inline-flex items-center gap-1 rounded-full border bg-card p-1 text-xs">
-        {(["active", "done", "all"] as const).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setStateFilter(key)}
-            className={cn(
-              "px-3 py-1.5 rounded-full font-semibold transition-all tabular-nums",
-              stateFilter === key
-                ? key === "active"
-                  ? "bg-sky-500/20 text-sky-300 border border-sky-500/40"
-                  : key === "done"
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                    : "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {key === "active" ? "🔥 Active" : key === "done" ? "✅ Done" : "All"} ({stateCounts[key]})
-          </button>
-        ))}
+      <div className="mt-3 inline-flex items-center gap-1 rounded-full border bg-card p-1 text-xs" role="tablist" aria-label="Queue state filter">
+        {(["active", "done", "all"] as const).map((key) => {
+          const labelText = key === "active" ? "Active" : key === "done" ? "Done" : "All";
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-pressed={stateFilter === key}
+              aria-label={`${labelText} interviews · ${stateCounts[key]} rows`}
+              data-cc-filter={key}
+              onClick={() => setStateFilter(key)}
+              className={cn(
+                "min-h-[44px] px-3 py-1.5 rounded-full font-semibold transition-all tabular-nums",
+                stateFilter === key
+                  ? key === "active"
+                    ? "bg-sky-500/20 text-sky-300 border border-sky-500/40"
+                    : key === "done"
+                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                      : "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {key === "active" ? "🔥 Active" : key === "done" ? "✅ Done" : "All"} ({stateCounts[key]})
+            </button>
+          );
+        })}
       </div>
 
       <div className="mt-4 flex items-center gap-2 rounded-md border bg-card px-3 py-2">
@@ -605,8 +633,9 @@ function InterviewCard({
   const busy = savingKey?.startsWith(`${row.source}:${row.id}:`) ?? false;
   const handle = normalizeHandle(row.instagram_handle);
   const tone = rowTone(row);
-  // 2026-06-18 MP-214: long-press (600ms) triggers bulk-mode entry.
-  const longPressTimer = (typeof window !== 'undefined') ? { current: null as ReturnType<typeof setTimeout> | null } : { current: null };
+  // MP-214 v5: useRef holds the timer across renders so closures can't
+  // orphan it (Codex flagged the prior plain-object pattern as render-loss).
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleTouchStart = () => {
     if (bulkMode) return;
     longPressTimer.current = setTimeout(() => { onEnterBulk?.(); }, 600);
@@ -614,6 +643,10 @@ function InterviewCard({
   const handleTouchEnd = () => {
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
   };
+  // Clear timer on unmount so a long-press doesn't fire after navigation.
+  useEffect(() => () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  }, []);
 
   // 2026-06-18 UI polish: avatar from initials, bigger header, hover lift.
   const initials = (row.candidate_name ?? "—")
@@ -851,8 +884,18 @@ function DispositionButton({
       type="button"
       variant="outline"
       disabled={disabled}
-      className={cn("h-10 gap-1 px-1 text-[11px] sm:text-xs", active && activeTone)}
-      onClick={onClick}
+      // MP-214 v5: 44px Apple HIG minimum tap target. aria-pressed signals
+      // disposition state to screen readers. data-cc-action lets the
+      // upcoming Playwright smoke pin specific buttons by intent.
+      aria-pressed={active}
+      aria-label={`${label}${active ? " (already set)" : ""}`}
+      data-cc-action={label.toLowerCase().replace(/[^a-z0-9]/g, "-")}
+      className={cn("min-h-[44px] h-11 gap-1 px-1 text-[11px] sm:text-xs", active && activeTone)}
+      onClick={(e) => {
+        // Prevent the parent row from interpreting this tap as bulk-select toggle.
+        e.stopPropagation();
+        onClick();
+      }}
     >
       <Icon className="h-3.5 w-3.5 shrink-0" />
       <span className="truncate">{label}</span>

@@ -145,7 +145,7 @@ const buildPhases = (carriers: number): Phase[] => [
       {
         icon: Target,
         title: "Start Working Unlimited Warm Leads",
-        description: "166K+ warm leads in the queue. Pick a pack, dial, close. They asked for the appointment — you take it.",
+        description: "Pull from our warm-lead pool. Pick a pack, dial, close. They asked for the appointment — you take it.",
         benefit: "✓ Exclusive warm leads",
       },
       {
@@ -225,8 +225,8 @@ const whyAgentsChoose = [
   },
   {
     icon: Target,
-    title: "166,000+ Warm Leads",
-    description: "Already paid for. Pull from the pool from day one — no upfront lead bill.",
+    title: "Warm Leads From Day One",
+    description: "Pull from the APEX lead pool the week you contract. Already paid for — no upfront lead bill while you ramp.",
   },
   {
     icon: GraduationCap,
@@ -323,9 +323,18 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
     }
   };
 
+  // 2026-06-20 (wave-105+): the $150M+ Premium Generated and 166K+ Lead Volume
+  // cards shipped from a gpt-engineer placeholder seed on 2026-01-10
+  // (commit 114cfd56) and never had a source. Replaced with brand-canon
+  // truths the rest of the landing already claims:
+  //   - $120K/mo run rate (Hero "story" variant + CLAUDE.md)
+  //   - 70%-145% commission range (Hero stat pill + this page line 224)
+  // active_agents + carriers stay live via landing_live_stats() RPC.
+  // The check:landing-marketing-claims guard locks future $NNNM+/NNNK+
+  // placeholders out of landing/* surfaces.
   const stats = [
-    { value: "$150M+", label: "Premium Generated" },
-    { value: "166K+", label: "Lead Volume" },
+    { value: "$120K/mo", label: "Agency Top-Line" },
+    { value: "70%–145%", label: "Commission Range" },
     { value: `${carriers}`, label: "Carrier Partners" },
     { value: `${activeAgents}`, label: "Active Agents", isLive: true },
   ];

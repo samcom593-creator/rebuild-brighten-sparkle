@@ -19,11 +19,47 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-const TRACKED_GLOBS = [
+// Numeric SUSPECT_PATTERNS scope — landing surfaces only. Admin dashboards
+// legitimately render `$NNNK+` / `$NNNM+` style numbers from RPCs (deal
+// totals, override comp, override $/mo etc) so flagging them broadly would
+// false-positive on truth. Confine the numeric check to public landing.
+const NUMERIC_TRACKED_GLOBS = [
   "src/components/landing",
   "src/pages/Landing.tsx",
   "src/pages/Index.tsx",
 ];
+
+// Superlative SUPERLATIVE_PATTERNS scope — public landing + every other
+// surface where puff copy (Unlimited / Highest / 7-figure / world-class)
+// reads as fake-success marketing. Extended 2026-06-20 wave-3 after finding
+// PurchaseLeads.tsx shipped the same "Unlimited leads" + "Highest conversion
+// rates" disease that wave-2 killed on ApexLeadsSection.
+const SUPERLATIVE_TRACKED_GLOBS = [
+  ...NUMERIC_TRACKED_GLOBS,
+  // Agent-facing lead purchase + dialer call-to-action surfaces.
+  "src/pages/PurchaseLeads.tsx",
+  // Applicant-facing post-application + status screens (delegated to
+  // ApplicationConfirmationV2 today, but listed explicitly so future page
+  // bodies can't sneak puff back in).
+  "src/components/landing/ApplicationConfirmationV2.tsx",
+  "src/pages/ApplicationStatus.tsx",
+  "src/pages/Apply.tsx",
+  "src/pages/ApplySuccess.tsx",
+  "src/pages/ApplySuccessLicensed.tsx",
+  "src/pages/ApplySuccessUnlicensed.tsx",
+  // Get-licensed funnel — visible to every unlicensed applicant.
+  "src/pages/GetLicensed.tsx",
+];
+
+// Files exempt from the guard. Add new entries here with a one-line
+// justification — every exclusion is a hole.
+const EXCLUDE_FILES = new Set([
+  // WhatShippedTodayBanner.tsx is an internal admin banner that quotes
+  // commit messages — when we kill a puff phrase, the banner naturally
+  // mentions the phrase in past tense ("'Unlimited leads' → 'No per-lead
+  // cap'"). Excluding it lets the persistence record stay readable.
+  "src/components/dashboard/WhatShippedTodayBanner.tsx",
+]);
 
 // Numbers Sam has explicitly authorized on the public landing.
 // Add new entries here with a one-line justification when truth grows.
@@ -80,17 +116,32 @@ function walk(rel) {
   return out;
 }
 
-const FILES = TRACKED_GLOBS.flatMap(walk).filter((p) => /\.(tsx?|jsx?|mdx?)$/.test(p));
+function fileList(globs) {
+  return globs
+    .flatMap(walk)
+    .filter((p) => /\.(tsx?|jsx?|mdx?)$/.test(p))
+    .filter((p) => !EXCLUDE_FILES.has(p));
+}
 
-for (const rel of FILES) {
+const NUMERIC_FILES = fileList(NUMERIC_TRACKED_GLOBS);
+const SUPERLATIVE_FILES = fileList(SUPERLATIVE_TRACKED_GLOBS);
+const TOTAL_FILES = new Set([...NUMERIC_FILES, ...SUPERLATIVE_FILES]).size;
+
+function isCommentLine(line) {
+  const trimmed = line.trim();
+  return (
+    trimmed.startsWith("//") ||
+    trimmed.startsWith("*") ||
+    trimmed.startsWith("/*")
+  );
+}
+
+for (const rel of NUMERIC_FILES) {
   const abs = path.join(repoRoot, rel);
-  const src = fs.readFileSync(abs, "utf8");
-  const lines = src.split("\n");
+  const lines = fs.readFileSync(abs, "utf8").split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    // Skip comment-only lines so the justification above remains writable.
-    const trimmed = line.trim();
-    if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*")) continue;
+    if (isCommentLine(line)) continue;
     for (const pat of SUSPECT_PATTERNS) {
       pat.lastIndex = 0;
       const matches = line.match(pat);
@@ -102,6 +153,15 @@ for (const rel of FILES) {
         );
       }
     }
+  }
+}
+
+for (const rel of SUPERLATIVE_FILES) {
+  const abs = path.join(repoRoot, rel);
+  const lines = fs.readFileSync(abs, "utf8").split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (isCommentLine(line)) continue;
     for (const pat of SUPERLATIVE_PATTERNS) {
       pat.lastIndex = 0;
       const matches = line.match(pat);
@@ -128,5 +188,5 @@ if (violations.length > 0) {
 }
 
 console.log(
-  `check:landing-marketing-claims OK — ${FILES.length} surfaces scanned, 0 unsourced marketing claims.`,
+  `check:landing-marketing-claims OK — ${TOTAL_FILES} surfaces scanned (${NUMERIC_FILES.length} numeric · ${SUPERLATIVE_FILES.length} superlative), 0 unsourced marketing claims.`,
 );

@@ -33,9 +33,9 @@ const packages = [
     name: "Gold Leads",
     description: "Quality leads that are 30 days old or less. Perfect for agents building a consistent pipeline with proven prospects.",
     features: [
-      "Unlimited leads",
+      "No per-lead cap",
       "Leads 30 days or less old",
-      "Pre-qualified prospects",
+      "Direct from opt-in form",
       "Weekly delivery",
     ],
     price: 250,
@@ -45,11 +45,11 @@ const packages = [
   {
     id: "platinum",
     name: "Platinum Vet Leads",
-    description: "Fresh leads logged within the past week. Ideal for agents who want the hottest prospects with maximum conversion potential.",
+    description: "Fresh leads logged within the past week. Ideal for agents who want first crack at this week's opt-ins.",
     features: [
-      "Unlimited leads",
+      "No per-lead cap",
       "Leads logged this week",
-      "Highest conversion rates",
+      "Direct from opt-in form",
       "First-priority access",
     ],
     price: 500,

@@ -20,7 +20,7 @@ const benefits = [
   "Exclusive warm leads provided",
   "Work from anywhere",
   "Daily pay",
-  "7-figure income potential",
+  "Production bonuses up to $25K/mo",
 ];
 
 type LandingLiveStats = { active_agents: number };

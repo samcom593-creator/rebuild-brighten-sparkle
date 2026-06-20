@@ -45,6 +45,26 @@ const SUSPECT_PATTERNS = [
   /(?<![$\d])\d{1,3},\d{3}\+/g, // 166,000+
 ];
 
+// Wave-2 (2026-06-20): superlative + puff-word patterns. Same brand-truth
+// disease, different surface — "Highest conversion rates", "Unlimited leads",
+// "7-figure income potential" shipped on ApexLeadsSection + CTASection for
+// months with zero data backing. AI-tell + non-negotiable #10 violation.
+// These are word-boundary scoped + paired with a topical noun so we don't
+// flag innocuous uses ("highest priority", "best practices" in comments).
+const SUPERLATIVE_PATTERNS = [
+  /\bHighest\s+(conversion|conversions|payout|payouts|rate|rates|earning|earnings|income|incomes|commission|commissions|production|producer|producers|close|closes|closing|premium|premiums)\b/gi,
+  /\bBest[\-\s]in[\-\s]class\b/gi,
+  /\b#\s*1\s+(agency|recruiter|recruiters|carrier|carriers|producer|producers|team|teams|imo|trainer|trainers|closer|closers)\b/gi,
+  /\bNumber\s+(?:one|1)\s+(agency|recruiter|recruiters|carrier|carriers|producer|producers|team|teams|imo|closer|closers)\b/gi,
+  /\bUnlimited\s+(leads|earning|earnings|income|incomes|commission|commissions|payouts|policies|callbacks|appointments)\b/gi,
+  /\b7[-\s]?figure(?:s)?\s+(income|earning|earnings|potential|year|month|months|salary|deal|deals|producer|producers)\b/gi,
+  /\b6[-\s]?figure(?:s)?\s+(income|earning|earnings|potential|year|month|months|salary|deal|deals|producer|producers)\b/gi,
+  // `guaranteed` only as a positive-claim noun pairing — skips disclaimers
+  // ("not guaranteed", "no guarantee", "income examples are not guaranteed").
+  /\bguaranteed\s+(income|earnings|payout|payouts|commission|commissions|leads|lead|placement|placements|sale|sales|hire|hires|win|wins|results|success|return|returns|appointment|appointments)\b/gi,
+  /\b(world[-\s]class|industry[-\s]leading|cutting[-\s]edge|game[-\s]changing|next[-\s]level|second[-\s]to[-\s]none)\b/gi,
+];
+
 const violations = [];
 
 function walk(rel) {
@@ -79,6 +99,16 @@ for (const rel of FILES) {
         if (ALLOW_LIST.has(m)) continue;
         violations.push(
           `${rel}:${i + 1}: hardcoded marketing-claim "${m}" — source it from an RPC, or add to ALLOW_LIST in scripts/check-landing-marketing-claims.mjs with a one-line justification.`,
+        );
+      }
+    }
+    for (const pat of SUPERLATIVE_PATTERNS) {
+      pat.lastIndex = 0;
+      const matches = line.match(pat);
+      if (!matches) continue;
+      for (const m of matches) {
+        violations.push(
+          `${rel}:${i + 1}: unsourced superlative "${m}" — replace with a bounded claim (e.g. "$25K/mo bonuses", "fresh weekly", "no per-lead cap") or cite data.`,
         );
       }
     }

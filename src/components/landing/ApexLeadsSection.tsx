@@ -15,14 +15,14 @@ const packages = [
   {
     name: "Gold Leads",
     price: 250,
-    features: ["Unlimited leads", "30 days old or less", "Pre-qualified prospects", "Verified contact info", "Weekly delivery"],
+    features: ["No per-lead cap", "30 days old or less", "Direct from opt-in form", "Verified contact info", "Weekly delivery"],
     popular: false,
     tier: "gold",
   },
   {
     name: "Platinum Vet Leads",
     price: 500,
-    features: ["Unlimited leads", "Fresh this week", "Highest conversion rates", "Priority delivery", "Exclusive territories"],
+    features: ["No per-lead cap", "Fresh this week", "Direct from opt-in form", "Priority delivery", "Exclusive territories"],
     popular: true,
     tier: "platinum",
   },

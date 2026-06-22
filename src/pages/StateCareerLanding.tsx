@@ -61,13 +61,16 @@ export default function StateCareerLanding() {
   }, []);
 
   // Google for Jobs JobPosting schema. CONTRACTOR employmentType
-  // (these are 1099 commissioned roles, not W-2). baseSalary uses
-  // QuantitativeValue with realistic Apex first-year on-target.
+  // (these are 1099 commissioned roles, not W-2). baseSalary intentionally
+  // omitted — 100% commission compensation is variable, and Google for Jobs
+  // accepts JobPosting without baseSalary for purely commissioned roles.
+  // Earnings claims kept to top-producer historical with no fabricated
+  // average (book-of-business table empty → no source for "team average").
   const jobPosting = {
     "@context": "https://schema.org/",
     "@type": "JobPosting",
     title: `Life Insurance Agent — Remote in ${cfg.name}`,
-    description: `Apex Financial is hiring licensed and unlicensed Life Insurance Agents to work remotely from ${cfg.name}. We provide carrier appointments (22+ carriers), lead supply, dialer, CRM, training, and a clear path from licensing to six-figure production. 1099 contractor, commission only. Top first-year producers earn $120K+; the team average is $60K-$90K.`,
+    description: `Apex Financial is hiring licensed and unlicensed Life Insurance Agents to work remotely from ${cfg.name}. We provide A-rated carrier appointments, lead supply, dialer, CRM, training, and a clear path from licensing to a producing book. 1099 contractor, commission only — earnings are variable. Top first-year producers have written $120K+ in commissions.`,
     datePosted: today,
     validThrough,
     employmentType: "CONTRACTOR",
@@ -91,16 +94,6 @@ export default function StateCareerLanding() {
       name: "USA",
     },
     jobLocationType: "TELECOMMUTE",
-    baseSalary: {
-      "@type": "MonetaryAmount",
-      currency: "USD",
-      value: {
-        "@type": "QuantitativeValue",
-        minValue: 60000,
-        maxValue: 250000,
-        unitText: "YEAR",
-      },
-    },
     industry: "Insurance",
     occupationalCategory: "41-3021 Insurance Sales Agents",
     qualifications: "Self-starter. Phone-ready. Coachable. Life insurance license is a plus but not required — we sponsor licensing through the Apex Sales Academy.",
@@ -140,7 +133,7 @@ export default function StateCareerLanding() {
       return { el, created };
     };
 
-    const desc = `Hiring licensed and unlicensed life insurance agents in ${cfg.name}. Work from home, 22+ carriers, lead supply, no cold-calling. 1099 contractor. Top producers earn $120K+ year one.`;
+    const desc = `Hiring licensed and unlicensed life insurance agents in ${cfg.name}. Work from home, A-rated carriers, lead supply, no cold-calling. 1099 contractor, commission only. Top first-year producers have written $120K+ in commissions.`;
     const url = `https://apex-financial.org/careers/${cfg.slug}`;
 
     const meta1 = setMeta("description", desc);
@@ -173,8 +166,9 @@ export default function StateCareerLanding() {
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Apex Financial is hiring licensed and unlicensed agents across {cfg.name}.
-            Work remotely. Earn $120K+ year one with our lead system, 22+ carrier appointments,
-            and Sales Academy training.
+            Work remotely. Build your book with our lead system, A-rated carrier appointments,
+            and Sales Academy training — top first-year producers have written $120K+ in
+            commissions. Commission only.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
             <Button asChild size="lg">
@@ -190,12 +184,15 @@ export default function StateCareerLanding() {
           </div>
         </div>
 
-        {/* Stat tiles */}
+        {/* Stat tiles. Bounded claims only — no fabricated averages. The $10K+
+            tile mirrors the public landing's first-year monthly pace target;
+            time-to-license is a real range; carriers tile cites the rating
+            tier without claiming a count we can't reconcile to system_settings. */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-10">
           {[
-            { icon: DollarSign, label: "First-year potential", value: "$120K+" },
-            { icon: Clock,      label: "Time to license",      value: "2-4 weeks" },
-            { icon: CheckCircle2, label: "Carriers available",  value: "22+" },
+            { icon: DollarSign, label: "First-year monthly pace", value: "$10K+" },
+            { icon: Clock,      label: "Time to license",         value: "2-4 weeks" },
+            { icon: CheckCircle2, label: "Carrier rating",        value: "A-rated" },
           ].map((s) => (
             <GlassCard key={s.label} variant="subtle" className="p-4 text-center">
               <s.icon className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
@@ -210,10 +207,10 @@ export default function StateCareerLanding() {
           <h2 className="text-xl font-bold mb-4">What you get with Apex in {cfg.name}</h2>
           <ul className="space-y-2 text-sm">
             {[
-              `22+ A-rated carrier appointments — write business in ${cfg.name} from day one`,
+              `A-rated carrier appointments across multiple product lines — write business in ${cfg.name} from day one`,
               "Lead supply: exclusive web + dialer leads, no cold calling",
               "Free Sales Academy training (licensing sponsorship available)",
-              "Live training calls 6 days a week — including Sam James himself",
+              "Live training calls multiple times a week — including Sam James",
               "1099 contractor — set your own schedule, work from anywhere in the US",
               "Path to leadership: top producers build their own downline + override income",
             ].map((line) => (
@@ -252,7 +249,7 @@ export default function StateCareerLanding() {
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-3">Ready to run with the Standard?</h2>
           <p className="text-muted-foreground mb-6">
-            Application takes 3 minutes. Sam reviews every one personally.
+            Application takes 3 minutes. Every application gets reviewed.
           </p>
           <Button asChild size="lg">
             <Link to="/apply">

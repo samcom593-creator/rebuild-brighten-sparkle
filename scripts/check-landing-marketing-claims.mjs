@@ -31,6 +31,16 @@ const NUMERIC_TRACKED_GLOBS = [
   // "Join 100+ Successful Agents" for 5 months. Now scoped for numeric
   // marketing-claim patterns too.
   "src/pages/LeadsLanding.tsx",
+  // Wave-5 (2026-06-22): /careers/:state SEO landing page shipped a
+  // fabricated "team average is $60K-$90K" inside the Google for Jobs
+  // JobPosting JSON-LD (indexed by Google), plus "22+ carriers" (truth:
+  // 18 in carriers table, 6 with policies), "Sam reviews every one
+  // personally" (impossible at scale), and "6 days a week" training
+  // cadence. Indexed-schema brand-truth is a higher liability surface
+  // than visible copy — Google can de-index the JobPosting if the
+  // structured claims are off, plus mis-stated compensation in a job
+  // ad is regulator-visible.
+  "src/pages/StateCareerLanding.tsx",
 ];
 
 // Superlative SUPERLATIVE_PATTERNS scope — public landing + every other
@@ -83,6 +93,12 @@ const ALLOW_LIST = new Set([
   // "first $10K month", FAQ "real shot at $10,000 months"). Bounded
   // aspirational claim, not aggregate metric.
   "$10K+",
+  // Wave-5 (2026-06-22): /careers/:state hero + JSON-LD claim. Top-producer
+  // historical comp, contextualized in copy as "top first-year producers
+  // have written $120K+ in commissions" (not as average/typical). Defensible
+  // per existing $100K+ ALLOW_LIST precedent + Sam's known top-producer
+  // record. Bare "$120K+" without that bounded context still gets flagged.
+  "$120K+",
 ]);
 
 // Marketing-claim patterns that look like fabricated lifetime/aggregate metrics.
@@ -128,6 +144,21 @@ const SUPERLATIVE_PATTERNS = [
   // — wave-3 killed it on PurchaseLeads.tsx but didn't add a guard
   // pattern, so the same disease shipped on LeadsLanding.tsx.
   /\bPre[-\s]?qualified\s+(prospects?|leads?|lead\s+flow|applicants?|recruits?|pipeline)\b/gi,
+  // Wave-5 (2026-06-22): fabricated team-average / typical-earnings claim.
+  // StateCareerLanding shipped "the team average is $60K-$90K" inside the
+  // Google for Jobs JobPosting JSON-LD with zero data backing
+  // (agentlink_book_of_business table is empty, commission_cents column
+  // is all zero). Aggregate compensation claims in employment advertising
+  // are regulator-visible and the recurring legal liability surface — block
+  // them at the guard layer.
+  /\b(team|squad|crew|roster|typical|average|median|standard)\s+(average|earnings?|earning|income|comp|compensation|production|writing|writes)\b/gi,
+  // Wave-5 (2026-06-22): "Sam/owner/founder reviews every application
+  // personally" personal-attention puff that scales with traffic — at
+  // ~50+ applications/day this becomes impossible-to-deliver. Catches
+  // "reviews every one personally", "reads every applicant himself",
+  // "approves each signup herself". Allows legit narrow uses by requiring
+  // the application/applicant/signup noun within the same line.
+  /\b(reviews?|approves?|reads?|signs?\s+off\s+on)\s+(every|each)\s+(one|application|applicant|signup|submission|lead|recruit|hire)\b[^.\n]*\b(personally|himself|herself|themselves)\b/gi,
 ];
 
 const violations = [];

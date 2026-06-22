@@ -27,6 +27,10 @@ const NUMERIC_TRACKED_GLOBS = [
   "src/components/landing",
   "src/pages/Landing.tsx",
   "src/pages/Index.tsx",
+  // Wave-4 (2026-06-22): /leads, /get-leads, /dialer landing page shipped
+  // "Join 100+ Successful Agents" for 5 months. Now scoped for numeric
+  // marketing-claim patterns too.
+  "src/pages/LeadsLanding.tsx",
 ];
 
 // Superlative SUPERLATIVE_PATTERNS scope — public landing + every other
@@ -49,6 +53,13 @@ const SUPERLATIVE_TRACKED_GLOBS = [
   "src/pages/ApplySuccessUnlicensed.tsx",
   // Get-licensed funnel — visible to every unlicensed applicant.
   "src/pages/GetLicensed.tsx",
+  // /leads, /get-leads, /dialer agent-facing landing page (3 routes,
+  // single component). Wave-4 (2026-06-22) found it shipped 5 months of
+  // fabricated testimonials (Marcus T./Jessica M./David L. with $18K/$22K
+  // monthly + 40% conversion quotes) + "Join 100+ Successful Agents"
+  // (truth: ~41 active) + "Limited spots available this month" fake
+  // scarcity. Adding the file to both NUMERIC + SUPERLATIVE scope.
+  "src/pages/LeadsLanding.tsx",
 ];
 
 // Files exempt from the guard. Add new entries here with a one-line
@@ -67,6 +78,11 @@ const ALLOW_LIST = new Set([
   "$1M+",     // "writing $1M+ a year" — historical doc'd top producer comp
   "$300K+",   // Override income claim — historical doc'd manager comp
   "$100K+",  // "To reach $100K+ pace" — defensible 6-figures-by-year-1 claim
+  // Wave-4 (2026-06-22): /leads, /get-leads, /dialer hero stat — monthly
+  // pace target Sam canonicalizes throughout the page ("$10,000 months",
+  // "first $10K month", FAQ "real shot at $10,000 months"). Bounded
+  // aspirational claim, not aggregate metric.
+  "$10K+",
 ]);
 
 // Marketing-claim patterns that look like fabricated lifetime/aggregate metrics.
@@ -79,6 +95,11 @@ const SUSPECT_PATTERNS = [
   /(?<![$\d])\d+M\+/g,      // 150M+ but not the M+ inside $150M+
   /(?<![$\d])\d{2,}K\+/g,  // 166K+ but not the K+ inside $250K+
   /(?<![$\d])\d{1,3},\d{3}\+/g, // 166,000+
+  // Wave-4 (2026-06-22): roster-count puff like "Join 100+ Successful
+  // Agents" / "200+ Top Producers" — same disease as wave-2/wave-3 but
+  // with bare "NNN+" instead of K/M suffix. Word-paired to avoid
+  // catching innocuous numeric-plus uses ("3+ years", "2+ kids").
+  /(?<![$\d])\d{2,4}\+\s+(Successful|Top|Elite|Active|Licensed|Producing|Closing|Verified|Qualified)\s+(Agents?|Producers?|Closers?|Recruits?|Hires?)\b/gi,
 ];
 
 // Wave-2 (2026-06-20): superlative + puff-word patterns. Same brand-truth
@@ -99,6 +120,14 @@ const SUPERLATIVE_PATTERNS = [
   // ("not guaranteed", "no guarantee", "income examples are not guaranteed").
   /\bguaranteed\s+(income|earnings|payout|payouts|commission|commissions|leads|lead|placement|placements|sale|sales|hire|hires|win|wins|results|success|return|returns|appointment|appointments)\b/gi,
   /\b(world[-\s]class|industry[-\s]leading|cutting[-\s]edge|game[-\s]changing|next[-\s]level|second[-\s]to[-\s]none)\b/gi,
+  // Wave-4 (2026-06-22): fake-scarcity tactics. "Limited spots available
+  // this month" shipped on /leads/get-leads/dialer for 5 months. AI-tell
+  // + corporate-larp pattern Sam explicitly bans (Brand Bible Ch 6).
+  /\bLimited\s+(spots?|seats?|slots?|openings?|availability|time)\b/gi,
+  // Wave-4 (2026-06-22): "Pre-qualified prospects/leads/lead flow" puff
+  // — wave-3 killed it on PurchaseLeads.tsx but didn't add a guard
+  // pattern, so the same disease shipped on LeadsLanding.tsx.
+  /\bPre[-\s]?qualified\s+(prospects?|leads?|lead\s+flow|applicants?|recruits?|pipeline)\b/gi,
 ];
 
 const violations = [];

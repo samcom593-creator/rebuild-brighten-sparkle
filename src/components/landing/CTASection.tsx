@@ -57,7 +57,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
       <div className="container mx-auto px-4 relative z-10">
         <div className="reveal max-w-4xl mx-auto text-center">
           <span className="landing-scale-in inline-block px-4 py-1.5 rounded-full text-sm font-bold font-display bg-[#22d3a5]/10 text-[#22d3a5] border border-[#22d3a5]/20 mb-6">
-            Limited Spots Available
+            Hold the Standard.
           </span>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 text-[#f1f5f9] font-display">

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, TrendingUp, Users, Award, ArrowRight, Star } from "lucide-react";
+import { Check, TrendingUp, Users, Award, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -33,7 +33,7 @@ export default function LeadsLanding() {
           <div className="relative space-y-8 text-center">
             <div className="inline-block">
               <div className="px-4 py-2 rounded-full border border-teal-400/50 bg-teal-400/10 text-sm text-teal-300 font-medium">
-                🚀 Join 100+ Successful Agents
+                Built for agents who dial, not browse.
               </div>
             </div>
             
@@ -42,7 +42,7 @@ export default function LeadsLanding() {
             </h1>
             
             <p className="text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              Stop cold calling. Get warm, pre-qualified leads delivered daily with the same dialer, coaching, and comp structure built to help serious agents push toward $10,000 months.
+              Stop cold calling. Get warm leads delivered daily with the same dialer, coaching, and comp structure built to help serious agents push toward $10,000 months.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
@@ -67,7 +67,7 @@ export default function LeadsLanding() {
               </div>
               <div className="space-y-2">
                 <div className="text-3xl font-bold text-blue-400">Warm</div>
-                <p className="text-slate-400">Pre-qualified lead flow</p>
+                <p className="text-slate-400">Daily lead flow</p>
               </div>
               <div className="space-y-2">
                 <div className="text-3xl font-bold text-teal-400">Scalable</div>
@@ -170,36 +170,6 @@ export default function LeadsLanding() {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              Agent Success Stories
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, idx) => (
-              <Card key={idx} className="bg-white dark:bg-slate-900 border-slate-600">
-                <CardHeader>
-                  <div className="flex gap-1 mb-3">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
-                    ))}
-                  </div>
-                  <p className="text-slate-600 dark:text-slate-300 italic mb-4">"{testimonial.quote}"</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-semibold text-white">{testimonial.author}</div>
-                  <div className="text-sm text-teal-400">{testimonial.role}</div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-900">
         <div className="max-w-3xl mx-auto text-center">
@@ -207,7 +177,7 @@ export default function LeadsLanding() {
             Ready to Build Your First $10K Month?
           </h2>
           <p className="text-xl text-slate-600 dark:text-slate-300 mb-8">
-            Join our community of successful agents and start receiving qualified leads today. Limited spots available this month.
+            Apply now to join the team and start receiving daily warm leads. Get licensed first if you aren't yet — APEX covers the cost when you finish the course.
           </p>
           <Button asChild size="lg" className="bg-white dark:bg-slate-900 hover:from-teal-600 hover:to-teal-700 text-white border-0">
             <Link to="/get-licensed" className="gap-2">
@@ -250,7 +220,7 @@ export default function LeadsLanding() {
           </div>
           <div className="border-t border-slate-200 dark:border-slate-700 pt-8 flex justify-between items-center text-slate-400 text-sm">
             <p>&copy; 2026 APEX Financial. All rights reserved.</p>
-            <p>Made with ❤️ for ambitious agents</p>
+            <p>APEX — Hold the Standard.</p>
           </div>
         </div>
       </footer>
@@ -262,7 +232,7 @@ const benefits = [
   {
     icon: TrendingUp,
     title: "Warm Leads Daily",
-    description: "Receive pre-qualified leads delivered directly to your inbox. No cold calling required. Built for consistent daily follow-up.",
+    description: "Receive warm leads delivered directly to your inbox. No cold calling required. Built for consistent daily follow-up.",
   },
   {
     icon: Award,
@@ -319,20 +289,3 @@ const faqs = [
   },
 ];
 
-const testimonials = [
-  {
-    quote: "I went from zero sales experience to earning $18K monthly in 6 months. The leads are quality and the support is incredible.",
-    author: "Marcus T.",
-    role: "Senior Agent, 8 months",
-  },
-  {
-    quote: "Finally, a platform that doesn't require cold calling. The warm leads converted at 40% - way better than my previous job.",
-    author: "Jessica M.",
-    role: "Top Producer, 14 months",
-  },
-  {
-    quote: "The training and mentorship changed everything. My first month I made $3K, now I'm consistently over $22K monthly.",
-    author: "David L.",
-    role: "Elite Agent, 10 months",
-  },
-];

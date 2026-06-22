@@ -167,7 +167,7 @@ function UnlicensedBody({
       <div className="rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Your 3-step path</p>
         <Step done label="Application received" />
-        <Step current label="Start your prelicensing course" detail={autoLoginUrl ? "One click. You're already logged in." : "~$120, refundable when you produce. 3 days to license."} />
+        <Step current label="Start your prelicensing course" detail={autoLoginUrl ? "One click. You're already logged in." : "~$120, refundable when you produce. 2-4 weeks to licensed."} />
         <Step label="Hire call unlocks the moment you pass" />
       </div>
 

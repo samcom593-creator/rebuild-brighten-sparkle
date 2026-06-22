@@ -70,6 +70,16 @@ const SUPERLATIVE_TRACKED_GLOBS = [
   // (truth: ~41 active) + "Limited spots available this month" fake
   // scarcity. Adding the file to both NUMERIC + SUPERLATIVE scope.
   "src/pages/LeadsLanding.tsx",
+  // Wave-6 (2026-06-22): /seminar group-interview signup page shipped
+  // "Get licensed first — it takes about 3 days" on the unlicensed-gate
+  // panel. State pre-licensing is 2-4 weeks minimum (20-40+ hours of
+  // approved coursework + state exam + license issuance). Off by ~5-10x
+  // and regulator-visible in insurance employment advertising. The same
+  // "N days to license" disease shipped on GetLicensed.tsx ("about 7
+  // days") and ApplicationConfirmationV2.tsx ("3 days to license") —
+  // already in scope. Adding SeminarPage so the new LICENSE_TIMELINE
+  // patterns below lock the entire surface area at the guard.
+  "src/pages/SeminarPage.tsx",
 ];
 
 // Files exempt from the guard. Add new entries here with a one-line
@@ -159,6 +169,26 @@ const SUPERLATIVE_PATTERNS = [
   // "approves each signup herself". Allows legit narrow uses by requiring
   // the application/applicant/signup noun within the same line.
   /\b(reviews?|approves?|reads?|signs?\s+off\s+on)\s+(every|each)\s+(one|application|applicant|signup|submission|lead|recruit|hire)\b[^.\n]*\b(personally|himself|herself|themselves)\b/gi,
+  // Wave-6 (2026-06-22): Licensing-timeline drift. State pre-licensing
+  // for life/health insurance requires 20-40+ hours of state-approved
+  // education + scheduling the state exam + license issuance — a
+  // realistic floor of 2-4 weeks (~14-28 days). Three surfaces shipped
+  // "3 days to license" / "about 7 days" lies: SeminarPage ("it takes
+  // about 3 days"), ApplicationConfirmationV2 ("3 days to license"),
+  // and the worst — GetLicensed.tsx itself, the licensing funnel,
+  // claiming "typically takes about 7 days". Off by 2-5x. Insurance
+  // employment-recruiting advertising mis-stating timeline is
+  // regulator-visible. These patterns catch any "[1-13] day(s)" claim
+  // semantically anchored to "licens(e|ed|ing)" within ~60 chars.
+  // Day counts of 14+ aren't matched — copy may legitimately discuss
+  // longer-running timelines (FFL fingerprint wait, NPN issuance lag).
+  // "30 days" / "90 days" elsewhere on the page (first commission, first
+  // $10K, leads-30-days-old, first sale inside 7 days for *licensed*
+  // agents) won't false-positive because those phrasings don't satisfy
+  // the "N day" + "licens" co-occurrence shape used here.
+  /\b(?:[1-9]|1[0-3])\s+days?\s+(?:to|until|before)\s+(?:get\s+|be\s+|become\s+)?licens(?:e|ed|ing)\b/gi,
+  /\blicens(?:e|ed|ing)\b[^.\n]{0,40}\b(?:takes?|in|within|about|around|roughly|typically)\s+(?:about\s+|around\s+|roughly\s+)?(?:[1-9]|1[0-3])\s+days?\b/gi,
+  /\b(?:takes?|in|within|about|around|roughly|typically)\s+(?:about\s+|around\s+|roughly\s+)?(?:[1-9]|1[0-3])\s+days?\b[^.\n]{0,40}\blicens(?:e|ed|ing)\b/gi,
 ];
 
 const violations = [];

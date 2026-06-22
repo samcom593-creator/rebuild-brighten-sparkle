@@ -18,27 +18,47 @@ interface PublicProfile {
   photo_url: string | null;
 }
 
+interface AgentStatus {
+  license_status: string | null;
+  status: string | null;
+}
+
 export default function PublicAgentLanding() {
   const { userId } = useParams<{ userId: string }>();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
+  const [agent, setAgent] = useState<AgentStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       if (!userId) { setLoading(false); return; }
       try {
-        const { data } = await supabase
-          .from("profiles" as any)
-          .select("full_name, email, phone, avatar_url, bio, city, state, instagram_handle, photo_url")
-          .eq("user_id", userId)
-          .maybeSingle();
-        setProfile(data as unknown as PublicProfile);
-        if (data) {
-          const name = (data as any).full_name || "APEX Agent";
+        const [profileRes, agentRes] = await Promise.all([
+          supabase
+            .from("profiles" as any)
+            .select("full_name, email, phone, avatar_url, bio, city, state, instagram_handle, photo_url")
+            .eq("user_id", userId)
+            .maybeSingle(),
+          // Wave-6 brand-truth: data-bind the "Licensed · Active Producer" badge
+          // to actual agent state. Without this, the badge ships always-on for
+          // any profile that happens to render — a fake credential claim on a
+          // public surface (regulator-visible if an unlicensed agent shares
+          // their card link before getting their NPN).
+          supabase
+            .from("agents" as any)
+            .select("license_status, status")
+            .eq("user_id", userId)
+            .maybeSingle(),
+        ]);
+        setProfile(profileRes.data as unknown as PublicProfile);
+        setAgent(agentRes.data as unknown as AgentStatus);
+        if (profileRes.data) {
+          const name = (profileRes.data as any).full_name || "APEX Agent";
           document.title = `${name} · APEX Financial`;
         }
       } catch {
         setProfile(null);
+        setAgent(null);
       } finally {
         setLoading(false);
       }
@@ -89,9 +109,11 @@ export default function PublicAgentLanding() {
             <MapPin className="h-3.5 w-3.5" /> {[profile.city, profile.state].filter(Boolean).join(", ")}
           </p>
         )}
-        <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500 text-slate-900 rounded-full text-11 font-bold">
-          <Star className="h-3 w-3" /> Licensed · Active Producer
-        </div>
+        {agent?.license_status === "licensed" && agent?.status === "active" ? (
+          <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500 text-slate-900 rounded-full text-11 font-bold">
+            <Star className="h-3 w-3" /> Licensed · Active Producer
+          </div>
+        ) : null}
       </div>
 
       {/* Bio */}

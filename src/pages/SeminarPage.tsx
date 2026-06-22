@@ -174,7 +174,7 @@ export default function SeminarPage() {
               You need your license first.
             </h1>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              The seminar is the final step before we hire you. Get licensed first — it takes about 3 days — then we put you on the seminar and write you a check.
+              The seminar is the final step before we hire you. Get licensed first — most agents finish the course, exam, and license issuance in 2-4 weeks — then we put you on the seminar and write you a check.
             </p>
             <Link to="/get-licensed" className="block">
               <GradientButton className="w-full text-base h-14" size="lg">

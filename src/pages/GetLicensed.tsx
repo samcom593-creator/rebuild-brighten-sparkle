@@ -169,7 +169,7 @@ export default function GetLicensed() {
         >
           {[
             { title: "We Cover Licensing Costs", description: "No upfront costs to get started" },
-            { title: "Takes About 7 Days", description: "Complete your licensing in just one week" },
+            { title: "2-4 Week Timeline", description: "Coursework, state exam, and license issuance" },
             { title: "Full Training Provided", description: "Learn everything you need to succeed" },
           ].map((item, index) => (
             <div key={index} className="p-4 rounded-lg bg-muted/50 text-center flex items-center gap-3">
@@ -194,7 +194,7 @@ export default function GetLicensed() {
             </div>
             <h2 className="text-2xl font-bold mb-2">Once You're Licensed</h2>
             <p className="text-lg text-muted-foreground mb-2">
-              The licensing process typically takes <span className="text-primary font-semibold">about 7 days</span> to complete.
+              The licensing process typically takes <span className="text-primary font-semibold">2-4 weeks</span> from enrollment to license issuance.
             </p>
             <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
               After you finish your pre-licensing course and pass your exam, book a call with us to get started on your APEX journey!

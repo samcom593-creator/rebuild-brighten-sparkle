@@ -1,16 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { 
-  BookOpen, 
-  Video, 
-  HelpCircle, 
-  CheckCircle, 
-  ChevronDown, 
-  ChevronRight, 
-  ExternalLink, 
+import { useAuth } from "@/hooks/useAuth";
+import {
+  BookOpen,
+  Video,
+  HelpCircle,
+  CheckCircle,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
   ArrowLeft,
-  Play
+  Play,
+  Loader2,
 } from "lucide-react";
 
 import { GlassCard } from "@/components/ui/glass-card";
@@ -27,8 +29,48 @@ import type { CourseModule, CourseQuestion } from "@/types/course";
 
 export default function CourseContent() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
+
+  // 2026-06-29 SECURITY GATE — unlicensed agents redirected to Xcel pre-licensing.
+  const [isLicensed, setIsLicensed] = useState(false);
+  const [licenseCheckLoading, setLicenseCheckLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      if (!user?.id) return;
+      try {
+        const [agentRes, appRes] = await Promise.all([
+          supabase.from("agents").select("is_licensed").eq("user_id", user.id).maybeSingle(),
+          supabase.from("applications").select("license_status, license_progress").eq("email", user.email || "__nope__").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        ]);
+        const agentLicensed = (agentRes.data as any)?.is_licensed === true;
+        const app = appRes.data as { license_status?: string; license_progress?: string } | null;
+        const appLicensed = app?.license_status === "licensed"
+          || ["licensed", "fingerprints_done", "waiting_on_license"].includes(app?.license_progress || "");
+        if (!cancelled) setIsLicensed(agentLicensed || appLicensed);
+      } finally {
+        if (!cancelled) setLicenseCheckLoading(false);
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, [user?.id, user?.email]);
+  useEffect(() => {
+    if (!licenseCheckLoading && !isLicensed) navigate("/get-licensed", { replace: true });
+  }, [licenseCheckLoading, isLicensed, navigate]);
+  if (licenseCheckLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-2">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-emerald-500" />
+          <p className="text-sm text-muted-foreground">Checking license status…</p>
+        </div>
+      </div>
+    );
+  }
+  if (!isLicensed) return null;
 
   // Fetch modules
   const { data: modules = [], isLoading: loadingModules } = useQuery({

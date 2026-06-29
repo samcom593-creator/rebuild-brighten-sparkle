@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, PlayCircle, HelpCircle, Award, Camera, Upload } from "lucide-react";
+import { BookOpen, PlayCircle, HelpCircle, Award, Camera, Upload, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -29,6 +29,45 @@ export default function OnboardingCourse() {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [checkingAvatar, setCheckingAvatar] = useState(true);
+
+  // 2026-06-29 SECURITY GATE — Sam directive: unlicensed agents should NOT
+  // see the post-license sales-training course. Redirect them to Xcel
+  // pre-licensing instead. Mirrors the gate in CourseCatalog.tsx.
+  const [isLicensed, setIsLicensed] = useState(false);
+  const [licenseCheckLoading, setLicenseCheckLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      if (!user?.id) return;
+      setLicenseCheckLoading(true);
+      try {
+        const [agentRes, appRes] = await Promise.all([
+          supabase.from("agents").select("is_licensed").eq("user_id", user.id).maybeSingle(),
+          supabase
+            .from("applications")
+            .select("license_status, license_progress")
+            .eq("email", user.email || "__nope__")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+        const agentLicensed = (agentRes.data as any)?.is_licensed === true;
+        const app = appRes.data as { license_status?: string; license_progress?: string } | null;
+        const appLicensed = app?.license_status === "licensed"
+          || ["licensed", "fingerprints_done", "waiting_on_license"].includes(app?.license_progress || "");
+        if (!cancelled) setIsLicensed(agentLicensed || appLicensed);
+      } finally {
+        if (!cancelled) setLicenseCheckLoading(false);
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, [user?.id, user?.email]);
+  useEffect(() => {
+    if (!licenseCheckLoading && !isLicensed) {
+      navigate("/get-licensed", { replace: true });
+    }
+  }, [licenseCheckLoading, isLicensed, navigate]);
 
   // Fetch agent ID for current user - use limit(1) to handle legacy duplicates
   useEffect(() => {
@@ -156,17 +195,28 @@ export default function OnboardingCourse() {
     return success;
   };
 
+  // 2026-06-29 SECURITY GATE — supersedes the 2026-06-16 "never lock it"
+  // directive specifically for unlicensed users. They go to Xcel pre-licensing.
+  if (licenseCheckLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-2">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-emerald-500" />
+          <p className="text-sm text-muted-foreground">Checking license status…</p>
+        </div>
+      </div>
+    );
+  }
+  if (!isLicensed) return null;
+
   if (loading || provisioningInProgress || checkingAvatar) {
     return <SkeletonLoader variant="page" />;
   }
 
   // 2026-06-16 Sam directive: "any agent should be in dashboard, be able to
-  // access that course at any time. Just never lock it."
-  // All access gates removed — agentNotFound + photo gate + empty-modules
-  // block all ripped out. The course content renders for ANY authenticated
-  // user (or even unauthenticated if RLS permits). Progress tracking falls
-  // back to agentId=null → in-memory only when no agent row exists, but the
-  // VIDEOS + QUIZZES are immediately viewable.
+  // access that course at any time. Just never lock it." — RESTRICTED to
+  // licensed users only as of 2026-06-29; pre-license users now flow to
+  // /get-licensed (Xcel pre-licensing) instead.
   if (modules.length === 0 && !loading) {
     // Render with a polite header but DON'T block — course videos are
     // hosted on YouTube, so even with no module rows the page is usable.

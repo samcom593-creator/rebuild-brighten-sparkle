@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, PlayCircle, HelpCircle, Award, Camera, Lock, CheckCircle, Search, Phone, Headphones, Filter } from "lucide-react";
+import { BookOpen, PlayCircle, HelpCircle, Award, Camera, Lock, CheckCircle, Search, Phone, Headphones, Filter, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -183,6 +183,32 @@ export default function CourseCatalog() {
 
   const completedCount = modules.filter(m => progress[m.id]?.passed).length;
   const modulesLeft = modules.length - completedCount;
+
+  // 2026-06-29 SECURITY GATE — Sam directive: unlicensed agents seeing the
+  // post-license sales course was wrong. They MUST be redirected to Xcel
+  // pre-licensing before any sales-training content loads. The isLicensed
+  // computed state above existed but was never gating the render.
+  useEffect(() => {
+    if (!licenseCheckLoading && !isLicensed) {
+      navigate("/get-licensed", { replace: true });
+    }
+  }, [licenseCheckLoading, isLicensed, navigate]);
+
+  if (licenseCheckLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-2">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-emerald-500" />
+          <p className="text-sm text-muted-foreground">Checking license status…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLicensed) {
+    // useEffect above will redirect; render nothing while it fires.
+    return null;
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

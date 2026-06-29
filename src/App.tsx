@@ -74,6 +74,7 @@ const LogNumbers = lazy(() => import("./pages/LogNumbers"));
 const ApplySuccess = lazy(() => import("./pages/ApplySuccess"));
 const ApplySuccessLicensed = lazy(() => import("./pages/ApplySuccessLicensed"));
 const ApplySuccessUnlicensed = lazy(() => import("./pages/ApplySuccessUnlicensed"));
+const UnlicensedOverview = lazy(() => import("./pages/UnlicensedOverview"));
 const ApplicationStatus = lazy(() => import("./pages/ApplicationStatus"));
 const StaleRecovery = lazy(() => import("./pages/StaleRecovery"));
 const GetLicensed = lazy(() => import("./pages/GetLicensed"));
@@ -359,6 +360,7 @@ const App = () => (
                   <Route path="/apply/success" element={<ApplySuccess />} />
                   <Route path="/apply/success/licensed" element={<ApplySuccessLicensed />} />
                   <Route path="/apply/success/unlicensed" element={<ApplySuccessUnlicensed />} />
+                  <Route path="/unlicensed-overview" element={<UnlicensedOverview />} />
                   {/* Public status page — applicant can return at any time and see
                       assigned manager, next seminar, status step. Powered by
                       get_application_status() RPC (SECURITY DEFINER, anon-callable). */}

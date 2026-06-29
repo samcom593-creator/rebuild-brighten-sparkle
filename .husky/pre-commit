@@ -313,3 +313,19 @@ if match '^(src/components/landing/.*\.(tsx?|jsx?)$|src/pages/(Landing|Index)\.t
   echo "[pre-commit] Landing-marketing-claim file staged — running check:landing-marketing-claims…"
   node scripts/check-landing-marketing-claims.mjs
 fi
+
+# ---------- check-notion-ban (MP221 §7.1) ----------
+# Trigger: any newly-introduced Notion write call in non-test code.
+# Existing supabase/functions/notion-sync/* is grandfathered (read-only path).
+# This hook itself contains the regex strings, exclude .husky/ too.
+if echo "$STAGED" | grep -qE '\.(ts|tsx|js|jsx|mjs)$'; then
+  NOTION_HITS=$(echo "$STAGED" \
+    | grep -E '\.(ts|tsx|js|jsx|mjs)$' \
+    | grep -vE '^(supabase/functions/notion-sync/|\.husky/|.+\.test\.(ts|tsx|js|jsx)$|.+\.spec\.(ts|tsx|js|jsx)$)' \
+    | xargs -I{} grep -lE 'api\.notion\.com|@notionhq/client|notionhq/client' {} 2>/dev/null || true)
+  if [ -n "$NOTION_HITS" ]; then
+    echo "[pre-commit] REJECT: Notion writes are banned by MP221 §7.1"
+    echo "$NOTION_HITS"
+    exit 1
+  fi
+fi

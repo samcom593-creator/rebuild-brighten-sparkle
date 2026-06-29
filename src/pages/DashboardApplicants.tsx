@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { Fragment, useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -60,6 +60,7 @@ import { PromoteApplicantButton } from "@/components/applicants/PromoteApplicant
 import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton";
 import { InlineEditApplicantField } from "@/components/applicants/InlineEditApplicantField";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
+import { ApplicationDispositionCluster } from "@/components/applicants/ApplicationDispositionCluster";
 import { KanbanBoard, type KanbanStage } from "@/components/pipeline/KanbanBoard";
 import type { PipelineCardData } from "@/components/pipeline/PipelineCard";
 import { logLeadActivity } from "@/lib/logLeadActivity";
@@ -1016,8 +1017,8 @@ export default function DashboardApplicants() {
                       const isTerminated = statusFilter === "terminated";
                       const isHighlighted = highlightedLeadId === app.id;
                       return (
+                        <Fragment key={app.id}>
                         <tr
-                          key={app.id}
                           id={`lead-${app.id}`}
                           className={cn(
                             "border-b transition-colors hover:bg-muted/50",
@@ -1288,6 +1289,27 @@ export default function DashboardApplicants() {
                             </div>
                           </td>
                         </tr>
+                        {!isTerminated && (
+                          <tr
+                            id={`lead-disp-${app.id}`}
+                            className={cn(
+                              "border-b bg-muted/20",
+                              isHighlighted && "bg-primary/5",
+                            )}
+                          >
+                            <td colSpan={11} className="px-3 py-2">
+                              <ApplicationDispositionCluster
+                                applicationId={app.id}
+                                applicantEmail={app.email}
+                                applicantFirstName={app.first_name}
+                                applicantPhone={app.phone}
+                                licenseStatus={app.license_status}
+                                agentId={app.assigned_agent_id}
+                              />
+                            </td>
+                          </tr>
+                        )}
+                        </Fragment>
                       );
                     })}
                   </tbody>

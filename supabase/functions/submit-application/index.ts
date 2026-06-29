@@ -977,9 +977,19 @@ async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): 
   const resolvedReferralRecruiter = data.recruiterId || data.selectedReferralAgentId || null;
   const consent = data.consent;
 
+  // 2026-06-29 SECURITY FIX (Sam directive: 'agents on the apex site are
+  // taking my recruits like they resubmit the form'). The quick-qualify
+  // re-submit path was UNCONDITIONALLY overwriting recruiter_id +
+  // assigned_agent_id + referral_manager_id + referral_recruiter_id with
+  // whatever recruiter the new submission carried. Recruit-theft vector:
+  // agent grabs target email, submits form with their own recruiter ID,
+  // original recruiter loses credit silently.
+  // Fix: pull the EXISTING attribution columns first, then only fill in
+  // attribution fields that are NULL. First-write-wins — original
+  // recruiter is protected forever.
   const { data: existingApp } = await supabaseAdmin
     .from("applications")
-    .select("id, status")
+    .select("id, status, recruiter_id, assigned_agent_id, referral_manager_id, referral_recruiter_id")
     .or(`email.ilike.${normalizedEmail},phone.eq.${normalizedPhone}`)
     .is("terminated_at", null)
     .order("created_at", { ascending: false })
@@ -1009,10 +1019,19 @@ async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): 
       consent_form_version: consent?.formVersion ?? null,
     };
 
-    update.assigned_agent_id = resolvedAssigned;
-    update.recruiter_id = resolvedRecruiter;
-    update.referral_manager_id = resolvedReferralManager;
-    if (resolvedReferralRecruiter) {
+    // First-write-wins on attribution: only set if NOT already set.
+    // Original recruiter is locked in on the FIRST submit, immune to
+    // subsequent re-submits regardless of who submits them.
+    if (!existingApp.assigned_agent_id) {
+      update.assigned_agent_id = resolvedAssigned;
+    }
+    if (!existingApp.recruiter_id) {
+      update.recruiter_id = resolvedRecruiter;
+    }
+    if (!existingApp.referral_manager_id) {
+      update.referral_manager_id = resolvedReferralManager;
+    }
+    if (!existingApp.referral_recruiter_id && resolvedReferralRecruiter) {
       update.referral_recruiter_id = resolvedReferralRecruiter;
     }
     update.qualified_at = new Date().toISOString();

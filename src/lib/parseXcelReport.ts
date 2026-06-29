@@ -114,7 +114,7 @@ export function parseXcelReport(html: string, reportDate?: string): XcelParseRes
   const tables = Array.from(doc.querySelectorAll("table")) as HTMLTableElement[];
 
   // ── 1. Pipeline Activity Summary table ────────────────────────────────
-  let summary: XcelSummary = {
+  const summary: XcelSummary = {
     enrolled_last_30d: null,
     enrolled_last_7d: null,
     active_last_10d: null,

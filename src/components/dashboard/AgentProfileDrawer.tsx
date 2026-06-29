@@ -212,13 +212,13 @@ export function AgentProfileDrawer() {
       if (error) {
         // 2026-06-16 Sam-feedback: search doesn't pull up profile. If RLS
         // or the embedded join breaks, surface it instead of silent-null.
-        // eslint-disable-next-line no-console
+
         console.error("[AgentProfileDrawer] agent query failed", { agentId, error });
         toast.error(`Profile load failed: ${error.message?.slice(0, 80) ?? "unknown"}`);
         throw error;
       }
       if (!data) {
-        // eslint-disable-next-line no-console
+
         console.warn("[AgentProfileDrawer] no agent row for id", agentId);
         toast.warning(`No agent row for id ${agentId.slice(0, 8)}…`);
       }
@@ -278,7 +278,7 @@ export function AgentProfileDrawer() {
         .maybeSingle();
       if (error) {
         // Graceful: never block the drawer if the view is missing in dev.
-        // eslint-disable-next-line no-console
+
         console.warn("[AgentProfileDrawer] monthly production query failed", error);
         return { items_this_month: 0, annual_volume_this_month: 0, legs: 0 };
       }
@@ -315,7 +315,7 @@ export function AgentProfileDrawer() {
       if (!agentId) return [];
       const { data, error } = await supabase.rpc("agent_call_activity" as any, { p_agent_id: agentId });
       if (error) {
-        // eslint-disable-next-line no-console
+
         console.warn("[AgentProfileDrawer] timeline rpc failed", error);
         return [];
       }

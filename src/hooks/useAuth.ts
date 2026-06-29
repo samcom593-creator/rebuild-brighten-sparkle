@@ -242,7 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // so vendor-supabase never downloads during the measurement window.
     // Both Login + Apply CTAs trigger pointerdown which fires init before
     // their lazy routes finish loading the same chunk.
-    let idleHandle: number | null = null;
+    const idleHandle: number | null = null;
     let timeoutHandle: number | null = null;
     let interactionHandler: (() => void) | null = null;
     const interactionEvents: Array<keyof WindowEventMap> = [

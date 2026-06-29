@@ -739,14 +739,19 @@ export default function DashboardApplicants() {
   const counterTotal = statusFilter === "terminated" ? terminatedApplications.length : activeApplications.length;
   const counterLabel = statusFilter === "terminated" ? "terminated applications" : "active applications";
 
-  const { totalLeads, hired, coursePurchased, inFunnel, rejected, todayCount } = useMemo(() => {
+  const { totalLeads, hired, coursePurchased, inFunnel, rejected, todayCount, hiredThisMonth } = useMemo(() => {
     const tzNow = new Date();
     const todayDate = new Date(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate());
     const todayIso = todayDate.toISOString().slice(0, 10);
-    let hired = 0, coursePurchased = 0, inFunnel = 0, rejected = 0, todayCount = 0;
+    const monthStartMs = new Date(tzNow.getFullYear(), tzNow.getMonth(), 1).getTime();
+    let hired = 0, coursePurchased = 0, inFunnel = 0, rejected = 0, todayCount = 0, hiredThisMonth = 0;
     const all = [...activeApplications, ...terminatedApplications];
     for (const a of all) {
       if (a.closed_at && !a.contracted_at) hired++;
+      if (a.closed_at) {
+        const t = new Date(a.closed_at).getTime();
+        if (!Number.isNaN(t) && t >= monthStartMs) hiredThisMonth++;
+      }
       const lp = a.license_progress as string | null;
       if (a.course_purchased_at || lp === "course_purchased" || lp === "finished_course") coursePurchased++;
       if (!a.closed_at && !a.contracted_at && !a.terminated_at) inFunnel++;
@@ -754,7 +759,7 @@ export default function DashboardApplicants() {
       if (status === "rejected" || status === "disqualified") rejected++;
       if (a.created_at && a.created_at.slice(0, 10) === todayIso) todayCount++;
     }
-    return { totalLeads: activeApplications.length, hired, coursePurchased, inFunnel, rejected, todayCount };
+    return { totalLeads: activeApplications.length, hired, coursePurchased, inFunnel, rejected, todayCount, hiredThisMonth };
   }, [activeApplications, terminatedApplications]);
 
   if (isLoading && applications.length === 0) {
@@ -762,7 +767,8 @@ export default function DashboardApplicants() {
   }
 
   return (
-    <>
+    <div className="-mx-4 sm:-mx-6 lg:-mx-8 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)]">
+      <div className="px-4 sm:px-6 lg:px-8">
       <PageHeader
         accent="cyan"
         eyebrow="Recruiting · Applicants"
@@ -979,10 +985,10 @@ export default function DashboardApplicants() {
           />
         </div>
       ) : (
-        <>
-          <div>
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
+          <div className="min-w-0">
             {filteredApplications.length > 0 ? (
-              <div className="relative w-full overflow-auto border border-border rounded-md max-h-[calc(100vh-280px)] overflow-y-auto">
+              <div className="relative w-full border border-border rounded-md max-h-[calc(100vh-280px)] overflow-y-auto">
                 <table className="w-full caption-bottom text-sm min-w-[1100px]">
                   <thead className="[&_tr]:border-b">
                     <tr className="border-b bg-muted/50">
@@ -1015,6 +1021,10 @@ export default function DashboardApplicants() {
                           id={`lead-${app.id}`}
                           className={cn(
                             "border-b transition-colors hover:bg-muted/50",
+                            status === "new" && "bg-sky-500/[0.04]",
+                            status === "contacted" && "bg-amber-500/[0.04]",
+                            status === "contracted" && "bg-emerald-500/[0.04]",
+                            status === "hired" && "bg-emerald-500/[0.06]",
                             isTerminated && "opacity-60",
                             isHighlighted && "ring-2 ring-primary bg-primary/5"
                           )}
@@ -1022,10 +1032,10 @@ export default function DashboardApplicants() {
                           <td className="p-3 align-middle">
                             <div className="flex items-center gap-2">
                               <div className={cn(
-                                "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                                isTerminated ? "bg-destructive/20" : "bg-primary/20"
+                                "w-11 h-11 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold uppercase",
+                                isTerminated ? "bg-destructive/20 text-destructive" : "bg-primary/20 text-primary"
                               )}>
-                                <Users className={cn("h-4 w-4", isTerminated ? "text-destructive" : "text-primary")} />
+                                {(app.first_name?.[0] || "") + (app.last_name?.[0] || "") || <Users className="h-4 w-4" />}
                               </div>
                               <div className="min-w-0 flex items-center gap-1.5">
                                 {/* 2026-06-18 Sam: inline-edit first + last name */}
@@ -1314,7 +1324,48 @@ export default function DashboardApplicants() {
               </div>
             )}
           </div>
-        </>
+          <aside className="hidden lg:block">
+            <div className="sticky top-4 space-y-3 rounded-lg border bg-card/70 p-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Showing</p>
+                <p className="text-2xl font-semibold tabular-nums">{filteredApplications.length.toLocaleString()}</p>
+                <p className="text-[11px] text-muted-foreground">of {counterTotal.toLocaleString()} {counterLabel}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hired this mo.</p>
+                  <p className="text-lg font-semibold tabular-nums text-emerald-400">{hiredThisMonth.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">In funnel</p>
+                  <p className="text-lg font-semibold tabular-nums">{inFunnel.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Stale 48h+</p>
+                  <p className="text-lg font-semibold tabular-nums text-amber-400">{needsFollowupCount.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Today</p>
+                  <p className="text-lg font-semibold tabular-nums">{todayCount.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Course</p>
+                  <p className="text-lg font-semibold tabular-nums">{coursePurchased.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Rejected</p>
+                  <p className="text-lg font-semibold tabular-nums text-rose-400">{rejected.toLocaleString()}</p>
+                </div>
+              </div>
+              {terminatedApplications.length > 0 && (
+                <div className="pt-2 border-t">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Terminated</p>
+                  <p className="text-base font-semibold tabular-nums text-muted-foreground">{terminatedApplications.length.toLocaleString()}</p>
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
       )}
 
       {notesApp && (
@@ -1377,7 +1428,8 @@ export default function DashboardApplicants() {
       </Dialog>
 
       <LeadQualificationChat />
-    </>
+      </div>
+    </div>
   );
 }
 

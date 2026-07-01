@@ -80,6 +80,22 @@ const SUPERLATIVE_TRACKED_GLOBS = [
   // already in scope. Adding SeminarPage so the new LICENSE_TIMELINE
   // patterns below lock the entire surface area at the guard.
   "src/pages/SeminarPage.tsx",
+  // Wave-7 (2026-07-01): /unlicensed-overview page shipped from MP-224 §3
+  // (Calendly-auto-send target for unlicensed applicants — every fresh
+  // unlicensed applicant hits this surface post-Calendly). Shipped
+  // (a) a hardcoded KJ Calendly URL bypassing SCHEDULING_LINKS.unlicensed
+  // canonical resolver while three buttons said "Book Sam's Calendar"
+  // (broken promise + config drift bomb), (b) a fabricated aggregate:
+  // "Average new agent writes $20,000 of annual premium in month one"
+  // — same disease as wave-5 team-average-$60K–$90K but the "new" filler
+  // between "Average" and "writes" slipped the existing pattern, (c) the
+  // "4 weeks away from your first commission check" collapsed timeline —
+  // canonical is Licensed in 4 weeks + First commission in 30 days
+  // (CareerPathwaySection.tsx:461), so ~8 weeks total. Same disease as
+  // b6ffff6f "Licensed in 2 weeks" → 4 weeks fix. Adding UnlicensedOverview
+  // to SUPERLATIVE + extending Wave-5 pattern to catch "average X <filler>
+  // writes/produces/earns" separated by up to 3 modifier words.
+  "src/pages/UnlicensedOverview.tsx",
 ];
 
 // Files exempt from the guard. Add new entries here with a one-line
@@ -162,6 +178,15 @@ const SUPERLATIVE_PATTERNS = [
   // are regulator-visible and the recurring legal liability surface — block
   // them at the guard layer.
   /\b(team|squad|crew|roster|typical|average|median|standard)\s+(average|earnings?|earning|income|comp|compensation|production|writing|writes)\b/gi,
+  // Wave-7 (2026-07-01): "Average new agent writes $20,000..." pattern.
+  // Wave-5's shape required the compensation noun immediately after the
+  // aggregate anchor. UnlicensedOverview shipped "Average new agent
+  // writes $20,000 of annual premium in month one" — the "new agent"
+  // modifier separated "Average" from "writes" and slipped the pattern.
+  // Extending: aggregate anchor + up to 3 modifier words + the action
+  // verb (writes/produces/earns/closes/nets/pockets/makes/pulls).
+  // Same regulator-visible fabricated-aggregate-comp disease class.
+  /\b(team|squad|crew|roster|typical|average|median|standard)\s+(?:\w+\s+){0,3}(writes?|produces?|earns?|nets?|closes?|makes?|pulls?|pockets?|takes?\s+home)\b/gi,
   // Wave-5 (2026-06-22): "Sam/owner/founder reviews every application
   // personally" personal-attention puff that scales with traffic — at
   // ~50+ applications/day this becomes impossible-to-deliver. Catches

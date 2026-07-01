@@ -1,9 +1,10 @@
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { SCHEDULING_LINKS } from "@/lib/apexConfig";
 
 // MP-224 §3: Polished /unlicensed-overview page for unlicensed applicants.
 // Mobile-first (375px friendly), no Unicode middots, single Calendly CTA.
 
-const CALENDLY_URL = "https://calendly.com/kjvaughns1/overview";
+const CALENDLY_URL = SCHEDULING_LINKS.unlicensed;
 
 const steps = [
   {
@@ -24,12 +25,12 @@ const steps = [
   {
     n: 4,
     title: "Lock in your first close",
-    body: "Average new agent writes $20,000 of annual premium in month one. That's your first commission check.",
+    body: "You dial warm leads with a proven script and your manager on the line. Your first paid policy issues, and your commission check follows.",
   },
 ];
 
 export default function UnlicensedOverview() {
-  usePageTitle("You're 4 weeks away from your first commission check · APEX Financial");
+  usePageTitle("Your first 2 months at APEX — from unlicensed to first check");
 
   return (
     <main
@@ -42,7 +43,7 @@ export default function UnlicensedOverview() {
             Apex Financial
           </p>
           <h1 className="text-3xl sm:text-5xl font-bold leading-tight">
-            You're 4 weeks away from your first commission check.
+            From unlicensed to your first commission check.
           </h1>
           <p className="mt-5 text-base sm:text-lg text-slate-300 leading-relaxed">
             Here's exactly how new unlicensed agents go from zero to their first
@@ -70,6 +71,10 @@ export default function UnlicensedOverview() {
         <h2 className="text-xl sm:text-2xl font-bold mb-6 text-white">
           The 4 steps to your first check
         </h2>
+        <p className="text-sm text-slate-400 mb-6 leading-relaxed">
+          Licensing runs about 4 weeks. First commission typically follows
+          inside 30 days after that. Your pace decides the ceiling.
+        </p>
         <ol className="space-y-4">
           {steps.map((s) => (
             <li
@@ -98,8 +103,8 @@ export default function UnlicensedOverview() {
 
         <div className="mt-10 sm:mt-12 rounded-xl border border-teal-500/20 bg-teal-500/5 p-5 sm:p-6 text-center">
           <p className="text-sm sm:text-base text-slate-200 leading-relaxed">
-            Pick a time on Sam's calendar and we'll map out exactly how your
-            first 4 weeks look at Apex.
+            Pick a time on Sam's calendar and we'll map out exactly what your
+            first 2 months at Apex look like.
           </p>
           <a
             href={CALENDLY_URL}

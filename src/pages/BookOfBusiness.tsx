@@ -176,29 +176,12 @@ export default function BookOfBusiness() {
         return;
       }
 
-      // v9 audit 2026-06-10: BookOfBusiness was only reading the apex
-      // `deals` table, stale 20+ days since the AgentLink sync went dark.
-      // Sam: "Book of business has nothing at all." Fix: ALSO read
-      // agentlink_deals_snapshot (1,286 real policies as of 2026-06-14,
-      // refreshed every 30 min
-      // by com.samjames.apex.agentlink-sync) and merge. Dedup by policy_number.
-      let query = supabase
-        .from("deals")
-        .select(`
-          id, agent_id, client_first_name, client_last_name, policy_number,
-          product_sold, monthly_premium, annual_premium, effective_date,
-          posted_at, pipeline_stage, policy_status_standard, status_updated_at,
-          synced_to_insuracloud_at, external_deal_id, insuracloud_sync_error,
-          source, status, carrier_id, pipeline_client_id, created_at
-        `)
-        .neq("status", "draft")
-        .order("created_at", { ascending: false })
-        .limit(2_000);
-
-      if (!isAdmin && agentScopeIds !== null) {
-        query = query.in("agent_id", agentScopeIds);
-      }
-
+      // MP-230 fix4 (2026-07-01): primary BOB reads ONLY
+      // agentlink_deals_snapshot (source of truth, 1,286+ real policies
+      // refreshed every 30 min by com.samjames.apex.agentlink-sync).
+      // Local `deals` table is only used by the chargebacks audit section
+      // below (loadChargebacks) — that stays because chargebacks are
+      // reconciled against the apex CRM before AgentLink surfaces them.
       let alQuery = supabase
         .from("agentlink_deals_snapshot" as any)
         .select("id, user_id, pipeline_client_id, client_first_name, client_last_name, policy_number, product_sold, monthly_premium, annual_premium, effective_date, raw_status, carrier_id, snapshot_at", { count: "exact" })
@@ -213,16 +196,11 @@ export default function BookOfBusiness() {
         }
       }
 
-      const [{ data }, { data: alSnapshot, count: alCount, error: alError }] = await Promise.all([
-        query,
-        alQuery,
-      ]);
+      const { data: alSnapshot, count: alCount, error: alError } = await alQuery;
       if (alError) console.error("[BookOfBusiness] AgentLink snapshot fetch failed:", alError);
 
-      const apexRows = (data ?? []) as DealRow[];
-      const seenPolicies = new Set(apexRows.map((r) => r.policy_number).filter(Boolean));
       const alRawRows = ((alSnapshot ?? []) as Array<Record<string, unknown>>)
-        .filter((r) => r.policy_number && !seenPolicies.has(String(r.policy_number)));
+        .filter((r) => r.policy_number);
 
       const alUserIds = [...new Set(alRawRows
         .map((r) => Number(r.user_id))
@@ -283,9 +261,8 @@ export default function BookOfBusiness() {
         } as DealRow;
       });
 
-      const rows = [...apexRows, ...alRows];
+      const rows = alRows;
       console.info("[BookOfBusiness] loaded deals", {
-        apexRows: apexRows.length,
         agentLinkRows: alRows.length,
         agentLinkSnapshotCount: alCount,
         totalRows: rows.length,
@@ -328,8 +305,10 @@ export default function BookOfBusiness() {
   useEffect(() => {
     if (!isAdmin && (agentScopeIds === null || agentLinkScopeUserIds === null)) return;
     const scopeKey = isAdmin ? "admin" : (agentScopeIds ?? []).slice().sort().join(",");
+    // MP-230 fix4: BOB now sources ONLY agentlink_deals_snapshot, so subscribe
+    // to snapshot changes, not the local `deals` table.
     const ch = supabase.channel(`bob-${scopeKey}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "deals" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "agentlink_deals_snapshot" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [agentScopeIds, agentLinkScopeUserIds, isAdmin, load]);

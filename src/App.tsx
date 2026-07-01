@@ -78,6 +78,8 @@ const UnlicensedOverview = lazy(() => import("./pages/UnlicensedOverview"));
 const ApplicationStatus = lazy(() => import("./pages/ApplicationStatus"));
 const StaleRecovery = lazy(() => import("./pages/StaleRecovery"));
 const GetLicensed = lazy(() => import("./pages/GetLicensed"));
+const ResourcesLicensing = lazy(() => import("./pages/ResourcesLicensing"));
+const TrainingIndex = lazy(() => import("./pages/TrainingIndex"));
 const Signup = lazy(() => import("./pages/Signup"));
 const AgentSignup = lazy(() => import("./pages/AgentSignup"));
 const AgentNumbersLogin = lazy(() => import("./pages/AgentNumbersLogin"));
@@ -357,6 +359,11 @@ const App = () => (
                       get_application_status() RPC (SECURITY DEFINER, anon-callable). */}
                   <Route path="/status/:applicationId" element={<ApplicationStatus />} />
                   <Route path="/get-licensed" element={<GetLicensed />} />
+                  {/* Mirror of apex-resources.vercel.app harvest — courses,
+                      PDFs, scripts, and recorded presentations, on-site. */}
+                  <Route path="/resources/licensing" element={<ResourcesLicensing />} />
+                  {/* Training index — landing hub for licensed agents. */}
+                  <Route path="/training" element={<TrainingIndex />} />
                   <Route path="/login" element={<Login />} />
                   {/* PL-014 — landing for Supabase password-reset email links */}
                   <Route path="/reset-password" element={<ResetPassword />} />

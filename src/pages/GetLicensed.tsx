@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { motion } from "framer-motion";
-import { Crown, Play, FileText, GraduationCap, Calendar, CheckCircle2 } from "lucide-react";
+import { Crown, Play, FileText, GraduationCap, Calendar, CheckCircle2, BookOpen, ArrowRight } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { SCHEDULING_LINKS } from "@/lib/apexConfig";
@@ -206,6 +206,35 @@ export default function GetLicensed() {
               </GradientButton>
             </a>
           </GlassCard>
+        </motion.div>
+
+        {/* Full training resources link — mirrors apex-resources.vercel.app on-site */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.75 }}
+          className="mt-8"
+        >
+          <Link to="/resources/licensing" className="block group">
+            <GlassCard className="p-6 border border-primary/20 hover:border-primary/50 transition-colors">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-base mb-1">
+                    Full training resources
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Scripts, playbooks, PDFs, and recorded closes from KJ, Obi,
+                    Sam, Moody, Aisha, and Chudi — 18 recordings and 8
+                    resources, all in one place.
+                  </p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-primary group-hover:translate-x-1 transition-transform flex-shrink-0" />
+              </div>
+            </GlassCard>
+          </Link>
         </motion.div>
 
         {/* Questions Section */}

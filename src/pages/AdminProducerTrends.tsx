@@ -60,7 +60,7 @@ export default function AdminProducerTrends() {
         .order("currently_dropping", { ascending: false })
         .order("delta_pct", { ascending: true });
       if (error) throw error;
-      return (data as TrendAlertRow[]) ?? [];
+      return ((data as unknown) as TrendAlertRow[]) ?? [];
     },
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
@@ -74,7 +74,7 @@ export default function AdminProducerTrends() {
         .select("agent_id, display_name, week_start, deals, alp")
         .order("week_start", { ascending: true });
       if (error) throw error;
-      return (data as WeeklyRow[]) ?? [];
+      return ((data as unknown) as WeeklyRow[]) ?? [];
     },
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,

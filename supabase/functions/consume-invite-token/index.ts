@@ -1,18 +1,22 @@
-// MP-233: consume-invite-token
+// MP-233 / MP-234: consume-invite-token
 //
 // Public (verify_jwt = false). Token acts as the bearer credential.
 // One-use, atomic, service-role write.
 //
-// Scope of this fn (narrow, per user directive):
-//   - kind='hire' only. join branch queued for a follow-on.
-//   - Creates auth user + agents row + fires the existing
-//     trg_agents_hired_licensed_enqueue chain (via UPDATE to license_status='licensed'
-//     when target_role='hired_licensed', or via onboarding_stage='live' when applicable).
-//   - Marks invite_tokens.used_at, used_by_agent_id.
-//   - Optional ntfy push to Sam if APEX_NTFY_TOPIC is set.
+// Two kinds handled:
+//   - kind='hire' — creates auth user + agents row (existing behavior).
+//   - kind='join' — creates an APPLICATION (no auth user, no agent).
+//                   Existing triggers on public.applications then fire:
+//                     * license_status='unlicensed' → trg_calendly_for_unlicensed_ins
+//                       enqueues calendly-invite + prospect_whatsapp (MP-232).
+//                     * license_status='licensed'   → trg_bot_alert_licensed_app
+//                       fires the manager/Sam critical alert.
+//                   Optional `licensed: true` on the body flips the row licensed;
+//                   otherwise defaults to 'unlicensed' (prospect capture flow).
 //
 // Anti-fake-success rule (Sam directive, 465 InsuraCloud memory):
-//   Never return {ok:true} unless the agents row exists AND invite_tokens.used_at is set.
+//   Never return {ok:true} unless the underlying row (agents for hire,
+//   applications for join) exists AND invite_tokens.used_at is set.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -121,13 +125,82 @@ serve(async (req) => {
   if (new Date(tokenRow.expires_at).getTime() < Date.now()) {
     return json({ ok: false, error: "invite_expired" }, 409);
   }
-  if (tokenRow.kind !== "hire") {
+  if (tokenRow.kind !== "hire" && tokenRow.kind !== "join") {
     return json(
       { ok: false, error: "unsupported_kind", detail: tokenRow.kind },
       400,
     );
   }
 
+  // ─── kind='join' branch ────────────────────────────────────────────────
+  // Prospect capture: creates a public.applications row and lets the
+  // existing DB triggers fan out (calendly + prospect_whatsapp for
+  // unlicensed; licensed_app_arrived alert for licensed).
+  if (tokenRow.kind === "join") {
+    const nameParts = full_name.split(/\s+/).filter(Boolean);
+    const first_name = nameParts[0] ?? "";
+    const last_name = nameParts.slice(1).join(" ") || nameParts[0] || "";
+    const licensedJoin = body.licensed === true;
+    const state = (body.state || "").trim().toUpperCase().slice(0, 2) || null;
+
+    const { data: appRow, error: appErr } = await admin
+      .from("applications")
+      .insert({
+        first_name,
+        last_name,
+        email,
+        phone: phone_digits,
+        state,
+        license_status: licensedJoin ? "licensed" : "unlicensed",
+        status: "new",
+        referral_source: `magic_join_link:${(tokenRow.created_by ?? "unknown").toString().slice(0, 8)}`,
+      })
+      .select("id")
+      .single();
+
+    if (appErr || !appRow?.id) {
+      console.error("application_insert_failed", appErr);
+      return json(
+        { ok: false, error: "application_insert_failed", detail: appErr?.message },
+        500,
+      );
+    }
+
+    // Mark token consumed (race-safe).
+    const { data: markedJoin, error: markJoinErr } = await admin
+      .from("invite_tokens")
+      .update({
+        used_at: new Date().toISOString(),
+        used_by_application_id: appRow.id,
+      })
+      .eq("id", tokenRow.id)
+      .is("used_at", null)
+      .select("id")
+      .maybeSingle();
+
+    if (markJoinErr) {
+      console.error("token_mark_failed_join", markJoinErr);
+      return json({ ok: false, error: "token_mark_failed" }, 500);
+    }
+    if (!markedJoin) {
+      console.warn("token_race_lost_join", tokenRow.id);
+    }
+
+    ntfyPush(
+      licensedJoin ? "LICENSED prospect via join link" : "New prospect via join link",
+      `${full_name} · ${email} · ${licensedJoin ? "licensed" : "unlicensed"} · token …${token.slice(-4)}`,
+    );
+
+    return json({
+      ok: true,
+      kind: "join",
+      application_id: appRow.id,
+      licensed: licensedJoin,
+      redirect_url: `/status/${appRow.id}`,
+    });
+  }
+
+  // ─── kind='hire' branch (existing) ─────────────────────────────────────
   const targetRole: string = tokenRow.target_role ?? "hired_unlicensed";
   const licensed = targetRole === "hired_licensed" || body.licensed === true;
 

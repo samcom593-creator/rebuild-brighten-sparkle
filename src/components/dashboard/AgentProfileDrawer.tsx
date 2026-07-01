@@ -42,6 +42,7 @@ import {
   Users,
   Calendar,
   TrendingUp,
+  TrendingDown,
   MessageCircle,
   Pencil,
   Check,
@@ -113,6 +114,15 @@ interface PaceVerdictRow {
   ap_mtd: number | null;
   projected_eom_ap: number | null;
   pace_verdict: "hit_20k" | "on_pace_20k" | "below_pace" | "new_hire_grace" | "zero_mtd" | string;
+}
+
+interface TrendAlertRow {
+  producer_id: string;
+  current_week_alp: number | null;
+  alp_3_weeks_ago: number | null;
+  delta_pct: number | null;
+  direction: "up" | "down" | "flat" | string;
+  currently_dropping: boolean;
 }
 
 interface CallTimelineRow {
@@ -200,6 +210,8 @@ export function AgentProfileDrawer() {
   const [nameSaving, setNameSaving] = useState(false);
   // MP-233 magic hire link — one-tap generate + copy to clipboard.
   const [hireLinkLoading, setHireLinkLoading] = useState(false);
+  // MP-234 magic join/prospect link — one-tap generate + copy to clipboard.
+  const [joinLinkLoading, setJoinLinkLoading] = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
 
   // Close on route change happens automatically because the Sheet primitive
@@ -317,6 +329,26 @@ export function AgentProfileDrawer() {
         .from("v_agent_20k_target_leaderboard" as any)
         .select("agent_id, ap_mtd, projected_eom_ap, pace_verdict")
         .eq("agent_id", agentId)
+        .maybeSingle();
+      if (error || !data) return null;
+      return data as any;
+    },
+    staleTime: 60_000,
+  });
+
+  // 2026-07-01 — producer weekly trend chip. Reads v_producer_trend_alert
+  // (populated from agentlink_deals_snapshot). currently_dropping = 3 strict
+  // consecutive weekly ALP drops → shows a red "DROPPING 3W" chip so the
+  // Daniel-didn't-know slip mode gets caught on any drawer open.
+  const { data: trend } = useQuery<TrendAlertRow | null>({
+    queryKey: ["agent-profile-drawer-trend", agentId],
+    enabled: !!agentId,
+    queryFn: async () => {
+      if (!agentId) return null;
+      const { data, error } = await supabase
+        .from("v_producer_trend_alert" as any)
+        .select("producer_id, current_week_alp, alp_3_weeks_ago, delta_pct, direction, currently_dropping")
+        .eq("producer_id", agentId)
         .maybeSingle();
       if (error || !data) return null;
       return data as any;
@@ -484,9 +516,14 @@ export function AgentProfileDrawer() {
                         if (!agent?.id) return;
                         const ok = window.confirm(`Mark ${agent.display_name ?? "this agent"} as unlicensed?`);
                         if (!ok) return;
+                        // MP231-verify fix 2026-07-01: null licensed_at when
+                        // flipping back to unlicensed. Downstream views (v_agent_
+                        // licensed_pipeline, hired→licensed enqueue trigger) key
+                        // off licensed_at timestamp — leaving it stale would fool
+                        // them into treating an unlicensed agent as still licensed.
                         const { error } = await (supabase as any)
                           .from("agents")
-                          .update({ license_status: "unlicensed", updated_at: new Date().toISOString() })
+                          .update({ license_status: "unlicensed", licensed_at: null, updated_at: new Date().toISOString() })
                           .eq("id", agent.id);
                         if (error) toast.error(`Update failed: ${error.message.slice(0, 80)}`);
                         else {
@@ -559,6 +596,42 @@ export function AgentProfileDrawer() {
                     EOM proj {fmtUSDCompact(pace.projected_eom_ap)}
                   </span>
                 )}
+              </div>
+            )}
+
+            {/* 2026-07-01 — producer weekly trend chip. Reads v_producer_trend_alert.
+                currently_dropping=true (3 strict consecutive weekly ALP drops) → red
+                chip "DROPPING 3W". Direction up/down/flat renders as arrow + Δ%.
+                Solves the "Daniel didn't know his production dropped 3 weeks"
+                slip. Renders nothing when no trend row exists (unlinked producer). */}
+            {trend && trend.delta_pct != null && (
+              <div className={cn(
+                "rounded-full border px-3 py-2 flex items-center justify-between gap-2 text-xs",
+                trend.currently_dropping && "border-rose-500/50 bg-rose-500/15 text-rose-400",
+                !trend.currently_dropping && trend.direction === "down" && "border-amber-500/40 bg-amber-500/10 text-amber-400",
+                !trend.currently_dropping && trend.direction === "up" && "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
+                !trend.currently_dropping && trend.direction === "flat" && "border-border bg-muted/30 text-muted-foreground",
+              )}>
+                <span className="font-semibold inline-flex items-center gap-1.5">
+                  {trend.currently_dropping ? (
+                    <>
+                      <TrendingDown className="h-3.5 w-3.5" /> DROPPING 3W
+                    </>
+                  ) : trend.direction === "down" ? (
+                    <>
+                      <TrendingDown className="h-3.5 w-3.5" /> Trend down
+                    </>
+                  ) : trend.direction === "up" ? (
+                    <>
+                      <TrendingUp className="h-3.5 w-3.5" /> Trend up
+                    </>
+                  ) : (
+                    <>Trend flat</>
+                  )}
+                </span>
+                <span className="tabular-nums">
+                  {(trend.delta_pct ?? 0) > 0 ? "+" : ""}{trend.delta_pct}% · 3wk
+                </span>
               </div>
             )}
 
@@ -732,6 +805,71 @@ export function AgentProfileDrawer() {
               </Button>
             )}
 
+            {/* MP-234 — Generate Prospect Join Link (admin/manager only).
+                Same one-tap generate + copy + toast pattern as hire link, but
+                mints kind='join' so the consumer creates an application row
+                (not an agent) and triggers the calendly + prospect_whatsapp
+                fanout via existing DB triggers. */}
+            {isAdmin && (
+              <Button
+                variant="secondary"
+                size="sm"
+                data-testid="generate-join-link"
+                data-invite-kind="join"
+                className="w-full h-9 gap-1.5"
+                disabled={joinLinkLoading}
+                onClick={async () => {
+                  if (!agent) return;
+                  setJoinLinkLoading(true);
+                  try {
+                    const { data, error } = await supabase.rpc(
+                      "generate_invite_token",
+                      {
+                        p_kind: "join",
+                        p_expires_hours: 168,
+                        p_target_role: "referral_prospect",
+                        p_target_manager_id: agent.manager_id ?? agent.id ?? null,
+                        p_prefill: {},
+                        p_notes: `AgentProfileDrawer join for ${agent.id}`,
+                      },
+                    );
+                    if (error) {
+                      toast.error(error.message);
+                      return;
+                    }
+                    const url = (data as { url?: string })?.url;
+                    if (!url) {
+                      toast.error("No URL returned. Try again.");
+                      return;
+                    }
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      toast.success("Join link copied. 7-day expiry, one-use.");
+                    } catch {
+                      toast.success(`Join link generated: ${url}`);
+                    }
+                  } catch (err) {
+                    console.error("generate_invite_token (join) failed", err);
+                    toast.error("Couldn't generate join link.");
+                  } finally {
+                    setJoinLinkLoading(false);
+                  }
+                }}
+              >
+                {joinLinkLoading ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Generating…
+                  </>
+                ) : (
+                  <>
+                    <LinkIcon className="h-3.5 w-3.5" />
+                    Generate Prospect Join Link
+                  </>
+                )}
+              </Button>
+            )}
+
             {/* Contact + manager */}
             <div className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-card/60 p-3">
               <div className="grid grid-cols-3 gap-2 text-xs">
@@ -855,12 +993,20 @@ export function AgentProfileDrawer() {
                         if (!agent?.id) return;
                         const ok = window.confirm(`Restore ${name}? They will show back up in the roster.`);
                         if (!ok) return;
+                        // MP231-verify fix 2026-07-01: also clear deactivation_reason
+                        // and switched_to_manager_id so downstream views/queries that
+                        // filter on those don't treat a restored agent as still
+                        // deactivated/switched. Without this the Restore was a
+                        // half-flip — status flipped back but the reason ghost
+                        // remained.
                         const { error } = await (supabase as any)
                           .from("agents")
                           .update({
                             is_deactivated: false,
                             is_inactive: false,
                             status: "active",
+                            deactivation_reason: null,
+                            switched_to_manager_id: null,
                             updated_at: new Date().toISOString(),
                           })
                           .eq("id", agent.id);

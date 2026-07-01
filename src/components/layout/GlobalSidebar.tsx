@@ -8,7 +8,6 @@ import {
   BookOpen,
   Briefcase,
   Calculator,
-  CalendarCheck,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
@@ -16,8 +15,6 @@ import {
   Crown,
   Trophy,
   CreditCard,
-  Filter,
-  GitMerge,
   Globe,
   GraduationCap,
   Heart,
@@ -32,13 +29,12 @@ import {
   ScrollText,
   Menu,
   Minimize2,
-  Network,
   Percent,
   PhoneCall,
-  PhoneIncoming,
   Plus,
   Search,
   Settings,
+  TrendingDown,
   TrendingUp,
   UserCog,
   Users,
@@ -193,7 +189,7 @@ export function GlobalSidebar({
       // 2026-06-17 — Sam directive: "biggest problem is the calendars and the
       // user what to do list ... I could just tap circles and just mark that
       // done shit." Native daily flow surface, replaces Todoist dep.
-      { icon: CalendarCheck, label: "Today", href: "/dashboard/today", special: true },
+      // MP-230 (2026-07-01): Today removed per Sam directive.
     ];
     const more: NavItem[] = [];
     const oldApplicants: NavItem[] = [];
@@ -209,7 +205,7 @@ export function GlobalSidebar({
       // weekly, or as a recurring leak-detection step is GONE.
       primary.push(
         { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
-        { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
+        // MP-230 (2026-07-01): Inbound Leads removed per Sam directive.
         // Sam 2026-06-17 directive: "I see no call center make sure all is live"
         { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center", special: true },
         // Sam 2026-06-16 directive: "CRM, put it way higher up." → CRM hoisted to PRIMARY
@@ -219,9 +215,9 @@ export function GlobalSidebar({
       );
       more.push(
         // Headhunters (where applications come from → who joins)
-        { icon: Inbox, label: "Headhunters Inbox", href: "/admin/recruiting-inbox", special: true },
-        { icon: Filter, label: "Headhunters Funnels", href: "/dashboard/recruiting-funnels", special: true },
-        { icon: Trophy, label: "Headhunters Tracker", href: "/dashboard/recruiting-tracker", special: true },
+        // MP-230 (2026-07-01): Headhunters Inbox removed per Sam directive.
+        // MP-230 (2026-07-01): Headhunters Funnels removed per Sam directive.
+        // MP-230 (2026-07-01): Headhunters Tracker removed per Sam directive.
         // Sam 2026-06-16: Headhunters Calendar removed — "remove headhunter's calendar as a whole"
         { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
         // Sam 2026-06-16: Whales removed — "remove whales as a whole"
@@ -230,16 +226,17 @@ export function GlobalSidebar({
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
         // Sam 2026-06-16: Finances · CFO removed — "remove the finance as CFO"
         // Franchise mgmt (Sam owns · managers run their own)
-        // MP-230 (2026-07-01): Team Analytics + Hierarchy removed per Sam directive. Builders + Managers stays.
-        { icon: Network, label: "Builders + Managers", href: "/dashboard/managers" },
+        // MP-230 (2026-07-01): Team Analytics + Hierarchy + Builders + Managers removed per Sam directive.
         // Culture + comms (drives momentum, low maintenance)
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },
         // Sam 2026-06-16: Scripts removed — "scripts you can also remove those"
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         // Admin hub (everything that isn't daily flow)
-        { icon: GitMerge, label: "Agent Duplicates", href: "/admin/agent-duplicates" },
+        // MP-230 (2026-07-01): Agent Duplicates removed per Sam directive.
         // 2026-06-18 Sam: June hires punch list with inline edit + Send Course.
         { icon: UserCog, label: "June Hires Punch List", href: "/admin/june-hires", special: true },
+        // 2026-07-01 Sam: producer weekly trend + 3-week drop alarm (Daniel use case).
+        { icon: TrendingDown, label: "Producer Trends", href: "/admin/producer-trends", special: true },
         // MP-230 (2026-07-01): AgentLink Backfill sidebar entry removed per Sam directive.
         { icon: Settings, label: "Admin", href: "/dashboard/command" },
       );
@@ -253,16 +250,16 @@ export function GlobalSidebar({
       // calling cards, my landing page, training modules. Those are noise.
       primary.push(
         { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
-        { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
+        // MP-230 (2026-07-01): Inbound Leads removed per Sam directive.
         { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center", special: true },
         { icon: Heart, label: "CRM", href: "/dashboard/crm", special: true },
         // MP-230 (2026-07-01): My Team removed per Sam directive.
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );
       more.push(
-        { icon: Inbox, label: "Headhunters Inbox", href: "/admin/recruiting-inbox", special: true },
-        { icon: Filter, label: "Headhunters Funnels", href: "/dashboard/recruiting-funnels" },
-        { icon: Trophy, label: "Headhunters Tracker", href: "/dashboard/recruiting-tracker" },
+        // MP-230 (2026-07-01): Headhunters Inbox removed per Sam directive.
+        // MP-230 (2026-07-01): Headhunters Funnels removed per Sam directive.
+        // MP-230 (2026-07-01): Headhunters Tracker removed per Sam directive.
         // Sam 2026-06-16: Headhunters Calendar removed for manager nav too
         { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
@@ -285,7 +282,7 @@ export function GlobalSidebar({
       // Help Center (footer link), Needs Analysis + Quoter (in-call tools live
       // in the dialer dock, not nav).
       primary.push(
-        { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
+        // MP-230 (2026-07-01): Inbound Leads removed per Sam directive.
         { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center", special: true },
         { icon: BarChart3, label: "Production", href: "/numbers" },
         { icon: Trophy, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },

@@ -85,7 +85,6 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ApexControl = lazy(() => import("./pages/ApexControl"));
 const BuildersDashboard = lazy(() => import("./pages/BuildersDashboard"));
 const DashboardApplicants = lazy(() => import("./pages/DashboardApplicants"));
-const DashboardToday = lazy(() => import("./pages/DashboardToday"));
 const DashboardAccounts = lazy(() => import("./pages/DashboardAccounts"));
 const OffersPage = lazy(() => import("./pages/OffersPage"));
 const Storefront = lazy(() => import("./pages/Storefront"));
@@ -98,6 +97,7 @@ const AdminStuckPool = lazy(() => import("./pages/AdminStuckPool"));
 const AdminFunnelHealth = lazy(() => import("./pages/AdminFunnelHealth"));
 const AdminEmailGaps = lazy(() => import("./pages/AdminEmailGaps"));
 const AdminJuneHires = lazy(() => import("./pages/AdminJuneHires"));
+const AdminProducerTrends = lazy(() => import("./pages/AdminProducerTrends"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const ScheduleCall = lazy(() => import("./pages/ScheduleCall"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -127,7 +127,6 @@ const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 const LinksPage = lazy(() => import("./pages/LinksPage"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
-const HeadhuntersCalendar = lazy(() => import("./pages/HeadhuntersCalendar"));
 const InterviewCommandCenter = lazy(() => import("./pages/InterviewCommandCenter"));
 const AdminBoardAccess = lazy(() => import("./pages/AdminBoardAccess"));
 const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
@@ -137,8 +136,6 @@ const AgentFlow = lazy(() => import("./pages/AgentFlow"));
 const InboxPage = lazy(() => import("./pages/InboxPage"));
 const MyApplicants = lazy(() => import("./pages/admin/MyApplicants"));
 const AddReferral = lazy(() => import("./pages/admin/AddReferral"));
-const RecruitingInbox = lazy(() => import("./pages/admin/RecruitingInbox"));
-const AgentDuplicates = lazy(() => import("./pages/admin/AgentDuplicates"));
 const AutomationHub = lazy(() => import("./pages/AutomationHub"));
 const AutomationHealth = lazy(() => import("./pages/AutomationHealth"));
 // 2026-06-18 cruft strip: TeamHierarchy was retired in favor of Hierarchy
@@ -161,8 +158,6 @@ const ClientMarketing = lazy(() => import("./pages/ClientMarketing"));
 const CallingCards = lazy(() => import("./pages/CallingCards"));
 const MyLandingPage = lazy(() => import("./pages/MyLandingPage"));
 const PublicAgentLanding = lazy(() => import("./pages/PublicAgentLanding"));
-const RecruitingFunnels = lazy(() => import("./pages/RecruitingFunnels"));
-const RecruitingTracker = lazy(() => import("./pages/RecruitingTracker"));
 const NeedsAnalysis = lazy(() => import("./pages/NeedsAnalysis"));
 const Quoter = lazy(() => import("./pages/Quoter"));
 const AwardsGallery = lazy(() => import("./pages/AwardsGallery"));
@@ -173,14 +168,12 @@ const DataDeletion = lazy(() => import("./pages/DataDeletion"));
 const Contact = lazy(() => import("./pages/Contact"));
 const BotToken = lazy(() => import("./pages/BotToken"));
 const InstagramInbox = lazy(() => import("./pages/InstagramInbox"));
-const Today = lazy(() => import("./pages/Today"));
 const RecruitCommandCenter = lazy(() => import("./pages/RecruitCommandCenter"));
 const TeamChat = lazy(() => import("./pages/TeamChat"));
 const BulkDeals = lazy(() => import("./pages/BulkDeals"));
 const AgentLinkSync = lazy(() => import("./pages/AgentLinkSync"));
 const AgentLinkVault = lazy(() => import("./pages/AgentLinkVault"));
 const ClientPipeline = lazy(() => import("./pages/ClientPipeline"));
-const InboundLeads = lazy(() => import("./pages/InboundLeads"));
 const SocialDashboard = lazy(() => import("./pages/SocialDashboard"));
 const CallsTodayCockpit = lazy(() => import("./pages/CallsTodayCockpit"));
 // 2026-06-18 cruft strip: ManagerCommandView's lazy() entry in this file was
@@ -199,6 +192,8 @@ const LicensingTracker = lazy(() => import("./pages/admin/LicensingTracker"));
 const CommissionRecovery = lazy(() => import("./pages/admin/CommissionRecovery"));
 const Join = lazy(() => import("./pages/Join"));
 const HireLink = lazy(() => import("./pages/HireLink"));
+const JoinLink = lazy(() => import("./pages/JoinLink"));
+const InviteLinksAdmin = lazy(() => import("./pages/admin/InviteLinks"));
 const AgentDetail = lazy(() => import("./pages/AgentDetail"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Rewards = lazy(() => import("./pages/Rewards"));
@@ -369,6 +364,11 @@ const App = () => (
                   <Route path="/join" element={<Join />} />
                   {/* MP-233 magic hire link — public, token-gated, above any auth wall */}
                   <Route path="/hire/:token" element={<HireLink />} />
+                  {/* MP-234 magic join/prospect link — public, token-gated,
+                      share-only (never in nav). Creates an application row and
+                      fans out via existing DB triggers (calendly + prospect
+                      whatsapp for unlicensed; licensed-app alert for licensed). */}
+                  <Route path="/join/:token" element={<JoinLink />} />
                   {/* /agent-signup is the canonical recruiting URL referenced from
                       Install.tsx and recruiting CTAs. /join remains the separate
                       combined sign-in / create-account flow used by existing links. */}
@@ -416,20 +416,24 @@ const App = () => (
                     <Route path="/dashboard/apex-control" element={<ProtectedRoute requireAdmin><ApexControl /></ProtectedRoute>} />
                     <Route path="/dashboard/builders" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="builders" /></ProtectedRoute>} />
                     <Route path="/dashboard/builders/:builderId" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="builders" /></ProtectedRoute>} />
-                    <Route path="/dashboard/managers" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="managers" /></ProtectedRoute>} />
+                    <Route path="/dashboard/managers" element={<Navigate to="/dashboard/crm" replace />} />
+                    <Route path="/dashboard/billers" element={<Navigate to="/dashboard/crm" replace />} />
                     <Route path="/dashboard/agency-owners" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="agencyOwners" /></ProtectedRoute>} />
                     <Route path="/dashboard/legacy" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     {/* 2026-06-17 Sam directive: native daily flow at /dashboard/today
                         (replaces Todoist dep). Tap-circle UI · phone-first. */}
-                    <Route path="/dashboard/today" element={<ProtectedRoute><DashboardToday /></ProtectedRoute>} />
+                    <Route path="/dashboard/today" element={<Navigate to="/dashboard/command" replace />} />
                     <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
                     {/* Manager self-serve: view their referrals + drop new ones (Sam 2026-06-03) */}
                     <Route path="/admin/my-applicants" element={<ProtectedRoute allowManagers><MyApplicants /></ProtectedRoute>} />
                     <Route path="/admin/add-referral" element={<ProtectedRoute allowManagers><AddReferral /></ProtectedRoute>} />
+                    {/* MP-234 magic invite links admin (hire + join). Share-only —
+                        never rendered in nav. Direct URL only. */}
+                    <Route path="/admin/invite-links" element={<ProtectedRoute allowManagers><InviteLinksAdmin /></ProtectedRoute>} />
                     {/* PL-SAM-2026-06-03-001: uncontacted-first recruiting queue. v_recruiting_inbox is SECURITY INVOKER so RLS scopes rows per role. */}
-                    <Route path="/admin/recruiting-inbox" element={<ProtectedRoute allowManagers><RecruitingInbox /></ProtectedRoute>} />
+                    <Route path="/admin/recruiting-inbox" element={<Navigate to="/dashboard/command" replace />} />
                     {/* wave-100: Sam-adjudication for unresolved same-display_name agent dup pairs. */}
-                    <Route path="/admin/agent-duplicates" element={<ProtectedRoute requireAdmin><AgentDuplicates /></ProtectedRoute>} />
+                    <Route path="/admin/agent-duplicates" element={<Navigate to="/dashboard/crm" replace />} />
                     {/* Stale-recovery panel — admins/managers only. v_stale_applicants
                         feeds it. Additive: doesn't touch DashboardApplicants. */}
                     <Route path="/dashboard/stale-recovery" element={<ProtectedRoute allowManagers><StaleRecovery /></ProtectedRoute>} />
@@ -459,6 +463,8 @@ const App = () => (
                     <Route path="/admin/email-gaps" element={<ProtectedRoute requireAdmin><AdminEmailGaps /></ProtectedRoute>} />
                     {/* 2026-06-18 Sam: punch list of June hires needing email/phone/account/AgentLink */}
                     <Route path="/admin/june-hires" element={<ProtectedRoute requireAdmin><AdminJuneHires /></ProtectedRoute>} />
+                    {/* 2026-07-01 Sam: producer weekly trend + 3-week drop alert — Daniel-didn't-know use case */}
+                    <Route path="/admin/producer-trends" element={<ProtectedRoute requireAdmin><AdminProducerTrends /></ProtectedRoute>} />
                     {/* MP-230 (2026-07-01): AgentLink Backfill UI removed per Sam directive; keep redirect for old bookmarks. */}
                     <Route path="/admin/agentlink-backfill" element={<Navigate to="/dashboard/book-of-business" replace />} />
                     <Route path="/dashboard/clients/:clientId" element={<ProtectedRoute><ClientDetail /></ProtectedRoute>} />
@@ -487,7 +493,7 @@ const App = () => (
                     <Route path="/dashboard/call-center" element={<CallCenter />} />
                      {/* v9 Wave A complaint #2: /dashboard/leads removed.
                          Inbound flow lives at /dashboard/inbound-leads now. */}
-                     <Route path="/dashboard/leads" element={<Navigate to="/dashboard/inbound-leads" replace />} />
+                     <Route path="/dashboard/leads" element={<Navigate to="/dashboard/command" replace />} />
                      {/* v9 social dashboard: cross-platform IG / TikTok / YT / Snap analytics */}
                      <Route path="/dashboard/social" element={<ProtectedRoute requireAdmin><SocialDashboard /></ProtectedRoute>} />
                      {/* v9 calls cockpit: Google Calendar → apex_scheduled_calls → pre-filled inbound */}
@@ -506,12 +512,12 @@ const App = () => (
                      <Route path="/agent-pipeline" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
                      <Route path="/dashboard/agent-pipeline" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
                      <Route path="/dashboard/client-pipeline" element={<Navigate to="/dashboard/clients" replace />} />
-                     <Route path="/dashboard/inbound-leads" element={<ProtectedRoute><InboundLeads /></ProtectedRoute>} />
-                     <Route path="/dashboard/inbound" element={<ProtectedRoute><InboundLeads /></ProtectedRoute>} />
+                     <Route path="/dashboard/inbound-leads" element={<Navigate to="/dashboard/command" replace />} />
+                     <Route path="/dashboard/inbound" element={<Navigate to="/dashboard/command" replace />} />
                      <Route path="/dashboard/calendar" element={<CalendarPage />} />
                      <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
-                     <Route path="/dashboard/headhunters-calendar" element={<ProtectedRoute><HeadhuntersCalendar /></ProtectedRoute>} />
+                     <Route path="/dashboard/headhunters-calendar" element={<Navigate to="/dashboard/command" replace />} />
                      <Route path="/dashboard/interviews" element={<ProtectedRoute requireAdmin allowManagers><InterviewCommandCenter /></ProtectedRoute>} />
                      <Route path="/dashboard/hierarchy" element={<Navigate to="/dashboard/crm" replace />} />
                        <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
@@ -530,8 +536,8 @@ const App = () => (
                        <Route path="/dashboard/client-marketing" element={<ProtectedRoute><ClientMarketing /></ProtectedRoute>} />
                        <Route path="/dashboard/calling-cards" element={<ProtectedRoute><CallingCards /></ProtectedRoute>} />
                        <Route path="/dashboard/landing-page" element={<ProtectedRoute><MyLandingPage /></ProtectedRoute>} />
-                       <Route path="/dashboard/recruiting-funnels" element={<ProtectedRoute><RecruitingFunnels /></ProtectedRoute>} />
-                       <Route path="/dashboard/recruiting-tracker" element={<ProtectedRoute><RecruitingTracker /></ProtectedRoute>} />
+                       <Route path="/dashboard/recruiting-funnels" element={<Navigate to="/dashboard/command" replace />} />
+                       <Route path="/dashboard/recruiting-tracker" element={<Navigate to="/dashboard/command" replace />} />
                        <Route path="/dashboard/needs-analysis" element={<ProtectedRoute><NeedsAnalysis /></ProtectedRoute>} />
                        <Route path="/dashboard/quoter" element={<ProtectedRoute><Quoter /></ProtectedRoute>} />
                        <Route path="/dashboard/team-analytics" element={<Navigate to="/dashboard/command" replace />} />
@@ -545,8 +551,7 @@ const App = () => (
                        <Route path="/dashboard/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
                        <Route path="/dashboard/inbox/instagram" element={<ProtectedRoute><InstagramInbox /></ProtectedRoute>} />
                        <Route path="/dashboard/instagram-inbox" element={<ProtectedRoute><InstagramInbox /></ProtectedRoute>} />
-                       <Route path="/dashboard/today" element={<ProtectedRoute><Today /></ProtectedRoute>} />
-                       <Route path="/today" element={<ProtectedRoute><Today /></ProtectedRoute>} />
+                       <Route path="/today" element={<Navigate to="/dashboard/command" replace />} />
                        <Route path="/dashboard/recruit" element={<ProtectedRoute><RecruitCommandCenter /></ProtectedRoute>} />
                        <Route path="/recruit" element={<ProtectedRoute><RecruitCommandCenter /></ProtectedRoute>} />
                        <Route path="/dashboard/team-chat" element={<ProtectedRoute><TeamChat /></ProtectedRoute>} />

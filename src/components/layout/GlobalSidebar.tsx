@@ -15,7 +15,6 @@ import {
   ChevronRight,
   Crown,
   Trophy,
-  ArrowRightLeft,
   CreditCard,
   Filter,
   GitMerge,
@@ -244,8 +243,7 @@ export function GlobalSidebar({
         { icon: GitMerge, label: "Agent Duplicates", href: "/admin/agent-duplicates" },
         // 2026-06-18 Sam: June hires punch list with inline edit + Send Course.
         { icon: UserCog, label: "June Hires Punch List", href: "/admin/june-hires", special: true },
-        // 2026-06-18 Sam: backfill 31 licensed agents missing AgentLink linkage.
-        { icon: ArrowRightLeft, label: "AgentLink Backfill", href: "/admin/agentlink-backfill" },
+        // MP-230 (2026-07-01): AgentLink Backfill sidebar entry removed per Sam directive.
         { icon: Settings, label: "Admin", href: "/dashboard/command" },
       );
       oldApplicants.push(

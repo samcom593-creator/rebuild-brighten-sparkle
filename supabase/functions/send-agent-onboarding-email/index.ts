@@ -28,13 +28,14 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 interface QueueRow {
   id: string;
   agent_id: string;
-  email_kind: "course" | "discord";
+  email_kind: "course" | "discord" | "whatsapp";
   attempt_count: number;
 }
 
 interface Settings {
   resend_api_key: string | null;
   discord_invite_url: string | null;
+  whatsapp_group_invite_url: string | null;
   training_course_url: string;
   from_address: string;
 }
@@ -46,6 +47,7 @@ async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settin
     .in("key", [
       "resend_api_key",
       "discord_invite_url",
+      "whatsapp_group_invite_url",
       "training_course_url",
       "onboarding_email_from_address",
     ]);
@@ -60,6 +62,8 @@ async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settin
 
   const discordRaw = map.get("discord_invite_url");
   const discordUrl = discordRaw && discordRaw.trim().length > 0 ? discordRaw.trim() : null;
+  const whatsappRaw = map.get("whatsapp_group_invite_url");
+  const whatsappUrl = whatsappRaw && whatsappRaw.trim().length > 0 ? whatsappRaw.trim() : null;
   const courseRaw = map.get("training_course_url");
   const courseUrl = courseRaw && courseRaw.trim().length > 0
     ? courseRaw.trim()
@@ -72,6 +76,7 @@ async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settin
   return {
     resend_api_key: envResend && envResend.length > 8 ? envResend : (map.get("resend_api_key") ?? null),
     discord_invite_url: discordUrl,
+    whatsapp_group_invite_url: whatsappUrl,
     training_course_url: courseUrl,
     from_address: fromAddr,
   };
@@ -162,6 +167,45 @@ function buildDiscordEmail(name: string, discordUrl: string | null): { subject: 
   ${ctaHtml}
   <p>We meet at <strong>9:30 AM Central every weekday</strong> — that's when the engine fires. Morning huddle, hot leads, scripts, role-plays, and live deal walks.</p>
   <p>See you there.</p>
+  <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
+</body></html>`.trim();
+
+  return { subject, html, text };
+}
+
+function buildWhatsappEmail(name: string, whatsappUrl: string | null): { subject: string; html: string; text: string } {
+  const fn = escapeHtml(firstName(name));
+  const url = whatsappUrl ? escapeHtml(whatsappUrl) : null;
+  const subject = "Join the APEX WhatsApp community";
+
+  const linkLine = url
+    ? `Jump in here: ${whatsappUrl}`
+    : `Reply to this email and I'll send you the WhatsApp invite directly.`;
+
+  const text = [
+    `Hey ${fn},`,
+    ``,
+    linkLine,
+    ``,
+    `This is where the APEX community lives day-to-day — wins, questions, live plays, and back-and-forth with the team.`,
+    ``,
+    `See you inside.`,
+    ``,
+    `— Sam`,
+    `APEX Financial`,
+  ].join("\n");
+
+  const ctaHtml = url
+    ? `<p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#25D366;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Join the WhatsApp community</a></p>`
+    : `<p>Reply to this email and I'll send you the WhatsApp invite directly.</p>`;
+
+  const html = `
+<!doctype html>
+<html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
+  <p>Hey ${fn},</p>
+  ${ctaHtml}
+  <p>This is where the APEX community lives day-to-day — wins, questions, live plays, and back-and-forth with the team.</p>
+  <p>See you inside.</p>
   <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
 </body></html>`.trim();
 
@@ -314,9 +358,14 @@ async function drainQueue(sb: ReturnType<typeof createClient>, settings: Setting
 
     const name = profile?.full_name ?? null;
 
-    const built = row.email_kind === "course"
-      ? buildCourseEmail(name ?? "", settings.training_course_url)
-      : buildDiscordEmail(name ?? "", settings.discord_invite_url);
+    let built: { subject: string; html: string; text: string };
+    if (row.email_kind === "course") {
+      built = buildCourseEmail(name ?? "", settings.training_course_url);
+    } else if (row.email_kind === "whatsapp") {
+      built = buildWhatsappEmail(name ?? "", settings.whatsapp_group_invite_url);
+    } else {
+      built = buildDiscordEmail(name ?? "", settings.discord_invite_url);
+    }
 
     // Discord email without an invite link is still useful (asks them to
     // reply for the link), so we still send. If we ever want to gate it,
@@ -378,6 +427,7 @@ serve(async (req: Request): Promise<Response> => {
         ...result,
         config: {
           discord_invite_url_present: Boolean(settings.discord_invite_url),
+          whatsapp_group_invite_url_present: Boolean(settings.whatsapp_group_invite_url),
           training_course_url: settings.training_course_url,
           from_address: settings.from_address,
         },

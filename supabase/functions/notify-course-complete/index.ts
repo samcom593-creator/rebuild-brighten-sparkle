@@ -32,12 +32,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Processing course completion for agent: ${agentId}`);
 
-    // Get agent's manager and profile (include manager_id as fallback)
+    // Get agent's manager and profile (include manager_id as fallback).
+    // license_status gates the Discord CTA (LICENSED ONLY — matches
+    // send-agent-onboarding-email guard).
     const { data: agent } = await supabase
       .from("agents")
-      .select("invited_by_manager_id, manager_id, profile_id")
+      .select("invited_by_manager_id, manager_id, profile_id, license_status")
       .eq("id", agentId)
       .single();
+
+    const licenseStatus = (agent?.license_status ?? "").toString().toLowerCase();
+    const isLicensed = licenseStatus === "licensed";
 
     // Get agent profile (try profile_id first, fallback to user_id)
     let finalAgentName = agentName || "Agent";
@@ -202,7 +207,8 @@ const handler = async (req: Request): Promise<Response> => {
         </p>
       </div>
       
-      <!-- Discord -->
+      <!-- Discord (LICENSED ONLY — gate matches send-agent-onboarding-email) -->
+      ${isLicensed ? `
       <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;">
         <h3 style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;">💬 Join Our Discord</h3>
         <p style="font-size:14px;color:#d1d5db;margin:0 0 12px 0;">
@@ -210,6 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
         </p>
         <a href="${discordLink}" style="display:inline-block;background:#14b8a6;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Join Discord →</a>
       </div>
+      ` : ''}
       
       <!-- Daily Meeting -->
       <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;">

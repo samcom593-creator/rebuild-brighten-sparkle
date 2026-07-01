@@ -55,6 +55,8 @@ const violations = [];
 
 for (const relativePath of filesToCheck) {
   const absolutePath = path.join(repoRoot, relativePath);
+  // Skip if file no longer exists (deleted upstream — do not block commits repo-wide)
+  if (!fs.existsSync(absolutePath)) continue;
   const source = fs.readFileSync(absolutePath, "utf8");
 
   for (const { regex, message } of forbiddenPatterns) {
@@ -66,6 +68,8 @@ for (const relativePath of filesToCheck) {
 
 for (const relativePath of criticalRecruitingFiles) {
   const absolutePath = path.join(repoRoot, relativePath);
+  // Skip if file no longer exists (deleted upstream — do not block commits repo-wide)
+  if (!fs.existsSync(absolutePath)) continue;
   const source = fs.readFileSync(absolutePath, "utf8");
 
   if (/rebuild-brighten-sparkle\.lovable\.app/.test(source)) {

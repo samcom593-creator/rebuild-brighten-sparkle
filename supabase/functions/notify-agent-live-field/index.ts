@@ -33,12 +33,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Processing live field notification for agent: ${agentId}`);
 
-    // Get agent profile
+    // Get agent profile + license_status. license_status gates the Discord
+    // CTA (LICENSED ONLY — matches send-agent-onboarding-email guard).
     const { data: agent } = await supabase
       .from("agents")
-      .select("profile_id, invited_by_manager_id")
+      .select("profile_id, invited_by_manager_id, license_status")
       .eq("id", agentId)
       .single();
+
+    const licenseStatus = (agent?.license_status ?? "").toString().toLowerCase();
+    const isLicensed = licenseStatus === "licensed";
 
     if (!agent?.profile_id) {
       throw new Error("Agent profile not found");
@@ -121,7 +125,8 @@ const handler = async (req: Request): Promise<Response> => {
         <a href="${portalLink}" style="display:inline-block;background:#14b8a6;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Open Agent Portal →</a>
       </div>
       
-      <!-- Discord -->
+      <!-- Discord (LICENSED ONLY — gate matches send-agent-onboarding-email) -->
+      ${isLicensed ? `
       <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;">
         <h3 style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;">💬 Stay Connected</h3>
         <p style="font-size:14px;color:#d1d5db;margin:0 0 12px 0;">
@@ -129,6 +134,7 @@ const handler = async (req: Request): Promise<Response> => {
         </p>
         <a href="${discordLink}" style="display:inline-block;background:#5865F2;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Join Discord →</a>
       </div>
+      ` : ''}
       
       <!-- The Standard -->
       <div style="background:linear-gradient(135deg,rgba(20,184,166,0.2),rgba(14,165,233,0.2));border-radius:8px;padding:20px;margin:24px 0;border:1px solid rgba(20,184,166,0.3);">

@@ -39,6 +39,20 @@ const handler = async (req: Request): Promise<Response> => {
       auth: { persistSession: false },
     });
 
+    // Discord invite gate: license_status MUST equal 'licensed' before we can
+    // include the Discord CTA in ANY outbound email. This matches the guard in
+    // send-agent-onboarding-email (email_kind='discord' → licensed only).
+    let isLicensed = false;
+    if (agentId) {
+      const { data: licenseRow } = await supabase
+        .from("agents")
+        .select("license_status")
+        .eq("id", agentId)
+        .maybeSingle();
+      const licenseStatus = (licenseRow?.license_status ?? "").toString().toLowerCase();
+      isLicensed = licenseStatus === "licensed";
+    }
+
     // Look up manager email for CC
     let managerEmail: string | null = null;
     if (managerId) {
@@ -117,13 +131,15 @@ const handler = async (req: Request): Promise<Response> => {
         <a href="${PORTAL_LINK}" class="button">Open My Portal →</a>
       </div>
       
-      <!-- Step ${contractingLink ? '3' : '2'}: Discord -->
+      <!-- Step ${contractingLink ? '3' : '2'}: Discord (LICENSED ONLY — gate matches send-agent-onboarding-email) -->
+      ${isLicensed ? `
       <div class="discord-step">
         <h3 style="color:#5865F2;"><span class="step-number" style="background:#5865F2;">${contractingLink ? '3' : '2'}</span> Join Our Team Discord</h3>
         <p>Connect with the team for daily training, support, and announcements.</p>
         <a href="${DISCORD_LINK}" class="button" style="background:#5865F2;">Join Discord →</a>
       </div>
-      
+      ` : ''}
+
       <!-- Step ${contractingLink ? '4' : '3'}: Coursework -->
       <div class="step">
         <h3><span class="step-number">${contractingLink ? '4' : '3'}</span> Complete Your Coursework</h3>

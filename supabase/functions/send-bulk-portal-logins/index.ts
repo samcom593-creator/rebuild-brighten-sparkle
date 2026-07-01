@@ -45,10 +45,12 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Get all active agents with valid profiles by joining via user_id
+    // Get all active agents with valid profiles by joining via user_id.
+    // license_status is loaded to gate the Discord CTA in each email
+    // (LICENSED ONLY — matches send-agent-onboarding-email guard).
     const { data: agents, error: agentsError } = await supabaseAdmin
       .from("agents")
-      .select("id, user_id, onboarding_stage, invited_by_manager_id")
+      .select("id, user_id, onboarding_stage, invited_by_manager_id, license_status")
       .eq("is_deactivated", false)
       .not("user_id", "is", null);
 
@@ -109,6 +111,11 @@ const handler = async (req: Request): Promise<Response> => {
 
       results.total++;
       const firstName = profile.full_name?.split(" ")[0] || "Agent";
+
+      // Discord invite gate: license_status MUST equal 'licensed' before we can
+      // include the Discord CTA. Matches send-agent-onboarding-email guard.
+      const licenseStatus = (agent?.license_status ?? "").toString().toLowerCase();
+      const isLicensed = licenseStatus === "licensed";
 
       try {
         // Generate magic links for both destinations
@@ -222,7 +229,8 @@ const handler = async (req: Request): Promise<Response> => {
                     </a>
                   </div>
 
-                  <!-- Discord Link -->
+                  <!-- Discord Link (LICENSED ONLY — gate matches send-agent-onboarding-email) -->
+                  ${isLicensed ? `
                   <div style="background: rgba(88, 101, 242, 0.1); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
                     <p style="color: #5865F2; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
                       💬 Join Our Team Discord
@@ -234,6 +242,7 @@ const handler = async (req: Request): Promise<Response> => {
                       Join Discord →
                     </a>
                   </div>
+                  ` : ''}
 
                   <!-- Fallback note -->
                   <div style="background: rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 16px; margin: 24px 0;">

@@ -323,7 +323,7 @@ const handler = async (req: Request): Promise<Response> => {
     <div style="margin-top:32px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.1);display:flex;gap:12px;flex-wrap:wrap">
       <a href="tel:+1${SAM_PHONE_TEL}" style="flex:1;min-width:140px;background:#1a1a2e;color:#14b8a6;padding:12px 16px;border-radius:8px;text-decoration:none;text-align:center;font-weight:600;font-size:13px">📞 ${SAM_PHONE_DISPLAY}</a>
       <a href="${SAM_PHONE_SMS}" style="flex:1;min-width:140px;background:#1a1a2e;color:#14b8a6;padding:12px 16px;border-radius:8px;text-decoration:none;text-align:center;font-weight:600;font-size:13px">💬 Text Sam</a>
-      <a href="${DISCORD_URL}" style="flex:1;min-width:140px;background:#1a1a2e;color:#5865F2;padding:12px 16px;border-radius:8px;text-decoration:none;text-align:center;font-weight:600;font-size:13px">💬 Join Discord</a>
+      ${sanitized.licenseStatus === 'licensed' ? `<a href="${DISCORD_URL}" style="flex:1;min-width:140px;background:#1a1a2e;color:#5865F2;padding:12px 16px;border-radius:8px;text-decoration:none;text-align:center;font-weight:600;font-size:13px">💬 Join Discord</a>` : ''}
       <a href="${LOGIN_URL}" style="flex:1;min-width:140px;background:#1a1a2e;color:#fff;padding:12px 16px;border-radius:8px;text-decoration:none;text-align:center;font-weight:600;font-size:13px">🔑 Log In</a>
     </div>
 
@@ -362,8 +362,8 @@ Your path:
 4. Start writing deals`
 }
 
-Log in: ${LOGIN_URL}
-Discord: ${DISCORD_URL}
+Log in: ${LOGIN_URL}${sanitized.licenseStatus === 'licensed' ? `
+Discord: ${DISCORD_URL}` : ''}
 
 — Sam
 APEX Financial · ${SAM_PHONE_DISPLAY}`,

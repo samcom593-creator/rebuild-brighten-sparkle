@@ -50,10 +50,11 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get agent details including manager
+    // Get agent details including manager and license_status.
+    // license_status gates the Discord CTA in this email (LICENSED ONLY).
     const { data: agent, error: agentError } = await supabaseClient
       .from("agents")
-      .select("user_id, onboarding_stage, invited_by_manager_id")
+      .select("user_id, onboarding_stage, invited_by_manager_id, license_status")
       .eq("id", agentId)
       .single();
 
@@ -102,6 +103,12 @@ const handler = async (req: Request): Promise<Response> => {
       .filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     const firstName = profile.full_name?.split(" ")[0] || "Agent";
+
+    // Discord invite gate: license_status MUST equal 'licensed' before we can
+    // include the Discord CTA in ANY outbound email. Matches the guard in
+    // send-agent-onboarding-email (email_kind='discord' → licensed only).
+    const licenseStatus = (agent?.license_status ?? "").toString().toLowerCase();
+    const isLicensed = licenseStatus === "licensed";
 
     // Generate magic links
     const portalMagicLink = await generateMagicToken(supabaseClient, agentId, profile.email, "portal");
@@ -214,6 +221,7 @@ const handler = async (req: Request): Promise<Response> => {
                   </p>
                 </div>
 
+                ${isLicensed ? `
                 <div style="background: rgba(88, 101, 242, 0.1); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
                   <p style="color: #5865F2; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
                     💬 Join Our Team Discord
@@ -225,6 +233,7 @@ const handler = async (req: Request): Promise<Response> => {
                     Join Discord →
                   </a>
                 </div>
+                ` : ''}
 
                 <div style="background: rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 16px; margin: 24px 0;">
                   <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">

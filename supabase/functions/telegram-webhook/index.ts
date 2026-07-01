@@ -634,15 +634,29 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
       break;
     }
     case "/training": {
-      const { data: u } = await sb.from("telegram_users").select("stage").eq("chat_id", chat_id).maybeSingle();
+      const { data: u } = await sb.from("telegram_users").select("stage, agent_id").eq("chat_id", chat_id).maybeSingle();
       const eligible = ["hired", "onboarding_d1", "onboarding_d3", "onboarding_d7", "onboarding_d14", "active_agent"];
       if (!u || !eligible.includes(u.stage as string)) {
         await tgSend({ chat_id, text: `Training opens after you're hired. Your stage: ${u?.stage ?? "unknown"}` });
       } else {
-        await tgSend({
-          chat_id,
-          text: `Training hub:\n\n• Onboarding videos: https://apex-financial.org/training\n• Script library: https://apex-financial.org/training/scripts\n• Live floor (Discord): https://discord.gg/apex`,
-        });
+        // Discord link gate: LICENSED ONLY (matches send-agent-onboarding-email
+        // guard). Unlicensed hired agents still get training + script library,
+        // just no Discord line — Discord is post-license privilege.
+        let isLicensed = false;
+        if (u?.agent_id) {
+          const { data: ag } = await sb
+            .from("agents")
+            .select("license_status")
+            .eq("id", u.agent_id)
+            .maybeSingle();
+          const licenseStatus = ((ag as any)?.license_status ?? "").toString().toLowerCase();
+          isLicensed = licenseStatus === "licensed";
+        }
+        const base = `Training hub:\n\n• Onboarding videos: https://apex-financial.org/training\n• Script library: https://apex-financial.org/training/scripts`;
+        const text = isLicensed
+          ? `${base}\n• Live floor (Discord): https://discord.gg/apex`
+          : base;
+        await tgSend({ chat_id, text });
       }
       break;
     }

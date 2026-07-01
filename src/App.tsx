@@ -129,7 +129,6 @@ const LinksPage = lazy(() => import("./pages/LinksPage"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
 const HeadhuntersCalendar = lazy(() => import("./pages/HeadhuntersCalendar"));
 const InterviewCommandCenter = lazy(() => import("./pages/InterviewCommandCenter"));
-const Hierarchy = lazy(() => import("./pages/Hierarchy"));
 const AdminBoardAccess = lazy(() => import("./pages/AdminBoardAccess"));
 const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
 const SeminarPage = lazy(() => import("./pages/SeminarPage"));
@@ -167,7 +166,6 @@ const RecruitingFunnels = lazy(() => import("./pages/RecruitingFunnels"));
 const RecruitingTracker = lazy(() => import("./pages/RecruitingTracker"));
 const NeedsAnalysis = lazy(() => import("./pages/NeedsAnalysis"));
 const Quoter = lazy(() => import("./pages/Quoter"));
-const TeamAnalytics = lazy(() => import("./pages/TeamAnalytics"));
 const AwardsGallery = lazy(() => import("./pages/AwardsGallery"));
 const HallOfFame = lazy(() => import("./pages/HallOfFame"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
@@ -201,6 +199,7 @@ const ManagerDashboard = lazy(() => import("./pages/admin/ManagerDashboard"));
 const LicensingTracker = lazy(() => import("./pages/admin/LicensingTracker"));
 const CommissionRecovery = lazy(() => import("./pages/admin/CommissionRecovery"));
 const Join = lazy(() => import("./pages/Join"));
+const HireLink = lazy(() => import("./pages/HireLink"));
 const AgentDetail = lazy(() => import("./pages/AgentDetail"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Rewards = lazy(() => import("./pages/Rewards"));
@@ -216,7 +215,6 @@ const MyPlaques = lazy(() => import("./pages/MyPlaques"));
 const EmailDeliveryLog = lazy(() => import("./pages/EmailDeliveryLog"));
 const CompTiersSettings = lazy(() => import("./pages/admin/CompTiersSettings"));
 const IntegrationsSettings = lazy(() => import("./pages/admin/IntegrationsSettings"));
-const MyTeam = lazy(() => import("./pages/MyTeam"));
 const MyDeals = lazy(() => import("./pages/MyDeals"));
 const SeminarControl = lazy(() => import("./pages/SeminarControl"));
 const SamInbox = lazy(() => import("./pages/SamInbox"));
@@ -370,6 +368,8 @@ const App = () => (
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/join" element={<Join />} />
+                  {/* MP-233 magic hire link — public, token-gated, above any auth wall */}
+                  <Route path="/hire/:token" element={<HireLink />} />
                   {/* /agent-signup is the canonical recruiting URL referenced from
                       Install.tsx and recruiting CTAs. /join remains the separate
                       combined sign-in / create-account flow used by existing links. */}
@@ -439,7 +439,7 @@ const App = () => (
                     <Route path="/dashboard/xcel-pipeline" element={<ProtectedRoute requireAdmin><XcelPipeline /></ProtectedRoute>} />
                     <Route path="/dashboard/settings" element={<Settings />} />
                     <Route path="/dashboard/settings/deleted-leads" element={<ProtectedRoute requireAdmin><DeletedLeadsVault /></ProtectedRoute>} />
-                    <Route path="/dashboard/team" element={<Navigate to="/dashboard/hierarchy" replace />} />
+                    <Route path="/dashboard/team" element={<Navigate to="/dashboard/crm" replace />} />
                     {/* 2026-06-16 Sam directive: short recruiting links.
                         apex-financial.org/r/sjames01 → /apply?ref=sjames01
                         Resolves via the existing resolve-ref-slug edge fn so
@@ -514,7 +514,7 @@ const App = () => (
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
                      <Route path="/dashboard/headhunters-calendar" element={<ProtectedRoute><HeadhuntersCalendar /></ProtectedRoute>} />
                      <Route path="/dashboard/interviews" element={<ProtectedRoute requireAdmin allowManagers><InterviewCommandCenter /></ProtectedRoute>} />
-                     <Route path="/dashboard/hierarchy" element={<ProtectedRoute requireAdmin allowManagers><Hierarchy /></ProtectedRoute>} />
+                     <Route path="/dashboard/hierarchy" element={<Navigate to="/dashboard/crm" replace />} />
                        <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
                        <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
                        <Route path="/dashboard/book-of-business" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />
@@ -535,7 +535,7 @@ const App = () => (
                        <Route path="/dashboard/recruiting-tracker" element={<ProtectedRoute><RecruitingTracker /></ProtectedRoute>} />
                        <Route path="/dashboard/needs-analysis" element={<ProtectedRoute><NeedsAnalysis /></ProtectedRoute>} />
                        <Route path="/dashboard/quoter" element={<ProtectedRoute><Quoter /></ProtectedRoute>} />
-                       <Route path="/dashboard/team-analytics" element={<ProtectedRoute><TeamAnalytics /></ProtectedRoute>} />
+                       <Route path="/dashboard/team-analytics" element={<Navigate to="/dashboard/command" replace />} />
                        <Route path="/dashboard/awards" element={<ProtectedRoute><AwardsGallery /></ProtectedRoute>} />
                        <Route path="/dashboard/hall-of-fame" element={<ProtectedRoute><HallOfFame /></ProtectedRoute>} />
                        <Route path="/hall-of-fame" element={<HallOfFame />} />
@@ -583,7 +583,7 @@ const App = () => (
                            <Route path="/dashboard/email-log" element={<ProtectedRoute requireAdmin><EmailDeliveryLog /></ProtectedRoute>} />
                            <Route path="/dashboard/comp-tiers" element={<ProtectedRoute requireAdmin><CompTiersSettings /></ProtectedRoute>} />
                            <Route path="/dashboard/integrations" element={<ProtectedRoute requireAdmin><IntegrationsSettings /></ProtectedRoute>} />
-                           <Route path="/dashboard/my-team" element={<ProtectedRoute><MyTeam /></ProtectedRoute>} />
+                           <Route path="/dashboard/my-team" element={<Navigate to="/dashboard/crm" replace />} />
                            <Route path="/dashboard/my-deals" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
                            {/* ContentWheel — personal-brand + recruiting Content OS (admin-only). */}
                            <Route path="/admin/contentwheel" element={<ProtectedRoute requireAdmin><ContentWheel /></ProtectedRoute>} />

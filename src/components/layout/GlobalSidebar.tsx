@@ -42,7 +42,6 @@ import {
   TrendingUp,
   UserCog,
   Users,
-  Workflow,
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -231,9 +230,8 @@ export function GlobalSidebar({
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
         // Sam 2026-06-16: Finances · CFO removed — "remove the finance as CFO"
         // Franchise mgmt (Sam owns · managers run their own)
-        { icon: Users, label: "Team Analytics", href: "/dashboard/team-analytics" },
+        // MP-230 (2026-07-01): Team Analytics + Hierarchy removed per Sam directive. Builders + Managers stays.
         { icon: Network, label: "Builders + Managers", href: "/dashboard/managers" },
-        { icon: Workflow, label: "Hierarchy", href: "/dashboard/hierarchy", special: true },
         // Culture + comms (drives momentum, low maintenance)
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },
         // Sam 2026-06-16: Scripts removed — "scripts you can also remove those"
@@ -259,7 +257,7 @@ export function GlobalSidebar({
         { icon: PhoneIncoming, label: "Inbound Leads", href: "/dashboard/inbound-leads", special: true },
         { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center", special: true },
         { icon: Heart, label: "CRM", href: "/dashboard/crm", special: true },
-        { icon: Users, label: "My Team", href: "/dashboard/my-team", special: true },
+        // MP-230 (2026-07-01): My Team removed per Sam directive.
         { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
       );
       more.push(
@@ -269,7 +267,7 @@ export function GlobalSidebar({
         // Sam 2026-06-16: Headhunters Calendar removed for manager nav too
         { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
-        { icon: Workflow, label: "Hierarchy", href: "/dashboard/hierarchy", special: true },
+        // MP-230 (2026-07-01): Hierarchy removed per Sam directive.
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements" },

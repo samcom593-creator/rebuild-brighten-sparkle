@@ -28,14 +28,14 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 interface QueueRow {
   id: string;
   agent_id: string;
-  email_kind: "course" | "discord" | "whatsapp";
+  email_kind: "course" | "discord" | "hired_whatsapp";
   attempt_count: number;
 }
 
 interface Settings {
   resend_api_key: string | null;
   discord_invite_url: string | null;
-  whatsapp_group_invite_url: string | null;
+  whatsapp_hired_invite_url: string | null;
   training_course_url: string;
   from_address: string;
 }
@@ -47,7 +47,7 @@ async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settin
     .in("key", [
       "resend_api_key",
       "discord_invite_url",
-      "whatsapp_group_invite_url",
+      "whatsapp_hired_invite_url",
       "training_course_url",
       "onboarding_email_from_address",
     ]);
@@ -62,7 +62,7 @@ async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settin
 
   const discordRaw = map.get("discord_invite_url");
   const discordUrl = discordRaw && discordRaw.trim().length > 0 ? discordRaw.trim() : null;
-  const whatsappRaw = map.get("whatsapp_group_invite_url");
+  const whatsappRaw = map.get("whatsapp_hired_invite_url");
   const whatsappUrl = whatsappRaw && whatsappRaw.trim().length > 0 ? whatsappRaw.trim() : null;
   const courseRaw = map.get("training_course_url");
   const courseUrl = courseRaw && courseRaw.trim().length > 0
@@ -76,7 +76,7 @@ async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settin
   return {
     resend_api_key: envResend && envResend.length > 8 ? envResend : (map.get("resend_api_key") ?? null),
     discord_invite_url: discordUrl,
-    whatsapp_group_invite_url: whatsappUrl,
+    whatsapp_hired_invite_url: whatsappUrl,
     training_course_url: courseUrl,
     from_address: fromAddr,
   };
@@ -173,10 +173,10 @@ function buildDiscordEmail(name: string, discordUrl: string | null): { subject: 
   return { subject, html, text };
 }
 
-function buildWhatsappEmail(name: string, whatsappUrl: string | null): { subject: string; html: string; text: string } {
+function buildHiredWhatsappEmail(name: string, whatsappUrl: string | null): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
   const url = whatsappUrl ? escapeHtml(whatsappUrl) : null;
-  const subject = "Join the APEX WhatsApp community";
+  const subject = "Join the APEX hired-agent WhatsApp community";
 
   const linkLine = url
     ? `Jump in here: ${whatsappUrl}`
@@ -290,11 +290,12 @@ interface ProcessResult {
   sent: number;
   failed: number;
   skipped_no_email: number;
+  skipped_wrong_cohort: number;
   errors: Array<{ queue_id: string; agent_id: string; kind: string; error: string }>;
 }
 
 async function drainQueue(sb: ReturnType<typeof createClient>, settings: Settings): Promise<ProcessResult> {
-  const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped_no_email: 0, errors: [] };
+  const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped_no_email: 0, skipped_wrong_cohort: 0, errors: [] };
 
   if (!settings.resend_api_key) {
     throw new Error("Missing RESEND_API_KEY (env or system_settings.resend_api_key).");
@@ -320,7 +321,7 @@ async function drainQueue(sb: ReturnType<typeof createClient>, settings: Setting
     // Fetch agent + profile for each row (small N, simpler than batch join).
     const { data: agentRow } = await sb
       .from("agents")
-      .select("id, user_id, agent_code")
+      .select("id, user_id, agent_code, license_status")
       .eq("id", row.agent_id)
       .maybeSingle();
 
@@ -358,11 +359,37 @@ async function drainQueue(sb: ReturnType<typeof createClient>, settings: Setting
 
     const name = profile?.full_name ?? null;
 
+    // Cohort guard: course / discord / hired_whatsapp are HIRED-cohort emails.
+    // They must only fire for agents whose license_status = 'licensed'.
+    // Anything else (NULL / 'unlicensed' / etc.) means the agent shouldn't
+    // be in the hired chain yet — skip and record. Prospect cohort is
+    // handled by the outreach_queue path (source_run = 'prospect_whatsapp'
+    // and 'calendly-invite'), not this queue.
+    const licenseStatus = (agentRow?.license_status ?? "").toString().toLowerCase();
+    const isLicensed = licenseStatus === "licensed";
+
+    if (
+      (row.email_kind === "course" ||
+        row.email_kind === "discord" ||
+        row.email_kind === "hired_whatsapp") &&
+      !isLicensed
+    ) {
+      await sb
+        .from("agent_onboarding_queue")
+        .update({
+          attempt_count: row.attempt_count + 1,
+          last_error: `skipped_wrong_cohort: license_status=${licenseStatus || "null"} but email_kind=${row.email_kind} requires licensed`,
+        })
+        .eq("id", row.id);
+      result.skipped_wrong_cohort += 1;
+      continue;
+    }
+
     let built: { subject: string; html: string; text: string };
     if (row.email_kind === "course") {
       built = buildCourseEmail(name ?? "", settings.training_course_url);
-    } else if (row.email_kind === "whatsapp") {
-      built = buildWhatsappEmail(name ?? "", settings.whatsapp_group_invite_url);
+    } else if (row.email_kind === "hired_whatsapp") {
+      built = buildHiredWhatsappEmail(name ?? "", settings.whatsapp_hired_invite_url);
     } else {
       built = buildDiscordEmail(name ?? "", settings.discord_invite_url);
     }
@@ -427,7 +454,7 @@ serve(async (req: Request): Promise<Response> => {
         ...result,
         config: {
           discord_invite_url_present: Boolean(settings.discord_invite_url),
-          whatsapp_group_invite_url_present: Boolean(settings.whatsapp_group_invite_url),
+          whatsapp_hired_invite_url_present: Boolean(settings.whatsapp_hired_invite_url),
           training_course_url: settings.training_course_url,
           from_address: settings.from_address,
         },

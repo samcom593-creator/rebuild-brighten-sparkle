@@ -149,7 +149,6 @@ const ContentLibrary = lazy(() => import("./pages/ContentLibrary"));
 const HiringPipeline = lazy(() => import("./pages/HiringPipeline"));
 const BookOfBusiness = lazy(() => import("./pages/BookOfBusiness"));
 const BusinessAnalytics = lazy(() => import("./pages/BusinessAnalytics"));
-const CarrierResources = lazy(() => import("./pages/CarrierResources"));
 const Announcements = lazy(() => import("./pages/Announcements"));
 const Finances = lazy(() => import("./pages/Finances"));
 const Scripts = lazy(() => import("./pages/Scripts"));
@@ -519,7 +518,7 @@ const App = () => (
                        <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
                        <Route path="/dashboard/book-of-business" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />
                        <Route path="/dashboard/business-analytics" element={<ProtectedRoute><BusinessAnalytics /></ProtectedRoute>} />
-                       <Route path="/dashboard/carriers" element={<ProtectedRoute><CarrierResources /></ProtectedRoute>} />
+                       <Route path="/dashboard/carriers" element={<Navigate to="/dashboard/book-of-business" replace />} />
                        <Route path="/dashboard/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
                        <Route path="/dashboard/finances" element={<ProtectedRoute requireAdmin><Finances /></ProtectedRoute>} />
                        <Route path="/dashboard/scripts" element={<ProtectedRoute><Scripts /></ProtectedRoute>} />

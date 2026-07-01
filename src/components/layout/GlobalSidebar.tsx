@@ -235,7 +235,6 @@ export function GlobalSidebar({
         // Culture + comms (drives momentum, low maintenance)
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },
         // Sam 2026-06-16: Scripts removed — "scripts you can also remove those"
-        { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         // Admin hub (everything that isn't daily flow)
         { icon: GitMerge, label: "Agent Duplicates", href: "/admin/agent-duplicates" },
@@ -272,7 +271,6 @@ export function GlobalSidebar({
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements" },
         // Sam 2026-06-16: Scripts removed for manager nav too
-        { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
       );
       oldApplicants.push(
@@ -297,7 +295,6 @@ export function GlobalSidebar({
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
         // Sam 2026-06-16: Scripts removed for agent nav too
-        { icon: Briefcase, label: "Carriers", href: "/dashboard/carriers" },
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
       );

@@ -27,7 +27,7 @@
  *   - AgentNotes (existing component)
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
@@ -43,6 +43,13 @@ import {
   Calendar,
   TrendingUp,
   MessageCircle,
+  Pencil,
+  Check,
+  X,
+  UserX,
+  UserCheck,
+  Trash2,
+  Link as LinkIcon,
 } from "lucide-react";
 import {
   Sheet,
@@ -59,6 +66,7 @@ import { AgentOnboardingEmailStatus } from "@/components/dashboard/AgentOnboardi
 import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton";
 import { AgentCredentialsPanel } from "@/components/dashboard/AgentCredentialsPanel";
 import { AgentNotes } from "@/components/dashboard/AgentNotes";
+import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
@@ -183,6 +191,16 @@ export function AgentProfileDrawer() {
   const qc = useQueryClient();
   const agentId = useAgentProfileDrawer((s) => s.agentId);
   const close = useAgentProfileDrawer((s) => s.close);
+
+  // 2026-07-01 PL-MP231 — full-control edit surfaces (Sam: "once hired I have
+  // full control of their account"). Local UI state for inline name edit +
+  // deactivate dialog + delete confirmation.
+  const [nameEditing, setNameEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
+  // MP-233 magic hire link — one-tap generate + copy to clipboard.
+  const [hireLinkLoading, setHireLinkLoading] = useState(false);
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
 
   // Close on route change happens automatically because the Sheet primitive
   // is portaled — but we reset on unmount just in case.
@@ -334,6 +352,22 @@ export function AgentProfileDrawer() {
   const isLicensed = agent?.license_status === "licensed";
 
   return (
+    <>
+    {/* 2026-07-01 PL-MP231 — deactivate dialog for full-control admin block. */}
+    {agent && (
+      <DeactivateAgentDialog
+        open={deactivateOpen}
+        onOpenChange={setDeactivateOpen}
+        agentId={agent.id}
+        agentName={name}
+        currentManagerId={agent.manager_id ?? undefined}
+        onComplete={() => {
+          setDeactivateOpen(false);
+          qc.invalidateQueries({ queryKey: ["agent-profile-drawer"] });
+          toast.success(`${name} deactivated`);
+        }}
+      />
+    )}
     <Sheet open={open} onOpenChange={(o) => { if (!o) close(); }}>
       <SheetContent
         side="right"
@@ -363,7 +397,68 @@ export function AgentProfileDrawer() {
             <div className="flex items-start gap-3">
               <AgentAvatar avatarUrl={avatarUrl ?? undefined} name={name} size="lg" className="ring-2 ring-background shadow-sm" />
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-bold leading-tight truncate">{name}</h2>
+                {/* 2026-07-01 PL-MP231 — inline display_name edit. Tap pencil,
+                    type, hit check. Writes agents.display_name directly. */}
+                {nameEditing ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      autoFocus
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") { setNameEditing(false); }
+                      }}
+                      className="min-w-0 flex-1 text-lg font-bold leading-tight bg-background border-2 border-primary/60 rounded-md px-2 py-1 focus:outline-none"
+                      placeholder="Display name"
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      disabled={nameSaving || !nameDraft.trim()}
+                      onClick={async () => {
+                        if (!agent?.id || !nameDraft.trim()) return;
+                        setNameSaving(true);
+                        const { error } = await (supabase as any)
+                          .from("agents")
+                          .update({ display_name: nameDraft.trim(), updated_at: new Date().toISOString() })
+                          .eq("id", agent.id);
+                        setNameSaving(false);
+                        if (error) {
+                          toast.error(`Rename failed: ${error.message.slice(0, 80)}`);
+                        } else {
+                          toast.success(`Renamed → ${nameDraft.trim()}`);
+                          setNameEditing(false);
+                          qc.invalidateQueries({ queryKey: ["agent-profile-drawer"] });
+                        }
+                      }}
+                      title="Save"
+                    >
+                      {nameSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      onClick={() => setNameEditing(false)}
+                      title="Cancel"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="text-lg font-bold leading-tight truncate">{name}</h2>
+                    <button
+                      type="button"
+                      onClick={() => { setNameDraft(agent?.display_name ?? agent?.profile?.full_name ?? ""); setNameEditing(true); }}
+                      className="text-muted-foreground hover:text-foreground shrink-0"
+                      title="Rename agent"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-1.5 mt-1">
                   {code && (
                     <button
@@ -572,6 +667,71 @@ export function AgentProfileDrawer() {
               </Button>
             </div>
 
+            {/* MP-233 — Generate Hire Link (admin/manager only). One tap:
+                generate + copy URL to clipboard + toast success. Prospect
+                pastes it wherever the conversation is already happening. */}
+            {isAdmin && (
+              <Button
+                variant="secondary"
+                size="sm"
+                data-testid="generate-hire-link"
+                data-invite-kind="hire"
+                className="w-full h-9 gap-1.5"
+                disabled={hireLinkLoading}
+                onClick={async () => {
+                  if (!agent) return;
+                  setHireLinkLoading(true);
+                  try {
+                    const licensed = (agent.license_status ?? "").toLowerCase() === "licensed";
+                    const { data, error } = await supabase.rpc("generate_invite_token", {
+                      p_kind: "hire",
+                      p_expires_hours: 168,
+                      p_target_role: licensed ? "hired_licensed" : "hired_unlicensed",
+                      p_target_manager_id: agent.manager_id ?? null,
+                      p_prefill: {
+                        full_name: agent.display_name ?? agent.profile?.full_name ?? null,
+                        phone: agent.profile?.phone ?? null,
+                        email: agent.profile?.email ?? null,
+                      },
+                      p_notes: `AgentProfileDrawer for ${agent.id}`,
+                    });
+                    if (error) {
+                      toast.error(error.message);
+                      return;
+                    }
+                    const url = (data as { url?: string })?.url;
+                    if (!url) {
+                      toast.error("No URL returned. Try again.");
+                      return;
+                    }
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      toast.success("Hire link copied. 7-day expiry, one-use.");
+                    } catch {
+                      toast.success(`Hire link generated: ${url}`);
+                    }
+                  } catch (err) {
+                    console.error("generate_invite_token failed", err);
+                    toast.error("Couldn't generate hire link.");
+                  } finally {
+                    setHireLinkLoading(false);
+                  }
+                }}
+              >
+                {hireLinkLoading ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Generating…
+                  </>
+                ) : (
+                  <>
+                    <LinkIcon className="h-3.5 w-3.5" />
+                    Generate Hire Link
+                  </>
+                )}
+              </Button>
+            )}
+
             {/* Contact + manager */}
             <div className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-card/60 p-3">
               <div className="grid grid-cols-3 gap-2 text-xs">
@@ -673,6 +833,82 @@ export function AgentProfileDrawer() {
               )}
             </div>
 
+            {/* 2026-07-01 PL-MP231 — full-control admin block. Sam directive:
+                "once hired I have full control of their account". Deactivate
+                soft-deletes (via existing DeactivateAgentDialog which zeros
+                downline links + closes tickets). Restore un-flags. Delete
+                (hard) is bot-sql only and never wired to UI — surfaced as an
+                inline note so Sam knows the exact incantation. */}
+            {isAdmin && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-3.5 w-3.5 text-red-500" />
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-red-500">Full control · admin</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {agent.is_deactivated ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
+                      onClick={async () => {
+                        if (!agent?.id) return;
+                        const ok = window.confirm(`Restore ${name}? They will show back up in the roster.`);
+                        if (!ok) return;
+                        const { error } = await (supabase as any)
+                          .from("agents")
+                          .update({
+                            is_deactivated: false,
+                            is_inactive: false,
+                            status: "active",
+                            updated_at: new Date().toISOString(),
+                          })
+                          .eq("id", agent.id);
+                        if (error) toast.error(`Restore failed: ${error.message.slice(0, 80)}`);
+                        else {
+                          toast.success(`✅ ${name} restored`);
+                          qc.invalidateQueries({ queryKey: ["agent-profile-drawer"] });
+                        }
+                      }}
+                      title="Restore this deactivated agent"
+                    >
+                      <UserCheck className="h-3.5 w-3.5" /> Restore
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 gap-1.5 border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
+                      onClick={() => setDeactivateOpen(true)}
+                      title="Soft-delete: terminate, switch teams, or remove"
+                    >
+                      <UserX className="h-3.5 w-3.5" /> Deactivate
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 gap-1.5 border-red-500/40 text-red-500 hover:bg-red-500/10"
+                    onClick={() => {
+                      // Hard-delete requires bot-sql (guarded by service role +
+                      // Sam's admin token). Never wired to the UI to prevent
+                      // accidental prod nukes. Copy the exact SQL so Sam can
+                      // paste-run from his admin machine.
+                      const sql = `-- HARD DELETE agent ${agent.id} (${name})\n-- Run via bot-sql only — service role required.\nselect apex_admin_hard_delete_agent('${agent.id}');`;
+                      copyToClipboard(sql, "Hard-delete SQL");
+                      toast.warning("Hard delete = bot-sql only. SQL copied to clipboard.");
+                    }}
+                    title="Hard delete (bot-sql only) — copies the SQL to clipboard"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Delete SQL
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                  Deactivate = soft (reversible). Delete = hard (bot-sql only, irreversible — SQL copied to clipboard for Sam to run via admin RPC).
+                </p>
+              </div>
+            )}
+
             {/* Credentials (admin only — the existing AgentCredentialsPanel
                 already hides itself for non-admins). */}
             {isAdmin && (
@@ -730,29 +966,34 @@ export function AgentProfileDrawer() {
               onClick={async () => {
                 if (!agent?.id) return;
                 try {
+                  // 2026-07-01 PL-MP231 — also re-fire WhatsApp hired invite
+                  // (hired_whatsapp email_kind) so the full onboarding trio
+                  // (Course + Discord + WhatsApp) ships from one tap.
                   await (supabase as any)
                     .from("agent_onboarding_queue")
                     .upsert(
                       [
-                        { agent_id: agent.id, email_kind: "course",  target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
-                        { agent_id: agent.id, email_kind: "discord", target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
+                        { agent_id: agent.id, email_kind: "course",          target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
+                        { agent_id: agent.id, email_kind: "discord",         target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
+                        { agent_id: agent.id, email_kind: "hired_whatsapp",  target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
                       ],
                       { onConflict: "agent_id,email_kind" },
                     );
                   const { data } = await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
                   const sent = (data as any)?.sent ?? 0;
-                  toast.success(`Course + Discord re-sent (${sent} delivered)`);
+                  toast.success(`Course + Discord + WhatsApp re-sent (${sent} delivered)`);
                 } catch (e: any) {
                   toast.error(`Send failed: ${e?.message?.slice(0, 80) ?? "unknown"}`);
                 }
               }}
-              title="Re-fire course + Discord emails (idempotent)"
+              title="Re-fire course + Discord + WhatsApp onboarding emails (idempotent)"
             >
-              <Mail className="h-3.5 w-3.5" /> Course
+              <Mail className="h-3.5 w-3.5" /> Onboard
             </Button>
           </div>
         )}
       </SheetContent>
     </Sheet>
+    </>
   );
 }

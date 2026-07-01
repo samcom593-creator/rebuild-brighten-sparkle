@@ -1,5 +1,8 @@
 project_id = "xrzweoneiieddzxogewk"
 
+[functions.consume-invite-token]
+verify_jwt = false
+
 [functions.discord-webhook-notify]
 verify_jwt = false
 
@@ -698,4 +701,16 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.assistant-add-interview]
+verify_jwt = false
+
+[functions.apex-ai-nudge]
+verify_jwt = false
+
+[functions.daily-brief]
+verify_jwt = false
+
+[functions.outreach-sender]
+verify_jwt = false
+
+[functions.send-calendly-invite]
 verify_jwt = false

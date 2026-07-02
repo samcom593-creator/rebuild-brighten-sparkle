@@ -19,7 +19,6 @@ import {
   Copy,
   Check,
   Plus,
-  ExternalLink,
   Ban,
   Loader2,
   Users,
@@ -284,46 +283,35 @@ export default function InviteLinksAdmin() {
                             {row.kind}
                           </Badge>
                           {statusBadge(row)}
-                          {row.target_role ? (
-                            <span className="text-[11px] text-muted-foreground">
-                              {row.target_role}
-                            </span>
-                          ) : null}
                         </div>
                         <p className="text-sm font-mono truncate mt-1 text-muted-foreground">
                           {url}
                         </p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Created {new Date(row.created_at).toLocaleString()} ·
                           Expires {new Date(row.expires_at).toLocaleDateString()}
                           {row.used_at
-                            ? ` · Used ${new Date(row.used_at).toLocaleString()}`
+                            ? ` · Used ${new Date(row.used_at).toLocaleDateString()}`
                             : ""}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-1">
                         <Button
-                          variant="ghost"
                           size="sm"
                           onClick={() => copyUrl(row)}
                           data-testid={`copy-${row.id}`}
+                          className="gap-1.5"
                         >
                           {copiedId === row.id ? (
-                            <Check className="h-4 w-4 text-emerald-400" />
+                            <>
+                              <Check className="h-4 w-4" /> Copied
+                            </>
                           ) : (
-                            <Copy className="h-4 w-4" />
+                            <>
+                              <Copy className="h-4 w-4" /> Copy
+                            </>
                           )}
                         </Button>
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Button variant="ghost" size="sm">
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </a>
                         {revocable ? (
                           <Button
                             variant="ghost"

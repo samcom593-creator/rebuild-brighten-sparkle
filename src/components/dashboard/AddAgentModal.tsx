@@ -70,7 +70,6 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [managerId, setManagerId] = useState("");
-  const [instagramHandle, setInstagramHandle] = useState("");
   const [licenseStatus, setLicenseStatus] = useState<"licensed" | "unlicensed">("unlicensed");
   const [builderTrack, setBuilderTrack] = useState<BuilderTrack>("agent");
   // Sam-feedback 2026-06-03: Transfer needed = ON → collect carriers,
@@ -175,7 +174,6 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           managerId,
           licenseStatus,
           builderTrack: isAdmin ? builderTrack : undefined,
-          instagramHandle: instagramHandle.trim() || undefined,
           // Sam-feedback 2026-06-03: Transfer block — only sent when ON
           transferNeeded,
           transferCarriers: transferNeeded ? (carriers.trim() || undefined) : undefined,
@@ -258,7 +256,6 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     setEmail("");
     setPhone("");
     setManagerId("");
-    setInstagramHandle("");
     setLicenseStatus("unlicensed");
     setBuilderTrack("agent");
     setTransferNeeded(false);
@@ -408,17 +405,6 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
             </div>
           ) : null}
 
-          {/* Instagram (Optional) */}
-          <div className="space-y-1.5">
-            <Label htmlFor="instagram">Instagram (optional)</Label>
-            <Input
-              id="instagram"
-              value={instagramHandle}
-              onChange={(e) => setInstagramHandle(e.target.value)}
-              placeholder="@username"
-            />
-          </div>
-
           {/* Sam-feedback 2026-06-03: Transfer needed toggle. Off = simple
               4-field add. On = collect carrier transfer info upline cares about. */}
           <div className="space-y-3 rounded-lg border border-border/40 bg-muted/20 p-3">
@@ -465,22 +451,17 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
             ) : null}
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                "Add Agent"
-              )}
-            </Button>
-          </div>
+          {/* Single primary action — dialog X closes if user wants out. */}
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              "Add Agent"
+            )}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

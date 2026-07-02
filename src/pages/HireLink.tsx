@@ -189,9 +189,8 @@ export default function HireLink() {
           <h1 className="text-2xl font-bold text-center tracking-tight">
             You're in. Activate your APEX account.
           </h1>
-          <p className="text-sm text-muted-foreground text-center mt-2 max-w-sm">
-            Confirm your info. We'll spin up your account, drop you in the
-            right rooms, and your manager will reach out.
+          <p className="text-sm text-muted-foreground text-center mt-2">
+            Confirm your info — your manager will reach out.
           </p>
         </div>
 

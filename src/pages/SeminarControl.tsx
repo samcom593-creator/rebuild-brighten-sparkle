@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { CalendarClock, CheckCircle2, AlertTriangle, Trophy, GraduationCap, FileCheck2, UserPlus, Crown, Mail, MessageSquare, Bell, RefreshCw } from "lucide-react";
@@ -332,7 +333,7 @@ export default function SeminarControl() {
               <CalendarClock className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
               <div className="font-medium text-foreground">No seminar registrations yet</div>
               <div className="mt-1">
-                Drive traffic to <a href="/seminar" className="underline">/seminar</a> to start collecting registrations.
+                Drive traffic to <Link to="/seminar" className="underline">/seminar</Link> to start collecting registrations.
               </div>
             </div>
           )}

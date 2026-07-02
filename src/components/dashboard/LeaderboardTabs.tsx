@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Medal, Award, Target, Percent, Crown, Users, Flame, Circle, Building2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -71,6 +72,7 @@ const getInitials = (name: string) => {
 };
 
 export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
+  const navigate = useNavigate();
   const [period, setPeriod] = useState<Period>("day");
   const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [sortBy, setSortBy] = useState<SortCategory>("alp");
@@ -701,7 +703,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                                     )}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      window.location.href = `/dashboard/crm?focusAgentId=${entry.agentId}`;
+                                      navigate(`/dashboard/crm?focusAgentId=${entry.agentId}`);
                                     }}
                                   >
                                     {entry.name.split(" ")[0]}

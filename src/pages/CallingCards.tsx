@@ -2,6 +2,7 @@
 // Digital business card generator — agents share with prospects via link or PDF.
 
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   CreditCard, Download, Copy, Check, Share2, Phone, Mail, MapPin,
@@ -85,7 +86,7 @@ export default function CallingCards() {
         subtitle="Your digital business card. Share via link, QR code, or screenshot. Profile data pulls from /dashboard/profile."
         actions={
           <Button variant="outline" size="sm" asChild>
-            <a href="/dashboard/profile">Edit Profile →</a>
+            <Link to="/dashboard/profile">Edit Profile →</Link>
           </Button>
         }
       />
@@ -213,7 +214,7 @@ export default function CallingCards() {
               {!profile.data?.full_name && (
                 <div className="mt-4 p-3 rounded-md bg-amber-500/10 border border-amber-500/30">
                   <p className="text-12 text-amber-700 dark:text-amber-300">
-                    Your profile is missing a full name. Go to <a href="/dashboard/profile" className="underline font-semibold">Producer Profile</a> to fill it in — your card uses that info.
+                    Your profile is missing a full name. Go to <Link to="/dashboard/profile" className="underline font-semibold">Producer Profile</Link> to fill it in — your card uses that info.
                   </p>
                 </div>
               )}

@@ -138,7 +138,7 @@ export default function ReferralPipeline() {
       <div className="p-6 max-w-xl mx-auto">
         <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
           The referral pipeline is for managers and admins. To see referrals you've
-          submitted, go to <a href="/dashboard/referrals/mine" className="underline">My Referrals</a>.
+          submitted, go to <Link to="/dashboard/referrals/mine" className="underline">My Referrals</Link>.
         </div>
       </div>
     );

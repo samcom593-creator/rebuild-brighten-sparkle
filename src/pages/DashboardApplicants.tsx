@@ -800,7 +800,11 @@ export default function DashboardApplicants() {
           <span className="font-semibold text-foreground tabular-nums">{filteredApplications.length.toLocaleString()} / {counterTotal.toLocaleString()}</span>
           <span>{counterLabel}</span>
           {todayCount > 0 && <Badge variant="outline">{todayCount.toLocaleString()} today</Badge>}
-          {rejected > 0 && <Badge variant="outline" className="border-rose-500/30 text-rose-500">{rejected.toLocaleString()} rejected</Badge>}
+          {hiredThisMonth > 0 && (
+            <Badge variant="outline" className="border-emerald-500/30 text-emerald-400">
+              {hiredThisMonth.toLocaleString()} hired this mo.
+            </Badge>
+          )}
           {terminatedApplications.length > 0 && <Badge variant="outline">{terminatedApplications.length.toLocaleString()} terminated</Badge>}
           {queryError && <span className="max-w-md truncate text-rose-600">{(queryError as any)?.message?.slice(0, 100) ?? String(queryError).slice(0, 100)}</span>}
         </div>
@@ -986,7 +990,7 @@ export default function DashboardApplicants() {
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4">
+        <div>
           <div className="min-w-0">
             {filteredApplications.length > 0 ? (
               <div className="relative w-full border border-border rounded-md max-h-[calc(100vh-280px)] overflow-y-auto">
@@ -1346,47 +1350,6 @@ export default function DashboardApplicants() {
               </div>
             )}
           </div>
-          <aside className="hidden lg:block">
-            <div className="sticky top-4 space-y-3 rounded-lg border bg-card/70 p-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Showing</p>
-                <p className="text-2xl font-semibold tabular-nums">{filteredApplications.length.toLocaleString()}</p>
-                <p className="text-[11px] text-muted-foreground">of {counterTotal.toLocaleString()} {counterLabel}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t">
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hired this mo.</p>
-                  <p className="text-lg font-semibold tabular-nums text-emerald-400">{hiredThisMonth.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">In funnel</p>
-                  <p className="text-lg font-semibold tabular-nums">{inFunnel.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Stale 48h+</p>
-                  <p className="text-lg font-semibold tabular-nums text-amber-400">{needsFollowupCount.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Today</p>
-                  <p className="text-lg font-semibold tabular-nums">{todayCount.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Course</p>
-                  <p className="text-lg font-semibold tabular-nums">{coursePurchased.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Rejected</p>
-                  <p className="text-lg font-semibold tabular-nums text-rose-400">{rejected.toLocaleString()}</p>
-                </div>
-              </div>
-              {terminatedApplications.length > 0 && (
-                <div className="pt-2 border-t">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Terminated</p>
-                  <p className="text-base font-semibold tabular-nums text-muted-foreground">{terminatedApplications.length.toLocaleString()}</p>
-                </div>
-              )}
-            </div>
-          </aside>
         </div>
       )}
 

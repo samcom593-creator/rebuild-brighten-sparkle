@@ -233,12 +233,12 @@ export default function ApplicantCheckin() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
-                <a href="/get-licensed" className="block">
+                <Link to="/get-licensed" className="block">
                   <GlassCard className="p-4 h-full text-center">
                     <h3 className="font-semibold mb-1">Open Licensing Steps</h3>
                     <p className="text-sm text-muted-foreground">Keep moving with the full step-by-step guide.</p>
                   </GlassCard>
-                </a>
+                </Link>
                 <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer" className="block">
                   <GlassCard className="p-4 h-full text-center">
                     <h3 className="font-semibold mb-1">Join the Hiring Chat</h3>
@@ -304,7 +304,7 @@ export default function ApplicantCheckin() {
                   <Textarea
                     id="blocker"
                     rows={3}
-                    placeholder="Example: need help choosing the course, scheduling the exam, or understanding the next step."
+                    placeholder="What is blocking you right now?"
                     value={form.blocker}
                     onChange={(event) => setForm((current) => ({ ...current, blocker: event.target.value }))}
                   />

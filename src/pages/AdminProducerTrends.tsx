@@ -92,10 +92,8 @@ export default function AdminProducerTrends() {
 
   const totals = useMemo(() => {
     return {
-      producers: trends.length,
       dropping: trends.filter((r) => r.currently_dropping).length,
       down_this_week: trends.filter((r) => r.direction === "down" && !r.currently_dropping).length,
-      up_this_week: trends.filter((r) => r.direction === "up").length,
     };
   }, [trends]);
 
@@ -107,16 +105,14 @@ export default function AdminProducerTrends() {
         </div>
         <h1 className="text-3xl font-bold">Producer Trends</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Weekly ALP per active canonical producer plus a 3-week drop alarm.
-          Solves the Daniel-didn't-know slip mode — nobody dips silently.
+          Weekly ALP for every producer. A 3-week drop alarm surfaces anyone
+          quietly sliding. Nobody dips silently.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiTile label="Producers" value={totals.producers} tone="neutral" />
+      <div className="grid grid-cols-2 gap-3 max-w-md">
         <KpiTile label="Dropping 3W" value={totals.dropping} tone={totals.dropping > 0 ? "rose" : "neutral"} />
         <KpiTile label="Down this week" value={totals.down_this_week} tone="amber" />
-        <KpiTile label="Up this week" value={totals.up_this_week} tone="emerald" />
       </div>
 
       {totals.dropping > 0 && (
@@ -132,8 +128,7 @@ export default function AdminProducerTrends() {
                   {totals.dropping} producer{totals.dropping === 1 ? "" : "s"} dropped ALP 3 weeks in a row
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Reach out today. These are the producers who quietly slid without
-                  anyone catching it — same failure mode as Daniel.
+                  Reach out today. Same slide Daniel had. Nobody caught it.
                 </p>
               </div>
             </div>
@@ -150,7 +145,7 @@ export default function AdminProducerTrends() {
             <div className="py-10 text-center text-muted-foreground">Loading producer trends…</div>
           ) : trends.length === 0 ? (
             <div className="py-10 text-center text-muted-foreground">
-              No linked producers yet. Producers show up here once their al_user_id is backfilled.
+              No linked producers yet. Producers appear once their AgentLink profile is matched.
             </div>
           ) : (
             <div className="overflow-x-auto">

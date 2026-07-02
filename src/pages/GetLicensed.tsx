@@ -237,40 +237,6 @@ export default function GetLicensed() {
           </Link>
         </motion.div>
 
-        {/* Questions Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="mt-8"
-        >
-          <GlassCard className="p-6 text-center">
-            <h2 className="text-lg font-bold mb-2">Have Questions?</h2>
-            <p className="text-muted-foreground mb-4 max-w-lg mx-auto text-sm">
-              Need help with the licensing process? We're here for you.
-            </p>
-            <a href={calendlyUrl} target="_blank" rel="noopener noreferrer">
-              <GradientButton variant="outline">
-                <Calendar className="h-4 w-4 mr-2" />
-                Schedule a Call
-              </GradientButton>
-            </a>
-          </GlassCard>
-        </motion.div>
-
-        {/* Back Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="text-center mt-8"
-        >
-          <Link to="/">
-            <GradientButton variant="outline">
-              Back to Home
-            </GradientButton>
-          </Link>
-        </motion.div>
       </motion.div>
     </div>
   );

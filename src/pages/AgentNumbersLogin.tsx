@@ -610,7 +610,6 @@ export default function AgentNumbersLogin() {
                         id="fullName"
                         type="text"
                         {...createAccountForm.register("fullName")}
-                        placeholder="Your full name"
                         className="pl-10 bg-input h-11"
                         autoComplete="name"
                         autoFocus

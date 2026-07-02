@@ -319,7 +319,7 @@ export default function SeminarPage() {
                 onValueChange={(v) => form.setValue("licenseStatus", v as FormData["licenseStatus"], { shouldValidate: true })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Pick one" />
+                  <SelectValue placeholder="Select your license status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unlicensed">Not licensed yet</SelectItem>

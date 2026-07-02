@@ -342,7 +342,6 @@ export default function ApplicantCheckin() {
                 <Textarea
                   id="notes"
                   rows={4}
-                  placeholder="Share progress, questions, or anything your manager should see."
                   value={form.notes}
                   onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
                 />

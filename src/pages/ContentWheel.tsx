@@ -1,13 +1,12 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/page-header";
 import { Crown } from "lucide-react";
 import { ContentWheelSubNav } from "@/components/contentwheel/ContentWheelSubNav";
 import { DashboardModule } from "@/components/contentwheel/DashboardModule";
-import { PlaceholderModule } from "@/components/contentwheel/PlaceholderModule";
 import { IdeationRolodexModule } from "@/components/contentwheel/IdeationRolodexModule";
 import { HookLabModule } from "@/components/contentwheel/HookLabModule";
-import { CW_MODULES, isCwModuleKey, type CwModuleKey } from "@/components/contentwheel/modules";
+import { isCwModuleKey, type CwModuleKey } from "@/components/contentwheel/modules";
 
 /**
  * ContentWheel — the personal-brand + recruiting Content OS.
@@ -16,16 +15,15 @@ import { CW_MODULES, isCwModuleKey, type CwModuleKey } from "@/components/conten
  * Doctrine: 15 laws enforced at the DB layer (see migration
  *   20260518230000_contentwheel_p0.sql).
  *
- * P1 ships: nav shell + Dashboard module + Brand Core (read-only via seeds).
- * Other 11 modules land in P2..P8 per the spec's phased build sequence.
- * The cw_ schema, RLS, triggers, and views are ALL already deployed —
- * placeholder modules query real data the moment their UI lands.
+ * The cw_ schema, RLS, triggers, and views are deployed. Live modules
+ * (Dashboard, Ideation Rolodex, Hook Lab) query real data directly.
+ * Any not-yet-built module key falls back to the live Dashboard rather
+ * than rendering a static placeholder.
  */
 export default function ContentWheel() {
   const [params, setParams] = useSearchParams();
   const moduleParam = params.get("m");
   const active: CwModuleKey = isCwModuleKey(moduleParam) ? moduleParam : "dashboard";
-  const activeModule = useMemo(() => CW_MODULES.find((m) => m.key === active)!, [active]);
 
   const selectModule = useCallback(
     (key: CwModuleKey) => {
@@ -60,7 +58,7 @@ export default function ContentWheel() {
           ) : active === "hooks" ? (
             <HookLabModule />
           ) : (
-            <PlaceholderModule module={activeModule} />
+            <DashboardModule />
           )}
         </main>
       </div>

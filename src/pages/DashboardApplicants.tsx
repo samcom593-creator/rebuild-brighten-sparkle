@@ -533,10 +533,9 @@ export default function DashboardApplicants() {
       toast.error("Failed to terminate lead");
       playSound("error");
     } else if (!data || data.length === 0) {
-      toast.error("Could not terminate this lead — you may not have permission");
+      toast.error("Could not terminate this lead. Check your permissions.");
       playSound("error");
     } else {
-      fetchApplications();
       toast.success("Lead terminated");
       playSound("success");
       setTerminateApp(null);
@@ -776,7 +775,7 @@ export default function DashboardApplicants() {
         eyebrow="Recruiting · Applicants"
         eyebrowIcon={<Users className="h-3 w-3" />}
         title="Applicants"
-        subtitle="Manage and track every applicant in your recruiting funnel — assigned, referred, or recruited."
+        subtitle="Every applicant. Assigned, referred, recruited."
         actions={
           (isAdmin || isManager) && agentId
             ? <Button
@@ -1452,7 +1451,7 @@ function ReferralLinkBanner({ agentId }: { agentId: string }) {
       try {
         await (navigator as any).share({
           title: "Apply to APEX Financial",
-          text: "Apply to APEX — fast-track your insurance career.",
+          text: "Apply to APEX. Fast-track your insurance career.",
           url,
         });
       } catch {

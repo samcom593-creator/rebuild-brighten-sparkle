@@ -66,7 +66,10 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // 2026-06-18 — BASELINE dropped 246 → 244 after the leaderboard/book-truth
 //   follow-up and B1 link-audit tooling kept the type graph below the prior
 //   floor. Lock the new floor.
-const BASELINE = 244;
+// 2026-07-01 — BASELINE dropped 244 → 241 after wave-8 sidebar-kill on
+//   DashboardApplicants (commit f68c3930) shed 3 errors from the deleted
+//   grid + aside block. Lock the new floor.
+const BASELINE = 241;
 
 let stdout = "";
 let stderr = "";

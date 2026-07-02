@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Users,
@@ -120,6 +120,7 @@ export default function DashboardApplicants() {
   const { user, isAdmin, isManager } = useAuth();
   const { playSound } = useSoundEffects();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const highlightedLeadId = searchParams.get("lead") || searchParams.get("id");
   const managerFilter = searchParams.get("manager");
   const stageFilter = searchParams.get("stage");
@@ -393,7 +394,7 @@ export default function DashboardApplicants() {
           console.warn("[auto-heal] session refresh failed:", error);
           toast.error("Session expired · signing you out for fresh login");
           await supabase.auth.signOut();
-          setTimeout(() => { window.location.href = "/login"; }, 400);
+          setTimeout(() => { navigate("/login"); }, 400);
           return;
         }
         toast.success("Session refreshed · reloading applications");

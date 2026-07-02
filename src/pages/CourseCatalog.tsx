@@ -1,36 +1,19 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, PlayCircle, HelpCircle, Award, Camera, Lock, CheckCircle, Search, Phone, Headphones, Filter, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { PlayCircle, HelpCircle, Award, Lock, CheckCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnboardingCourse } from "@/hooks/useOnboardingCourse";
-import { CourseModuleSidebar } from "@/components/course/CourseModuleSidebar";
 import { CourseVideoPlayer } from "@/components/course/CourseVideoPlayer";
 import { CourseQuiz } from "@/components/course/CourseQuiz";
-import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-// Real calls will live in call_library table. Empty array = empty state.
-const CALL_LIBRARY: {
-  id: string;
-  title: string;
-  speaker: string;
-  duration: string;
-  date: string;
-  category: string;
-  description: string;
-}[] = [];
-
-const CALL_CATEGORIES = ["All", "Sales Calls", "Recruiting", "Training", "Live Replays"];
 
 export default function CourseCatalog() {
   const navigate = useNavigate();
@@ -42,12 +25,9 @@ export default function CourseCatalog() {
   const [provisioningInProgress, setProvisioningInProgress] = useState(false);
   const [activeView, setActiveView] = useState<"catalog" | "module">("catalog");
   const [activeTab, setActiveTab] = useState<"video" | "quiz">("video");
-  const [mainTab, setMainTab] = useState<"courses" | "calls">("courses");
   const [playbackRate, setPlaybackRate] = useState(1);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [checkingAvatar, setCheckingAvatar] = useState(true);
-  const [callSearch, setCallSearch] = useState("");
-  const [callCategory, setCallCategory] = useState("All");
 
   useEffect(() => {
     const fetchAgentId = async () => {
@@ -165,12 +145,6 @@ export default function CourseCatalog() {
     return success;
   };
 
-  const filteredCalls = CALL_LIBRARY.filter(c => {
-    const matchesSearch = !callSearch || c.title.toLowerCase().includes(callSearch.toLowerCase()) || c.speaker.toLowerCase().includes(callSearch.toLowerCase());
-    const matchesCategory = callCategory === "All" || c.category === callCategory;
-    return matchesSearch && matchesCategory;
-  });
-
   if (loading || provisioningInProgress || checkingAvatar) return <SkeletonLoader variant="page" />;
 
   // 2026-06-16 Sam directive: "any agent should be in dashboard, be able to
@@ -245,18 +219,8 @@ export default function CourseCatalog() {
         </div>
       </motion.div>
 
-      {/* Main Tabs */}
-      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as "courses" | "calls")}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="courses" className="gap-2" style={{ fontFamily: "Syne" }}>
-            <BookOpen className="h-4 w-4" /> Courses
-          </TabsTrigger>
-          <TabsTrigger value="calls" className="gap-2" style={{ fontFamily: "Syne" }}>
-            <Headphones className="h-4 w-4" /> Call Library
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="courses" className="mt-6">
+      {/* Courses — Call Library tab removed (empty data source) 2026-07-01 */}
+      <div className="mt-6">
           {activeView === "catalog" ? (
             /* Netflix-style Grid */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -416,60 +380,7 @@ export default function CourseCatalog() {
               )}
             </div>
           )}
-        </TabsContent>
-
-        {/* Call Library Tab */}
-        <TabsContent value="calls" className="mt-6 space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search calls..." value={callSearch} onChange={e => setCallSearch(e.target.value)} className="pl-9" />
-            </div>
-            <Select value={callCategory} onValueChange={setCallCategory}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CALL_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {CALL_LIBRARY.length === 0 ? (
-            <div className="p-12 text-center space-y-3 border border-dashed border-border rounded-md">
-              <Headphones className="h-10 w-10 text-muted-foreground mx-auto opacity-50" />
-              <h3 className="text-lg font-semibold" style={{ fontFamily: "Syne" }}>No recorded calls yet</h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                Training calls and sales replays will show up here once uploaded. Check with your manager to get access.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredCalls.map(call => (
-                <motion.div key={call.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card rounded-md p-4 space-y-3 hover:border-primary/30 transition-all cursor-pointer group">
-                  <div className="flex items-start justify-between">
-                    <Badge variant="outline" className="text-xs">{call.category}</Badge>
-                    <span className="text-xs text-muted-foreground">{call.duration}</span>
-                  </div>
-                  <h3 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors" style={{ fontFamily: "Syne" }}>{call.title}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{call.description}</p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{call.speaker}</span>
-                    <span>{new Date(call.date).toLocaleDateString()}</span>
-                  </div>
-                </motion.div>
-              ))}
-              {filteredCalls.length === 0 && (
-                <div className="col-span-full text-center py-12 text-muted-foreground">
-                  <Headphones className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No calls found matching your search.</p>
-                </div>
-              )}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+        </div>
     </div>
   );
 }

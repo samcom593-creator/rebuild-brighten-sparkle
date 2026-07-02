@@ -69,7 +69,10 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // 2026-07-01 — BASELINE dropped 244 → 241 after wave-8 sidebar-kill on
 //   DashboardApplicants (commit f68c3930) shed 3 errors from the deleted
 //   grid + aside block. Lock the new floor.
-const BASELINE = 241;
+// 2026-07-02 — BASELINE dropped 241 → 240 after wave-9 LicensedInbox AI-tell
+//   + purposeless-UI polish (commit 5f5e0b26) shed 1 error via the dead
+//   flex-wrapper delete. Lock the new floor.
+const BASELINE = 240;
 
 let stdout = "";
 let stderr = "";

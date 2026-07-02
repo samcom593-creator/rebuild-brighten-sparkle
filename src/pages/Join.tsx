@@ -4,6 +4,10 @@
  *   - If the email already has an auth account → sign in with password
  *   - If not → create the account on the spot with that email + password
  * No separate signup flow to confuse anyone.
+ *
+ * ux(simplify) 2026-07-01 — 3 fields → 2. Removed unreachable first-name
+ * branch (mode state never toggled off "auto"), and the duplicate footer
+ * links that both pointed to /login.
  */
 
 import { useState } from "react";
@@ -23,9 +27,7 @@ export default function Join() {
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"auto" | "signup">("auto");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,7 +52,6 @@ export default function Join() {
         email: email.trim(),
         password,
         options: {
-          data: { full_name: firstName || undefined },
           emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       });
@@ -97,13 +98,6 @@ export default function Join() {
           </div>
 
           <form onSubmit={onSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="name">First name</Label>
-                <Input id="name" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Alex" />
-              </div>
-            )}
-
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -128,7 +122,6 @@ export default function Join() {
                   placeholder="6+ characters"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">Pick something you'll remember — you set it now, use it forever.</p>
             </div>
 
             <GradientButton type="submit" disabled={loading} className="w-full">
@@ -137,13 +130,8 @@ export default function Join() {
             </GradientButton>
           </form>
 
-          <div className="text-center text-xs text-muted-foreground space-y-1">
-            <div>
-              Forgot your password? <Link to="/login" className="text-primary underline">Reset it</Link>
-            </div>
-            <div>
-              Already know your account is set up? <Link to="/login" className="text-primary underline">Regular sign in</Link>
-            </div>
+          <div className="text-center text-xs text-muted-foreground">
+            Already have an account? <Link to="/login" className="text-primary underline">Sign in</Link>
           </div>
         </GlassCard>
       </motion.div>

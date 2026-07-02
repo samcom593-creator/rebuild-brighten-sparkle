@@ -172,7 +172,7 @@ export default function InviteLinksAdmin() {
   }
 
   async function revoke(row: InviteTokenRow) {
-    if (!confirm(`Revoke this ${row.kind} link? This can't be undone.`)) return;
+    if (!confirm(`Revoke this ${row.kind} link? Anyone who opens it will hit an invalid page.`)) return;
     const { error } = await supabase
       .from("invite_tokens")
       .update({
@@ -255,7 +255,9 @@ export default function InviteLinksAdmin() {
               </div>
             ) : filtered.length === 0 ? (
               <p className="p-8 text-sm text-muted-foreground text-center">
-                No {tab === "all" ? "" : tab} links yet. Generate one above.
+                {tab === "all"
+                  ? "No links yet. Generate one above."
+                  : `No ${tab} links yet. Generate one above.`}
               </p>
             ) : (
               <div className="divide-y divide-border">

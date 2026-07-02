@@ -374,7 +374,7 @@ function InviteTokenInvalid({ reason }: { reason: string }) {
         : reason === "invite_revoked"
           ? "This link was revoked."
           : reason === "wrong_kind_use_hire"
-            ? "This is a hire link. Open it at /hire/:token instead."
+            ? "Wrong link. Ask your recruiter to resend the join link."
             : "This link isn't valid.";
 
   return (

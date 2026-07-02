@@ -583,26 +583,15 @@ export default function ResourcesLicensing() {
           </div>
         </GlassCard>
 
-        {/* Footer nav */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+        {/* Single-purpose footer — back to the licensing flow. */}
+        <div className="mt-8">
           <Link to="/get-licensed">
             <GradientButton variant="outline" className="w-full">
               <GraduationCap className="h-4 w-4 mr-2" />
               Back to Get Licensed
             </GradientButton>
           </Link>
-          <Link to="/training">
-            <GradientButton className="w-full">
-              <BookOpen className="h-4 w-4 mr-2" />
-              Training Index
-            </GradientButton>
-          </Link>
         </div>
-
-        <p className="text-center text-xs text-muted-foreground mt-8">
-          APEX Financial Empire · Internal agent resources · Confidential — do
-          not distribute.
-        </p>
       </motion.div>
     </div>
   );

@@ -196,6 +196,7 @@ const Join = lazy(() => import("./pages/Join"));
 const HireLink = lazy(() => import("./pages/HireLink"));
 const JoinLink = lazy(() => import("./pages/JoinLink"));
 const InviteLinksAdmin = lazy(() => import("./pages/admin/InviteLinks"));
+const LicensedInbox = lazy(() => import("./pages/LicensedInbox"));
 const AgentDetail = lazy(() => import("./pages/AgentDetail"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Rewards = lazy(() => import("./pages/Rewards"));
@@ -437,6 +438,11 @@ const App = () => (
                     {/* MP-234 magic invite links admin (hire + join). Share-only —
                         never rendered in nav. Direct URL only. */}
                     <Route path="/admin/invite-links" element={<ProtectedRoute allowManagers><InviteLinksAdmin /></ProtectedRoute>} />
+                    {/* MP-232: licensed applicants → manager dial queue. manager_alerts
+                        rows fire ntfy on insert; this page is where Sam+managers
+                        action them. Route was missing since MP-232 landed — page
+                        existed but nothing linked to it. Codex head-to-toe caught it. */}
+                    <Route path="/admin/licensed-inbox" element={<ProtectedRoute allowManagers><LicensedInbox /></ProtectedRoute>} />
                     {/* PL-SAM-2026-06-03-001: uncontacted-first recruiting queue. v_recruiting_inbox is SECURITY INVOKER so RLS scopes rows per role. */}
                     <Route path="/admin/recruiting-inbox" element={<Navigate to="/dashboard/command" replace />} />
                     {/* wave-100: Sam-adjudication for unresolved same-display_name agent dup pairs. */}

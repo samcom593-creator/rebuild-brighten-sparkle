@@ -28,14 +28,9 @@ function priorityColor(p: number): string {
 }
 
 function sourceBadge(src: string): string {
-  switch (src) {
-    case "manual":
-      return "Manual";
-    case "codex_blocker":
-      return "Blocker";
-    default:
-      return src;
-  }
+  if (src === "manual") return "Manual";
+  if (src === "codex_blocker" || /^mp\d+/i.test(src)) return "Blocker";
+  return src.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export default function SamTodo() {
@@ -44,7 +39,7 @@ export default function SamTodo() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["sam-todo"],
     queryFn: async () => {
-      // RPCs created post supabase-types regen — cast bypasses stale union.
+      // RPCs added after last supabase-types regen. Cast bypasses stale union.
       const { data, error } = await (supabase as unknown as {
         rpc: (name: string) => Promise<{ data: TodoRow[] | null; error: { message: string } | null }>;
       }).rpc("sam_todo_list");

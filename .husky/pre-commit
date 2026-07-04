@@ -314,6 +314,28 @@ if match '^(src/components/landing/.*\.(tsx?|jsx?)$|src/pages/(Landing|Index)\.t
   node scripts/check-landing-marketing-claims.mjs
 fi
 
+# ---------- check-internal-nav-hrefs (wave-16, 2026-07-04) ----------
+# Trigger: any src/ tsx|ts|jsx|js change or the script itself. Walks
+# src/pages, src/components, src/hooks, src/lib, src/layouts and fails when
+# it finds `<a href="/internal-route">` OR `window.location.href = "/internal-route"`
+# / `location.assign("/internal-route")` / `location.replace("/internal-route")`
+# where `internal-route` matches any top-level path served by react-router
+# (dashboard/admin/agent/apply/...).
+# Why this matters: MP-235 (2026-07-02 c05f17d9 + 3a747c54) killed 5
+# instances of this reload-trap pattern; two weeks later wave-15 (32502726)
+# caught a silent re-introduction on MyLandingPage.tsx L216. Wave-16's
+# initial sweep found 3 more live regressions MP-235 and wave-15 missed
+# (InstagramInbox L210 + WelcomeToast L35 + useAuth L192). Nothing was
+# watching this class. Full-page reloads inside the SPA blow away React
+# state, force a bundle re-download, and can race the Supabase auth reinit.
+# Cost when fired: ~200-400ms (linear in ~500 tracked files).
+# Opt-out marker per line for legitimate auth-state-change reloads:
+# `internal-nav-href-allow:<reason>` same-line or line directly above.
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-internal-nav-hrefs\.mjs$)'; then
+  echo "[pre-commit] Internal-nav-affecting file staged — running check:internal-nav-hrefs…"
+  node scripts/check-internal-nav-hrefs.mjs
+fi
+
 # ---------- check-notion-ban (MP221 §7.1) ----------
 # Trigger: any newly-introduced Notion write call in non-test code.
 # Existing supabase/functions/notion-sync/* is grandfathered (read-only path).

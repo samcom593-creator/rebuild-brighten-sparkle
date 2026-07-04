@@ -1,16 +1,16 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
 
 const KEY = "apex-v3-welcome-seen";
 const VERSION = "v3";
 
-/**
- * WelcomeToast — fires once per user, on first authenticated load after the
- * v3 visual overhaul. Saved in localStorage so it doesn't spam. Resets if
- * VERSION changes (so future overhauls can re-announce).
- */
+// WelcomeToast fires once per user, on first authenticated load after the v3
+// visual overhaul. Saved in localStorage so it doesn't spam. Resets if VERSION
+// changes so future overhauls can re-announce.
 export function WelcomeToast() {
+  const navigate = useNavigate();
   useEffect(() => {
     let cancelled = false;
     const seen = localStorage.getItem(KEY);
@@ -32,7 +32,7 @@ export function WelcomeToast() {
           action: {
             label: "Open",
             onClick: () => {
-              window.location.href = "/dashboard/strikes";
+              navigate("/dashboard/strikes");
             },
           },
         },
@@ -43,7 +43,7 @@ export function WelcomeToast() {
       cancelled = true;
       clearTimeout(t);
     };
-  }, []);
+  }, [navigate]);
 
   return null;
 }

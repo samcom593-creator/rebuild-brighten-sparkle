@@ -186,10 +186,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             track(`auth.${event.toLowerCase()}`, "auth", { hasSession: !!session });
           }
 
-          // Handle password recovery event - redirect to settings
+          // Handle password recovery event. Full reload is required — the
+          // onAuthStateChange callback fires from Supabase after the user
+          // clicks a password-reset link, and every cached user context
+          // (useQuery subscribers, useAuth state, session refs) needs to
+          // hard-reset from the fresh recovery session. useNavigate() would
+          // preserve the pre-recovery React tree and race the auth reinit.
           if (event === "PASSWORD_RECOVERY") {
             if (import.meta.env.DEV) console.log("PASSWORD_RECOVERY event detected, redirecting to settings");
-            window.location.href = "/dashboard/settings?recovery=true";
+            window.location.href = "/dashboard/settings?recovery=true"; // internal-nav-href-allow: auth-state-change requires cache invalidation
             return;
           }
 

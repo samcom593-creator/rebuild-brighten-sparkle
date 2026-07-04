@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { formatDistanceToNowStrict } from "date-fns";
 import {
   MessageCircle, Search, Send, RefreshCw, Loader2,
@@ -207,9 +208,9 @@ export default function InstagramInbox() {
             Your Instagram account isn't linked yet. Connect it to see and reply to DMs from here.
           </p>
           <Button asChild size="lg">
-            <a href="/dashboard/integrations" className="gap-2">
+            <Link to="/dashboard/integrations" className="gap-2">
               <LinkIcon className="h-4 w-4" /> Open Integrations
-            </a>
+            </Link>
           </Button>
         </GlassCard>
       </div>

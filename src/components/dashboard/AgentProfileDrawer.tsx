@@ -195,6 +195,29 @@ function statusBadgeColor(status: string | null | undefined): string {
   }
 }
 
+// Normalize raw db status/license_status slugs into user-facing badge labels.
+// Same class of leak wave-13 fixed on SamTodo (mp222_* raw slug leaks) and
+// wave-11 on AdminProducerTrends (al_user_id leak). Guards known enum values
+// + snake_case Title Case fallback so unknown future values normalize instead
+// of leaking raw db slugs into admin badges.
+function formatEnumLabel(raw: string | null | undefined, fallback: string): string {
+  if (!raw) return fallback;
+  const known: Record<string, string> = {
+    active: "Active",
+    inactive: "Inactive",
+    terminated: "Terminated",
+    pending: "Pending",
+    licensed: "Licensed",
+    unlicensed: "Unlicensed",
+  };
+  const key = raw.toLowerCase();
+  if (known[key]) return known[key];
+  return raw
+    .split(/[_\s-]+/)
+    .map((s) => (s.length ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s))
+    .join(" ");
+}
+
 export function AgentProfileDrawer() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -413,7 +436,7 @@ export function AgentProfileDrawer() {
         <SheetHeader className="px-4 pt-4 pb-2 border-b border-border bg-card/60 sticky top-0 z-10 backdrop-blur-sm">
           <SheetTitle className="text-base">Agent profile</SheetTitle>
           <SheetDescription className="sr-only">
-            Deep profile view for the selected agent — license, training stage, contact, manager chain, credentials, notes.
+            Deep profile view for the selected agent. License, training stage, contact, manager chain, credentials, notes.
           </SheetDescription>
         </SheetHeader>
 
@@ -504,12 +527,12 @@ export function AgentProfileDrawer() {
                     </button>
                   )}
                   <Badge variant="outline" className={cn("text-[10px]", statusBadgeColor(agent.status))}>
-                    {agent.status ?? "—"}
+                    {formatEnumLabel(agent.status, "—")}
                   </Badge>
                   {/* 2026-06-18 Sam directive 'make sure their license to go ahead
-                      and start that coursework' — license badge is now a click-to-flip
-                      toggle. Tap unlicensed → flips to licensed (fires course email
-                      via existing trg_agents_hired_licensed_enqueue trigger). */}
+                      and start that coursework'. License badge is a click-to-flip
+                      toggle. Tap unlicensed → flips to licensed, fires course email
+                      via existing trg_agents_hired_licensed_enqueue trigger. */}
                   {isLicensed ? (
                     <button
                       onClick={async () => {
@@ -562,7 +585,7 @@ export function AgentProfileDrawer() {
                       className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
                       title="Tap to mark licensed (fires course email)"
                     >
-                      <ShieldAlert className="h-3 w-3 mr-0.5" /> {agent.license_status ?? "unlicensed"} <span className="ml-1 opacity-60">→ tap to flip</span>
+                      <ShieldAlert className="h-3 w-3 mr-0.5" /> {formatEnumLabel(agent.license_status, "Unlicensed")} <span className="ml-1 opacity-60">→ tap to flip</span>
                     </button>
                   )}
                   {agent.is_deactivated && (
@@ -971,11 +994,11 @@ export function AgentProfileDrawer() {
               )}
             </div>
 
-            {/* 2026-07-01 PL-MP231 — full-control admin block. Sam directive:
+            {/* 2026-07-01 PL-MP231. Full-control admin block. Sam directive:
                 "once hired I have full control of their account". Deactivate
                 soft-deletes (via existing DeactivateAgentDialog which zeros
                 downline links + closes tickets). Restore un-flags. Delete
-                (hard) is bot-sql only and never wired to UI — surfaced as an
+                (hard) is bot-sql only and never wired to UI. Surfaced as an
                 inline note so Sam knows the exact incantation. */}
             {isAdmin && (
               <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 space-y-2">
@@ -1044,13 +1067,13 @@ export function AgentProfileDrawer() {
                       copyToClipboard(sql, "Hard-delete SQL");
                       toast.warning("Hard delete = bot-sql only. SQL copied to clipboard.");
                     }}
-                    title="Hard delete (bot-sql only) — copies the SQL to clipboard"
+                    title="Hard delete (bot-sql only). Copies the SQL to clipboard."
                   >
                     <Trash2 className="h-3.5 w-3.5" /> Delete SQL
                   </Button>
                 </div>
                 <p className="text-[10px] text-muted-foreground leading-tight">
-                  Deactivate = soft (reversible). Delete = hard (bot-sql only, irreversible — SQL copied to clipboard for Sam to run via admin RPC).
+                  Deactivate = soft (reversible). Delete = hard (bot-sql only, irreversible). SQL copied to clipboard for Sam to run via admin RPC.
                 </p>
               </div>
             )}
@@ -1070,7 +1093,7 @@ export function AgentProfileDrawer() {
 
         {/* 2026-06-18 Sam directive: 'I want all the UI perfect'.
             Sticky footer with the four actions Sam taps most: Call · Text ·
-            CRM · Send Course (added 2026-06-18 — re-fire course/discord
+            CRM · Send Course (added 2026-06-18 to re-fire course/discord
             emails even if license is already set). Always visible. */}
         {agent && (
           <div className="border-t border-border bg-card/80 backdrop-blur-sm px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-2">

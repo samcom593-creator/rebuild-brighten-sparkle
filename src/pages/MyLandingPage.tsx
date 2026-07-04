@@ -1,10 +1,11 @@
 // MyLandingPage · mirrors AgentLink's "My Landing Page" sidebar item
 // Per-agent public landing page · shareable URL · branded · CTA to contact agent.
 //
-// Live URL pattern: /agent/:userId — public route (no auth required).
+// Live URL pattern: /agent/:userId. Public route, no auth required.
 // This page is the AGENT-FACING settings/preview for that public surface.
 
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Globe, Phone, Mail, ExternalLink, Copy, Check, Eye, Share2,
@@ -39,12 +40,32 @@ export default function MyLandingPage() {
     },
   });
 
+  // Wave-15 brand-truth (parity with wave-6 PublicAgentLanding fix): the
+  // hardcoded "Licensed · Active" badge on the preview surface told any
+  // unlicensed agent viewing their own landing page that they were "Licensed
+  // · Active" — same fake-credential disease that was killed on the public
+  // /agent/:userId surface. Data-bind to agents.license_status + status.
+  const agentStatus = useQuery({
+    queryKey: ["agent-status-for-landing", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agents" as any)
+        .select("license_status, status")
+        .eq("user_id", userId)
+        .maybeSingle();
+      return (data as any) ?? null;
+    },
+  });
+
   const url = userId && typeof window !== "undefined" ? `${window.location.origin}/agent/${userId}` : "";
   const p = profile.data;
+  const a = agentStatus.data;
+  const isLicensedActive = a?.license_status === "licensed" && a?.status === "active";
   const name = p?.full_name || (user as any)?.email?.split("@")[0] || "APEX Agent";
   const avatar = p?.avatar_url || p?.photo_url;
 
-  // Hero metrics — derived from profile data
+  // Hero metrics. Derived from profile data.
   const urlStatus = userId ? "LIVE" : "—";
   const profileFields = ["full_name", "email", "phone", "bio", "city", "state", "instagram_handle"] as const;
   const profileFilled = p ? profileFields.filter((k) => !!(p as any)?.[k]).length : 0;
@@ -80,7 +101,7 @@ export default function MyLandingPage() {
         }
       />
 
-      {/* Premium gradient hero — v6 §31 */}
+      {/* Premium gradient hero. v6 §31. */}
       <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
         <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
@@ -113,7 +134,7 @@ export default function MyLandingPage() {
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">HAS PHOTO</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-white">{hasPhoto ? "YES" : "NO"}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">{hasPhoto ? "avatar set" : "add one — 3x more clicks"}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">{hasPhoto ? "avatar set" : "add one. 3x more clicks"}</p>
             </div>
           </div>
         </div>
@@ -157,7 +178,9 @@ export default function MyLandingPage() {
                   {(p?.city || p?.state) && (
                     <p className="text-12 text-white/70 mt-1">{[p?.city, p?.state].filter(Boolean).join(", ")}</p>
                   )}
-                  <Badge className="mt-3 bg-amber-500 text-slate-900 hover:bg-amber-500">Licensed · Active</Badge>
+                  {isLicensedActive ? (
+                    <Badge className="mt-3 bg-amber-500 text-slate-900 hover:bg-amber-500">Licensed · Active</Badge>
+                  ) : null}
                 </div>
 
                 {/* Bio */}
@@ -203,7 +226,7 @@ export default function MyLandingPage() {
         <div className="space-y-3">
           <Card>
             <CardContent className="p-4 space-y-3">
-              <h3 className="text-13 font-bold">Edit Profile Drives the Page</h3>
+              <h3 className="text-13 font-bold">Your Profile Drives This Page</h3>
               <p className="text-12 text-muted-foreground leading-relaxed">
                 Your landing page reads directly from your Producer Profile:
               </p>
@@ -213,7 +236,7 @@ export default function MyLandingPage() {
                 <li className="flex items-center gap-2"><Phone className="h-3 w-3 text-amber-500" /> Phone/Email/IG → CTAs</li>
               </ul>
               <Button asChild className="w-full" variant="outline">
-                <a href="/dashboard/profile">Edit Profile →</a>
+                <Link to="/dashboard/profile">Edit Profile →</Link>
               </Button>
             </CardContent>
           </Card>

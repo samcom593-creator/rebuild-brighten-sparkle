@@ -27,7 +27,7 @@ const features = [
     icon: Bot,
     title: "AI DMing",
     description:
-      "Nurture fans and funnel them to your desired page using our auto AI DM software — across hundreds of accounts at a fixed price. No AI DM cost (free).",
+      "Nurture fans and funnel them to your desired page using our auto AI DM software across hundreds of accounts at a fixed price. No AI DM cost (free).",
   },
   {
     icon: Cloud,
@@ -96,7 +96,7 @@ export function InstagramGrowthSection() {
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#E1306C]/30 bg-[#E1306C]/10 mb-6">
             <Instagram className="h-4 w-4 text-[#E1306C]" />
             <span className="text-xs tracking-[0.25em] uppercase text-[#E1306C] font-bold" style={{ fontFamily: "Syne" }}>
-              Instagram Growth — Powered by APEX
+              Instagram Growth. Powered by APEX.
             </span>
           </div>
 
@@ -110,7 +110,7 @@ export function InstagramGrowthSection() {
           </h2>
 
           <p className="text-white/50 max-w-2xl mx-auto text-lg leading-relaxed">
-            Run a network of satellite IG accounts under one roof. Capture attention, warm prospects, and route them to your money pages — without burning your main profile.
+            Run a network of satellite IG accounts under one roof. Capture attention, warm prospects, and route them to your money pages without burning your main profile.
           </p>
         </div>
 
@@ -155,7 +155,7 @@ export function InstagramGrowthSection() {
             Reactions Pro
           </h3>
           <p className="text-white/50 max-w-xl mx-auto text-sm leading-relaxed mb-6">
-            Human-pattern interactions on accounts that already engage with your competitors. The attention moves from their profile to yours — quietly, at scale, on autopilot.
+            Human-pattern interactions on accounts that already engage with your competitors. Their attention moves from those profiles to yours.
           </p>
           <Button
             onClick={handlePurchase}

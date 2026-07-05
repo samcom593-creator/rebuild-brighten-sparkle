@@ -135,14 +135,13 @@ export default function AgentCommandDashboard() {
   usePageTitle("Command Center · APEX");
   const { user, isAdmin } = useAuth();
 
-  // Admin (Sam) sees a totally different page — the agency view.
-  // We don't waste queries on the agent flow if they're admin.
-  if (isAdmin) return <AgencyCommandView />;
-
   // ── Resolve current agent id ────────────────────────────────────────────
+  // NOTE: All hooks below must run unconditionally (including for admins)
+  // to preserve hook order across renders if isAdmin toggles. Queries are
+  // gated by `enabled: !isAdmin && !!...` so admins don't waste requests.
   const { data: meAgent } = useQuery({
     queryKey: ["me-agent-row", user?.id],
-    enabled: !!user?.id,
+    enabled: !isAdmin && !!user?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agents")
@@ -159,7 +158,7 @@ export default function AgentCommandDashboard() {
   // ── Command center row ──────────────────────────────────────────────────
   const cc = useQuery({
     queryKey: ["cc-self", agentId],
-    enabled: !!agentId,
+    enabled: !isAdmin && !!agentId,
     refetchInterval: 60_000,
     staleTime: 55_000,
     queryFn: async () => {
@@ -174,7 +173,7 @@ export default function AgentCommandDashboard() {
 
   const daily = useQuery({
     queryKey: ["daily-self", agentId],
-    enabled: !!agentId,
+    enabled: !isAdmin && !!agentId,
     queryFn: async () => {
       const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
       const { data, error } = await supabase
@@ -190,7 +189,7 @@ export default function AgentCommandDashboard() {
 
   const lifetime = useQuery({
     queryKey: ["lifetime-self", agentId],
-    enabled: !!agentId,
+    enabled: !isAdmin && !!agentId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agent_lifetime_production" as any).select("lifetime_alp,lifetime_deals")
@@ -203,7 +202,7 @@ export default function AgentCommandDashboard() {
 
   const revenue = useQuery({
     queryKey: ["revenue-self", agentId],
-    enabled: !!agentId,
+    enabled: !isAdmin && !!agentId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agent_revenue_estimate" as any).select("contract_pct")
@@ -217,7 +216,7 @@ export default function AgentCommandDashboard() {
   const monthYear = format(new Date(), "yyyy-MM");
   const goal = useQuery({
     queryKey: ["goal-self", agentId, monthYear],
-    enabled: !!agentId,
+    enabled: !isAdmin && !!agentId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agent_goals").select("income_goal,comp_percentage")
@@ -231,7 +230,7 @@ export default function AgentCommandDashboard() {
 
   const deals = useQuery({
     queryKey: ["deals-self", agentId],
-    enabled: !!agentId,
+    enabled: !isAdmin && !!agentId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("deals")
@@ -293,6 +292,10 @@ export default function AgentCommandDashboard() {
     : 0;
 
   // ── Render ──────────────────────────────────────────────────────────────
+  // Admin (Sam) sees a totally different page — the agency view.
+  // Early return AFTER all hooks to preserve hook order across renders.
+  if (isAdmin) return <AgencyCommandView />;
+
   if (!user) return null;
 
   if (!meAgent && !cc.isLoading) {

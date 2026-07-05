@@ -98,6 +98,7 @@ const ManagerNextStepBoard = lazy(() => import("./pages/ManagerNextStepBoard"));
 const AdminStuckPool = lazy(() => import("./pages/AdminStuckPool"));
 const AdminFunnelHealth = lazy(() => import("./pages/AdminFunnelHealth"));
 const AdminEmailGaps = lazy(() => import("./pages/AdminEmailGaps"));
+const AdminMissingAlLink = lazy(() => import("./pages/AdminMissingAlLink"));
 const AdminJuneHires = lazy(() => import("./pages/AdminJuneHires"));
 const AdminProducerTrends = lazy(() => import("./pages/AdminProducerTrends"));
 const LicensedInbox = lazy(() => import("./pages/LicensedInbox"));
@@ -470,6 +471,8 @@ const App = () => (
                     <Route path="/admin/next-step/funnel-health" element={<ProtectedRoute requireAdmin><AdminFunnelHealth /></ProtectedRoute>} />
                     {/* 2026-06-17 Sam: surface every licensed agent missing course email + bulk send */}
                     <Route path="/admin/email-gaps" element={<ProtectedRoute requireAdmin><AdminEmailGaps /></ProtectedRoute>} />
+                    {/* 2026-07-05: agents missing insuracloud_user_id (AL user id) — accept suggestion or paste id */}
+                    <Route path="/admin/missing-al-link" element={<ProtectedRoute requireAdmin><AdminMissingAlLink /></ProtectedRoute>} />
                     {/* 2026-06-18 Sam: punch list of June hires needing email/phone/account/AgentLink */}
                     <Route path="/admin/june-hires" element={<ProtectedRoute requireAdmin><AdminJuneHires /></ProtectedRoute>} />
                     {/* MP-232 regression restore: licensed applicants need the immediate-call inbox. */}

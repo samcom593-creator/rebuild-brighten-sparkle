@@ -27,11 +27,6 @@ function mask(s: string | null): string {
   return `${s.slice(0, 6)}…${s.slice(-4)} (${s.length} chars)`;
 }
 
-async function execSql(query: string) {
-  const { error } = await supabase.rpc("exec_sql_admin", { query });
-  if (error) throw new Error(error.message);
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 

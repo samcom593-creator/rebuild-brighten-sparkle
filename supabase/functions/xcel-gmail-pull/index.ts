@@ -16,7 +16,18 @@
 //       (refresh_token, client_id, client_secret). Returns 503 if
 //       creds missing so cron can back off cleanly.
 //
+// Silent-success guard (MP-238):
+//   Every run is logged to automation_runs. Before returning we check
+//   the last 7 days of runs — if EVERY run in that window returned 0
+//   found messages, we log an error and insert a critical row into
+//   system_health_logs so it surfaces on /admin/system-health. That
+//   catches the failure mode where auth silently drifted (returns 200,
+//   0 messages) but the pipeline is actually dead — same disease as
+//   the InsuraCloud 465 fake-success rows and the AgentLink cookie
+//   rot. Never let a green light lie again.
+//
 // PL-091 · 2026-05-29
+// MP-238 · 2026-07-05 — silent-success guard
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -29,6 +40,12 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const XCEL_LABEL_NAME = "Apex/XCEL";
 const XCEL_DONE_LABEL = "Apex/XCEL-Processed";
+const AUTOMATION_NAME = "xcel-gmail-pull";
+const SILENT_SUCCESS_WINDOW_DAYS = 7;
+// Require at least this many logged runs in the window before we cry
+// wolf — otherwise a fresh cron slot with 2 runs and 0 emails looks
+// identical to a 7-day auth failure.
+const SILENT_SUCCESS_MIN_RUNS = 5;
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
@@ -79,6 +96,129 @@ async function gmail<T = any>(path: string, token: string, init?: RequestInit): 
   return r.json() as Promise<T>;
 }
 
+// Log every run into automation_runs so the 7-day silent-success
+// guard has a persistent history to inspect. Best-effort: a logging
+// failure never blocks the actual pull.
+async function logAutomationRun(payload: {
+  status: "success" | "error" | "skipped";
+  found: number;
+  processed: number;
+  imported_rows_total: number;
+  errors: string[];
+  duration_ms: number;
+  error_message?: string;
+}) {
+  try {
+    await supabase.from("automation_runs").insert({
+      automation_name: AUTOMATION_NAME,
+      status: payload.status,
+      agents_affected: payload.imported_rows_total,
+      duration_ms: payload.duration_ms,
+      error_message: payload.error_message ?? null,
+      metadata: {
+        found: payload.found,
+        processed: payload.processed,
+        imported_rows_total: payload.imported_rows_total,
+        error_sample: payload.errors.slice(0, 5),
+      },
+    });
+  } catch (err) {
+    console.error(`[xcel-gmail-pull] automation_runs insert failed:`, err);
+  }
+}
+
+// Hard assertion: if EVERY successful run in the last 7 days returned
+// 0 found messages (and we've logged at least SILENT_SUCCESS_MIN_RUNS
+// of them), the puller is silently succeeding — most likely gmail_xcel_oauth
+// rotated, the label got renamed, or the search query drifted. We log a
+// hard error AND drop a critical row into system_health_logs so the
+// /admin/system-health dashboard shows it in red on the next refresh.
+async function checkSilentSuccessStreak(): Promise<{
+  triggered: boolean;
+  run_count: number;
+  days_since_last_hit: number | null;
+}> {
+  const since = new Date(Date.now() - SILENT_SUCCESS_WINDOW_DAYS * 86400_000).toISOString();
+
+  const { data: runs, error } = await supabase
+    .from("automation_runs")
+    .select("ran_at, status, metadata")
+    .eq("automation_name", AUTOMATION_NAME)
+    .gte("ran_at", since)
+    .order("ran_at", { ascending: false })
+    .limit(500);
+
+  if (error || !runs) {
+    console.error(`[xcel-gmail-pull] silent-success check read failed:`, error);
+    return { triggered: false, run_count: 0, days_since_last_hit: null };
+  }
+
+  const successRuns = runs.filter((r) => r.status === "success");
+  if (successRuns.length < SILENT_SUCCESS_MIN_RUNS) {
+    return { triggered: false, run_count: successRuns.length, days_since_last_hit: null };
+  }
+
+  const anyFound = successRuns.some(
+    (r) => Number((r.metadata as any)?.found ?? 0) > 0,
+  );
+  if (anyFound) {
+    return { triggered: false, run_count: successRuns.length, days_since_last_hit: 0 };
+  }
+
+  // Find last time we actually pulled anything (outside window is fine).
+  const { data: lastHit } = await supabase
+    .from("automation_runs")
+    .select("ran_at, metadata")
+    .eq("automation_name", AUTOMATION_NAME)
+    .eq("status", "success")
+    .order("ran_at", { ascending: false })
+    .limit(50);
+  const lastHitRow = (lastHit ?? []).find(
+    (r) => Number((r.metadata as any)?.found ?? 0) > 0,
+  );
+  const daysSince = lastHitRow
+    ? Math.floor(
+        (Date.now() - new Date(lastHitRow.ran_at as string).getTime()) / 86400_000,
+      )
+    : SILENT_SUCCESS_WINDOW_DAYS;
+
+  const msg =
+    `xcel-gmail-pull returned 0 found messages for ${successRuns.length} consecutive ` +
+    `successful runs over the last ${SILENT_SUCCESS_WINDOW_DAYS}d ` +
+    `(last actual hit: ${daysSince}d ago). Check system_settings.gmail_xcel_oauth ` +
+    `refresh_token, the "Apex/XCEL" label, and the Gmail search query.`;
+
+  console.error(`[xcel-gmail-pull] SILENT-SUCCESS GUARD TRIPPED — ${msg}`);
+
+  const healthResult = {
+    service: "Gmail Puller (Xcel)",
+    status: "down" as const,
+    responseTime: 0,
+    message: msg,
+    requiresAction: true,
+    actionRequired:
+      "Re-auth gmail_xcel_oauth (mint fresh refresh_token) or verify the Apex/XCEL Gmail label + filter still routes new Xcel exports.",
+  };
+
+  try {
+    await supabase.from("system_health_logs").insert({
+      overall_status: "critical",
+      critical_count: 1,
+      warning_count: 0,
+      auto_fixed: [],
+      results: [healthResult],
+    });
+  } catch (err) {
+    console.error(`[xcel-gmail-pull] system_health_logs insert failed:`, err);
+  }
+
+  return {
+    triggered: true,
+    run_count: successRuns.length,
+    days_since_last_hit: daysSince,
+  };
+}
+
 function b64UrlDecode(s: string): Uint8Array {
   const pad = "=".repeat((4 - (s.length % 4)) % 4);
   const normalized = (s + pad).replace(/-/g, "+").replace(/_/g, "/");
@@ -91,8 +231,19 @@ function b64UrlDecode(s: string): Uint8Array {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const startedAt = Date.now();
+
   const creds = await loadCreds();
   if (!creds) {
+    await logAutomationRun({
+      status: "skipped",
+      found: 0,
+      processed: 0,
+      imported_rows_total: 0,
+      errors: ["gmail_oauth_missing"],
+      duration_ms: Date.now() - startedAt,
+      error_message: "gmail_oauth_missing",
+    });
     return new Response(
       JSON.stringify({ error: "gmail_oauth_missing", hint: "set system_settings.gmail_xcel_oauth = {client_id, client_secret, refresh_token}" }),
       { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -174,10 +325,30 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify(summary), {
+    await logAutomationRun({
+      status: "success",
+      found: summary.found,
+      processed: summary.processed,
+      imported_rows_total: summary.imported_rows_total,
+      errors: summary.errors,
+      duration_ms: Date.now() - startedAt,
+    });
+
+    const guard = await checkSilentSuccessStreak();
+
+    return new Response(JSON.stringify({ ...summary, silent_success_guard: guard }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
+    await logAutomationRun({
+      status: "error",
+      found: 0,
+      processed: 0,
+      imported_rows_total: 0,
+      errors: [String(e?.message ?? "unknown")],
+      duration_ms: Date.now() - startedAt,
+      error_message: String(e?.message ?? "unknown"),
+    });
     return new Response(JSON.stringify({ error: e?.message ?? "unknown" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

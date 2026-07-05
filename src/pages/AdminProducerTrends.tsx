@@ -17,7 +17,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Minus, TrendingDown } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Minus, TrendingDown, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,20 @@ type TrendAlertRow = {
   delta_pct: number;
   direction: "up" | "down" | "flat";
   currently_dropping: boolean;
+};
+
+type NewHireActivationRow = {
+  agent_id: string;
+  display_name: string;
+  hire_date: string;
+  days_since_hire: number;
+  onboarding_stage: string | null;
+  license_status: string | null;
+  manager_id: string | null;
+  manager_name: string | null;
+  agentlink_linked: boolean;
+  next_action_text: string | null;
+  next_action_due_at: string | null;
 };
 
 type WeeklyRow = {
@@ -61,6 +75,20 @@ export default function AdminProducerTrends() {
         .order("delta_pct", { ascending: true });
       if (error) throw error;
       return ((data as unknown) as TrendAlertRow[]) ?? [];
+    },
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+
+  const { data: newHires = [] } = useQuery<NewHireActivationRow[]>({
+    queryKey: ["new-hires-activation"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_new_hires_activation" as any)
+        .select("*")
+        .order("days_since_hire", { ascending: false });
+      if (error) throw error;
+      return ((data as unknown) as NewHireActivationRow[]) ?? [];
     },
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
@@ -110,9 +138,14 @@ export default function AdminProducerTrends() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 max-w-md">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl">
         <KpiTile label="Dropping 3W" value={totals.dropping} tone={totals.dropping > 0 ? "rose" : "neutral"} />
         <KpiTile label="Down this week" value={totals.down_this_week} tone="amber" />
+        <KpiTile
+          label="Never activated (60d)"
+          value={newHires.length}
+          tone={newHires.length > 0 ? "rose" : "neutral"}
+        />
       </div>
 
       {totals.dropping > 0 && (
@@ -131,6 +164,72 @@ export default function AdminProducerTrends() {
                   Reach out today. Same slide Daniel had. Nobody caught it.
                 </p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {newHires.length > 0 && (
+        <Card className="border-rose-500/40 bg-rose-500/5">
+          <CardHeader>
+            <div className="flex items-start gap-3">
+              <div className="rounded-md bg-rose-500/15 p-3 border border-rose-500/30 shrink-0">
+                <UserCheck className="h-5 w-5 text-rose-300" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.18em] text-rose-400/80">Never activated · last 60 days</div>
+                <CardTitle className="text-lg mt-0.5">
+                  {newHires.length} licensed hire{newHires.length === 1 ? "" : "s"} without a first deal
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Licensed, cleared the finish line, still zero production. Reach out today before the streak turns permanent.
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/50">
+                    <th className="text-left py-2 px-2">Agent</th>
+                    <th className="text-right py-2 px-2">Days since hire</th>
+                    <th className="text-left py-2 px-2">Stage</th>
+                    <th className="text-left py-2 px-2">Manager</th>
+                    <th className="text-left py-2 px-2">AgentLink</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {newHires.map((r) => (
+                    <tr key={r.agent_id} className="border-b border-border/30 hover:bg-muted/30">
+                      <td className="py-2 px-2 font-medium">
+                        <AgentNameLink agentId={r.agent_id}>{r.display_name}</AgentNameLink>
+                      </td>
+                      <td className={cn(
+                        "py-2 px-2 text-right tabular-nums font-semibold",
+                        r.days_since_hire >= 30 && "text-rose-400",
+                        r.days_since_hire >= 14 && r.days_since_hire < 30 && "text-amber-400",
+                        r.days_since_hire < 14 && "text-muted-foreground",
+                      )}>
+                        {r.days_since_hire}d
+                      </td>
+                      <td className="py-2 px-2 text-muted-foreground text-xs">
+                        {r.onboarding_stage ?? "—"}
+                      </td>
+                      <td className="py-2 px-2 text-muted-foreground text-xs">
+                        {r.manager_name ?? "—"}
+                      </td>
+                      <td className="py-2 px-2">
+                        {r.agentlink_linked ? (
+                          <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-[10px]">linked</Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px]">unlinked</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>

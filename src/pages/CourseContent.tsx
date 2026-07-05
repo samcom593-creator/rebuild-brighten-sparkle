@@ -60,6 +60,47 @@ export default function CourseContent() {
   useEffect(() => {
     if (!licenseCheckLoading && !isLicensed) navigate("/get-licensed", { replace: true });
   }, [licenseCheckLoading, isLicensed, navigate]);
+
+  // MP240 fix (2026-07-05): useQuery hooks MUST be declared before any
+  // conditional early returns below or React will throw "Rendered more
+  // hooks than during the previous render" and white-screen /course-content.
+  // Fetch modules
+  const { data: modules = [], isLoading: loadingModules } = useQuery({
+    queryKey: ["course-modules-full-page"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("onboarding_modules").select("id, title, description, video_url, order_index, pass_threshold, is_active")
+          .eq("is_active", true)
+          .order("order_index");
+        if (error) throw error;
+        return (data || []) as CourseModule[];
+      } catch (err) {
+        console.error("Failed to load course modules:", err);
+        return [] as CourseModule[];
+      }
+    },
+  });
+
+  // Fetch questions
+  const { data: questions = [], isLoading: loadingQuestions } = useQuery({
+    queryKey: ["course-questions-full-page"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("onboarding_questions").select("id, module_id, question, options, correct_answer, explanation, order_index")
+          .order("order_index");
+        if (error) throw error;
+        return (data || []) as CourseQuestion[];
+      } catch (err) {
+        console.error("Failed to load course questions:", err);
+        return [] as CourseQuestion[];
+      }
+    },
+  });
+
+  // === Early returns below this line ===
+  // All hooks above are guaranteed to run on every render (Rules of Hooks).
   if (licenseCheckLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -71,29 +112,6 @@ export default function CourseContent() {
     );
   }
   if (!isLicensed) return null;
-
-  // Fetch modules
-  const { data: modules = [], isLoading: loadingModules } = useQuery({
-    queryKey: ["course-modules-full-page"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("onboarding_modules").select("id, title, description, video_url, order_index, pass_threshold, is_active")
-        .eq("is_active", true)
-        .order("order_index");
-      return (data || []) as CourseModule[];
-    },
-  });
-
-  // Fetch questions
-  const { data: questions = [], isLoading: loadingQuestions } = useQuery({
-    queryKey: ["course-questions-full-page"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("onboarding_questions").select("id, module_id, question, options, correct_answer, explanation, order_index")
-        .order("order_index");
-      return (data || []) as CourseQuestion[];
-    },
-  });
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules((prev) => {

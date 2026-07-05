@@ -427,6 +427,13 @@ async function loadDashboardSnapshot(
     .from("v_agentlink_book_truth")
     .select("deals_today, premium_today, deals_this_week, premium_this_week, deals_this_month, premium_this_month")
     .maybeSingle();
+  // MP237 invariant fix: source-mixing between AgentLink truth view and legacy
+  // deals-table fallback broke Month>=Week>=Today when one bucket was
+  // legitimately zero (e.g. no deals yet today) but others were not.
+  // Decide the source ONCE per snapshot: if the truth row exists, use it for
+  // all six buckets (including legitimate zeros). Only fall back to the
+  // legacy deals-table sum when the view returned no row at all.
+  const alTruthAvailable = alTruth != null;
   const alTodayAlp = Number(alTruth?.premium_today ?? 0);
   const alTodayDeals = Number(alTruth?.deals_today ?? 0);
   const alWeekAlp = Number(alTruth?.premium_this_week ?? 0);
@@ -440,13 +447,15 @@ async function loadDashboardSnapshot(
     scopeLabel,
     sourceGeneratedAt: new Date().toISOString(),
     production: {
-      // Prefer AgentLink truth; legacy values only as fallback when view is empty.
-      todayAlp: alTodayAlp > 0 ? alTodayAlp : legacyTodayAlp,
-      todayDeals: alTodayDeals > 0 ? alTodayDeals : todayDeals.length,
-      weekAlp: alWeekAlp > 0 ? alWeekAlp : sumAnnualPremium(weekDeals),
-      weekDeals: alWeekDeals > 0 ? alWeekDeals : weekDeals.length,
-      monthAlp: alMonthAlp > 0 ? alMonthAlp : legacyMonthAlp,
-      monthDeals: alMonthDeals > 0 ? alMonthDeals : monthDeals.length,
+      // All-or-nothing: never mix truth-view and legacy across buckets in the
+      // same snapshot, or Month>=Week>=Today can be violated when legacy is
+      // stale relative to the AgentLink snapshot.
+      todayAlp: alTruthAvailable ? alTodayAlp : legacyTodayAlp,
+      todayDeals: alTruthAvailable ? alTodayDeals : todayDeals.length,
+      weekAlp: alTruthAvailable ? alWeekAlp : sumAnnualPremium(weekDeals),
+      weekDeals: alTruthAvailable ? alWeekDeals : weekDeals.length,
+      monthAlp: alTruthAvailable ? alMonthAlp : legacyMonthAlp,
+      monthDeals: alTruthAvailable ? alMonthDeals : monthDeals.length,
       previousWeekAlp: sumAnnualPremium(priorWeekDeals),
       liveAgents: new Set((liveDeals as any[]).map((row) => row.agent_id).filter(Boolean)).size,
       presentationsWeek: weekProduction.reduce((sum, row) => sum + Number(row.presentations ?? 0), 0),

@@ -224,7 +224,7 @@ export function HeroSection() {
                     <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(168 80% 50% / 0.45))" }}>
                       from a college dorm.
                     </span>
-                    <span className="block text-foreground text-[0.55em] mt-3">Here's the exact system — yours when you join APEX.</span>
+                    <span className="block text-foreground text-[0.55em] mt-3">The exact system is yours when you join APEX.</span>
                   </>
                 );
               }
@@ -246,7 +246,7 @@ export function HeroSection() {
               is the LCP target, iframe only mounts on user click).
               id="hero-video" so the secondary CTA can scroll to it. */}
           <div id="hero-video" className="landing-fade-up landing-delay-200 w-full max-w-2xl mx-auto mb-8 scroll-mt-24">
-            <LazyYouTube videoId="E2VJ1v85IRE" title="20 Years Old, $12 Million in Revenue — Samuel James" />
+            <LazyYouTube videoId="E2VJ1v85IRE" title="20 Years Old, $12 Million in Revenue. Samuel James." />
           </div>
 
           {/* Subheadline */}

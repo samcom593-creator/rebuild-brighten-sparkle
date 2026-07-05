@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertOctagon, ExternalLink, KeyRound, RefreshCw } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface AuthHealthRow {
   pipeline: string;
@@ -106,13 +107,13 @@ export function InsuraCloudHealthAlert() {
               Open Replit · grab token
               <ExternalLink className="h-3 w-3" />
             </a>
-            <a
-              href="/dashboard/system-health"
+            <Link
+              to="/dashboard/system-health"
               className="text-xs inline-flex items-center gap-1 rounded-md border border-border bg-card hover:bg-muted text-foreground px-3 py-2 transition-colors"
             >
               <RefreshCw className="h-3 w-3" />
               System Health
-            </a>
+            </Link>
           </div>
         </div>
       </Card>

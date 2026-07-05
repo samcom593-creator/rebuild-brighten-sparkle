@@ -53,7 +53,7 @@ export function CalendlyEmbed({ url, className = "" }: CalendlyEmbedProps) {
         <div className="text-center mb-6">
           <h3 className="text-2xl font-bold text-white mb-2">Let's Talk</h3>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Booking is offline for the moment — reach Sam directly using any of these:
+            Booking is offline for the moment. Reach Sam directly using any of these:
           </p>
         </div>
         <div className="grid gap-3 md:grid-cols-3">

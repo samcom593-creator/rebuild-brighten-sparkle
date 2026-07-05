@@ -274,6 +274,21 @@ if match '^(src/(pages|components/(dashboard|landing|recruiter|admin|agent|award
   node scripts/check-hex-color-areas.mjs
 fi
 
+# ---------- check-unresolved-imports + check-orphan-pages + check-sidebar-routes ----------
+# Trigger: src/App.tsx (route table), src/components/layout/GlobalSidebar.tsx
+# (sidebar route list), or any file under src/pages/ (page addition/removal/rename).
+# These 3 guards catch route-table drift, orphan page files not wired to a route,
+# and sidebar links pointing at non-existent routes — a class of leak that only
+# surfaces at runtime today (404 on click, dead page ships to prod).
+if match '^(src/App\.tsx|src/components/layout/GlobalSidebar\.tsx|src/pages/)'; then
+  echo "[pre-commit] Route/sidebar/page file staged — running check:unresolved-imports…"
+  node scripts/check-unresolved-imports.mjs
+  echo "[pre-commit] Route/sidebar/page file staged — running check:orphan-pages…"
+  node scripts/check-orphan-pages.mjs
+  echo "[pre-commit] Route/sidebar/page file staged — running check:sidebar-routes…"
+  node scripts/check-sidebar-routes.mjs
+fi
+
 # ---------- check-tsc-error-count (C11 wave-1) ----------
 # Trigger: any *.ts / *.tsx / tsconfig*.json staged file, or the script itself.
 # Walks the project-reference graph via `tsc -b --noEmit --force` and ratchets

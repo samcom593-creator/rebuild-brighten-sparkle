@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Users, 
@@ -50,6 +50,7 @@ import { QuickFilters } from "@/components/admin/QuickFilters";
 import { RecognitionQueue } from "@/components/admin/RecognitionQueue";
 import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ActivityFeedWidget } from "@/components/dashboard/ActivityFeedWidget";
 import { ProductionAnalyticsCard } from "@/components/dashboard/ProductionAnalyticsCard";
 import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
@@ -161,6 +162,7 @@ export default function DashboardCommandCenter() {
   
   // Collapsible sections state
   const [showInviteLinks, setShowInviteLinks] = useState(false);
+  const [showMoreStats, setShowMoreStats] = useState(false);
   const [showTerminated, setShowTerminated] = useState(false);
   const [showAbandoned, setShowAbandoned] = useState(false);
   const [showAllLeads, setShowAllLeads] = useState(false);
@@ -661,7 +663,7 @@ export default function DashboardCommandCenter() {
         <motion.div
           {...surfaceMotion}
           transition={{ duration: 0.28, delay: 0.04, ease: "easeOut" }}
-          className="grid grid-cols-2 lg:grid-cols-5 gap-4 card-hover-lift"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4 card-hover-lift"
         >
           <HideableCard cardKey="admin.stat.totalAlp" label="Production (Week / Month / Year)">
             <ProductionAnalyticsCard />
@@ -679,29 +681,8 @@ export default function DashboardCommandCenter() {
                     <Users className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Live Agents</p>
+                    <p className="text-xs text-muted-foreground">Live Agents</p>
                     <p className="text-2xl font-bold">{summaryStats.activeAgents}</p>
-                    <p className="text-[10px] text-muted-foreground">Deal posted in {LIVE_AGENT_DEAL_WINDOW_DAYS}d</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </HideableCard>
-
-          <HideableCard cardKey="admin.stat.producers" label="Producers">
-            <Card
-              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all .5 hover:border-foreground/20 hover:shadow-md"
-              onClick={() => setStatPopup({ type: "producers", open: true })}
-            >
-              <CardContent className="p-4">
-                <div className="mb-3 h-1 w-14 rounded-full bg-emerald-500/80 transition-all group-hover:w-20" />
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-md bg-emerald-500/10 ring-1 ring-emerald-500/15">
-                    <TrendingUp className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Producers</p>
-                    <p className="text-2xl font-bold">{summaryStats.producers}</p>
                   </div>
                 </div>
               </CardContent>
@@ -720,34 +701,65 @@ export default function DashboardCommandCenter() {
                     <AlertTriangle className="h-5 w-5 text-destructive" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Needs Attention</p>
+                    <p className="text-xs text-muted-foreground">Needs Attention</p>
                     <p className="text-2xl font-bold text-destructive">{summaryStats.weakPerformers}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </HideableCard>
-
-          <HideableCard cardKey="admin.stat.totalDeals" label="Total Deals">
-            <Card
-              className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all .5 hover:border-foreground/20 hover:shadow-md"
-              onClick={() => setStatPopup({ type: "totalDeals", open: true })}
-            >
-              <CardContent className="p-4">
-                <div className="mb-3 h-1 w-14 rounded-full bg-amber-500/80 transition-all group-hover:w-20" />
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-md bg-amber-500/10 ring-1 ring-amber-500/15">
-                    <TrendingUp className="h-5 w-5 text-emerald-500" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Deals</p>
-                    <p className="text-2xl font-bold">{summaryStats.totalDeals}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </HideableCard>
         </motion.div>
+
+        {/* MP238-simplify: Producers + Total Deals moved to collapsible detail; primary strip stays 3 cards */}
+        <Collapsible open={showMoreStats} onOpenChange={setShowMoreStats}>
+          <CollapsibleTrigger asChild>
+            <button className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline">
+              {showMoreStats ? "Hide" : "Show"} more stats (Producers · Total Deals)
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <HideableCard cardKey="admin.stat.producers" label="Producers">
+                <Card
+                  className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all .5 hover:border-foreground/20 hover:shadow-md"
+                  onClick={() => setStatPopup({ type: "producers", open: true })}
+                >
+                  <CardContent className="p-4">
+                    <div className="mb-3 h-1 w-14 rounded-full bg-emerald-500/80 transition-all group-hover:w-20" />
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-md bg-emerald-500/10 ring-1 ring-emerald-500/15">
+                        <TrendingUp className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Producers</p>
+                        <p className="text-2xl font-bold">{summaryStats.producers}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </HideableCard>
+              <HideableCard cardKey="admin.stat.totalDeals" label="Total Deals">
+                <Card
+                  className="stat-card group cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all .5 hover:border-foreground/20 hover:shadow-md"
+                  onClick={() => setStatPopup({ type: "totalDeals", open: true })}
+                >
+                  <CardContent className="p-4">
+                    <div className="mb-3 h-1 w-14 rounded-full bg-amber-500/80 transition-all group-hover:w-20" />
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-md bg-amber-500/10 ring-1 ring-amber-500/15">
+                        <TrendingUp className="h-5 w-5 text-emerald-500" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total Deals</p>
+                        <p className="text-2xl font-bold">{summaryStats.totalDeals}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </HideableCard>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Time Period Toggle + Custom Date Range */}
         <motion.div
@@ -793,14 +805,14 @@ export default function DashboardCommandCenter() {
         {/* Quick Filters */}
         <QuickFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} />
 
-        {/* Main Content Grid */}
+        {/* Main Content Grid — MP238-simplify: stacked full-width; widgets get ErrorBoundary + Suspense */}
         <motion.div
           {...surfaceMotion}
           transition={{ duration: 0.28, delay: 0.12, ease: "easeOut" }}
-          className="flex flex-col lg:flex-row gap-6"
+          className="flex flex-col gap-6"
         >
-          {/* Leaderboard - Takes 70% on desktop */}
-          <div className="w-full lg:w-[70%]">
+          {/* Leaderboard - full width */}
+          <div className="w-full">
             <Card className="flex flex-col h-full overflow-hidden border-border/70 bg-card/95 shadow-sm">
               <Tabs defaultValue="live" className="w-full flex flex-col h-full">
                 <CardHeader className="shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-white pb-4">
@@ -1070,20 +1082,36 @@ export default function DashboardCommandCenter() {
             </Card>
           </div>
 
-          {/* Recognition Queue & Course Progress - 30% on desktop */}
-          <div className="w-full lg:w-[30%] space-y-6">
+          {/* MP238-simplify: right-column widgets stacked full-width below leaderboard, each wrapped in ErrorBoundary + Suspense so a single failure never blocks the rest */}
+          <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
             <HideableCard cardKey="admin.ai-summary" label="AI Summary Report">
-              <AISummaryReport />
+              <ErrorBoundary>
+                <Suspense fallback={<div className="h-40 rounded-md bg-muted/30 animate-pulse" />}>
+                  <AISummaryReport />
+                </Suspense>
+              </ErrorBoundary>
             </HideableCard>
 
             <HideableCard cardKey="admin.recognition-queue" label="Recognition Queue">
-              <RecognitionQueue />
+              <ErrorBoundary>
+                <Suspense fallback={<div className="h-40 rounded-md bg-muted/30 animate-pulse" />}>
+                  <RecognitionQueue />
+                </Suspense>
+              </ErrorBoundary>
             </HideableCard>
             <HideableCard cardKey="admin.course-progress" label="Course Progress">
-              <CourseProgressPanel />
+              <ErrorBoundary>
+                <Suspense fallback={<div className="h-40 rounded-md bg-muted/30 animate-pulse" />}>
+                  <CourseProgressPanel />
+                </Suspense>
+              </ErrorBoundary>
             </HideableCard>
             <HideableCard cardKey="admin.activity-feed" label="Activity Feed">
-              <ActivityFeedWidget limit={12} />
+              <ErrorBoundary>
+                <Suspense fallback={<div className="h-40 rounded-md bg-muted/30 animate-pulse" />}>
+                  <ActivityFeedWidget limit={12} />
+                </Suspense>
+              </ErrorBoundary>
             </HideableCard>
           </div>
         </motion.div>
@@ -1093,8 +1121,8 @@ export default function DashboardCommandCenter() {
           <TeamHierarchyManager />
         </HideableCard>
 
-        {/* Manager Invites + Bulk Assignment (side by side) */}
-        <div className="grid lg:grid-cols-2 gap-4">
+        {/* MP238-simplify: Manager Invites + Bulk Assignment stacked (was 2-col; too much noise beside the leaderboard) */}
+        <div className="space-y-4">
           <HideableCard cardKey="admin.manager-invites" label="Manager Invites">
             <AdminManagerInvites />
           </HideableCard>

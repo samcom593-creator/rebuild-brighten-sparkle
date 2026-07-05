@@ -21,6 +21,16 @@ function money(n: number): string {
   return `$${Math.round(n)}`;
 }
 
+// PL-MP242: MTD reverted to calendar month (Phoenix TZ). Show the actual date
+// range so users read "Month" as the honest slice (e.g. Jul 1 – Jul 5) instead
+// of assuming it's a rolling window.
+function mtdRangeLabel(): string {
+  const nowPhx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
+  const start = new Date(nowPhx.getFullYear(), nowPhx.getMonth(), 1);
+  const fmt = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${fmt(start)} – ${fmt(nowPhx)}`;
+}
+
 /**
  * 2026-06-09 — AgentLink Book Truth card.
  * Surfaces the canonical source-of-truth book numbers pulled from
@@ -98,7 +108,7 @@ export function AgentLinkBookTruthCard() {
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 border-t border-amber-500/20 pt-3">
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">This month</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">MTD ({mtdRangeLabel()})</p>
             <p className="text-base font-bold tabular-nums">{money(d.premium_this_month)}</p>
             <p className="text-[11px] text-muted-foreground">{d.deals_this_month} deals</p>
           </div>

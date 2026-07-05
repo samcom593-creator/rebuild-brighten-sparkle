@@ -133,8 +133,9 @@ export default function AdminProducerTrends() {
         </div>
         <h1 className="text-3xl font-bold">Producer Trends</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Weekly ALP for every producer. A 3-week drop alarm surfaces anyone
-          quietly sliding. Nobody dips silently.
+          Weekly ALP for every producer, aligned to calendar weeks (Mon-Sun,
+          America/Phoenix). A 3-week drop alarm surfaces anyone quietly sliding.
+          Nobody dips silently.
         </p>
       </div>
 

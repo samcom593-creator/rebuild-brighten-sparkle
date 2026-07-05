@@ -60,6 +60,12 @@ export function ProductionAnalyticsCard() {
     : n >= 1_000   ? `$${(n / 1_000).toFixed(1)}K`
     : `$${Math.round(n).toLocaleString()}`;
 
+  // Explicit calendar-month + year labels (Phoenix TZ, Sam 2026-07-05):
+  // MTD = calendar month (e.g. "Jul"), YTD = calendar year (e.g. "2026").
+  const nowPhx = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
+  const monthLabel = nowPhx.toLocaleDateString("en-US", { month: "short", timeZone: "America/Phoenix" });
+  const yearLabel = String(nowPhx.getFullYear());
+
   return (
     <Card className="stat-card group overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all .5 hover:border-foreground/20 hover:shadow-md">
       <CardContent className="p-4">
@@ -74,17 +80,17 @@ export function ProductionAnalyticsCard() {
         </div>
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Week</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">This week</p>
             <p className="text-lg font-bold tabular-nums leading-tight">{loading ? "…" : fmt(stats.week)}</p>
             {stats.weekDeals > 0 && <p className="text-[10px] text-muted-foreground">{stats.weekDeals} deals</p>}
           </div>
           <div className="border-l border-border/60 pl-2">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Month</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">MTD ({monthLabel})</p>
             <p className="text-lg font-bold tabular-nums leading-tight">{loading ? "…" : fmt(stats.month)}</p>
-            {stats.monthDeals > 0 && <p className="text-[10px] text-muted-foreground">{stats.monthDeals} deals</p>}
+            {stats.monthDeals > 0 && <p className="text-[10px] text-muted-foreground">{stats.monthDeals} deals · calendar month</p>}
           </div>
           <div className="border-l border-border/60 pl-2">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Year</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">YTD ({yearLabel})</p>
             <p className="text-lg font-bold tabular-nums leading-tight">{loading ? "…" : fmt(stats.year)}</p>
             {stats.yearDeals > 0 && <p className="text-[10px] text-muted-foreground">{stats.yearDeals} deals</p>}
           </div>

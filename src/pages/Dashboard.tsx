@@ -747,6 +747,25 @@ function ExecutiveDashboard({
       : `Manual lead counter ${number(snapshot.readyMode.manualCounter)} is shown only as unverified fallback.`
     : `Updated ${ageLabel(snapshot.readyMode.updatedAt)} from ReadyMode inventory setting.`;
 
+  // Explicit period labels so "Today / Week / Month" tiles surface the
+  // real calendar range they cover (Sam 2026-07-05 correction: MTD is
+  // calendar-month, not rolling-30d — labels must state which is which).
+  const phoenixNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
+  const monthShort = phoenixNow.toLocaleDateString("en-US", { month: "short", timeZone: "America/Phoenix" });
+  const dayOfMonth = phoenixNow.getDate();
+  const todayLabel = `${monthShort} ${dayOfMonth}`;
+  const weekStart = new Date(phoenixNow);
+  const dow = phoenixNow.getDay(); // 0=Sun; Postgres date_trunc('week') = Monday
+  const daysSinceMonday = dow === 0 ? 6 : dow - 1;
+  weekStart.setDate(phoenixNow.getDate() - daysSinceMonday);
+  const weekStartLabel = weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Phoenix" });
+  const weekRangeLabel = `${weekStartLabel} - ${todayLabel}`;
+  // PL-MP242: MTD reverted to calendar month (America/Phoenix). Label the
+  // range explicitly so a short new-month vs a long business week reads
+  // as truth ("Jul 1 - Jul 5" vs "Jun 30 - Jul 5"), not as a broken KPI.
+  const monthStartLabel = phoenixNow.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Phoenix" }).replace(/\s\d+$/, " 1");
+  const mtdRangeLabel = `${monthStartLabel} - ${todayLabel}`;
+
   return (
     <div className="space-y-6 pb-8 lg:pr-[18rem] ops-fade-in">
       <PageHeader
@@ -786,8 +805,26 @@ function ExecutiveDashboard({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile icon={DollarSign} label="Today ALP" value={money(snapshot.production.todayAlp)} detail={`${number(snapshot.production.todayDeals)} posted deals today`} />
-        <StatTile icon={BarChart3} label="Week ALP" value={money(snapshot.production.weekAlp)} detail={`${number(snapshot.production.weekDeals)} deals this business week`} />
+        <StatTile
+          icon={DollarSign}
+          label="Today ALP"
+          value={money(snapshot.production.todayAlp)}
+          detail={`${number(snapshot.production.todayDeals)} posted deals · ${todayLabel} (America/Phoenix)`}
+        />
+        <StatTile
+          icon={BarChart3}
+          label="Week ALP (business week)"
+          value={money(snapshot.production.weekAlp)}
+          detail={`${number(snapshot.production.weekDeals)} deals · ${weekRangeLabel}`}
+        />
+        {/* PL-MP242: MTD reverted to calendar-month Phoenix TZ. Explicit
+            range in label so short-month vs long-week is honest, not "broken". */}
+        <StatTile
+          icon={BarChart3}
+          label={`MTD ALP (${mtdRangeLabel})`}
+          value={money(snapshot.production.monthAlp)}
+          detail={`${number(snapshot.production.monthDeals)} deals · calendar month · America/Phoenix`}
+        />
         <StatTile icon={Activity} label={`Live agents (${LIVE_AGENT_DEAL_WINDOW_DAYS}d)`} value={number(snapshot.production.liveAgents)} detail="At least one valid posted deal in live window" />
         <StatTile icon={CheckCircle2} label="Close rate" value={percent(snapshot.production.closeRate)} detail={`${number(snapshot.production.presentationsWeek)} presentations logged`} tone="success" />
       </div>

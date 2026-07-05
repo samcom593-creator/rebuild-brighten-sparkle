@@ -665,7 +665,7 @@ export default function DashboardCommandCenter() {
           transition={{ duration: 0.28, delay: 0.04, ease: "easeOut" }}
           className="grid grid-cols-1 sm:grid-cols-3 gap-4 card-hover-lift"
         >
-          <HideableCard cardKey="admin.stat.totalAlp" label="Production (Week / Month / Year)">
+          <HideableCard cardKey="admin.stat.totalAlp" label="Production (Week / MTD / YTD, Phoenix TZ)">
             <ProductionAnalyticsCard />
           </HideableCard>
 
@@ -770,8 +770,8 @@ export default function DashboardCommandCenter() {
           <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)} className="w-full lg:w-auto">
             <TabsList className="grid grid-cols-4 w-full rounded-md bg-muted/70 lg:w-auto">
               <TabsTrigger value="day" className="px-3 text-sm">Today</TabsTrigger>
-              <TabsTrigger value="week" className="px-3 text-sm">Week</TabsTrigger>
-              <TabsTrigger value="month" className="px-3 text-sm">Month</TabsTrigger>
+              <TabsTrigger value="week" className="px-3 text-sm">This Week</TabsTrigger>
+              <TabsTrigger value="month" className="px-3 text-sm">MTD</TabsTrigger>
               <TabsTrigger value="custom" className="px-3 text-sm gap-1">
                 <Calendar className="h-3 w-3" />
                 Custom

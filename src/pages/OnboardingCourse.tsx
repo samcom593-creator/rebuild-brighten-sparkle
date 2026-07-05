@@ -401,7 +401,7 @@ export default function OnboardingCourse() {
                             <CardContent className="pt-8 pb-8 text-center">
                               <HelpCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                               <p className="text-muted-foreground mb-4">
-                                No quiz for this module — finish the video and mark it complete to unlock the next one.
+                                No quiz for this module. Finish the video and mark it complete to continue.
                               </p>
                               <Button
                                 onClick={() => handleQuizSubmit([], 100, true)}

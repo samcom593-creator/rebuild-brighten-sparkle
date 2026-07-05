@@ -630,7 +630,7 @@ function DraftRow({
           </Button>
           {sourceHref ? (
             <Button size="sm" variant="ghost" asChild>
-              <a href={sourceHref} target="_blank" rel="noreferrer">
+              <a href={sourceHref} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-3.5 w-3.5 mr-1" /> Source
               </a>
             </Button>

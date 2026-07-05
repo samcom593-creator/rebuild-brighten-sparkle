@@ -566,7 +566,7 @@ export function CallCenterLeadCard({
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
                   const url = `/dashboard/calendar`;
-                  window.open(url, "_blank");
+                  window.open(url, "_blank", "noopener,noreferrer");
                 }}
                 className="p-2.5 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors border border-blue-500/30"
                 title="Schedule Interview"

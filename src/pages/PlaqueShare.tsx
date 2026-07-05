@@ -141,6 +141,7 @@ export default function PlaqueShare() {
     window.open(
       `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(window.location.href)}`,
       "_blank",
+      "noopener,noreferrer",
     );
   };
 
@@ -148,6 +149,7 @@ export default function PlaqueShare() {
     window.open(
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`,
       "_blank",
+      "noopener,noreferrer",
     );
   };
 

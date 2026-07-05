@@ -131,7 +131,7 @@ export function NextStepStuckPool({ ownerUserId, limit = 8, heading, subheading 
                       <a
                         href={row.next_action_url}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="rounded-md border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary p-1.5 transition-colors"
                         title="Open next-step action"
                       >

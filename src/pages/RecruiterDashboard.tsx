@@ -671,7 +671,7 @@ const LeadCard = memo(function LeadCard({
                       title: "Calendly link sent",
                       details: { link_type: "unlicensed" },
                     });
-                    window.open(UNLICENSED_SCHEDULING_LINK, "_blank");
+                    window.open(UNLICENSED_SCHEDULING_LINK, "_blank", "noopener,noreferrer");
                   }}
                 >
                   <CalendarClock className="h-4 w-4" />

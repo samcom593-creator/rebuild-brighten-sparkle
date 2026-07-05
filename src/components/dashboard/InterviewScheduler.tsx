@@ -222,7 +222,7 @@ export function InterviewScheduler({
             <div className="flex gap-2">
               <Button
                 className="flex-1"
-                onClick={() => window.open(calendarUrl, "_blank")}
+                onClick={() => window.open(calendarUrl, "_blank", "noopener,noreferrer")}
               >
                 <CalendarPlus className="h-4 w-4 mr-2" />
                 Add to Google Calendar

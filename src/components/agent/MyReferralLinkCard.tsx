@@ -149,7 +149,7 @@ export function MyReferralLinkCard() {
                 <span className="ml-1.5">{copied ? "Copied" : "Copy"}</span>
               </Button>
               <Button asChild size="sm" variant="ghost" aria-label="Open apply link">
-                <a href={fullUrl} target="_blank" rel="noreferrer">
+                <a href={fullUrl} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4" />
                 </a>
               </Button>

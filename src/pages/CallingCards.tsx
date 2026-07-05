@@ -162,7 +162,7 @@ export default function CallingCards() {
               className="w-full"
               variant="outline"
               onClick={() => {
-                window.open(`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shareUrl)}`, "_blank");
+                window.open(`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shareUrl)}`, "_blank", "noopener,noreferrer");
               }}
             >
               <QrCode className="h-3.5 w-3.5 mr-2" /> Show QR

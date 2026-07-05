@@ -605,7 +605,7 @@ export default function ReadyModeIntegration() {
                 </div>
                 {c.recording_url && (
                   <Button asChild size="sm" variant="outline">
-                    <a href={c.recording_url} target="_blank" rel="noreferrer">
+                    <a href={c.recording_url} target="_blank" rel="noopener noreferrer">
                       <Headphones className="h-3.5 w-3.5 mr-1" /> Listen
                     </a>
                   </Button>

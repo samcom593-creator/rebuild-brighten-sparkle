@@ -234,7 +234,7 @@ export default function MyStrikes() {
                               key={idx}
                               href={url}
                               target="_blank"
-                              rel="noreferrer"
+                              rel="noopener noreferrer"
                               className="text-[11px] text-primary hover:underline truncate max-w-[260px] inline-flex items-center gap-1"
                             >
                               <LinkIcon className="h-3 w-3" /> {(() => { try { return new URL(url).hostname; } catch { return "link"; } })()}

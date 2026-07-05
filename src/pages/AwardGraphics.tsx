@@ -93,7 +93,7 @@ async function saveAsPng(svgUrl: string, filename: string) {
   } catch (err) {
     console.error("Save failed:", err);
     // Last resort: open in new tab
-    window.open(svgUrl, "_blank");
+    window.open(svgUrl, "_blank", "noopener,noreferrer");
   }
 }
 

@@ -128,7 +128,7 @@ export function DashboardModule() {
                     <a
                       href={o.post_url}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                     >
                       Post <ExternalLink className="h-3 w-3" />

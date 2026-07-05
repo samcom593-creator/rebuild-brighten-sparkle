@@ -75,7 +75,7 @@ export function CalendlyEmbed({ url, className = "" }: CalendlyEmbedProps) {
         </div>
         <p className="text-xs text-center text-slate-600 dark:text-slate-300 mt-6">
           Once Calendly is restored, this page will auto-show the embed again.{" "}
-          <a href={url} target="_blank" rel="noopener" className="inline-flex items-center gap-1 text-primary hover:underline">
+          <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
             Try opening in a new tab <ExternalLink className="h-3 w-3" />
           </a>
         </p>

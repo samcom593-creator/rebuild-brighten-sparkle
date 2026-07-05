@@ -100,7 +100,7 @@ export function InsuraCloudHealthAlert() {
             <a
               href="https://replit.com/~"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="text-xs inline-flex items-center gap-1 rounded-md border border-rose-500/40 bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 px-3 py-2 transition-colors font-medium"
             >
               <KeyRound className="h-3 w-3" />

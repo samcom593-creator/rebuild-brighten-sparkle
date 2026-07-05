@@ -384,7 +384,7 @@ export default function CalendarPage() {
       description: `Type: ${typeLabels[iv.interview_type] || iv.interview_type}\n${iv.meeting_link ? `Link: ${iv.meeting_link}` : ""}\n${iv.notes || ""}`,
       location: iv.meeting_link || undefined,
     });
-    window.open(url, "_blank");
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const handleExportIcs = (iv: InterviewRow) => {
@@ -752,7 +752,7 @@ export default function CalendarPage() {
 
                             <div className="flex items-center gap-1.5 shrink-0">
                               {iv.meeting_link && (
-                                <Button variant="ghost" size="icon" aria-label="Open meeting link" title="Open meeting link" className="h-8 w-8" onClick={() => window.open(iv.meeting_link!, "_blank")}>
+                                <Button variant="ghost" size="icon" aria-label="Open meeting link" title="Open meeting link" className="h-8 w-8" onClick={() => window.open(iv.meeting_link!, "_blank", "noopener,noreferrer")}>
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </Button>
                               )}

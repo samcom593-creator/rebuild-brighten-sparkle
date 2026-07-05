@@ -565,7 +565,7 @@ export default function DashboardApplicants() {
   };
 
   const openInstagram = (handle: string) => {
-    window.open(`https://instagram.com/${handle}`, "_blank");
+    window.open(`https://instagram.com/${handle}`, "_blank", "noopener,noreferrer");
   };
 
   const handleNotesSave = (notes: string) => {

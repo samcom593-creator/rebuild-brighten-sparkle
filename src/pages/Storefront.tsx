@@ -104,7 +104,7 @@ export default function Storefront() {
                   <CardContent>
                     <p className="text-sm text-slate-400 mb-5">{s.blurb}</p>
                     <Button asChild className="w-full bg-emerald-500 hover:bg-emerald-600 text-white">
-                      <a href={s.href} target="_blank" rel="noopener" className="gap-2">
+                      <a href={s.href} target="_blank" rel="noopener noreferrer" className="gap-2">
                         Subscribe <ArrowRight className="h-4 w-4" />
                       </a>
                     </Button>

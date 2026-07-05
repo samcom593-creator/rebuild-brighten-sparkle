@@ -327,7 +327,7 @@ export default function AdminJuneHires() {
                       <a
                         href="https://agentlink.insuracloud.ai/"
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs text-violet-400 hover:underline"
                       >
                         <ExternalLink className="h-3 w-3" />

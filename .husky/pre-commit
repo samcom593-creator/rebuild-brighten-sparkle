@@ -336,6 +336,28 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-internal-nav-hrefs\.mjs$)'; then
   node scripts/check-internal-nav-hrefs.mjs
 fi
 
+# ---------- check-external-link-noopener (wave-17, 2026-07-05) ----------
+# Trigger: any src/ tsx|ts|jsx|js|html or index.html or the script itself.
+# Walks every src/**/*.{tsx,ts,jsx,js,html} + index.html and fails when it
+# finds a `<a … target="_blank">` without `rel="noopener noreferrer"` OR a
+# `window.open(url, "_blank", …)` call without `noopener` in the features arg.
+# Why this matters: reverse-tabnabbing (attacker on the destination page uses
+# `window.opener` to swap Sam's tab under the user) and Referer-header leaks
+# (destination learns which admin/dashboard URL routed the click). React docs,
+# MDN, and OWASP all cite `rel="noopener noreferrer"` as the industry-standard
+# fix. Same drift-window class-of-fix as wave-16's internal-nav-hrefs guard:
+# without a gate, every future new external link reaches for the naked
+# `target="_blank"` pattern (Tailwind copy-paste / Lovable AI completion / MDN
+# quick-copy all suggest it) and the tabnabbing exposure re-opens silently.
+# Initial sweep found 22 live violations across 20 files — all fixed in the
+# same wave-17 commit. Cost when fired: ~150-300ms (linear in ~500 files).
+# Opt-out marker per line: `external-link-noopener-allow:<reason>` same-line
+# or line directly above.
+if match '^(src/.*\.(tsx?|jsx?|html)$|index\.html$|scripts/check-external-link-noopener\.mjs$)'; then
+  echo "[pre-commit] External-link-affecting file staged — running check:external-link-noopener…"
+  node scripts/check-external-link-noopener.mjs
+fi
+
 # ---------- check-notion-ban (MP221 §7.1) ----------
 # Trigger: any newly-introduced Notion write call in non-test code.
 # Existing supabase/functions/notion-sync/* is grandfathered (read-only path).

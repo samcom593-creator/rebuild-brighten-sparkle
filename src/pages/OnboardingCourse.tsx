@@ -229,7 +229,7 @@ export default function OnboardingCourse() {
           watch the master Apex playlist directly on YouTube.
         </p>
         <Button asChild className="gap-2">
-          <a href="https://www.youtube.com/@SamuelJamesHQ" target="_blank" rel="noreferrer">
+          <a href="https://www.youtube.com/@SamuelJamesHQ" target="_blank" rel="noopener noreferrer">
             Open Apex Playlist on YouTube
           </a>
         </Button>

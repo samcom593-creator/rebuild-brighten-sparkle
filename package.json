@@ -32,6 +32,7 @@
     "check:landing-truth-floor": "node scripts/check-landing-truth-floor.mjs",
     "check:landing-marketing-claims": "node scripts/check-landing-marketing-claims.mjs",
     "check:internal-nav-hrefs": "node scripts/check-internal-nav-hrefs.mjs",
+    "check:external-link-noopener": "node scripts/check-external-link-noopener.mjs",
     "typecheck": "tsc -b --noEmit --force",
     "typecheck:fast": "tsc -b --noEmit",
     "typecheck:count": "tsc -b --noEmit --force 2>&1 | grep -cE 'error TS[0-9]+' || true",
@@ -43,7 +44,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "prepare": "git config core.hooksPath .husky 2>/dev/null || true",
-    "verify:core": "npm run check:forbidden-language && npm run check:metric-truth && npm run check:sync-reliability && npm run check:unsafe-supabase-catch && npm run check:vsl-sync && npm run check:cold-landing-sonner && npm run check:cold-landing-supabase-queryFn && npm run check:vendor-icons-landing-census && npm run check:landing-css-size && npm run check:bg-gradient-cards && npm run check:bg-gradient-areas && npm run check:shadow-areas && npm run check:motion-areas && npm run check:focus-ring-areas && npm run check:rainbow-title-areas && npm run check:hex-color-areas && npm run check:tsc-error-count && npm run check:landing-truth-floor && npm run check:landing-marketing-claims && npm run check:internal-nav-hrefs && npm run build"
+    "verify:core": "npm run check:forbidden-language && npm run check:metric-truth && npm run check:sync-reliability && npm run check:unsafe-supabase-catch && npm run check:vsl-sync && npm run check:cold-landing-sonner && npm run check:cold-landing-supabase-queryFn && npm run check:vendor-icons-landing-census && npm run check:landing-css-size && npm run check:bg-gradient-cards && npm run check:bg-gradient-areas && npm run check:shadow-areas && npm run check:motion-areas && npm run check:focus-ring-areas && npm run check:rainbow-title-areas && npm run check:hex-color-areas && npm run check:tsc-error-count && npm run check:landing-truth-floor && npm run check:landing-marketing-claims && npm run check:internal-nav-hrefs && npm run check:external-link-noopener && npm run build"
   },
   "dependencies": {
     "@alloc/quick-lru": "5.2.0",

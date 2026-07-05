@@ -99,6 +99,7 @@ const AdminStuckPool = lazy(() => import("./pages/AdminStuckPool"));
 const AdminFunnelHealth = lazy(() => import("./pages/AdminFunnelHealth"));
 const AdminEmailGaps = lazy(() => import("./pages/AdminEmailGaps"));
 const AdminMissingAlLink = lazy(() => import("./pages/AdminMissingAlLink"));
+const DashboardToday = lazy(() => import("./pages/DashboardToday"));
 const AdminJuneHires = lazy(() => import("./pages/AdminJuneHires"));
 const AdminProducerTrends = lazy(() => import("./pages/AdminProducerTrends"));
 const LicensedInbox = lazy(() => import("./pages/LicensedInbox"));
@@ -432,7 +433,8 @@ const App = () => (
                     <Route path="/dashboard/legacy" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     {/* 2026-06-17 Sam directive: native daily flow at /dashboard/today
                         (replaces Todoist dep). Tap-circle UI · phone-first. */}
-                    <Route path="/dashboard/today" element={<Navigate to="/dashboard/command" replace />} />
+                    {/* MP-239 (2026-07-05, restored 2026-07-06): unified /today — income tasks + appointments + hot prospects */}
+                    <Route path="/dashboard/today" element={<ProtectedRoute><DashboardToday /></ProtectedRoute>} />
                     <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
                     {/* Manager self-serve: view their referrals + drop new ones (Sam 2026-06-03) */}
                     <Route path="/admin/my-applicants" element={<ProtectedRoute requireAdmin allowManagers><MyApplicants /></ProtectedRoute>} />

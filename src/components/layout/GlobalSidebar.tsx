@@ -23,6 +23,7 @@ import {
   LayoutDashboard,
   Library,
   DollarSign,
+  Flame,
   LogOut,
   Maximize2,
   Megaphone,
@@ -156,7 +157,7 @@ export function GlobalSidebar({
         }
         // 2026-06-17 Sam directive: search now returns BOTH agents + applicants.
         // Agents tap → AgentProfileDrawer (IT/AV/Legs + email-status + Send-now).
-        // Applicants tap → /dashboard/applicants?focus=<id> for inline edit/promote.
+        // Applicants tap → /dashboard/applicants?id=<id> for inline edit/promote.
         const agents = ((data.agents as Array<{ id: string; name: string; email: string; phone?: string; licenseStatus?: string }>) ?? [])
           .slice(0, 8)
           .map((a) => ({ ...a, kind: "agent" as const }));
@@ -233,6 +234,10 @@ export function GlobalSidebar({
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         // Admin hub (everything that isn't daily flow)
         // MP-230 (2026-07-01): Agent Duplicates removed per Sam directive.
+        // MP-232: licensed applicants bypass Calendly; call now.
+        { icon: Inbox, label: "Licensed Inbox", href: "/admin/licensed-inbox", special: true },
+        // 2026-07-05 Sam: unlicensed → licensed recovery queue. Assistants work this daily.
+        { icon: Flame, label: "Recovery Queue", href: "/admin/recovery-queue", special: true },
         // 2026-06-18 Sam: June hires punch list with inline edit + Send Course.
         { icon: UserCog, label: "June Hires Punch List", href: "/admin/june-hires", special: true },
         // 2026-07-01 Sam: producer weekly trend + 3-week drop alarm (Daniel use case).
@@ -541,7 +546,7 @@ export function GlobalSidebar({
                                 try { openAgentProfile(result.id); }
                                 catch (err) { toast.error(`Drawer crashed: ${err instanceof Error ? err.message : String(err)}`); }
                               } else {
-                                navigate(`/dashboard/applicants?focus=${result.id}`);
+                                navigate(`/dashboard/applicants?id=${result.id}`);
                               }
                             }}
                             className="flex-1 min-w-0 text-left flex items-center gap-2"

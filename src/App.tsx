@@ -100,6 +100,7 @@ const AdminFunnelHealth = lazy(() => import("./pages/AdminFunnelHealth"));
 const AdminEmailGaps = lazy(() => import("./pages/AdminEmailGaps"));
 const AdminJuneHires = lazy(() => import("./pages/AdminJuneHires"));
 const AdminProducerTrends = lazy(() => import("./pages/AdminProducerTrends"));
+const LicensedInbox = lazy(() => import("./pages/LicensedInbox"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const ScheduleCall = lazy(() => import("./pages/ScheduleCall"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -196,7 +197,7 @@ const Join = lazy(() => import("./pages/Join"));
 const HireLink = lazy(() => import("./pages/HireLink"));
 const JoinLink = lazy(() => import("./pages/JoinLink"));
 const InviteLinksAdmin = lazy(() => import("./pages/admin/InviteLinks"));
-const LicensedInbox = lazy(() => import("./pages/LicensedInbox"));
+const RecoveryQueue = lazy(() => import("./pages/admin/RecoveryQueue"));
 const AgentDetail = lazy(() => import("./pages/AgentDetail"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Rewards = lazy(() => import("./pages/Rewards"));
@@ -433,23 +434,18 @@ const App = () => (
                     <Route path="/dashboard/today" element={<Navigate to="/dashboard/command" replace />} />
                     <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
                     {/* Manager self-serve: view their referrals + drop new ones (Sam 2026-06-03) */}
-                    <Route path="/admin/my-applicants" element={<ProtectedRoute allowManagers><MyApplicants /></ProtectedRoute>} />
-                    <Route path="/admin/add-referral" element={<ProtectedRoute allowManagers><AddReferral /></ProtectedRoute>} />
+                    <Route path="/admin/my-applicants" element={<ProtectedRoute requireAdmin allowManagers><MyApplicants /></ProtectedRoute>} />
+                    <Route path="/admin/add-referral" element={<ProtectedRoute requireAdmin allowManagers><AddReferral /></ProtectedRoute>} />
                     {/* MP-234 magic invite links admin (hire + join). Share-only —
                         never rendered in nav. Direct URL only. */}
-                    <Route path="/admin/invite-links" element={<ProtectedRoute allowManagers><InviteLinksAdmin /></ProtectedRoute>} />
-                    {/* MP-232: licensed applicants → manager dial queue. manager_alerts
-                        rows fire ntfy on insert; this page is where Sam+managers
-                        action them. Route was missing since MP-232 landed — page
-                        existed but nothing linked to it. Codex head-to-toe caught it. */}
-                    <Route path="/admin/licensed-inbox" element={<ProtectedRoute allowManagers><LicensedInbox /></ProtectedRoute>} />
+                    <Route path="/admin/invite-links" element={<ProtectedRoute requireAdmin allowManagers><InviteLinksAdmin /></ProtectedRoute>} />
                     {/* PL-SAM-2026-06-03-001: uncontacted-first recruiting queue. v_recruiting_inbox is SECURITY INVOKER so RLS scopes rows per role. */}
                     <Route path="/admin/recruiting-inbox" element={<Navigate to="/dashboard/command" replace />} />
                     {/* wave-100: Sam-adjudication for unresolved same-display_name agent dup pairs. */}
                     <Route path="/admin/agent-duplicates" element={<Navigate to="/dashboard/crm" replace />} />
                     {/* Stale-recovery panel — admins/managers only. v_stale_applicants
                         feeds it. Additive: doesn't touch DashboardApplicants. */}
-                    <Route path="/dashboard/stale-recovery" element={<ProtectedRoute allowManagers><StaleRecovery /></ProtectedRoute>} />
+                    <Route path="/dashboard/stale-recovery" element={<ProtectedRoute requireAdmin allowManagers><StaleRecovery /></ProtectedRoute>} />
                     <Route path="/dashboard/accounts" element={<ProtectedRoute requireAdmin><DashboardAccounts /></ProtectedRoute>} />
                     <Route path="/dashboard/offers" element={<ProtectedRoute requireAdmin><OffersPage /></ProtectedRoute>} />
                     <Route path="/dashboard/xcel-pipeline" element={<ProtectedRoute requireAdmin><XcelPipeline /></ProtectedRoute>} />
@@ -476,8 +472,13 @@ const App = () => (
                     <Route path="/admin/email-gaps" element={<ProtectedRoute requireAdmin><AdminEmailGaps /></ProtectedRoute>} />
                     {/* 2026-06-18 Sam: punch list of June hires needing email/phone/account/AgentLink */}
                     <Route path="/admin/june-hires" element={<ProtectedRoute requireAdmin><AdminJuneHires /></ProtectedRoute>} />
+                    {/* MP-232 regression restore: licensed applicants need the immediate-call inbox. */}
+                    <Route path="/admin/licensed-inbox" element={<ProtectedRoute requireAdmin><LicensedInbox /></ProtectedRoute>} />
+                    {/* 2026-07-05 Sam: unlicensed → licensed recovery queue for assistants. Sorted by cohort proximity to licensed. Tap-to-call. */}
+                    <Route path="/admin/recovery-queue" element={<ProtectedRoute requireAdmin allowManagers><RecoveryQueue /></ProtectedRoute>} />
                     {/* 2026-07-01 Sam: producer weekly trend + 3-week drop alert — Daniel-didn't-know use case */}
                     <Route path="/admin/producer-trends" element={<ProtectedRoute requireAdmin><AdminProducerTrends /></ProtectedRoute>} />
+                    <Route path="/dashboard/producer-trends" element={<ProtectedRoute requireAdmin><AdminProducerTrends /></ProtectedRoute>} />
                     {/* MP-230 (2026-07-01): AgentLink Backfill UI removed per Sam directive; keep redirect for old bookmarks. */}
                     <Route path="/admin/agentlink-backfill" element={<Navigate to="/dashboard/book-of-business" replace />} />
                     <Route path="/dashboard/clients/:clientId" element={<ProtectedRoute><ClientDetail /></ProtectedRoute>} />
@@ -513,8 +514,8 @@ const App = () => (
                      <Route path="/dashboard/calls-today" element={<ProtectedRoute><CallsTodayCockpit /></ProtectedRoute>} />
                      {/* v18 admin-only whale recruiting tracker */}
                      <Route path="/dashboard/whales" element={<ProtectedRoute requireAdmin><WhaleRecruiting /></ProtectedRoute>} />
-                     {/* v22 Wave B: carrier contracts (admin only) */}
-                     <Route path="/dashboard/contracts" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
+                     {/* v22 Wave B: carrier contracts and links hub for every authenticated role. */}
+                     <Route path="/dashboard/contracts" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
                      {/* v22 Wave H: challenges/gamification */}
                      <Route path="/dashboard/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
                      <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
@@ -533,6 +534,7 @@ const App = () => (
                      <Route path="/dashboard/headhunters-calendar" element={<Navigate to="/dashboard/command" replace />} />
                      <Route path="/dashboard/interviews" element={<ProtectedRoute requireAdmin allowManagers><InterviewCommandCenter /></ProtectedRoute>} />
                      <Route path="/dashboard/hierarchy" element={<Navigate to="/dashboard/crm" replace />} />
+                     <Route path="/dashboard/team-hierarchy" element={<Navigate to="/dashboard/agents" replace />} />
                        <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
                        <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
                        <Route path="/dashboard/book-of-business" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />
@@ -572,12 +574,14 @@ const App = () => (
                        <Route path="/dashboard/bulk-deals" element={<ProtectedRoute><BulkDeals /></ProtectedRoute>} />
                        <Route path="/bulk-deals" element={<ProtectedRoute><BulkDeals /></ProtectedRoute>} />
                        <Route path="/dashboard/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />
+                       <Route path="/dashboard/agent-link-sync" element={<Navigate to="/dashboard/agentlink-sync" replace />} />
                        <Route path="/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />
                        <Route path="/dashboard/agentlink-vault" element={<ProtectedRoute requireAdmin><AgentLinkVault /></ProtectedRoute>} />
                        <Route path="/setup" element={<ProtectedRoute requireAdmin><Setup /></ProtectedRoute>} />
                        <Route path="/dashboard/setup" element={<ProtectedRoute requireAdmin><Setup /></ProtectedRoute>} />
-                       <Route path="/agent/:id" element={<ProtectedRoute><AgentDetail /></ProtectedRoute>} />
                        <Route path="/dashboard/agent/:id" element={<ProtectedRoute><AgentDetail /></ProtectedRoute>} />
+                       <Route path="/dashboard/agents" element={<Navigate to="/dashboard/crm" replace />} />
+                       <Route path="/dashboard/agents/:id" element={<ProtectedRoute><AgentDetail /></ProtectedRoute>} />
                        <Route path="/dashboard/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
                        <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
                        <Route path="/dashboard/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
@@ -612,6 +616,7 @@ const App = () => (
                            {/* v9 Wave A complaint #19: charges-audit removed.
                              Redirect kept so old bookmarks land somewhere sane. */}
                            <Route path="/dashboard/charges-audit" element={<Navigate to="/dashboard" replace />} />
+                           <Route path="/dashboard/admin/charges-audit" element={<Navigate to="/dashboard/charges-audit" replace />} />
                            <Route path="/dashboard/lead-payments" element={<ProtectedRoute requireAdmin><LeadPayments /></ProtectedRoute>} />
                            <Route path="/dashboard/old-applicants/managers" element={<ProtectedRoute requireAdmin allowManagers><OldApplicants kind="managers" /></ProtectedRoute>} />
                            <Route path="/dashboard/old-applicants/licensed-recruiters" element={<ProtectedRoute requireAdmin allowManagers><OldApplicants kind="licensedRecruiters" /></ProtectedRoute>} />
@@ -622,6 +627,7 @@ const App = () => (
                            <Route path="/dashboard/pre-licensing" element={<ProtectedRoute requireAdmin allowManagers><PreLicensing /></ProtectedRoute>} />
                            {/* Book Quality Engine — carrier-direct vs internal recon */}
                            <Route path="/dashboard/book-quality" element={<ProtectedRoute requireAdmin allowManagers><BookReconciliation /></ProtectedRoute>} />
+                           <Route path="/dashboard/admin/book-quality" element={<Navigate to="/dashboard/book-quality" replace />} />
                            {/* ReadyMode dialer integration — credentials live in system_settings */}
                            <Route path="/dashboard/readymode" element={<ProtectedRoute requireAdmin><ReadyModeIntegration /></ProtectedRoute>} />
                            {/* Social Media Bot — APEX content engine dashboard */}

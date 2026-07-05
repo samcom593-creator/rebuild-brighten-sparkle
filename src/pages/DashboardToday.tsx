@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2, Circle, DollarSign, Phone, Plus, Sparkles,
-  Flame, ChevronRight, CalendarCheck, Timer, Star,
+  Flame, ChevronRight, CalendarCheck, Timer, Star, Video,
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,6 +79,32 @@ function telHref(raw: string | null): string {
   return `tel:${digits.startsWith("1") ? "+" : "+1"}${digits}`;
 }
 
+/**
+ * MP239b — extract a join-URL from an appointment's location field.
+ * Calendly + Google Calendar stash the Zoom/Meet/Teams link in `location`
+ * (sometimes as a bare URL, sometimes "Zoom · https://...").
+ * Returns null when no https:// URL is present so the UI can hide the CTA.
+ */
+function extractJoinUrl(location: string | null): string | null {
+  if (!location) return null;
+  const m = location.match(/https?:\/\/[^\s"'<>]+/i);
+  if (!m) return null;
+  const url = m[0];
+  // Anchor the button to real meeting hosts we know Sam uses. Anything
+  // else is likely a stray link and we don't want a misleading "Join" CTA.
+  if (/(zoom\.us|meet\.google\.com|teams\.microsoft\.com|meet\.jit\.si|whereby\.com|webex\.com)/i.test(url)) {
+    return url;
+  }
+  return null;
+}
+
+function joinLabel(url: string): string {
+  if (/zoom\.us/i.test(url)) return "Zoom";
+  if (/meet\.google\.com/i.test(url)) return "Meet";
+  if (/teams\.microsoft\.com/i.test(url)) return "Teams";
+  return "Join";
+}
+
 function formatPhone(raw: string | null): string {
   if (!raw) return "";
   const digits = raw.replace(/\D/g, "");
@@ -146,9 +172,15 @@ export default function DashboardToday() {
     staleTime: 30_000,
     refetchInterval: 2 * 60_000,
     queryFn: async (): Promise<ScheduledCall[]> => {
+      // MP239b — apex_scheduled_calls is the source of truth (Calendly + Google
+      // Calendar webhooks land here). v_upcoming_calls is a thin projection.
+      // Server-side sort so first-call-of-the-day is always at the top even if
+      // the query returns >100 rows across days. Client-side isToday() uses the
+      // browser tz which, on Sam's Mac (America/Chicago), matches the daemon.
       const { data, error } = await supabase
         .from("v_upcoming_calls")
-        .select("id, prospect_name, prospect_phone, prospect_email, summary, location, start_at, end_at, duration_minutes, call_type, status, outcome");
+        .select("id, prospect_name, prospect_phone, prospect_email, summary, location, start_at, end_at, duration_minutes, call_type, status, outcome")
+        .order("start_at", { ascending: true });
       if (error) throw error;
       return ((data ?? []) as ScheduledCall[]).filter((c) => isToday(new Date(c.start_at)));
     },
@@ -613,6 +645,16 @@ function CallRowCard({
             )}
           </div>
         </div>
+        {(() => {
+          const joinUrl = extractJoinUrl(call.location);
+          return joinUrl ? (
+            <Button asChild size="sm" className="shrink-0 bg-sky-600 hover:bg-sky-700 text-white">
+              <a href={joinUrl} target="_blank" rel="noopener noreferrer">
+                <Video className="h-3.5 w-3.5 mr-1" /> {joinLabel(joinUrl)}
+              </a>
+            </Button>
+          ) : null;
+        })()}
         {call.prospect_phone && (
           <Button asChild size="sm" variant="outline" className="shrink-0">
             <a href={telHref(call.prospect_phone)}>

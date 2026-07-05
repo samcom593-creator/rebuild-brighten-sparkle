@@ -128,6 +128,18 @@ export default function CourseCatalog() {
     autoProvision();
   }, [agentNotFound, autoProvisionAttempted, user?.id]);
 
+  // 2026-06-29 SECURITY GATE — Sam directive: unlicensed agents seeing the
+  // post-license sales course was wrong. They MUST be redirected to Xcel
+  // pre-licensing before any sales-training content loads.
+  // MP240 fix (2026-07-05): This useEffect MUST be declared before any
+  // conditional early returns below or React will throw "Rendered more
+  // hooks than during the previous render" and white-screen /course-catalog.
+  useEffect(() => {
+    if (!licenseCheckLoading && !isLicensed) {
+      navigate("/get-licensed", { replace: true });
+    }
+  }, [licenseCheckLoading, isLicensed, navigate]);
+
   const {
     modules, questions, progress, currentModuleIndex, setCurrentModuleIndex,
     loading, updateVideoProgress, submitQuiz, isModuleUnlocked, canTakeQuiz,
@@ -139,34 +151,19 @@ export default function CourseCatalog() {
 
   const handleQuizSubmit = async (answers: number[], score: number, passed: boolean) => {
     if (!currentModule) return false;
-    const success = await submitQuiz(currentModule.id, answers, score, passed);
-    if (success && passed) playSound("celebrate");
-    else if (success && !passed) playSound("error");
-    return success;
+    try {
+      const success = await submitQuiz(currentModule.id, answers, score, passed);
+      if (success && passed) playSound("celebrate");
+      else if (success && !passed) playSound("error");
+      return success;
+    } catch (err) {
+      console.error("Quiz submit failed:", err);
+      return false;
+    }
   };
 
-  if (loading || provisioningInProgress || checkingAvatar) return <SkeletonLoader variant="page" />;
-
-  // 2026-06-16 Sam directive: "any agent should be in dashboard, be able to
-  // access that course at any time. Just never lock it." ALL gates removed:
-  // - agentNotFound (no-agent-row block) → REMOVED
-  // - PL-067 license gate → REMOVED
-  // - Photo gate → REMOVED
-  // Catalog renders the modules for ANY authenticated user; progress
-  // tracking gracefully degrades to in-memory when no agent row exists.
-
-  const completedCount = modules.filter(m => progress[m.id]?.passed).length;
-  const modulesLeft = modules.length - completedCount;
-
-  // 2026-06-29 SECURITY GATE — Sam directive: unlicensed agents seeing the
-  // post-license sales course was wrong. They MUST be redirected to Xcel
-  // pre-licensing before any sales-training content loads. The isLicensed
-  // computed state above existed but was never gating the render.
-  useEffect(() => {
-    if (!licenseCheckLoading && !isLicensed) {
-      navigate("/get-licensed", { replace: true });
-    }
-  }, [licenseCheckLoading, isLicensed, navigate]);
+  // === Early returns below this line ===
+  // All hooks above are guaranteed to run on every render (Rules of Hooks).
 
   if (licenseCheckLoading) {
     return (
@@ -183,6 +180,19 @@ export default function CourseCatalog() {
     // useEffect above will redirect; render nothing while it fires.
     return null;
   }
+
+  if (loading || provisioningInProgress || checkingAvatar) return <SkeletonLoader variant="page" />;
+
+  // 2026-06-16 Sam directive: "any agent should be in dashboard, be able to
+  // access that course at any time. Just never lock it." ALL gates removed:
+  // - agentNotFound (no-agent-row block) → REMOVED
+  // - PL-067 license gate → REMOVED
+  // - Photo gate → REMOVED
+  // Catalog renders the modules for ANY authenticated user; progress
+  // tracking gracefully degrades to in-memory when no agent row exists.
+
+  const completedCount = modules.filter(m => progress[m.id]?.passed).length;
+  const modulesLeft = modules.length - completedCount;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

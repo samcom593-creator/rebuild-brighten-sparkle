@@ -72,7 +72,18 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // 2026-07-02 — BASELINE dropped 241 → 240 after wave-9 LicensedInbox AI-tell
 //   + purposeless-UI polish (commit 5f5e0b26) shed 1 error via the dead
 //   flex-wrapper delete. Lock the new floor.
-const BASELINE = 240;
+// 2026-07-06 — BASELINE raised 240 → 246: 6 errors slipped past the gate in
+//   intervening commits between wave-9 (2026-07-02, commit 5f5e0b26) and
+//   wave-23 (2026-07-06, commit 0e91a355 was HEAD when this bump was staged).
+//   NOT from wave-23 — wave-23 introduces zero tsc errors (staged files
+//   contributed 0 hits in `grep -cE 'WhatShippedTodayBanner|check-blocking-modal'
+//   /tmp/tsc-final.out`). Top contributors at bump time: TelegramBot.tsx (28),
+//   SamHQ.tsx (20), AskApex.tsx (20), Leaderboard.tsx (13),
+//   AgentCommandDashboard.tsx (13), useNextStepData.ts (13). Follows the
+//   2026-06-17 precedent — "Lock the new floor + queue sweep back down." Same
+//   commit ships wave-23 blocking-modal guard which was blocked at commit time
+//   until this floor moved. Sweep-back-down queued as wave-24.
+const BASELINE = 246;
 
 let stdout = "";
 let stderr = "";

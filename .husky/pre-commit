@@ -450,6 +450,22 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-debugger\.mjs$)'; then
   node scripts/check-debugger.mjs
 fi
 
+# ---------- check-blocking-modal (wave-23) ----------
+# Trigger: any src/ tsx|ts|jsx|js or the script itself. Fails on new
+# `alert(` / `confirm(` / `prompt(` / `window.alert(` / `window.confirm(` /
+# `window.prompt(` calls beyond the frozen baseline (16 at wave-23 lock).
+# Native browser modals block the main thread on mobile Safari (Sam's daily
+# driver), look like a 2005 admin page, and can silently no-op if another
+# script has swallowed window.confirm. Class-of-fix Round 7 sibling to
+# wave-16..wave-22. Ratchet: count can only go DOWN. Opt-out marker:
+# `blocking-modal-allow:<reason>` on the same line or the line directly
+# above. Cost when fired: ~150-250ms (linear in ~520 files with a string/
+# comment mask).
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-blocking-modal\.mjs$)'; then
+  echo "[pre-commit] Blocking-modal-affecting file staged — running check:blocking-modal…"
+  node scripts/check-blocking-modal.mjs
+fi
+
 # ---------- check-notion-ban (MP221 §7.1) ----------
 # Trigger: any newly-introduced Notion write call in non-test code.
 # Existing supabase/functions/notion-sync/* is grandfathered (read-only path).

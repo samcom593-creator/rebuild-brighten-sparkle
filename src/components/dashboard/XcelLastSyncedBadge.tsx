@@ -75,8 +75,8 @@ export function XcelLastSyncedBadge({ className }: { className?: string }) {
       )}
       title={
         lastSynced
-          ? `Most recent xcel_events row: ${new Date(lastSynced).toLocaleString()}`
-          : "No xcel_events rows yet"
+          ? `Most recent XCEL sync: ${new Date(lastSynced).toLocaleString()}`
+          : "No XCEL syncs yet"
       }
     >
       {isStale ? (

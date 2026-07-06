@@ -52,12 +52,26 @@ const OPT_OUT_MARKER = /db-slug-leak-allow:/;
 const BANNED_SLUGS = [
   "al_user_id",
   "application_contact_log",
+  "xcel_events",
   // mp\d+_ prefixed task slugs (e.g. mp222_agentlink_link, mp235_reload_trap).
   // Regex-tested separately so we can allow prose like "MP-222" but block
   // machine slugs.
 ];
 
 const BANNED_MP_SLUG = /\bmp\d{2,4}_[a-z0-9_]+/;
+
+// wave-20 (2026-07-06) — class-of-phrase leak. Catches the "xcel_events row"
+// / "agentlink_book_of_business rows" family of leak where any snake_case
+// identifier is described in prose as a database row/rows/entry/entries. This
+// is the exact pattern that shipped past wave-18 in XcelLastSyncedBadge (the
+// specific slug wasn't in BANNED_SLUGS, and the guard's extractQuoted didn't
+// scan multi-line JSX attribute expressions).
+//
+// Requires ≥1 underscore in the slug so plain English "table row(s)" prose
+// doesn't false-fire. English words + row are safe (e.g. "the top row"); a
+// snake_case identifier + row is a raw db-slug leak.
+const BANNED_TABLE_ROW_PHRASE =
+  /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\s+(rows?|entr(?:y|ies))\b/i;
 
 // JSX attributes whose values render to the user.
 const USER_COPY_ATTRS = [
@@ -94,14 +108,22 @@ function slugMatches(text) {
   for (const slug of BANNED_SLUGS) {
     if (text.includes(slug)) return slug;
   }
-  const m = text.match(BANNED_MP_SLUG);
-  if (m) return m[0];
+  const mp = text.match(BANNED_MP_SLUG);
+  if (mp) return mp[0];
+  const phrase = text.match(BANNED_TABLE_ROW_PHRASE);
+  if (phrase) return phrase[0];
   return null;
 }
 
 function extractQuoted(source, startIdx) {
-  // Return the string literal starting at startIdx (which points at the
-  // opening quote or `{`). Handles "..." '...' `...` and {"..."}.
+  // Return the string content starting at startIdx (which points at the
+  // opening quote or `{`).
+  //   - "..." / '...' / `...`  → returns literal body
+  //   - {"..."} / {'...'} / {`...`}  → returns literal body
+  //   - {<multi-line expression>}  → returns the full brace-balanced body
+  //     (wave-20: catches JSX attribute expressions like ternaries, template
+  //     literals with `${...}` interpolation, or nested calls that were
+  //     previously invisible to the scanner).
   const ch = source[startIdx];
   if (ch === '"' || ch === "'" || ch === "`") {
     const end = source.indexOf(ch, startIdx + 1);
@@ -109,14 +131,24 @@ function extractQuoted(source, startIdx) {
     return source.slice(startIdx + 1, end);
   }
   if (ch === "{") {
-    // {"..."} or {'...'} or {`...`}
+    // Fast path: single-quoted literal wrapped in braces.
     let i = startIdx + 1;
     while (i < source.length && /\s/.test(source[i])) i++;
     if (source[i] === '"' || source[i] === "'" || source[i] === "`") {
       const q = source[i];
       const end = source.indexOf(q, i + 1);
-      if (end === -1) return null;
-      return source.slice(i + 1, end);
+      if (end !== -1) return source.slice(i + 1, end);
+    }
+    // Fallback: return the entire brace-balanced expression body so
+    // multi-line ternaries / template literals / nested calls are scanned.
+    let depth = 1;
+    i = startIdx + 1;
+    while (i < source.length && depth > 0) {
+      const c = source[i];
+      if (c === "{") depth++;
+      else if (c === "}") depth--;
+      if (depth === 0) return source.slice(startIdx + 1, i);
+      i++;
     }
   }
   return null;

@@ -35,6 +35,7 @@
     "check:external-link-noopener": "node scripts/check-external-link-noopener.mjs",
     "check:db-slug-leak": "node scripts/check-db-slug-leak.mjs",
     "check:console-in-prod": "node scripts/check-console-in-prod.mjs",
+    "check:empty-catch": "node scripts/check-empty-catch.mjs",
     "check:unresolved-imports": "node scripts/check-unresolved-imports.mjs",
     "check:orphan-pages": "node scripts/check-orphan-pages.mjs",
     "check:sidebar-routes": "node scripts/check-sidebar-routes.mjs",
@@ -49,7 +50,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "prepare": "git config core.hooksPath .husky 2>/dev/null || true",
-    "verify:core": "npm run check:forbidden-language && npm run check:metric-truth && npm run check:sync-reliability && npm run check:unsafe-supabase-catch && npm run check:vsl-sync && npm run check:cold-landing-sonner && npm run check:cold-landing-supabase-queryFn && npm run check:vendor-icons-landing-census && npm run check:landing-css-size && npm run check:bg-gradient-cards && npm run check:bg-gradient-areas && npm run check:shadow-areas && npm run check:motion-areas && npm run check:focus-ring-areas && npm run check:rainbow-title-areas && npm run check:hex-color-areas && npm run check:tsc-error-count && npm run check:landing-truth-floor && npm run check:landing-marketing-claims && npm run check:internal-nav-hrefs && npm run check:external-link-noopener && npm run check:db-slug-leak && npm run check:console-in-prod && npm run check:unresolved-imports && npm run check:orphan-pages && npm run check:sidebar-routes && npm run build"
+    "verify:core": "npm run check:forbidden-language && npm run check:metric-truth && npm run check:sync-reliability && npm run check:unsafe-supabase-catch && npm run check:vsl-sync && npm run check:cold-landing-sonner && npm run check:cold-landing-supabase-queryFn && npm run check:vendor-icons-landing-census && npm run check:landing-css-size && npm run check:bg-gradient-cards && npm run check:bg-gradient-areas && npm run check:shadow-areas && npm run check:motion-areas && npm run check:focus-ring-areas && npm run check:rainbow-title-areas && npm run check:hex-color-areas && npm run check:tsc-error-count && npm run check:landing-truth-floor && npm run check:landing-marketing-claims && npm run check:internal-nav-hrefs && npm run check:external-link-noopener && npm run check:db-slug-leak && npm run check:console-in-prod && npm run check:empty-catch && npm run check:unresolved-imports && npm run check:orphan-pages && npm run check:sidebar-routes && npm run build"
   },
   "dependencies": {
     "@alloc/quick-lru": "5.2.0",

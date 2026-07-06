@@ -213,6 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setRoles([]);
               setRolesLoading(false);
               setIsLoading(false);
+              // empty-catch-allow:recovery-signout — best-effort cleanup after broken-session detection; user is already logged out client-side, network failure is acceptable.
               Promise.resolve(supabase.auth.signOut()).catch(() => {});
             }
             return;

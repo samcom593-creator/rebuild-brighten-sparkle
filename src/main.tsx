@@ -24,6 +24,7 @@ bootAnalytics();
 // because the precached shell + content-hashed bundles are already cached.
 if ("serviceWorker" in navigator) {
   const register = () =>
+    // empty-catch-allow:sw-register — service worker registration is opportunistic; failure just means no offline shell.
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
 
   const scheduleRegister = () => {
@@ -57,6 +58,7 @@ if ("serviceWorker" in navigator) {
   // minute of being deployed. Also forces update on history.pushState
   // (every route change) so SPA navigation can't slip past the check.
   navigator.serviceWorker.ready.then(reg => {
+    // empty-catch-allow:sw-update-poll — 60s update polling is best-effort; transient failures self-heal on next tick.
     const tryUpdate = () => reg.update().catch(() => {});
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") tryUpdate();

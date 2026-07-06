@@ -418,6 +418,22 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-console-in-prod\.mjs$)'; then
   node scripts/check-console-in-prod.mjs
 fi
 
+# ---------- check-empty-catch (wave-21, 2026-07-06) ----------
+# Trigger: any src/ tsx|ts|jsx|js change or the script itself.
+# Baseline-count ratchet (same shape as check-tsc-error-count): counts empty
+# .catch(() => {}) / .catch(() => null) / try/catch-with-empty-body sites in
+# src/**/*.{tsx,ts,jsx,js} and fails when count exceeds BASELINE. Silent-
+# swallow errors are the front-end analog of the 465 fake-success InsuraCloud
+# sync rows (memory: project_apex_2026_05_18_insuracloud_auth_dead) and the
+# 198 zombie AgentLink rows (memory: project_apex_2026_05_20_agentlink_
+# fake_success). Baseline locked at 60 after same-commit pay-down of 6 sites.
+# Pay-down: fix or annotate `empty-catch-allow:<reason>` and lower BASELINE
+# in the same commit. Cost when fired: ~150-250ms (linear in ~520 files).
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-empty-catch\.mjs$)'; then
+  echo "[pre-commit] Empty-catch-affecting file staged — running check:empty-catch…"
+  node scripts/check-empty-catch.mjs
+fi
+
 # ---------- check-notion-ban (MP221 §7.1) ----------
 # Trigger: any newly-introduced Notion write call in non-test code.
 # Existing supabase/functions/notion-sync/* is grandfathered (read-only path).

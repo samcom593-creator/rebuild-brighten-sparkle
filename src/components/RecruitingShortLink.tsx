@@ -29,7 +29,7 @@ export function RecruitingShortLink() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ slug, ts: new Date().toISOString(), ua: navigator.userAgent.slice(0, 200) }),
           keepalive: true,
-        }).catch(() => {});
+        }).catch(() => {}); // empty-catch-allow:short-link-beacon — fire-and-forget attribution; must not block redirect.
       } catch {
         /* swallow */
       }

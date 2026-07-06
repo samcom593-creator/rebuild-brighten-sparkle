@@ -141,7 +141,7 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
               product_type: form.product_sold || null,
             },
           },
-        }).catch(() => {});
+        }).catch(() => {}); // empty-catch-allow:deal-closed-event — analytics event, must not block deal submit.
 
         // InsuraCloud: hand off to the outbox edge function (it reads the
         // agent's insuracloud_api_token from the DB and handles retries).

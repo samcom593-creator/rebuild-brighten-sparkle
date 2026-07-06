@@ -102,7 +102,7 @@ export default function AdminFunnelHealth() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <KpiTile label="In funnel" value={totals.total_people} tone="blue" />
         <KpiTile label="Stalled" value={totals.stalled} tone={totals.stalled > 100 ? "rose" : "amber"} />
         <KpiTile label="Active stages" value={totals.active_stages} tone="neutral" />

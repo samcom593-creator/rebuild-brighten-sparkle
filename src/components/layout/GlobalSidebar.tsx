@@ -239,6 +239,8 @@ export function GlobalSidebar({
         // 2026-07-05 Sam: unlicensed → licensed bring-them-back queue. Assistants work this daily.
         // Rename: label "Recovery Queue" → "License Push" (was "Bring Them Back"). Path unchanged.
         { icon: Flame, label: "License Push", href: "/admin/recovery-queue", special: true },
+        // 2026-07-05 Sam: every unlicensed applicant + VA assignment + ghosted 30d+ filter.
+        { icon: GraduationCap, label: "Unlicensed Queue", href: "/admin/unlicensed-all", special: true },
         // 2026-06-18 Sam: June hires punch list with inline edit + Send Course.
         { icon: UserCog, label: "June Hires Punch List", href: "/admin/june-hires", special: true },
         // 2026-07-01 Sam: producer weekly trend + 3-week drop alarm (Daniel use case).

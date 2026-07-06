@@ -1717,9 +1717,12 @@ function AgencyCommandView() {
           commission projected in same group right under this month annual AP." */}
       <DashboardPulseGroup />
 
-      {/* 2026-06-15 v6.7 · Sam: "bring back all those leads · every single lead
-          just gone." aged_leads table has 899 records (897 new + unworked). */}
-      <AgedLeadsPanel />
+      {/* PL-MP242 cull 2026-07-05: LICENSED RECRUIT BANK (AgedLeadsPanel)
+          removed per Sam directive. License Push (/admin/recovery-queue) is
+          now the canonical unlicensed→licensed workflow surface. Component
+          definition kept below in this file so the retired panel can be
+          re-mounted if Sam reverses course. */}
+      {/* <AgedLeadsPanel /> */}
 
       {/* 2026-06-15 v6.8 · Sam: "anyone below five thousand for the last seven days
           · make their box look red." Rose-gradient leak panel surfacing the soft
@@ -1836,11 +1839,13 @@ function AgencyCommandView() {
           </div>
 
           {cfoLive.isLoading ? (
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-              {Array.from({length:6}).map((_,i) => <Skeleton key={i} className="h-16 bg-white/[0.04]" />)}
+            /* MP238-simplify: was grid-cols-6 stat wall; now 3-up */
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+              {Array.from({length:3}).map((_,i) => <Skeleton key={i} className="h-16 bg-white/[0.04]" />)}
             </div>
           ) : leak ? (
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            /* MP238-simplify: cfo leaks condensed 6→3 primary cards (Ghost AP, Walked commission, Carrier sync). Course-stuck / Dup-charges / Idle-agents live in /dashboard/finances */
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
               {/* $$ Ghost AP — biggest leak, biggest emphasis */}
               <div className="group relative p-3 rounded-xl bg-rose-500/[0.08] border border-rose-500/20 hover:border-rose-400/50 transition-all">
                 <div className="flex items-center gap-1.5 mb-1.5">
@@ -1850,15 +1855,6 @@ function AgencyCommandView() {
                 <p className="text-[22px] leading-none font-black tabular-nums text-rose-300">{fmtUsd(Number(leak.ghost_ap_at_risk ?? 0), true)}</p>
               </div>
 
-              {/* Course bought · stuck */}
-              <div className="group p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20 hover:border-amber-400/50 transition-all">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <Clock className="h-3 w-3 text-amber-400" />
-                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Course bought · stuck</p>
-                </div>
-                <p className="text-[22px] leading-none font-black tabular-nums text-amber-300">{leak.ica_paid_stuck ?? 0}</p>
-              </div>
-
               {/* Walked commission */}
               <div className="group p-3 rounded-xl bg-rose-500/[0.08] border border-rose-500/20 hover:border-rose-400/50 transition-all">
                 <div className="flex items-center gap-1.5 mb-1.5">
@@ -1866,24 +1862,6 @@ function AgencyCommandView() {
                   <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Walked commission</p>
                 </div>
                 <p className="text-[22px] leading-none font-black tabular-nums text-rose-300">{fmtUsd(Number(leak.lapsed_walked_commission ?? 0), true)}</p>
-              </div>
-
-              {/* Dup charges */}
-              <div className="group p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20 hover:border-amber-400/50 transition-all">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <ShieldAlert className="h-3 w-3 text-amber-400" />
-                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Dup charges</p>
-                </div>
-                <p className="text-[22px] leading-none font-black tabular-nums text-amber-300">{leak.dup_charges_open ?? 0}</p>
-              </div>
-
-              {/* Idle agents */}
-              <div className="group p-3 rounded-xl bg-amber-500/[0.08] border border-amber-500/20 hover:border-amber-400/50 transition-all">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <Users className="h-3 w-3 text-amber-400" />
-                  <p className="text-[9px] uppercase tracking-widest text-white/50 font-bold">Idle agents · 10d</p>
-                </div>
-                <p className="text-[22px] leading-none font-black tabular-nums text-amber-300">{leak.idle_active_agents ?? 0}</p>
               </div>
 
               {/* Sync status */}
@@ -2217,25 +2195,19 @@ function AgencyCommandView() {
           replacement panel is Source Attribution ROI, the next-most-
           valuable hidden dataset.
       */}
+      {/* PL-MP242 cull 2026-07-05: removed TOP MOVERS + LIVE ACTIVITY + MONEY FLOW
+          per Sam directive ("Who Pay + Live Activity + Top Movers sections gone").
+          Kept: Carrier Mix, Conversion Funnel, Source Attribution ROI. */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* PANEL 1 · CARRIER MIX (emerald) ────────────────────────── */}
         <CarrierMixPanel data={carrierMix.data} loading={carrierMix.isLoading} />
 
-        {/* PANEL 2 · TOP MOVERS WoW (amber) ────────────────────────── */}
-        <TopMoversPanel data={topMovers.data ?? []} loading={topMovers.isLoading} />
-
         {/* PANEL 3 · CONVERSION FUNNEL 90d (rose) ──────────────────── */}
         <ConversionFunnelPanel data={funnel.data} loading={funnel.isLoading} />
-
-        {/* PANEL 4 · ACTIVITY FEED (slate / emerald) ───────────────── */}
-        <ActivityFeedPanel data={activity.data ?? []} loading={activity.isLoading} />
 
         {/* PANEL 5 · SOURCE ATTRIBUTION ROI (amber) — replaces State Production
             (state column not in agentlink_deals_snapshot payload per DB audit) */}
         <SourceRoiPanel data={sourceRoi.data ?? []} loading={sourceRoi.isLoading} />
-
-        {/* PANEL 6 · MONEY FLOW (emerald) ──────────────────────────── */}
-        <MoneyFlowPanel data={moneyFlow.data} loading={moneyFlow.isLoading} />
       </div>
 
       {/* 2026-06-15 NEW · AgentLink-parity gap panels (4) ─────────────
@@ -2256,96 +2228,12 @@ function AgencyCommandView() {
       */}
       <ExtendedParityPanels />
 
-      {/* 2026-06-15 v6.5 · Footer Agency Health PROMOTED to premium glass.
-          Sam: "ton of empty displays · blank spots for no reason · ugly."
-          The 4 flat StatRowCards (Chargebacks 0 · Lapses 47 · Referrals 0 ·
-          Referrals won 0) showed THREE zeros which made the footer look empty.
-          Now: single premium glass band where 0-value tiles get coaching copy
-          + tonal background (emerald=good zero, rose=bad number, amber=warn). */}
-      <div className="grid gap-3 lg:grid-cols-2">
-        <div className="relative overflow-hidden rounded-3xl border border-rose-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950 text-white shadow-[0_0_48px_-12px_hsl(0_70%_50%/0.15)]">
-          <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-rose-500/12 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
-          <div className="relative p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2.5">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
-                </span>
-                <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-rose-300">AGENCY HEALTH · 30d</p>
-              </div>
-              <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-rose-400/40 bg-rose-400/10 text-rose-200">
-                clean = silent
-              </Badge>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {/* Chargebacks · zero = good · non-zero = rose */}
-              {(() => {
-                const cb = c?.chargebacks_30d ?? 0;
-                const isZero = cb === 0;
-                return (
-                  <div className={`p-3 rounded-xl border ${isZero ? "bg-emerald-500/[0.06] border-emerald-500/20" : "bg-rose-500/[0.10] border-rose-500/30"}`}>
-                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Chargebacks</p>
-                    <p className={`text-[24px] leading-none font-black tabular-nums ${isZero ? "text-emerald-300" : "text-rose-300"}`}>{fmtNum(cb)}</p>
-                    <p className="text-[10px] text-white/40 mt-0.5">{isZero ? "Clean book." : "Investigate fast."}</p>
-                  </div>
-                );
-              })()}
-
-              {/* Lapses · 0-10 = amber, 10+ = rose */}
-              {(() => {
-                const lp = c?.lapses_30d ?? 0;
-                const tone = lp > 10 ? "rose" : lp > 0 ? "amber" : "emerald";
-                return (
-                  <button
-                    onClick={() => setLapsesOpen(true)}
-                    className={`p-3 rounded-xl border text-left transition-all hover:border-white/40 ${
-                      tone === "rose"    ? "bg-rose-500/[0.10] border-rose-500/30" :
-                      tone === "amber"   ? "bg-amber-500/[0.08] border-amber-500/20" :
-                                           "bg-emerald-500/[0.06] border-emerald-500/20"
-                    }`}
-                  >
-                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Lapses</p>
-                    <p className={`text-[24px] leading-none font-black tabular-nums ${
-                      tone === "rose" ? "text-rose-300" : tone === "amber" ? "text-amber-300" : "text-emerald-300"
-                    }`}>{fmtNum(lp)}</p>
-                    <p className="text-[10px] text-white/40 mt-0.5">Tap to drill.</p>
-                  </button>
-                );
-              })()}
-
-              {/* Referrals 30d · 0 = coaching */}
-              {(() => {
-                const r = c?.ref_30d ?? 0;
-                const isZero = r === 0;
-                return (
-                  <div className={`p-3 rounded-xl border ${isZero ? "bg-amber-500/[0.06] border-amber-500/20" : "bg-emerald-500/[0.08] border-emerald-500/20"}`}>
-                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Referrals · 30d</p>
-                    <p className={`text-[24px] leading-none font-black tabular-nums ${isZero ? "text-amber-300" : "text-emerald-300"}`}>{fmtNum(r)}</p>
-                    <p className="text-[10px] text-white/40 mt-0.5">{isZero ? "Open the ask." : "Keep asking."}</p>
-                  </div>
-                );
-              })()}
-
-              {/* Referrals won · 0 = coaching */}
-              {(() => {
-                const rw = c?.ref_won ?? 0;
-                const isZero = rw === 0;
-                return (
-                  <div className={`p-3 rounded-xl border ${isZero ? "bg-amber-500/[0.06] border-amber-500/20" : "bg-emerald-500/[0.10] border-emerald-500/30"}`}>
-                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Referrals · won</p>
-                    <p className={`text-[24px] leading-none font-black tabular-nums ${isZero ? "text-amber-300" : "text-emerald-300"}`}>{fmtNum(rw)}</p>
-                    <p className="text-[10px] text-white/40 mt-0.5">{isZero ? "First close opens the gate." : "Compound it."}</p>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
-
-        {/* v26 audit fix: was 5-col grid (asymmetric · 4 items in 5 slots).
-            Now 2-col grid matching the stats panel beside it. */}
+      {/* PL-MP242 cull 2026-07-05: AGENCY HEALTH · 30d card removed per Sam
+          directive. QuickAction footer band retained; grid collapsed from
+          2-col (health + actions) to single-col (actions only). Lapses drill
+          modal still lives at page-root because it can be re-mounted via a
+          direct link if Sam wants the panel back. */}
+      <div className="grid gap-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <QuickAction icon={Users}      to="/dashboard/applicants"       label="Applicants"        desc="Review + assign" />
           <QuickAction icon={Briefcase}  to="/dashboard/recruit-pipeline" label="Recruit pipeline"  desc="Kanban board" />

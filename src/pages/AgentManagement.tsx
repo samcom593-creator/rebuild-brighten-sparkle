@@ -336,7 +336,7 @@ export default function AgentManagement() {
       </div>
 
       {/* Stats strip */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <StatPill label="Total" value={counts.total} />
         <StatPill label="Healthy" value={counts.healthy} color="emerald" icon={<CheckCircle2 className="h-4 w-4" />} onClick={() => { setStageFilter("__all__"); setProducingOnly(true); setSortKey("health"); }} />
         <StatPill label="Watch" value={counts.watch} color="amber" icon={<Clock className="h-4 w-4" />} />

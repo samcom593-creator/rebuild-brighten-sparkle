@@ -51,7 +51,6 @@ import { RecognitionQueue } from "@/components/admin/RecognitionQueue";
 import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ActivityFeedWidget } from "@/components/dashboard/ActivityFeedWidget";
 import { ProductionAnalyticsCard } from "@/components/dashboard/ProductionAnalyticsCard";
 import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
 import { StatCardPopup, type StatType } from "@/components/dashboard/StatCardPopup";
@@ -114,7 +113,6 @@ const HIDEABLE_CARDS: Record<string, string> = {
   "admin.ai-summary": "AI Summary Report",
   "admin.recognition-queue": "Recognition Queue",
   "admin.course-progress": "Course Progress",
-  "admin.activity-feed": "Activity Feed",
   "admin.team-hierarchy": "Team Hierarchy Manager",
   "admin.manager-invites": "Manager Invites",
   "admin.bulk-lead-assignment": "Bulk Lead Assignment",
@@ -1106,13 +1104,9 @@ export default function DashboardCommandCenter() {
                 </Suspense>
               </ErrorBoundary>
             </HideableCard>
-            <HideableCard cardKey="admin.activity-feed" label="Activity Feed">
-              <ErrorBoundary>
-                <Suspense fallback={<div className="h-40 rounded-md bg-muted/30 animate-pulse" />}>
-                  <ActivityFeedWidget limit={12} />
-                </Suspense>
-              </ErrorBoundary>
-            </HideableCard>
+            {/* PL-MP242 cull 2026-07-05: Activity Feed (Live Activity) widget
+                removed per Sam directive. Culture-feed live-deal ticker was
+                duplicative with WhatShippedTodayBanner + Recognition Queue. */}
           </div>
         </motion.div>
 

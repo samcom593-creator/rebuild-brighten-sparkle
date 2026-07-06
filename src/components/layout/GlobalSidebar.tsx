@@ -237,8 +237,8 @@ export function GlobalSidebar({
         // MP-232: licensed applicants bypass Calendly; call now.
         { icon: Inbox, label: "Licensed Inbox", href: "/admin/licensed-inbox", special: true },
         // 2026-07-05 Sam: unlicensed → licensed bring-them-back queue. Assistants work this daily.
-        // PL-MP240 rename: label "Recovery Queue" → "Bring Them Back" (path unchanged).
-        { icon: Flame, label: "Bring Them Back", href: "/admin/recovery-queue", special: true },
+        // Rename: label "Recovery Queue" → "License Push" (was "Bring Them Back"). Path unchanged.
+        { icon: Flame, label: "License Push", href: "/admin/recovery-queue", special: true },
         // 2026-06-18 Sam: June hires punch list with inline edit + Send Course.
         { icon: UserCog, label: "June Hires Punch List", href: "/admin/june-hires", special: true },
         // 2026-07-01 Sam: producer weekly trend + 3-week drop alarm (Daniel use case).

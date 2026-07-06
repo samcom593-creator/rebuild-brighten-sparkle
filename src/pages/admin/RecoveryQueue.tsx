@@ -96,10 +96,10 @@ function telHref(raw: string | null): string {
 }
 
 export default function RecoveryQueue() {
-  // PL-MP240 rename: user-facing label "Recovery Queue" → "Bring Them Back".
+  // Rename: user-facing label "Recovery Queue" → "License Push" (was "Bring Them Back").
   // Component name + route path (/admin/recovery-queue) intentionally
   // unchanged to avoid breaking bookmarks, ledger references, and imports.
-  usePageTitle("Bring Them Back · APEX");
+  usePageTitle("License Push · APEX");
 
   const { data: rows = [], isLoading } = useQuery<Row[]>({
     queryKey: ["v_hot_licensing_prospects"],
@@ -130,9 +130,9 @@ export default function RecoveryQueue() {
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5 max-w-5xl mx-auto">
       <PageHeader
-        eyebrow="Bring Them Back"
+        eyebrow="License Push"
         eyebrowIcon={<Flame className="h-3 w-3" />}
-        title="Bring Them Back"
+        title="License Push"
         subtitle="Every unlicensed applicant near the finish line. Sorted by proximity to licensed. Work top-down."
       />
 

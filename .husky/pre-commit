@@ -373,6 +373,31 @@ if match '^(src/.*\.(tsx?|jsx?|html)$|index\.html$|scripts/check-external-link-n
   node scripts/check-external-link-noopener.mjs
 fi
 
+# ---------- check-db-slug-leak (wave-18, 2026-07-06) ----------
+# Trigger: any src/ tsx|ts|jsx|js change or the script itself.
+# Walks src/**/*.{tsx,ts,jsx,js} and fails when a raw db column/table slug
+# (`al_user_id`, `application_contact_log`, `mp\d+_*` task slugs) shows up
+# inside a user-copy JSX attribute (subtitle/title/label/description/
+# placeholder/aria-label/heading/eyebrow/tooltip/caption/message/hint),
+# inside a `toast.*` call, or as a raw `{agent.status}` / `{agent.license_status}`
+# JSX expression. Why this matters: brand integrity. Same class-of-fix as
+# wave-16 (internal-nav reload) + wave-17 (external-link tabnabbing) — the
+# disease was killed piecemeal in wave-9 (LicensedInbox application_contact_log),
+# wave-11 (AdminProducerTrends al_user_id), wave-13 (SamTodo mp222_*), wave-14
+# (AgentProfileDrawer raw agent.status/license_status). All four caught by
+# hand-audit; a commit-time guard would have caught all four. Initial sweep
+# found 2 live regressions AdminMissingAlLink.tsx:76 subtitle leak +
+# AgentDetail.tsx:164-165 raw status badges. Both fixed in the same wave-18
+# commit, plus formatEnumLabel extracted to src/lib/formatEnumLabel.ts so
+# every enum-rendering surface can route through the same normalizer.
+# Cost when fired: ~120-250ms (linear in ~550 files).
+# Opt-out marker per line: `db-slug-leak-allow:<reason>` same-line or line
+# directly above.
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-db-slug-leak\.mjs$)'; then
+  echo "[pre-commit] DB-slug-leak-affecting file staged — running check:db-slug-leak…"
+  node scripts/check-db-slug-leak.mjs
+fi
+
 # ---------- check-notion-ban (MP221 §7.1) ----------
 # Trigger: any newly-introduced Notion write call in non-test code.
 # Existing supabase/functions/notion-sync/* is grandfathered (read-only path).

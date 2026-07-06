@@ -73,7 +73,7 @@ export default function AdminMissingAlLink() {
         eyebrow="Admin · Data Integrity"
         eyebrowIcon={<Link2 className="h-3 w-3" />}
         title="Missing AgentLink Links"
-        subtitle="Active agents with no al_user_id. Tap a suggested match to link them so their deals appear in AgentLink Book of Business."
+        subtitle="Active agents with no AgentLink ID. Tap a suggested match to link them so their deals appear in AgentLink Book of Business."
       />
 
       {isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}

@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatEnumLabel } from "@/lib/formatEnumLabel";
 import { getBusinessMonthBounds } from "@/lib/dateUtils";
 import { AgentActionsMenu } from "@/components/agent/AgentActionsMenu";
 import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
@@ -161,8 +162,8 @@ export default function AgentDetail() {
             {agent.insuracloud_user_id && <Badge variant="outline" className="text-[10px]">AL ID {agent.insuracloud_user_id}</Badge>}
           </div>
           <div className="flex gap-2 mt-2">
-            {agent.status && <Badge variant="outline">{agent.status}</Badge>}
-            {agent.license_status && <Badge variant="outline">{agent.license_status}</Badge>}
+            {agent.status && <Badge variant="outline">{formatEnumLabel(agent.status, "—")}</Badge>}
+            {agent.license_status && <Badge variant="outline">{formatEnumLabel(agent.license_status, "Unlicensed")}</Badge>}
             {agent.start_date && <Badge variant="outline">Started {new Date(agent.start_date).toLocaleDateString()}</Badge>}
           </div>
         </div>

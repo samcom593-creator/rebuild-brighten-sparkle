@@ -72,6 +72,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 import { cn } from "@/lib/utils";
+import { formatEnumLabel } from "@/lib/formatEnumLabel";
 import { toast } from "sonner";
 
 interface AgentRow {
@@ -195,28 +196,10 @@ function statusBadgeColor(status: string | null | undefined): string {
   }
 }
 
-// Normalize raw db status/license_status slugs into user-facing badge labels.
-// Same class of leak wave-13 fixed on SamTodo (mp222_* raw slug leaks) and
-// wave-11 on AdminProducerTrends (al_user_id leak). Guards known enum values
-// + snake_case Title Case fallback so unknown future values normalize instead
-// of leaking raw db slugs into admin badges.
-function formatEnumLabel(raw: string | null | undefined, fallback: string): string {
-  if (!raw) return fallback;
-  const known: Record<string, string> = {
-    active: "Active",
-    inactive: "Inactive",
-    terminated: "Terminated",
-    pending: "Pending",
-    licensed: "Licensed",
-    unlicensed: "Unlicensed",
-  };
-  const key = raw.toLowerCase();
-  if (known[key]) return known[key];
-  return raw
-    .split(/[_\s-]+/)
-    .map((s) => (s.length ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s))
-    .join(" ");
-}
+// wave-18 (2026-07-06): formatEnumLabel extracted to src/lib/formatEnumLabel.ts
+// so AgentDetail and any other enum-rendering surface can route through the
+// same normalizer. The raw-db-slug-leak guard (scripts/check-db-slug-leak.mjs)
+// now enforces this at commit time.
 
 export function AgentProfileDrawer() {
   const { isAdmin } = useAuth();

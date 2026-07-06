@@ -200,6 +200,7 @@ const HireLink = lazy(() => import("./pages/HireLink"));
 const JoinLink = lazy(() => import("./pages/JoinLink"));
 const InviteLinksAdmin = lazy(() => import("./pages/admin/InviteLinks"));
 const RecoveryQueue = lazy(() => import("./pages/admin/RecoveryQueue"));
+const UnlicensedAll = lazy(() => import("./pages/admin/UnlicensedAll"));
 const AgentDetail = lazy(() => import("./pages/AgentDetail"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Rewards = lazy(() => import("./pages/Rewards"));
@@ -481,6 +482,8 @@ const App = () => (
                     <Route path="/admin/licensed-inbox" element={<ProtectedRoute requireAdmin><LicensedInbox /></ProtectedRoute>} />
                     {/* 2026-07-05 Sam: unlicensed → licensed recovery queue for assistants. Sorted by cohort proximity to licensed. Tap-to-call. */}
                     <Route path="/admin/recovery-queue" element={<ProtectedRoute requireAdmin allowManagers><RecoveryQueue /></ProtectedRoute>} />
+                    {/* 2026-07-05 Sam: full unlicensed roster w/ VA assignment + ghosted-30d+ filter. */}
+                    <Route path="/admin/unlicensed-all" element={<ProtectedRoute requireAdmin allowManagers><UnlicensedAll /></ProtectedRoute>} />
                     {/* 2026-07-01 Sam: producer weekly trend + 3-week drop alert — Daniel-didn't-know use case */}
                     <Route path="/admin/producer-trends" element={<ProtectedRoute requireAdmin><AdminProducerTrends /></ProtectedRoute>} />
                     <Route path="/dashboard/producer-trends" element={<ProtectedRoute requireAdmin><AdminProducerTrends /></ProtectedRoute>} />

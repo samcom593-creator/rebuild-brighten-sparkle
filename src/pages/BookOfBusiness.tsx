@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { format, subDays } from "date-fns";
 import { Book, Search, RefreshCw, AlertTriangle, Eye, TrendingDown, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/shared/lib/logger";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -262,7 +263,7 @@ export default function BookOfBusiness() {
       });
 
       const rows = alRows;
-      console.info("[BookOfBusiness] loaded deals", {
+      logger.info("[BookOfBusiness] loaded deals", {
         agentLinkRows: alRows.length,
         agentLinkSnapshotCount: alCount,
         totalRows: rows.length,

@@ -398,6 +398,26 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-db-slug-leak\.mjs$)'; then
   node scripts/check-db-slug-leak.mjs
 fi
 
+# ---------- check-console-in-prod (wave-19, 2026-07-06) ----------
+# Trigger: any src/ tsx|ts|jsx|js change or the script itself.
+# Walks src/**/*.{tsx,ts,jsx,js} and fails when a `console.log|debug|info` call
+# is not wrapped in `if (import.meta.env.DEV)` and not routed through the
+# logger.info/logger.debug abstraction at src/shared/lib/logger.ts. Why this
+# matters: unguarded console.info calls in prod ship structured admin-query
+# reconnaissance to every visitor's DevTools (roles, counts, manager filters).
+# Same class-of-fix as wave-16 (internal-nav reload-trap), wave-17 (external-
+# link tabnabbing), wave-18 (raw-db-slug leak). Initial sweep found 3 live
+# violations — BookOfBusiness.tsx:265, DashboardApplicants.tsx:248,
+# NotFound.tsx:16 — all routed through logger.info in the same wave-19 commit.
+# console.warn and console.error are NOT flagged (legit prod error reporting).
+# Cost when fired: ~120-250ms (linear in ~520 files).
+# Opt-out marker per line: `console-in-prod-allow:<reason>` same-line or line
+# directly above (rare — usually only telemetry paths).
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-console-in-prod\.mjs$)'; then
+  echo "[pre-commit] Console-in-prod-affecting file staged — running check:console-in-prod…"
+  node scripts/check-console-in-prod.mjs
+fi
+
 # ---------- check-notion-ban (MP221 §7.1) ----------
 # Trigger: any newly-introduced Notion write call in non-test code.
 # Existing supabase/functions/notion-sync/* is grandfathered (read-only path).

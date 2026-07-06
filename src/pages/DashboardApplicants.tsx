@@ -25,6 +25,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/shared/lib/logger";
 import { useAuth } from "@/hooks/useAuth";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
@@ -245,7 +246,7 @@ export default function DashboardApplicants() {
 
     const duplicateCount = fetchedApps.filter(app => app.is_duplicate).length;
     const coursePurchasedCount = fetchedApps.filter(app => Boolean(app.course_purchased_at)).length;
-    console.info("[DashboardApplicants] fetched applications", {
+    logger.info("[DashboardApplicants] fetched applications", {
       role: isAdmin ? "admin" : isManager ? "manager" : "agent",
       activeFetched: fetchedApps.length,
       activeCount: activeResult.count,

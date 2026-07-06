@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Compass, ArrowRight } from "lucide-react";
+import { logger } from "@/shared/lib/logger";
 
 const suggestions: Array<{ label: string; to: string; kicker: string }> = [
   { label: "Apply", to: "/apply", kicker: "Start here" },
@@ -12,8 +13,7 @@ const NotFound = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Not an error — just a user navigation away from a live route.
-    console.info("[404] unknown route:", location.pathname);
+    logger.info("[404] unknown route", { path: location.pathname });
   }, [location.pathname]);
 
   return (

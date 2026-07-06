@@ -28,6 +28,7 @@
 //
 // PL-091 · 2026-05-29
 // MP-238 · 2026-07-05 — silent-success guard
+// MP-245 · 2026-07-06 — per-run warning + 7-consecutive escalation to ntfy
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -46,6 +47,11 @@ const SILENT_SUCCESS_WINDOW_DAYS = 7;
 // wolf — otherwise a fresh cron slot with 2 runs and 0 emails looks
 // identical to a 7-day auth failure.
 const SILENT_SUCCESS_MIN_RUNS = 5;
+// Consecutive-silent-run escalation threshold. Once N successful runs
+// in a row change zero rows (0 inserted + 0 updated), we flip the log
+// from 'degraded' warning to 'critical' error AND push Sam via ntfy.
+const SILENT_RUN_ESCALATION_COUNT = 7;
+const NTFY_URL = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
@@ -127,94 +133,163 @@ async function logAutomationRun(payload: {
   }
 }
 
-// Hard assertion: if EVERY successful run in the last 7 days returned
-// 0 found messages (and we've logged at least SILENT_SUCCESS_MIN_RUNS
-// of them), the puller is silently succeeding — most likely gmail_xcel_oauth
-// rotated, the label got renamed, or the search query drifted. We log a
-// hard error AND drop a critical row into system_health_logs so the
-// /admin/system-health dashboard shows it in red on the next refresh.
-async function checkSilentSuccessStreak(): Promise<{
-  triggered: boolean;
-  run_count: number;
-  days_since_last_hit: number | null;
-}> {
-  const since = new Date(Date.now() - SILENT_SUCCESS_WINDOW_DAYS * 86400_000).toISOString();
-
-  const { data: runs, error } = await supabase
-    .from("automation_runs")
-    .select("ran_at, status, metadata")
-    .eq("automation_name", AUTOMATION_NAME)
-    .gte("ran_at", since)
-    .order("ran_at", { ascending: false })
-    .limit(500);
-
-  if (error || !runs) {
-    console.error(`[xcel-gmail-pull] silent-success check read failed:`, error);
-    return { triggered: false, run_count: 0, days_since_last_hit: null };
+// Best-effort ntfy push. Never blocks the pull.
+async function ntfy(title: string, body: string, priority: "default" | "high" | "urgent" = "high") {
+  try {
+    await fetch(NTFY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain",
+        "Title": title,
+        "Priority": priority,
+        "Tags": "warning,xcel",
+      },
+      body,
+    });
+  } catch (err) {
+    console.error(`[xcel-gmail-pull] ntfy push failed:`, err);
   }
+}
 
-  const successRuns = runs.filter((r) => r.status === "success");
-  if (successRuns.length < SILENT_SUCCESS_MIN_RUNS) {
-    return { triggered: false, run_count: successRuns.length, days_since_last_hit: null };
-  }
-
-  const anyFound = successRuns.some(
-    (r) => Number((r.metadata as any)?.found ?? 0) > 0,
-  );
-  if (anyFound) {
-    return { triggered: false, run_count: successRuns.length, days_since_last_hit: 0 };
-  }
-
-  // Find last time we actually pulled anything (outside window is fine).
-  const { data: lastHit } = await supabase
-    .from("automation_runs")
-    .select("ran_at, metadata")
-    .eq("automation_name", AUTOMATION_NAME)
-    .eq("status", "success")
-    .order("ran_at", { ascending: false })
-    .limit(50);
-  const lastHitRow = (lastHit ?? []).find(
-    (r) => Number((r.metadata as any)?.found ?? 0) > 0,
-  );
-  const daysSince = lastHitRow
-    ? Math.floor(
-        (Date.now() - new Date(lastHitRow.ran_at as string).getTime()) / 86400_000,
-      )
-    : SILENT_SUCCESS_WINDOW_DAYS;
-
-  const msg =
-    `xcel-gmail-pull returned 0 found messages for ${successRuns.length} consecutive ` +
-    `successful runs over the last ${SILENT_SUCCESS_WINDOW_DAYS}d ` +
-    `(last actual hit: ${daysSince}d ago). Check system_settings.gmail_xcel_oauth ` +
-    `refresh_token, the "Apex/XCEL" label, and the Gmail search query.`;
-
-  console.error(`[xcel-gmail-pull] SILENT-SUCCESS GUARD TRIPPED — ${msg}`);
-
+// Best-effort system_health_logs insert. Never blocks the pull.
+async function insertHealthRow(
+  severity: "degraded" | "critical",
+  message: string,
+  actionRequired: string,
+) {
   const healthResult = {
     service: "Gmail Puller (Xcel)",
-    status: "down" as const,
+    status: severity === "critical" ? ("down" as const) : ("degraded" as const),
     responseTime: 0,
-    message: msg,
+    message,
     requiresAction: true,
-    actionRequired:
-      "Re-auth gmail_xcel_oauth (mint fresh refresh_token) or verify the Apex/XCEL Gmail label + filter still routes new Xcel exports.",
+    actionRequired,
   };
-
   try {
     await supabase.from("system_health_logs").insert({
-      overall_status: "critical",
-      critical_count: 1,
-      warning_count: 0,
+      overall_status: severity,
+      critical_count: severity === "critical" ? 1 : 0,
+      warning_count: severity === "degraded" ? 1 : 0,
       auto_fixed: [],
       results: [healthResult],
     });
   } catch (err) {
     console.error(`[xcel-gmail-pull] system_health_logs insert failed:`, err);
   }
+}
+
+// End-of-run guard. Sam's spec (MP-245):
+//   1. If the fn ran but INSERTED 0 rows AND UPDATED 0 rows → log a
+//      warning row (overall_status='degraded') to system_health_logs.
+//   2. After 7 consecutive silent-runs → escalate to 'critical' + ntfy Sam.
+// The legacy MP-238 7-day window check is preserved as a safety net for
+// long, sparse silence.
+async function checkSilentSuccessStreak(currentRunSilent: boolean): Promise<{
+  warning_logged: boolean;
+  escalated: boolean;
+  consecutive_silent_runs: number;
+  window_all_zero: boolean;
+  run_count_in_window: number;
+  days_since_last_hit: number | null;
+}> {
+  // Pull enough recent successful runs to answer both the consecutive
+  // check and the 7-day sanity check in one round trip.
+  const since = new Date(Date.now() - SILENT_SUCCESS_WINDOW_DAYS * 86400_000).toISOString();
+  const { data: runs, error } = await supabase
+    .from("automation_runs")
+    .select("ran_at, status, metadata")
+    .eq("automation_name", AUTOMATION_NAME)
+    .order("ran_at", { ascending: false })
+    .limit(50);
+
+  if (error || !runs) {
+    console.error(`[xcel-gmail-pull] silent-success check read failed:`, error);
+    return {
+      warning_logged: false,
+      escalated: false,
+      consecutive_silent_runs: 0,
+      window_all_zero: false,
+      run_count_in_window: 0,
+      days_since_last_hit: null,
+    };
+  }
+
+  const successRuns = runs.filter((r) => r.status === "success");
+  const rowsChanged = (r: any) =>
+    Number((r.metadata as any)?.imported_rows_total ?? 0) > 0;
+
+  // 1) Consecutive silent-runs from newest → back until first non-silent.
+  let consecutiveSilent = 0;
+  for (const r of successRuns) {
+    if (rowsChanged(r)) break;
+    consecutiveSilent++;
+  }
+
+  // 2) Legacy MP-238 window check — every successful run in the last
+  //    SILENT_SUCCESS_WINDOW_DAYS days changed zero rows.
+  const successInWindow = successRuns.filter(
+    (r) => new Date(r.ran_at as string).toISOString() >= since,
+  );
+  const windowAllZero =
+    successInWindow.length >= SILENT_SUCCESS_MIN_RUNS &&
+    successInWindow.every((r) => !rowsChanged(r));
+
+  // Days since the last run that actually moved rows (used for both the
+  // per-run warning and the escalation message).
+  const lastHitRow = successRuns.find(rowsChanged);
+  const daysSince = lastHitRow
+    ? Math.floor(
+        (Date.now() - new Date(lastHitRow.ran_at as string).getTime()) / 86400_000,
+      )
+    : null;
+
+  let warningLogged = false;
+  let escalated = false;
+
+  const shouldEscalate =
+    consecutiveSilent >= SILENT_RUN_ESCALATION_COUNT || windowAllZero;
+
+  if (shouldEscalate) {
+    const trigger = consecutiveSilent >= SILENT_RUN_ESCALATION_COUNT
+      ? `${consecutiveSilent} consecutive silent runs`
+      : `every successful run in the last ${SILENT_SUCCESS_WINDOW_DAYS}d changed 0 rows (${successInWindow.length} runs)`;
+    const msg =
+      `xcel-gmail-pull tripped hard silent-success guard — ${trigger}` +
+      (daysSince !== null ? `. Last row actually moved: ${daysSince}d ago.` : ".") +
+      ` Check gmail_xcel_oauth refresh_token, the "Apex/XCEL" label, and the Gmail search query.`;
+    console.error(`[xcel-gmail-pull] SILENT-SUCCESS ESCALATION — ${msg}`);
+    await insertHealthRow(
+      "critical",
+      msg,
+      "Re-auth gmail_xcel_oauth (mint fresh refresh_token) or verify the Apex/XCEL Gmail label + filter still routes new Xcel exports.",
+    );
+    await ntfy(
+      "XCEL Gmail Pull is dead",
+      msg,
+      "urgent",
+    );
+    escalated = true;
+  } else if (currentRunSilent) {
+    // Per-run warning — fn ran, changed nothing.
+    const msg =
+      `xcel-gmail-pull completed but inserted 0 rows and updated 0 rows` +
+      ` (this makes ${consecutiveSilent} silent run${consecutiveSilent === 1 ? "" : "s"} in a row).` +
+      (daysSince !== null ? ` Last row actually moved: ${daysSince}d ago.` : "");
+    console.warn(`[xcel-gmail-pull] SILENT-RUN WARNING — ${msg}`);
+    await insertHealthRow(
+      "degraded",
+      msg,
+      `Monitor. Escalates to critical + ntfy after ${SILENT_RUN_ESCALATION_COUNT} consecutive silent runs.`,
+    );
+    warningLogged = true;
+  }
 
   return {
-    triggered: true,
-    run_count: successRuns.length,
+    warning_logged: warningLogged,
+    escalated,
+    consecutive_silent_runs: consecutiveSilent,
+    window_all_zero: windowAllZero,
+    run_count_in_window: successInWindow.length,
     days_since_last_hit: daysSince,
   };
 }
@@ -334,7 +409,11 @@ Deno.serve(async (req) => {
       duration_ms: Date.now() - startedAt,
     });
 
-    const guard = await checkSilentSuccessStreak();
+    // Sam's spec (MP-245): silent run = fn completed but rows_changed=0.
+    // The guard call handles both the per-run warning and the 7-consecutive
+    // escalation to critical + ntfy in one pass.
+    const currentRunSilent = summary.imported_rows_total === 0;
+    const guard = await checkSilentSuccessStreak(currentRunSilent);
 
     return new Response(JSON.stringify({ ...summary, silent_success_guard: guard }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },

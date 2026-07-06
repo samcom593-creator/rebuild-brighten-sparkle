@@ -87,6 +87,7 @@ import { UnclaimedLeadsCard } from "@/components/dashboard/UnclaimedLeadsCard";
 import { Target20kPaceWidget } from "@/components/dashboard/Target20kPaceWidget";
 import { TeamHierarchyWidget } from "@/components/dashboard/TeamHierarchyWidget";
 import { InsuraCloudHealthAlert } from "@/components/dashboard/InsuraCloudHealthAlert";
+import { XcelLastSyncedBadge } from "@/components/dashboard/XcelLastSyncedBadge";
 import { NextStepStuckPool } from "@/components/next-step/NextStepStuckPool";
 import { NextStepFunnelStrip } from "@/components/next-step/NextStepFunnelStrip";
 import { LIVE_AGENT_DEAL_WINDOW_DAYS, getLiveAgentCutoffIso } from "@/lib/metricTruth";
@@ -629,6 +630,7 @@ export default function DashboardCommandCenter() {
                   <Users className="h-4 w-4" />
                   Find Duplicates
                 </Button>
+                <XcelLastSyncedBadge />
               </>
             }
           />

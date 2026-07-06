@@ -434,6 +434,22 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-empty-catch\.mjs$)'; then
   node scripts/check-empty-catch.mjs
 fi
 
+# ---------- check-debugger (wave-22, 2026-07-06) ----------
+# Trigger: any src/ tsx|ts|jsx|js change or the script itself.
+# Walks src/**/*.{tsx,ts,jsx,js} and fails on any bare `debugger;` statement
+# at the start of a line. Lock-at-zero ratchet — there's no baseline. If a
+# `debugger` ever ships to production source, every visitor with DevTools
+# open freezes on that line and the app hangs mid-render. Class-of-fix Round
+# 6 sibling to wave-16..wave-21. Not flagged: quoted strings containing the
+# word "debugger", identifiers like `foo.debugger` / `debuggerName`, and
+# commented-out `// debugger;` lines. Opt-out marker: `debugger-allow:<reason>`
+# on the same line or the line directly above. Cost when fired: ~50-100ms
+# (linear in ~520 files, single-line regex).
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-debugger\.mjs$)'; then
+  echo "[pre-commit] Debugger-affecting file staged — running check:debugger…"
+  node scripts/check-debugger.mjs
+fi
+
 # ---------- check-notion-ban (MP221 §7.1) ----------
 # Trigger: any newly-introduced Notion write call in non-test code.
 # Existing supabase/functions/notion-sync/* is grandfathered (read-only path).

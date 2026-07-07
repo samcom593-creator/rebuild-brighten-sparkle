@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone,
+  PhoneOff,
   Mail,
   Filter,
   ArrowUpDown,
@@ -15,6 +16,11 @@ import {
   UserMinus,
   MapPin,
   Sparkles,
+  Instagram,
+  FileSpreadsheet,
+  ClipboardCheck,
+  ArrowRight,
+  Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -33,9 +39,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// Row from v_unlicensed_all
+// Row from v_unlicensed_all — now UNION of applications + aged_leads
 interface UnlicensedRow {
   id: string;
+  source: "applied" | "aged_lead";
   first_name: string | null;
   last_name: string | null;
   email: string | null;
@@ -49,9 +56,26 @@ interface UnlicensedRow {
   assigned_va_id: string | null;
   assigned_va_at: string | null;
   next_touch_by: string | null;
+  phone_bad_at: string | null;
   days_since_touch: number | null;
   days_since_applied: number | null;
   assigned_va_email: string | null;
+  instagram_handle?: string | null;
+}
+
+// Every stage Sam actually uses — order matches the licensing funnel.
+// Tapping the stage badge cycles to the next one (which fires the RPC).
+const STAGES: Array<{ key: string; label: string; tone: string }> = [
+  { key: "unlicensed",         label: "unlicensed",         tone: "bg-slate-500/15 text-slate-300 border-slate-500/40" },
+  { key: "course_purchased",   label: "course purchased",   tone: "bg-rose-500/15 text-rose-300 border-rose-500/40" },
+  { key: "in_course",          label: "in course",          tone: "bg-sky-500/15 text-sky-300 border-sky-500/40" },
+  { key: "finished_course",    label: "finished course",    tone: "bg-amber-500/15 text-amber-300 border-amber-500/40" },
+  { key: "test_scheduled",     label: "test scheduled",     tone: "bg-amber-500/15 text-amber-300 border-amber-500/40" },
+  { key: "passed_test",        label: "passed test",        tone: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40" },
+  { key: "waiting_on_license", label: "waiting on license", tone: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40" },
+];
+function stageMeta(k: string | null) {
+  return STAGES.find((s) => s.key === (k ?? "unlicensed")) ?? STAGES[0];
 }
 
 interface VaOption {
@@ -162,10 +186,11 @@ export default function UnlicensedAll() {
   });
 
   const assignVa = useMutation({
-    mutationFn: async ({ appId, vaId }: { appId: string; vaId: string }) => {
-      const { error } = await supabase.rpc("assign_va_to_application" as any, {
-        p_application_id: appId,
+    mutationFn: async ({ row, vaId }: { row: UnlicensedRow; vaId: string }) => {
+      const { error } = await supabase.rpc("unified_assign_va" as any, {
+        p_id: row.id,
         p_va_user_id: vaId,
+        p_source: row.source,
       });
       if (error) throw error;
     },
@@ -177,11 +202,11 @@ export default function UnlicensedAll() {
   });
 
   const markContacted = useMutation({
-    mutationFn: async (appId: string) => {
-      const { error } = await supabase
-        .from("applications")
-        .update({ last_contacted_at: new Date().toISOString() })
-        .eq("id", appId);
+    mutationFn: async (row: UnlicensedRow) => {
+      const { error } = await supabase.rpc("unified_mark_contacted" as any, {
+        p_id: row.id,
+        p_source: row.source,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -189,6 +214,61 @@ export default function UnlicensedAll() {
       qc.invalidateQueries({ queryKey: ["v_unlicensed_all"] });
     },
     onError: (e) => toast.error(`Update failed: ${String(e)}`),
+  });
+
+  const setStage = useMutation({
+    mutationFn: async ({ row, progress }: { row: UnlicensedRow; progress: string }) => {
+      const { error } = await supabase.rpc("unified_set_license_progress" as any, {
+        p_id: row.id,
+        p_progress: progress,
+        p_source: row.source,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["v_unlicensed_all"] });
+    },
+    onError: (e) => toast.error(`Stage update failed: ${String(e)}`),
+  });
+
+  const markBadPhone = useMutation({
+    mutationFn: async (row: UnlicensedRow) => {
+      const { error } = await supabase.rpc("unified_mark_phone_bad" as any, {
+        p_id: row.id,
+        p_source: row.source,
+        p_reason: "user_marked_bad",
+      });
+      if (error) throw error;
+      // Fire the "we couldn't reach you" email if this is a real applicant (aged_leads emails don't have the templated flow yet)
+      if (row.source === "applied" && row.email) {
+        await supabase.functions.invoke("send-couldnt-reach-email", {
+          body: { application_id: row.id, reason: "user_marked_bad" },
+        });
+      }
+    },
+    onSuccess: (_v, row) => {
+      toast.success(
+        row.source === "applied" && row.email
+          ? `Bad # · emailed ${row.email}`
+          : "Marked bad #",
+      );
+      qc.invalidateQueries({ queryKey: ["v_unlicensed_all"] });
+    },
+    onError: (e) => toast.error(`Mark bad failed: ${String(e)}`),
+  });
+
+  const promoteAged = useMutation({
+    mutationFn: async (agedId: string) => {
+      const { error } = await supabase.rpc("promote_aged_lead_to_application" as any, {
+        p_aged_id: agedId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Converted to applicant");
+      qc.invalidateQueries({ queryKey: ["v_unlicensed_all"] });
+    },
+    onError: (e) => toast.error(`Convert failed: ${String(e)}`),
   });
 
   // Totals
@@ -321,10 +401,14 @@ export default function UnlicensedAll() {
           {filtered.map((r, idx) => {
             const days = r.days_since_touch ?? 0;
             const tone = ghostTone(days);
-            const progressTone = PROGRESS_TONE[r.license_progress ?? ""] ?? "bg-slate-500/15 text-slate-300 border-slate-500/40";
+            const stg = stageMeta(r.license_progress);
+            const busyStage = setStage.isPending && setStage.variables?.row.id === r.id;
+            const busyBad = markBadPhone.isPending && markBadPhone.variables?.id === r.id;
+            const busyPromote = promoteAged.isPending && promoteAged.variables === r.id;
+            const isBadPhone = !!r.phone_bad_at;
             return (
               <motion.div
-                key={r.id}
+                key={`${r.source}-${r.id}`}
                 layout
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -338,31 +422,54 @@ export default function UnlicensedAll() {
                     tone.ring,
                     "hover:border-white/20 transition-colors",
                   )}
-                  style={{
-                    boxShadow: "inset 0 1px 0 hsl(0 0% 100% / 0.05), 0 8px 30px -12px hsl(222 60% 0% / 0.55)",
-                  }}
+                  style={{ boxShadow: "inset 0 1px 0 hsl(0 0% 100% / 0.05), 0 8px 30px -12px hsl(222 60% 0% / 0.55)" }}
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                    {/* Identity block */}
+                    {/* Identity + inline stage picker */}
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className={cn("h-2.5 w-2.5 rounded-full shrink-0 animate-pulse", tone.dot)} />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-sm sm:text-base truncate text-slate-100">{fullName(r)}</span>
                           {r.state && (
                             <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
-                              <MapPin className="h-3 w-3" />
-                              {r.state}
+                              <MapPin className="h-3 w-3" />{r.state}
+                            </span>
+                          )}
+                          {r.source === "aged_lead" && (
+                            <span title="Imported from Excel — hasn't formally applied yet" className="inline-flex items-center gap-1 text-[10px] bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded-full px-1.5 py-0.5">
+                              <FileSpreadsheet className="h-2.5 w-2.5" /> excel
+                            </span>
+                          )}
+                          {r.source === "applied" && (
+                            <span title="Filled out the public application" className="inline-flex items-center gap-1 text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 rounded-full px-1.5 py-0.5">
+                              <ClipboardCheck className="h-2.5 w-2.5" /> applied
                             </span>
                           )}
                         </div>
-                        <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
-                          <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", progressTone)}>
-                            {prettyProgress(r.license_progress)}
-                          </Badge>
-                          <Badge variant="outline" className={cn("text-[10px]", tone.badge)}>
-                            {days}d ghosted
-                          </Badge>
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          {/* Tap-to-cycle stage — Sam's #1 gripe */}
+                          <Select
+                            value={r.license_progress ?? "unlicensed"}
+                            onValueChange={(v) => setStage.mutate({ row: r, progress: v })}
+                          >
+                            <SelectTrigger className={cn("h-7 text-[10px] uppercase tracking-wide w-auto min-w-[150px] px-2 border", stg.tone, busyStage && "opacity-60")}>
+                              <SelectValue>
+                                {busyStage ? <Loader2 className="h-3 w-3 animate-spin" /> : stg.label}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STAGES.map((s) => (
+                                <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Badge variant="outline" className={cn("text-[10px]", tone.badge)}>{days}d ghosted</Badge>
+                          {isBadPhone && (
+                            <Badge variant="outline" className="text-[10px] bg-rose-500/15 text-rose-300 border-rose-500/30 gap-1">
+                              <PhoneOff className="h-2.5 w-2.5" /> bad #
+                            </Badge>
+                          )}
                           {r.assigned_va_email && (
                             <span className="text-[10px] text-emerald-300/80 truncate">→ {r.assigned_va_email}</span>
                           )}
@@ -370,36 +477,51 @@ export default function UnlicensedAll() {
                       </div>
                     </div>
 
-                    {/* Contact actions */}
+                    {/* One-tap contact actions */}
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {r.phone && (
-                        <a
-                          href={telHref(r.phone)}
-                          className="inline-flex items-center gap-1.5 text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded-md font-medium transition-colors"
-                        >
-                          <Phone className="h-3 w-3" />
-                          {formatPhone(r.phone)}
+                      {r.phone && !isBadPhone && (
+                        <a href={telHref(r.phone)} className="inline-flex items-center gap-1.5 text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded-md font-medium transition-colors">
+                          <Phone className="h-3 w-3" />{formatPhone(r.phone)}
                         </a>
                       )}
                       {r.email && (
-                        <a
-                          href={`mailto:${r.email}`}
-                          className="inline-flex items-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-md font-medium max-w-[220px] truncate"
-                          title={r.email}
-                        >
+                        <a href={`mailto:${r.email}`} className="inline-flex items-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-md font-medium max-w-[200px] truncate" title={r.email}>
                           <Mail className="h-3 w-3 shrink-0" />
                           <span className="truncate">{r.email}</span>
                         </a>
                       )}
+                      {r.instagram_handle && (
+                        <a
+                          href={`https://instagram.com/${r.instagram_handle.replace(/^@+/, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-pink-400 hover:text-pink-300 border border-pink-500/30 bg-pink-500/10 rounded-md px-2 py-1.5"
+                          title={`@${r.instagram_handle.replace(/^@+/, "")}`}
+                        >
+                          <Instagram className="h-3 w-3" />
+                        </a>
+                      )}
+                      {r.phone && !isBadPhone && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                          title="Mark number bad + email them"
+                          onClick={() => markBadPhone.mutate(r)}
+                          disabled={busyBad}
+                        >
+                          {busyBad ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PhoneOff className="h-3.5 w-3.5" />}
+                        </Button>
+                      )}
                     </div>
 
-                    {/* Assignment + contacted */}
+                    {/* Assignment + contacted + promote */}
                     <div className="flex items-center gap-2 lg:ml-auto">
                       <Select
                         value={r.assigned_va_id ?? ""}
-                        onValueChange={(v) => v && assignVa.mutate({ appId: r.id, vaId: v })}
+                        onValueChange={(v) => v && assignVa.mutate({ row: r, vaId: v })}
                       >
-                        <SelectTrigger className="h-8 w-[170px] text-xs bg-white/5 border-white/10">
+                        <SelectTrigger className="h-8 w-[150px] text-xs bg-white/5 border-white/10">
                           <UserPlus className="h-3 w-3 mr-1.5" />
                           <SelectValue placeholder="Assign VA" />
                         </SelectTrigger>
@@ -410,14 +532,8 @@ export default function UnlicensedAll() {
                           {vas.map((v) => (
                             <SelectItem key={v.user_id} value={v.user_id}>
                               <span className="inline-flex items-center gap-1.5">
-                                <span
-                                  className={cn(
-                                    "rounded px-1 py-0.5 text-[9px] uppercase tracking-wide",
-                                    v.role === "manager"
-                                      ? "bg-amber-500/20 text-amber-300"
-                                      : "bg-sky-500/20 text-sky-300",
-                                  )}
-                                >
+                                <span className={cn("rounded px-1 py-0.5 text-[9px] uppercase tracking-wide",
+                                  v.role === "manager" ? "bg-amber-500/20 text-amber-300" : "bg-sky-500/20 text-sky-300")}>
                                   {v.role}
                                 </span>
                                 {v.display_name || v.email || v.user_id.slice(0, 8)}
@@ -431,25 +547,32 @@ export default function UnlicensedAll() {
                         size="sm"
                         variant="outline"
                         className="h-8 text-xs border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
-                        onClick={() => markContacted.mutate(r.id)}
+                        onClick={() => markContacted.mutate(r)}
                         disabled={markContacted.isPending}
                       >
-                        <CheckCircle2 className="h-3 w-3 mr-1.5" />
-                        Mark contacted
+                        <CheckCircle2 className="h-3 w-3 mr-1.5" /> contacted
                       </Button>
+
+                      {r.source === "aged_lead" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs border-violet-500/40 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20"
+                          onClick={() => promoteAged.mutate(r.id)}
+                          disabled={busyPromote}
+                          title="Turn this Excel-imported lead into a real applicant record"
+                        >
+                          {busyPromote ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> : <ArrowRight className="h-3 w-3 mr-1.5" />}
+                          convert
+                        </Button>
+                      )}
                     </div>
                   </div>
 
-                  {/* Ghosted 30d+ overlay glow */}
                   {days >= 30 && (
-                    <div
-                      className="pointer-events-none absolute inset-y-0 left-0 w-1"
-                      style={{ background: "linear-gradient(180deg, hsl(0 80% 60%), hsl(340 80% 55%))" }}
-                    />
+                    <div className="pointer-events-none absolute inset-y-0 left-0 w-1" style={{ background: "linear-gradient(180deg, hsl(0 80% 60%), hsl(340 80% 55%))" }} />
                   )}
-                  {days >= 30 && (
-                    <Flame className="pointer-events-none absolute top-2 right-2 h-3.5 w-3.5 text-rose-400/70" />
-                  )}
+                  {days >= 30 && <Flame className="pointer-events-none absolute top-2 right-2 h-3.5 w-3.5 text-rose-400/70" />}
                 </div>
               </motion.div>
             );

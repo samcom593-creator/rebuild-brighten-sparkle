@@ -123,7 +123,7 @@ export function GlobalSidebar({
     if (typeof window === "undefined") return;
     try {
       window.localStorage.setItem(SIDEBAR_GROUPS_STORAGE_KEY, JSON.stringify(collapsedGroups));
-    } catch {
+    } catch { // empty-catch-allow:localstorage-incognito
       // localStorage quota / private-mode failures are non-fatal
     }
   }, [collapsedGroups]);
@@ -236,11 +236,14 @@ export function GlobalSidebar({
         // MP-230 (2026-07-01): Agent Duplicates removed per Sam directive.
         // MP-232: licensed applicants bypass Calendly; call now.
         { icon: Inbox, label: "Licensed Inbox", href: "/admin/licensed-inbox", special: true },
-        // 2026-07-05 Sam: unlicensed → licensed bring-them-back queue. Assistants work this daily.
-        // Rename: label "Recovery Queue" → "License Push" (was "Bring Them Back"). Path unchanged.
-        { icon: Flame, label: "License Push", href: "/admin/recovery-queue", special: true },
-        // 2026-07-05 Sam: every unlicensed applicant + VA assignment + ghosted 30d+ filter.
+        // MP-249 (2026-07-06): Sam directive "just integrate both of them and do
+        // both those tasks in one in one spot." Unified /admin/unlicensed-all now
+        // handles applicants + Excel-imported aged_leads via v_unlicensed_all UNION
+        // view; stage picker is tap-to-cycle; License Push cohorts still reachable
+        // via the "By stage" filter. RecoveryQueue kept as a dedicated cohort
+        // grouping for people who like that layout — same underlying data.
         { icon: GraduationCap, label: "Unlicensed Queue", href: "/admin/unlicensed-all", special: true },
+        { icon: Flame, label: "License Push (cohorts)", href: "/admin/recovery-queue", special: true },
         // 2026-06-18 Sam: June hires punch list with inline edit + Send Course.
         { icon: UserCog, label: "June Hires Punch List", href: "/admin/june-hires", special: true },
         // 2026-07-01 Sam: producer weekly trend + 3-week drop alarm (Daniel use case).

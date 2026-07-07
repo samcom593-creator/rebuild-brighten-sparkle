@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2, Circle, DollarSign, Phone, Plus, Sparkles,
   Flame, ChevronRight, CalendarCheck, Timer, Star, Video,
+  FileSpreadsheet, GraduationCap, UserPlus,
 } from "lucide-react";
 import { format, isToday } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -186,6 +187,66 @@ export default function DashboardToday() {
     },
   });
 
+  /* ---------- MP-250 top-of-page KPIs ----------
+     Sam directive 2026-07-07: three glanceable counts pinned above the fold
+     so Sam sees the recovery-funnel pressure before he opens any queue.
+       1. Stale unlicensed (v_unlicensed_all, days_since_touch >= 30)
+       2. XCEL passed-test with a stage gap (v_xcel_stage_gaps)
+       3. Aged leads not yet linked to any application row
+     60s auto-refresh via react-query. WoW delta placeholder until the daily
+     snapshot table lands — shows "—" instead of a fake number. */
+  const kpiStaleQ = useQuery({
+    queryKey: ["today-kpi-stale-unlicensed"],
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<number> => {
+      const { count, error } = await (supabase as any)
+        .from("v_unlicensed_all")
+        .select("*", { count: "exact", head: true })
+        .gte("days_since_touch", 30);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const kpiPassedTestQ = useQuery({
+    queryKey: ["today-kpi-xcel-passed"],
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<number> => {
+      const { count, error } = await (supabase as any)
+        .from("v_xcel_stage_gaps")
+        .select("*", { count: "exact", head: true })
+        .eq("derived_progress", "passed_test");
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const kpiUnmatchedLeadsQ = useQuery({
+    queryKey: ["today-kpi-unmatched-aged-leads"],
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<number> => {
+      // NOT EXISTS-style filter — do it in a single RPC-ish call by asking the
+      // v_unlicensed_all view for aged_leads that also carry the "no matching
+      // application" flag surfaced by the view. Falls back to a raw count if
+      // the view is unavailable so the tile never crashes the page.
+      const { count, error } = await (supabase as any)
+        .from("v_aged_leads_unmatched")
+        .select("*", { count: "exact", head: true });
+      if (!error) return count ?? 0;
+      // Fallback: count aged_leads rows where the email doesn't appear in the
+      // unlicensed_all "applied" bucket for the same email.
+      const { count: fallback, error: err2 } = await (supabase as any)
+        .from("aged_leads")
+        .select("*", { count: "exact", head: true })
+        .is("matched_application_id", null);
+      if (err2) throw err2;
+      return fallback ?? 0;
+    },
+  });
+
   /* ---------- top 5 hot prospects ---------- */
   const hotQ = useQuery({
     queryKey: ["today-hot-prospects"],
@@ -298,6 +359,40 @@ export default function DashboardToday() {
         title="Today"
         subtitle="One list. Income-producing tasks pinned to the top. Appointments and hottest prospects one tap away. Tap a circle to mark it done."
       />
+
+      {/* ---------------- MP-250 top-of-page KPIs ---------------- */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <KpiCard
+          icon={<GraduationCap className="h-5 w-5" />}
+          label="Stale unlicensed (30d+)"
+          value={kpiStaleQ.data}
+          loading={kpiStaleQ.isLoading}
+          error={kpiStaleQ.isError}
+          delta={null}
+          href="/admin/unlicensed-all?filter=ghosted_30"
+          accent="rose"
+        />
+        <KpiCard
+          icon={<FileSpreadsheet className="h-5 w-5" />}
+          label="XCEL passed test · stage gap"
+          value={kpiPassedTestQ.data}
+          loading={kpiPassedTestQ.isLoading}
+          error={kpiPassedTestQ.isError}
+          delta={null}
+          href="/admin/unlicensed-all?filter=by_stage&stage=passed_test"
+          accent="amber"
+        />
+        <KpiCard
+          icon={<UserPlus className="h-5 w-5" />}
+          label="Aged leads · no app"
+          value={kpiUnmatchedLeadsQ.data}
+          loading={kpiUnmatchedLeadsQ.isLoading}
+          error={kpiUnmatchedLeadsQ.isError}
+          delta={null}
+          href="/admin/xcel-import"
+          accent="emerald"
+        />
+      </div>
 
       {/* ---------------- hero band ---------------- */}
       <TodayHero
@@ -698,6 +793,62 @@ function ProspectRowCard({ p }: { p: HotProspect }) {
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+/* -------------------- MP-250 KPI card -------------------- */
+
+const KPI_ACCENT: Record<"rose" | "amber" | "emerald", { border: string; text: string; bg: string }> = {
+  rose:    { border: "border-rose-500/30",    text: "text-rose-500",    bg: "bg-rose-500/5" },
+  amber:   { border: "border-amber-500/30",   text: "text-amber-500",   bg: "bg-amber-500/5" },
+  emerald: { border: "border-emerald-500/30", text: "text-emerald-500", bg: "bg-emerald-500/5" },
+};
+
+function KpiCard({
+  icon, label, value, loading, error, delta, href, accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number | undefined;
+  loading: boolean;
+  error: boolean;
+  delta: number | null;
+  href: string;
+  accent: keyof typeof KPI_ACCENT;
+}) {
+  const a = KPI_ACCENT[accent];
+  const deltaLabel = delta === null || delta === undefined ? "—" : (delta > 0 ? `+${delta}` : `${delta}`);
+  return (
+    <Link
+      to={href}
+      className={cn(
+        "rounded-xl border transition-colors hover:brightness-105 group",
+        a.border, a.bg,
+      )}
+    >
+      <div className="p-3 flex items-center gap-3">
+        <div className={cn("shrink-0", a.text)}>{icon}</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground truncate">
+            {label}
+          </p>
+          {loading ? (
+            <Skeleton className="h-7 w-16 mt-1" />
+          ) : error ? (
+            <p className="text-lg font-black leading-none mt-1 text-muted-foreground">—</p>
+          ) : (
+            <p className={cn("text-2xl sm:text-3xl font-black leading-none tabular-nums mt-1", a.text)}>
+              {value ?? 0}
+            </p>
+          )}
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">WoW</p>
+          <p className="text-xs font-bold tabular-nums text-muted-foreground">{deltaLabel}</p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 group-hover:translate-x-0.5 transition-transform" />
+      </div>
+    </Link>
   );
 }
 

@@ -23,6 +23,7 @@ import {
   LayoutDashboard,
   Library,
   DollarSign,
+  FileSpreadsheet,
   Flame,
   LogOut,
   Maximize2,
@@ -243,6 +244,10 @@ export function GlobalSidebar({
         // via the "By stage" filter. RecoveryQueue kept as a dedicated cohort
         // grouping for people who like that layout — same underlying data.
         { icon: GraduationCap, label: "Unlicensed Queue", href: "/admin/unlicensed-all", special: true },
+        // MP-250 (2026-07-07): raw Xcel DataExport CSV upload → seeds aged_leads,
+        // upgrades matched applications to licensed. Sits next to Unlicensed Queue
+        // because that's where Sam looks when he's about to run the import.
+        { icon: FileSpreadsheet, label: "Import XCEL", href: "/admin/xcel-import", special: true },
         { icon: Flame, label: "License Push (cohorts)", href: "/admin/recovery-queue", special: true },
         // 2026-06-18 Sam: June hires punch list with inline edit + Send Course.
         { icon: UserCog, label: "June Hires Punch List", href: "/admin/june-hires", special: true },

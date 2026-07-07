@@ -21,6 +21,7 @@ import {
   ClipboardCheck,
   ArrowRight,
   Loader2,
+  Trophy,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -252,6 +253,23 @@ export default function UnlicensedAll() {
       qc.invalidateQueries({ queryKey: ["v_unlicensed_all"] });
     },
     onError: (e) => toast.error(`Stage update failed: ${String(e)}`),
+  });
+
+  const passedTest = useMutation({
+    mutationFn: async (row: UnlicensedRow) => {
+      const { error } = await supabase.rpc("unified_set_license_progress" as any, {
+        p_id: row.id, p_progress: "passed_test", p_source: row.source,
+      });
+      if (error) throw error;
+      if (row.source === 'applied') {
+        await supabase.rpc("log_contact_attempt" as any, {
+          p_application_id: row.id, p_channel: 'stage', p_outcome: 'passed_test', p_notes: null,
+          // empty-catch-allow:fire-and-forget stage-transition telemetry
+        }).catch(() => {});
+      }
+    },
+    onSuccess: () => { toast.success('Marked passed test'); qc.invalidateQueries({ queryKey: ['v_unlicensed_all'] }); },
+    onError: (e) => toast.error(`Failed: ${String(e)}`),
   });
 
   const markBadPhone = useMutation({
@@ -551,12 +569,35 @@ export default function UnlicensedAll() {
                     {/* One-tap contact actions */}
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {r.phone && !isBadPhone && (
-                        <a href={telHref(r.phone)} className="inline-flex items-center gap-1.5 text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded-md font-medium transition-colors">
+                        <a
+                          href={telHref(r.phone)}
+                          className="inline-flex items-center gap-1.5 text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded-md font-medium transition-colors"
+                          onClick={() => {
+                            if (r.source === 'applied') {
+                              supabase.rpc("log_contact_attempt" as any, {
+                                p_application_id: r.id, p_channel: 'phone', p_outcome: 'attempted', p_notes: null,
+                                // empty-catch-allow:fire-and-forget tel-click telemetry — must not block navigation
+                              }).catch(() => {});
+                            }
+                          }}
+                        >
                           <Phone className="h-3 w-3" />{formatPhone(r.phone)}
                         </a>
                       )}
                       {r.email && (
-                        <a href={`mailto:${r.email}`} className="inline-flex items-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-md font-medium max-w-[200px] truncate" title={r.email}>
+                        <a
+                          href={`mailto:${r.email}`}
+                          className="inline-flex items-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-md font-medium max-w-[200px] truncate"
+                          title={r.email}
+                          onClick={() => {
+                            if (r.source === 'applied') {
+                              supabase.rpc("log_contact_attempt" as any, {
+                                p_application_id: r.id, p_channel: 'email', p_outcome: 'attempted', p_notes: null,
+                                // empty-catch-allow:fire-and-forget mailto-click telemetry — must not block navigation
+                              }).catch(() => {});
+                            }
+                          }}
+                        >
                           <Mail className="h-3 w-3 shrink-0" />
                           <span className="truncate">{r.email}</span>
                         </a>
@@ -568,6 +609,7 @@ export default function UnlicensedAll() {
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-xs text-pink-400 hover:text-pink-300 border border-pink-500/30 bg-pink-500/10 rounded-md px-2 py-1.5"
                           title={`@${r.instagram_handle.replace(/^@+/, "")}`}
+                          aria-label={`Instagram @${r.instagram_handle.replace(/^@+/, "")}`}
                         >
                           <Instagram className="h-3 w-3" />
                         </a>
@@ -578,6 +620,7 @@ export default function UnlicensedAll() {
                           variant="ghost"
                           className="h-8 w-8 p-0 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
                           title="Mark number bad + email them"
+                          aria-label="Mark phone number bad and email them"
                           onClick={() => markBadPhone.mutate(r)}
                           disabled={busyBad}
                         >
@@ -624,6 +667,15 @@ export default function UnlicensedAll() {
                         <CheckCircle2 className="h-3 w-3 mr-1.5" /> contacted
                       </Button>
 
+                      <Button size="sm" variant="outline"
+                        className="h-8 text-xs border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                        onClick={() => passedTest.mutate(r)}
+                        disabled={passedTest.isPending}
+                        aria-label="Mark applicant as passed their test"
+                        title="Applicant passed their test — mark and notify manager">
+                        <Trophy className="h-3 w-3 mr-1.5" /> passed
+                      </Button>
+
                       {r.source === "aged_lead" && (
                         <Button
                           size="sm"
@@ -632,6 +684,7 @@ export default function UnlicensedAll() {
                           onClick={() => promoteAged.mutate(r.id)}
                           disabled={busyPromote}
                           title="Turn this Excel-imported lead into a real applicant record"
+                          aria-label="Convert Excel-imported lead to applicant"
                         >
                           {busyPromote ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> : <ArrowRight className="h-3 w-3 mr-1.5" />}
                           convert

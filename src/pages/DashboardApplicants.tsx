@@ -576,6 +576,22 @@ export default function DashboardApplicants() {
     window.open(`https://instagram.com/${clean}`, "_blank", "noopener,noreferrer");
   };
 
+  // 2026-07-07 Sam: fire-and-forget contact-attempt log. Never blocks tel:/sms:/mailto: navigation.
+  const logContactAttempt = (
+    applicationId: string,
+    channel: "call" | "sms" | "email",
+  ) => {
+    void supabase
+      .rpc("log_contact_attempt" as any, {
+        p_application_id: applicationId,
+        p_channel: channel,
+        p_outcome: "initiated",
+      })
+      .then(() => undefined)
+      // empty-catch-allow:fire-and-forget telemetry — must not block tel:/sms:/mailto: navigation
+      .catch(() => undefined);
+  };
+
   const [badPhoneBusy, setBadPhoneBusy] = useState<string | null>(null);
   const handleMarkBadPhone = async (app: Application) => {
     if (badPhoneBusy === app.id) return;
@@ -1292,6 +1308,7 @@ export default function DashboardApplicants() {
                                       className="h-7 w-7 text-foreground hover:text-pink-300 hover:bg-rose-500/10"
                                       onClick={() => openInstagram(app.instagram_handle!)}
                                       title={`@${app.instagram_handle}`}
+                                      aria-label={`Open Instagram profile @${app.instagram_handle.replace(/^@+/, "")}`}
                                     >
                                       <Instagram className="h-3.5 w-3.5" />
                                     </Button>
@@ -1302,9 +1319,13 @@ export default function DashboardApplicants() {
                                       size="icon"
                                       className="h-7 w-7"
                                       title={`Call ${app.phone}`}
+                                      aria-label={`Call ${app.first_name} ${app.last_name}`}
                                       asChild
                                     >
-                                      <a href={`tel:${app.phone}`}>
+                                      <a
+                                        href={`tel:${app.phone}`}
+                                        onClick={() => logContactAttempt(app.id, "call")}
+                                      >
                                         <Phone className="h-3.5 w-3.5" />
                                       </a>
                                     </Button>
@@ -1315,9 +1336,13 @@ export default function DashboardApplicants() {
                                       size="icon"
                                       className="h-7 w-7"
                                       title={`Text ${app.phone}`}
+                                      aria-label={`Text ${app.first_name} ${app.last_name}`}
                                       asChild
                                     >
-                                      <a href={`sms:${app.phone}`}>
+                                      <a
+                                        href={`sms:${app.phone}`}
+                                        onClick={() => logContactAttempt(app.id, "sms")}
+                                      >
                                         <MessageCircle className="h-3.5 w-3.5" />
                                       </a>
                                     </Button>
@@ -1328,6 +1353,7 @@ export default function DashboardApplicants() {
                                       size="icon"
                                       className="h-7 w-7 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
                                       title="Mark number bad + email applicant we couldn't reach them"
+                                      aria-label={`Mark ${app.first_name} ${app.last_name}'s phone as bad`}
                                       disabled={badPhoneBusy === app.id}
                                       onClick={() => handleMarkBadPhone(app)}
                                     >
@@ -1342,17 +1368,35 @@ export default function DashboardApplicants() {
                                       size="icon"
                                       className="h-7 w-7"
                                       title={`Email ${app.email}`}
+                                      aria-label={`Email ${app.first_name} ${app.last_name}`}
                                       asChild
                                     >
-                                      <a href={`mailto:${app.email}`}>
+                                      <a
+                                        href={`mailto:${app.email}`}
+                                        onClick={() => logContactAttempt(app.id, "email")}
+                                      >
                                         <Mail className="h-3.5 w-3.5" />
                                       </a>
                                     </Button>
                                   )}
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setNotesApp(app)} title="Notes">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => setNotesApp(app)}
+                                    title="Notes"
+                                    aria-label={`Open notes for ${app.first_name} ${app.last_name}`}
+                                  >
                                     <StickyNote className="h-3.5 w-3.5" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRecorderApp(app)} title="Record">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => setRecorderApp(app)}
+                                    title="Record"
+                                    aria-label={`Record interview with ${app.first_name} ${app.last_name}`}
+                                  >
                                     <Mic className="h-3.5 w-3.5" />
                                   </Button>
                                   {app.license_status !== "licensed" && (
@@ -1374,12 +1418,26 @@ export default function DashboardApplicants() {
                                     />
                                   )}
                                   {status !== "hired" && status !== "contracted" && (
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => handleMarkAsHired(app.id)} title="Hired">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-primary"
+                                      onClick={() => handleMarkAsHired(app.id)}
+                                      title="Hired"
+                                      aria-label={`Mark ${app.first_name} ${app.last_name} as hired`}
+                                    >
                                       <UserCheck className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
                                   {status !== "hired" && status !== "contracted" && (
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setTerminateApp(app)} title="Terminate">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-destructive"
+                                      onClick={() => setTerminateApp(app)}
+                                      title="Terminate"
+                                      aria-label={`Terminate ${app.first_name} ${app.last_name}`}
+                                    >
                                       <XCircle className="h-3.5 w-3.5" />
                                     </Button>
                                   )}

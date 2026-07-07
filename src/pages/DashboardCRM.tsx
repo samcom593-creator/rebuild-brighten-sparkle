@@ -353,7 +353,7 @@ export default function DashboardCRM() {
           showInactive,
         } satisfies PersistedCrmFilters),
       );
-    } catch {
+    } catch { // empty-catch-allow:localstorage-incognito
       /* ignore quota / disabled storage */
     }
   }, [searchTerm, managerFilter, licenseFilter, aiScoreFilter, showDeactivated, showInactive]);

@@ -47,7 +47,7 @@ function readCache(): Partial<LiveStats> | null {
   } catch { return null; }
 }
 function writeCache(d: LiveStats) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...d, _cached_at: Date.now() })); } catch { /* swallow */ }
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...d, _cached_at: Date.now() })); } catch { /* swallow */ } // empty-catch-allow:localstorage-incognito
 }
 // Live RPC wins whenever it returns a real positive count. Cache is the warm
 // fallback. Floor is the cold-render-only safety net. Never clamp truth upward.

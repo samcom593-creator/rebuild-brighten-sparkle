@@ -70,7 +70,7 @@ export function AvatarUpload({ userId, currentAvatarUrl, fullName, onAvatarChang
         try {
           const oldPath = currentAvatarUrl.split("/avatars/")[1];
           if (oldPath) await supabase.storage.from("avatars").remove([oldPath]);
-        } catch (err) { /* ignore */ }
+        } catch (err) { /* ignore */ } // empty-catch-allow:user-cancelled
       }
 
       const { error: uploadError } = await supabase.storage

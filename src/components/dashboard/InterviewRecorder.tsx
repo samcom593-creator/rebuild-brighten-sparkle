@@ -91,7 +91,7 @@ export function InterviewRecorder({
     recognition.onend = () => {
       // Auto-restart if still recording
       if (recognitionRef.current && document.querySelector('[data-recording="true"]')) {
-        try { recognition.start(); } catch {}
+        try { recognition.start(); } catch {} // empty-catch-allow:media-api-optional
       }
     };
 

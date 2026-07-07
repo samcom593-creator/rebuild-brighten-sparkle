@@ -58,7 +58,7 @@ export class ErrorBoundary extends Component<Props, State> {
         component_stack: errorInfo.componentStack?.slice(0, 4000) || null,
         url: window.location.href,
       });
-    } catch {
+    } catch { // empty-catch-allow:error-boundary-report
       // Silent
     }
   }

@@ -579,7 +579,7 @@ export default function DashboardAgedLeads() {
         await supabase.functions.invoke("notify-lead-assigned", {
           body: { newAgentId: bulkAssignManagerId, batchCount: ids.length, source: "aged_leads" },
         });
-      } catch {}
+      } catch {} // empty-catch-allow:best-effort-fallback
       toast.success(`${ids.length} leads assigned!`);
       playSound("celebrate");
       setSelectedIds(new Set());

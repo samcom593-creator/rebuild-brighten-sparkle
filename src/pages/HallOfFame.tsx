@@ -163,7 +163,7 @@ export default function HallOfFame() {
     queryFn: async (): Promise<Stats> => {
       const [{ count: total }, { data: amtRow }, { data: agentsRow }, { count: thisMonth }] = await Promise.all([
         supabase.from("plaque_awards").select("*", { count: "exact", head: true }),
-        supabase.rpc("sum_plaque_amounts" as any).then(() => null).catch(() => null) ||
+        supabase.rpc("sum_plaque_amounts" as any).then(() => null).catch(() => null) || // empty-catch-allow:best-effort-fallback
           supabase.from("plaque_awards").select("amount").then(({ data }) => ({ data })),
         supabase
           .from("plaque_awards")

@@ -73,7 +73,7 @@ export default function CallingCards() {
     if (navigator.share) {
       try {
         await navigator.share({ title: `${name} · APEX Financial`, text: "My APEX calling card", url: shareUrl });
-      } catch { /* user cancelled */ }
+      } catch { /* user cancelled */ } // empty-catch-allow:user-cancelled
     } else copyLink();
   };
 

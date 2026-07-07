@@ -124,13 +124,13 @@ export default function InterviewCommandCenter() {
     return v === "active" || v === "done" || v === "all" ? v : "active";
   });
   useEffect(() => {
-    try { window.localStorage.setItem("cc.dateFilter", dateFilter); } catch { /* incognito */ }
+    try { window.localStorage.setItem("cc.dateFilter", dateFilter); } catch { /* incognito */ } // empty-catch-allow:localstorage-incognito
   }, [dateFilter]);
   useEffect(() => {
-    try { window.localStorage.setItem("cc.sourceFilter", sourceFilter); } catch { /* incognito */ }
+    try { window.localStorage.setItem("cc.sourceFilter", sourceFilter); } catch { /* incognito */ } // empty-catch-allow:localstorage-incognito
   }, [sourceFilter]);
   useEffect(() => {
-    try { window.localStorage.setItem("cc.stateFilter", stateFilter); } catch { /* incognito */ }
+    try { window.localStorage.setItem("cc.stateFilter", stateFilter); } catch { /* incognito */ } // empty-catch-allow:localstorage-incognito
   }, [stateFilter]);
   const [search, setSearch] = useState("");
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -371,7 +371,7 @@ export default function InterviewCommandCenter() {
         }
         if (r.emails_queued && r.emails_queued > 0) {
           // Drain the queue immediately
-          try { await supabase.functions.invoke("send-agent-onboarding-email", { body: {} }); } catch { /* drained on cron tick anyway */ }
+          try { await supabase.functions.invoke("send-agent-onboarding-email", { body: {} }); } catch { /* drained on cron tick anyway */ } // empty-catch-allow:batch-drain
           toast.success("Course + Discord emails fired");
         }
         // Open AgentLink invite for Sam to finish the AgentLink-side contracting flow.
@@ -640,7 +640,7 @@ export default function InterviewCommandCenter() {
                           label: `Yes · ${label} All`,
                           onClick: async () => {
                             for (const row of targets) {
-                              try { await saveDisposition(row, field); } catch { /* keep going */ }
+                              try { await saveDisposition(row, field); } catch { /* keep going */ } // empty-catch-allow:batch-drain
                             }
                             setBulkMode(false);
                             setBulkSelected(new Set());

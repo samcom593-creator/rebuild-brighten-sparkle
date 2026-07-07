@@ -102,7 +102,7 @@ export function AgentNotes({ agentId, onNoteAdded, readOnly = false }: AgentNote
         await supabase.functions.invoke("notify-notes-added", {
           body: { agentId, note: newNote.trim() },
         });
-      } catch (notifyError) {
+      } catch (notifyError) { // empty-catch-allow:best-effort-fallback
         /* swallow · notification fail shouldn't block UX */
       }
     } catch (error) {

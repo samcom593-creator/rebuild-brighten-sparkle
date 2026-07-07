@@ -42,22 +42,22 @@ const META_EVENT_MAP: Record<string, string> = {
 export function track(event: string, props: Record<string, unknown> = {}): void {
   if (typeof window === "undefined") return;
   // GA4 — gtag is loaded from index.html if VITE_GA4_MEASUREMENT_ID is set
-  try { window.gtag?.("event", event, props); } catch { /* swallow */ }
+  try { window.gtag?.("event", event, props); } catch { /* swallow */ } // empty-catch-allow:telemetry-fire-and-forget
   // PostHog — loaded from main.tsx if VITE_POSTHOG_KEY is set
-  try { window.posthog?.capture(event, props); } catch { /* swallow */ }
+  try { window.posthog?.capture(event, props); } catch { /* swallow */ } // empty-catch-allow:telemetry-fire-and-forget
   // Meta Pixel — only fires for mapped standard events
   try {
     const metaEvent = META_EVENT_MAP[event];
     if (metaEvent && window.fbq) {
       window.fbq("track", metaEvent, scrubMetaProps(props));
     }
-  } catch { /* swallow */ }
+  } catch { /* swallow */ } // empty-catch-allow:telemetry-fire-and-forget
 }
 
 export function identify(distinctId: string, props: Record<string, unknown> = {}): void {
   if (typeof window === "undefined") return;
-  try { window.posthog?.identify(distinctId, props); } catch { /* swallow */ }
-  try { window.gtag?.("set", { user_id: distinctId }); } catch { /* swallow */ }
+  try { window.posthog?.identify(distinctId, props); } catch { /* swallow */ } // empty-catch-allow:telemetry-fire-and-forget
+  try { window.gtag?.("set", { user_id: distinctId }); } catch { /* swallow */ } // empty-catch-allow:telemetry-fire-and-forget
 }
 
 export function pageView(path: string, extra: Record<string, unknown> = {}): void {

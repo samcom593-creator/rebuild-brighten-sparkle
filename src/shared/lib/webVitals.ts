@@ -26,7 +26,7 @@ async function flush() {
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
       }))
     );
-  } catch {
+  } catch { // empty-catch-allow:telemetry-fire-and-forget
     // swallow — vitals telemetry must not break the app
   }
 }
@@ -47,7 +47,7 @@ export function initWebVitals() {
       const last = entries[entries.length - 1] as any;
       if (last) enqueue({ name: "LCP", value: last.startTime, rating: last.startTime < 2500 ? "good" : last.startTime < 4000 ? "needs-improvement" : "poor" });
     }).observe({ type: "largest-contentful-paint", buffered: true });
-  } catch {}
+  } catch {} // empty-catch-allow:telemetry-fire-and-forget
 
   // CLS
   try {
@@ -58,7 +58,7 @@ export function initWebVitals() {
       }
       enqueue({ name: "CLS", value: cls, rating: cls < 0.1 ? "good" : cls < 0.25 ? "needs-improvement" : "poor" });
     }).observe({ type: "layout-shift", buffered: true });
-  } catch {}
+  } catch {} // empty-catch-allow:telemetry-fire-and-forget
 
   // INP / FID via event timing
   try {
@@ -69,7 +69,7 @@ export function initWebVitals() {
         }
       }
     }).observe({ type: "event", buffered: true, durationThreshold: 40 } as any);
-  } catch {}
+  } catch {} // empty-catch-allow:telemetry-fire-and-forget
 
   window.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") void flush();

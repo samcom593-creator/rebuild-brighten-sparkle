@@ -51,7 +51,7 @@ function getOverrides(): Partial<Record<FeatureFlagName, boolean>> {
         return parsed as Partial<Record<FeatureFlagName, boolean>>;
       }
     }
-  } catch {
+  } catch { // empty-catch-allow:jsonparse-fallback
     // ignore malformed JSON
   }
   return {};

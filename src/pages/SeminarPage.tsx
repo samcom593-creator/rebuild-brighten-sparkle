@@ -130,7 +130,7 @@ export default function SeminarPage() {
           try {
             const body = await context.clone().json();
             message = body?.error ?? message;
-          } catch {
+          } catch { // empty-catch-allow:jsonparse-fallback
             // Keep Supabase's original function error when the body is not JSON.
           }
         }

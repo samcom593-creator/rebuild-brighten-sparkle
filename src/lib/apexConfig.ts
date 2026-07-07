@@ -175,7 +175,7 @@ async function fireKjPlaceholderNagOnce(): Promise<void> {
       });
     }
     window.localStorage.setItem(key, new Date().toISOString());
-  } catch {
+  } catch { // empty-catch-allow:localstorage-incognito
     /* never break the page on a notify failure */
   }
 }

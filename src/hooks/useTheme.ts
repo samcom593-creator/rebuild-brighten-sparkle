@@ -33,7 +33,7 @@ export function useTheme() {
     root.classList.add(theme);
     try {
       window.localStorage.setItem(STORAGE_KEY, theme);
-    } catch {
+    } catch { // empty-catch-allow:localstorage-incognito
       /* private mode etc */
     }
   }, [theme]);

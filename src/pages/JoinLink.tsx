@@ -156,7 +156,7 @@ export default function JoinLink() {
         let parsed: { error?: string } | null = null;
         try {
           if (detail) parsed = JSON.parse(detail);
-        } catch {
+        } catch { // empty-catch-allow:jsonparse-fallback
           // noop
         }
         const code = parsed?.error ?? error.message ?? "unknown_error";

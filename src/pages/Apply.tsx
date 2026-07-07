@@ -228,7 +228,7 @@ export default function Apply() {
       const timeout = setTimeout(() => {
         try {
           sessionStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(value));
-        } catch (e) { /* ignore */ }
+        } catch (e) { /* ignore */ } // empty-catch-allow:localstorage-incognito
       }, 300);
       return () => clearTimeout(timeout);
     });

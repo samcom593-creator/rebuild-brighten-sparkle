@@ -63,7 +63,7 @@ async function flush() {
         user_agent: userAgent,
       }))
     );
-  } catch {
+  } catch { // empty-catch-allow:telemetry-fire-and-forget
     // swallow — telemetry must not throw
   }
 }

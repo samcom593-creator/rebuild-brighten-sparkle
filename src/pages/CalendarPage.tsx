@@ -369,7 +369,7 @@ export default function CalendarPage() {
         title: "Interview marked as no-show",
         details: { interview_id: iv.id },
       });
-    } catch {}
+    } catch {} // empty-catch-allow:best-effort-fallback
     toast.success("Marked as no-show");
     playSound("error");
     queryClient.invalidateQueries({ queryKey: ["calendar-interviews"] });

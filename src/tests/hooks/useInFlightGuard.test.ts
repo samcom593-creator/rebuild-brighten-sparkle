@@ -82,7 +82,7 @@ describe("useInFlightGuard", () => {
     const { result } = renderHook(() => useInFlightGuard(refetch));
 
     await act(async () => {
-      try { await result.current(); } catch {}
+      try { await result.current(); } catch {} // empty-catch-allow:test
     });
     // Should be able to call again
     await act(async () => { await result.current(); });

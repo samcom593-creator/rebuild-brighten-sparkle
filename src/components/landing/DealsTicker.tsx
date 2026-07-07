@@ -71,7 +71,7 @@ export function DealsTicker() {
         }));
         setTickerItems(buildTickerItems(rows));
       })
-      .catch(() => { /* silent — carrier-only fallback already rendered */ });
+      .catch(() => { /* silent — carrier-only fallback already rendered */ }); // empty-catch-allow:best-effort-fallback
     return () => { cancelled = true; };
   }, []);
 

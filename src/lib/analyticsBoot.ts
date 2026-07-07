@@ -69,7 +69,7 @@ async function loadPostHog(key: string, host: string): Promise<void> {
       person_profiles: "identified_only",
     });
     (window as { posthog?: unknown }).posthog = ph;
-  } catch {
+  } catch { // empty-catch-allow:telemetry-fire-and-forget
     // posthog-js not installed yet — skip silently. Run `npm i posthog-js` to enable.
   }
 }

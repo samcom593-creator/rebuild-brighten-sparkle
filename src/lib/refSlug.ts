@@ -50,7 +50,7 @@ export function setRefSlug(slug: string): void {
       expiresAt: Date.now() + TTL_MS,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  } catch (_err) {
+  } catch (_err) { // empty-catch-allow:localstorage-incognito
     // Storage may be disabled (Safari private mode, quota exceeded). Falling
     // back to "no relay" is correct behavior — better than throwing.
   }
@@ -90,7 +90,7 @@ export function clearRefSlug(): void {
   if (!isBrowser()) return;
   try {
     window.localStorage.removeItem(STORAGE_KEY);
-  } catch (_err) {
+  } catch (_err) { // empty-catch-allow:localstorage-incognito
     // Same rationale as setRefSlug — never throw from this helper.
   }
 }

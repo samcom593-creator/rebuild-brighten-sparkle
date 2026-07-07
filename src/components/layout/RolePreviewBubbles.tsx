@@ -45,7 +45,7 @@ export function RolePreviewBubbles() {
     if (typeof window === "undefined") return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(pos));
-    } catch {
+    } catch { // empty-catch-allow:localstorage-incognito
       /* swallow quota / private-mode errors */
     }
   }, [pos]);

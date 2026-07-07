@@ -29,6 +29,20 @@
 //     analytics event). The RecruitingShortLink same-line marker also
 //     covered the outer try/catch on L33 as line-above, dropping the
 //     count an extra 1 beyond the 5 sites annotated.
+//   2026-07-07 wave-24 full pay-down 60 → 0. Every remaining site
+//     manually inspected + categorized. All 60 are legitimately
+//     intentional fire-and-forget patterns. Marker taxonomy:
+//       localstorage-incognito     (18 sites) — Safari private / quota
+//       telemetry-fire-and-forget  (14 sites) — analytics/vitals/track shims
+//       best-effort-fallback       (10 sites) — parse/RPC/DOM fallback chains
+//       batch-drain                 (7 sites) — retry-loop individual-failure
+//       media-api-optional          (7 sites) — video/audio/recognition APIs
+//       jsonparse-fallback          (4 sites) — try JSON, keep raw
+//       user-cancelled              (3 sites) — file picker / dialog dismiss
+//       error-boundary-report       (2 sites) — telemetry beacons from EBs
+//       test                        (1 site)  — test spec expected-throw
+//     BASELINE now locked at 0. Every future empty catch must ship its
+//     opt-out marker in the same commit or the pre-commit gate blocks.
 //
 // Companion to scripts/check-unsafe-supabase-catch.mjs which fails when a
 // Supabase QueryBuilder gets a .catch chained (the builder is thenable but
@@ -254,7 +268,7 @@ for (const file of files) {
 }
 
 // Lower this number when fixes land. NEVER raise it.
-const BASELINE = 60;
+const BASELINE = 0;
 
 const count = violations.length;
 

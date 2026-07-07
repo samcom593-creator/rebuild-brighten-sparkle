@@ -124,14 +124,14 @@ export function saveDraft(form: InboundLeadForm) {
     const hasContent = Object.values(form).some((value) => typeof value === "string" && value.trim().length > 0);
     if (hasContent) window.localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
     else window.localStorage.removeItem(DRAFT_KEY);
-  } catch {}
+  } catch {} // empty-catch-allow:localstorage-incognito
 }
 
 export function clearDraft() {
   if (typeof window === "undefined" || !window.localStorage) return;
   try {
     window.localStorage.removeItem(DRAFT_KEY);
-  } catch {}
+  } catch {} // empty-catch-allow:localstorage-incognito
 }
 
 export function appendNote(notes: string, fact: string): string {
@@ -179,7 +179,7 @@ export function saveLocalLeads(leads: InboundLead[]) {
   if (typeof window === "undefined" || !window.localStorage) return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(leads.slice(0, 300)));
-  } catch {}
+  } catch {} // empty-catch-allow:localstorage-incognito
 }
 
 export function createId(): string {

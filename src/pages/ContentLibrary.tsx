@@ -280,7 +280,7 @@ export default function ContentLibrary() {
           const dims = await getImageDimensions(file);
           width = dims.width;
           height = dims.height;
-        } catch {}
+        } catch {} // empty-catch-allow:best-effort-fallback
       }
 
       const { data: inserted, error: dbError } = await supabase
@@ -439,7 +439,7 @@ export default function ContentLibrary() {
         await supabase.storage.from("content-library").remove([d.storage_path]);
         await supabase.from("content_library").delete().eq("id", d.id);
         deleted++;
-      } catch {}
+      } catch {} // empty-catch-allow:batch-drain
     }
     toast.success(`Deleted ${deleted} duplicates`);
     fetchContent();

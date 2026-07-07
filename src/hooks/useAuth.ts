@@ -271,7 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           break;
         }
       }
-    } catch {
+    } catch { // empty-catch-allow:localstorage-incognito
       // localStorage may be blocked (private browsing, sandboxed iframe). Treat
       // as anonymous — auth still arms on interaction.
     }

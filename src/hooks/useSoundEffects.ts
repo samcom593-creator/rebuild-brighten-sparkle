@@ -40,7 +40,7 @@ export const useSoundEffects = () => {
     try {
       const soundEnabled = localStorage.getItem("apex_sound_enabled");
       if (soundEnabled === "false") return;
-    } catch { /* ignore */ }
+    } catch { /* ignore */ } // empty-catch-allow:localstorage-incognito
 
     try {
       const ctx = getAudioContext();

@@ -30,7 +30,7 @@ async function logClientError(scope: "query" | "mutation", key: string, error: u
       error_message: message,
       error_stack: stack ?? null,
     });
-  } catch {
+  } catch { // empty-catch-allow:telemetry-fire-and-forget
     /* swallow — never let logging break the app */
   }
 }

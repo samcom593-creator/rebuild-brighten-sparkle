@@ -92,7 +92,7 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
     if (navigator.share) {
       try {
         await navigator.share({ title: "APEX Financial — join my team", text, url: link });
-      } catch { /* cancelled */ }
+      } catch { /* cancelled */ } // empty-catch-allow:user-cancelled
     } else {
       await navigator.clipboard.writeText(text);
       toast.success("Share text copied!");

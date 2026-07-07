@@ -98,7 +98,7 @@ export function CallCenterVoiceRecorder({
       if (isRecording) {
         try {
           recognition.start();
-        } catch (e) {
+        } catch (e) { // empty-catch-allow:media-api-optional
           /* recognition start failed · swallow */
         }
       }
@@ -462,7 +462,7 @@ export function CallCenterVoiceRecorder({
                         try {
                           await onSendFollowUp(LICENSED_FOLLOW_UP_URL);
                           setFollowUpSent("licensed");
-                        } catch {
+                        } catch { // empty-catch-allow:media-api-optional
                           // error handled by parent
                         } finally {
                           setSendingFollowUp(false);
@@ -493,7 +493,7 @@ export function CallCenterVoiceRecorder({
                         try {
                           await onSendFollowUp(UNLICENSED_FOLLOW_UP_URL);
                           setFollowUpSent("unlicensed");
-                        } catch {
+                        } catch { // empty-catch-allow:media-api-optional
                           // error handled by parent
                         } finally {
                           setSendingFollowUp(false);

@@ -377,7 +377,7 @@ function CarrierAssignmentTool() {
             applicationId: lead.id,
           });
           sent++;
-        } catch {
+        } catch { // empty-catch-allow:batch-drain
           // individual send failed, continue
         }
         // Pace to avoid rate limits
@@ -761,7 +761,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
                 resent++;
                 channelSummary.email.resent++;
               }
-            } catch {
+            } catch { // empty-catch-allow:batch-drain
               // individual retry failed
             }
           } else if ((log.channel === "sms-auto" || log.channel === "sms") && log.recipient_phone) {
@@ -783,7 +783,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
               channelSummary.sms.resent++;
             }
           }
-        } catch {
+        } catch { // empty-catch-allow:batch-drain
           // skip individual failures
         }
         await paceDelay(300);

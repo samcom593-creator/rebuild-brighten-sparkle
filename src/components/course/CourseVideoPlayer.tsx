@@ -223,7 +223,7 @@ function YouTubePlayer({
       stopPolling();
       try {
         playerRef.current?.destroy();
-      } catch (e) {
+      } catch (e) { // empty-catch-allow:media-api-optional
         // ignore
       }
       playerRef.current = null;
@@ -251,7 +251,7 @@ function YouTubePlayer({
             return prev;
           });
         }
-      } catch (e) {
+      } catch (e) { // empty-catch-allow:media-api-optional
         // Player may not be ready yet
       }
     }, 3000);
@@ -293,7 +293,7 @@ function YouTubePlayer({
               key={s}
               onClick={() => {
                 onPlaybackRateChange(s);
-                try { playerRef.current?.setPlaybackRate?.(s); } catch {}
+                try { playerRef.current?.setPlaybackRate?.(s); } catch {} // empty-catch-allow:media-api-optional
               }}
               className={cn(
                 "px-2 py-0.5 rounded text-[10px] font-bold transition-all",

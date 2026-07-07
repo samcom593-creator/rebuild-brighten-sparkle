@@ -85,7 +85,7 @@ export function ApplicationConfirmationV2({
         if (typeof link === "string" && link.startsWith("http")) {
           setAutoLoginUrl(link);
         }
-      } catch {
+      } catch { // empty-catch-allow:best-effort-fallback
         // Non-fatal: keep the legacy CTA as the fallback path.
       }
     })();

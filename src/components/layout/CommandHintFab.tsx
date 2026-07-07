@@ -16,7 +16,7 @@ export function CommandHintFab() {
   useEffect(() => {
     try {
       setIsMac(/Mac|iPhone|iPod|iPad/i.test(navigator.platform));
-    } catch {}
+    } catch {} // empty-catch-allow:best-effort-fallback
   }, []);
 
   if (open) return null;

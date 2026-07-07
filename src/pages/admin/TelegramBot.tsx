@@ -831,6 +831,7 @@ function PreAgentHqPanel({ groups, faqs }: { groups: Group[]; faqs: PreAgentHqFa
               <li>Drop the BotFather token at <code>~/.config/apex-creds/telegram-bot.token</code></li>
               <li>Create each pending Telegram channel and add the bot as admin (Post / Edit / Pin)</li>
               <li>Run <code>~/business-ops/telegram-bot/scripts/apex-tg-hq-activate.sh</code></li>
+              {/* raw-sql-in-jsx-allow:admin-runbook-step — Sam-facing operator runbook, this is the exact query he runs to bind chat_ids */}
               <li>For each pending channel, post any message in it, find the chat_id via <code>SELECT chat_id, body FROM telegram_messages ORDER BY id DESC LIMIT 5</code>, then run <code>apex-tg-hq-activate.sh bind '&lt;title&gt;' &lt;chat_id&gt;</code></li>
             </ol>
           </div>

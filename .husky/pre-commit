@@ -466,6 +466,25 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-blocking-modal\.mjs$)'; then
   node scripts/check-blocking-modal.mjs
 fi
 
+# ---------- check-raw-sql-in-jsx (wave-25) ----------
+# Trigger: any src/ tsx|jsx or the script itself. Lock-at-zero ratchet on
+# raw SQL keywords (SELECT / INSERT INTO / DELETE FROM / UPDATE <ident> SET)
+# rendered inside JSX text nodes, <code>/<pre>/<kbd>/<samp> blocks, or string
+# attributes (title=, placeholder=, content=, tooltip=, aria-label=, label=,
+# description=, value=). Two leaks this closes: (1) brand-drift — raw SQL in
+# a Sam-facing dashboard screams "generated admin console" and violates
+# Brand Bible Ch 9 (describe the action, not the query); (2) schema leak —
+# private column/table names surface to any screenshot. Class-of-fix Round 8
+# sibling to wave-16..wave-24. Not flagged: comments (`//` `*` `#`), .ts files
+# (edge fns / migrations are supposed to have SQL), lowercase English prose.
+# Opt-out marker: `raw-sql-in-jsx-allow:<reason>` (non-empty kebab-case)
+# same-line or line directly above. Cost when fired: ~60-120ms (linear in
+# ~520 files, single-line regex + prefix check).
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-raw-sql-in-jsx\.mjs$)'; then
+  echo "[pre-commit] Raw-SQL-in-JSX-affecting file staged — running check:raw-sql-in-jsx…"
+  node scripts/check-raw-sql-in-jsx.mjs
+fi
+
 # ---------- check-notion-ban (MP221 §7.1) ----------
 # Trigger: any newly-introduced Notion write call in non-test code.
 # Existing supabase/functions/notion-sync/* is grandfathered (read-only path).

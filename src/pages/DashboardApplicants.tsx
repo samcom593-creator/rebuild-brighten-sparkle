@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Users,
   Phone,
+  PhoneOff,
+  Loader2,
   Mail,
   Clock,
   Filter,
@@ -99,10 +101,13 @@ interface Application {
   is_duplicate?: boolean;
   is_ghosted?: boolean;
   first_contact_attempt_at?: string | null;
+  phone_bad_at?: string | null;
+  phone_bad_reason?: string | null;
+  couldnt_reach_email_sent_at?: string | null;
 }
 
 const APPLICATION_SELECT =
-  "id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contacted_at, next_step_due_at, referral_source";
+  "id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contacted_at, next_step_due_at, referral_source, phone_bad_at, phone_bad_reason, couldnt_reach_email_sent_at";
 
 const statusColors: Record<string, string> = {
   new: "bg-blue-500/20 text-blue-400 border-blue-500/30",
@@ -566,7 +571,58 @@ export default function DashboardApplicants() {
   };
 
   const openInstagram = (handle: string) => {
-    window.open(`https://instagram.com/${handle}`, "_blank", "noopener,noreferrer");
+    const clean = handle.replace(/^@+/, "").trim();
+    if (!clean) return;
+    window.open(`https://instagram.com/${clean}`, "_blank", "noopener,noreferrer");
+  };
+
+  const [badPhoneBusy, setBadPhoneBusy] = useState<string | null>(null);
+  const handleMarkBadPhone = async (app: Application) => {
+    if (badPhoneBusy === app.id) return;
+    setBadPhoneBusy(app.id);
+    try {
+      // 1. Mark phone as bad on the applicant record (idempotent RPC).
+      const { error: rpcErr } = await supabase.rpc("mark_phone_bad" as any, {
+        p_application_id: app.id,
+        p_reason: "user_marked_bad",
+      });
+      if (rpcErr) {
+        toast.error(`Couldn't mark bad: ${rpcErr.message}`);
+        playSound("error");
+        setBadPhoneBusy(null);
+        return;
+      }
+
+      // 2. If we have an email, fire the templated "couldn't reach you" send.
+      if (app.email) {
+        const { data: sent, error: fnErr } = await supabase.functions.invoke(
+          "send-couldnt-reach-email",
+          { body: { application_id: app.id, reason: "user_marked_bad" } },
+        );
+        if (fnErr || (sent as any)?.ok === false) {
+          const detail = (sent as any)?.error ?? fnErr?.message ?? "unknown";
+          toast.error(`Marked bad, but email failed: ${detail}`);
+        } else {
+          toast.success(`Marked bad · emailed ${app.email}`);
+          playSound("success");
+        }
+      } else {
+        toast.warning("Marked bad — no email on file to notify");
+        playSound("success");
+      }
+      fetchApplications();
+    } finally {
+      setBadPhoneBusy(null);
+    }
+  };
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`Copied ${label}`);
+    } catch {
+      toast.error("Copy failed");
+    }
   };
 
   const handleNotesSave = (notes: string) => {
@@ -1067,6 +1123,35 @@ export default function DashboardApplicants() {
                                 {app.is_ghosted && <Badge variant="outline" className="text-[9px] bg-red-500/20 text-red-400 border-red-500/30 px-1">👻</Badge>}
                               </div>
                             </div>
+                            <div className="mt-1 ml-[52px] flex flex-wrap items-center gap-x-3 gap-y-1">
+                              {app.instagram_handle && (
+                                <a
+                                  href={`https://instagram.com/${app.instagram_handle.replace(/^@+/, "")}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 text-[11px] text-pink-400 hover:text-pink-300 hover:underline font-medium"
+                                  title={`Open @${app.instagram_handle.replace(/^@+/, "")} on Instagram`}
+                                >
+                                  <Instagram className="h-3 w-3" />
+                                  @{app.instagram_handle.replace(/^@+/, "")}
+                                </a>
+                              )}
+                              {app.phone_bad_at && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] bg-rose-500/15 text-rose-300 border-rose-500/30 gap-1"
+                                  title={
+                                    app.couldnt_reach_email_sent_at
+                                      ? `Bad number since ${new Date(app.phone_bad_at).toLocaleDateString()} · we emailed them ${new Date(app.couldnt_reach_email_sent_at).toLocaleDateString()}`
+                                      : `Bad number since ${new Date(app.phone_bad_at).toLocaleDateString()} — no email sent (missing address)`
+                                  }
+                                >
+                                  <PhoneOff className="h-2.5 w-2.5" />
+                                  bad #{app.couldnt_reach_email_sent_at ? " · emailed" : ""}
+                                </Badge>
+                              )}
+                            </div>
                           </td>
                           <td className="p-3 align-middle">
                             {app.ai_score_tier ? (
@@ -1211,7 +1296,7 @@ export default function DashboardApplicants() {
                                       <Instagram className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
-                                  {app.phone && (
+                                  {app.phone && !app.phone_bad_at && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -1224,7 +1309,7 @@ export default function DashboardApplicants() {
                                       </a>
                                     </Button>
                                   )}
-                                  {app.phone && (
+                                  {app.phone && !app.phone_bad_at && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -1235,6 +1320,20 @@ export default function DashboardApplicants() {
                                       <a href={`sms:${app.phone}`}>
                                         <MessageCircle className="h-3.5 w-3.5" />
                                       </a>
+                                    </Button>
+                                  )}
+                                  {app.phone && !app.phone_bad_at && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                                      title="Mark number bad + email applicant we couldn't reach them"
+                                      disabled={badPhoneBusy === app.id}
+                                      onClick={() => handleMarkBadPhone(app)}
+                                    >
+                                      {badPhoneBusy === app.id
+                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        : <PhoneOff className="h-3.5 w-3.5" />}
                                     </Button>
                                   )}
                                   {app.email && (

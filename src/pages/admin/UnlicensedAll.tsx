@@ -61,6 +61,17 @@ interface UnlicensedRow {
   days_since_applied: number | null;
   assigned_va_email: string | null;
   instagram_handle?: string | null;
+  xcel_overall_pct?: number | null;
+  xcel_final_exam_score?: number | null;
+  xcel_state_license_number?: string | null;
+}
+
+// Row from v_xcel_person_progress — merged in client-side by email.
+interface XcelProgressRow {
+  email: string | null;
+  overall_pct_max: number | null;
+  final_exam_score_max: number | null;
+  national_producer_number: string | null;
 }
 
 // Every stage Sam actually uses — order matches the licensing funnel.
@@ -152,6 +163,18 @@ export default function UnlicensedAll() {
     },
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
+  });
+
+  const { data: xcelRows = [] } = useQuery<XcelProgressRow[]>({
+    queryKey: ["v_xcel_person_progress"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_xcel_person_progress" as any)
+        .select("email, overall_pct_max, final_exam_score_max, national_producer_number");
+      if (error) throw error;
+      return (data as unknown as XcelProgressRow[]) ?? [];
+    },
+    staleTime: 60_000,
   });
 
   const { data: vas = [] } = useQuery<VaOption[]>({
@@ -287,8 +310,28 @@ export default function UnlicensedAll() {
     return Array.from(set).sort();
   }, [rows]);
 
+  // Merge XCEL progress into rows by lower-cased email.
+  const mergedRows = useMemo(() => {
+    if (xcelRows.length === 0) return rows;
+    const xcelByEmail = new Map<string, XcelProgressRow>();
+    xcelRows.forEach((x) => {
+      if (x.email) xcelByEmail.set(x.email.toLowerCase(), x);
+    });
+    return rows.map((r) => {
+      const key = r.email?.toLowerCase();
+      const x = key ? xcelByEmail.get(key) : undefined;
+      if (!x) return r;
+      return {
+        ...r,
+        xcel_overall_pct: x.overall_pct_max,
+        xcel_final_exam_score: x.final_exam_score_max,
+        xcel_state_license_number: x.national_producer_number,
+      } as UnlicensedRow;
+    });
+  }, [rows, xcelRows]);
+
   const filtered = useMemo(() => {
-    let out = [...rows];
+    let out = [...mergedRows];
     if (filter === "unassigned") out = out.filter((r) => !r.assigned_va_id);
     else if (filter === "ghosted_30") out = out.filter((r) => (r.days_since_touch ?? 0) >= 30);
     else if (filter === "by_stage" && stageFilter !== "all") {
@@ -303,7 +346,7 @@ export default function UnlicensedAll() {
       out.sort((a, b) => fullName(a).localeCompare(fullName(b)));
     }
     return out;
-  }, [rows, filter, stageFilter, sort]);
+  }, [mergedRows, filter, stageFilter, sort]);
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5 max-w-6xl mx-auto">
@@ -448,6 +491,34 @@ export default function UnlicensedAll() {
                           )}
                         </div>
                         <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          {/* XCEL course progress — merged in by email from v_xcel_person_progress */}
+                          {(r.xcel_overall_pct != null || r.xcel_final_exam_score != null || r.xcel_state_license_number) && (
+                            <>
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] uppercase bg-indigo-500/15 text-indigo-200 border-indigo-500/40 gap-1"
+                              >
+                                <span>XCEL {r.xcel_overall_pct ?? 0}%</span>
+                                {(r.xcel_final_exam_score ?? 0) >= 70 ? (
+                                  <CheckCircle2 className="h-3 w-3 text-emerald-300" />
+                                ) : null}
+                                {r.xcel_state_license_number ? (
+                                  <span>· lic {r.xcel_state_license_number}</span>
+                                ) : null}
+                              </Badge>
+                              {(r.xcel_final_exam_score ?? 0) >= 70 &&
+                                r.license_progress !== "passed_test" &&
+                                r.license_progress !== "waiting_on_license" && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] uppercase bg-amber-500/15 text-amber-200 border-amber-500/40"
+                                    title="XCEL says they passed — advance the stage"
+                                  >
+                                    sync ready
+                                  </Badge>
+                                )}
+                            </>
+                          )}
                           {/* Tap-to-cycle stage — Sam's #1 gripe */}
                           <Select
                             value={r.license_progress ?? "unlicensed"}

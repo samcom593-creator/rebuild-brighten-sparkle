@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Crown, Loader2, Medal, TrendingUp, Calendar, Clock3, Target, Users, Activity, CalendarDays, Trophy, DollarSign, TrendingDown } from "lucide-react";
+import { Crown, Loader2, Medal, TrendingUp, Calendar as CalendarIcon, Clock3, Target, Users, Activity, CalendarDays, Trophy, DollarSign, TrendingDown } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDistanceToNowStrict } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
@@ -450,7 +450,7 @@ export default function Leaderboard() {
         subtitle="Production, recruiting, referral, and activity rankings from live platform tables."
         actions={lastUpdatedAt && (
           <Badge variant="outline" className="gap-1.5">
-            <Calendar className="h-3 w-3" />
+            <CalendarIcon className="h-3 w-3" />
             {formatDistanceToNowStrict(new Date(lastUpdatedAt), { addSuffix: true })}
           </Badge>
         )}

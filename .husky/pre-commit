@@ -502,6 +502,25 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-ts-ignore\.mjs$)'; then
   node scripts/check-ts-ignore.mjs
 fi
 
+# ---------- check-hex-in-jsx-style (wave-27, 2026-07-08) ----------
+# Trigger: any src/ tsx|jsx or the script itself. Class-of-fix Round 10 —
+# sibling to check-hex-color-areas.mjs (which guards Tailwind `[#XXXXXX]`).
+# This one covers the OTHER hex-color surface: JSX inline `style={{...}}`
+# object literals and JSX string attributes (`stroke="#..."`, `fill="#..."`,
+# `color="#..."`, etc.). Both surfaces are dashboards where Brand-Bible
+# palette drift silently ships via Lovable/AI regressions. Palette locked
+# to 6 hex (#0A0A0A / #C9A961 / #8A7340 / #FFFFFF / #9A9A9A / #B83A2E).
+# Sites pre-annotated at wave-27 launch: Plaque.tsx (wolfpack maroon
+# award-leather), AgentCommandDashboard heatmap (WCAG-legibility text),
+# Storefront confetti (purchase-celebration particle). Landing baseline @ 7
+# for legacy ApexLeadsSection + InstagramGrowthSection drift (wave-9 sibling).
+# Every other tree locked at 0. Cost when fired: ~80-150ms (walks src/ + brace
+# depth counter for style={{}} blocks).
+if match '^(src/.*\.(tsx|jsx)$|scripts/check-hex-in-jsx-style\.mjs$)'; then
+  echo "[pre-commit] Hex-in-JSX-style-affecting file staged — running check:hex-in-jsx-style…"
+  node scripts/check-hex-in-jsx-style.mjs
+fi
+
 # ---------- check-notion-ban (MP221 §7.1) ----------
 # Trigger: any newly-introduced Notion write call in non-test code.
 # Existing supabase/functions/notion-sync/* is grandfathered (read-only path).

@@ -123,6 +123,7 @@ export default function Storefront() {
             <div
               key={i}
               className="absolute w-2 h-2 rounded-sm animate-fall"
+              // palette-allow:storefront-confetti-particle-animation — 4-color falling-particle effect on gift purchase
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `-${Math.random() * 20 + 10}%`,

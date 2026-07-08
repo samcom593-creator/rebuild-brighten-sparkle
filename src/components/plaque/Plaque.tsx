@@ -49,6 +49,7 @@ export function Plaque({
       data-plaque="wolfpack"
     >
       {/* 1. Red radial gradient background — darker top-left, bright red top-right */}
+      {/* palette-allow:wolfpack-plaque-award-leather-gradient — physical-award visual, not brand chrome */}
       <div className="absolute inset-0"
         style={{
           background: `radial-gradient(circle at 75% 30%, ${accentColor} 0%, #6b0014 55%, #0a0000 100%)`,

@@ -184,7 +184,7 @@ export default function PlaqueShare() {
         <div className="text-center space-y-2">
           <p
             className="text-xs uppercase tracking-[0.3em]"
-            style={{ color: plaque.color_hex || "#C9A962" }}
+            style={{ color: plaque.color_hex || "#C9A961" }}
           >
             {plaque.badge_label || "Achievement"}
           </p>

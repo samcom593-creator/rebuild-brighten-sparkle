@@ -3486,6 +3486,7 @@ function TimeOfDayProductionPanel() {
                         backgroundColor: count === 0
                           ? "rgba(255,255,255,0.02)"
                           : `hsl(45 85% 55% / ${0.15 + intensity * 0.65})`,
+                        // palette-allow:heatmap-intensity-legibility — dark text on gold at high intensity, cream on low intensity for WCAG contrast
                         color: intensity > 0.6 ? "#0f0a06" : "#fef3c7",
                       }}
                       title={`${h.dayLabel[dow]} ${h.binLabel[bin]} · ${count} deals`}

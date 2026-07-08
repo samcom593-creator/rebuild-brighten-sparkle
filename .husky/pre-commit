@@ -521,6 +521,24 @@ if match '^(src/.*\.(tsx|jsx)$|scripts/check-hex-in-jsx-style\.mjs$)'; then
   node scripts/check-hex-in-jsx-style.mjs
 fi
 
+# ---------- check-stale-key-in-list (wave-28, 2026-07-08) ----------
+# Trigger: any src/ tsx|jsx or the script itself. Class-of-fix Round 11 —
+# index-as-key ratchet. React uses `key` for reconciliation; `key={i}` on
+# a re-sortable list binds row-local state (form input value, drawer open,
+# focus) to POSITION not ROW. When the list mutates around a stage change,
+# state bleeds onto the wrong row — on Sam's mobile Safari daily driver
+# that means typing an applicant note attaches to a different applicant.
+# Same class of leak as the 465 InsuraCloud fake-success rows: action
+# LOOKED successful but bound to the wrong record. Baselined @ 165 at
+# launch (distribution: admin dashboards + skeleton loaders + landing
+# tickers). Pay-down = swap `key={row.id}` for DB rows and annotate legit
+# static arrays with `stable-key-allow:<reason>`. Cost when fired:
+# ~80-150ms (state-machine mask + linear regex over ~530 files).
+if match '^(src/.*\.(tsx|jsx)$|scripts/check-stale-key-in-list\.mjs$)'; then
+  echo "[pre-commit] Stale-key-affecting file staged — running check:stale-key-in-list…"
+  node scripts/check-stale-key-in-list.mjs
+fi
+
 # ---------- check-notion-ban (MP221 §7.1) ----------
 # Trigger: any newly-introduced Notion write call in non-test code.
 # Existing supabase/functions/notion-sync/* is grandfathered (read-only path).

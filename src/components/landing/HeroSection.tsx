@@ -67,6 +67,7 @@ function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
             height={360}
             loading="eager"
             decoding="async"
+            // ts-ignore-allow:fetchpriority-html-attr-react-types-lag
             // @ts-expect-error — fetchpriority is a valid HTML attr, React types
             // lag. Safe across Chrome/Edge/Safari 17+. Falls back to default
             // priority on older browsers (no regression).

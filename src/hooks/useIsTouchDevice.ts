@@ -12,6 +12,7 @@ export function useIsTouchDevice() {
     const hasTouch = 
       "ontouchstart" in window ||
       navigator.maxTouchPoints > 0 ||
+      // ts-ignore-allow:legacy-ie-edge-navigator-shim
       // @ts-ignore - msMaxTouchPoints exists on older IE/Edge
       navigator.msMaxTouchPoints > 0;
     

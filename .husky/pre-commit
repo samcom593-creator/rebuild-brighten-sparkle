@@ -485,6 +485,23 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-raw-sql-in-jsx\.mjs$)'; then
   node scripts/check-raw-sql-in-jsx.mjs
 fi
 
+# ---------- check-ts-ignore (wave-26, 2026-07-07) ----------
+# Trigger: any src/ ts|tsx|js|jsx or the script itself. Lock-at-zero ratchet
+# on `// @ts-ignore` / `// @ts-expect-error` / `// @ts-nocheck` (and their
+# /* */ block-comment forms). Every suppression must ship with a
+# `ts-ignore-allow:<reason>` marker on the same line or the line directly
+# above. Silencing the type system is the same class of hidden-fake-success
+# leak as the 465 InsuraCloud + 198 AgentLink zombie rows: the loud alarm
+# gets silenced, and prod drifts green while the underlying types rot.
+# Class-of-fix Round 9. Sites pre-annotated at wave-26 launch:
+# useIsTouchDevice.ts (legacy IE/Edge navigator shim) + HeroSection.tsx
+# (fetchpriority HTML attr, React types lag). Cost when fired: ~50-100ms
+# (linear in ~520 files, single-line regex).
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-ts-ignore\.mjs$)'; then
+  echo "[pre-commit] @ts-ignore-affecting file staged — running check:ts-ignore…"
+  node scripts/check-ts-ignore.mjs
+fi
+
 # ---------- check-notion-ban (MP221 §7.1) ----------
 # Trigger: any newly-introduced Notion write call in non-test code.
 # Existing supabase/functions/notion-sync/* is grandfathered (read-only path).

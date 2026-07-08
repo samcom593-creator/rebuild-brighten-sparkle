@@ -54,6 +54,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getPriorityLabel, priorityBadgeClasses } from "@/lib/priority";
+import { getNextBestAction, type NBAInput } from "@/lib/nextBestAction";
 import { ApplicantNotes } from "@/components/dashboard/ApplicantNotes";
 import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { LeadQualificationChat } from "@/components/dashboard/LeadQualificationChat";
@@ -1093,6 +1095,38 @@ export default function DashboardApplicants() {
                       const status = getApplicationStatus(app);
                       const isTerminated = statusFilter === "terminated";
                       const isHighlighted = highlightedLeadId === app.id;
+                      // 2026-07-07 Sam: Next Best Action derivation per applicant row.
+                      // Map Application → NBAInput exactly per priority.ts contract.
+                      const endOfToday = new Date();
+                      endOfToday.setHours(23, 59, 59, 999);
+                      const nextActionDueRaw = (app as any).next_action_due_at as string | null | undefined;
+                      const lastContactedRaw = (app as any).last_contacted_at as string | null | undefined;
+                      const examPassedRaw = (app as any).exam_passed_at as string | null | undefined;
+                      const nbaInput: NBAInput = {
+                        kind: 'applicant',
+                        is_new_applicant: !app.contacted_at && !app.terminated_at && !app.closed_at,
+                        is_hot_lead: app.ai_score_tier === 'hot',
+                        follow_up_due_today: !!(nextActionDueRaw && new Date(nextActionDueRaw) <= endOfToday),
+                        no_contact_logged: !lastContactedRaw,
+                        course_bought: !!app.course_purchased_at,
+                        interview_scheduled: false,
+                        duplicate_needs_review: !!app.is_duplicate,
+                        rejected: app.status === 'rejected',
+                        suppressed: !!app.terminated_at,
+                        passed_test: !!examPassedRaw,
+                        license_progress: app.license_progress,
+                        license_status: app.license_status,
+                        days_stale: lastContactedRaw
+                          ? Math.floor((Date.now() - new Date(lastContactedRaw).getTime()) / 86400000)
+                          : null,
+                      };
+                      const nba = getNextBestAction(nbaInput);
+                      // getPriorityLabel is imported per Sam's contract; nba.priority already carries the label.
+                      void getPriorityLabel;
+                      const nbaDotClasses = priorityBadgeClasses(nba.priority)
+                        .className.split(' ')
+                        .filter((c) => c.startsWith('bg-'))
+                        .join(' ');
                       return (
                         <Fragment key={app.id}>
                         <tr
@@ -1167,6 +1201,11 @@ export default function DashboardApplicants() {
                                   bad #{app.couldnt_reach_email_sent_at ? " · emailed" : ""}
                                 </Badge>
                               )}
+                            </div>
+                            {/* 2026-07-07 Sam: compact Next Best Action row. */}
+                            <div className="mt-1 ml-[52px] flex items-center gap-1.5 text-[11px]">
+                              <span className={cn('h-1.5 w-1.5 rounded-full', nbaDotClasses)} />
+                              <span className="text-slate-300 truncate">{nba.action}</span>
                             </div>
                           </td>
                           <td className="p-3 align-middle">

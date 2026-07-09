@@ -83,7 +83,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 //   2026-06-17 precedent — "Lock the new floor + queue sweep back down." Same
 //   commit ships wave-23 blocking-modal guard which was blocked at commit time
 //   until this floor moved. Sweep-back-down queued as wave-24.
-const BASELINE = 246;
+const BASELINE = 245;
 
 let stdout = "";
 let stderr = "";

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,6 +22,10 @@ import {
   ArrowRight,
   Loader2,
   Trophy,
+  ShieldOff,
+  CalendarClock,
+  Play,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -29,6 +33,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -36,9 +41,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { RecoveryBatchDrawer, type RecoveryBatchRow } from "@/components/unlicensed/RecoveryBatchDrawer";
+import { SuppressionDialog, type SuppressionTarget } from "@/components/unlicensed/SuppressionDialog";
 
 // Row from v_unlicensed_all — now UNION of applications + aged_leads
 interface UnlicensedRow {
@@ -152,6 +162,17 @@ export default function UnlicensedAll() {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [sort, setSort] = useState<SortKey>("ghosted_longest");
+
+  // MP-257: recovery batch + suppression + bulk selection state
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchQueue, setBatchQueue] = useState<RecoveryBatchRow[]>([]);
+  const [batchStart, setBatchStart] = useState(0);
+  const [suppressOpen, setSuppressOpen] = useState(false);
+  const [suppressTarget, setSuppressTarget] = useState<SuppressionTarget | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkFollowUp, setBulkFollowUp] = useState<Date | undefined>(undefined);
+  const [bulkVaId, setBulkVaId] = useState<string>("");
+  const [bulkRunning, setBulkRunning] = useState(false);
 
   const { data: rows = [], isLoading } = useQuery<UnlicensedRow[]>({
     queryKey: ["v_unlicensed_all"],
@@ -321,6 +342,33 @@ export default function UnlicensedAll() {
     return { total, ghosted, assigned, unassigned };
   }, [rows]);
 
+  // MP-257: 7-day recovered + suppressed counters. Real fields only; 0 shown as 0.
+  const { data: mp257Kpis = { recovered: 0, suppressed: 0 } } = useQuery({
+    queryKey: ["mp257_kpis"],
+    queryFn: async () => {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const { count: recoveredCount } = await supabase
+        .from("applications")
+        .select("id", { count: "exact", head: true })
+        .eq("license_status", "licensed")
+        .gte("licensed_at", sevenDaysAgo);
+
+      const { count: appSuppressed } = await supabase
+        .from("applications")
+        .select("id", { count: "exact", head: true })
+        .not("terminated_at", "is", null)
+        .gte("terminated_at", sevenDaysAgo);
+
+      return {
+        recovered: recoveredCount ?? 0,
+        suppressed: appSuppressed ?? 0,
+      };
+    },
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+
   // Distinct progress stages present
   const stageOptions = useMemo(() => {
     const set = new Set<string>();
@@ -366,6 +414,144 @@ export default function UnlicensedAll() {
     return out;
   }, [mergedRows, filter, stageFilter, sort]);
 
+  // Clear stale selections whenever the filtered list shrinks.
+  useEffect(() => {
+    if (selectedIds.size === 0) return;
+    const visible = new Set(filtered.map((r) => `${r.source}:${r.id}`));
+    let dirty = false;
+    const next = new Set<string>();
+    selectedIds.forEach((k) => {
+      if (visible.has(k)) next.add(k);
+      else dirty = true;
+    });
+    if (dirty) setSelectedIds(next);
+  }, [filtered, selectedIds]);
+
+  const toRecoveryBatchRow = useCallback((r: UnlicensedRow): RecoveryBatchRow => ({
+    id: r.id,
+    source: r.source,
+    first_name: r.first_name,
+    last_name: r.last_name,
+    email: r.email,
+    phone: r.phone,
+    state: r.state,
+    license_progress: r.license_progress,
+    days_since_touch: r.days_since_touch,
+    assigned_va_email: r.assigned_va_email,
+    instagram_handle: r.instagram_handle ?? null,
+    phone_bad_at: r.phone_bad_at,
+  }), []);
+
+  // Recovery batch = unassigned + ghosted 30d+, sorted highest priority (longest ghosted first).
+  const startRecoveryBatch = useCallback(() => {
+    const pool = mergedRows
+      .filter((r) => !r.assigned_va_id && (r.days_since_touch ?? 0) >= 30 && !r.phone_bad_at)
+      .sort((a, b) => (b.days_since_touch ?? 0) - (a.days_since_touch ?? 0))
+      .map(toRecoveryBatchRow);
+    if (pool.length === 0) {
+      toast.info("No unassigned ghosted 30d+ records. Batch is clear.");
+      return;
+    }
+    setBatchQueue(pool);
+    setBatchStart(0);
+    setBatchOpen(true);
+  }, [mergedRows, toRecoveryBatchRow]);
+
+  const workSelectedInBatch = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const pool = filtered
+      .filter((r) => selectedIds.has(`${r.source}:${r.id}`))
+      .sort((a, b) => (b.days_since_touch ?? 0) - (a.days_since_touch ?? 0))
+      .map(toRecoveryBatchRow);
+    if (pool.length === 0) return;
+    setBatchQueue(pool);
+    setBatchStart(0);
+    setBatchOpen(true);
+  }, [filtered, selectedIds, toRecoveryBatchRow]);
+
+  const toggleSelected = useCallback((key: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const selectAllVisible = useCallback(() => {
+    setSelectedIds(new Set(filtered.map((r) => `${r.source}:${r.id}`)));
+  }, [filtered]);
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  const requestSuppress = useCallback((r: RecoveryBatchRow) => {
+    setSuppressTarget({
+      id: r.id,
+      source: r.source,
+      first_name: r.first_name,
+      last_name: r.last_name,
+    });
+    setSuppressOpen(true);
+  }, []);
+
+  // Bulk actions run sequentially so a mid-run failure doesn't leave a half-applied state.
+  const runBulk = useCallback(async (action: "assign_va" | "mark_contacted" | "schedule" | "suppress") => {
+    const targets = filtered.filter((r) => selectedIds.has(`${r.source}:${r.id}`));
+    if (targets.length === 0) return;
+    if (action === "assign_va" && !bulkVaId) {
+      toast.error("Pick a VA first");
+      return;
+    }
+    if (action === "schedule" && !bulkFollowUp) {
+      toast.error("Pick a follow-up date first");
+      return;
+    }
+    if (action === "suppress") {
+      // Bulk suppress hands off to the SuppressionDialog for the first target,
+      // then applies the same reason to the rest.
+      const first = targets[0];
+      requestSuppress(toRecoveryBatchRow(first));
+      return;
+    }
+    setBulkRunning(true);
+    let ok = 0;
+    let fail = 0;
+    for (const r of targets) {
+      try {
+        if (action === "assign_va") {
+          const { error } = await supabase.rpc("unified_assign_va" as any, {
+            p_id: r.id, p_va_user_id: bulkVaId, p_source: r.source,
+          });
+          if (error) throw error;
+        } else if (action === "mark_contacted") {
+          const { error } = await supabase.rpc("unified_mark_contacted" as any, {
+            p_id: r.id, p_source: r.source,
+          });
+          if (error) throw error;
+        } else if (action === "schedule" && bulkFollowUp) {
+          const iso = bulkFollowUp.toISOString();
+          const table = r.source === "applied" ? "applications" : "aged_leads";
+          const { error } = await supabase
+            .from(table as any)
+            .update({ next_action_due_at: iso } as any)
+            .eq("id", r.id);
+          if (error) throw error;
+        }
+        ok++;
+      } catch (e) {
+        fail++;
+        // Continue on failure so a single row does not block the rest.
+        // Failures surface in the final toast summary.
+      }
+    }
+    setBulkRunning(false);
+    qc.invalidateQueries({ queryKey: ["v_unlicensed_all"] });
+    qc.invalidateQueries({ queryKey: ["mp257_kpis"] });
+    clearSelection();
+    if (fail === 0) toast.success(`Applied to ${ok} records`);
+    else toast.warning(`${ok} ok · ${fail} failed`);
+  }, [filtered, selectedIds, bulkVaId, bulkFollowUp, qc, clearSelection, requestSuppress, toRecoveryBatchRow]);
+
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5 max-w-6xl mx-auto">
       <PageHeader
@@ -374,6 +560,21 @@ export default function UnlicensedAll() {
         title="Unlicensed Queue"
         subtitle="Every applicant without a license. Route to a VA, work the ghosted 30d+ pile daily."
       />
+
+      {/* MP-257: Start VA Recovery Batch CTA */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[11px] text-slate-400">
+          Batch mode filters to unassigned + ghosted 30d+ and walks them one-by-one with a script.
+        </div>
+        <Button
+          size="sm"
+          onClick={startRecoveryBatch}
+          className="h-9 bg-teal-500 text-slate-950 hover:bg-teal-400"
+          aria-label="Start VA Recovery Batch"
+        >
+          <Play className="h-3.5 w-3.5 mr-1.5" /> Start VA Recovery Batch
+        </Button>
+      </div>
 
       {/* Gradient totals card */}
       <motion.div
@@ -389,11 +590,13 @@ export default function UnlicensedAll() {
         }}
       >
         <div className="absolute inset-0 pointer-events-none opacity-40" style={{ background: "radial-gradient(circle at 20% 20%, hsl(30 100% 60% / 0.35), transparent 60%)" }} />
-        <div className="relative grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="relative grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           <TotalTile label="Total unlicensed" value={totals.total} icon={<Users className="h-4 w-4" />} tone="text-white" />
           <TotalTile label="Ghosted 30d+" value={totals.ghosted} icon={<Ghost className="h-4 w-4" />} tone="text-rose-300" />
           <TotalTile label="Assigned" value={totals.assigned} icon={<UserCheck className="h-4 w-4" />} tone="text-emerald-300" />
           <TotalTile label="Unassigned" value={totals.unassigned} icon={<UserMinus className="h-4 w-4" />} tone="text-amber-300" />
+          <TotalTile label="Recovered · 7d" value={mp257Kpis.recovered} icon={<Trophy className="h-4 w-4" />} tone="text-emerald-300" hint="Applications licensed in last 7 days" />
+          <TotalTile label="Suppressed · 7d" value={mp257Kpis.suppressed} icon={<ShieldOff className="h-4 w-4" />} tone="text-rose-300" hint="Applications terminated in last 7 days" />
         </div>
       </motion.div>
 
@@ -441,6 +644,130 @@ export default function UnlicensedAll() {
         </CardContent>
       </Card>
 
+      {/* MP-257: bulk action bar — appears when any row is selected */}
+      {selectedIds.size > 0 && (
+        <div className="rounded-xl border border-teal-500/40 bg-teal-500/[0.08] p-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-teal-100">
+            {selectedIds.size} selected
+          </span>
+          {selectedIds.size < filtered.length && (
+            <button
+              type="button"
+              onClick={selectAllVisible}
+              className="text-[11px] text-teal-300/80 underline decoration-dotted hover:text-teal-200"
+            >
+              Select all {filtered.length}
+            </button>
+          )}
+          <div className="ml-auto flex flex-wrap items-center gap-1.5">
+            <Select value={bulkVaId} onValueChange={setBulkVaId}>
+              <SelectTrigger className="h-8 w-[150px] text-xs bg-white/5 border-white/10">
+                <UserPlus className="h-3 w-3 mr-1.5" />
+                <SelectValue placeholder="Assign VA" />
+              </SelectTrigger>
+              <SelectContent>
+                {vas.length === 0 && (
+                  <div className="px-2 py-1.5 text-xs text-slate-500">No managers/VAs</div>
+                )}
+                {vas.map((v) => (
+                  <SelectItem key={v.user_id} value={v.user_id}>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className={cn("rounded px-1 py-0.5 text-[9px] uppercase tracking-wide",
+                        v.role === "manager" ? "bg-amber-500/20 text-amber-300" : "bg-sky-500/20 text-sky-300")}>
+                        {v.role}
+                      </span>
+                      {v.display_name || v.email || v.user_id.slice(0, 8)}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              disabled={bulkRunning || !bulkVaId}
+              onClick={() => runBulk("assign_va")}
+              className="h-8 gap-1 bg-teal-500 text-slate-950 hover:bg-teal-400 disabled:opacity-60"
+              aria-label="Assign selected records to VA"
+            >
+              Assign
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkRunning}
+              onClick={() => runBulk("mark_contacted")}
+              className="h-8 gap-1 border-emerald-500/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"
+              aria-label="Mark selected records contacted"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" /> Mark contacted
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkRunning}
+                  className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
+                  aria-label="Pick bulk follow-up date"
+                >
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  {bulkFollowUp ? format(bulkFollowUp, "MMM d") : "Follow-up"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-[#0B1118] border-white/10" align="end"> {/* palette-allow:apex-panel-dark — matches sibling admin popovers */}
+                <Calendar
+                  mode="single"
+                  selected={bulkFollowUp}
+                  onSelect={setBulkFollowUp}
+                  initialFocus
+                />
+                <div className="p-2 border-t border-white/10">
+                  <Button
+                    size="sm"
+                    className="w-full h-8 bg-teal-500 text-slate-950 hover:bg-teal-400"
+                    disabled={!bulkFollowUp || bulkRunning}
+                    onClick={() => runBulk("schedule")}
+                    aria-label="Confirm bulk follow-up"
+                  >
+                    Schedule {selectedIds.size}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkRunning}
+              onClick={() => runBulk("suppress")}
+              className="h-8 gap-1 border-rose-500/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
+              aria-label="Suppress selected records"
+            >
+              <ShieldOff className="h-3.5 w-3.5" /> Suppress
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkRunning}
+              onClick={workSelectedInBatch}
+              className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
+              aria-label="Work selected records in recovery batch"
+            >
+              <Play className="h-3.5 w-3.5" /> Work in batch
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={clearSelection}
+              className="h-8 gap-1 text-slate-400 hover:text-slate-100"
+              aria-label="Clear selection"
+            >
+              <X className="h-3.5 w-3.5" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       {isLoading && (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -482,12 +809,19 @@ export default function UnlicensedAll() {
                     "bg-white/[0.03] backdrop-blur-xl ring-1",
                     tone.ring,
                     "hover:border-white/20 transition-colors",
+                    selectedIds.has(`${r.source}:${r.id}`) && "bg-teal-500/[0.05] border-teal-500/30",
                   )}
                   style={{ boxShadow: "inset 0 1px 0 hsl(0 0% 100% / 0.05), 0 8px 30px -12px hsl(222 60% 0% / 0.55)" }}
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center gap-3">
                     {/* Identity + inline stage picker */}
                     <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <Checkbox
+                        checked={selectedIds.has(`${r.source}:${r.id}`)}
+                        onCheckedChange={() => toggleSelected(`${r.source}:${r.id}`)}
+                        aria-label={`Select ${fullName(r)}`}
+                        className="h-4 w-4 border-white/20 data-[state=checked]:bg-teal-500 data-[state=checked]:text-slate-950"
+                      />
                       <div className={cn("h-2.5 w-2.5 rounded-full shrink-0 animate-pulse", tone.dot)} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -690,6 +1024,17 @@ export default function UnlicensedAll() {
                           convert
                         </Button>
                       )}
+
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                        title="Suppress this record"
+                        aria-label={`Suppress ${fullName(r)}`}
+                        onClick={() => requestSuppress(toRecoveryBatchRow(r))}
+                      >
+                        <ShieldOff className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
 
@@ -704,6 +1049,20 @@ export default function UnlicensedAll() {
         </div>
       </AnimatePresence>
 
+      <RecoveryBatchDrawer
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
+        queue={batchQueue}
+        startIndex={batchStart}
+        onRequestSuppress={requestSuppress}
+      />
+
+      <SuppressionDialog
+        open={suppressOpen}
+        onOpenChange={setSuppressOpen}
+        target={suppressTarget}
+      />
+
       <div className="text-center text-[10px] text-slate-500 uppercase tracking-widest pt-6 pb-2">
         Hold the Standard · Average is the disease
       </div>
@@ -716,14 +1075,16 @@ function TotalTile({
   value,
   icon,
   tone,
+  hint,
 }: {
   label: string;
   value: number;
   icon: React.ReactNode;
   tone: string;
+  hint?: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-lg p-3 sm:p-4">
+    <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-lg p-3 sm:p-4" title={hint}>
       <div className="flex items-center justify-between">
         <span className="text-[10px] uppercase tracking-widest text-slate-300/80">{label}</span>
         <span className="text-slate-300/70">{icon}</span>

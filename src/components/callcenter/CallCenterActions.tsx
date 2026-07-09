@@ -1,26 +1,39 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  CheckCircle2,
-  XCircle,
-  FileText,
+  UserCheck,
+  FileCheck,
+  X as XIcon,
+  PhoneMissed,
+  Check,
+  Calendar as CalendarIcon,
   PhoneOff,
+  Bell,
   ChevronRight,
   ChevronLeft,
-  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type ActionId = "hired" | "contracted" | "bad_applicant" | "no_pickup";
+// MP-260 disposition grid — 8 outcomes total. Keys 1..8. Order below MUST match
+// the shortcut key labels rendered on each tile.
+export type ActionId =
+  | "hired"
+  | "contracted"
+  | "bad_applicant"    // "Not a Fit"
+  | "no_pickup"
+  | "contacted"        // MP-260 new
+  | "reschedule"       // MP-260 new
+  | "bad_number"       // MP-260 new — separate from "not a fit"
+  | "needs_followup";  // MP-260 new
 
 interface ActionDef {
   id: ActionId;
   label: string;
   description: string;
   icon: React.ElementType;
-  color: string;
   gradient: string;
+  color: string;
   glowColor: string;
   key: string;
 }
@@ -29,42 +42,82 @@ const actions: ActionDef[] = [
   {
     id: "hired",
     label: "Hired",
-    description: "Contacted & interested",
-    icon: CheckCircle2,
-    color: "text-green-400",
-    gradient: "from-green-500/20 to-emerald-500/20 hover:from-green-500/30 hover:to-emerald-500/30 border-green-500/30 hover:border-green-500/50",
+    description: "Signed on the call",
+    icon: UserCheck,
+    color: "text-emerald-300",
+    gradient: "from-emerald-500/15 to-emerald-600/10 hover:from-emerald-500/25 hover:to-emerald-600/20 border-emerald-500/30 hover:border-emerald-500/50",
     glowColor: "rgba(34, 197, 94, 0.4)",
     key: "1",
   },
   {
     id: "contracted",
     label: "Contracted",
-    description: "Ready to onboard",
-    icon: FileText,
-    color: "text-blue-400",
-    gradient: "from-blue-500/20 to-indigo-500/20 hover:from-blue-500/30 hover:to-indigo-500/30 border-blue-500/30 hover:border-blue-500/50",
-    glowColor: "rgba(59, 130, 246, 0.4)",
+    description: "Onboarding started",
+    icon: FileCheck,
+    color: "text-emerald-300",
+    gradient: "from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 border-emerald-500/25 hover:border-emerald-500/45",
+    glowColor: "rgba(16, 185, 129, 0.35)",
     key: "2",
   },
   {
     id: "bad_applicant",
     label: "Not a Fit",
     description: "Reject applicant",
-    icon: XCircle,
-    color: "text-red-400",
-    gradient: "from-red-500/10 to-rose-500/10 hover:from-red-500/20 hover:to-rose-500/20 border-red-500/20 hover:border-red-500/40",
-    glowColor: "rgba(239, 68, 68, 0.3)",
+    icon: XIcon,
+    color: "text-rose-300",
+    gradient: "from-rose-500/10 to-rose-600/10 hover:from-rose-500/20 hover:to-rose-600/20 border-rose-500/25 hover:border-rose-500/45",
+    glowColor: "rgba(244, 63, 94, 0.35)",
     key: "3",
   },
   {
     id: "no_pickup",
     label: "No Pickup",
     description: "Didn't answer",
-    icon: PhoneOff,
-    color: "text-amber-400",
-    gradient: "from-amber-500/15 to-orange-500/15 hover:from-amber-500/25 hover:to-orange-500/25 border-amber-500/25 hover:border-amber-500/45",
-    glowColor: "rgba(245, 158, 11, 0.35)",
+    icon: PhoneMissed,
+    color: "text-slate-200",
+    gradient: "from-slate-500/10 to-slate-600/10 hover:from-slate-500/20 hover:to-slate-600/20 border-slate-500/25 hover:border-slate-500/45",
+    glowColor: "rgba(148, 163, 184, 0.30)",
     key: "4",
+  },
+  {
+    id: "contacted",
+    label: "Contacted",
+    description: "Reached but no decision",
+    icon: Check,
+    color: "text-teal-300",
+    gradient: "from-teal-500/15 to-teal-600/10 hover:from-teal-500/25 hover:to-teal-600/20 border-teal-500/30 hover:border-teal-500/50",
+    glowColor: "rgba(20, 184, 166, 0.35)",
+    key: "5",
+  },
+  {
+    id: "reschedule",
+    label: "Reschedule",
+    description: "Book a meeting",
+    icon: CalendarIcon,
+    color: "text-amber-300",
+    gradient: "from-amber-500/15 to-amber-600/10 hover:from-amber-500/25 hover:to-amber-600/20 border-amber-500/30 hover:border-amber-500/50",
+    glowColor: "rgba(245, 158, 11, 0.35)",
+    key: "6",
+  },
+  {
+    id: "bad_number",
+    label: "Bad Number",
+    description: "Wrong / dead line",
+    icon: PhoneOff,
+    color: "text-rose-300",
+    gradient: "from-rose-500/15 to-rose-600/10 hover:from-rose-500/25 hover:to-rose-600/20 border-rose-500/30 hover:border-rose-500/50",
+    glowColor: "rgba(244, 63, 94, 0.35)",
+    key: "7",
+  },
+  {
+    id: "needs_followup",
+    label: "Needs Follow-Up",
+    description: "Circle back later",
+    icon: Bell,
+    color: "text-amber-300",
+    gradient: "from-amber-500/10 to-yellow-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 border-amber-500/25 hover:border-amber-500/45",
+    glowColor: "rgba(245, 185, 66, 0.35)",
+    key: "8",
   },
 ];
 
@@ -88,11 +141,19 @@ export function CallCenterActions({
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [successAction, setSuccessAction] = useState<ActionId | null>(null);
 
-  // Listen for keyboard presses to show visual feedback
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip when typing in input/textarea/contentEditable/select
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) {
+          return;
+        }
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       const key = e.key.toLowerCase();
-      if (["1", "2", "3", "4", "n", "p"].includes(key)) {
+      if (["1", "2", "3", "4", "5", "6", "7", "8", "n", "p"].includes(key)) {
         setActiveKey(key);
       }
     };
@@ -111,38 +172,41 @@ export function CallCenterActions({
 
   const handleAction = (actionId: ActionId) => {
     setSuccessAction(actionId);
-    setTimeout(() => setSuccessAction(null), 600);
+    setTimeout(() => setSuccessAction(null), 500);
     onAction(actionId);
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 30 }}
-      className={cn("space-y-4", className)}
+      transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 30 }}
+      className={cn("space-y-3", className)}
     >
-      {/* Primary Actions - 2 columns */}
-      <div className="grid grid-cols-2 gap-3">
-        {actions.slice(0, 2).map((action, index) => (
+      {/* 8-button disposition grid — 2-col mobile, 4-col desktop */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+        {actions.map((action, index) => (
           <motion.div
             key={action.id}
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + index * 0.05, type: "spring", stiffness: 400, damping: 25 }}
+            transition={{ delay: 0.05 + index * 0.03, type: "spring", stiffness: 400, damping: 25 }}
           >
             <motion.button
+              type="button"
               disabled={processing}
               onClick={() => handleAction(action.id)}
-              whileHover={{ scale: 1.02, y: -2 }}
+              whileHover={{ scale: 1.02, y: -1 }}
               whileTap={{ scale: 0.98 }}
+              aria-label={`${action.label} — shortcut ${action.key}`}
               style={{
-                boxShadow: activeKey === action.key ? `0 0 20px ${action.glowColor}` : "none",
+                boxShadow: activeKey === action.key ? `0 0 16px ${action.glowColor}` : "none",
               }}
               className={cn(
-                "w-full h-24 md:h-20 relative overflow-hidden rounded-md transition-all duration-200",
-                " border",
-                action.gradient,
+                "w-full h-20 md:h-20 relative overflow-hidden rounded-md transition-all duration-200",
+                // Flat-fill tint per wave-59 pattern — bg-gradient-cards gate
+                // blocks multi-stop gradients on card-style outer wrappers.
+                "border bg-slate-900/60 hover:bg-slate-900",
                 action.color,
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 activeKey === action.key && "ring-2 ring-white/20"
@@ -154,105 +218,31 @@ export function CallCenterActions({
                   <motion.div
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 1.5, opacity: 0 }}
-                    className="absolute inset-0 flex items-center justify-center bg-green-500/30 z-20"
-                  >
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: [0, 1.2, 1] }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <Check className="h-10 w-10 text-white" />
-                    </motion.div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Shimmer effect on hover */}
-              <motion.div
-                className="absolute inset-0 bg-white dark:bg-slate-900 -translate-x-full"
-                whileHover={{ translateX: "100%" }}
-                transition={{ duration: 0.6 }}
-              />
-
-              <div className="flex flex-col items-center gap-1.5 relative z-10">
-                <motion.div
-                  animate={activeKey === action.key ? { scale: [1, 1.1, 1] } : {}}
-                  transition={{ duration: 0.2 }}
-                >
-                  <action.icon className="h-7 w-7 md:h-6 md:w-6" />
-                </motion.div>
-                <span className="text-sm font-semibold">{action.label}</span>
-                <span className="text-[10px] opacity-60">{action.description}</span>
-              </div>
-
-              {/* Keyboard hint */}
-              <motion.span
-                className={cn(
-                  "absolute bottom-1.5 right-2 text-[10px] px-1.5 py-0.5 rounded transition-all",
-                  activeKey === action.key
-                    ? "bg-white/20 opacity-100"
-                    : "opacity-40"
-                )}
-              >
-                [{action.key}]
-              </motion.span>
-            </motion.button>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* No Pickup & Bad Applicant - 2 columns */}
-      <div className="grid grid-cols-2 gap-3">
-        {actions.slice(2, 4).map((action, index) => (
-          <motion.div
-            key={action.id}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 + index * 0.05, type: "spring", stiffness: 400, damping: 25 }}
-          >
-            <motion.button
-              disabled={processing}
-              onClick={() => handleAction(action.id)}
-              whileHover={{ scale: 1.02, y: -1 }}
-              whileTap={{ scale: 0.98 }}
-              style={{
-                boxShadow: activeKey === action.key ? `0 0 15px ${action.glowColor}` : "none",
-              }}
-              className={cn(
-                "w-full h-20 md:h-16 relative overflow-hidden rounded-md transition-all duration-200",
-                " border",
-                action.gradient,
-                action.color,
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-                activeKey === action.key && "ring-2 ring-white/20"
-              )}
-            >
-              <AnimatePresence>
-                {successAction === action.id && (
-                  <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 1.5, opacity: 0 }}
-                    className="absolute inset-0 flex items-center justify-center bg-white dark:bg-black/30 z-20"
+                    exit={{ scale: 1.4, opacity: 0 }}
+                    className="absolute inset-0 flex items-center justify-center bg-emerald-500/25 z-20"
                   >
                     <Check className="h-8 w-8 text-white" />
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <div className="flex items-center justify-center gap-2 relative z-10">
-                <action.icon className="h-6 w-6 md:h-5 md:w-5" />
-                <span className="font-medium">{action.label}</span>
+              <div className="flex flex-col items-center gap-1 relative z-10 px-2">
+                <action.icon className="h-5 w-5" />
+                <span className="text-sm font-semibold leading-tight text-center">{action.label}</span>
+                <span className="text-[10px] opacity-60 leading-tight text-center hidden sm:block">
+                  {action.description}
+                </span>
               </div>
-              <motion.span
+
+              {/* Keyboard hint */}
+              <span
                 className={cn(
-                  "absolute bottom-1 right-2 text-[10px] px-1.5 py-0.5 rounded transition-all",
-                  activeKey === action.key ? "bg-white/20 opacity-100" : "opacity-40"
+                  "absolute bottom-1 right-1.5 text-[10px] px-1.5 py-0.5 rounded transition-all bg-black/30",
+                  activeKey === action.key ? "opacity-100" : "opacity-40"
                 )}
               >
-                [{action.key}]
-              </motion.span>
+                {action.key}
+              </span>
             </motion.button>
           </motion.div>
         ))}
@@ -262,73 +252,43 @@ export function CallCenterActions({
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.25 }}
+        transition={{ delay: 0.2 }}
         className="flex gap-2"
       >
         {onPrevious && (
           <Button
+            type="button"
             variant="ghost"
-            size="lg"
+            size="sm"
             onClick={onPrevious}
             disabled={processing || !canGoPrevious}
+            aria-label="Go to previous lead"
             className={cn(
               "flex-1 group hover:bg-muted/50",
               activeKey === "p" && "bg-muted/50"
             )}
           >
-            <ChevronLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-base" />
+            <ChevronLeft className="h-4 w-4 mr-1.5" />
             <span>Previous</span>
-            <span className="text-[10px] opacity-40 ml-4 hidden sm:inline">[P]</span>
+            <span className="text-[10px] opacity-40 ml-3 hidden sm:inline">[P]</span>
           </Button>
         )}
         <Button
+          type="button"
           variant="ghost"
-          size="lg"
+          size="sm"
           onClick={onSkip}
           disabled={processing}
+          aria-label="Skip to next lead"
           className={cn(
             "flex-1 group hover:bg-muted/50",
             activeKey === "n" && "bg-muted/50"
           )}
         >
           <span>Skip to Next</span>
-          <motion.div
-            animate={activeKey === "n" ? { x: [0, 4, 0] } : {}}
-            transition={{ duration: 0.3 }}
-          >
-            <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-base" />
-          </motion.div>
-          <span className="text-[10px] opacity-40 ml-4 hidden sm:inline">[N]</span>
+          <ChevronRight className="h-4 w-4 ml-1.5" />
+          <span className="text-[10px] opacity-40 ml-3 hidden sm:inline">[N]</span>
         </Button>
-      </motion.div>
-
-      {/* Keyboard Hints */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="text-center text-xs text-muted-foreground hidden sm:block"
-      >
-        <span className="opacity-60">
-          Press{" "}
-          <kbd className={cn(
-            "px-1.5 py-0.5 rounded bg-muted/50 text-foreground transition-all",
-            activeKey === "r" && "bg-primary/30 ring-1 ring-primary/50"
-          )}>R</kbd>{" "}
-          to record •{" "}
-          <kbd className={cn(
-            "px-1.5 py-0.5 rounded bg-muted/50 text-foreground transition-all",
-            ["1", "2", "3", "4"].includes(activeKey || "") && "bg-primary/30 ring-1 ring-primary/50"
-          )}>1-4</kbd>{" "}
-          for actions •{" "}
-          <kbd className={cn(
-            "px-1.5 py-0.5 rounded bg-muted/50 text-foreground transition-all",
-            activeKey === "n" && "bg-primary/30 ring-1 ring-primary/50"
-          )}>N</kbd>{" "}
-          skip •{" "}
-          <kbd className="px-1.5 py-0.5 rounded bg-muted/50 text-foreground">ESC</kbd>{" "}
-          exit
-        </span>
       </motion.div>
     </motion.div>
   );

@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, CheckCircle2, Sparkles } from "lucide-react";
+import { Phone, CheckCircle2, Sparkles, Instagram, Mail, PhoneCall } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -10,8 +10,12 @@ import { ContractedModal } from "@/components/dashboard/ContractedModal";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { HireConfirmModal } from "@/components/callcenter/HireConfirmModal";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
-import { CalendarPlus } from "lucide-react";
+import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
+import { CalendarPlus, Rocket } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getNextBestAction } from "@/lib/nextBestAction";
+import { priorityBadgeClasses } from "@/lib/priority";
+import { cn } from "@/lib/utils";
 import {
   CallCenterFilters,
   CallCenterLeadCard,
@@ -23,6 +27,9 @@ import {
   type ProgressFilter,
   type SortOrder,
   type RefererFilter,
+  type DateRangeFilter,
+  type OwnerFilter,
+  type StateFilter,
   type ActionId,
   type LicensingStage,
 } from "@/components/callcenter";
@@ -85,6 +92,12 @@ export default function CallCenter() {
   // Sam 2026-05-04: filter applicants by referrer attribution. Default "all"
   // so existing behavior is unchanged unless he picks "mine" or "no_referrer".
   const [refererFilter, setRefererFilter] = useState<RefererFilter>("all");
+  // MP-260 additional filter axes.
+  const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>("all");
+  const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>("all");
+  const [stateFilter, setStateFilter] = useState<StateFilter>("all");
+  // MP-260 detail drawer for row-tap → expanded context (applications only).
+  const [detailAppId, setDetailAppId] = useState<string | null>(null);
 
   const currentLead = leads[currentIndex];
   const totalLeads = leads.length;
@@ -116,6 +129,18 @@ export default function CallCenter() {
     setLoading(true);
     try {
       const allLeads: UnifiedLead[] = [];
+
+      // MP-260 shared date-range gate. `all` → no bound.
+      const dateSinceIso = (() => {
+        const day = 24 * 60 * 60 * 1000;
+        const now = Date.now();
+        switch (dateRangeFilter) {
+          case "last_7": return new Date(now - 7 * day).toISOString();
+          case "last_30": return new Date(now - 30 * day).toISOString();
+          case "last_90": return new Date(now - 90 * day).toISOString();
+          default: return null;
+        }
+      })();
 
       // Fetch aged leads if source filter allows
       if (sourceFilter === "all" || sourceFilter === "aged_leads") {
@@ -150,6 +175,14 @@ export default function CallCenter() {
         // leads assigned to them.
         if (!isAdmin && agentId) {
           query = query.eq("assigned_manager_id", agentId);
+        }
+
+        // MP-260 axes.
+        if (dateSinceIso) query = query.gte("created_at", dateSinceIso);
+        if (ownerFilter === "unassigned") {
+          query = query.is("assigned_manager_id", null);
+        } else if (ownerFilter && ownerFilter !== "all") {
+          query = query.eq("assigned_manager_id", ownerFilter);
         }
 
         const { data: agedData, error: agedError } = await query;
@@ -233,6 +266,19 @@ export default function CallCenter() {
           appQuery = appQuery.eq("license_progress", progressFilter);
         }
 
+        // MP-260 axes for applications.
+        if (dateSinceIso) appQuery = appQuery.gte("created_at", dateSinceIso);
+        if (stateFilter && stateFilter !== "all") appQuery = appQuery.eq("state", stateFilter);
+        if (ownerFilter === "unassigned") {
+          appQuery = appQuery
+            .is("assigned_agent_id", null)
+            .is("referral_manager_id", null);
+        } else if (ownerFilter && ownerFilter !== "all") {
+          appQuery = appQuery.or(
+            `assigned_agent_id.eq.${ownerFilter},referral_manager_id.eq.${ownerFilter}`,
+          );
+        }
+
         // Role-based filtering — admins see every application regardless of
         // assignment + lifecycle status (Sam wants visibility, not curation).
         // Non-admins keep the existing assigned-only + active-only filter.
@@ -306,7 +352,7 @@ export default function CallCenter() {
     } finally {
       setLoading(false);
     }
-  }, [sourceFilter, licenseFilter, statusFilter, progressFilter, sortOrder, refererFilter, isAdmin, isManager, agentId]);
+  }, [sourceFilter, licenseFilter, statusFilter, progressFilter, sortOrder, refererFilter, dateRangeFilter, ownerFilter, stateFilter, isAdmin, isManager, agentId]);
 
   const agentIdLoading = !agentId && !isAdmin && !!user;
 
@@ -383,6 +429,27 @@ export default function CallCenter() {
     }
   };
 
+  // MP-260 shared log_contact_attempt helper. Fire-and-forget so a 500
+  // never blocks the disposition or auto-advance. Channel default = 'call'
+  // since every disposition in the workflow implies a call attempt.
+  const logContactAttempt = useCallback(
+    (applicationId: string, outcome: string, channel: "call" | "sms" | "email" = "call") => {
+      // Wrap in Promise.resolve so the .catch is on a real Promise, not a
+      // PromiseLike (Supabase v2 typings). Fire-and-forget by design.
+      Promise.resolve(
+        supabase.rpc("log_contact_attempt" as any, {
+          p_application_id: applicationId,
+          p_channel: channel,
+          p_outcome: outcome,
+        }),
+      )
+        .then(() => undefined)
+        // empty-catch-allow:fire-and-forget telemetry — cannot block navigation
+        .catch(() => undefined);
+    },
+    [],
+  );
+
   const handleAction = useCallback(async (actionId: ActionId) => {
     if (!currentLead || processing) return;
 
@@ -398,8 +465,21 @@ export default function CallCenter() {
       return;
     }
 
+    // MP-260 — Reschedule opens the InterviewScheduler modal for applications.
+    // For aged leads (no application_id), fall back to logging a scheduled outcome.
+    if (actionId === "reschedule") {
+      if (currentLead.source === "applications") {
+        setShowScheduleModal(true);
+      } else {
+        logContactAttempt(currentLead.id, "reschedule_requested");
+        toast.info("Reschedule requested — advancing");
+        handleSkip();
+      }
+      return;
+    }
+
     await executeAction(actionId);
-  }, [currentLead, processing]);
+  }, [currentLead, processing, logContactAttempt]);
 
   const executeAction = useCallback(async (actionId: ActionId) => {
     if (!currentLead) return;
@@ -412,21 +492,42 @@ export default function CallCenter() {
         setCurrentTranscription("");
       }
 
+      // MP-260 disposition → outcome/channel mapping for log_contact_attempt.
+      const outcomeMap: Record<string, string> = {
+        hired: "hired",
+        contracted: "contracted",
+        bad_applicant: "not_a_fit",
+        no_pickup: "no_pickup",
+        contacted: "contacted",
+        reschedule: "reschedule_requested",
+        bad_number: "bad_number",
+        needs_followup: "needs_followup",
+      };
+
+      // Log telemetry for applications — RPC only accepts application ids.
+      if (currentLead.source === "applications" && outcomeMap[actionId]) {
+        logContactAttempt(currentLead.id, outcomeMap[actionId]);
+      }
+
       if (currentLead.source === "aged_leads") {
         const nowIso = new Date().toISOString();
         const statusMap: Record<string, string> = {
           hired: "hired",
           no_pickup: "no_pickup",
           bad_applicant: "bad_applicant",
+          contacted: "contacted",
+          bad_number: "bad_number",
+          needs_followup: "needs_followup",
+        };
+        const patch: Record<string, string> = {
+          status: statusMap[actionId] || actionId,
+          processed_at: nowIso,
+          contacted_at: currentLead.contactedAt || nowIso,
+          last_contacted_at: nowIso,
         };
         const { error } = await supabase
           .from("aged_leads")
-          .update({
-            status: statusMap[actionId] || actionId,
-            processed_at: nowIso,
-            contacted_at: currentLead.contactedAt || nowIso,
-            last_contacted_at: nowIso,
-          })
+          .update(patch)
           .eq("id", currentLead.id);
 
         if (error) throw error;
@@ -443,6 +544,14 @@ export default function CallCenter() {
           updateData.status = "rejected";
         } else if (actionId === "no_pickup") {
           updateData.status = "no_pickup";
+        } else if (actionId === "contacted") {
+          updateData.status = "contacted";
+        } else if (actionId === "needs_followup") {
+          updateData.status = "contacted";
+          // Bump next-action to tomorrow so the follow-up cohort catches it.
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          (updateData as Record<string, unknown>).next_action_due_at = tomorrow.toISOString();
         }
 
         const { error } = await supabase
@@ -451,6 +560,31 @@ export default function CallCenter() {
           .eq("id", currentLead.id);
 
         if (error) throw error;
+
+        // Bad number → also flag phone_bad via unified RPC so the dialer
+        // stops calling it. Guarded to applications since aged_leads use
+        // a different column set.
+        if (actionId === "bad_number") {
+          Promise.resolve(
+            supabase.rpc("unified_mark_phone_bad" as any, {
+              p_id: currentLead.id,
+              p_source: "applied",
+              p_reason: "call_center_marked_bad",
+            }),
+          )
+            .then(() => undefined)
+            // empty-catch-allow:fire-and-forget — bad-number status still wins even if the RPC 500s (edge fn optional).
+            .catch(() => undefined);
+        }
+      }
+
+      // MP-260 outcome UX for new dispositions.
+      if (actionId === "contacted") {
+        toast.success("Marked contacted — advancing");
+      } else if (actionId === "bad_number") {
+        toast.warning("Bad number flagged — removed from queue");
+      } else if (actionId === "needs_followup") {
+        toast.success("Follow-up scheduled for tomorrow — advancing");
       }
 
       if (actionId === "hired") {
@@ -493,10 +627,17 @@ export default function CallCenter() {
         playSound("success");
       }
 
-      // For no_pickup, don't remove from list - just move to next
-      if (actionId === "no_pickup") {
+      // For no_pickup / contacted / needs_followup, don't remove from the
+      // list — just advance so the caller can loop back later.
+      const advanceOnly = actionId === "no_pickup" || actionId === "contacted" || actionId === "needs_followup";
+      if (advanceOnly) {
+        const patchStatus = actionId === "contacted"
+          ? "contacted"
+          : actionId === "needs_followup"
+            ? "contacted"
+            : "no_pickup";
         setLeads((prev) =>
-          prev.map((l) => l.id === currentLead.id ? { ...l, status: "no_pickup" } : l)
+          prev.map((l) => l.id === currentLead.id ? { ...l, status: patchStatus } : l)
         );
         if (currentIndex < leads.length - 1) {
           setCurrentIndex((prev) => prev + 1);
@@ -517,7 +658,7 @@ export default function CallCenter() {
     } finally {
       setProcessing(false);
     }
-  }, [currentLead, leads.length, currentTranscription]);
+  }, [currentLead, leads.length, currentTranscription, currentIndex, logContactAttempt]);
 
   const handleHireConfirm = useCallback(async (boughtCourse: boolean) => {
     setShowHireConfirm(false);
@@ -584,10 +725,13 @@ export default function CallCenter() {
   }, [currentIndex]);
 
   const handleCall = useCallback(() => {
-    if (currentLead?.phone) {
-      window.open(`tel:${currentLead.phone}`, "_self");
+    if (!currentLead?.phone) return;
+    // MP-260 log the initiation so the funnel counts every dial attempt.
+    if (currentLead.source === "applications") {
+      logContactAttempt(currentLead.id, "initiated", "call");
     }
-  }, [currentLead]);
+    window.open(`tel:${currentLead.phone}`, "_self");
+  }, [currentLead, logContactAttempt]);
 
   const handleStageChange = useCallback(async (stage: LicensingStage) => {
     if (!currentLead || processing) return;
@@ -714,6 +858,10 @@ export default function CallCenter() {
         return;
       }
 
+      // Ignore modifier chords + non-mapped keys. MP-260 shortcut map:
+      // 1 Hired · 2 Contracted · 3 Not a Fit · 4 No Pickup · 5 Contacted ·
+      // 6 Reschedule · 7 Bad Number · 8 Needs Follow-Up · N Next · P Prev · Esc Exit.
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       switch (e.key.toLowerCase()) {
         case "1":
           handleAction("hired");
@@ -726,6 +874,18 @@ export default function CallCenter() {
           break;
         case "4":
           handleAction("no_pickup");
+          break;
+        case "5":
+          handleAction("contacted");
+          break;
+        case "6":
+          handleAction("reschedule");
+          break;
+        case "7":
+          handleAction("bad_number");
+          break;
+        case "8":
+          handleAction("needs_followup");
           break;
         case "n":
           handleSkip();
@@ -753,41 +913,67 @@ export default function CallCenter() {
         progressFilter={progressFilter}
         sortOrder={sortOrder}
         refererFilter={refererFilter}
+        dateRangeFilter={dateRangeFilter}
+        ownerFilter={ownerFilter}
+        stateFilter={stateFilter}
         onSourceChange={setSourceFilter}
         onLicenseChange={setLicenseFilter}
         onStatusChange={setStatusFilter}
         onProgressChange={setProgressFilter}
         onSortOrderChange={setSortOrder}
         onRefererChange={setRefererFilter}
+        onDateRangeChange={setDateRangeFilter}
+        onOwnerChange={setOwnerFilter}
+        onStateChange={setStateFilter}
         onStart={handleStartCalling}
         disabled={agentIdLoading}
       />
     );
   }
 
+  // MP-260 NBA + priority for the current lead. Signals mapped from the
+  // unified lead shape — never invented, always safe fallbacks for missing.
+  const currentNba = useMemo(() => {
+    if (!currentLead) return null;
+    const licProgress = currentLead.licenseProgress ?? null;
+    return getNextBestAction({
+      kind: "applicant",
+      is_new_applicant: !currentLead.contactedAt,
+      no_contact_logged: !currentLead.contactedAt,
+      passed_test: licProgress === "passed_test",
+      waiting_on_license: licProgress === "waiting_on_license",
+      course_bought: licProgress === "course_purchased" || licProgress === "course_started",
+      referred_by_active_producer: !!currentLead.referredBy,
+      applicant_name: `${currentLead.firstName} ${currentLead.lastName ?? ""}`.trim(),
+      license_status: currentLead.licenseStatus,
+      license_progress: licProgress ?? undefined,
+    });
+  }, [currentLead]);
+  const currentBadge = currentNba ? priorityBadgeClasses(currentNba.priority) : null;
+
   // Active calling UI
   return (
-    <div className="flex flex-col h-full w-full max-w-6xl mx-auto p-2 md:p-8 page-enter">
+    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto p-2 md:p-6 page-enter">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className="p-2.5 rounded-md bg-white dark:bg-slate-900 border border-primary/30">
-            <Phone className="h-5 w-5 text-primary" />
+      <div className="flex items-center justify-between mb-4 md:mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-md bg-slate-900 border border-teal-500/30">
+            <Phone className="h-5 w-5 text-teal-300" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground">Call Center</h2>
-            <p className="text-sm text-muted-foreground">
-              {totalLeads - processedCount} leads remaining
+            <h2 className="text-lg md:text-xl font-bold text-slate-100">Call Center</h2>
+            <p className="text-xs md:text-sm text-slate-400">
+              {totalLeads - processedCount} leads remaining · {processedCount} processed
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 md:gap-4">
           <CallCenterProgressRing
             current={processedCount}
             total={totalLeads}
           />
-          <Button variant="outline" onClick={() => setStarted(false)}>
+          <Button variant="outline" onClick={() => setStarted(false)} aria-label="Exit call center">
             Exit
           </Button>
         </div>
@@ -832,59 +1018,171 @@ export default function CallCenter() {
           <Button onClick={() => setStarted(false)}>Back to Filters</Button>
         </motion.div>
       ) : (
-        <div className="flex-1 flex flex-col gap-6 overflow-hidden">
-          {/* Lead Card */}
-          <AnimatePresence mode="wait">
-            <CallCenterLeadCard
-              key={currentLead.id}
-              lead={currentLead}
-              onTranscriptionUpdate={setCurrentTranscription}
-              onStageChange={handleStageChange}
-              onTestDateChange={handleTestDateChange}
-              onCall={handleCall}
-              isRecording={isRecording}
-              onRecordingStateChange={setIsRecording}
-              isAdmin={isAdmin}
-              onReassigned={() => {
-                setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
-              }}
-              onSendFollowUp={handleSendFollowUp}
-              onStatusChange={handleStatusChange}
-              className="flex-1 overflow-y-auto"
-            />
-          </AnimatePresence>
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4 lg:gap-6 overflow-hidden">
+          {/* CALL PANEL — left column on desktop, stacked on mobile */}
+          <div className="flex flex-col gap-4 overflow-hidden">
+            {/* Priority + NBA strip */}
+            {currentBadge && currentNba && (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-white/10 bg-slate-900/60 p-3">
+                <span className={cn(
+                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium",
+                  currentBadge.className,
+                )}>
+                  {currentBadge.text}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-slate-100 truncate">
+                    Next best action: {currentNba.action}
+                  </div>
+                  <div className="text-[11px] text-slate-400 truncate">{currentNba.reason}</div>
+                </div>
+                {currentLead?.phone && (
+                  <Button
+                    size="sm"
+                    onClick={handleCall}
+                    aria-label={`Call ${currentLead.firstName} now`}
+                    className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold"
+                  >
+                    <PhoneCall className="h-4 w-4 mr-1.5" />
+                    Call Now
+                  </Button>
+                )}
+              </div>
+            )}
 
-          {/* Position indicator */}
-          <div className="text-center text-sm text-muted-foreground">
-            Lead {currentIndex + 1} of {totalLeads}
+            {/* Lead Card */}
+            <AnimatePresence mode="wait">
+              <CallCenterLeadCard
+                key={currentLead.id}
+                lead={currentLead}
+                onTranscriptionUpdate={setCurrentTranscription}
+                onStageChange={handleStageChange}
+                onTestDateChange={handleTestDateChange}
+                onCall={handleCall}
+                isRecording={isRecording}
+                onRecordingStateChange={setIsRecording}
+                isAdmin={isAdmin}
+                onReassigned={() => {
+                  setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
+                }}
+                onSendFollowUp={handleSendFollowUp}
+                onStatusChange={handleStatusChange}
+                className="flex-1 overflow-y-auto"
+              />
+            </AnimatePresence>
+
+            {/* Position indicator */}
+            <div className="text-center text-xs text-slate-500">
+              Lead {currentIndex + 1} of {totalLeads}
+            </div>
+
+            {/* 8-button disposition grid */}
+            <CallCenterActions
+              onAction={handleAction}
+              onSkip={handleSkip}
+              onPrevious={handlePrevious}
+              processing={processing}
+              canGoPrevious={currentIndex > 0}
+            />
+
+            {/* Secondary actions row — schedule meeting + open detail drawer */}
+            <div className="flex flex-wrap gap-2 justify-center mt-1">
+              {currentLead?.source === "applications" && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowScheduleModal(true)}
+                    disabled={processing}
+                    aria-label={`Schedule meeting with ${currentLead.firstName}`}
+                    className="gap-2 border-violet-500/40 text-violet-300 hover:bg-violet-500/10"
+                  >
+                    <CalendarPlus className="h-4 w-4" />
+                    Schedule a meeting
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDetailAppId(currentLead.id)}
+                    disabled={processing}
+                    aria-label={`Open expanded detail for ${currentLead.firstName}`}
+                    className="gap-2 border-teal-500/40 text-teal-300 hover:bg-teal-500/10"
+                  >
+                    <Rocket className="h-4 w-4" />
+                    Expanded detail
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
 
-          {/* Action Buttons */}
-          <CallCenterActions
-            onAction={handleAction}
-            onSkip={handleSkip}
-            onPrevious={handlePrevious}
-            processing={processing}
-            canGoPrevious={currentIndex > 0}
-          />
-
-          {/* Schedule meeting button — sits below the action grid. Only
-              applies to applicants (source='applications'), since the
-              interview record + applicant email need an application_id. */}
-          {currentLead?.source === "applications" && (
-            <div className="mt-3 flex justify-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowScheduleModal(true)}
-                disabled={processing}
-                className="gap-2 border-violet-500/40 text-violet-300 hover:bg-violet-500/10"
-              >
-                <CalendarPlus className="h-4 w-4" />
-                Schedule a meeting with {currentLead.firstName}
-              </Button>
+          {/* QUEUE RAIL — desktop-only right column showing next 10 leads */}
+          <aside className="hidden lg:flex flex-col rounded-md border border-white/10 bg-slate-950/60 overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Queue Rail
+              </div>
+              <div className="text-[10px] text-slate-500">
+                {Math.max(0, leads.length - currentIndex - 1)} ahead
+              </div>
             </div>
-          )}
+            <div className="flex-1 overflow-y-auto divide-y divide-white/5">
+              {leads.slice(currentIndex + 1, currentIndex + 11).map((l, idx) => {
+                const name = `${l.firstName} ${l.lastName ?? ""}`.trim() || "Unnamed";
+                const isLicensed = (l.licenseStatus ?? "").toLowerCase() === "licensed";
+                const hasPhone = !!l.phone;
+                const ageDays = Math.max(
+                  0,
+                  Math.floor((Date.now() - new Date(l.createdAt).getTime()) / (24 * 60 * 60 * 1000)),
+                );
+                return (
+                  <button
+                    key={l.id}
+                    type="button"
+                    onClick={() => setCurrentIndex(currentIndex + 1 + idx)}
+                    aria-label={`Jump to ${name}`}
+                    className="w-full text-left px-3 py-2.5 hover:bg-teal-500/5 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm font-medium text-slate-100 truncate">{name}</div>
+                      <span className={cn(
+                        "text-[10px] px-1.5 py-0.5 rounded-full border shrink-0",
+                        isLicensed
+                          ? "border-emerald-500/40 text-emerald-300 bg-emerald-500/10"
+                          : "border-rose-500/30 text-rose-300 bg-rose-500/10",
+                      )}>
+                        {isLicensed ? "Lic" : "Unlic"}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-400">
+                      <span>{ageDays}d old</span>
+                      {hasPhone ? (
+                        <span className="inline-flex items-center gap-1 text-teal-300">
+                          <Phone className="h-3 w-3" /> phone
+                        </span>
+                      ) : l.instagramHandle ? (
+                        <span className="inline-flex items-center gap-1 text-amber-300">
+                          <Instagram className="h-3 w-3" /> IG
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-slate-500">
+                          <Mail className="h-3 w-3" /> email
+                        </span>
+                      )}
+                      <span className="text-[10px] text-slate-500 truncate">
+                        {l.source === "aged_leads" ? "aged" : "applied"}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+              {leads.length - currentIndex - 1 <= 0 && (
+                <div className="p-4 text-center text-xs text-slate-500">
+                  No more leads in the queue.
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
       )}
 
@@ -931,7 +1229,23 @@ export default function CallCenter() {
           onScheduled={() => {
             toast.success("Meeting scheduled — applicant emailed");
             setShowScheduleModal(false);
+            // MP-260 log reschedule outcome + advance so the caller keeps flowing.
+            if (currentLead?.source === "applications") {
+              logContactAttempt(currentLead.id, "reschedule_confirmed");
+            }
+            handleSkip();
           }}
+        />
+      )}
+
+      {/* MP-260 expanded detail drawer — reuses the existing sheet
+          (never duplicate). Only mounted for source='applications' since
+          it queries by application_id. */}
+      {detailAppId && (
+        <ApplicationDetailSheet
+          open={!!detailAppId}
+          onOpenChange={(v) => { if (!v) setDetailAppId(null); }}
+          applicationId={detailAppId}
         />
       )}
 

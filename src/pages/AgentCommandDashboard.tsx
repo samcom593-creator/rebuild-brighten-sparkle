@@ -16,8 +16,8 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, Briefcase, Building2, Calendar, ChevronRight,
-  CircleDollarSign, Clock, Crown, DollarSign, Filter, Flame, Layers, Phone, Radio,
-  ShieldAlert, ShieldCheck, Sparkles,
+  CircleDollarSign, Clock, Crown, DollarSign, FileCheck, Filter, Flame, GraduationCap, Layers,
+  Phone, PlayCircle, Radio, RefreshCw, ShieldAlert, ShieldCheck, Sparkles,
   Target, TrendingDown, TrendingUp, Trophy, UserPlus, Users, Wallet, Zap,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
@@ -37,6 +37,9 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { getNextBestAction } from "@/lib/nextBestAction";
+import { priorityBadgeClasses } from "@/lib/priority";
 import { NextStepCard } from "@/components/dashboard/NextStepCard";
 import { RegionPeerCard, UpcomingChargebackCard } from "@/components/dashboard/AgentPeerAndChargebackCards";
 import { LapsesDrilldownModal } from "@/components/dashboard/LapsesDrilldownModal";
@@ -841,6 +844,9 @@ function AgencyCommandView() {
   const [customEnd, setCustomEnd] = useState(() => dateInputValue(new Date()));
   // PL-025: drilldown modal for the Lapses-30d KPI.
   const [lapsesOpen, setLapsesOpen] = useState(false);
+  // MP-255: Daily Review sheet + team filter for the executive dashboard.
+  const [dailyReviewOpen, setDailyReviewOpen] = useState(false);
+  const [teamFilter, setTeamFilter] = useState<string>("all");
   const periodBounds = useMemo(
     () => getAgencyPeriodBounds(period, customStart, customEnd),
     [period, customStart, customEnd],
@@ -1538,51 +1544,250 @@ function AgencyCommandView() {
     },
   });
 
+  // ── MP-255 · Agency Command executive rebuild ─────────────────────────
+  // Additional queries for the ExecutiveKpiStrip / TodayPriorityGrid /
+  // PipelineHealthCard / ProducerRiskBoard / ManagerAccountabilityTable.
+  // Every count reads a real column / view — no invented data.
+
+  // Manager list for the team selector — distinct manager_ids present in
+  // agents. Falls back gracefully if the column layout drifts.
+  const managersList = useQuery({
+    queryKey: ["mp255-managers-list"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const q: any = supabase;
+      const { data, error } = await q
+        .from("agents")
+        .select("id, display_name, manager_id")
+        .not("manager_id", "is", null)
+        .limit(1000);
+      if (error) return [] as Array<{ id: string; display_name: string | null }>;
+      const rows = (data ?? []) as Array<{ id: string; display_name: string | null; manager_id: string | null }>;
+      const managerIds = Array.from(new Set(rows.map((r) => r.manager_id).filter((v): v is string => !!v)));
+      if (managerIds.length === 0) return [] as Array<{ id: string; display_name: string | null }>;
+      const { data: mgrs } = await q.from("agents").select("id, display_name").in("id", managerIds).order("display_name", { ascending: true });
+      return (mgrs ?? []) as Array<{ id: string; display_name: string | null }>;
+    },
+  });
+
+  // TodayPriorityGrid counts — cheap head:true count queries.
+  const priorityCounts = useQuery({
+    queryKey: ["mp255-priority-counts"],
+    refetchInterval: 5 * 60_000,
+    staleTime: 4 * 60_000,
+    queryFn: async () => {
+      const [
+        hotLicensingRes,
+        ghosted30Res,
+        hotApplicantsRes,
+        noContactRes,
+        chargebacksRes,
+        producerRiskRes,
+      ] = await Promise.all([
+        supabase.from("v_hot_licensing_prospects" as any).select("application_id", { count: "exact", head: true }),
+        supabase.from("v_unlicensed_all" as any).select("id", { count: "exact", head: true }).is("assigned_va_id", null).gte("days_since_touch", 30),
+        supabase.from("applications" as any).select("id", { count: "exact", head: true }).is("terminated_at", null).is("contacted_at", null),
+        supabase.from("applications" as any).select("id", { count: "exact", head: true }).is("terminated_at", null).lt("next_action_due_at", new Date().toISOString()).not("next_action_due_at", "is", null),
+        supabase.from("v_chargebacks_30d" as any).select("*", { count: "exact", head: true }),
+        supabase.from("v_producer_trend_alert" as any).select("producer_id", { count: "exact", head: true }).eq("currently_dropping", true as any),
+      ]);
+      return {
+        hot_licensing: hotLicensingRes.count ?? 0,
+        unlicensed_ghosted_30: ghosted30Res.count ?? 0,
+        hot_applicants: hotApplicantsRes.count ?? 0,
+        overdue_follow_ups: noContactRes.count ?? 0,
+        chargebacks_30d: chargebacksRes.count ?? 0,
+        producer_risk: producerRiskRes.count ?? 0,
+      };
+    },
+  });
+
+  // 12-stage pipeline funnel (v_licensing_stage_counts + v_next_step_funnel_health).
+  const pipelineStages = useQuery({
+    queryKey: ["mp255-pipeline-stages"],
+    refetchInterval: 5 * 60_000,
+    staleTime: 4 * 60_000,
+    queryFn: async () => {
+      const [stagesRes, healthRes] = await Promise.all([
+        supabase.from("v_licensing_stage_counts" as any).select("stage, count"),
+        supabase.from("v_next_step_funnel_health" as any).select("stage_key, order_index, display_name, in_stage, stalled, median_days, avg_days, next_stage_count, conversion_to_next_pct").order("order_index", { ascending: true }),
+      ]);
+      const stages = (stagesRes.data ?? []) as unknown as Array<{ stage: string; count: number }>;
+      const health = (healthRes.data ?? []) as unknown as Array<{
+        stage_key: string; order_index: number; display_name: string; in_stage: number;
+        stalled: number; median_days: number | null; avg_days: number | null;
+        next_stage_count: number; conversion_to_next_pct: number | null;
+      }>;
+      return { stages, health };
+    },
+  });
+
+  // Producer risk board — v_producer_trend_alert (WoW ALP direction + reasons).
+  const producerRisk = useQuery({
+    queryKey: ["mp255-producer-risk"],
+    refetchInterval: 5 * 60_000,
+    staleTime: 4 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_producer_trend_alert" as any)
+        .select("producer_id, display_name, current_week_alp, current_week_deals, alp_1w_ago, alp_2w_ago, alp_3_weeks_ago, delta_pct, direction, currently_dropping")
+        .order("current_week_alp", { ascending: false })
+        .limit(50);
+      if (error) return [] as any[];
+      const rows = (data ?? []) as unknown as Array<{
+        producer_id: string;
+        display_name: string | null;
+        current_week_alp: number | string | null;
+        current_week_deals: number | null;
+        alp_1w_ago: number | string | null;
+        alp_2w_ago: number | string | null;
+        alp_3_weeks_ago: number | string | null;
+        delta_pct: number | null;
+        direction: string | null;
+        currently_dropping: boolean | null;
+      }>;
+      // Enrich with manager
+      const producerIds = rows.map((r) => r.producer_id).filter(Boolean);
+      const managerByProducer = new Map<string, string>();
+      if (producerIds.length > 0) {
+        const { data: agents } = await supabase
+          .from("agents")
+          .select("id, manager_id")
+          .in("id", producerIds);
+        const managerIds = Array.from(
+          new Set(((agents ?? []) as Array<{ id: string; manager_id: string | null }>).map((a) => a.manager_id).filter((v): v is string => !!v))
+        );
+        const nameById = new Map<string, string>();
+        if (managerIds.length > 0) {
+          const { data: mgrRows } = await supabase.from("agents").select("id, display_name").in("id", managerIds);
+          for (const m of (mgrRows ?? []) as Array<{ id: string; display_name: string | null }>) {
+            nameById.set(m.id, m.display_name ?? "—");
+          }
+        }
+        for (const a of (agents ?? []) as Array<{ id: string; manager_id: string | null }>) {
+          if (a.manager_id) managerByProducer.set(a.id, nameById.get(a.manager_id) ?? "—");
+        }
+      }
+      return rows.map((r) => ({ ...r, manager_name: managerByProducer.get(r.producer_id) ?? "Direct to Sam" }));
+    },
+  });
+
+  // Manager accountability — reads v_manager_hierarchy_mtd (team ALP + count).
+  const managerAccountability = useQuery({
+    queryKey: ["mp255-manager-accountability"],
+    refetchInterval: 5 * 60_000,
+    staleTime: 4 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_manager_hierarchy_mtd" as any)
+        .select("manager_id, manager_name, team_size, team_alp_mtd, team_deals_mtd, producing_team_mtd")
+        .order("team_alp_mtd", { ascending: false });
+      if (error) return [] as any[];
+      return (data ?? []) as unknown as Array<{
+        manager_id: string;
+        manager_name: string | null;
+        team_size: number | null;
+        team_alp_mtd: number | string | null;
+        team_deals_mtd: number | null;
+        producing_team_mtd: number | null;
+      }>;
+    },
+  });
+
   const leak = cfoLive.data;
   const apps = liveApps.data ?? [];
   const depth = monthDepth.data;
+  const priCounts = priorityCounts.data;
+  const stagesData = pipelineStages.data;
+  const riskRows = producerRisk.data ?? [];
+  const mgrRows = managerAccountability.data ?? [];
+
+  // Refresh handler — invalidate + refetch every visible query.
+  const refreshAll = () => {
+    ceo.refetch();
+    periodDeals.refetch();
+    periodDealsAllStatuses.refetch();
+    priorPeriodDeals.refetch();
+    tight.refetch();
+    summary.refetch();
+    cfoLive.refetch();
+    liveApps.refetch();
+    monthDepth.refetch();
+    priorityCounts.refetch();
+    pipelineStages.refetch();
+    producerRisk.refetch();
+    managerAccountability.refetch();
+    trend.refetch();
+    recentHires.refetch();
+    carrierMix.refetch();
+    funnel.refetch();
+    sourceRoi.refetch();
+  };
+
+  // Executive KPI strip — 6 tiles.
+  const activeAgentsCount = (c?.active_agents ?? tight.data?.active10d ?? 0) as number;
+  const policiesIssued = (periodDealsAllStatuses.data?.count ?? periodSummary.dealCount) as number;
+  const licensedMtd = tight.data?.licensedMtd ?? 0;
+  const activeApplicants = (c?.total_applications ?? apps.length) as number;
+  const atRiskProducers = priCounts?.producer_risk ?? 0;
+
+  // Bottleneck stage — worst conversion for pipeline health card.
+  const bottleneckStage = (stagesData?.health ?? [])
+    .filter((s) => s.conversion_to_next_pct !== null && s.conversion_to_next_pct !== undefined)
+    .sort((a, b) => (a.conversion_to_next_pct ?? 0) - (b.conversion_to_next_pct ?? 0))[0];
+
 
   return (
-    <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
-      {/* v13 Wave E (2026-06-10): killed the inline gradient +  +
-          glow shadow. Sam: "all that bullshit gradient/glow stuff looks
-          buggy." Restraint mirrors AgentLink — solid card + 1px border. */}
-      <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-sm">
-        <PageHeader
-          eyebrow="Agency · Owner Mode"
-          eyebrowIcon={<Crown className="h-3 w-3" />}
-          title="Agency Command"
-          subtitle={
-            <>
-              Live agency-wide production, pipeline, and team activity.
+    <div className="page-enter px-4 sm:px-6 pb-24 space-y-4">
+      {/* MP-255 · CommandHeader — compact executive header with Day/Week/Month/
+          Custom, Team filter, Refresh, and Start Daily Review CTA. Replaces
+          the oversized decorative hero band. */}
+      <div className="rounded-lg border border-slate-800 bg-slate-950 p-4 sm:p-5 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-[0.28em] font-bold text-teal-400 flex items-center gap-1.5">
+              <Crown className="h-3 w-3" /> Agency · Owner Mode
+            </p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-slate-100 leading-tight">Agency Command</h1>
+            <p className="mt-1 text-13 text-slate-400 leading-snug">
+              Live agency-wide pulse on production, recruiting, licensing, and activity.
               {c?.as_of && <> · As of {format(new Date(c.as_of), "MMM d, h:mm a")}</>}
-            </>
-          }
-          accent="primary"
-          actions={
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* WAVE A3 · period switcher moved into PageHeader actions
-                  to drop a full zone. KPIs/Trend/Leaderboard all key off this. */}
-              <div className="grid grid-cols-4 gap-0.5 rounded-md border border-border/60 bg-muted/30 p-0.5">
-                {AGENCY_PERIODS.map((option) => (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    size="sm"
-                    variant={period === option.value ? "default" : "ghost"}
-                    className="h-7 px-2 text-11"
-                    onClick={() => setPeriod(option.value)}
-                  >
-                    {option.label}
-                  </Button>
-                ))}
-              </div>
-              <Button asChild variant="outline" size="sm">
-                <Link to="/dashboard/command">CEO panel <ArrowRight className="h-4 w-4 ml-1.5" /></Link>
-              </Button>
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-4 gap-0.5 rounded-md border border-slate-700 bg-slate-800/60 p-0.5">
+              {AGENCY_PERIODS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={period === option.value ? "default" : "ghost"}
+                  className="h-7 px-2 text-11"
+                  onClick={() => setPeriod(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
             </div>
-          }
-        />
+            <select
+              value={teamFilter}
+              onChange={(e) => setTeamFilter(e.target.value)}
+              className="h-8 rounded-md border border-slate-700 bg-slate-800/60 text-slate-100 text-11 px-2"
+              aria-label="Team filter"
+            >
+              <option value="all">All teams</option>
+              {(managersList.data ?? []).map((m) => (
+                <option key={m.id} value={m.id}>{m.display_name ?? "—"}</option>
+              ))}
+            </select>
+            <Button variant="outline" size="sm" onClick={refreshAll} className="h-8">
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
+            </Button>
+            <Button size="sm" onClick={() => setDailyReviewOpen(true)} className="h-8 bg-teal-400 hover:bg-teal-500 text-slate-950 font-semibold">
+              <PlayCircle className="h-3.5 w-3.5 mr-1.5" /> Start Daily Review
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Custom-period date inputs appear only when 'custom' picked, as a
@@ -1596,17 +1801,132 @@ function AgencyCommandView() {
         </div>
       )}
 
-      {/* 2026-06-14 EVENING · GAME-BREAKING REBUILD (Sam: 'should look game breaking
-          · 10x better than AgentLink · sting simple · less is more · agents wanna
-          transfer TO this'). Replaced the v4 LEAKS+APPS bands with a 3-zone
-          composition:
-            §A · AGENCY HERO — premium gradient band with live big-number panel
-            §B · APPLICATION PIPELINE LANES — 3-col strip (uncontacted/course/licensed)
-                 with name chips · click-to-focus
-            §C · LEAKS · single-row glass strip · clickable to CFO
-      */}
+      {/* MP-255 · §2 ExecutiveKpiStrip — 6 tiles (Annual Premium, Active Agents,
+          Policies Issued, Licensed MTD, Active Applicants, At-Risk Producers).
+          Clicking a tile navigates to the drill-down surface. All numbers
+          source from live views — Sam's "no invented data" rule. */}
+      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        {(() => {
+          const tiles: Array<{
+            icon: any; label: string; value: string; sub: string; tone: string;
+            href: string; delta?: number | null;
+          }> = [
+            {
+              icon: DollarSign, label: "Annual Premium", value: fmtUsd(periodSummary.totalAp, true),
+              sub: `${periodBounds.label} · ${fmtNum(periodSummary.dealCount)} deals`,
+              tone: "text-amber-400 border-amber-500/50 bg-amber-500/10",
+              href: "/dashboard/legacy", delta: periodTrendPct,
+            },
+            {
+              icon: Users, label: "Active Agents", value: fmtNum(activeAgentsCount),
+              sub: `${fmtNum(tight.data?.active10d ?? 0)} active in 10d`,
+              tone: "text-teal-400 border-teal-500/50 bg-teal-500/10",
+              href: "/dashboard/team-hierarchy",
+            },
+            {
+              icon: FileCheck, label: "Policies Issued", value: fmtNum(policiesIssued),
+              sub: `${periodBounds.label}`,
+              tone: "text-sky-400 border-sky-500/50 bg-sky-500/10",
+              href: "/book-of-business",
+            },
+            {
+              icon: GraduationCap, label: "Licensed MTD", value: fmtNum(licensedMtd),
+              sub: `${fmtNum(tight.data?.contractedMtd ?? 0)} contracted`,
+              tone: "text-emerald-400 border-emerald-500/50 bg-emerald-500/10",
+              href: "/admin/recovery-queue",
+            },
+            {
+              icon: Briefcase, label: "Active Applicants", value: fmtNum(activeApplicants),
+              sub: `${fmtNum(depth?.apps_mtd ?? 0)} new MTD`,
+              tone: "text-sky-400 border-sky-500/50 bg-sky-500/10",
+              href: "/dashboard/applicants",
+            },
+            {
+              icon: TrendingDown, label: "At-Risk Producers", value: fmtNum(atRiskProducers),
+              sub: `${fmtNum((leak?.idle_active_agents ?? 0) as number)} idle 10d+`,
+              tone: "text-rose-500 border-rose-500/50 bg-rose-500/10",
+              href: "/admin/producer-trends",
+            },
+          ];
+          return tiles.map((t) => {
+            const Ic = t.icon;
+            const deltaLabel = t.delta != null && Number.isFinite(t.delta)
+              ? `${t.delta > 0 ? "+" : ""}${t.delta.toFixed(1)}% vs prior`
+              : null;
+            return (
+              <Link
+                key={t.label}
+                to={t.href}
+                className={`group rounded-lg border p-3 bg-slate-950 hover:bg-slate-800/60 transition-colors ${t.tone.split(" ").filter((c) => c.startsWith("border")).join(" ")}`}
+              >
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <p className="text-[10px] uppercase tracking-widest font-semibold text-slate-500 leading-tight">{t.label}</p>
+                  <span className={`rounded-md p-1 ring-1 ${t.tone}`}>
+                    <Ic className="h-3 w-3" />
+                  </span>
+                </div>
+                <p className={`text-[22px] leading-none font-black tabular-nums ${t.tone.split(" ").filter((c) => c.startsWith("text-")).join(" ")}`}>{t.value}</p>
+                <p className="mt-1 text-[10px] text-slate-400 leading-snug truncate">{t.sub}</p>
+                {deltaLabel && (
+                  <p className={`mt-0.5 text-[10px] tabular-nums ${t.delta! >= 0 ? "text-emerald-400" : "text-rose-500"}`}>{deltaLabel}</p>
+                )}
+              </Link>
+            );
+          });
+        })()}
+      </div>
 
-      {/* §A · AGENCY HERO ─────────────────────────────────────────────── */}
+      {/* MP-255 · §3 TodayPriorityGrid — 6 clickable priority cards. Every
+          count is a real query; empty states are honest, never invented. */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+        {(() => {
+          const cards: Array<{
+            title: string;
+            count: number;
+            reason: string;
+            href: string;
+            priorityKind: 'critical' | 'hot' | 'today' | 'watch' | 'low';
+            icon: any;
+          }> = [
+            { title: "License Push", count: priCounts?.hot_licensing ?? 0, reason: "Applicants ready for licensing push", href: "/admin/recovery-queue", priorityKind: 'critical', icon: GraduationCap },
+            { title: "Unlicensed Recovery", count: priCounts?.unlicensed_ghosted_30 ?? 0, reason: "Ghosted 30d+ with no VA owner", href: "/admin/unlicensed-all?filter=ghosted_30", priorityKind: 'hot', icon: AlertTriangle },
+            { title: "Producer Drop Risk", count: priCounts?.producer_risk ?? 0, reason: "Currently dropping WoW ALP", href: "/admin/producer-trends", priorityKind: 'hot', icon: TrendingDown },
+            { title: "Hot Applicants", count: priCounts?.hot_applicants ?? 0, reason: "New applicants with no contact logged", href: "/dashboard/applicants", priorityKind: 'today', icon: Flame },
+            { title: "Manager Follow-Ups", count: priCounts?.overdue_follow_ups ?? 0, reason: "Overdue next-action across pipeline", href: "/dashboard/applicants?filter=follow_up_due", priorityKind: 'watch', icon: Clock },
+            { title: "Chargeback Watch", count: priCounts?.chargebacks_30d ?? 0, reason: "Policies within 30d chargeback window", href: "/book-of-business", priorityKind: 'watch', icon: ShieldAlert },
+          ];
+          return cards.map((c) => {
+            const badge = priorityBadgeClasses(c.priorityKind);
+            const Ic = c.icon;
+            return (
+              <Link
+                key={c.title}
+                to={c.href}
+                className="group rounded-lg border border-slate-800 bg-slate-900 p-3 hover:bg-slate-800/60 transition-colors flex flex-col"
+              >
+                <div className={`h-1 w-8 rounded-full mb-2 ${badge.className.split(" ").filter((s) => s.startsWith("bg-")).join(" ")}`} />
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-widest font-bold text-slate-500">{c.title}</p>
+                    <p className="mt-1.5 text-2xl font-black tabular-nums text-slate-100">{fmtNum(c.count)}</p>
+                    <p className="mt-1 text-11 text-slate-400 leading-snug">{c.reason}</p>
+                  </div>
+                  <span className={`rounded-md p-1.5 ring-1 ${badge.className}`}>
+                    <Ic className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+                <p className="mt-2 pt-2 border-t border-slate-800/60 text-[10px] text-slate-500 font-semibold flex items-center gap-1 group-hover:text-teal-400">
+                  Open <ArrowRight className="h-3 w-3" />
+                </p>
+              </Link>
+            );
+          });
+        })()}
+      </div>
+
+      {/* MP-255 · retired: oversized decorative HERO band. Executive KPI strip
+          above owns the 6 canonical KPIs; the gradient hero was scope debt. */}
+      <div className="hidden">
       <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_64px_-12px_hsl(168_70%_45%/0.35)]">
         {/* glow accents */}
         <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
@@ -1711,10 +2031,11 @@ function AgencyCommandView() {
           </div>
         </div>
       </div>
+      </div>{/* /MP-255 retired hero wrapper */}
 
-      {/* 2026-06-15 v6.6 · PULSE GROUP · 4 charts directly under the agency hero.
-          Sam: "WoW chart I like a lot · put hire pace state production
-          commission projected in same group right under this month annual AP." */}
+      {/* MP-255 · §4 ProductionSnapshotGrid — existing pulse group + soft-producer
+          alert, wrapped as the production snapshot per Sam's brief. Cards
+          retain their production truth-sourcing. */}
       <DashboardPulseGroup />
 
       {/* PL-MP242 cull 2026-07-05: LICENSED RECRUIT BANK (AgedLeadsPanel)
@@ -1818,6 +2139,61 @@ function AgencyCommandView() {
           </div>
         );
       })()}
+
+      {/* MP-255 · §5 PipelineHealthCard — full 12-stage funnel from
+          v_next_step_funnel_health with per-stage in_stage / stalled / median
+          days-in-stage / conversion-to-next %. Worst-conversion stage flagged
+          amber as the bottleneck. Data-driven — no invented stages. */}
+      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 sm:p-5">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-teal-400" />
+            <h3 className="text-14 font-bold text-slate-100">Pipeline Health · 12-Stage Funnel</h3>
+          </div>
+          {bottleneckStage && (
+            <Badge variant="outline" className="text-11 border-amber-500/50 bg-[rgba(245,158,11,0.08)] text-amber-400">
+              Bottleneck: {bottleneckStage.display_name} · {fmtPct(bottleneckStage.conversion_to_next_pct)} conversion
+            </Badge>
+          )}
+        </div>
+        {pipelineStages.isLoading ? (
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 lg:grid-cols-6">
+            {Array.from({ length: 12 }).map((_, i) => /* stable-key-allow:skeleton-loop */ <Skeleton key={i} className="h-24 w-full" />)}
+          </div>
+        ) : !(stagesData?.health?.length) ? (
+          <EmptyState
+            icon={<Layers className="h-6 w-6" />}
+            title="Funnel view unavailable"
+            description="v_next_step_funnel_health returned no rows. Confirm the view was deployed by bot-sql."
+          />
+        ) : (
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+            {stagesData.health.map((s) => {
+              const isBottleneck = bottleneckStage?.stage_key === s.stage_key;
+              const conv = s.conversion_to_next_pct;
+              const median = s.median_days;
+              return (
+                <div
+                  key={s.stage_key}
+                  className={`rounded-lg border p-3 transition-colors ${isBottleneck ? "border-amber-500/50 bg-amber-500/10" : "border-slate-800 bg-slate-950 hover:bg-slate-800/60"}`}
+                >
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-slate-500 truncate">{s.display_name}</p>
+                  <p className={`mt-1 text-2xl font-black tabular-nums ${isBottleneck ? "text-amber-400" : "text-slate-100"}`}>{fmtNum(s.in_stage)}</p>
+                  <div className="mt-1 flex items-center gap-1 text-[10px] tabular-nums">
+                    {conv !== null && conv !== undefined && (
+                      <span className={isBottleneck ? "text-amber-400" : "text-emerald-400"}>{fmtPct(conv)} →</span>
+                    )}
+                    {s.stalled > 0 && <span className="text-rose-500">{fmtNum(s.stalled)} stall</span>}
+                  </div>
+                  <p className="mt-0.5 text-[10px] text-slate-400 tabular-nums">
+                    {median !== null && median !== undefined ? `${median}d median` : "—"}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* §C · LEAKS · PREMIUM GLASS BAND (Sam: 'make leaks way better, way more appealing, more understandable') */}
       <div className="relative overflow-hidden rounded-3xl border border-rose-500/25 bg-gradient-to-br from-slate-950 via-rose-950/40 to-slate-950 text-white shadow-[0_0_48px_-12px_hsl(0_70%_50%/0.25)]">
@@ -2228,6 +2604,204 @@ function AgencyCommandView() {
       */}
       <ExtendedParityPanels />
 
+      {/* MP-255 · §6 ProducerRiskBoard — table replacing heavy red panels.
+          Every row: producer, manager, risk type, current ALP, 3-week trend,
+          last contact placeholder, Next Best Action, quick actions. Reads
+          v_producer_trend_alert. */}
+      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 sm:p-5">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <TrendingDown className="h-4 w-4 text-rose-500" />
+            <h3 className="text-14 font-bold text-slate-100">Producer Risk Board</h3>
+            <Badge variant="outline" className="text-11 border-rose-500/50 bg-rose-500/10 text-rose-500">
+              {fmtNum(riskRows.filter((r) => r.currently_dropping).length)} dropping
+            </Badge>
+          </div>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/admin/producer-trends" className="text-11">Full trends <ArrowRight className="h-3 w-3 ml-1" /></Link>
+          </Button>
+        </div>
+        {producerRisk.isLoading ? (
+          <div className="space-y-1.5">{Array.from({ length: 6 }).map((_, i) => /* stable-key-allow:skeleton-loop */ <Skeleton key={i} className="h-8 w-full" />)}</div>
+        ) : riskRows.length === 0 ? (
+          <EmptyState
+            icon={<TrendingDown className="h-6 w-6" />}
+            title="No producer risk detected"
+            description="v_producer_trend_alert returned zero rows."
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-12">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-800/60">
+                  <th className="text-left font-semibold py-2 px-2">Producer</th>
+                  <th className="text-left font-semibold py-2 px-2 hidden sm:table-cell">Manager</th>
+                  <th className="text-left font-semibold py-2 px-2">Risk</th>
+                  <th className="text-right font-semibold py-2 px-2">Current ALP</th>
+                  <th className="text-right font-semibold py-2 px-2 hidden md:table-cell">3-Wk Trend</th>
+                  <th className="text-left font-semibold py-2 px-2 hidden lg:table-cell">Next Best Action</th>
+                  <th className="text-right font-semibold py-2 px-2">Open</th>
+                </tr>
+              </thead>
+              <tbody>
+                {riskRows.slice(0, 20).map((r) => {
+                  const currentAlp = Number(r.current_week_alp ?? 0);
+                  const alp1 = Number(r.alp_1w_ago ?? 0);
+                  const alp2 = Number(r.alp_2w_ago ?? 0);
+                  const alp3 = Number(r.alp_3_weeks_ago ?? 0);
+                  const dropped = r.currently_dropping ?? false;
+                  const noAlp = currentAlp === 0 && alp1 === 0;
+                  const nba = getNextBestAction({
+                    kind: 'producer_risk',
+                    dropped_3_weeks: dropped,
+                    down_this_week: r.direction === 'down',
+                    no_alp_30_days: noAlp,
+                    never_activated_60_days: false,
+                    no_recent_contact: false,
+                  });
+                  const badge = priorityBadgeClasses(nba.priority);
+                  const riskLabel = dropped ? "3-week drop" : (r.direction === 'down' ? "Down WoW" : (noAlp ? "No ALP" : "Watch"));
+                  const trendMax = Math.max(alp3, alp2, alp1, currentAlp, 1);
+                  return (
+                    <tr key={r.producer_id} className="border-b border-slate-800/40 hover:bg-slate-800/60">
+                      <td className="py-2 px-2">
+                        <p className="font-semibold text-slate-100 truncate max-w-[10rem]">{r.display_name ?? "—"}</p>
+                      </td>
+                      <td className="py-2 px-2 hidden sm:table-cell text-slate-400 truncate max-w-[8rem]">{r.manager_name}</td>
+                      <td className="py-2 px-2">
+                        <span className={`inline-block text-[10px] font-bold rounded-md px-1.5 py-0.5 ring-1 ${badge.className}`}>
+                          {riskLabel}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 text-right font-bold tabular-nums text-slate-100">{fmtUsd(currentAlp, true)}</td>
+                      <td className="py-2 px-2 hidden md:table-cell">
+                        <div className="flex items-end justify-end gap-0.5 h-6">
+                          {[alp3, alp2, alp1, currentAlp].map((v, i) => (
+                            <div
+                              // stable-key-allow:fixed-4-bar-sparkline
+                              key={i}
+                              className={`w-1.5 rounded-sm ${i === 3 ? (dropped ? "bg-rose-500" : "bg-teal-400") : "bg-slate-500"}`}
+                              style={{ height: `${Math.max(2, (v / trendMax) * 100)}%` }}
+                              title={`Week ${['-3','-2','-1','now'][i]}: ${fmtUsd(v, true)}`}
+                            />
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-2 px-2 hidden lg:table-cell text-slate-400 truncate max-w-[14rem]">{nba.action}</td>
+                      <td className="py-2 px-2 text-right">
+                        <Button asChild variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]">
+                          <Link to={`/dashboard/agents/${r.producer_id}`}>Open</Link>
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* MP-255 · §7 LeaderboardCard preview — top 5 producers this period.
+          Compact rows only; the full leaderboard sits at /leaderboard. */}
+      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 sm:p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-amber-400" />
+            <h3 className="text-14 font-bold text-slate-100">Leaderboard · Top 5 · {periodBounds.label}</h3>
+          </div>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/leaderboard" className="text-11">Full leaderboard <ArrowRight className="h-3 w-3 ml-1" /></Link>
+          </Button>
+        </div>
+        {periodSummary.producers.length === 0 ? (
+          <p className="text-12 text-slate-400">No production in {periodBounds.label.toLowerCase()} yet.</p>
+        ) : (
+          <ul className="space-y-1">
+            {periodSummary.producers.slice(0, 5).map((a, i) => (
+              <li key={a.agent_id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-800/60">
+                <span className={`h-6 w-6 rounded-md text-[11px] font-black flex items-center justify-center shrink-0 ${
+                  i === 0 ? "bg-amber-500/20 text-amber-400 border border-amber-500/50"
+                    : i === 1 ? "bg-slate-400/20 text-slate-400"
+                    : i === 2 ? "bg-amber-500/10 text-amber-400"
+                    : "bg-white/5 text-slate-500"
+                }`}>
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-13 font-semibold text-slate-100 truncate">{a.display_name}</p>
+                  <p className="text-[10px] text-slate-500">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
+                </div>
+                <span className="text-13 font-bold tabular-nums text-emerald-400">{fmtUsd(a.ap, true)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* MP-255 · §8 ManagerAccountabilityTable — team roll-up with placeholders
+          for activity columns that require manager_activity_daily. */}
+      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 sm:p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-sky-400" />
+            <h3 className="text-14 font-bold text-slate-100">Manager Accountability</h3>
+          </div>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/dashboard/managers" className="text-11">Full board <ArrowRight className="h-3 w-3 ml-1" /></Link>
+          </Button>
+        </div>
+        {managerAccountability.isLoading ? (
+          <div className="space-y-1.5">{Array.from({ length: 4 }).map((_, i) => /* stable-key-allow:skeleton-loop */ <Skeleton key={i} className="h-8 w-full" />)}</div>
+        ) : mgrRows.length === 0 ? (
+          <EmptyState
+            icon={<Users className="h-6 w-6" />}
+            title="Manager roll-up unavailable"
+            description="v_manager_hierarchy_mtd returned no rows."
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-12">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-800/60">
+                  <th className="text-left font-semibold py-2 px-2">Manager</th>
+                  <th className="text-right font-semibold py-2 px-2">Team</th>
+                  <th className="text-right font-semibold py-2 px-2 hidden sm:table-cell" title="Requires manager_activity_daily view">Calls</th>
+                  <th className="text-right font-semibold py-2 px-2 hidden sm:table-cell" title="Requires manager_activity_daily view">Follow-ups</th>
+                  <th className="text-right font-semibold py-2 px-2 hidden md:table-cell" title="Requires manager_activity_daily view">Licenses pushed</th>
+                  <th className="text-right font-semibold py-2 px-2">Producers</th>
+                  <th className="text-right font-semibold py-2 px-2">ALP · MTD</th>
+                  <th className="text-right font-semibold py-2 px-2 hidden lg:table-cell">At-risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mgrRows.slice(0, 12).map((m) => {
+                  const teamAlp = Number(m.team_alp_mtd ?? 0);
+                  const atRiskInTeam = riskRows.filter((r) => r.currently_dropping && r.manager_name === (m.manager_name ?? "")).length;
+                  return (
+                    <tr key={m.manager_id} className="border-b border-slate-800/40 hover:bg-slate-800/60">
+                      <td className="py-2 px-2 font-semibold text-slate-100 truncate max-w-[12rem]">{m.manager_name ?? "—"}</td>
+                      <td className="py-2 px-2 text-right tabular-nums text-slate-400">{fmtNum(m.team_size ?? 0)}</td>
+                      <td className="py-2 px-2 text-right tabular-nums text-slate-500 hidden sm:table-cell" title="Requires manager_activity_daily view">—</td>
+                      <td className="py-2 px-2 text-right tabular-nums text-slate-500 hidden sm:table-cell" title="Requires manager_activity_daily view">—</td>
+                      <td className="py-2 px-2 text-right tabular-nums text-slate-500 hidden md:table-cell" title="Requires manager_activity_daily view">—</td>
+                      <td className="py-2 px-2 text-right tabular-nums text-slate-100">{fmtNum(m.producing_team_mtd ?? 0)}</td>
+                      <td className="py-2 px-2 text-right font-bold tabular-nums text-emerald-400">{fmtUsd(teamAlp, true)}</td>
+                      <td className="py-2 px-2 text-right tabular-nums hidden lg:table-cell">
+                        <span className={atRiskInTeam > 0 ? "text-rose-500 font-bold" : "text-slate-500"}>{fmtNum(atRiskInTeam)}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="mt-2 text-[10px] text-slate-500">
+              Calls / Follow-ups / Licenses-pushed columns require manager_activity_daily view (deferred).
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* PL-MP242 cull 2026-07-05: AGENCY HEALTH · 30d card removed per Sam
           directive. QuickAction footer band retained; grid collapsed from
           2-col (health + actions) to single-col (actions only). Lapses drill
@@ -2243,6 +2817,105 @@ function AgencyCommandView() {
       </div>
 
       <LapsesDrilldownModal open={lapsesOpen} onOpenChange={setLapsesOpen} />
+
+      {/* MP-255 · §9 DailyReviewDrawer — 7-step walkthrough opened by the
+          "Start Daily Review" CTA in the CommandHeader. Each step surfaces
+          the top 3 records + a Handle-now link so Sam can execute in place. */}
+      <Sheet open={dailyReviewOpen} onOpenChange={setDailyReviewOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto bg-slate-950 border-l border-slate-700">
+          <SheetHeader>
+            <SheetTitle className="text-slate-100">Daily Review</SheetTitle>
+            <SheetDescription className="text-slate-400">
+              7-step walkthrough of today's agency priorities. Handle each in order.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-3">
+            {(() => {
+              const uncontactedApps = apps.filter((a) => !a.contacted_at).slice(0, 3);
+              const steps: Array<{
+                title: string;
+                metric: string;
+                href: string;
+                bullets: Array<{ label: string; sub?: string }>;
+              }> = [
+                {
+                  title: "1. Production snapshot",
+                  metric: `${fmtUsd(periodSummary.totalAp, true)} · ${fmtNum(periodSummary.dealCount)} deals`,
+                  href: "/dashboard/legacy",
+                  bullets: periodSummary.producers.slice(0, 3).map((p) => ({ label: p.display_name, sub: `${fmtUsd(p.ap, true)} · ${fmtNum(p.deals)} deals` })),
+                },
+                {
+                  title: "2. Licensing bottlenecks",
+                  metric: bottleneckStage ? `Bottleneck: ${bottleneckStage.display_name} (${fmtPct(bottleneckStage.conversion_to_next_pct)})` : "—",
+                  href: "/admin/recovery-queue",
+                  bullets: (stagesData?.health ?? []).slice(0, 3).map((s) => ({ label: s.display_name, sub: `${fmtNum(s.in_stage)} in stage · ${fmtNum(s.stalled)} stalled` })),
+                },
+                {
+                  title: "3. Applicant follow-ups",
+                  metric: `${fmtNum(priCounts?.hot_applicants ?? 0)} hot · ${fmtNum(priCounts?.overdue_follow_ups ?? 0)} overdue`,
+                  href: "/dashboard/applicants",
+                  bullets: uncontactedApps.map((a) => ({ label: [a.first_name, a.last_name].filter(Boolean).join(" ") || "—", sub: a.state ?? undefined })),
+                },
+                {
+                  title: "4. Unlicensed recovery",
+                  metric: `${fmtNum(priCounts?.unlicensed_ghosted_30 ?? 0)} ghosted 30d+`,
+                  href: "/admin/unlicensed-all?filter=ghosted_30",
+                  bullets: [{ label: "Ghosted 30d+ with no VA owner", sub: "Sweep + reassign" }],
+                },
+                {
+                  title: "5. Producer risk",
+                  metric: `${fmtNum(riskRows.filter((r) => r.currently_dropping).length)} dropping`,
+                  href: "/admin/producer-trends",
+                  bullets: riskRows.filter((r) => r.currently_dropping).slice(0, 3).map((r) => ({ label: r.display_name ?? "—", sub: `${fmtUsd(Number(r.current_week_alp ?? 0), true)} · ${r.direction}` })),
+                },
+                {
+                  title: "6. Manager accountability",
+                  metric: `${fmtNum(mgrRows.length)} managers tracked`,
+                  href: "/dashboard/managers",
+                  bullets: mgrRows.slice(0, 3).map((m) => ({ label: m.manager_name ?? "—", sub: `${fmtUsd(Number(m.team_alp_mtd ?? 0), true)} · ${fmtNum(m.team_size ?? 0)} team` })),
+                },
+                {
+                  title: "7. Final action summary",
+                  metric: "Ship 3 concrete actions today",
+                  href: "/dashboard/today",
+                  bullets: [
+                    { label: "Call top 3 hot applicants", sub: `${fmtNum(priCounts?.hot_applicants ?? 0)} queued` },
+                    { label: "Reassign ghosted unlicensed", sub: `${fmtNum(priCounts?.unlicensed_ghosted_30 ?? 0)} in bucket` },
+                    { label: "Push dropping producers", sub: `${fmtNum(riskRows.filter((r) => r.currently_dropping).length)} flagged` },
+                  ],
+                },
+              ];
+              return steps.map((step) => (
+                <div key={step.title} className="rounded-lg border border-slate-800 bg-slate-900 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-13 font-bold text-slate-100">{step.title}</p>
+                      <p className="text-11 text-slate-400 mt-0.5">{step.metric}</p>
+                    </div>
+                    <Button asChild variant="ghost" size="sm" className="h-7 text-[10px] text-teal-400">
+                      <Link to={step.href} onClick={() => setDailyReviewOpen(false)}>Handle now <ArrowRight className="h-3 w-3 ml-1" /></Link>
+                    </Button>
+                  </div>
+                  {step.bullets.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {step.bullets.map((b, i) => (
+                        // stable-key-allow:daily-review-bullet-static-list
+                        <li key={i} className="text-11 text-slate-400 flex items-start gap-2">
+                          <span className="text-teal-400">·</span>
+                          <span className="min-w-0">
+                            <span className="font-semibold text-slate-100">{b.label}</span>
+                            {b.sub && <span className="text-slate-500"> — {b.sub}</span>}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ));
+            })()}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

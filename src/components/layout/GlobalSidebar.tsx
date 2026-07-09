@@ -36,6 +36,7 @@ import {
   Plus,
   Search,
   Settings,
+  Sparkles,
   TrendingDown,
   TrendingUp,
   UserCog,
@@ -58,6 +59,7 @@ import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
+import { useUIStore } from "@/shared/store/uiStore";
 import { toast } from "sonner";
 
 interface GlobalSidebarProps {
@@ -98,6 +100,10 @@ export function GlobalSidebar({
   // up that I'm inside the CRM." Search results now open the AgentProfileDrawer
   // overlay instead of route-navigating to /agent/:id.
   const openAgentProfile = useAgentProfileDrawer((s) => s.openAgent);
+  // MP-254 (2026-07-08): Ask APEX button in sidebar footer drives the same
+  // panel that used to live as a bottom-right FAB (Sam directive: "Ask Apex
+  // button blocks important bottom-right content"). See uiStore.
+  const setAskApexOpen = useUIStore((s) => s.setAskApexOpen);
   const searchRef = useRef<HTMLDivElement>(null);
   const isTouch = useIsTouchDevice();
   const { playSound } = useSoundEffects();
@@ -347,45 +353,45 @@ export function GlobalSidebar({
   };
 
   const NavItemComponent = ({ item, isActive }: { item: NavItem; isActive: boolean }) => {
+    // MP-254 (2026-07-08): visuals aligned to apexTokens.
+    //   - active  = teal-500/12 bg + border-l-2 teal-400 + text teal-200
+    //   - special = gold border-l-2 (Add Agent, Command Center)
+    //   - default = muted secondary text, hover white/[0.04]
     const linkContent = (
       <Link
         to={item.href}
         onClick={() => { if (!isActive) playSound("click"); }}
         className={cn(
-          "flex items-center gap-3 px-3 py-2.5 transition-all duration-200 min-h-[44px] lg:min-h-[40px]",
+          "flex items-center gap-3 px-3 py-2 transition-colors duration-150 min-h-[40px] rounded-md",
           "touch-action-manipulation select-none group/nav",
           isActive
-            ? "text-amber-400 bg-white dark:bg-slate-900 border-l-[3px] border-amber-400 shadow-[inset_0_0_20px_hsl(168_80%_50%/0.08)]"
+            ? "text-teal-200 bg-teal-500/[0.12] border-l-2 border-teal-400"
             : item.special
-              ? "bg-white dark:bg-slate-900 text-amber-400 border border-amber-400/20 hover:from-amber-400/25 hover:border-amber-400/50 hover: rounded-lg mx-1"
-              : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04] hover:translate-x-0.5",
-          isCollapsed && "justify-center px-2",
+              ? "text-amber-400 border-l-2 border-amber-400 hover:bg-white/[0.04]"
+              : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]",
+          isCollapsed && "justify-center px-2 border-l-0",
         )}
         style={{ touchAction: "manipulation" }}
       >
         <item.icon
           className={cn(
-            "h-[18px] w-[18px] flex-shrink-0 transition-base",
+            "h-4 w-4 flex-shrink-0",
             item.special && !isActive && "text-amber-400",
-            isCollapsed && "group-hover/nav:scale-110",
+            isActive && "text-teal-300",
           )}
         />
         {!isCollapsed && (
           <span
             className={cn(
-              "font-semibold text-[13px] truncate tracking-wide",
-              item.special && !isActive && "font-bold",
+              "text-[13px] truncate max-w-[160px] tracking-wide",
+              item.special ? "font-semibold" : "font-medium",
             )}
-            style={{ fontFamily: "'Syne', sans-serif" }}
           >
             {item.label}
           </span>
         )}
-        {isActive && !isCollapsed && (
-          <ChevronRight className="h-4 w-4 ml-auto flex-shrink-0 text-amber-400" />
-        )}
         {item.special && !isActive && !isCollapsed && (
-          <span className="ml-auto h-2 w-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
+          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-amber-400 flex-shrink-0" />
         )}
       </Link>
     );
@@ -403,15 +409,17 @@ export function GlobalSidebar({
           "transition-all duration-150 ease-in-out",
           isFullscreen && "pointer-events-none opacity-0",
         )}
+        // MP-254 (2026-07-08): sidebar bg comes from apexTokens
+        // (MP-253 foundation). The Brand-Bible palette guard predates the
+        // apex-tokens rollout — this file is a deliberate token adopter.
         style={{
           width: sidebarWidth,
-          background:
-            "linear-gradient(180deg, hsl(222 47% 4% / 0.985) 0%, hsl(222 60% 2% / 0.99) 100%)",
-          backdropFilter: "blur(20px) saturate(140%)",
-          WebkitBackdropFilter: "blur(20px) saturate(140%)",
-          borderRight: "1px solid hsl(168 60% 50% / 0.15)",
-          boxShadow:
-            "inset -1px 0 0 hsl(255 100% 100% / 0.04), 4px 0 30px hsl(222 60% 0% / 0.5)",
+          // palette-allow:mp254-apex-sidebar-token-bg
+          background: "#060A10",
+          backdropFilter: "blur(14px) saturate(130%)",
+          WebkitBackdropFilter: "blur(14px) saturate(130%)",
+          borderRight: "1px solid rgba(255,255,255,0.06)",
+          boxShadow: "inset -1px 0 0 rgba(255,255,255,0.03)",
         }}
       >
         <div className="flex flex-col h-full">
@@ -634,14 +642,15 @@ export function GlobalSidebar({
               return (
                 <div key={section.label}>
                   {!isCollapsed && (
+                    // MP-254 · section header: 10px uppercase tracking-[0.15em] muted
                     collapsible ? (
                       <button
                         type="button"
                         onClick={() => toggleGroup(section.label)}
                         aria-expanded={!groupCollapsed}
                         aria-controls={`sidebar-group-${section.label}`}
-                        className="w-full flex items-center justify-between px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[3px] text-slate-700 hover:text-slate-400 transition-colors"
-                        style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, touchAction: "manipulation" }}
+                        className="w-full flex items-center justify-between px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500 hover:text-slate-400 transition-colors"
+                        style={{ touchAction: "manipulation" }}
                       >
                         <span>{section.label}</span>
                         <ChevronDown
@@ -652,10 +661,7 @@ export function GlobalSidebar({
                         />
                       </button>
                     ) : (
-                      <div
-                        className="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[3px] text-slate-700"
-                        style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700 }}
-                      >
+                      <div className="px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500">
                         {section.label}
                       </div>
                     )
@@ -679,7 +685,12 @@ export function GlobalSidebar({
                 </div>
               );
             })}
-            <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-6 bg-white dark:bg-slate-900" />
+            {/* MP-254: subtle fade at nav base — matches sidebar bg */}
+            {/* palette-allow:mp254-apex-sidebar-token-bg */}
+            <div
+              className="pointer-events-none sticky bottom-0 left-0 right-0 h-6"
+              style={{ background: "linear-gradient(180deg, rgba(6,10,16,0) 0%, #060A10 100%)" }}
+            />
           </nav>
 
           <div className="border-t border-slate-800 p-2">
@@ -717,6 +728,26 @@ export function GlobalSidebar({
               {!isCollapsed && <span className="text-sm text-slate-400">Theme</span>}
               <ThemeToggle />
             </div>
+
+            {/* MP-254 · Ask APEX docks in the sidebar footer (not a floating
+                FAB) so it never covers the bottom-right of any page. Gold
+                accent — special item per token spec. */}
+            <ConditionalTooltip label="Ask APEX">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setAskApexOpen(true)}
+                className={cn(
+                  "w-full mb-1 border-l-2 border-amber-400 text-amber-400 hover:bg-amber-400/10",
+                  isCollapsed ? "justify-center px-0" : "justify-start px-3",
+                )}
+                style={{ touchAction: "manipulation" }}
+                aria-label="Ask APEX"
+              >
+                <Sparkles className="h-4 w-4" />
+                {!isCollapsed && <span className="text-sm ml-2 font-semibold">Ask APEX</span>}
+              </Button>
+            </ConditionalTooltip>
 
             <ConditionalTooltip label={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}>
               <Button

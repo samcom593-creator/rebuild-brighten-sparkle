@@ -122,12 +122,19 @@ export function TopBar() {
   })();
 
   return (
+    // MP-254 (2026-07-08): AppShell TopBar — sticky top-0 z-40, h-14,
+    // backdrop-blur, bg #070A0F/80, border-b white/[0.06]. Slim, distinct
+    // from page content, no drop-shadow noise.
     <div
       className={cn(
-        "sticky top-0 z-20 hidden lg:flex items-center justify-between gap-4",
-        "px-4 sm:px-6 lg:px-8 py-2.5",
-        "bg-background/85  border-b border-border/60 shadow-sm",
+        "sticky top-0 z-40 hidden lg:flex items-center justify-between gap-4",
+        "h-14 px-4 sm:px-6 lg:px-8",
+        "backdrop-blur-md border-b",
       )}
+      style={{
+        background: "rgba(7,10,15,0.8)",
+        borderColor: "rgba(255,255,255,0.06)",
+      }}
     >
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 min-w-0">

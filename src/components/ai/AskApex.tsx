@@ -18,10 +18,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MessageSquare, X, Send, Sparkles } from "lucide-react";
+import { X, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { useUIStore } from "@/shared/store/uiStore";
 
 function fmtUsd(n: number, compact = false): string {
   const v = Number(n ?? 0);
@@ -45,7 +46,11 @@ const SUGGESTIONS = [
 ];
 
 export function AskApex() {
-  const [open, setOpen] = useState(false);
+  // MP-254 (2026-07-08): open state moved to uiStore so the sidebar
+  // "Ask APEX" button can drive the same panel. Bottom-right FAB removed —
+  // Sam directive: "Ask Apex button blocks important bottom-right content".
+  const open = useUIStore((s) => s.askApexOpen);
+  const setOpen = useUIStore((s) => s.setAskApexOpen);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -145,19 +150,10 @@ export function AskApex() {
     setInput("");
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-3 shadow-lg hover:bg-primary/90 transition-base"
-        aria-label="Open Ask Apex AI assistant"
-      >
-        <Sparkles className="h-4 w-4" />
-        <span className="text-13 font-semibold">Ask Apex</span>
-      </button>
-    );
-  }
+  // MP-254 (2026-07-08): FAB removed — Ask APEX is now opened from the
+  // sidebar footer (see GlobalSidebar). This component only renders the
+  // panel when open. Bottom-right no longer blocked.
+  if (!open) return null;
 
   return (
     <div className="fixed bottom-5 right-5 z-40 w-[360px] max-w-[calc(100vw-2rem)] h-[480px] max-h-[calc(100vh-2rem)] flex flex-col rounded-md border border-border bg-white dark:bg-slate-900 shadow-xl">

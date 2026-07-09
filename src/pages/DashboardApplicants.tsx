@@ -25,6 +25,13 @@ import {
   List,
   Copy,
   Sparkles,
+  Flame,
+  Bell,
+  GraduationCap,
+  Rocket,
+  ArrowRight,
+  X as XIcon,
+  Columns3,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { logger } from "@/shared/lib/logger";
@@ -70,6 +77,7 @@ import { KanbanBoard, type KanbanStage } from "@/components/pipeline/KanbanBoard
 import type { PipelineCardData } from "@/components/pipeline/PipelineCard";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 
 interface Application {
   id: string;
@@ -154,8 +162,14 @@ export default function DashboardApplicants() {
   const [terminateReason, setTerminateReason] = useState("");
   const [isTerminating, setIsTerminating] = useState(false);
 
-  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
-  
+  const [viewMode, setViewMode] = useState<"list" | "kanban" | "pipeline">("list");
+  const [metricFilter, setMetricFilter] = useState<string>("total");
+  const [duplicatesOnly, setDuplicatesOnly] = useState(false);
+  // Speed-to-Lead workflow
+  const [speedActive, setSpeedActive] = useState(false);
+  const [speedIndex, setSpeedIndex] = useState(0);
+  const [detailAppId, setDetailAppId] = useState<string | null>(null);
+
   const autoHealedRef = useRef(false);
   useEffect(() => {
     let cancelled = false;
@@ -701,6 +715,7 @@ export default function DashboardApplicants() {
     const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
     const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
     const matchesDuplicates = showDuplicates || !app.is_duplicate;
+    const matchesDuplicatesOnly = !duplicatesOnly || Boolean(app.is_duplicate);
 
     const matchesAgent = agentFilter === "all" || app.recruiter_id === agentFilter;
 
@@ -754,11 +769,11 @@ export default function DashboardApplicants() {
     }
 
     return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot &&
-      matchesDuplicates && matchesAgent && matchesUpline && matchesInterview &&
+      matchesDuplicates && matchesDuplicatesOnly && matchesAgent && matchesUpline && matchesInterview &&
       matchesNeedsFollowup && matchesStage && matchesContacted;
   }, [
     searchQuery, statusFilter, licenseFilter, myDirectsOnly, hotLeadsOnly, showDuplicates,
-    agentFilter, uplineFilter, interviewFilter, needsFollowupOnly,
+    duplicatesOnly, agentFilter, uplineFilter, interviewFilter, needsFollowupOnly,
     contactedParam, stageFilter, agentId, recruiterDirectory, interviewByAppId,
   ]);
 
@@ -811,6 +826,96 @@ export default function DashboardApplicants() {
     () => activeApplications.filter(app => app.is_duplicate).length,
     [activeApplications]
   );
+
+  const hotLeadsCount = useMemo(
+    () => activeApplications.filter(
+      app => (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm"
+    ).length,
+    [activeApplications]
+  );
+
+  // 2026-07-08 MP-256: Duplicate-review pairing — group by email or normalized phone digits.
+  const duplicatePairs = useMemo(() => {
+    if (!duplicatesOnly) return [] as Array<{ key: string; apps: Application[] }>;
+    const groups = new Map<string, Application[]>();
+    for (const a of activeApplications) {
+      if (!a.is_duplicate) continue;
+      const emailKey = a.email?.toLowerCase().trim() || "";
+      const phoneDigits = (a.phone || "").replace(/\D+/g, "").slice(-10);
+      const key = emailKey || (phoneDigits ? `p:${phoneDigits}` : `id:${a.id}`);
+      const bucket = groups.get(key) || [];
+      bucket.push(a);
+      groups.set(key, bucket);
+    }
+    return Array.from(groups.entries())
+      .filter(([, apps]) => apps.length >= 2)
+      .map(([key, apps]) => ({ key, apps }));
+  }, [duplicatesOnly, activeApplications]);
+
+  // 2026-07-08 MP-256: Speed-to-Lead queue — hot/new/follow-up-due-today sorted by priority signal count.
+  const speedQueue = useMemo(() => {
+    if (!speedActive) return [] as Application[];
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    const eligible = activeApplications.filter((app) => {
+      const isNew = !app.contacted_at && !app.terminated_at && !app.closed_at;
+      const isHot = app.ai_score_tier === "hot" || app.ai_score_tier === "warm";
+      const nextDue = (app as any).next_action_due_at as string | null | undefined;
+      const dueToday = nextDue ? new Date(nextDue) <= endOfToday : false;
+      return isNew || isHot || dueToday;
+    });
+    return eligible.sort((a, b) => {
+      const rank = (x: Application) =>
+        (x.ai_score_tier === "hot" ? 3 : x.ai_score_tier === "warm" ? 2 : 0) +
+        (!x.contacted_at ? 2 : 0);
+      return rank(b) - rank(a);
+    });
+  }, [speedActive, activeApplications]);
+
+  useEffect(() => {
+    if (!speedActive) return;
+    if (speedQueue.length === 0) {
+      toast.info("Speed-to-Lead queue is empty — nothing to work.");
+      setSpeedActive(false);
+      return;
+    }
+    const clamped = Math.min(speedIndex, speedQueue.length - 1);
+    setDetailAppId(speedQueue[clamped]?.id ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speedActive, speedIndex, speedQueue.length]);
+
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ key: string; label: string; clear: () => void }> = [];
+    if (searchQuery) chips.push({ key: "search", label: `Search: "${searchQuery}"`, clear: () => setSearchQuery("") });
+    if (statusFilter !== "all") chips.push({ key: "status", label: `Status: ${statusFilter}`, clear: () => setStatusFilter("all") });
+    if (licenseFilter !== "all") chips.push({ key: "license", label: `License: ${licenseFilter}`, clear: () => setLicenseFilter("all") });
+    if (myDirectsOnly) chips.push({ key: "directs", label: "My directs only", clear: () => setMyDirectsOnly(false) });
+    if (hotLeadsOnly) chips.push({ key: "hot", label: "Hot leads only", clear: () => setHotLeadsOnly(false) });
+    if (duplicatesOnly) chips.push({ key: "dups", label: "Duplicates only", clear: () => setDuplicatesOnly(false) });
+    if (needsFollowupOnly) chips.push({ key: "needs", label: "Needs follow-up", clear: () => setNeedsFollowupOnly(false) });
+    if (agentFilter !== "all") chips.push({ key: "agent", label: `Agent: ${recruiterDirectory.get(agentFilter)?.name || agentFilter}`, clear: () => setAgentFilter("all") });
+    if (uplineFilter !== "all") chips.push({ key: "upline", label: `Upline: ${uplineNames.get(uplineFilter) || uplineFilter}`, clear: () => setUplineFilter("all") });
+    if (interviewFilter !== "all") chips.push({ key: "interview", label: `Interview: ${interviewFilter}`, clear: () => setInterviewFilter("all") });
+    return chips;
+  }, [
+    searchQuery, statusFilter, licenseFilter, myDirectsOnly, hotLeadsOnly, duplicatesOnly,
+    needsFollowupOnly, agentFilter, uplineFilter, interviewFilter, recruiterDirectory, uplineNames,
+  ]);
+
+  const resetAllFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setLicenseFilter("all");
+    setMyDirectsOnly(false);
+    setHotLeadsOnly(false);
+    setDuplicatesOnly(false);
+    setNeedsFollowupOnly(false);
+    setAgentFilter("all");
+    setUplineFilter("all");
+    setInterviewFilter("all");
+    setMetricFilter("total");
+    setShowDuplicates(true);
+  };
 
   const counterTotal = statusFilter === "terminated" ? terminatedApplications.length : activeApplications.length;
   const counterLabel = statusFilter === "terminated" ? "terminated applications" : "active applications";
@@ -892,29 +997,69 @@ export default function DashboardApplicants() {
             <LayoutGrid className="h-3.5 w-3.5" />
             Kanban
           </Button>
+          <Button variant={viewMode === "pipeline" ? "default" : "ghost"} size="sm" className="h-7 px-2" onClick={() => setViewMode("pipeline")}>
+            <Columns3 className="h-3.5 w-3.5" />
+            Pipeline
+          </Button>
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-5">
+      {/* 2026-07-08 MP-256: 8-card applicant metric grid — each card is a click-filter. */}
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
         {[
-          { label: "Total Active", value: totalLeads, filter: "all" },
-          { label: "In Funnel", value: inFunnel, filter: "in_funnel" },
-          { label: "Course bought", value: coursePurchased, filter: "course_bought" },
-          { label: "Hired", value: hired, filter: "hired" },
-          { label: "Rejected", value: rejected, filter: "rejected" },
-        ].map((stat) => (
-          <button
-            key={stat.label}
-            onClick={() => setStatusFilter(stat.filter)}
-            className={cn(
-              "rounded-lg border bg-card px-3 py-2 text-left transition-colors hover:bg-muted/70",
-              statusFilter === stat.filter && "border-primary bg-primary/10"
-            )}
-          >
-            <span className="block text-[11px] font-medium text-muted-foreground">{stat.label}</span>
-            <span className="text-lg font-semibold tabular-nums">{stat.value.toLocaleString()}</span>
-          </button>
-        ))}
+          { key: "total", label: "Total Active", value: totalLeads, icon: Users, tone: "teal", meaning: "All active applicants" },
+          { key: "in_funnel", label: "In Funnel", value: inFunnel, icon: Filter, tone: "blue", meaning: "Not hired, not terminated" },
+          { key: "course_bought", label: "Course Bought", value: coursePurchased, icon: GraduationCap, tone: "amber", meaning: "Course purchased" },
+          { key: "hired", label: "Hired", value: hired, icon: UserCheck, tone: "green", meaning: "Marked hired" },
+          { key: "rejected", label: "Rejected", value: rejected, icon: XCircle, tone: "rose", meaning: "Rejected / disqualified" },
+          { key: "needs_followup", label: "Needs Follow-Up", value: needsFollowupCount, icon: Bell, tone: "gold", meaning: "48h+ no contact" },
+          { key: "hot", label: "Hot Leads", value: hotLeadsCount, icon: Flame, tone: "rose", meaning: "Hot + warm score" },
+          { key: "duplicates", label: "Duplicates", value: activeDuplicateCount, icon: Copy, tone: "purple", meaning: "Flagged is_duplicate" },
+        ].map((card) => {
+          const active = metricFilter === card.key;
+          const Icon = card.icon;
+          const toneMap: Record<string, string> = {
+            teal: "text-teal-300",
+            blue: "text-blue-300",
+            amber: "text-amber-300",
+            green: "text-emerald-300",
+            rose: "text-rose-300",
+            gold: "text-amber-200",
+            purple: "text-fuchsia-300",
+          };
+          return (
+            <button
+              key={card.key}
+              onClick={() => {
+                setMetricFilter(card.key);
+                // Reset dependent filters first
+                setStatusFilter("all");
+                setHotLeadsOnly(false);
+                setNeedsFollowupOnly(false);
+                setDuplicatesOnly(false);
+                if (card.key === "in_funnel") setStatusFilter("in_funnel");
+                else if (card.key === "course_bought") setStatusFilter("course_bought");
+                else if (card.key === "hired") setStatusFilter("hired");
+                else if (card.key === "rejected") setStatusFilter("rejected");
+                else if (card.key === "needs_followup") setNeedsFollowupOnly(true);
+                else if (card.key === "hot") setHotLeadsOnly(true);
+                else if (card.key === "duplicates") setDuplicatesOnly(true);
+              }}
+              title={card.meaning}
+              aria-label={`Filter to ${card.label} — ${card.meaning}`}
+              className={cn(
+                "flex items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-left transition-all hover:bg-muted/70",
+                active ? "ring-2 ring-teal-400/70 border-teal-500/40 bg-teal-500/[0.06]" : "border-border"
+              )}
+            >
+              <Icon className={cn("h-4 w-4 shrink-0", toneMap[card.tone] || "text-muted-foreground")} />
+              <div className="min-w-0 flex-1">
+                <div className="text-base font-semibold tabular-nums leading-tight">{card.value.toLocaleString()}</div>
+                <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide truncate">{card.label}</div>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -1053,7 +1198,87 @@ export default function DashboardApplicants() {
             Score All
           </Button>
         )}
+        <Button
+          variant={speedActive ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            if (speedActive) {
+              setSpeedActive(false);
+              setSpeedIndex(0);
+              setDetailAppId(null);
+            } else {
+              setSpeedIndex(0);
+              setSpeedActive(true);
+            }
+          }}
+          className={cn("gap-1.5 whitespace-nowrap", speedActive && "bg-teal-500 hover:bg-teal-400 text-slate-950")}
+          aria-label={speedActive ? "Exit Speed-to-Lead workflow" : "Start Speed-to-Lead workflow"}
+          title="Auto-focus hottest, newest, and follow-up-due-today applicants back-to-back"
+        >
+          <Rocket className="h-3.5 w-3.5" />
+          {speedActive ? "Exit Speed-to-Lead" : "Start Speed-to-Lead"}
+        </Button>
+        {activeFilterChips.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetAllFilters}
+            className="gap-1.5 whitespace-nowrap text-muted-foreground"
+            aria-label="Reset all filters"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset filters
+          </Button>
+        )}
       </div>
+
+      {activeFilterChips.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Active:</span>
+          {activeFilterChips.map((chip) => (
+            <button
+              key={chip.key}
+              onClick={chip.clear}
+              className="inline-flex items-center gap-1 rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-0.5 text-[11px] text-teal-200 hover:bg-teal-500/20"
+              aria-label={`Clear filter: ${chip.label}`}
+            >
+              {chip.label}
+              <XIcon className="h-3 w-3" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {duplicatesOnly && duplicatePairs.length > 0 && (
+        <DuplicateReviewPanel
+          pairs={duplicatePairs}
+          onMarkDup={async (id) => {
+            const { error } = await supabase
+              .from("applications")
+              .update({ is_duplicate: true })
+              .eq("id", id);
+            if (error) {
+              toast.error("Couldn't mark duplicate");
+              return;
+            }
+            toast.success("Marked as duplicate");
+            fetchApplications();
+          }}
+          onKeepBoth={async (aId, bId) => {
+            const { error } = await supabase
+              .from("applications")
+              .update({ is_duplicate: false })
+              .in("id", [aId, bId]);
+            if (error) {
+              toast.error("Couldn't unflag duplicates");
+              return;
+            }
+            toast.success("Both kept as-is");
+            fetchApplications();
+          }}
+          onOpen={(id) => setDetailAppId(id)}
+        />
+      )}
 
       {viewMode === "kanban" ? (
         <div>
@@ -1064,6 +1289,12 @@ export default function DashboardApplicants() {
             readOnly={!isAdmin && !isManager}
           />
         </div>
+      ) : viewMode === "pipeline" ? (
+        <PipelineView
+          applications={filteredApplications}
+          getStatus={getApplicationStatus}
+          onCardClick={(id) => setDetailAppId(id)}
+        />
       ) : (
         <div>
           <div className="min-w-0">
@@ -1610,6 +1841,265 @@ export default function DashboardApplicants() {
       </Dialog>
 
       <LeadQualificationChat />
+
+      <ApplicationDetailSheet
+        open={!!detailAppId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailAppId(null);
+            // Do not auto-exit Speed-to-Lead — Sam presses Next / Skip.
+          }
+        }}
+        applicationId={detailAppId ?? undefined}
+        agentId={agentId ?? undefined}
+        onRefresh={fetchApplications}
+      />
+
+      {speedActive && speedQueue.length > 0 && (
+        <SpeedToLeadBar
+          index={speedIndex}
+          total={speedQueue.length}
+          current={speedQueue[Math.min(speedIndex, speedQueue.length - 1)]}
+          onSkip={() => {
+            const next = speedIndex + 1;
+            if (next >= speedQueue.length) {
+              toast.success("Speed-to-Lead sweep complete.");
+              setSpeedActive(false);
+              setSpeedIndex(0);
+              setDetailAppId(null);
+              return;
+            }
+            setSpeedIndex(next);
+          }}
+          onExit={() => {
+            setSpeedActive(false);
+            setSpeedIndex(0);
+            setDetailAppId(null);
+          }}
+          onLogCall={async (app) => {
+            void logContactAttempt(app.id, "call");
+            window.location.href = `tel:${app.phone || ""}`;
+          }}
+          onLogText={async (app) => {
+            void logContactAttempt(app.id, "sms");
+            window.location.href = `sms:${app.phone || ""}`;
+          }}
+          onLogEmail={async (app) => {
+            void logContactAttempt(app.id, "email");
+            window.location.href = `mailto:${app.email || ""}`;
+          }}
+        />
+      )}
+      </div>
+    </div>
+  );
+}
+
+interface DuplicatePairsProps {
+  pairs: Array<{ key: string; apps: Application[] }>;
+  onMarkDup: (id: string) => void | Promise<void>;
+  onKeepBoth: (aId: string, bId: string) => void | Promise<void>;
+  onOpen: (id: string) => void;
+}
+
+function DuplicateReviewPanel({ pairs, onMarkDup, onKeepBoth, onOpen }: DuplicatePairsProps) {
+  return (
+    <div className="mb-4 rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/[0.04] p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Copy className="h-4 w-4 text-fuchsia-300" />
+          <span className="text-sm font-semibold">Duplicate review · {pairs.length.toLocaleString()} groups</span>
+        </div>
+        <span className="text-[11px] text-muted-foreground">Same email or last 10 phone digits</span>
+      </div>
+      <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+        {pairs.slice(0, 25).map(({ key, apps }) => {
+          const [left, right] = apps;
+          if (!left || !right) return null;
+          return (
+            <div key={key} className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-card p-2 md:grid-cols-[1fr_auto_1fr]">
+              <DupMiniCard app={left} onOpen={() => onOpen(left.id)} onMarkDup={() => onMarkDup(left.id)} />
+              <div className="flex flex-col items-center justify-center gap-1 self-center">
+                <Button size="sm" variant="outline" className="h-7 text-[11px] whitespace-nowrap" onClick={() => onKeepBoth(left.id, right.id)}>
+                  Keep both
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-[11px] whitespace-nowrap text-muted-foreground"
+                  disabled
+                  title="Merge coming next wave"
+                >
+                  Merge into left
+                </Button>
+                <span className="text-[9px] uppercase tracking-widest text-muted-foreground">vs</span>
+              </div>
+              <DupMiniCard app={right} onOpen={() => onOpen(right.id)} onMarkDup={() => onMarkDup(right.id)} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DupMiniCard({ app, onOpen, onMarkDup }: { app: Application; onOpen: () => void; onMarkDup: () => void }) {
+  return (
+    <div className="rounded-md border border-border bg-background/40 p-2">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          onClick={onOpen}
+          className="min-w-0 text-left"
+          aria-label={`Open ${app.first_name} ${app.last_name}`}
+        >
+          <div className="truncate text-sm font-medium">
+            {app.first_name} {app.last_name}
+          </div>
+          <div className="truncate text-[11px] text-muted-foreground">{app.email || "no email"} · {app.phone || "no phone"}</div>
+          <div className="text-[10px] text-muted-foreground">Applied {new Date(app.created_at).toLocaleDateString()}</div>
+        </button>
+        <Button size="sm" variant="outline" className="h-7 shrink-0 text-[11px]" onClick={onMarkDup} aria-label={`Mark ${app.first_name} as duplicate`}>
+          Mark dup
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface PipelineViewProps {
+  applications: Application[];
+  getStatus: (app: Application) => string;
+  onCardClick: (id: string) => void;
+}
+
+function PipelineView({ applications, getStatus, onCardClick }: PipelineViewProps) {
+  const columns: Array<{ key: string; label: string; match: (a: Application) => boolean }> = [
+    { key: "applied", label: "Applied", match: (a) => getStatus(a) === "new" },
+    { key: "contacted", label: "Contacted", match: (a) => getStatus(a) === "contacted" && !a.course_purchased_at },
+    { key: "interview", label: "Interview Scheduled", match: (a) => Boolean((a as any).interview_scheduled_at) },
+    { key: "course_bought", label: "Course Bought", match: (a) => Boolean(a.course_purchased_at) && a.license_progress !== "passed_test" && a.license_progress !== "waiting_on_license" && a.license_progress !== "licensed" },
+    { key: "course_started", label: "Course Started", match: (a) => Boolean((a as any).course_started_at) && a.license_progress !== "passed_test" && a.license_progress !== "licensed" },
+    { key: "course_complete", label: "Course Complete", match: (a) => a.license_progress === "passed_test" },
+    { key: "licensed", label: "Licensed", match: (a) => a.license_status === "licensed" && !a.contracted_at },
+    { key: "contracted", label: "Contracted", match: (a) => Boolean(a.contracted_at) && !(a as any).first_deal_at },
+    { key: "producing", label: "Producing", match: (a) => Boolean((a as any).first_deal_at) },
+    { key: "rejected", label: "Rejected", match: (a) => (a.status ?? "").toLowerCase() === "rejected" || (a.status ?? "").toLowerCase() === "disqualified" },
+  ];
+  const buckets = columns.map((c) => ({ ...c, apps: applications.filter(c.match) }));
+  return (
+    <div className="w-full overflow-x-auto pb-2">
+      <div className="flex gap-3 min-w-max">
+        {buckets.map((col) => (
+          <div key={col.key} className="w-64 shrink-0 rounded-xl border border-border bg-card/50">
+            <div className="sticky top-0 flex items-center justify-between rounded-t-xl bg-background/80 backdrop-blur px-3 py-2 border-b border-border">
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{col.label}</span>
+              <span className="text-[11px] tabular-nums text-foreground/80">{col.apps.length.toLocaleString()}</span>
+            </div>
+            <div className="max-h-[70vh] overflow-y-auto p-2 space-y-1.5">
+              {col.apps.slice(0, 100).map((a) => {
+                const endOfToday = new Date();
+                endOfToday.setHours(23, 59, 59, 999);
+                const nextDue = (a as any).next_action_due_at as string | null | undefined;
+                const nbaInput: NBAInput = {
+                  kind: 'applicant',
+                  is_new_applicant: !a.contacted_at && !a.terminated_at && !a.closed_at,
+                  is_hot_lead: a.ai_score_tier === 'hot',
+                  follow_up_due_today: !!(nextDue && new Date(nextDue) <= endOfToday),
+                  no_contact_logged: !((a as any).last_contacted_at),
+                  course_bought: !!a.course_purchased_at,
+                  duplicate_needs_review: !!a.is_duplicate,
+                  rejected: a.status === 'rejected',
+                  suppressed: !!a.terminated_at,
+                  license_progress: a.license_progress,
+                  license_status: a.license_status,
+                };
+                const nba = getNextBestAction(nbaInput);
+                const dot = priorityBadgeClasses(nba.priority)
+                  .className.split(' ')
+                  .filter((c) => c.startsWith('bg-'))
+                  .join(' ');
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => onCardClick(a.id)}
+                    className="w-full rounded-md border border-border bg-background/40 p-2 text-left hover:bg-muted/30 transition-colors"
+                    aria-label={`Open ${a.first_name} ${a.last_name}`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dot)} />
+                      <span className="min-w-0 truncate text-[13px] font-medium">
+                        {a.first_name} {a.last_name}
+                      </span>
+                    </div>
+                    <div className="mt-1 truncate text-[11px] text-muted-foreground">
+                      {a.phone || a.email || "—"}
+                    </div>
+                  </button>
+                );
+              })}
+              {col.apps.length === 0 && (
+                <div className="rounded-md border border-dashed border-border/60 p-3 text-center text-[11px] text-muted-foreground">
+                  Empty
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface SpeedToLeadBarProps {
+  index: number;
+  total: number;
+  current: Application | undefined;
+  onSkip: () => void;
+  onExit: () => void;
+  onLogCall: (app: Application) => void | Promise<void>;
+  onLogText: (app: Application) => void | Promise<void>;
+  onLogEmail: (app: Application) => void | Promise<void>;
+}
+
+function SpeedToLeadBar({ index, total, current, onSkip, onExit, onLogCall, onLogText, onLogEmail }: SpeedToLeadBarProps) {
+  if (!current) return null;
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-teal-500/30 bg-slate-950/95 backdrop-blur px-4 py-2 shadow-lg">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <Rocket className="h-4 w-4 text-teal-300 shrink-0" />
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-widest text-teal-200/80">
+              Speed-to-Lead · {index + 1} of {total}
+            </div>
+            <div className="truncate text-sm font-semibold">
+              {current.first_name} {current.last_name} · {current.phone || current.email || "no contact"}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {current.phone && (
+            <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => onLogCall(current)} aria-label={`Call ${current.first_name}`}>
+              <Phone className="h-3.5 w-3.5" /> Call
+            </Button>
+          )}
+          {current.phone && (
+            <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => onLogText(current)} aria-label={`Text ${current.first_name}`}>
+              <MessageCircle className="h-3.5 w-3.5" /> Text
+            </Button>
+          )}
+          {current.email && (
+            <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => onLogEmail(current)} aria-label={`Email ${current.first_name}`}>
+              <Mail className="h-3.5 w-3.5" /> Email
+            </Button>
+          )}
+          <Button size="sm" variant="default" className="h-8 gap-1.5 bg-teal-500 text-slate-950 hover:bg-teal-400" onClick={onSkip} aria-label="Next applicant">
+            Next <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-muted-foreground" onClick={onExit} aria-label="Exit Speed-to-Lead">
+            <XIcon className="h-3.5 w-3.5" /> Exit
+          </Button>
+        </div>
       </div>
     </div>
   );

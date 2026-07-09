@@ -39,6 +39,8 @@ import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { getBusinessDayKey, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
 import { getCloseRate, sumAnnualPremium } from "@/lib/metricTruth";
 import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
+import { getNextBestAction, type NBAInput } from "@/lib/nextBestAction";
+import { priorityBadgeClasses } from "@/lib/priority";
 
 /** Feature flag: hide destructive bulk delete by default. Set VITE_ENABLE_CRM_BULK_DELETE=true to enable. */
 const ENABLE_BULK_DELETE = import.meta.env.VITE_ENABLE_CRM_BULK_DELETE === "true";
@@ -172,7 +174,42 @@ const SECTIONS = [
   { key: "hasnt_sold", bucket: "licensed" as PipelineBucket, label: "Hasn't Sold Yet", icon: AlertTriangle, stages: [] as OnboardingStage[], accent: "border-l-rose-500", headerBg: "bg-rose-500/5", iconColor: "text-rose-500" },
   { key: "missing", bucket: "licensed" as PipelineBucket, label: "Missing / Silent", icon: Clock, stages: [] as OnboardingStage[], accent: "border-l-slate-500", headerBg: "bg-slate-500/5", iconColor: "text-slate-500" },
   { key: "inactive", bucket: "licensed" as PipelineBucket, label: "Inactive", icon: UserX, stages: ["inactive"] as OnboardingStage[], accent: "border-l-gray-500", headerBg: "bg-gray-500/5", iconColor: "text-gray-500" },
+  { key: "deactivated", bucket: "licensed" as PipelineBucket, label: "Deactivated", icon: UserX, stages: [] as OnboardingStage[], accent: "border-l-zinc-500", headerBg: "bg-zinc-500/5", iconColor: "text-zinc-500" },
 ];
+
+/** Compute the deterministic Next Best Action for an agent row. Producer-risk lane per MP-261 spec. */
+function computeAgentNBA(agent: {
+  onboardingStage: string;
+  agentLicenseStatus: string;
+  monthlyALP: number;
+  weeklyALP: number;
+  prevWeekALP: number;
+  lifetimeDeals: number;
+  lastContactedAt: string | null;
+  lastActivityAt: string | null;
+  daysSinceHire: number | null;
+  hasReadymodeCreds: boolean;
+  isDeactivated: boolean;
+  isInactive: boolean;
+}) {
+  const daysSinceContact = agent.lastContactedAt
+    ? (Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)
+    : null;
+  const input: NBAInput = {
+    kind: "producer_risk",
+    dropped_3_weeks: agent.weeklyALP === 0 && agent.prevWeekALP > 0,
+    never_activated_60_days:
+      agent.lifetimeDeals === 0 &&
+      agent.agentLicenseStatus === "licensed" &&
+      (agent.daysSinceHire ?? 0) >= 60,
+    no_alp_30_days: agent.monthlyALP === 0 && agent.agentLicenseStatus === "licensed",
+    down_this_week: agent.prevWeekALP > 0 && agent.weeklyALP < agent.prevWeekALP,
+    no_agentlink: !agent.hasReadymodeCreds && agent.agentLicenseStatus === "licensed",
+    no_recent_contact: daysSinceContact !== null && daysSinceContact >= 7,
+    suppressed: agent.isDeactivated || agent.isInactive,
+  };
+  return getNextBestAction(input);
+}
 
 function ContactActions({ agent, onViewApp, onEditLogin, onDeactivate, onAgentUpdate }: {
   agent: AgentCRM; onViewApp: (id: string) => void;
@@ -324,6 +361,7 @@ export default function DashboardCRM() {
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
   const [editLoginAgent, setEditLoginAgent] = useState<AgentCRM | null>(null);
   const [activeStageTab, setActiveStageTab] = useState<string>("meeting_attendance");
+  const [sortMode, setSortMode] = useState<string>("default");
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [meetingAttendance, setMeetingAttendance] = useState<Map<string, "present" | "absent" | "unmarked">>(new Map());
   const [searchParams] = useSearchParams();
@@ -808,10 +846,13 @@ export default function DashboardCRM() {
   };
 
   const activeAgents = useMemo(() => agents.filter(a => {
+    // "Deactivated" chip owns its own section — surface those agents regardless
+    // of the top-level toggle when that chip is selected.
+    if (activeStageTab === "deactivated") return true;
     if (!showDeactivated && a.isDeactivated) return false;
     if (!showInactive && a.isInactive) return false;
     return true;
-  }), [agents, showDeactivated, showInactive]);
+  }), [agents, showDeactivated, showInactive, activeStageTab]);
 
   const filteredAgents = useMemo(() => activeAgents.filter(a => {
     const matchesSearch = !searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()) || a.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -882,6 +923,7 @@ export default function DashboardCRM() {
       const bt = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : 0;
       return at - bt; // oldest first
     }));
+    map.set("deactivated", filteredAgents.filter(a => a.isDeactivated).sort((a, b) => a.name.localeCompare(b.name)));
     for (const sec of SECTIONS) {
       if (!map.has(sec.key)) {
         map.set(sec.key, filteredAgents.filter(a => sec.stages.includes(a.onboardingStage)).sort((a, b) => {
@@ -892,8 +934,31 @@ export default function DashboardCRM() {
         }));
       }
     }
+    if (sortMode !== "default") {
+      for (const [k, arr] of Array.from(map.entries())) {
+        const sorted = [...arr];
+        if (sortMode === "alp_desc") sorted.sort((a, b) => b.monthlyALP - a.monthlyALP);
+        else if (sortMode === "newest") sorted.sort((a, b) => {
+          const at = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return bt - at;
+        });
+        else if (sortMode === "stalest") sorted.sort((a, b) => {
+          const at = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : Number.MAX_SAFE_INTEGER;
+          const bt = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : Number.MAX_SAFE_INTEGER;
+          return at - bt;
+        });
+        else if (sortMode === "needs_followup") sorted.sort((a, b) => {
+          const at = a.lastContactedAt ? new Date(a.lastContactedAt).getTime() : 0;
+          const bt = b.lastContactedAt ? new Date(b.lastContactedAt).getTime() : 0;
+          return at - bt;
+        });
+        else if (sortMode === "by_stage") sorted.sort((a, b) => a.onboardingStage.localeCompare(b.onboardingStage));
+        map.set(k, sorted);
+      }
+    }
     return map;
-  }, [filteredAgents]);
+  }, [filteredAgents, sortMode]);
 
   const unlicensedAgents = useMemo(
     () => filteredAgents.filter(a => a.agentLicenseStatus !== "licensed"),
@@ -908,32 +973,49 @@ export default function DashboardCRM() {
     return dupeIds;
   }, [activeAgents]);
 
+  const nbaHead = <TableHead className="w-[180px]">Next Best Action</TableHead>;
   const getTableHeaders = (sectionKey: string) => {
     switch (sectionKey) {
       case "meeting_attendance":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Mentor</TableHead><TableHead className="w-[80px] text-center">Present</TableHead><TableHead className="w-[80px] text-center">Homework</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Month ALP</TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Mentor</TableHead><TableHead className="w-[80px] text-center">Present</TableHead><TableHead className="w-[80px] text-center">Homework</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Month ALP</TableHead>{nbaHead}<TableHead className="w-8" /></>);
       case "onboarding":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Status</TableHead><TableHead className="w-[120px]">Course Progress</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Status</TableHead><TableHead className="w-[120px]">Course Progress</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "pre_licensed":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">License Stage</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">License Stage</TableHead><TableHead className="w-[90px]">Contact</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "in_training":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Attendance</TableHead><TableHead className="w-[90px]">Days Training</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Attendance</TableHead><TableHead className="w-[90px]">Days Training</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "live":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Prev Week</TableHead><TableHead className="w-[60px] text-right">Deals</TableHead><TableHead className="w-[80px]">Attend.</TableHead><TableHead className="w-[80px]">Days Live</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Prev Week</TableHead><TableHead className="w-[60px] text-right">Deals</TableHead><TableHead className="w-[80px]">Attend.</TableHead><TableHead className="w-[80px]">Days Live</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "needs_followup":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Last Activity</TableHead><TableHead className="w-[80px]">Days Stale</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Last Activity</TableHead><TableHead className="w-[80px]">Days Stale</TableHead><TableHead className="w-[90px]">Contact</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "hasnt_sold":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">License</TableHead><TableHead className="w-[80px] text-right">Days since hire</TableHead><TableHead className="w-[80px] text-right">Lifetime deals</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">License</TableHead><TableHead className="w-[80px] text-right">Days since hire</TableHead><TableHead className="w-[80px] text-right">Lifetime deals</TableHead><TableHead className="w-[90px]">Contact</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "missing":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">Last activity</TableHead><TableHead className="w-[80px] text-right">Days silent</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">Last activity</TableHead><TableHead className="w-[80px] text-right">Days silent</TableHead><TableHead className="w-[90px]">Contact</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "applied":
       case "transfer":
       case "below_10k":
       case "inactive":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">Stage</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+      case "deactivated":
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">Stage</TableHead><TableHead className="w-[90px]">Contact</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       default:
         return null;
     }
+  };
+
+  const renderNBACell = (agent: AgentCRM) => {
+    const nba = computeAgentNBA(agent);
+    const badge = priorityBadgeClasses(nba.priority);
+    return (
+      <TableCell className="py-2">
+        <div className="flex flex-col gap-1 min-w-0 max-w-[200px]">
+          <Badge variant="outline" className={cn("text-[10px] w-fit", badge.className)}>
+            {badge.text}
+          </Badge>
+          <span className="text-[11px] font-medium truncate" title={nba.reason}>{nba.action}</span>
+        </div>
+      </TableCell>
+    );
   };
 
   // Section-specific table cells
@@ -1000,6 +1082,7 @@ export default function DashboardCRM() {
             </Badge>
           </TableCell>
           <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          {renderNBACell(agent)}
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
@@ -1015,6 +1098,7 @@ export default function DashboardCRM() {
               {daysInTraining !== null ? `${daysInTraining}d` : "—"}
             </Badge>
           </TableCell>
+          {renderNBACell(agent)}
           <TableCell className="py-3"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
@@ -1030,6 +1114,7 @@ export default function DashboardCRM() {
           <TableCell className="py-3">
             <Badge variant="outline" className="text-[10px] font-bold tabular-nums bg-muted/50">{daysLive !== null ? `${daysLive}d` : "—"}</Badge>
           </TableCell>
+          {renderNBACell(agent)}
           <TableCell className="py-3"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
@@ -1041,6 +1126,7 @@ export default function DashboardCRM() {
             <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-500 border-red-500/20">{daysSince !== null ? `${daysSince}d` : "∞"}</Badge>
           </TableCell>
           <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          {renderNBACell(agent)}
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
@@ -1058,6 +1144,7 @@ export default function DashboardCRM() {
             <Badge variant="outline" className="text-[10px] tabular-nums bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20">0</Badge>
           </TableCell>
           <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          {renderNBACell(agent)}
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
@@ -1073,19 +1160,22 @@ export default function DashboardCRM() {
             </Badge>
           </TableCell>
           <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          {renderNBACell(agent)}
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
       case "applied":
       case "transfer":
       case "below_10k":
-      case "inactive": {
+      case "inactive":
+      case "deactivated": {
         const stageLabel = agent.onboardingStage.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
         return (<>
           <TableCell className="py-2">
             <Badge variant="outline" className="text-[10px]">{stageLabel}</Badge>
           </TableCell>
           <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          {renderNBACell(agent)}
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
@@ -1118,7 +1208,7 @@ export default function DashboardCRM() {
           accent="cyan"
           eyebrow="Team"
           title="CRM"
-          subtitle="Every agent · status · production · access"
+          subtitle="Every agent, status, production, access, and follow-up in one team view."
           actions={
             <>
               {(isAdmin || isManager) && (
@@ -1216,6 +1306,17 @@ export default function DashboardCRM() {
               <SelectItem value="warm">☀️ Warm</SelectItem>
               <SelectItem value="cool">❄️ Cool</SelectItem>
               <SelectItem value="cold">🧊 Cold</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortMode} onValueChange={setSortMode}>
+            <SelectTrigger className="w-[160px] h-8 text-sm"><SelectValue placeholder="Sort" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Default order</SelectItem>
+              <SelectItem value="alp_desc">Highest ALP</SelectItem>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="stalest">Most Stale</SelectItem>
+              <SelectItem value="needs_followup">Needs Follow-Up</SelectItem>
+              <SelectItem value="by_stage">By Stage</SelectItem>
             </SelectContent>
           </Select>
           <Button variant={showDeactivated ? "secondary" : "outline"} size="sm" onClick={() => setShowDeactivated(!showDeactivated)} className="gap-1.5 h-8">

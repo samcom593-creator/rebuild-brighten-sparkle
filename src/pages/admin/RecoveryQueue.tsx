@@ -1,11 +1,11 @@
-import { useMemo, useState, useCallback, KeyboardEvent } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef, KeyboardEvent } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Phone, Mail, MessageSquare, ChevronRight, Flame, AlertTriangle, GraduationCap,
   CheckCircle2, Trophy, Calendar, BookOpen, Ghost, RefreshCw, Search, ArrowRight,
   MapPin, PhoneOff, CheckCheck, Zap, Filter, ExternalLink, Clock, PlayCircle,
-  ChevronDown, X,
+  ChevronDown, X, ArrowLeft, Voicemail, Send, XCircle, Timer, RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -13,11 +13,16 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -173,6 +178,97 @@ const LICENSE_STAGES: { key: string; label: string }[] = [
   { key: "waiting_on_license", label: "Waiting on License" },
   { key: "licensed", label: "Licensed" },
 ];
+
+// ---------- Power Hour ----------
+type OutcomeKey =
+  | "contacted"
+  | "left_vm"
+  | "text_sent"
+  | "email_sent"
+  | "no_answer"
+  | "not_interested"
+  | "bad_number"
+  | "passed_test"
+  | "licensed";
+
+interface OutcomeMeta {
+  key: OutcomeKey;
+  label: string;
+  short: string;
+  shortcut: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone: string; // tailwind classes on the button
+}
+
+const OUTCOMES: OutcomeMeta[] = [
+  { key: "contacted",      label: "Contacted",      short: "Contact",    shortcut: "1", icon: CheckCheck,   tone: "border-teal-500/40 bg-teal-500/15 text-teal-200 hover:bg-teal-500/25" },
+  { key: "left_vm",        label: "Left VM",        short: "VM",         shortcut: "2", icon: Voicemail,    tone: "border-sky-500/40 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25" },
+  { key: "text_sent",      label: "Text sent",      short: "Text",       shortcut: "3", icon: MessageSquare,tone: "border-white/10 bg-white/[0.05] text-slate-200 hover:bg-white/[0.10]" },
+  { key: "email_sent",     label: "Email sent",     short: "Email",      shortcut: "4", icon: Send,         tone: "border-white/10 bg-white/[0.05] text-slate-200 hover:bg-white/[0.10]" },
+  { key: "no_answer",      label: "No answer",      short: "No ans",     shortcut: "5", icon: PhoneOff,     tone: "border-slate-500/30 bg-slate-500/10 text-slate-300 hover:bg-slate-500/20" },
+  { key: "not_interested", label: "Not interested", short: "Not int.",   shortcut: "6", icon: XCircle,      tone: "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20" },
+  { key: "bad_number",     label: "Bad number",     short: "Bad #",      shortcut: "7", icon: PhoneOff,     tone: "border-rose-500/40 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25" },
+  { key: "passed_test",    label: "Passed test",    short: "Passed",     shortcut: "8", icon: Trophy,       tone: "border-yellow-500/40 bg-yellow-500/15 text-yellow-200 hover:bg-yellow-500/25" },
+  { key: "licensed",       label: "Licensed",       short: "Licensed",   shortcut: "9", icon: CheckCircle2, tone: "border-teal-500/40 bg-teal-500/20 text-teal-100 hover:bg-teal-500/30" },
+];
+
+interface PowerHourOutcomeLog {
+  id: string;
+  outcome: OutcomeKey;
+  at: number;
+}
+interface PowerHourSession {
+  version: 1;
+  started_at: number;
+  updated_at: number;
+  current_id: string | null;
+  index: number;
+  total: number;
+  outcomes: PowerHourOutcomeLog[];
+}
+
+const POWER_HOUR_KEY = "apex.license-push.power-hour-v1";
+const POWER_HOUR_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+function readPowerHour(): PowerHourSession | null {
+  try {
+    const raw = localStorage.getItem(POWER_HOUR_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PowerHourSession;
+    if (!parsed || parsed.version !== 1) return null;
+    if (Date.now() - parsed.started_at > POWER_HOUR_MAX_AGE_MS) return null;
+    return parsed;
+    // empty-catch-allow:localstorage-parse-failure
+  } catch {
+    return null;
+  }
+}
+function writePowerHour(s: PowerHourSession | null) {
+  try {
+    if (s === null) localStorage.removeItem(POWER_HOUR_KEY);
+    else localStorage.setItem(POWER_HOUR_KEY, JSON.stringify(s));
+    // empty-catch-allow:localstorage-write-failure
+  } catch {
+    // ignore
+  }
+}
+function formatElapsed(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+function outcomeToStage(o: OutcomeKey): string | null {
+  if (o === "passed_test") return "passed_test";
+  if (o === "licensed") return "licensed";
+  return null;
+}
+function outcomeToChannel(o: OutcomeKey): "call" | "sms" | "email" | null {
+  if (o === "text_sent") return "sms";
+  if (o === "email_sent") return "email";
+  if (o === "contacted" || o === "left_vm" || o === "no_answer") return "call";
+  return null;
+}
 
 // ---------- Helpers ----------
 function formatPhone(raw: string | null): string {
@@ -480,6 +576,14 @@ export default function RecoveryQueue() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("priority");
   const [powerHour, setPowerHour] = useState(false);
+  const [phSession, setPhSession] = useState<PowerHourSession | null>(null);
+  const [phElapsed, setPhElapsed] = useState(0);
+  const [resumeBanner, setResumeBanner] = useState<PowerHourSession | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkConfirm, setBulkConfirm] = useState<null | { action: "contacted" | "phone_bad" | "advance_stage"; label: string }>(null);
+  const [bulkStageOpen, setBulkStageOpen] = useState(false);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const filteredRef = useRef<Row[]>([]);
 
   const { data: rows = [], isLoading, isError, refetch, isFetching } = useQuery<Row[]>({
     queryKey: ["v_hot_licensing_prospects"],
@@ -623,25 +727,143 @@ export default function RecoveryQueue() {
   }, [rows, stageFilter, priorityChip, search, sort, managerMap]);
 
   // ---------- Power Hour ----------
+  // keep a ref of the filtered array so keyboard handlers always see fresh data
+  useEffect(() => { filteredRef.current = filtered; }, [filtered]);
+
+  // On mount, look for a resumable session
+  useEffect(() => {
+    const existing = readPowerHour();
+    if (existing && existing.current_id) {
+      setResumeBanner(existing);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist session whenever it changes
+  useEffect(() => {
+    if (phSession) writePowerHour(phSession);
+  }, [phSession]);
+
+  // Timer tick while a session is running
+  useEffect(() => {
+    if (!powerHour || !phSession) return;
+    setPhElapsed(Date.now() - phSession.started_at);
+    const id = window.setInterval(() => {
+      setPhElapsed(Date.now() - phSession.started_at);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [powerHour, phSession]);
+
+  const openRowFromList = useCallback((list: Row[], idx: number, session: PowerHourSession | null) => {
+    const r = list[idx];
+    if (!r) return;
+    setOpenId(r.application_id);
+    setOpenAgentId(r.assigned_agent_id ?? null);
+    if (session) {
+      const updated: PowerHourSession = {
+        ...session,
+        current_id: r.application_id,
+        index: idx,
+        total: list.length,
+        updated_at: Date.now(),
+      };
+      setPhSession(updated);
+    }
+  }, []);
+
   const startPowerHour = useCallback(() => {
     setPowerHour(true);
-    setStageFilter("A_WAITING_ON_LICENSE");
     setSort("priority");
-    const sorted = rows
-      .filter((r) => r.cohort === "A_WAITING_ON_LICENSE")
-      .sort((a, b) => priorityScore(a) - priorityScore(b));
-    if (sorted.length === 0) {
-      toast.info("No critical rows for Power Hour");
+    // Filter to highest priority queue: prefer critical if none set, else current filter
+    const list = filtered.length > 0
+      ? filtered.slice()
+      : rows.filter((r) => r.cohort === "A_WAITING_ON_LICENSE").sort((a, b) => priorityScore(a) - priorityScore(b));
+    if (list.length === 0) {
+      toast.info("No records available for Power Hour");
       setPowerHour(false);
       return;
     }
-    setOpenId(sorted[0].application_id);
-    setOpenAgentId(sorted[0].assigned_agent_id ?? null);
-    toast.success(`Power Hour started · ${sorted.length} critical`);
-  }, [rows]);
+    const session: PowerHourSession = {
+      version: 1,
+      started_at: Date.now(),
+      updated_at: Date.now(),
+      current_id: list[0].application_id,
+      index: 0,
+      total: list.length,
+      outcomes: [],
+    };
+    setPhSession(session);
+    setPhElapsed(0);
+    setResumeBanner(null);
+    filteredRef.current = list;
+    openRowFromList(list, 0, session);
+    toast.success(`Power Hour started · ${list.length} in queue`);
+  }, [filtered, rows, openRowFromList]);
+
+  const resumePowerHour = useCallback(() => {
+    const s = resumeBanner;
+    if (!s) return;
+    setPowerHour(true);
+    setSort("priority");
+    setPhSession(s);
+    setPhElapsed(Date.now() - s.started_at);
+    setResumeBanner(null);
+    // Try to open the record by id — fall back to index in filtered
+    const list = filteredRef.current.length > 0 ? filteredRef.current : filtered;
+    const idxById = list.findIndex((r) => r.application_id === s.current_id);
+    const useIdx = idxById >= 0 ? idxById : Math.min(s.index, list.length - 1);
+    if (useIdx >= 0 && list[useIdx]) {
+      setOpenId(list[useIdx].application_id);
+      setOpenAgentId(list[useIdx].assigned_agent_id ?? null);
+    }
+    toast.success("Power Hour resumed");
+  }, [resumeBanner, filtered]);
+
+  const dismissResume = useCallback(() => {
+    writePowerHour(null);
+    setResumeBanner(null);
+  }, []);
+
+  const exitPowerHour = useCallback(() => {
+    setPowerHour(false);
+    setPhSession(null);
+    setPhElapsed(0);
+    setOpenId(null);
+    setOpenAgentId(null);
+    writePowerHour(null);
+  }, []);
+
+  const advancePowerHour = useCallback(() => {
+    if (!phSession) return;
+    const list = filteredRef.current;
+    const nextIdx = phSession.index + 1;
+    if (nextIdx >= list.length) {
+      const contacted = phSession.outcomes.filter((o) =>
+        o.outcome === "contacted" || o.outcome === "left_vm" || o.outcome === "text_sent" || o.outcome === "email_sent"
+      ).length;
+      const skipped = phSession.outcomes.filter((o) =>
+        o.outcome === "no_answer" || o.outcome === "not_interested" || o.outcome === "bad_number"
+      ).length;
+      toast.success(`Power Hour complete — ${contacted} contacted, ${skipped} skipped`);
+      exitPowerHour();
+      return;
+    }
+    openRowFromList(list, nextIdx, phSession);
+  }, [phSession, openRowFromList, exitPowerHour]);
+
+  const previousPowerHour = useCallback(() => {
+    if (!phSession) return;
+    const list = filteredRef.current;
+    const prevIdx = Math.max(0, phSession.index - 1);
+    openRowFromList(list, prevIdx, phSession);
+  }, [phSession, openRowFromList]);
 
   const nextInQueue = useCallback(() => {
     if (!openId) return;
+    if (powerHour && phSession) {
+      advancePowerHour();
+      return;
+    }
     const idx = filtered.findIndex((r) => r.application_id === openId);
     const next = filtered[idx + 1];
     if (next) {
@@ -651,9 +873,56 @@ export default function RecoveryQueue() {
       setOpenId(null);
       setOpenAgentId(null);
       toast.success("Queue clear");
-      setPowerHour(false);
     }
-  }, [filtered, openId]);
+  }, [filtered, openId, powerHour, phSession, advancePowerHour]);
+
+  const handleOutcome = useCallback((outcome: OutcomeKey) => {
+    if (!phSession) return;
+    const list = filteredRef.current;
+    const current = list[phSession.index];
+    if (!current) { advancePowerHour(); return; }
+    // Dispatch side effects (fire-and-forget where possible; blocking mutations for state changes)
+    const stage = outcomeToStage(outcome);
+    const channel = outcomeToChannel(outcome);
+    if (channel) {
+      logAttempt(current.application_id, channel);
+    }
+    if (outcome === "contacted") {
+      markContacted.mutate(current);
+    } else if (outcome === "bad_number") {
+      markPhoneBad.mutate(current);
+    } else if (stage) {
+      setStage.mutate({ row: current, stage });
+    }
+    // Append outcome to session log + advance
+    const updated: PowerHourSession = {
+      ...phSession,
+      outcomes: [...phSession.outcomes, { id: current.application_id, outcome, at: Date.now() }],
+      updated_at: Date.now(),
+    };
+    setPhSession(updated);
+    // Advance on next tick so mutation dispatched with correct current
+    setTimeout(() => advancePowerHour(), 0);
+  }, [phSession, advancePowerHour, logAttempt, markContacted, markPhoneBad, setStage]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    if (!powerHour) return;
+    const handler = (e: globalThis.KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const editable = target?.getAttribute("contenteditable") === "true";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || editable) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "Escape") { e.preventDefault(); exitPowerHour(); return; }
+      if (e.key === "j" || e.key === "ArrowRight") { e.preventDefault(); advancePowerHour(); return; }
+      if (e.key === "k" || e.key === "ArrowLeft") { e.preventDefault(); previousPowerHour(); return; }
+      const shortcut = OUTCOMES.find((o) => o.shortcut === e.key);
+      if (shortcut) { e.preventDefault(); handleOutcome(shortcut.key); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [powerHour, advancePowerHour, previousPowerHour, exitPowerHour, handleOutcome]);
 
   const openRow = useCallback((r: Row) => {
     setOpenId(r.application_id);
@@ -676,9 +945,123 @@ export default function RecoveryQueue() {
 
   const activeFilterCount = (stageFilter ? 1 : 0) + (priorityChip ? 1 : 0) + (search ? 1 : 0);
 
+  // ---------- Bulk selection ----------
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAllVisible = useCallback(() => {
+    setSelectedIds(new Set(filtered.map((r) => r.application_id)));
+  }, [filtered]);
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  const runBulk = useCallback(async (action: "contacted" | "phone_bad") => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkRunning(true);
+    let ok = 0;
+    let fail = 0;
+    const toastId = toast.loading(`Applying to ${ids.length}...`);
+    for (const id of ids) {
+      try {
+        if (action === "contacted") {
+          const { error } = await supabase.rpc("unified_mark_contacted" as any, { p_id: id, p_source: "applied" });
+          if (error) throw error;
+        } else if (action === "phone_bad") {
+          const { error } = await supabase.rpc("unified_mark_phone_bad" as any, { p_id: id, p_source: "applied", p_reason: "user_marked_bad" });
+          if (error) throw error;
+        }
+        ok++;
+      } catch {
+        // empty-catch-allow:bulk-per-row-tolerant-continue
+        fail++;
+      }
+    }
+    setBulkRunning(false);
+    toast.dismiss(toastId);
+    if (fail === 0) toast.success(`Updated ${ok}`);
+    else toast.warning(`Updated ${ok} · ${fail} failed`);
+    clearSelection();
+    invalidate();
+  }, [selectedIds, invalidate, clearSelection]);
+
+  const runBulkStage = useCallback(async (stage: string) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkRunning(true);
+    let ok = 0;
+    let fail = 0;
+    const toastId = toast.loading(`Advancing ${ids.length}...`);
+    for (const id of ids) {
+      try {
+        const { error } = await supabase.rpc("unified_set_license_progress" as any, {
+          p_id: id, p_progress: stage, p_source: "applied",
+        });
+        if (error) throw error;
+        ok++;
+      } catch {
+        // empty-catch-allow:bulk-per-row-tolerant-continue
+        fail++;
+      }
+    }
+    setBulkRunning(false);
+    toast.dismiss(toastId);
+    if (fail === 0) toast.success(`Advanced ${ok}`);
+    else toast.warning(`Advanced ${ok} · ${fail} failed`);
+    clearSelection();
+    setBulkStageOpen(false);
+    invalidate();
+  }, [selectedIds, invalidate, clearSelection]);
+
+  const requestBulk = useCallback((action: "contacted" | "phone_bad", label: string) => {
+    if (selectedIds.size > 10) {
+      setBulkConfirm({ action, label });
+    } else if (action === "contacted") {
+      void runBulk("contacted");
+    } else {
+      void runBulk("phone_bad");
+    }
+  }, [selectedIds.size, runBulk]);
+
+  const requestBulkStage = useCallback(() => {
+    if (selectedIds.size > 10) {
+      setBulkConfirm({ action: "advance_stage", label: "Advance stage" });
+    } else {
+      setBulkStageOpen(true);
+    }
+  }, [selectedIds.size]);
+
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="page-enter mx-auto w-full max-w-7xl space-y-4 px-4 pb-24 sm:px-6">
+      <div className={cn("page-enter mx-auto w-full max-w-7xl space-y-4 px-4 sm:px-6", powerHour ? "pb-40" : "pb-24")}>
+        {/* Resume banner */}
+        {resumeBanner && !powerHour && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-teal-500/40 bg-teal-500/[0.08] px-4 py-3">
+            <div className="flex items-center gap-2 text-sm text-teal-100">
+              <Timer className="h-4 w-4 text-teal-300" />
+              <span>
+                Resume Power Hour? Started {relTime(new Date(resumeBanner.started_at).toISOString())}, on record {Math.min(resumeBanner.index + 1, resumeBanner.total)} of {resumeBanner.total}.
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={resumePowerHour} className="h-8 gap-1.5 bg-teal-500 text-slate-950 hover:bg-teal-400">
+                <PlayCircle className="h-3.5 w-3.5" />
+                Resume
+              </Button>
+              <Button size="sm" variant="outline" onClick={dismissResume} className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]">
+                <X className="h-3.5 w-3.5" />
+                Discard
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <PageHeader
           eyebrow="License Recovery"
@@ -833,6 +1216,60 @@ export default function RecoveryQueue() {
               {powerHour && <span className="ml-2 rounded bg-teal-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-teal-300">POWER HOUR</span>}
             </div>
           </div>
+          {selectedIds.size > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-teal-500/40 bg-teal-500/[0.08] px-3 py-2">
+              <span className="text-xs font-semibold text-teal-100">
+                {selectedIds.size} selected
+              </span>
+              <span className="text-[11px] text-teal-300/70">
+                {selectedIds.size < filtered.length && (
+                  <button type="button" onClick={selectAllVisible} className="underline decoration-dotted hover:text-teal-200">
+                    Select all {filtered.length}
+                  </button>
+                )}
+              </span>
+              <div className="ml-auto flex flex-wrap items-center gap-1.5">
+                <Button
+                  size="sm"
+                  disabled={bulkRunning}
+                  onClick={() => requestBulk("contacted", "Mark contacted")}
+                  className="h-8 gap-1 bg-teal-500 text-slate-950 hover:bg-teal-400 disabled:opacity-60"
+                >
+                  <CheckCheck className="h-3.5 w-3.5" />
+                  Mark contacted
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkRunning}
+                  onClick={requestBulkStage}
+                  className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" />
+                  Advance stage
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkRunning}
+                  onClick={() => requestBulk("phone_bad", "Mark phone bad")}
+                  className="h-8 gap-1 border-rose-500/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
+                >
+                  <PhoneOff className="h-3.5 w-3.5" />
+                  Mark phone bad
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={clearSelection}
+                  className="h-8 gap-1 text-slate-400 hover:text-slate-100"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -871,6 +1308,8 @@ export default function RecoveryQueue() {
               const untilExam = daysUntil(r.exam_scheduled);
               const manager = r.assigned_agent_id ? managerMap[r.assigned_agent_id] : undefined;
               const isPri = priority === "critical" || priority === "hot";
+              const isCurrent = powerHour && phSession?.current_id === r.application_id;
+              const isSelected = selectedIds.has(r.application_id);
               return (
                 <div
                   key={r.application_id}
@@ -885,9 +1324,23 @@ export default function RecoveryQueue() {
                       "before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full",
                       pMeta.ring
                     ),
+                    isCurrent && "ring-2 ring-teal-400/70 border-teal-500/40 bg-teal-500/[0.06]",
+                    isSelected && "bg-teal-500/[0.05] border-teal-500/30",
                   )}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    {/* Selection checkbox */}
+                    <div
+                      className="flex items-start pt-0.5 sm:items-center sm:pt-0"
+                      onClick={(e) => { e.stopPropagation(); toggleSelected(r.application_id); }}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        aria-label={`Select ${r.name}`}
+                        className="h-4 w-4 border-white/20 data-[state=checked]:bg-teal-500 data-[state=checked]:text-slate-950"
+                      />
+                    </div>
                     {/* Left */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -952,14 +1405,14 @@ export default function RecoveryQueue() {
           </div>
         )}
 
-        {/* Detail drawer + Power Hour Next button injected via CRM footer via Link */}
+        {/* Detail drawer */}
         <ApplicationDetailSheet
           open={!!openId}
           onOpenChange={(v) => {
             if (!v) {
               setOpenId(null);
               setOpenAgentId(null);
-              if (powerHour) setPowerHour(false);
+              // Closing the drawer does NOT exit Power Hour — user may reopen next record via j.
             }
           }}
           applicationId={openId ?? undefined}
@@ -967,36 +1420,213 @@ export default function RecoveryQueue() {
           onRefresh={invalidate}
         />
 
-        {/* Floating Power Hour next-applicant control */}
-        {openId && powerHour && (
-          // palette-allow:apex-panel-dark — floating power-hour dock matches popover surface
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full border border-teal-500/40 bg-[#0B1118]/95 px-3 py-2 shadow-lg backdrop-blur">
-            <span className="text-[11px] uppercase tracking-wide text-teal-300">Power Hour</span>
-            <Button
-              size="sm"
-              onClick={nextInQueue}
-              className="h-8 gap-1 bg-teal-500 text-slate-950 hover:bg-teal-400"
+        {/* Bulk advance-stage popover (opened via BulkActionBar) */}
+        {bulkStageOpen && (
+          <div
+            role="dialog"
+            aria-label="Advance stage for selected"
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setBulkStageOpen(false)}
+          >
+            <div
+              // palette-allow:apex-panel-dark — bulk stage picker matches popover surface
+              className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0B1118] p-4 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
             >
-              Next applicant
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-            {openId && (
-              <Button
-                asChild
-                size="sm"
-                variant="outline"
-                className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
-              >
-                <Link to={`/dashboard/applicants?id=${openId}`} onClick={(e) => e.stopPropagation()}>
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  CRM
-                </Link>
-              </Button>
-            )}
+              <div className="mb-2 text-sm font-semibold text-slate-100">
+                Advance {selectedIds.size} record{selectedIds.size === 1 ? "" : "s"} to
+              </div>
+              <div className="grid grid-cols-1 gap-1">
+                {LICENSE_STAGES.map((s) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    disabled={bulkRunning}
+                    onClick={() => runBulkStage(s.key)}
+                    className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+                  >
+                    <div className="h-1.5 w-1.5 rounded-full bg-slate-600" />
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 flex justify-end">
+                <Button size="sm" variant="ghost" onClick={() => setBulkStageOpen(false)} className="h-8 text-slate-400 hover:text-slate-100">
+                  Cancel
+                </Button>
+              </div>
+            </div>
           </div>
+        )}
+
+        {/* Confirmation dialog for bulk actions >10 */}
+        <AlertDialog open={!!bulkConfirm} onOpenChange={(v) => { if (!v) setBulkConfirm(null); }}>
+          {/* palette-allow:apex-panel-dark — alert dialog matches popover surface */}
+          <AlertDialogContent className="border-white/10 bg-[#0B1118] text-slate-100">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-slate-100">
+                Apply to {selectedIds.size} records?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-400">
+                You are about to run &quot;{bulkConfirm?.label}&quot; on {selectedIds.size} people at once. This cannot be undone with one click.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  const action = bulkConfirm?.action;
+                  setBulkConfirm(null);
+                  if (action === "contacted") void runBulk("contacted");
+                  else if (action === "phone_bad") void runBulk("phone_bad");
+                  else if (action === "advance_stage") setBulkStageOpen(true);
+                }}
+                className="bg-teal-500 text-slate-950 hover:bg-teal-400"
+              >
+                Confirm
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Power Hour sequencer bottom bar */}
+        {powerHour && phSession && (
+          <PowerHourBar
+            session={phSession}
+            elapsed={phElapsed}
+            currentName={filtered[phSession.index]?.name ?? filtered.find((r) => r.application_id === phSession.current_id)?.name ?? "—"}
+            currentId={phSession.current_id ?? openId ?? undefined}
+            onOutcome={handleOutcome}
+            onNext={advancePowerHour}
+            onPrev={previousPowerHour}
+            onExit={exitPowerHour}
+          />
         )}
       </div>
     </TooltipProvider>
+  );
+}
+
+// ---------- Power Hour bottom bar ----------
+function PowerHourBar({
+  session, elapsed, currentName, currentId, onOutcome, onNext, onPrev, onExit,
+}: {
+  session: PowerHourSession;
+  elapsed: number;
+  currentName: string;
+  currentId?: string;
+  onOutcome: (o: OutcomeKey) => void;
+  onNext: () => void;
+  onPrev: () => void;
+  onExit: () => void;
+}) {
+  const pct = session.total > 0
+    ? Math.min(100, Math.round(((session.index) / Math.max(1, session.total)) * 100))
+    : 0;
+  return (
+    // palette-allow:apex-panel-dark — power-hour dock matches AppShell footer surface
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-[#070A0F]/95 py-3 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 sm:px-6">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Left: progress + timer */}
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-teal-300">
+                <Timer className="h-3 w-3" />
+                Power Hour · {Math.min(session.index + 1, session.total)} / {session.total}
+                <span className="text-slate-500">·</span>
+                <span className="tabular-nums text-slate-300">{formatElapsed(elapsed)}</span>
+              </div>
+              <div className="mt-1 truncate text-sm font-semibold text-slate-100">{currentName}</div>
+              <div className="mt-1 h-1 w-full max-w-md overflow-hidden rounded-full bg-white/[0.06]">
+                <div
+                  className="h-full rounded-full bg-teal-400 transition-[width] duration-300"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Right: nav */}
+          <div className="flex items-center gap-1.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="sm" variant="outline" onClick={onPrev} className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]">
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Prev
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Previous (k)</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="sm" onClick={onNext} className="h-8 gap-1 bg-teal-500 text-slate-950 hover:bg-teal-400">
+                  Next
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Advance (j)</TooltipContent>
+            </Tooltip>
+            {currentId && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
+                  >
+                    <Link to={`/dashboard/applicants?id=${currentId}`} onClick={(e) => e.stopPropagation()}>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      CRM
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Open in CRM</TooltipContent>
+              </Tooltip>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button size="sm" variant="ghost" onClick={onExit} className="h-8 gap-1 text-slate-400 hover:text-slate-100">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Exit
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Exit Power Hour (Esc)</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+
+        {/* Outcome cluster */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {OUTCOMES.map((o) => {
+            const Icon = o.icon;
+            return (
+              <Tooltip key={o.key}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onOutcome(o.key)}
+                    aria-label={`${o.label} (${o.shortcut})`}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                      o.tone,
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{o.short}</span>
+                    <span className="ml-1 rounded bg-black/30 px-1 text-[10px] font-mono text-slate-400">{o.shortcut}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{o.label}</TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 

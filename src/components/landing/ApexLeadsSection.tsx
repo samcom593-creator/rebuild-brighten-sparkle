@@ -69,8 +69,8 @@ export function ApexLeadsSection() {
   };
 
   return (
-    <section id="leads" className="py-20 px-6 relative overflow-hidden" style={{ background: "#030712" }}>
-      <div className="absolute top-20 left-1/4 w-96 h-96 rounded-full opacity-5" style={{ background: "#22d3a5", filter: "blur(100px)" }} />
+    <section id="leads" className="py-20 px-6 relative overflow-hidden" style={{ background: "#0A0A0A" }}>
+      <div className="absolute top-20 left-1/4 w-96 h-96 rounded-full opacity-5" style={{ background: "#C9A961", filter: "blur(100px)" }} />
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12">
           <div className="text-xs tracking-[0.3em] text-primary uppercase mb-4" style={{ fontFamily: "Syne" }}>APEX LEAD MARKETPLACE</div>

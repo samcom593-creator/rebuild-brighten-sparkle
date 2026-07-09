@@ -78,16 +78,17 @@ export function InstagramGrowthSection() {
     <section
       id="ig-growth"
       className="relative py-24 px-6 overflow-hidden"
-      style={{ background: "linear-gradient(180deg, #030712 0%, #0a1628 50%, #030712 100%)" }}
+      style={{ background: "#0A0A0A" }}
     >
       {/* Glow accents */}
+      {/* palette-allow:instagram-brand-color-glow-for-ig-growth-feature-section */}
       <div
         className="absolute top-32 right-1/4 w-[500px] h-[500px] rounded-full opacity-[0.06] pointer-events-none"
         style={{ background: "#E1306C", filter: "blur(120px)" }}
       />
       <div
         className="absolute bottom-20 left-1/3 w-96 h-96 rounded-full opacity-[0.05] pointer-events-none"
-        style={{ background: "#22d3a5", filter: "blur(100px)" }}
+        style={{ background: "#C9A961", filter: "blur(100px)" }}
       />
 
       <div className="max-w-6xl mx-auto relative z-10">

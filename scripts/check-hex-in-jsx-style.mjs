@@ -71,7 +71,7 @@ const HEX_ATTR_NAMES = [
 // every other tree is at 0 and locks forever.
 const AREAS = [
   { dir: "src/pages", baseline: 0 },
-  { dir: "src/components/landing", baseline: 7 },
+  { dir: "src/components/landing", baseline: 0 },
   { dir: "src/components/dashboard", baseline: 0 },
   { dir: "src/components/layout", baseline: 0 },
   { dir: "src/components/ui", baseline: 0 },

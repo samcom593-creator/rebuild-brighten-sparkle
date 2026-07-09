@@ -7,7 +7,12 @@ import {
   Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles,
   Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText,
   KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck,
+  MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -973,35 +978,24 @@ export default function DashboardCRM() {
     return dupeIds;
   }, [activeAgents]);
 
-  const nbaHead = <TableHead className="w-[180px]">Next Best Action</TableHead>;
-  const getTableHeaders = (sectionKey: string) => {
-    switch (sectionKey) {
-      case "meeting_attendance":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Mentor</TableHead><TableHead className="w-[80px] text-center">Present</TableHead><TableHead className="w-[80px] text-center">Homework</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Month ALP</TableHead>{nbaHead}<TableHead className="w-8" /></>);
-      case "onboarding":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Status</TableHead><TableHead className="w-[120px]">Course Progress</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
-      case "pre_licensed":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">License Stage</TableHead><TableHead className="w-[90px]">Contact</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
-      case "in_training":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Attendance</TableHead><TableHead className="w-[90px]">Days Training</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
-      case "live":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Prev Week</TableHead><TableHead className="w-[60px] text-right">Deals</TableHead><TableHead className="w-[80px]">Attend.</TableHead><TableHead className="w-[80px]">Days Live</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
-      case "needs_followup":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Last Activity</TableHead><TableHead className="w-[80px]">Days Stale</TableHead><TableHead className="w-[90px]">Contact</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
-      case "hasnt_sold":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">License</TableHead><TableHead className="w-[80px] text-right">Days since hire</TableHead><TableHead className="w-[80px] text-right">Lifetime deals</TableHead><TableHead className="w-[90px]">Contact</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
-      case "missing":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">Last activity</TableHead><TableHead className="w-[80px] text-right">Days silent</TableHead><TableHead className="w-[90px]">Contact</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
-      case "applied":
-      case "transfer":
-      case "below_10k":
-      case "inactive":
-      case "deactivated":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">Stage</TableHead><TableHead className="w-[90px]">Contact</TableHead>{nbaHead}<TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
-      default:
-        return null;
-    }
-  };
+  // MP-261 — unified 11-col table shape. Chips filter rows; columns stay stable.
+  // Agent / Mentor / Stage / License / Present / Homework / Week ALP / Month ALP /
+  // Last Activity / Next Best Action / Actions.
+  const getTableHeaders = (_sectionKey: string) => (
+    <>
+      <TableHead className="w-[220px]">Agent</TableHead>
+      <TableHead className="w-[110px]">Mentor</TableHead>
+      <TableHead className="w-[110px]">Stage</TableHead>
+      <TableHead className="w-[100px]">License</TableHead>
+      <TableHead className="w-[80px] text-center">Present</TableHead>
+      <TableHead className="w-[80px] text-center">Homework</TableHead>
+      <TableHead className="w-[100px] text-right">Week ALP</TableHead>
+      <TableHead className="w-[100px] text-right">Month ALP</TableHead>
+      <TableHead className="w-[110px]">Last Activity</TableHead>
+      <TableHead className="w-[200px]">Next Best Action</TableHead>
+      <TableHead className="w-[70px] text-right">Actions</TableHead>
+    </>
+  );
 
   const renderNBACell = (agent: AgentCRM) => {
     const nba = computeAgentNBA(agent);
@@ -1018,169 +1012,165 @@ export default function DashboardCRM() {
     );
   };
 
-  // Section-specific table cells
-  const getTableCells = (sectionKey: string, agent: AgentCRM) => {
+  // MP-261 unified 11-col row. Sam's brief: table shape stays constant across
+  // every segment chip; only the row set changes. Columns after Agent:
+  // Mentor / Stage / License / Present / Homework / Week ALP / Month ALP /
+  // Last Activity / Next Best Action / Actions.
+  const renderKebabActions = (agent: AgentCRM) => (
+    <TableCell className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label={`Actions for ${agent.name}`}>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuLabel className="text-[11px]">{agent.name}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setViewAppTarget({ agentId: agent.id, applicationId: agent.applicationId })}>
+            <FileText className="h-3.5 w-3.5 mr-2" /> View application
+          </DropdownMenuItem>
+          {agent.email && (
+            <DropdownMenuItem asChild>
+              <a href={`mailto:${agent.email}`}><Mail className="h-3.5 w-3.5 mr-2" /> Email</a>
+            </DropdownMenuItem>
+          )}
+          {agent.phone && (
+            <DropdownMenuItem asChild>
+              <a href={`tel:${agent.phone}`}><Phone className="h-3.5 w-3.5 mr-2" /> Call</a>
+            </DropdownMenuItem>
+          )}
+          {agent.instagramHandle && (
+            <DropdownMenuItem asChild>
+              <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
+                <Instagram className="h-3.5 w-3.5 mr-2" /> Instagram
+              </a>
+            </DropdownMenuItem>
+          )}
+          {agent.userId && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={async () => {
+                  try {
+                    const { data, error } = await supabase.functions.invoke("send-agent-portal-login", { body: { agentId: agent.id } });
+                    if (error) throw error;
+                    if (data?.success === false) throw new Error(data.error || "Failed");
+                    toast.success(`Portal login sent to ${agent.email}`);
+                  } catch (err: any) { toast.error(err.message || "Failed to send"); }
+                }}
+              >
+                <Send className="h-3.5 w-3.5 mr-2" /> Send portal login
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/login`); toast.success("Login link copied"); }}
+              >
+                <Copy className="h-3.5 w-3.5 mr-2" /> Copy login link
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setEditLoginAgent(agent)}>
+                <KeyRound className="h-3.5 w-3.5 mr-2" /> Edit login
+              </DropdownMenuItem>
+            </>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={async () => {
+              try {
+                await supabase.from("agents").update({ is_inactive: true }).eq("id", agent.id);
+                onAgentUpdate(agent.id, { isInactive: true });
+                toast.success(`${agent.name} hidden`);
+              } catch { toast.error("Failed"); }
+            }}
+          >
+            <EyeOff className="h-3.5 w-3.5 mr-2" /> Hide
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setDeactivateAgent(agent)}
+            className="text-destructive focus:text-destructive"
+          >
+            <X className="h-3.5 w-3.5 mr-2" /> Remove
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </TableCell>
+  );
+
+  const getTableCells = (_sectionKey: string, agent: AgentCRM) => {
     const contact = getContactInfo(agent);
-    switch (sectionKey) {
-      case "meeting_attendance": {
-        const status = meetingAttendance.get(agent.id) || "unmarked";
-        const isPresent = status === "present";
-        const isTrainee = agent.onboardingStage === "in_field_training";
-        const isLive = agent.onboardingStage === "evaluated" && agent.agentLicenseStatus === "licensed";
-        return (<>
-          <TableCell className="py-3">
-            <span className="text-xs text-muted-foreground">{agent.managerName?.split(" ")[0] || "—"}</span>
-          </TableCell>
-          <TableCell className="py-3 text-center" onClick={e => e.stopPropagation()}>
-            <button onClick={() => toggleMeetingAttendance(agent.id)} className="focus:outline-none transition-base hover:bg-slate-50 dark:hover:bg-slate-800/50">
-              {isPresent ? (
-                <CircleCheck className="h-6 w-6 text-emerald-500 fill-emerald-500/20" />
-              ) : (
-                <Circle className={cn("h-6 w-6", status === "absent" ? "text-red-500" : "text-muted-foreground/40")} />
-              )}
-            </button>
-          </TableCell>
-          <TableCell className="py-3 text-center">
-            {isTrainee ? <Circle className="h-5 w-5 text-muted-foreground/30 mx-auto" /> : <span className="text-xs text-muted-foreground">—</span>}
-          </TableCell>
-          <TableCell className="py-3 text-right">
-            {isLive ? <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span> : <span className="text-xs text-muted-foreground">—</span>}
-          </TableCell>
-          <TableCell className="py-3 text-right">
-            {isLive ? <span className="text-xs font-semibold">{agent.monthlyALP > 0 ? `$${agent.monthlyALP.toLocaleString()}` : "—"}</span> : <span className="text-xs text-muted-foreground">—</span>}
-          </TableCell>
-        </>);
-      }
-      case "onboarding": {
-        const progressLabels: Record<string, string> = {
-          unlicensed: "Not Started", course_purchased: "In Course", finished_course: "Finished",
-          test_scheduled: "Test Sched.", passed_test: "Passed", fingerprints_done: "Fingerprints",
-          waiting_on_license: "Waiting", licensed: "Licensed",
-        };
-        return (<>
-          <TableCell className="py-2">
-            <Badge variant="outline" className={cn("text-[10px]", agent.agentLicenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-muted text-muted-foreground")}>
-              {agent.agentLicenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
-            </Badge>
-          </TableCell>
-          <TableCell className="py-2">
-            <span className="text-[10px] font-medium">{progressLabels[agent.licenseProgress || "unlicensed"] || "—"}</span>
-          </TableCell>
-          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
-        </>);
-      }
-      case "pre_licensed": {
-        const progressLabels: Record<string, string> = {
-          unlicensed: "Not Started", course_purchased: "In Course", finished_course: "Finished",
-          test_scheduled: "Test Sched.", passed_test: "Passed", fingerprints_done: "Fingerprints",
-          waiting_on_license: "Waiting", licensed: "Licensed",
-        };
-        return (<>
-          <TableCell className="py-2">
-            <Badge variant="outline" className="text-[10px] bg-violet-500/10 text-primary dark:text-primary border-violet-500/20">
-              {progressLabels[agent.licenseProgress || "unlicensed"] || "—"}
-            </Badge>
-          </TableCell>
-          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
-          {renderNBACell(agent)}
-          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
-        </>);
-      }
-      case "in_training": {
-        const daysInTraining = agent.fieldTrainingStartedAt ? differenceInDays(new Date(), new Date(agent.fieldTrainingStartedAt)) : null;
-        const trainingColor = daysInTraining === null ? "bg-muted text-muted-foreground" : daysInTraining < 14 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : daysInTraining < 30 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
-        return (<>
-          <TableCell className="py-3">
-            <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>{attendanceLabels[agent.attendanceStatus]}</Badge>
-          </TableCell>
-          <TableCell className="py-3">
-            <Badge variant="outline" className={cn("text-[10px] font-bold tabular-nums", trainingColor)}>
-              {daysInTraining !== null ? `${daysInTraining}d` : "—"}
-            </Badge>
-          </TableCell>
-          {renderNBACell(agent)}
-          <TableCell className="py-3"><InlineNotesButton agent={agent} /></TableCell>
-        </>);
-      }
-      case "live": {
-        const daysLive = agent.onboardingCompletedAt ? differenceInDays(new Date(), new Date(agent.onboardingCompletedAt)) : null;
-        return (<>
-          <TableCell className="py-3 text-right"><span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span></TableCell>
-          <TableCell className="py-3 text-right"><span className="text-xs">{agent.prevWeekALP > 0 ? `$${agent.prevWeekALP.toLocaleString()}` : "—"}</span></TableCell>
-          <TableCell className="py-3 text-right"><span className="text-xs font-semibold">{agent.weeklyDeals > 0 ? agent.weeklyDeals : "—"}</span></TableCell>
-          <TableCell className="py-3">
-            <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>{attendanceLabels[agent.attendanceStatus]}</Badge>
-          </TableCell>
-          <TableCell className="py-3">
-            <Badge variant="outline" className="text-[10px] font-bold tabular-nums bg-muted/50">{daysLive !== null ? `${daysLive}d` : "—"}</Badge>
-          </TableCell>
-          {renderNBACell(agent)}
-          <TableCell className="py-3"><InlineNotesButton agent={agent} /></TableCell>
-        </>);
-      }
-      case "needs_followup": {
-        const daysSince = agent.lastContactedAt ? Math.floor((Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
-        return (<>
-          <TableCell className="py-2"><span className="text-xs">{agent.lastContactedAt ? getTimeAgo(agent.lastContactedAt) : "Never"}</span></TableCell>
-          <TableCell className="py-2">
-            <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-500 border-red-500/20">{daysSince !== null ? `${daysSince}d` : "∞"}</Badge>
-          </TableCell>
-          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
-          {renderNBACell(agent)}
-          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
-        </>);
-      }
-      case "hasnt_sold": {
-        return (<>
-          <TableCell className="py-2">
-            <Badge variant="outline" className={cn("text-[10px]", agent.agentLicenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : "bg-muted text-muted-foreground")}>
-              {agent.agentLicenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
-            </Badge>
-          </TableCell>
-          <TableCell className="py-2 text-right">
-            <span className="text-xs font-bold tabular-nums">{agent.daysSinceHire !== null ? `${agent.daysSinceHire}d` : "—"}</span>
-          </TableCell>
-          <TableCell className="py-2 text-right">
-            <Badge variant="outline" className="text-[10px] tabular-nums bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20">0</Badge>
-          </TableCell>
-          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
-          {renderNBACell(agent)}
-          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
-        </>);
-      }
-      case "missing": {
-        const daysSilent = agent.lastActivityAt
-          ? Math.floor((Date.now() - new Date(agent.lastActivityAt).getTime()) / (1000 * 60 * 60 * 24))
-          : null;
-        return (<>
-          <TableCell className="py-2"><span className="text-xs">{agent.lastActivityAt ? getTimeAgo(agent.lastActivityAt) : "—"}</span></TableCell>
-          <TableCell className="py-2 text-right">
-            <Badge variant="outline" className={cn("text-[10px] tabular-nums", daysSilent !== null && daysSilent >= 30 ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20" : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20")}>
-              {daysSilent !== null ? `${daysSilent}d` : "—"}
-            </Badge>
-          </TableCell>
-          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
-          {renderNBACell(agent)}
-          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
-        </>);
-      }
-      case "applied":
-      case "transfer":
-      case "below_10k":
-      case "inactive":
-      case "deactivated": {
-        const stageLabel = agent.onboardingStage.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
-        return (<>
-          <TableCell className="py-2">
-            <Badge variant="outline" className="text-[10px]">{stageLabel}</Badge>
-          </TableCell>
-          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
-          {renderNBACell(agent)}
-          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
-        </>);
-      }
-      default: return null;
-    }
+    const attendanceState = meetingAttendance.get(agent.id) || "unmarked";
+    const attendancePresent = attendanceState === "present";
+    const stageLabel = PROGRESS_LABELS[agent.licenseProgress || "unlicensed"]
+      || agent.onboardingStage.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    const isTrainee = agent.onboardingStage === "in_field_training";
+    const isLicensed = agent.agentLicenseStatus === "licensed";
+    const lastActivityLabel = agent.lastActivityAt
+      ? getTimeAgo(agent.lastActivityAt)
+      : (agent.lastContactedAt ? getTimeAgo(agent.lastContactedAt) : "—");
+    return (
+      <>
+        <TableCell className="py-2">
+          <span className="text-xs text-muted-foreground truncate max-w-[110px] inline-block">
+            {agent.managerName?.split(" ")[0] || "—"}
+          </span>
+        </TableCell>
+        <TableCell className="py-2">
+          <Badge variant="outline" className="text-[10px]">{stageLabel}</Badge>
+        </TableCell>
+        <TableCell className="py-2">
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-[10px]",
+              isLicensed
+                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                : "bg-muted text-muted-foreground",
+            )}
+          >
+            {isLicensed ? "Licensed" : "Unlicensed"}
+          </Badge>
+        </TableCell>
+        <TableCell className="py-2 text-center" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => toggleMeetingAttendance(agent.id)}
+            className="focus:outline-none transition-base"
+            aria-label={`Toggle meeting attendance for ${agent.name}`}
+          >
+            {attendancePresent ? (
+              <CircleCheck className="h-5 w-5 text-emerald-500 fill-emerald-500/20 mx-auto" />
+            ) : (
+              <Circle
+                className={cn(
+                  "h-5 w-5 mx-auto",
+                  attendanceState === "absent" ? "text-red-500" : "text-muted-foreground/40",
+                )}
+              />
+            )}
+          </button>
+        </TableCell>
+        <TableCell className="py-2 text-center">
+          {isTrainee ? (
+            <Circle className="h-4 w-4 text-muted-foreground/30 mx-auto" />
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+        </TableCell>
+        <TableCell className="py-2 text-right">
+          <span className="text-xs font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+            {agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}
+          </span>
+        </TableCell>
+        <TableCell className="py-2 text-right">
+          <span className="text-xs font-semibold tabular-nums">
+            {agent.monthlyALP > 0 ? `$${agent.monthlyALP.toLocaleString()}` : "—"}
+          </span>
+        </TableCell>
+        <TableCell className="py-2">
+          <span className={cn("text-xs font-medium tabular-nums", contact.color)}>{lastActivityLabel}</span>
+        </TableCell>
+        {renderNBACell(agent)}
+        {renderKebabActions(agent)}
+      </>
+    );
   };
 
   const renderExpandedRow = (_sectionKey: string, agent: AgentCRM) => (
@@ -1276,7 +1266,8 @@ export default function DashboardCRM() {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row gap-2 flex-wrap p-3 rounded-lg bg-card/95 border border-border/70">
+        {/* palette-allow:mp261-apex-token-card-bg — APEX design-token bg #101720 per Sam MP-261 brief */}
+        <div className="flex flex-col sm:flex-row gap-2 flex-wrap p-3 rounded-2xl bg-[#101720] border border-white/[0.08]">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Search agents..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 h-8 text-sm" />
@@ -1346,15 +1337,38 @@ export default function DashboardCRM() {
         ) : (
           <>
           <Tabs value={activeStageTab} onValueChange={(v) => { setActiveStageTab(v); playSound("click"); }} className="space-y-3">
-            <TabsList className="w-full justify-start flex-wrap h-auto gap-1.5 rounded-lg border border-border/70 bg-card/95 p-1.5 shadow-sm">
+            {/* MP-261 — compact rounded-full segment chips with teal ring active state. */}
+            <TabsList
+              // palette-allow:mp261-apex-token-tabs-card — APEX design-token surface per Sam MP-261 brief
+              className="w-full justify-start flex-wrap h-auto gap-1.5 rounded-2xl border border-white/[0.08] bg-[#101720] p-2 shadow-sm"
+            >
               {SECTIONS.map(section => {
                 const count = (agentsBySection.get(section.key) ?? []).length;
                 const Icon = section.icon;
                 return (
-                  <TabsTrigger key={section.key} value={section.key} className="gap-1.5 rounded-md px-3 py-2 text-xs font-semibold data-[state=active]:bg-white dark:bg-slate-950 data-[state=active]:text-white data-[state=active]:shadow-md dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-950">
+                  <TabsTrigger
+                    key={section.key}
+                    value={section.key}
+                    className={cn(
+                      // palette-allow:mp261-apex-token-chip-secondary — APEX text token #A8B3C5 per Sam MP-261 brief
+                      "gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-[#A8B3C5] transition-base",
+                      // palette-allow:mp261-apex-token-chip-primary — APEX text token #F5F7FA per Sam MP-261 brief
+                      "hover:bg-white/[0.03] hover:text-[#F5F7FA]",
+                      "data-[state=active]:bg-teal-500/10 data-[state=active]:text-teal-300",
+                      "data-[state=active]:ring-1 data-[state=active]:ring-teal-400/70",
+                    )}
+                  >
                     <Icon className={cn("h-3.5 w-3.5", section.iconColor)} />
                     {section.label}
-                    <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5 font-bold", section.headerBg, section.iconColor, "border-current/20")}>{count}</Badge>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px] h-4.5 px-1.5 font-bold tabular-nums",
+                        section.headerBg, section.iconColor, "border-current/20",
+                      )}
+                    >
+                      {count}
+                    </Badge>
                   </TabsTrigger>
                 );
               })}
@@ -1377,7 +1391,14 @@ export default function DashboardCRM() {
                       )}
                     </div>
                   ) : (
-                    <div className={cn("rounded-lg border border-border/70 bg-card/95 overflow-x-auto", section.accent, "border-l-4")}>
+                    <div
+                      className={cn(
+                        // palette-allow:mp261-apex-token-table-card — APEX card surface #101720 per Sam MP-261 brief
+                        "rounded-2xl border border-white/[0.08] bg-[#101720] overflow-x-auto",
+                        section.accent,
+                        "border-l-4",
+                      )}
+                    >
                       <Table className="min-w-[900px]">
                         <TableHeader className="bg-white dark:bg-slate-950">
                           <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-transparent [&_th]:h-10 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide">

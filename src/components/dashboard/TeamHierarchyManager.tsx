@@ -508,6 +508,7 @@ export function TeamHierarchyManager() {
           </div>
           {/* Skeleton rows */}
           {[1, 2, 3, 4, 5].map(i => (
+            // stable-key-allow:skeleton — hard-coded 5-row loader, no reorder
             <div key={i} className="h-12 rounded bg-muted/50 animate-pulse" />
           ))}
         </div>

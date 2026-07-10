@@ -73,6 +73,7 @@ export function LapsesDrilldownModal({ open, onOpenChange }: LapsesDrilldownModa
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
+              // stable-key-allow:skeleton — fixed-length loader, no reorder
               <Skeleton key={i} className="h-14 w-full" />
             ))}
           </div>

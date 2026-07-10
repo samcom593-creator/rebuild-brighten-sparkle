@@ -314,6 +314,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
         <AnimatePresence mode="popLayout">
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
+              // stable-key-allow:skeleton — fixed-length loader, no reorder
               <div key={i} className="animate-pulse flex items-center gap-3 p-3">
                 <div className="h-6 w-6 rounded-full bg-muted" />
                 <div className="flex-1 h-4 bg-muted rounded" />

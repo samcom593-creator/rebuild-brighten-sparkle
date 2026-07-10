@@ -119,6 +119,7 @@ export function ActivityFeedWidget({
         {isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
+              // stable-key-allow:skeleton — fixed-length loader, no reorder
               <Skeleton key={i} className="h-10 w-full" />
             ))}
           </div>

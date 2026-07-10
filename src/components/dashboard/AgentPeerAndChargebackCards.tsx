@@ -97,13 +97,13 @@ export function RegionPeerCard({ agentId }: { agentId: string | null }) {
       </div>
 
       {!agentId || me.isLoading ? (
-        <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton /* stable-key-allow:skeleton */ key={i} className="h-10 w-full" />)}</div>
       ) : !myStates || myStates.length === 0 ? (
         <p className="text-sm text-muted-foreground py-3 text-center">
           Add your licensed states to your agent profile to see who you're up against in your market.
         </p>
       ) : peers.isLoading ? (
-        <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton /* stable-key-allow:skeleton */ key={i} className="h-10 w-full" />)}</div>
       ) : (peers.data?.length ?? 0) === 0 ? (
         <p className="text-sm text-muted-foreground py-3 text-center">No peers found in your region yet.</p>
       ) : (

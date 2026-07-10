@@ -106,6 +106,7 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
           <div className="h-6 bg-muted rounded w-48" />
           <div className="grid grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
+              // stable-key-allow:skeleton — hard-coded 3-tile loader, no reorder
               <div key={i} className="h-24 bg-muted rounded-md" />
             ))}
           </div>

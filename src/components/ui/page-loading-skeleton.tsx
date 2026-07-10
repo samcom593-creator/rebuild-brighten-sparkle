@@ -31,6 +31,7 @@ export function PageLoadingSkeleton({ variant = "dashboard", className }: PageLo
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[...Array(4)].map((_, i) => (
+              // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
               <div key={i} className="h-24 rounded-md bg-muted/40 animate-pulse" style={{ animationDelay: `${i * 75}ms` }} />
             ))}
           </div>
@@ -51,12 +52,14 @@ export function PageLoadingSkeleton({ variant = "dashboard", className }: PageLo
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {[...Array(5)].map((_, i) => (
+              // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
               <div key={i} className="h-20 rounded-md bg-muted/40 animate-pulse" style={{ animationDelay: `${i * 50}ms` }} />
             ))}
           </div>
           <div className="rounded-md border border-border overflow-hidden">
             <div className="h-12 bg-muted/50 animate-pulse" />
             {[...Array(8)].map((_, i) => (
+              // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
               <div key={i} className="h-14 border-t border-border/50 bg-muted/20 animate-pulse" style={{ animationDelay: `${i * 40}ms` }} />
             ))}
           </div>
@@ -66,6 +69,7 @@ export function PageLoadingSkeleton({ variant = "dashboard", className }: PageLo
       {variant === "list" && (
         <div className="space-y-2">
           {[...Array(8)].map((_, i) => (
+            // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
             <div key={i} className="h-20 rounded-md bg-muted/40 animate-pulse" style={{ animationDelay: `${i * 60}ms` }} />
           ))}
         </div>
@@ -74,6 +78,7 @@ export function PageLoadingSkeleton({ variant = "dashboard", className }: PageLo
       {variant === "cards" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(9)].map((_, i) => (
+            // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
             <div key={i} className="h-48 rounded-md bg-muted/40 animate-pulse" style={{ animationDelay: `${i * 60}ms` }} />
           ))}
         </div>

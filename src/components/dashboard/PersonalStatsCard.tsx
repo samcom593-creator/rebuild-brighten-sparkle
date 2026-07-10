@@ -314,6 +314,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
         {loading ? (
           <div className="grid grid-cols-2 gap-4">
             {[1, 2, 3, 4].map((i) => (
+              // stable-key-allow:skeleton — hard-coded 4-tile loader, no reorder
               <div key={i} className="h-24 bg-muted/50 rounded-md animate-pulse" />
             ))}
           </div>

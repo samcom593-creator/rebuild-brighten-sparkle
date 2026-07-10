@@ -206,6 +206,7 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
         <AnimatePresence mode="popLayout">
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
+              // stable-key-allow:skeleton — fixed-length loader, no reorder
               <div key={i} className="animate-pulse h-10 bg-muted/30 rounded" />
             ))
           ) : entries.length === 0 ? (

@@ -386,6 +386,7 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
             className="space-y-3"
           >
             {Array.from({ length: 5 }).map((_, i) => (
+              // stable-key-allow:skeleton — fixed-length loader, no reorder
               <div key={i} className="animate-pulse flex items-center gap-3 py-2 px-3">
                 <div className="h-7 w-7 rounded-full bg-muted" />
                 <div className="flex-1 h-3 bg-muted rounded" />

@@ -163,6 +163,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
           <div className="h-6 bg-muted rounded w-1/3" />
           <div className="space-y-3">
             {[1, 2, 3, 4].map((i) => (
+              // stable-key-allow:skeleton — hard-coded 4-tile loader, no reorder
               <div key={i} className="h-16 bg-muted rounded" />
             ))}
           </div>

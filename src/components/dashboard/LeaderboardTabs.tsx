@@ -527,6 +527,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                   <div className="space-y-2 max-h-[400px] overflow-y-auto scrollbar-custom">
                     {loading ? (
                       Array.from({ length: 5 }).map((_, i) => (
+                        // stable-key-allow:skeleton — fixed-length loader, no reorder
                         <div key={i} className="animate-pulse p-4 rounded-md bg-muted/30">
                           <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-full bg-muted" />
@@ -615,6 +616,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                       <AnimatePresence mode="popLayout">
                         {loading ? (
                           Array.from({ length: 5 }).map((_, i) => (
+                            // stable-key-allow:skeleton — fixed-length loader, no reorder
                             <div key={i} className="animate-pulse flex items-center gap-2 p-2">
                               <div className="h-6 w-6 rounded-full bg-muted" />
                               <div className="flex-1 h-4 bg-muted rounded" />

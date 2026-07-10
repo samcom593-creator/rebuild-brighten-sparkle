@@ -87,6 +87,7 @@ export function DashboardSkeleton() {
       {/* Stats row skeleton */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
+          // stable-key-allow:skeleton — hard-coded 4-tile stats loader, no reorder
           <div key={i} className="p-4 rounded-md bg-muted/30 space-y-2">
             <SkeletonLoader variant="text" className="w-16 h-3" />
             <SkeletonLoader variant="text" className="w-24 h-8" />

@@ -22,6 +22,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { AgentNotes } from "@/components/dashboard/AgentNotes";
@@ -343,6 +344,7 @@ function InlineNotesButton({ agent }: { agent: AgentCRM }) {
 
 export default function DashboardCRM() {
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
+  const askConfirm = useConfirm();
   const { playSound } = useSoundEffects();
   const queryClient = useQueryClient();
   const [agents, setAgents] = useState<AgentCRM[]>([]);
@@ -807,7 +809,12 @@ export default function DashboardCRM() {
   });
 
   const handleBulkSendPortalLogins = async () => {
-    if (!confirm(`Send portal login emails to all active agents?`)) return;
+    const ok = await askConfirm({
+      title: "Send portal login emails to all active agents?",
+      description: "Each active agent gets the standard portal login email so they can sign in.",
+      confirmText: "Send emails",
+    });
+    if (!ok) return;
     setSendingBulkLogins(true);
     try {
       const { data, error } = await supabase.functions.invoke("send-bulk-portal-logins");
@@ -830,7 +837,13 @@ export default function DashboardCRM() {
     if (!ENABLE_BULK_DELETE) return;
     if (selectedAgents.size === 0) return;
     const count = selectedAgents.size;
-    if (!confirm(`Deactivate ${count} selected agent${count === 1 ? "" : "s"}? This can be reversed by toggling "Deactivated" on.`)) return;
+    const okDeact = await askConfirm({
+      title: `Deactivate ${count} selected agent${count === 1 ? "" : "s"}?`,
+      description: 'Rows stay in the database — reversible by toggling "Deactivated" back off.',
+      confirmText: `Deactivate ${count}`,
+      tone: "danger",
+    });
+    if (!okDeact) return;
     setBulkDeleting(true);
     try {
       const ids = Array.from(selectedAgents);

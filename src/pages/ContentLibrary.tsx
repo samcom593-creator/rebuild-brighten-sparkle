@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { BackgroundGlow } from "@/components/ui/BackgroundGlow";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/hooks/useConfirm";
 
 /* ─── Types ─── */
 interface ContentItem {
@@ -67,6 +68,7 @@ type ViewMode = "grid" | "list";
 export default function ContentLibrary() {
   const { isAdmin, isManager } = useAuth();
   const canManage = isAdmin || isManager;
+  const askConfirm = useConfirm();
 
   /* ─── State ─── */
   const [content, setContent] = useState<ContentItem[]>([]);
@@ -419,7 +421,13 @@ export default function ContentLibrary() {
 
   /* ─── Delete ─── */
   const handleDelete = async (item: ContentItem) => {
-    if (!confirm(`Delete "${item.title}"?`)) return;
+    const ok = await askConfirm({
+      title: `Delete "${item.title}"?`,
+      description: "The file and its library record are removed. This cannot be undone.",
+      confirmText: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     try {
       await supabase.storage.from("content-library").remove([item.storage_path]);
       await supabase.from("content_library").delete().eq("id", item.id);
@@ -431,7 +439,13 @@ export default function ContentLibrary() {
   const handleBulkDeleteDuplicates = async () => {
     const dupes = content.filter(c => c.duplicate_flagged);
     if (!dupes.length) return;
-    if (!confirm(`Delete all ${dupes.length} duplicate items? This cannot be undone.`)) return;
+    const okBulk = await askConfirm({
+      title: `Delete all ${dupes.length} duplicate items?`,
+      description: "Every duplicate-flagged file is removed from storage and the library. This cannot be undone.",
+      confirmText: `Delete ${dupes.length}`,
+      tone: "danger",
+    });
+    if (!okBulk) return;
 
     let deleted = 0;
     for (const d of dupes) {

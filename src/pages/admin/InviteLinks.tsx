@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useConfirm } from "@/hooks/useConfirm";
 import {
   Tabs,
   TabsList,
@@ -84,6 +85,7 @@ function statusBadge(row: InviteTokenRow) {
 
 export default function InviteLinksAdmin() {
   usePageTitle("Invite Links");
+  const askConfirm = useConfirm();
   const [rows, setRows] = useState<InviteTokenRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<"hire" | "join" | null>(null);
@@ -172,7 +174,13 @@ export default function InviteLinksAdmin() {
   }
 
   async function revoke(row: InviteTokenRow) {
-    if (!confirm(`Revoke this ${row.kind} link? Anyone who opens it will hit an invalid page.`)) return;
+    const ok = await askConfirm({
+      title: `Revoke this ${row.kind} link?`,
+      description: "Anyone who opens it will hit an invalid page. Reversible by re-issuing a new link.",
+      confirmText: "Revoke",
+      tone: "danger",
+    });
+    if (!ok) return;
     const { error } = await supabase
       .from("invite_tokens")
       .update({

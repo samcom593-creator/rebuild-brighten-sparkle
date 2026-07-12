@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/hooks/useConfirm";
 
 type Scope = "unlicensed" | "licensed" | "transfer" | "post_started" | "all";
 
@@ -76,6 +77,7 @@ const SCOPE_META: Record<Scope, { label: string; description: string; icon: any;
 export default function HiringManagerAssignments() {
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
+  const askConfirm = useConfirm();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedScope, setSelectedScope] = useState<Scope>("unlicensed");
   const [selectedUserId, setSelectedUserId] = useState<string>("");
@@ -156,7 +158,13 @@ export default function HiringManagerAssignments() {
   };
 
   const handleRemove = async (id: string, name: string) => {
-    if (!window.confirm(`Remove ${name} from this scope?`)) return;
+    const ok = await askConfirm({
+      title: `Remove ${name} from this scope?`,
+      description: "They stop receiving new pipeline assignments in this scope. Reversible by re-adding them.",
+      confirmText: "Remove",
+      tone: "danger",
+    });
+    if (!ok) return;
     const { error } = await supabase.from("hiring_manager_assignments" as any).delete().eq("id", id);
     if (error) {
       toast.error(error.message);

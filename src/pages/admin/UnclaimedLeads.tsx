@@ -14,6 +14,7 @@ import { AlertOctagon, ArrowRight, Clock, Crown, UserCheck, RefreshCw, AlertTria
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const SAM_DEFAULT_AGENT_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
 
@@ -36,6 +37,7 @@ type AgentLite = { id: string; display_name: string | null };
 
 export default function UnclaimedLeads() {
   const qc = useQueryClient();
+  const askConfirm = useConfirm();
   const [filter, setFilter] = useState<"all" | "kj" | "no_contact" | "unassigned">("all");
   const [search, setSearch] = useState("");
 
@@ -169,7 +171,13 @@ export default function UnclaimedLeads() {
               variant="destructive"
               size="sm"
               onClick={async () => {
-                if (!confirm(`Reassign ${filtered.length} apps to Samuel James? This rips them from current assignees.`)) return;
+                const ok = await askConfirm({
+                  title: `Reassign ${filtered.length} app${filtered.length === 1 ? "" : "s"} to Samuel James?`,
+                  description: "This rips the current assignee off every filtered application and stamps them to Sam.",
+                  confirmText: `Reassign ${filtered.length}`,
+                  tone: "danger",
+                });
+                if (!ok) return;
                 for (const a of filtered) {
                   await reassign.mutateAsync({ appId: a.id, toAgentId: SAM_DEFAULT_AGENT_ID });
                 }

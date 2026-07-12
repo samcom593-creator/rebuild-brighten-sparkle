@@ -21,6 +21,12 @@ const AskApex = lazy(() => import("@/components/ai/AskApex").then((m) => ({ defa
 // provider out of App eliminates the only eager static-import edge to
 // vendor-radix's tooltip slice on cold landing.
 import { TooltipProvider } from "@/components/ui/tooltip";
+// wave-31 (2026-07-11): ConfirmProvider mounts the shared Radix AlertDialog
+// so every dashboard callsite can `await confirm({...})` instead of calling
+// native window.confirm(). Native confirm is a hostile UX on mobile Safari
+// (Sam's daily driver) — freezes the tab, no keyboard focus, silently
+// swallowable by extensions. See check-blocking-modal.mjs wave-23 guard.
+import { ConfirmProvider } from "@/hooks/useConfirm";
 
 function InnerPageLoader() {
   return (
@@ -107,22 +113,24 @@ export function AuthenticatedShell() {
   return (
     <ProtectedRoute>
       <TooltipProvider>
-        <SidebarLayout showPhoneBanner={true}>
-          <CelebrationProvider />
-          <CommandPalette />
-          <CommandHintFab />
-          <WelcomeToast />
-          <PushNotificationPrompt />
-          <RequireProfilePicture />
-          <ComponentErrorBoundary name="page-content">
-            <Suspense fallback={<InnerPageLoader />}>
-              <Outlet />
+        <ConfirmProvider>
+          <SidebarLayout showPhoneBanner={true}>
+            <CelebrationProvider />
+            <CommandPalette />
+            <CommandHintFab />
+            <WelcomeToast />
+            <PushNotificationPrompt />
+            <RequireProfilePicture />
+            <ComponentErrorBoundary name="page-content">
+              <Suspense fallback={<InnerPageLoader />}>
+                <Outlet />
+              </Suspense>
+            </ComponentErrorBoundary>
+            <Suspense fallback={null}>
+              <AskApex />
             </Suspense>
-          </ComponentErrorBoundary>
-          <Suspense fallback={null}>
-            <AskApex />
-          </Suspense>
-        </SidebarLayout>
+          </SidebarLayout>
+        </ConfirmProvider>
       </TooltipProvider>
     </ProtectedRoute>
   );

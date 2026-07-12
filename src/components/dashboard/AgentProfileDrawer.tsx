@@ -70,6 +70,7 @@ import { AgentNotes } from "@/components/dashboard/AgentNotes";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfirm } from "@/hooks/useConfirm";
 import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 import { cn } from "@/lib/utils";
 import { formatEnumLabel } from "@/lib/formatEnumLabel";
@@ -205,6 +206,7 @@ export function AgentProfileDrawer() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const askConfirm = useConfirm();
   const agentId = useAgentProfileDrawer((s) => s.agentId);
   const close = useAgentProfileDrawer((s) => s.close);
 
@@ -520,7 +522,12 @@ export function AgentProfileDrawer() {
                     <button
                       onClick={async () => {
                         if (!agent?.id) return;
-                        const ok = window.confirm(`Mark ${agent.display_name ?? "this agent"} as unlicensed?`);
+                        const ok = await askConfirm({
+                          title: `Mark ${agent.display_name ?? "this agent"} as unlicensed?`,
+                          description: "Their status flips back to unlicensed and the license timestamp is cleared.",
+                          confirmText: "Mark unlicensed",
+                          tone: "danger",
+                        });
                         if (!ok) return;
                         // MP231-verify fix 2026-07-01: null licensed_at when
                         // flipping back to unlicensed. Downstream views (v_agent_
@@ -546,7 +553,11 @@ export function AgentProfileDrawer() {
                     <button
                       onClick={async () => {
                         if (!agent?.id) return;
-                        const ok = window.confirm(`Mark ${agent.display_name ?? "this agent"} as LICENSED? This fires the course email.`);
+                        const ok = await askConfirm({
+                          title: `Mark ${agent.display_name ?? "this agent"} as LICENSED?`,
+                          description: "This flips license status, stamps licensed_at, moves them to onboarding, and fires the course email.",
+                          confirmText: "Mark licensed",
+                        });
                         if (!ok) return;
                         const { error } = await (supabase as any)
                           .from("agents")
@@ -997,7 +1008,11 @@ export function AgentProfileDrawer() {
                       className="h-9 gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10"
                       onClick={async () => {
                         if (!agent?.id) return;
-                        const ok = window.confirm(`Restore ${name}? They will show back up in the roster.`);
+                        const ok = await askConfirm({
+                          title: `Restore ${name}?`,
+                          description: "They come back into the roster, deactivation reason and manager-switch pointer are cleared.",
+                          confirmText: "Restore",
+                        });
                         if (!ok) return;
                         // MP231-verify fix 2026-07-01: also clear deactivation_reason
                         // and switched_to_manager_id so downstream views/queries that

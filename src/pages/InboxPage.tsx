@@ -24,6 +24,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useConfirm } from "@/hooks/useConfirm";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -185,6 +186,7 @@ const normalizeEmailTracking = (row: EmailTrackingRow): InboxMessage => {
 };
 
 export default function InboxPage() {
+  const askConfirm = useConfirm();
   const [messages, setMessages] = useState<InboxMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -394,7 +396,13 @@ export default function InboxPage() {
 
   const bulkDelete = async () => {
     if (selected.size === 0) return;
-    if (!window.confirm(`Delete ${selected.size} log entries? This cannot be undone.`)) return;
+    const ok = await askConfirm({
+      title: `Delete ${selected.size} log entr${selected.size === 1 ? "y" : "ies"}?`,
+      description: "Rows are hard-deleted from notification_log and outbound_email_log. This cannot be undone.",
+      confirmText: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     const notifIds: string[] = [];
     const emailIds: string[] = [];
     filtered.forEach((m) => {

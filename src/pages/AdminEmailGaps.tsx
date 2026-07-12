@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useConfirm } from "@/hooks/useConfirm";
 
 /**
  * /admin/email-gaps — Surface every licensed agent whose course email
@@ -49,6 +50,7 @@ export default function AdminEmailGaps() {
   usePageTitle("Email Gaps · Apex Admin");
   const qc = useQueryClient();
   const openAgent = useAgentProfileDrawer((s) => s.openAgent);
+  const askConfirm = useConfirm();
   const [filter, setFilter] = useState<"gap" | "all" | "sent" | "queued">("gap");
   const [firingId, setFiringId] = useState<string | null>(null);
 
@@ -103,7 +105,11 @@ export default function AdminEmailGaps() {
       toast.info("No gaps to send");
       return;
     }
-    const ok = window.confirm(`Re-queue + send course + Discord to ${gaps.length} agents?`);
+    const ok = await askConfirm({
+      title: `Re-queue email to ${gaps.length} agent${gaps.length === 1 ? "" : "s"}?`,
+      description: "Sends the course email + Discord invite to every licensed agent whose queue currently shows a gap.",
+      confirmText: "Send now",
+    });
     if (!ok) return;
     setFiringId("__all__");
     try {

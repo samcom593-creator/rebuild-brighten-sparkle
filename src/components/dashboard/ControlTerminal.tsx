@@ -15,6 +15,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import { useConfirm } from "@/hooks/useConfirm";
 import {
   OperatorCommandResponse,
   buildImplementationPrompt,
@@ -75,6 +76,7 @@ async function queueOperatorTask(command: string, prompt: string): Promise<strin
 
 export function ControlTerminal() {
   const navigate = useNavigate();
+  const askConfirm = useConfirm();
   const [command, setCommand] = useState("");
   const [sqlQuery, setSqlQuery] = useState(DEFAULT_SQL);
   const [running, setRunning] = useState(false);
@@ -202,9 +204,16 @@ export function ControlTerminal() {
     setSqlError(null);
     setRows(null);
     if (isMutatingSql) {
-      const ok = window.confirm(
-        "This SQL will mutate the database. Proceed?\n\n" + sqlQuery.slice(0, 400),
-      );
+      const ok = await askConfirm({
+        title: "This SQL will mutate the database.",
+        description: (
+          <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-2 text-xs">
+            {sqlQuery.slice(0, 400)}
+          </pre>
+        ),
+        confirmText: "Run mutation",
+        tone: "danger",
+      });
       if (!ok) return;
     }
     setRunning(true);

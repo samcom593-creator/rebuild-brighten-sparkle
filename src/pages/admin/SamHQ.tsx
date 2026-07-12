@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { useConfirm } from "@/hooks/useConfirm";
 
 /* ---------------- types ---------------- */
 type Bucket = "MUST" | "SHOULD" | "COULD";
@@ -61,6 +62,7 @@ function dowLabel(dateStr: string): string {
    ============================================================ */
 function TodaySection({ today }: { today: string }) {
   const qc = useQueryClient();
+  const askConfirm = useConfirm();
   const [adding, setAdding] = useState<Bucket | null>(null);
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -211,7 +213,15 @@ function TodaySection({ today }: { today: string }) {
                     <Button
                       size="sm" variant="ghost"
                       className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                      onClick={() => { if (confirm("Delete task?")) removeTask.mutate(t.id); }}
+                      onClick={async () => {
+                        const ok = await askConfirm({
+                          title: "Delete task?",
+                          description: "The row is removed from your HQ list. This cannot be undone.",
+                          confirmText: "Delete",
+                          tone: "danger",
+                        });
+                        if (ok) removeTask.mutate(t.id);
+                      }}
                       title="delete"
                     ><Trash2 className="w-3.5 h-3.5" /></Button>
                   </li>

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { toast } from "sonner";
+import { useConfirm } from "@/hooks/useConfirm";
 
 type Dashboard = {
   total_users: number; dau: number; wau: number;
@@ -560,6 +561,7 @@ const BROADCAST_STAGES: Array<{ value: string; label: string }> = [
 
 function BroadcastPanel({ templates }: { templates: Template[] }) {
   const qc = useQueryClient();
+  const askConfirm = useConfirm();
   const [audience, setAudience] = useState<string>("applied_paid");
   const [templateKey, setTemplateKey] = useState<string>("");
   const [previewBody, setPreviewBody] = useState<string>("");
@@ -592,7 +594,12 @@ function BroadcastPanel({ templates }: { templates: Template[] }) {
       toast.error("Pick a template first");
       return;
     }
-    if (!confirm(`Queue broadcast "${templateKey}" to ~${audienceCount ?? 0} users? This will send within ~5 minutes.`)) return;
+    const ok = await askConfirm({
+      title: `Queue broadcast "${templateKey}"?`,
+      description: `~${audienceCount ?? 0} users. Sends within ~5 minutes. This cannot be recalled once queued.`,
+      confirmText: "Queue broadcast",
+    });
+    if (!ok) return;
 
     setSending(true);
     try {

@@ -259,7 +259,17 @@ for (const dir of TRACKED_DIRS) {
 const count = allViolations.reduce((n, f) => n + f.v.length, 0);
 
 // Lower this number when fixes land. NEVER raise it.
-const BASELINE = 16;
+//
+// wave-31 (2026-07-11) — full pay-down 16 -> 0. Every native window.confirm /
+// bare confirm callsite migrated to `await askConfirm({...})` backed by the
+// promise-based useConfirm hook + ConfirmProvider (Radix AlertDialog)
+// mounted inside AuthenticatedShell. Sites paid down: DashboardCRM (2),
+// AgentProfileDrawer (3), ContentLibrary (2), AdminEmailGaps, ControlTerminal,
+// HiringManagerAssignments, InactiveAgents, InboxPage, InviteLinks, SamHQ,
+// TelegramBot, UnclaimedLeads. Mobile-Safari-friendly, brand-locked,
+// keyboard-accessible, non-swallowable. From this commit forward, any new
+// native modal call fails at commit.
+const BASELINE = 0;
 
 if (count <= BASELINE) {
   const delta = BASELINE - count;

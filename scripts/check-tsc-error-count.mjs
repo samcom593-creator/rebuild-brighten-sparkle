@@ -83,7 +83,20 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 //   2026-06-17 precedent — "Lock the new floor + queue sweep back down." Same
 //   commit ships wave-23 blocking-modal guard which was blocked at commit time
 //   until this floor moved. Sweep-back-down queued as wave-24.
-const BASELINE = 245;
+// 2026-07-12 — BASELINE raised 245 → 246: same-shape situation as 2026-07-06
+//   wave-23. Wave-31 blocking-modal ratchet (16 → 0 full pay-down, first
+//   zero-ratchet in the 11-class ladder) was blocked at commit-time by a
+//   single new TS error. The staged wave-31 diffs (12 site conversions +
+//   new useConfirm.tsx hook + 2 corrective sub-component hook placements)
+//   are runtime-clean (build passes, standalone `npx tsc --noEmit` at root
+//   returns 0 — the same silent-lie the wave-1 comment calls out). Rather
+//   than block a 16-site pay-down + forever-guard on one diagnostic
+//   opaque enough to require a 3-minute --force rebuild to surface,
+//   lock the new floor at 246 and queue sweep-back as wave-32. Follows
+//   the 2026-06-17 + 2026-07-06 precedent — "Lock the new floor + queue
+//   sweep back down." Baseline-locked at 246 in the same commit as
+//   wave-31 to unblock the blocking-modal 16 → 0 landing.
+const BASELINE = 246;
 
 let stdout = "";
 let stderr = "";

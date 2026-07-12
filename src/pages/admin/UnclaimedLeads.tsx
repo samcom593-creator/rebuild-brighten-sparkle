@@ -119,9 +119,11 @@ export default function UnclaimedLeads() {
   return (
     <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4 ops-surface ops-fade-in">
       <PageHeader
+        accent="rose"
+        eyebrow="Admin · Unclaimed"
+        eyebrowIcon={<AlertOctagon className="h-3 w-3" />}
         title="Unclaimed Leads"
         subtitle="Every applicant currently in stage=new. The longer they sit cold, the deader the lead. Reassign in one click."
-        icon={<AlertOctagon className="w-6 h-6 text-rose-400" />}
       />
 
       {/* Stat strip */}

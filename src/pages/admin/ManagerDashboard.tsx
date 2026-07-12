@@ -288,9 +288,11 @@ export default function ManagerDashboard() {
   return (
     <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4 ops-surface ops-fade-in">
       <PageHeader
+        accent="amber"
+        eyebrow="Admin · Manager"
+        eyebrowIcon={<Users className="h-3 w-3" />}
         title="Manager Command"
         subtitle="One screen for the manager who runs the room. Recruiting (new apps + contact gaps), Licensing (paid → exam-ready), Production (deals + leaderboard)."
-        icon={<Users className="w-6 h-6 text-amber-400" />}
       />
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid grid-cols-3 w-full max-w-md">

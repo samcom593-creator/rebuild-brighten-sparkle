@@ -613,9 +613,11 @@ export default function SamHQ() {
   return (
     <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4 ops-surface ops-fade-in">
       <PageHeader
+        accent="amber"
+        eyebrow="Sam · HQ"
+        eyebrowIcon={<Crown className="h-3 w-3" />}
         title="Sam HQ"
         subtitle="One command surface. Today's must-do, this week, what shipped, what leaks. Edits sync across devices every 60s."
-        icon={<Crown className="w-6 h-6 text-amber-400" />}
       />
 
       <TelegramStatusTile />

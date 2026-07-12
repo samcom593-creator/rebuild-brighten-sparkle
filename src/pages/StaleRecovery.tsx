@@ -108,7 +108,7 @@ export default function StaleRecovery() {
     <div className="min-h-screen bg-background p-4 sm:p-6">
       <PageHeader
         title="Stale Applicant Recovery"
-        description="Applicants who applied >24h ago and no one has contacted yet. Reach out, reassign, or dismiss."
+        subtitle="Applicants who applied >24h ago and no one has contacted yet. Reach out, reassign, or dismiss."
       />
 
       {/* Funnel snapshot */}

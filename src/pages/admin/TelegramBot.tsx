@@ -295,10 +295,12 @@ export default function TelegramBot() {
     <div className="min-h-screen bg-background py-6 px-4">
       <div className="max-w-7xl mx-auto space-y-6">
         <PageHeader
-          icon={Send}
+          accent="blue"
+          eyebrow="Admin · Telegram"
+          eyebrowIcon={<Send className="h-3 w-3" />}
           title="APEX Telegram Bot"
-          description="Pre-hire + onboarding + licensing operating layer. Discord owns active production; this owns everything before it."
-          right={
+          subtitle="Pre-hire + onboarding + licensing operating layer. Discord owns active production; this owns everything before it."
+          actions={
             <Button variant="outline" size="sm" onClick={refreshAll}>
               <RefreshCw className="h-4 w-4 mr-2" /> Refresh
             </Button>

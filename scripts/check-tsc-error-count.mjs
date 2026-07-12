@@ -96,7 +96,21 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 //   the 2026-06-17 + 2026-07-06 precedent — "Lock the new floor + queue
 //   sweep back down." Baseline-locked at 246 in the same commit as
 //   wave-31 to unblock the blocking-modal 16 → 0 landing.
-const BASELINE = 246;
+// 2026-07-12 wave-32 — BASELINE dropped 246 → 240 via PageHeader prop-name
+//   sweep. Six admin/dashboard pages were passing legacy PageHeader props
+//   (`icon=`, `description=`, `right=`) that were removed in the v4 rewrite
+//   (2026-05-20). All were TS2322 misuse errors surfacing under `tsc -b
+//   --force`, none hit the runtime path because Vite is type-permissive.
+//   Fixed sites: src/pages/admin/LicensingTracker.tsx (icon → eyebrowIcon
+//   + accent="amber"), src/pages/admin/ManagerDashboard.tsx (icon →
+//   eyebrowIcon + accent="amber"), src/pages/admin/SamHQ.tsx (icon →
+//   eyebrowIcon + accent="amber"), src/pages/admin/UnclaimedLeads.tsx
+//   (icon → eyebrowIcon + accent="rose"), src/pages/admin/TelegramBot.tsx
+//   (icon + description + right → eyebrowIcon + subtitle + actions +
+//   accent="blue"), src/pages/StaleRecovery.tsx (description → subtitle).
+//   Nets 245 → 240 across wave-31 + wave-32 combined. Zero legacy
+//   PageHeader-prop misuses remain in src/**.
+const BASELINE = 240;
 
 let stdout = "";
 let stderr = "";

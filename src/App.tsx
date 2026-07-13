@@ -31,6 +31,13 @@ import { AuroraBackground } from "@/components/layout/AuroraBackground";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import { SidebarProvider } from "@/hooks/useSidebarState";
 import { AuthProvider } from "@/hooks/useAuth";
+// wave-33 (2026-07-12) P0 HOTFIX: ConfirmProvider hoisted to the app root so
+// EVERY route inherits it. Previously it lived only inside AuthenticatedShell,
+// but the global <AgentProfileDrawer /> mounts in QueryShell (covers /login,
+// /apply, etc.) and calls useConfirm() — with no provider above QueryShell it
+// threw "useConfirm must be used inside <ConfirmProvider>", tripping the
+// ErrorBoundary and white-screening /login and every non-landing public route.
+import { ConfirmProvider } from "@/hooks/useConfirm";
 import { Skeleton } from "@/components/ui/skeleton";
 // AuthenticatedShell is lazy: it pulls in SidebarLayout + CommandPalette +
 // CelebrationProvider + RequireProfilePicture which the literal landing route
@@ -339,6 +346,7 @@ const App = () => (
             <SupabaseHealthBanner />
           </Suspense>
           <AuroraBackground />
+          <ConfirmProvider>
           <BrowserRouter>
             <ScrollToTop />
             <RouteTelemetry />
@@ -667,6 +675,7 @@ const App = () => (
               </Routes>
             </Suspense>
           </BrowserRouter>
+          </ConfirmProvider>
       </SidebarProvider>
     </AuthProvider>
   </ErrorBoundary>

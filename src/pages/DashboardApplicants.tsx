@@ -948,7 +948,7 @@ export default function DashboardApplicants() {
   }
 
   return (
-    <div className="-mx-4 sm:-mx-6 lg:-mx-8 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)]">
+    <div className="apex-fullbleed-page -mx-4 sm:-mx-6 lg:-mx-8 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)]">
       <div className="px-4 sm:px-6 lg:px-8">
       <PageHeader
         accent="cyan"
@@ -1299,7 +1299,7 @@ export default function DashboardApplicants() {
         <div>
           <div className="min-w-0">
             {filteredApplications.length > 0 ? (
-              <div className="relative w-full border border-border rounded-md max-h-[calc(100vh-280px)] overflow-y-auto">
+              <div className="relative w-full border border-border rounded-md max-h-[calc(100vh-170px)] overflow-y-auto">
                 <table className="w-full caption-bottom text-sm min-w-[1100px]">
                   <thead className="[&_tr]:border-b">
                     <tr className="border-b bg-muted/50">

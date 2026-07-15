@@ -1841,6 +1841,14 @@ button[class*="border-emerald"]:hover {
   margin-inline: auto;
 }
 
+/* Full-bleed pages (e.g. Applicants feed) opt out of the 1760px content cap so
+   wide data tables fill an ultra-wide monitor instead of a centered column with
+   dead space on both sides. Scoped via :has() so only pages that render a
+   .apex-fullbleed-page root are affected; every other page keeps the cap. */
+.apex-content-frame:has(.apex-fullbleed-page) {
+  max-width: none;
+}
+
 .apex-page-header {
   animation: apex-panel-rise 360ms var(--ease-emphasized) both;
   border-radius: 0 0 8px 8px;

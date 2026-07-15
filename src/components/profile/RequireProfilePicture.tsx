@@ -20,15 +20,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 export function RequireProfilePicture() {
-  const { user } = useAuth();
+  const { user, isVaManager, isVa } = useAuth();
   const [needsPicture, setNeedsPicture] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
 
   // Check whether the current user has an avatar. Only prompts once per
   // session per user — if you've dismissed-after-uploading, we don't spam.
+  // VA managers + VAs are back-office operators, not producers — their face
+  // never appears on the Discord deal feed, so we never force the photo gate.
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || isVaManager || isVa) return;
     let cancelled = false;
     (async () => {
       const { data } = await supabase
@@ -41,7 +43,7 @@ export function RequireProfilePicture() {
       if (!url || url.length < 10) setNeedsPicture(true);
     })();
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [user?.id, isVaManager, isVa]);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -9,12 +9,14 @@ const NOT_NOW_KEY = "push_prompt_not_now_at";
 const RE_PROMPT_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export function PushNotificationPrompt() {
-  const { user } = useAuth();
+  const { user, isVaManager, isVa } = useAuth();
   const { supported, permission, isSubscribed, subscribe, loading } = usePushNotifications();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!user || !supported) return;
+    // VA managers + VAs are back-office operators — the lead/deal/production
+    // push prompt is irrelevant to them, so we never block their portal with it.
+    if (!user || !supported || isVaManager || isVa) return;
     // Already granted/denied or subscribed — don't show
     if (permission === "granted" && isSubscribed) return;
     if (permission === "denied") return;
@@ -29,7 +31,7 @@ export function PushNotificationPrompt() {
     // Show immediately (small delay for page load)
     const timer = setTimeout(() => setVisible(true), 1500);
     return () => clearTimeout(timer);
-  }, [user, supported, permission, isSubscribed]);
+  }, [user, supported, permission, isSubscribed, isVaManager, isVa]);
 
   const handleEnable = async () => {
     localStorage.removeItem(NOT_NOW_KEY);

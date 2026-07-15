@@ -66,6 +66,7 @@ export default function Login() {
 
         const isAdmin = roles?.some(r => r.role === "admin");
         const isManager = roles?.some(r => r.role === "manager");
+        const isVaManager = roles?.some(r => (r.role as string) === "va_manager");
 
         // Force password change if default password
         const { data: agent } = await supabase
@@ -83,7 +84,9 @@ export default function Login() {
         toast.success("Welcome back!");
 
         // Route by role — NEVER auto-route to course
-        if (isAdmin || isManager) {
+        if (isVaManager) {
+          navigate("/va-team");
+        } else if (isAdmin || isManager) {
           navigate("/dashboard");
         } else {
           navigate("/agent-portal");

@@ -92,7 +92,7 @@ export function GlobalSidebar({
 }: GlobalSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAdmin, isManager } = useAuth();
+  const { user, isAdmin, isManager, isVaManager } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<{ id: string; name: string; email: string; kind: "agent" | "applicant"; licenseStatus?: string | null; phone?: string }>>([]);
   const [showSearch, setShowSearch] = useState(false);
@@ -296,6 +296,11 @@ export function GlobalSidebar({
         { icon: Archive, label: "Old Managers", href: "/dashboard/old-applicants/managers" },
         { icon: Archive, label: "Old Licensed Recruiters", href: "/dashboard/old-applicants/licensed-recruiters" },
       );
+    } else if (isVaManager) {
+      // VA Manager (operator) — a single-purpose portal to run the VA team.
+      primary.push(
+        { icon: Users, label: "VA Team", href: "/va-team", special: true },
+      );
     } else {
       // AGENT = the daily producer. Their flow: take inbound calls → write apps
       // → check production → reference scripts/carriers/comp. Anything beyond
@@ -324,7 +329,7 @@ export function GlobalSidebar({
       ...(more.length ? [{ label: "MORE", items: more }] : []),
       ...(oldApplicants.length ? [{ label: "OLD APPLICANTS", items: oldApplicants }] : []),
     ];
-  }, [isAdmin, isManager]);
+  }, [isAdmin, isManager, isVaManager]);
 
   const handleLogout = useCallback(async () => {
     await supabase.auth.signOut();

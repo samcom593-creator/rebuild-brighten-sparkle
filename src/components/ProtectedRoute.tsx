@@ -19,6 +19,11 @@ interface ProtectedRouteProps {
    * without granting broader manager/admin access.
    */
   allowPresenters?: boolean;
+  /**
+   * Extra roles allowed through a requireAdmin gate (e.g. ["va_manager"]).
+   * Lets operator/VA roles reach their own pages without being admin/manager.
+   */
+  allowRoles?: string[];
 }
 
 export function ProtectedRoute({
@@ -26,8 +31,9 @@ export function ProtectedRoute({
   requireAdmin = false,
   allowManagers = false,
   allowPresenters = false,
+  allowRoles,
 }: ProtectedRouteProps) {
-  const { user, isLoading, isAdmin, isManager } = useAuth();
+  const { user, isLoading, isAdmin, isManager, isVaManager, hasRole } = useAuth();
   const location = useLocation();
   const [isPresenter, setIsPresenter] = useState(false);
   const [presenterLoading, setPresenterLoading] = useState(false);
@@ -35,10 +41,14 @@ export function ProtectedRoute({
   // Once we've confirmed auth at least once, never show the skeleton again
   const hasResolved = useRef(false);
 
+  const roleAllowed = (allowRoles ?? []).some((r) =>
+    hasRole(r as "admin" | "manager" | "agent" | "va_manager" | "va"),
+  );
+
   useEffect(() => {
     let cancelled = false;
 
-    if (!requireAdmin || !allowPresenters || !user || isAdmin || (allowManagers && isManager)) {
+    if (!requireAdmin || !allowPresenters || !user || isAdmin || (allowManagers && isManager) || roleAllowed) {
       setIsPresenter(false);
       setPresenterLoading(false);
       setPresenterCheckedUserId(null);
@@ -74,14 +84,15 @@ export function ProtectedRoute({
     return () => {
       cancelled = true;
     };
-  }, [allowManagers, allowPresenters, isAdmin, isManager, requireAdmin, user?.id]);
+  }, [allowManagers, allowPresenters, isAdmin, isManager, requireAdmin, roleAllowed, user?.id]);
 
   if (!isLoading) {
     hasResolved.current = true;
   }
 
   // Show skeleton only on the very first auth check
-  const needsPresenterCheck = requireAdmin && allowPresenters && !!user && !isAdmin && !(allowManagers && isManager);
+  const needsPresenterCheck =
+    requireAdmin && allowPresenters && !!user && !isAdmin && !(allowManagers && isManager) && !roleAllowed;
   const presenterCheckPending = needsPresenterCheck && (presenterLoading || presenterCheckedUserId !== user.id);
 
   if ((isLoading && !hasResolved.current) || presenterCheckPending) {
@@ -91,14 +102,15 @@ export function ProtectedRoute({
   // Not authenticated - redirect to appropriate login
   if (!user) {
     const agentPages = ["/apex-daily-numbers", "/agent-portal", "/numbers"];
-    const isAgentPage = agentPages.some(page => location.pathname.startsWith(page));
+    const isAgentPage = agentPages.some((page) => location.pathname.startsWith(page));
     const loginPath = isAgentPage ? "/agent-login" : "/login";
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
-  // Admin required but user is not admin (or manager when opted-in)
-  if (requireAdmin && !isAdmin && !(allowManagers && isManager) && !(allowPresenters && isPresenter)) {
-    return <Navigate to="/dashboard" replace />;
+  // Admin required but user is not admin (or manager/presenter/allowed-role when opted-in)
+  if (requireAdmin && !isAdmin && !(allowManagers && isManager) && !(allowPresenters && isPresenter) && !roleAllowed) {
+    // VA managers have no /dashboard access — send them to their own home to avoid a redirect loop.
+    return <Navigate to={isVaManager ? "/va-team" : "/dashboard"} replace />;
   }
 
   // Allow all authenticated users

@@ -53,7 +53,7 @@ interface Profile {
 }
 
 interface UserRole {
-  role: "admin" | "manager" | "agent";
+  role: "admin" | "manager" | "agent" | "va_manager" | "va";
 }
 
 interface AuthContextValue {
@@ -65,7 +65,9 @@ interface AuthContextValue {
   isAdmin: boolean;
   isManager: boolean;
   isAgent: boolean;
-  hasRole: (role: "admin" | "manager" | "agent") => boolean;
+  isVaManager: boolean;
+  isVa: boolean;
+  hasRole: (role: "admin" | "manager" | "agent" | "va_manager" | "va") => boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<any>;
   signIn: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<{ error: any }>;
@@ -346,13 +348,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   }, []);
 
-  const hasRole = (role: "admin" | "manager" | "agent") => {
+  const hasRole = (role: "admin" | "manager" | "agent" | "va_manager" | "va") => {
     return roles.some((r) => r.role === role);
   };
 
   const isAdmin = hasRole("admin");
   const isManager = hasRole("manager");
   const isAgent = hasRole("agent");
+  const isVaManager = hasRole("va_manager");
+  const isVa = hasRole("va");
   const isFullyLoaded = !isLoading && !rolesLoading;
 
   const value: AuthContextValue = useMemo(() => ({
@@ -364,13 +368,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin,
     isManager,
     isAgent,
+    isVaManager,
+    isVa,
     hasRole,
     signUp,
     signIn,
     signOut,
     refreshProfile: () => user && fetchProfile(user.id),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [user, session, profile, roles, isFullyLoaded, isAdmin, isManager, isAgent, signUp, signIn, signOut]);
+  }), [user, session, profile, roles, isFullyLoaded, isAdmin, isManager, isAgent, isVaManager, isVa, signUp, signIn, signOut]);
 
   return React.createElement(
     AuthContext.Provider,

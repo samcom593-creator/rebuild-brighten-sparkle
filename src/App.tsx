@@ -91,6 +91,7 @@ const Signup = lazy(() => import("./pages/Signup"));
 const AgentSignup = lazy(() => import("./pages/AgentSignup"));
 const AgentNumbersLogin = lazy(() => import("./pages/AgentNumbersLogin"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const VaManagerPortal = lazy(() => import("./pages/VaManagerPortal"));
 const ApexControl = lazy(() => import("./pages/ApexControl"));
 const BuildersDashboard = lazy(() => import("./pages/BuildersDashboard"));
 const DashboardApplicants = lazy(() => import("./pages/DashboardApplicants"));
@@ -434,6 +435,9 @@ const App = () => (
                         numbers, and agent/manager/admin views live here.
                         The old command center stays available below. */}
                     <Route path="/dashboard" element={<Dashboard />} />
+                    {/* VA Manager (Milver) portal — create/monitor/disable sub-VA
+                        accounts. Admins + va_manager role only. */}
+                    <Route path="/va-team" element={<ProtectedRoute requireAdmin allowRoles={["va_manager"]}><VaManagerPortal /></ProtectedRoute>} />
                     <Route path="/dashboard/apex-control" element={<ProtectedRoute requireAdmin><ApexControl /></ProtectedRoute>} />
                     <Route path="/dashboard/builders" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="builders" /></ProtectedRoute>} />
                     <Route path="/dashboard/builders/:builderId" element={<ProtectedRoute requireAdmin><BuildersDashboard mode="builders" /></ProtectedRoute>} />

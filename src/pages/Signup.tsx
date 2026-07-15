@@ -137,7 +137,7 @@ export default function Signup() {
       }
 
       toast.success("Account created! Welcome to APEX Financial.");
-      navigate("/dashboard");
+      navigate(response?.role === "va_manager" ? "/va-team" : "/dashboard");
     } catch (error: any) {
       console.error("Signup error:", error);
       toast.error(error.message || "Failed to create account");

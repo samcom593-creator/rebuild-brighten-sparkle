@@ -68,6 +68,8 @@ beforeEach(() => {
     isAdmin: false,
     isManager: false,
     isAgent: true,
+    isVaManager: false,
+    isVa: false,
     hasRole: vi.fn(),
     signIn: vi.fn(),
     signUp: vi.fn(),

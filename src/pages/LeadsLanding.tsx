@@ -89,8 +89,8 @@ export default function LeadsLanding() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
-            {benefits.map((benefit, idx) => (
-              <Card key={idx} className="bg-slate-700/50 border-slate-600 hover:border-teal-500/50 transition-colors">
+            {benefits.map((benefit) => (
+              <Card key={benefit.title} className="bg-slate-700/50 border-slate-600 hover:border-teal-500/50 transition-colors">
                 <CardHeader>
                   <div className="flex items-start gap-4">
                     <div className="p-3 rounded-lg bg-teal-500/20 text-teal-400">
@@ -120,8 +120,8 @@ export default function LeadsLanding() {
           <div className="bg-white dark:bg-slate-900 rounded-md p-12 border border-slate-600">
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-4">
-                {features.slice(0, 5).map((feature, idx) => (
-                  <div key={idx} className="flex gap-3 items-start">
+                {features.slice(0, 5).map((feature) => (
+                  <div key={feature.title} className="flex gap-3 items-start">
                     <Check className="h-6 w-6 text-teal-400 flex-shrink-0 mt-1" />
                     <div>
                       <h3 className="font-semibold text-white">{feature.title}</h3>
@@ -131,8 +131,8 @@ export default function LeadsLanding() {
                 ))}
               </div>
               <div className="space-y-4">
-                {features.slice(5).map((feature, idx) => (
-                  <div key={idx} className="flex gap-3 items-start">
+                {features.slice(5).map((feature) => (
+                  <div key={feature.title} className="flex gap-3 items-start">
                     <Check className="h-6 w-6 text-blue-400 flex-shrink-0 mt-1" />
                     <div>
                       <h3 className="font-semibold text-white">{feature.title}</h3>
@@ -156,8 +156,8 @@ export default function LeadsLanding() {
           </div>
 
           <div className="space-y-6">
-            {faqs.map((faq, idx) => (
-              <Card key={idx} className="bg-slate-700/50 border-slate-600">
+            {faqs.map((faq) => (
+              <Card key={faq.q} className="bg-slate-700/50 border-slate-600">
                 <CardHeader>
                   <CardTitle className="text-lg text-white">{faq.q}</CardTitle>
                 </CardHeader>

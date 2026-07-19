@@ -654,7 +654,7 @@ export default function ClientPipeline() {
         {openCallbacks && (
           <div className="mt-4">
             {isLoading ? (
-              <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
+              <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-14 w-full" />)}</div>
             ) : callbacks.length === 0 ? (
               <EmptyState
                 icon={<CalendarClock className="h-6 w-6" />}
@@ -707,7 +707,7 @@ export default function ClientPipeline() {
         {openRecent && (
           <div className="mt-4">
             {isLoading ? (
-              <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
+              <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-14 w-full" />)}</div>
             ) : recent.length === 0 ? (
               <EmptyState icon={<UserPlus className="h-6 w-6" />} title="No clients on file" />
             ) : (
@@ -821,7 +821,7 @@ export default function ClientPipeline() {
 
               {/* List */}
               {isLoading ? (
-                <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
+                <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-14 w-full" />)}</div>
               ) : list.length === 0 ? (
                 <EmptyState
                   icon={<Filter className="h-6 w-6" />}
@@ -1039,7 +1039,7 @@ function FalloutCard({
         </summary>
         <div className="mt-3">
           {loading ? (
-            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-12 w-full" />)}</div>
           ) : children}
         </div>
       </details>

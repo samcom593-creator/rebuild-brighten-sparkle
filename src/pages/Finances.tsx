@@ -213,7 +213,7 @@ export default function Finances() {
       {/* Top metrics grid */}
       {snapshot.isLoading ? (
         <div className="grid gap-2 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
-          {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
+          {Array.from({ length: 10 }).map((_, i) => <Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-20" />)}
         </div>
       ) : snap ? (
         <div className="grid gap-2 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
@@ -273,7 +273,7 @@ export default function Finances() {
               <h4 className="text-13 font-bold mb-2 flex items-center gap-1.5"><ShieldAlert className="h-3.5 w-3.5 text-amber-500" /> Duplicate Charges ({dups.data?.length ?? 0})</h4>
               <div className="space-y-1.5 max-h-72 overflow-auto">
                 {(dups.data ?? []).slice(0, 20).map((d, i) => (
-                  <div key={i} className="text-12 flex justify-between border-b border-border/40 py-1">
+                  <div key={`${d.applicant_name ?? "?"}|${d.first_charge_at ?? d.total_charge ?? i}`} className="text-12 flex justify-between border-b border-border/40 py-1">
                     <span className="truncate">{d.applicant_name ?? "—"}</span>
                     <span className="tabular-nums text-amber-700">{fmtUsd(d.total_charge)}</span>
                   </div>
@@ -287,7 +287,7 @@ export default function Finances() {
               <h4 className="text-13 font-bold mb-2 flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-rose-500" /> Course Bought · Stuck ({stuck.data?.length ?? 0})</h4>
               <div className="space-y-1.5 max-h-72 overflow-auto">
                 {(stuck.data ?? []).slice(0, 50).map((s, i) => (
-                  <div key={i} className="text-12 flex justify-between border-b border-border/40 py-1">
+                  <div key={s.application_id ?? `stuck|${s.applicant_name ?? "?"}|${s.days_stuck ?? i}`} className="text-12 flex justify-between border-b border-border/40 py-1">
                     <span className="truncate">{s.applicant_name ?? "—"}</span>
                     <span className="tabular-nums text-rose-700">{s.days_stuck ?? "—"}d</span>
                   </div>
@@ -301,7 +301,7 @@ export default function Finances() {
               <h4 className="text-13 font-bold mb-2 flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-amber-500" /> Idle Active Agents ({idle.data?.length ?? 0})</h4>
               <div className="space-y-1.5 max-h-72 overflow-auto">
                 {(idle.data ?? []).slice(0, 50).map((a, i) => (
-                  <div key={i} className="text-12 flex justify-between border-b border-border/40 py-1">
+                  <div key={a.agent_id ?? `idle|${a.agent_name ?? "?"}|${a.days_idle ?? i}`} className="text-12 flex justify-between border-b border-border/40 py-1">
                     <span className="truncate">{a.agent_name ?? "—"}</span>
                     <span className="tabular-nums text-amber-700">{a.days_idle ?? "—"}d</span>
                   </div>
@@ -317,7 +317,7 @@ export default function Finances() {
         <Card>
           <CardContent className="p-0">
             {commissions.isLoading ? (
-              <div className="p-4 space-y-2">{Array.from({length:5}).map((_,i)=><Skeleton key={i} className="h-10" />)}</div>
+              <div className="p-4 space-y-2">{Array.from({length:5}).map((_,i)=><Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-10" />)}</div>
             ) : (
               <div className="divide-y divide-border/60">
                 {(commissions.data ?? []).map((c) => (
@@ -341,7 +341,7 @@ export default function Finances() {
         <Card>
           <CardContent className="p-0">
             {approvals.isLoading ? (
-              <div className="p-4 space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} className="h-12" />)}</div>
+              <div className="p-4 space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-12" />)}</div>
             ) : (
               <div className="divide-y divide-border/60">
                 {(approvals.data ?? []).map((a) => (

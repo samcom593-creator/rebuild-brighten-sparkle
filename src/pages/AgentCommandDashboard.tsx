@@ -588,7 +588,7 @@ export default function AgentCommandDashboard() {
             </Button>
           </div>
           {deals.isLoading ? (
-            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-12 w-full" />)}</div>
           ) : (deals.data ?? []).length === 0 ? (
             <EmptyState
               icon={<Trophy className="h-6 w-6" />}
@@ -2217,7 +2217,7 @@ function AgencyCommandView() {
           {cfoLive.isLoading ? (
             /* MP238-simplify: was grid-cols-6 stat wall; now 3-up */
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-              {Array.from({length:3}).map((_,i) => <Skeleton key={i} className="h-16 bg-white/[0.04]" />)}
+              {Array.from({length:3}).map((_,i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-16 bg-white/[0.04]" />)}
             </div>
           ) : leak ? (
             /* MP238-simplify: cfo leaks condensed 6→3 primary cards (Ghost AP, Walked commission, Carrier sync). Course-stuck / Dup-charges / Idle-agents live in /dashboard/finances */
@@ -2382,7 +2382,7 @@ function AgencyCommandView() {
             </div>
 
             {periodDeals.isLoading ? (
-              <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full bg-white/[0.04]" />)}</div>
+              <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-12 w-full bg-white/[0.04]" />)}</div>
             ) : periodSummary.producers.length === 0 ? (
               <div className="py-8 text-center">
                 <Trophy className="h-8 w-8 mx-auto mb-2 text-white/30" />
@@ -2477,7 +2477,7 @@ function AgencyCommandView() {
                 <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">Production · {periodBounds.label}</p>
                 {periodDeals.isLoading ? (
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+                    {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-20 w-full" />)}
                   </div>
                 ) : (
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -2501,7 +2501,7 @@ function AgencyCommandView() {
                 <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">Manager production share · {fmtUsd(periodSummary.totalAp, true)} total</p>
                 <div className="space-y-2">
                   {periodSummary.managers.map((m, i) => (
-                    <div key={i} className="flex items-center gap-3">
+                    <div key={m.name} className="flex items-center gap-3">
                       <div className="w-28 text-sm font-medium truncate shrink-0">{m.name}</div>
                       <div className="flex-1">
                         <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -2524,7 +2524,7 @@ function AgencyCommandView() {
 
           <TabsContent value="hires" className="mt-4">
             {recentHires.isLoading ? (
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-10 w-full" />)}</div>
             ) : (recentHires.data ?? []).length === 0 ? (
               <EmptyState icon={<UserPlus className="h-6 w-6" />} title="First hire opens the board" description="When a new agent is onboarded they'll surface here even before their first deal." />
             ) : (
@@ -2988,8 +2988,8 @@ function CarrierMixPanel({ data, loading }: {
                     stroke="none"
                     className="cursor-pointer transition-opacity group-hover:opacity-90"
                   >
-                    {chartData.map((_, i) => (
-                      <Cell key={i} fill={palette[i % palette.length]} />
+                    {chartData.map((c, i) => (
+                      <Cell key={c.name} fill={palette[i % palette.length]} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -3055,7 +3055,7 @@ function TopMoversPanel({ data, loading }: {
         </div>
 
         {loading ? (
-          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-9 w-full bg-white/5" />)}</div>
+          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-9 w-full bg-white/5" />)}</div>
         ) : data.length === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Momentum starts Monday</p>
@@ -3147,7 +3147,7 @@ function ConversionFunnelPanel({ data, loading }: {
         </div>
 
         {loading ? (
-          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-7 w-full bg-white/5" />)}</div>
+          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-7 w-full bg-white/5" />)}</div>
         ) : !data || data.created === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Funnel boots on first application</p>
@@ -3215,7 +3215,7 @@ function ActivityFeedPanel({ data, loading }: {
         </div>
 
         {loading ? (
-          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-9 w-full bg-white/5" />)}</div>
+          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-9 w-full bg-white/5" />)}</div>
         ) : data.length === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Inbox zero. Hold the Standard.</p>
@@ -3286,7 +3286,7 @@ function SourceRoiPanel({ data, loading }: {
         </div>
 
         {loading ? (
-          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-7 w-full bg-white/5" />)}</div>
+          <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-7 w-full bg-white/5" />)}</div>
         ) : data.length === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Tag your sources, win the funnel</p>
@@ -3353,7 +3353,7 @@ function MoneyFlowPanel({ data, loading }: {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-3 gap-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 bg-white/5" />)}</div>
+          <div className="grid grid-cols-3 gap-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton */ className="h-16 bg-white/5" />)}</div>
         ) : !data || data.count === 0 ? (
           <div className="py-6 text-center">
             <p className="text-[26px] font-black text-white/90">Wire the ledger, watch it flow</p>
@@ -3581,7 +3581,7 @@ function PersonalPacePanel() {
           )}
         </div>
         {pace.isLoading ? (
-          <div className="space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} className="h-10 bg-white/[0.04]" />)}</div>
+          <div className="space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} /* stable-key-allow:skeleton */ className="h-10 bg-white/[0.04]" />)}</div>
         ) : !alUid ? (
           <p className="text-12 text-white/60 italic">Link your al_user_id on your agent profile to see personal pace.</p>
         ) : !p ? (
@@ -3679,7 +3679,7 @@ function ProductMixPanel() {
           )}
         </div>
         {mix.isLoading ? (
-          <div className="space-y-2">{Array.from({length:6}).map((_,i)=><Skeleton key={i} className="h-8 bg-white/[0.04]" />)}</div>
+          <div className="space-y-2">{Array.from({length:6}).map((_,i)=><Skeleton key={i} /* stable-key-allow:skeleton */ className="h-8 bg-white/[0.04]" />)}</div>
         ) : !data || data.list.length === 0 ? (
           <p className="text-12 text-white/60 italic">First deal opens the board.</p>
         ) : (
@@ -3901,7 +3901,7 @@ function RecruiterContactSlaPanel() {
           </div>
         </div>
         {sla.isLoading ? (
-          <div className="space-y-2">{Array.from({length:5}).map((_,i)=><Skeleton key={i} className="h-10 bg-white/[0.04]" />)}</div>
+          <div className="space-y-2">{Array.from({length:5}).map((_,i)=><Skeleton key={i} /* stable-key-allow:skeleton */ className="h-10 bg-white/[0.04]" />)}</div>
         ) : !d || d.list.length === 0 ? (
           <p className="text-12 text-white/60 italic">Inbox zero across the board. Hold the Standard.</p>
         ) : (
@@ -4047,7 +4047,7 @@ function StateProductionPanel() {
           )}
         </div>
         {stateMix.isLoading ? (
-          <div className="space-y-2">{Array.from({length:6}).map((_,i)=><Skeleton key={i} className="h-7 bg-white/[0.04]" />)}</div>
+          <div className="space-y-2">{Array.from({length:6}).map((_,i)=><Skeleton key={i} /* stable-key-allow:skeleton */ className="h-7 bg-white/[0.04]" />)}</div>
         ) : !d || d.list.length === 0 ? (
           <p className="text-12 text-white/60 italic">Production map unlocks on first state-attributed deal.</p>
         ) : (
@@ -4256,7 +4256,7 @@ function CommissionProjectionPanel() {
           )}
         </div>
         {proj.isLoading ? (
-          <div className="space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} className="h-12 bg-white/[0.04]" />)}</div>
+          <div className="space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} /* stable-key-allow:skeleton */ className="h-12 bg-white/[0.04]" />)}</div>
         ) : !p ? (
           <p className="text-12 text-white/60 italic">Run a deal · the ledger will sing.</p>
         ) : (
@@ -4465,7 +4465,7 @@ function AgedLeadsPanel() {
         </div>
 
         {leads.isLoading ? (
-          <div className="space-y-2">{Array.from({length:4}).map((_,i)=><Skeleton key={i} className="h-12 bg-white/[0.04]" />)}</div>
+          <div className="space-y-2">{Array.from({length:4}).map((_,i)=><Skeleton key={i} /* stable-key-allow:skeleton */ className="h-12 bg-white/[0.04]" />)}</div>
         ) : !d ? (
           <p className="text-12 text-white/60 italic">Lead bank loading…</p>
         ) : (
@@ -4625,7 +4625,7 @@ function LowProducersPanel() {
         </div>
 
         {low.isLoading ? (
-          <div className="space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} className="h-12 bg-white/[0.04]" />)}</div>
+          <div className="space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={i} /* stable-key-allow:skeleton */ className="h-12 bg-white/[0.04]" />)}</div>
         ) : !d || d.total === 0 ? (
           <div className="py-6 text-center">
             <p className="text-15 font-bold text-emerald-300 mb-1">Every producer cleared $5K this week.</p>

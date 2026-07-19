@@ -287,6 +287,7 @@ export default function HallOfFame() {
         </div>
         {loadingTop ? (
           <div className="grid sm:grid-cols-3 gap-4">
+            {/* stable-key-allow:skeleton-static-array */}
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-44 w-full" />)}
           </div>
         ) : podium.length === 0 ? (
@@ -294,6 +295,7 @@ export default function HallOfFame() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
             {/* Re-order for visual podium: 2nd left, 1st center elevated, 3rd right */}
+            {/* stable-key-allow:positional-podium-tuple */}
             {[1, 0, 2].map((idx) => {
               const e = podium[idx];
               if (!e) return <div key={idx} />;
@@ -425,6 +427,7 @@ export default function HallOfFame() {
       {/* ── Plaque wall ──────────────────────────────────────────── */}
       {loadingPlaques ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {/* stable-key-allow:skeleton-static-array */}
           {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="aspect-[3/4] w-full" />)}
         </div>
       ) : filteredPlaques.length === 0 ? (

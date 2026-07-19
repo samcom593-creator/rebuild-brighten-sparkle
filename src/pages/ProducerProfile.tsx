@@ -319,6 +319,7 @@ export default function ProducerProfile() {
 
           {course.isLoading ? (
             <div className="space-y-2">
+              {/* stable-key-allow:skeleton-static-array */}
               {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-8" />)}
             </div>
           ) : course.isError ? (
@@ -410,6 +411,7 @@ export default function ProducerProfile() {
             <CardContent className="p-5 space-y-4">
               {profile.isLoading ? (
                 <div className="space-y-3">
+                  {/* stable-key-allow:skeleton-static-array */}
                   {Array.from({length:5}).map((_,i) => <Skeleton key={i} className="h-9" />)}
                 </div>
               ) : (
@@ -490,6 +492,7 @@ export default function ProducerProfile() {
             <CardContent className="p-4 space-y-3">
               <h3 className="text-13 font-bold flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-emerald-500" /> Production</h3>
               {agent.isLoading ? (
+                // stable-key-allow:skeleton-static-array
                 <div className="space-y-2">{Array.from({length:4}).map((_,i)=><Skeleton key={i} className="h-6" />)}</div>
               ) : ag ? (
                 <div className="space-y-2 text-12">

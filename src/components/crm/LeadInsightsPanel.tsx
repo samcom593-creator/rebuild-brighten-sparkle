@@ -114,8 +114,8 @@ export function LeadInsightsPanel({ applicationId, agentId, className }: LeadIns
                 Strengths
               </div>
               <ul className="space-y-1 text-sm">
-                {insights.strengths.map((s, i) => (
-                  <li key={i} className="flex gap-2">
+                {insights.strengths.map((s) => (
+                  <li key={s} className="flex gap-2">
                     <span className="text-green-500">▸</span> {s}
                   </li>
                 ))}
@@ -131,8 +131,8 @@ export function LeadInsightsPanel({ applicationId, agentId, className }: LeadIns
                 Risks
               </div>
               <ul className="space-y-1 text-sm">
-                {insights.risks.map((r, i) => (
-                  <li key={i} className="flex gap-2">
+                {insights.risks.map((r) => (
+                  <li key={r} className="flex gap-2">
                     <span className="text-yellow-500">▸</span> {r}
                   </li>
                 ))}
@@ -148,8 +148,8 @@ export function LeadInsightsPanel({ applicationId, agentId, className }: LeadIns
                 Next Actions
               </div>
               <ul className="space-y-2">
-                {insights.next_actions.map((a, i) => (
-                  <li key={i} className="text-sm border border-border/50 rounded-md p-2 space-y-1">
+                {insights.next_actions.map((a) => (
+                  <li key={a.action} className="text-sm border border-border/50 rounded-md p-2 space-y-1">
                     <div className="flex items-start gap-2">
                       <Badge className={cn("text-[10px] uppercase", PRIORITY_COLORS[a.priority])} variant="secondary">
                         {a.priority}

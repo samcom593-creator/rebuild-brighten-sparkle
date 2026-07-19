@@ -327,8 +327,8 @@ export default function BookReconciliation() {
                   formatter={(v: number, _n: string, p: any) => [fmtUsd(v), p?.payload?.supported ? "Supported" : "UNSUPPORTED"]}
                 />
                 <Bar dataKey="live_premium" radius={[0, 4, 4, 0]}>
-                  {carrierMix.map((c, i) => (
-                    <Cell key={i} fill={c.supported ? "hsl(168 70% 45%)" : "hsl(0 70% 55%)"} />
+                  {carrierMix.map((c) => (
+                    <Cell key={c.carrier_name} fill={c.supported ? "hsl(168 70% 45%)" : "hsl(0 70% 55%)"} />
                   ))}
                 </Bar>
               </BarChart>
@@ -556,6 +556,7 @@ function BigStat({ icon: Icon, label, value, sub, color, loading }: {
 }
 
 function SkelList() {
+  // stable-key-allow:skeleton-static-array
   return <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>;
 }
 
@@ -581,8 +582,8 @@ function RowMain({ title, meta, age, badges }: {
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 flex-wrap mb-0.5">
         <p className="font-semibold truncate">{title}</p>
-        {badges?.map((b, i) => (
-          <Badge key={i} variant="outline" className={`text-[10px] ${b.color}`}>{b.label}</Badge>
+        {badges?.map((b) => (
+          <Badge key={b.label} variant="outline" className={`text-[10px] ${b.color}`}>{b.label}</Badge>
         ))}
       </div>
       <p className="text-xs text-muted-foreground truncate">{meta}</p>

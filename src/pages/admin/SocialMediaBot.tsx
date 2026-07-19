@@ -276,6 +276,7 @@ export default function SocialMediaBot() {
       <div className="space-y-6 p-6">
         <Skeleton className="h-20 w-full" />
         <div className="grid grid-cols-4 gap-4">
+          {/* stable-key-allow:skeleton-static-array */}
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28" />)}
         </div>
         <Skeleton className="h-96 w-full" />
@@ -575,8 +576,8 @@ export default function SocialMediaBot() {
                 </h3>
                 <p className="text-xs text-zinc-500 mb-3">Hard. Enforced at the output gate.</p>
                 <div className="space-y-2.5 text-sm">
-                  {VOICE_RULES.map((r, i) => (
-                    <div key={i} className="border-l-2 border-amber-500/40 pl-3">
+                  {VOICE_RULES.map((r) => (
+                    <div key={r.do_text} className="border-l-2 border-amber-500/40 pl-3">
                       <div className="text-emerald-300 text-xs uppercase tracking-wider font-mono">DO</div>
                       <div className="mb-1">{r.do_text}</div>
                       <div className="text-rose-400 text-xs uppercase tracking-wider font-mono">DON'T</div>
@@ -733,14 +734,14 @@ export default function SocialMediaBot() {
                     <tr><th className="text-left p-2">When</th><th className="text-left p-2">Platform</th><th className="text-left p-2">Handle</th><th className="text-left p-2">Intent</th><th className="text-left p-2">Status</th><th className="text-right p-2">$</th></tr>
                   </thead>
                   <tbody>
-                    {(data.inbound ?? []).map((i) => (
-                      <tr key={i.id} className="border-t border-zinc-800">
-                        <td className="p-2 text-zinc-400">{formatDistanceToNow(parseISO(i.ts), { addSuffix: true })}</td>
-                        <td className="p-2">{i.platform}</td>
-                        <td className="p-2">{i.handle ?? "—"}</td>
-                        <td className="p-2"><Badge variant="outline">{i.intent ?? "—"}</Badge></td>
-                        <td className="p-2">{i.status}</td>
-                        <td className="p-2 text-right text-emerald-300">{fmtUsd(i.conversion_value_usd)}</td>
+                    {(data.inbound ?? []).map((row) => (
+                      <tr key={row.id} className="border-t border-zinc-800">
+                        <td className="p-2 text-zinc-400">{formatDistanceToNow(parseISO(row.ts), { addSuffix: true })}</td>
+                        <td className="p-2">{row.platform}</td>
+                        <td className="p-2">{row.handle ?? "—"}</td>
+                        <td className="p-2"><Badge variant="outline">{row.intent ?? "—"}</Badge></td>
+                        <td className="p-2">{row.status}</td>
+                        <td className="p-2 text-right text-emerald-300">{fmtUsd(row.conversion_value_usd)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -997,10 +998,10 @@ function BlockerActions({ blocker, onResolve }: { blocker: Blocker; onResolve: (
   }
   return (
     <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5">
-      {actions.map((a, i) => (
+      {actions.map((a) => (
         a.href ? (
           <a
-            key={i}
+            key={a.label}
             href={a.href}
             target="_blank"
             rel="noopener noreferrer"
@@ -1009,7 +1010,7 @@ function BlockerActions({ blocker, onResolve }: { blocker: Blocker; onResolve: (
             <ArrowRight className="h-3 w-3" /> {a.label}
           </a>
         ) : (
-          <Button key={i} size="sm" variant={a.primary ? "default" : "ghost"} onClick={a.onClick}>{a.label}</Button>
+          <Button key={a.label} size="sm" variant={a.primary ? "default" : "ghost"} onClick={a.onClick}>{a.label}</Button>
         )
       ))}
       <Button size="sm" variant="ghost" onClick={onResolve}>Mark Resolved</Button>

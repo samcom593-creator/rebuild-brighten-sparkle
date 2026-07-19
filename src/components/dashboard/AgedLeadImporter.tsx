@@ -573,8 +573,8 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
                 <div className="rounded-lg bg-primary/10 border border-primary/30 p-3">
                   <p className="text-sm font-medium text-primary mb-2">Detected Columns:</p>
                   <div className="flex flex-wrap gap-1">
-                    {parsedData.detectedColumns.map((col, i) => (
-                      <Badge key={i} variant="secondary" className="text-xs">
+                    {parsedData.detectedColumns.map((col) => (
+                      <Badge key={col} variant="secondary" className="text-xs">
                         {col}
                       </Badge>
                     ))}
@@ -620,8 +620,8 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
                     <span className="font-medium">{invalidLeads.length} rows will be skipped</span>
                   </div>
                   <div className="text-xs text-muted-foreground space-y-1 max-h-24 overflow-y-auto">
-                    {invalidLeads.slice(0, 5).map((lead, i) => (
-                      <p key={i}>
+                    {invalidLeads.slice(0, 5).map((lead) => (
+                      <p key={lead.rowNumber}>
                         Row {lead.rowNumber}: {lead.errors.join(", ")}
                       </p>
                     ))}
@@ -645,8 +645,8 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
                       </tr>
                     </thead>
                     <tbody>
-                      {validLeads.slice(0, 10).map((lead, i) => (
-                        <tr key={i} className="border-t border-border">
+                      {validLeads.slice(0, 10).map((lead) => (
+                        <tr key={lead.rowNumber} className="border-t border-border">
                           <td className="px-3 py-2">{lead.first_name} {lead.last_name}</td>
                           <td className="px-3 py-2 text-muted-foreground">{lead.email}</td>
                           <td className="px-3 py-2 text-muted-foreground">{lead.phone}</td>

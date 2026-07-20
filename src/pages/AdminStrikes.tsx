@@ -353,7 +353,8 @@ export default function AdminStrikes() {
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-md skeleton-shimmer" />
+            /* stable-key-allow:skeleton — fixed-length loading placeholder */
+            <div key={`strike-skel-${i}`} className="h-24 rounded-md skeleton-shimmer" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
@@ -419,9 +420,9 @@ export default function AdminStrikes() {
                         <p className="text-sm leading-relaxed">{s.description}</p>
                         {s.evidence_urls && s.evidence_urls.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1">
-                            {s.evidence_urls.map((url, idx) => (
+                            {s.evidence_urls.map((url) => (
                               <a
-                                key={idx}
+                                key={url}
                                 href={url}
                                 target="_blank"
                                 rel="noopener noreferrer"

@@ -250,7 +250,7 @@ export default function BulkDeals() {
               {parsed.map((p, i) => {
                 const r = results.find(r => r.client === p.client);
                 return (
-                  <tr key={i} className="border-t border-border/20">
+                  <tr key={`${p.policyNumber || p.client}|${p.agentName}|${i}`} className="border-t border-border/20">
                     <td className="px-3 py-1.5 font-medium">{p.agentName}</td>
                     <td className="px-3 py-1.5">{p.client}</td>
                     <td className="px-3 py-1.5 text-muted-foreground">{p.carrier}</td>
@@ -269,8 +269,8 @@ export default function BulkDeals() {
           {results.filter(r => !r.ok).length > 0 && (
             <div className="px-4 py-3 border-t border-border/40 bg-rose-500/10 text-xs">
               <div className="font-semibold text-rose-300 mb-1">{results.filter(r => !r.ok).length} failed:</div>
-              {results.filter(r => !r.ok).map((r, i) => (
-                <div key={i} className="text-rose-200">• {r.client}: {r.err}</div>
+              {results.filter(r => !r.ok).map((r) => (
+                <div key={`${r.client}|${r.err ?? ""}`} className="text-rose-200">• {r.client}: {r.err}</div>
               ))}
             </div>
           )}

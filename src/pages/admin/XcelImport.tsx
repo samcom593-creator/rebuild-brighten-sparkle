@@ -393,7 +393,8 @@ export default function XcelImport() {
               </thead>
               <tbody>
                 {preview.map((r, i) => (
-                  <tr key={i} className="border-t">
+                  /* stable-key-allow:preview-slice — static first-25 slice of parsed CSV, no reorder mid-session */
+                  <tr key={`${r.email ?? r.national_producer_number ?? "row"}|${i}`} className="border-t">
                     <td className="p-2 truncate max-w-[180px]">
                       {[r.first_name, r.last_name].filter(Boolean).join(" ") || "—"}
                     </td>
@@ -416,7 +417,7 @@ export default function XcelImport() {
           {/* Mobile cards */}
           <div className="sm:hidden space-y-2">
             {preview.map((r, i) => (
-              <Card key={i}>
+              <Card key={`${r.email ?? r.national_producer_number ?? "row"}|${i}`}>
                 <CardContent className="p-3 text-xs space-y-1">
                   <p className="font-semibold text-sm">
                     {[r.first_name, r.last_name].filter(Boolean).join(" ") || "(no name)"}
@@ -492,7 +493,8 @@ export default function XcelImport() {
             {result.errors && result.errors.length > 0 && (
               <div className="text-[11px] text-rose-600 dark:text-rose-400 space-y-0.5 pt-2 border-t border-emerald-500/20">
                 {result.errors.slice(0, 5).map((e, i) => (
-                  <p key={i} className="font-mono truncate">{e}</p>
+                  /* stable-key-allow:static-string-list — server-returned error slice, no reorder */
+                  <p key={`${i}|${e.slice(0, 40)}`} className="font-mono truncate">{e}</p>
                 ))}
                 {result.errors.length > 5 && (
                   <p className="italic">…and {result.errors.length - 5} more</p>

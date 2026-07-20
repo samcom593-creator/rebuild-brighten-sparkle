@@ -179,8 +179,8 @@ export default function SystemHealth() {
             Auto-Fixed ({lastCheck.auto_fixed.length})
           </div>
           <div className="space-y-1">
-            {lastCheck.auto_fixed.map((fix, i) => (
-              <div key={i} className="text-xs text-emerald-400/80 flex items-center gap-2">
+            {lastCheck.auto_fixed.map((fix) => (
+              <div key={fix} className="text-xs text-emerald-400/80 flex items-center gap-2">
                 <CheckCircle className="h-3 w-3 shrink-0" />
                 {fix}
               </div>
@@ -191,10 +191,10 @@ export default function SystemHealth() {
 
       {/* Service Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {results.map((result, i) => {
+        {results.map((result) => {
           const Icon = getServiceIcon(result.service);
           return (
-            <GlassCard key={i} className="p-4">
+            <GlassCard key={result.service} className="p-4">
               <div className="flex items-start gap-3">
                 <div className={`p-2 rounded-lg ${
                   result.status === "healthy" ? "bg-emerald-500/10 text-emerald-400" :

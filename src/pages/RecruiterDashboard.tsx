@@ -1104,10 +1104,12 @@ function RecruiterDashboardInner() {
       <div className="p-6 space-y-6">
         <div className="h-32 bg-muted animate-pulse rounded-md" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <div key={i} className="h-24 bg-muted animate-pulse rounded-md" />)}
+          {/* stable-key-allow:skeleton — fixed-length static loader */}
+          {[1,2,3,4].map(n => <div key={`rd-stat-skel-${n}`} className="h-24 bg-muted animate-pulse rounded-md" />)}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {[1,2,3,4,5].map(i => <div key={i} className="h-64 bg-muted animate-pulse rounded-md" />)}
+          {/* stable-key-allow:skeleton — fixed-length static loader */}
+          {[1,2,3,4,5].map(n => <div key={`rd-col-skel-${n}`} className="h-64 bg-muted animate-pulse rounded-md" />)}
         </div>
       </div>
     );

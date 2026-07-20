@@ -182,7 +182,8 @@ export default function MyStrikes() {
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-md skeleton-shimmer" />
+            /* stable-key-allow:skeleton — fixed-length loading placeholder */
+            <div key={`mystrike-skel-${i}`} className="h-24 rounded-md skeleton-shimmer" />
           ))}
         </div>
       ) : strikes.length === 0 ? (
@@ -229,9 +230,9 @@ export default function MyStrikes() {
                       <p className="text-sm leading-relaxed">{s.description}</p>
                       {s.evidence_urls && s.evidence_urls.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
-                          {s.evidence_urls.map((url: string, idx: number) => (
+                          {s.evidence_urls.map((url: string) => (
                             <a
-                              key={idx}
+                              key={url}
                               href={url}
                               target="_blank"
                               rel="noopener noreferrer"

@@ -267,7 +267,7 @@ for (const dir of TRACKED_DIRS) {
 const count = allViolations.reduce((n, f) => n + f.v.length, 0);
 
 // Lower this number when fixes land. NEVER raise it.
-const BASELINE = 92;
+const BASELINE = 79;
 
 if (count <= BASELINE) {
   const delta = BASELINE - count;

@@ -131,12 +131,12 @@ export function WeeklyBadges({ agentId, compact = false }: WeeklyBadgesProps) {
     return (
       <div className={cn("flex items-center gap-2", compact ? "" : "justify-center")}>
         {[1, 2, 3].map((i) => (
-          <Skeleton 
-            key={i} 
+          <Skeleton
+            key={i} /* stable-key-allow:skeleton — fixed-length loading placeholder */
             className={cn(
               "rounded-full",
               compact ? "h-8 w-8" : "h-12 w-12"
-            )} 
+            )}
           />
         ))}
       </div>
@@ -202,7 +202,7 @@ export function WeeklyBadgesCard({ agentId }: { agentId: string | null }) {
         {loading ? (
           <div className="flex justify-center gap-3 py-4">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-12 w-12 rounded-full" />
+              <Skeleton key={i} /* stable-key-allow:skeleton — fixed-length loading placeholder */ className="h-12 w-12 rounded-full" />
             ))}
           </div>
         ) : badges.length === 0 ? (

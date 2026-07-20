@@ -316,7 +316,7 @@ export default function Announcements() {
         </h2>
         {announcements.isLoading ? (
           <div className="space-y-3">
-            {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+            {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton — fixed-length loading placeholder */ className="h-24" />)}
           </div>
         ) : (announcements.data?.length ?? 0) === 0 ? (
           <Card><CardContent className="p-6 text-center text-13 text-muted-foreground">No active announcements.</CardContent></Card>
@@ -356,7 +356,7 @@ export default function Announcements() {
         </h2>
         {feed.isLoading ? (
           <div className="space-y-2">
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14" />)}
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton — fixed-length loading placeholder */ className="h-14" />)}
           </div>
         ) : (feed.data?.length ?? 0) === 0 ? (
           <Card><CardContent className="p-6 text-center text-13 text-muted-foreground">No recent activity.</CardContent></Card>

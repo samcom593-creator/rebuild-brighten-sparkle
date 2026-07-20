@@ -498,7 +498,7 @@ export default function CourseProgress() {
               {progressBarSegments.map((seg, i) => (
                 seg.pct > 0 && (
                   <motion.div
-                    key={i}
+                    key={seg.label}
                     initial={{ width: 0 }}
                     animate={{ width: `${seg.pct}%` }}
                     transition={{ duration: 0.6, delay: i * 0.1 }}
@@ -508,8 +508,8 @@ export default function CourseProgress() {
               ))}
             </div>
             <div className="flex gap-4 text-[10px] text-muted-foreground">
-              {progressBarSegments.map((seg, i) => (
-                <div key={i} className="flex items-center gap-1">
+              {progressBarSegments.map((seg) => (
+                <div key={seg.label} className="flex items-center gap-1">
                   <div className={cn("w-2 h-2 rounded-full", seg.color)} />
                   {seg.label} ({Math.round(seg.pct)}%)
                 </div>

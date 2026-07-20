@@ -346,9 +346,9 @@ export function HeroSection() {
 
           {/* 3 Stat pills — glass */}
           <div className="landing-fade-up landing-delay-500 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-5 max-w-3xl mx-auto mb-10">
-            {stats.map((item, index) => (
+            {stats.map((item) => (
               <div
-                key={index}
+                key={item.label}
                 className="
                   group relative rounded-md p-5 text-center
                   bg-card/90 backdrop-blur-xl border border-border/60
@@ -383,7 +383,7 @@ export function HeroSection() {
               >
                 {[...carriers, ...carriers].map((c, i) => (
                   <span
-                    key={i}
+                    key={i} /* stable-key-allow:doubled-marquee-static-carriers */
                     className="text-lg font-bold font-display brand-gradient whitespace-nowrap shrink-0"
                   >
                     {c}

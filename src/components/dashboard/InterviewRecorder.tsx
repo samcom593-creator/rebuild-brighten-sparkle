@@ -383,7 +383,7 @@ export function InterviewRecorder({
                       <div className="text-xs font-medium text-muted-foreground mb-2">📋 Key Points</div>
                       <ul className="space-y-1">
                         {callSummary.keyPoints.map((point, i) => (
-                          <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                          <li key={i} /* stable-key-allow:ai-summary-bullet-static-per-call */ className="text-sm text-foreground flex items-start gap-2">
                             <span className="text-primary mt-1">•</span>{point}
                           </li>
                         ))}
@@ -403,7 +403,7 @@ export function InterviewRecorder({
                         <div className="text-xs font-medium text-muted-foreground mb-2">✅ Action Items</div>
                         <ul className="space-y-1">
                           {callSummary.actionItems.map((item, i) => (
-                            <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                            <li key={i} /* stable-key-allow:ai-summary-bullet-static-per-call */ className="text-sm text-foreground flex items-start gap-2">
                               <span className="text-green-400 mt-1">•</span>{item}
                             </li>
                           ))}

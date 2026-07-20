@@ -428,7 +428,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
           {stats.map((stat, index) => (
             <div
-              key={index}
+              key={stat.label}
               className="reveal"
               style={{ transitionDelay: `${index * 70}ms` }}
             >
@@ -575,7 +575,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
             {whyAgentsChoose.map((item, index) => (
               <div
-                key={index}
+                key={item.title}
                 className="reveal"
                 style={{ transitionDelay: `${index * 70}ms` }}
               >

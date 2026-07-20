@@ -187,9 +187,9 @@ export function LeadQualificationChat({ applicantContext, className }: LeadQuali
                           Ask me anything about lead qualification, handling objections, or closing strategies.
                         </p>
                         <div className="space-y-2">
-                          {suggestedPrompts.map((prompt, i) => (
+                          {suggestedPrompts.map((prompt) => (
                             <button
-                              key={i}
+                              key={prompt}
                               onClick={() => setInput(prompt)}
                               className="w-full p-2 text-left text-sm rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                             >
@@ -202,7 +202,7 @@ export function LeadQualificationChat({ applicantContext, className }: LeadQuali
                       <div className="space-y-4">
                         {messages.map((msg, i) => (
                           <motion.div
-                            key={i}
+                            key={i} /* stable-key-allow:append-only-chat-log */
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             className={cn(

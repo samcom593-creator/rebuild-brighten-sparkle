@@ -116,8 +116,8 @@ export default function AdminMissingAlLink() {
 
                 {matches.length > 0 && (
                   <div className="space-y-1.5">
-                    {matches.map((m, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs bg-background/60 rounded-md p-2">
+                    {matches.map((m) => (
+                      <div key={m.al_user_id} className="flex items-center gap-2 text-xs bg-background/60 rounded-md p-2">
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{m.al_name}</div>
                           <div className="text-[10px] text-muted-foreground truncate">

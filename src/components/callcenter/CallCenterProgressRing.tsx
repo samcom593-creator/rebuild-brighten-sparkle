@@ -132,7 +132,7 @@ export function CallCenterProgressRing({
           <>
             {[0, 60, 120, 180, 240, 300].map((angle, i) => (
               <motion.div
-                key={i}
+                key={angle}
                 initial={{ scale: 0, opacity: 1 }}
                 animate={{
                   scale: 1,

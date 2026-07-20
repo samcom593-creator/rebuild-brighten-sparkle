@@ -205,7 +205,7 @@ export function XcelIngestDialog({ trigger }: Props) {
                   </div>
                   <div className="max-h-64 overflow-y-auto text-xs space-y-1.5 pr-1">
                     {parsed.students.map((s, i) => (
-                      <div key={i} className="rounded border border-border/40 px-2 py-1 flex items-center justify-between gap-2">
+                      <div key={`${s.email ?? ""}|${s.first_name ?? ""}|${s.last_name ?? ""}|${i}`} className="rounded border border-border/40 px-2 py-1 flex items-center justify-between gap-2">
                         <span className="truncate">
                           <span className="font-semibold">{s.first_name} {s.last_name}</span>
                           {" · "}

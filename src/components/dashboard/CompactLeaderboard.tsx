@@ -182,6 +182,7 @@ function LeaderboardRow({ entry, index, maxALP }: { entry: LeaderboardEntry; ind
       {/* Deals as dots */}
       <div className="col-span-2 flex items-center gap-0.5 justify-center">
         {Array.from({ length: dealDots }).map((_, i) => (
+          // stable-key-allow:decorative-dot-count — pure count-based decoration; length changes only on data refetch which fully re-mounts row
           <span key={i} className="text-primary text-[8px]">●</span>
         ))}
         {entry.deals > 5 && (

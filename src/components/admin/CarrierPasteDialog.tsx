@@ -190,7 +190,7 @@ export function CarrierPasteDialog({ onDone }: Props) {
             )}
             <div className="rounded-md border border-border/40 p-2 max-h-64 overflow-y-auto text-xs space-y-1">
               {(parsed ?? []).slice(0, 50).map((r, i) => (
-                <div key={i} className="flex items-center justify-between gap-2 border-b border-border/30 pb-1">
+                <div key={`${r.policy_number ?? ""}|${r.client_first_name ?? ""}|${r.client_last_name ?? ""}|${i}`} className="flex items-center justify-between gap-2 border-b border-border/30 pb-1">
                   <span className="truncate">
                     <strong>{r.client_first_name} {r.client_last_name}</strong> ·{" "}
                     <span className="text-muted-foreground">{r.carrier_name}</span> ·{" "}

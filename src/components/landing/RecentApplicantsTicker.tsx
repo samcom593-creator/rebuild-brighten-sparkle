@@ -55,6 +55,7 @@ export function RecentApplicantsTicker() {
       <div className="relative h-7 overflow-hidden">
         <div className="absolute inset-0 flex items-center gap-8 ticker-animate" style={{ width: "200%" }}>
           {doubled.map((r, i) => (
+            // stable-key-allow:doubled-marquee-static-render — display-only render of [...rows, ...rows]; no interactive row-local state, no reordering after mount
             <span key={i} className="text-sm font-display font-bold whitespace-nowrap shrink-0">
               <span className="text-emerald-300">{(r.first_name ?? "Applicant").toString().toUpperCase()}</span>
               {r.city && r.state && (

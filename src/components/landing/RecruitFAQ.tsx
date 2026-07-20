@@ -55,7 +55,7 @@ export function RecruitFAQ() {
             const isOpen = open === i;
             return (
               <div
-                key={i}
+                key={item.q}
                 className={`landing-fade-up rounded-md border bg-apex-card backdrop-blur-xl overflow-hidden transition-all duration-300 ${
                   isOpen
                     ? "border-apex-accent/50 "

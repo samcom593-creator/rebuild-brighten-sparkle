@@ -36,7 +36,7 @@ function FlowTimeline({ steps, title, accent }: { steps: typeof licensedSteps; t
       </div>
       <div className="space-y-1">
         {steps.map((step, i) => (
-          <div key={i} className="flex items-start gap-4 group">
+          <div key={step.title} className="flex items-start gap-4 group">
             <div className="flex flex-col items-center">
               <div className={cn("w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all",
                 `border-current ${step.color} bg-current/10`

@@ -253,7 +253,7 @@ export function LeadImporter({ className }: { className?: string }) {
               </p>
               <div className="max-h-32 overflow-y-auto bg-muted/50 rounded-lg p-2 text-xs">
                 {parsedLeads.slice(0, 5).map((lead, i) => (
-                  <div key={i} className="py-1 border-b border-border/50 last:border-0">
+                  <div key={`${lead.email ?? ""}|${lead.first_name ?? ""}|${lead.last_name ?? ""}|${i}`} className="py-1 border-b border-border/50 last:border-0">
                     {lead.first_name} {lead.last_name} - {lead.email}
                   </div>
                 ))}

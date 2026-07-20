@@ -30,7 +30,7 @@ export function BenefitsSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-16">
           {benefits.map((b, i) => (
             <div
-              key={i}
+              key={b.title}
               className="reveal group relative rounded-md p-6 bg-white dark:bg-slate-900 border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
               style={{ transitionDelay: `${i * 60}ms` }}
             >

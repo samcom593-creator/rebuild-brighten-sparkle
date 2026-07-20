@@ -75,6 +75,7 @@ export function RecentHiresTicker() {
       <div className="relative h-7 overflow-hidden">
         <div className="absolute inset-0 flex items-center gap-8 ticker-animate" style={{ width: "200%" }}>
           {doubled.map((r, i) => (
+            // stable-key-allow:doubled-marquee-static-render — display-only render of [...rows, ...rows]; no interactive row-local state, no reordering after mount
             <span key={i} className="text-sm font-display font-bold whitespace-nowrap shrink-0">
               <span className="text-amber-300">{(r.first_name ?? r.display_name ?? "Agent").toString().toUpperCase()}</span>
               {r.days_on_team !== null && r.days_on_team !== undefined && r.days_on_team >= 0 && (

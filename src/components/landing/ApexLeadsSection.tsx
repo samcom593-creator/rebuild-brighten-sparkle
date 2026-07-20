@@ -127,7 +127,7 @@ export function ApexLeadsSection() {
           <h3 className="text-lg font-bold text-white mb-6" style={{ fontFamily: "Syne" }}>How It Works</h3>
           <div className="flex flex-wrap justify-center gap-8">
             {["Choose your package above", "Complete secure checkout via Stripe", "Leads delivered — start closing"].map((step, i) => (
-              <div key={i} className="flex items-center gap-3 text-sm text-white/60">
+              <div key={step} className="flex items-center gap-3 text-sm text-white/60">
                 <div className="h-8 w-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm" style={{ fontFamily: "Syne" }}>{i + 1}</div>
                 {step}
               </div>

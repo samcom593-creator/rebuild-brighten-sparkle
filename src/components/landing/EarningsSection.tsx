@@ -88,7 +88,7 @@ export function EarningsSection() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 max-w-4xl mx-auto">
           {milestones.map((milestone, index) => (
             <div
-              key={index}
+              key={milestone.label}
               className="reveal p-4 text-center rounded-md bg-white dark:bg-[#0f172a]/80 border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
               style={{ transitionDelay: `${index * 80}ms` }}
             >

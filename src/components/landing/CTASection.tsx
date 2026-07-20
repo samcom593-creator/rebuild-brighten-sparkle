@@ -74,7 +74,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-2xl mx-auto mb-10">
             {benefits.map((benefit, index) => (
               <div
-                key={index}
+                key={benefit}
                 className="reveal flex items-center gap-2 text-sm text-[#94a3b8]"
                 style={{ transitionDelay: `${index * 80}ms` }}
               >

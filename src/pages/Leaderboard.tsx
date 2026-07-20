@@ -88,7 +88,10 @@ function pickOwner(row: any): string | null {
 }
 
 export default function Leaderboard() {
-  const [period, setPeriod] = useState<Period>("weekly");
+  // Default to Monthly: the book runs on posted/sale date and the business
+  // week resets Monday (America/Chicago), so Weekly reads empty at the top of
+  // each week until deals post. Monthly always shows the live agency picture.
+  const [period, setPeriod] = useState<Period>("monthly");
   const [board, setBoard] = useState<Board>("production");
   const [productionMode, setProductionMode] = useState<ProductionMode>("individuals");
   const [customFrom, setCustomFrom] = useState("");

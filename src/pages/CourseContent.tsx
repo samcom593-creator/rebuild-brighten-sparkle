@@ -180,6 +180,7 @@ export default function CourseContent() {
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3, 4].map(i => (
+              // stable-key-allow:skeleton
               <div key={i} className="h-20 rounded-lg bg-muted/50 animate-pulse" />
             ))}
           </div>

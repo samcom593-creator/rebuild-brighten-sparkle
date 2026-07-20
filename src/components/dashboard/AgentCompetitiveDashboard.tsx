@@ -140,6 +140,7 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
       <GlassCard className="p-6 animate-pulse">
         <div className="h-4 w-40 bg-muted/40 rounded mb-4" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {/* stable-key-allow:skeleton */}
           {[0,1,2,3].map(i => <div key={i} className="h-20 bg-muted/20 rounded-md" />)}
         </div>
       </GlassCard>

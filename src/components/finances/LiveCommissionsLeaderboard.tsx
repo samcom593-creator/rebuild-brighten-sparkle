@@ -106,6 +106,7 @@ export function LiveCommissionsLeaderboard() {
       {isLoading ? (
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => (
+            // stable-key-allow:skeleton
             <div key={i} className="h-14 bg-muted animate-pulse rounded-lg" />
           ))}
         </div>

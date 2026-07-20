@@ -216,6 +216,7 @@ export default function ClientDetail() {
       <div className="page-enter px-4 sm:px-6 pb-24 space-y-4">
         <Skeleton className="h-24 w-full" />
         <div className="grid gap-3 lg:grid-cols-2">
+          {/* stable-key-allow:skeleton */}
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}
         </div>
       </div>

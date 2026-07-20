@@ -674,6 +674,7 @@ export default function CalendarPage() {
           {/* Interview List */}
           {isLoading ? (
             <div className="space-y-3">
+              {/* stable-key-allow:skeleton */}
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-md" />)}
             </div>
           ) : Object.keys(grouped).length === 0 ? (

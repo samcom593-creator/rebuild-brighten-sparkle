@@ -223,6 +223,7 @@ export default function AutomationHealth() {
 
           {healthLoading ? (
             <div className="space-y-2">
+              {/* stable-key-allow:skeleton */}
               {[...Array(5)].map((_, i) => <div key={i} className="h-20 rounded-lg bg-muted/20 animate-pulse" />)}
             </div>
           ) : filtered.length === 0 ? (

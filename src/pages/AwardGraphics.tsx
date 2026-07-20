@@ -482,7 +482,7 @@ export default function AwardGraphics() {
           </div>
 
           {archiveLoading ? (
-            <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
+            <div className="space-y-2">{/* stable-key-allow:skeleton */}{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
           ) : filteredBatches.length === 0 ? (
             <div className="py-12 text-center">
               <Trophy className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />

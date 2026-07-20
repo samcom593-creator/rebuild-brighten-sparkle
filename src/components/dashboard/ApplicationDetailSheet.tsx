@@ -288,6 +288,7 @@ export function ApplicationDetailSheet({
 
         {isLoading ? (
           <div className="p-6 space-y-3">
+            {/* stable-key-allow:skeleton */}
             {[1, 2, 3].map(i => <div key={i} className="h-6 bg-muted rounded animate-pulse" />)}
           </div>
         ) : !app ? (

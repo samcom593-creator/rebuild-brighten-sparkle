@@ -726,6 +726,7 @@ export default function AgentPipeline() {
         {loading ? (
           <div className="space-y-3">
             {[1,2,3].map((i) => (
+              // stable-key-allow:skeleton
               <div key={i} className="h-16 rounded-md bg-muted/40 animate-pulse" />
             ))}
           </div>

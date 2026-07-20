@@ -181,6 +181,7 @@ export function CourseProgressPanel() {
         <CardContent>
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
+              // stable-key-allow:skeleton
               <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
             ))}
           </div>

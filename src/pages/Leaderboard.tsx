@@ -13,9 +13,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format as fmtDate } from "date-fns";
 import { cn } from "@/lib/utils";
-import { getMetricBounds, sumAnnualPremium, type MetricBounds } from "@/lib/metricTruth";
+import { getMetricBounds, type MetricBounds } from "@/lib/metricTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
-import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr } from "@/lib/dealTruth";
 
 type Period = "daily" | "weekly" | "monthly" | "custom";
 type Board = "production" | "recruiting" | "referrals" | "activity";
@@ -25,6 +24,10 @@ type Board = "production" | "recruiting" | "referrals" | "activity";
 type ProductionMode = "individuals" | "top_legs";
 type Row = {
   rank: number;
+  // Stable list identity. Equals the canonical agent id when the producer is a
+  // mapped agent, else a `name:<lowercased>` key so unmapped producers (e.g.
+  // Marquay Vaughns, Raheem Sheikh) still get a unique, collision-free React key.
+  agent_key: string;
   agent_id: string;
   primary: number;
   secondary: number;
@@ -42,7 +45,7 @@ const RANK_ICONS: Record<number, { icon: typeof Crown; color: string }> = {
 };
 
 const BOARD_META: Record<Board, { label: string; icon: typeof Crown; source: string }> = {
-  production: { label: "Production", icon: Crown, source: "deals.posted_at + valid deal statuses" },
+  production: { label: "Production", icon: Crown, source: "agentlink_book · posted date · dead statuses excluded" },
   recruiting: { label: "Recruiting", icon: Target, source: "applications.created_at + owner attribution" },
   referrals: { label: "Referral", icon: Users, source: "applications.referral_manager_id" },
   activity: { label: "Activity", icon: Activity, source: "daily_production manual activity fields" },
@@ -96,54 +99,36 @@ export default function Leaderboard() {
 
   const bounds = useMemo(() => getBounds(period, customFrom, customTo), [period, customFrom, customTo]);
 
-  // v6 §31 hero data — agency production this month vs prior month, source of
-  // truth is agentlink_deals_snapshot (NOT legacy deals). Phoenix tz for
-  // month boundaries per Sam's permanent memory rule.
+  // v6 §31 hero data — agency production this month vs prior month. Source of
+  // truth is agentlink_book (fresh, name-attributed AgentLink book) via the
+  // leaderboard_book_hero RPC: posted/sale-date windowed, dead statuses
+  // excluded, Phoenix tz month boundaries per Sam's permanent memory rule.
   const heroData = useQuery({
     queryKey: ["leaderboard-hero-agency-production"],
     refetchInterval: 60_000,
     staleTime: 55_000,
     queryFn: async () => {
-      const monthBounds = getMetricBounds("month");
-      // Prior month window — shift back 1 month from current month start.
-      const monthStart = new Date(monthBounds.startIso);
-      const priorEnd = new Date(monthStart);
-      const priorStart = new Date(monthStart);
-      priorStart.setMonth(priorStart.getMonth() - 1);
+      const { data } = await supabase.rpc("leaderboard_book_hero" as any);
+      const row = (Array.isArray(data) ? data[0] : data) as
+        | {
+            total_ap: number | string | null;
+            producers: number | string | null;
+            deal_count: number | string | null;
+            prior_ap: number | string | null;
+            day_of_month: number | string | null;
+            days_in_month: number | string | null;
+          }
+        | undefined;
 
-      const curStartDate = monthBounds.startIso.slice(0, 10);
-      const curEndDate = monthBounds.endIso.slice(0, 10);
-      const priorStartDate = priorStart.toISOString().slice(0, 10);
-      const priorEndDate = priorEnd.toISOString().slice(0, 10);
+      const totalAp = Number(row?.total_ap ?? 0);
+      const producers = Number(row?.producers ?? 0);
+      const dealCount = Number(row?.deal_count ?? 0);
+      const priorAp = Number(row?.prior_ap ?? 0);
+      const dayOfMonth = Number(row?.day_of_month ?? 0);
+      const daysInMonth = Number(row?.days_in_month ?? 0);
 
-      // Day-of-month for pace calc (Phoenix tz to match Sam's rule)
-      const phoenixNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
-      const dayOfMonth = phoenixNow.getDate();
-      const daysInMonth = new Date(phoenixNow.getFullYear(), phoenixNow.getMonth() + 1, 0).getDate();
-
-      const [{ data: cur }, { data: prior }] = await Promise.all([
-        supabase
-          .from("agentlink_deals_snapshot" as any)
-          .select("annual_premium, user_id")
-          .gte("effective_date", curStartDate)
-          .lte("effective_date", curEndDate),
-        supabase
-          .from("agentlink_deals_snapshot" as any)
-          .select("annual_premium")
-          .gte("effective_date", priorStartDate)
-          .lt("effective_date", priorEndDate.slice(0, 10)),
-      ]);
-
-      const curRows = (cur ?? []) as Array<{ annual_premium: number | string | null; user_id: number | null }>;
-      const priorRows = (prior ?? []) as Array<{ annual_premium: number | string | null }>;
-
-      const totalAp = curRows.reduce((s, r) => s + Number(r.annual_premium ?? 0), 0);
-      const priorAp = priorRows.reduce((s, r) => s + Number(r.annual_premium ?? 0), 0);
-      const producers = new Set(curRows.map((r) => r.user_id).filter((v) => v != null)).size;
       const avgPerProducer = producers > 0 ? totalAp / producers : 0;
-      const dealCount = curRows.length;
-
-      // Pace projection: linearly extrapolate to full month
+      // Pace projection: linearly extrapolate month-to-date to full month.
       const projected = dayOfMonth > 0 ? (totalAp / dayOfMonth) * daysInMonth : totalAp;
       const paceDelta = priorAp > 0 ? ((projected - priorAp) / priorAp) * 100 : 0;
 
@@ -160,6 +145,29 @@ export default function Leaderboard() {
       };
     },
   });
+
+  // Freshness guard — the original bug was that the book silently froze
+  // (last synced 2026-07-06) while the board kept rendering stale totals as if
+  // live. Surface the book's age so staleness screams instead of lying.
+  const bookFreshness = useQuery({
+    queryKey: ["leaderboard-book-freshness"],
+    refetchInterval: 300_000,
+    staleTime: 250_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("v_agentlink_book_freshness" as any)
+        .select("latest_posted, days_since_last_posted, deals")
+        .maybeSingle();
+      return (data ?? null) as {
+        latest_posted: string | null;
+        days_since_last_posted: number | string | null;
+        deals: number | string | null;
+      } | null;
+    },
+  });
+  const staleDays = bookFreshness.data?.days_since_last_posted != null
+    ? Number(bookFreshness.data.days_since_last_posted)
+    : null;
 
   const buildRows = useCallback(async (ids: string[], grouped: Map<string, { primary: number; secondary: number; tertiary: number }>) => {
     if (ids.length === 0) return [];
@@ -198,6 +206,7 @@ export default function Leaderboard() {
         const agent = byId.get(agentId) as any;
         return {
           rank: 0,
+          agent_key: agentId,
           agent_id: agentId,
           primary: totals.primary,
           secondary: totals.secondary,
@@ -234,6 +243,7 @@ export default function Leaderboard() {
           leg_size: number | string;
         }>).map((leg, index) => ({
           rank: index + 1,
+          agent_key: leg.manager_id,
           agent_id: leg.manager_id,
           primary: Number(leg.premium ?? 0),
           secondary: Number(leg.deals ?? 0),
@@ -249,65 +259,44 @@ export default function Leaderboard() {
       }
 
       if (board === "production") {
-        // 2026-06-18 Sam directive: 'I'm still missing Daniel and more people
-        // inside the leaderboards.' Daniel + 15+ other producers have their
-        // deals in agentlink_deals_snapshot (book of business) not the local
-        // deals table. The website-side deals table only contains rows that
-        // were manually entered or sync'd into Apex. Switch the production
-        // board to source from book of business (joined via agents.al_user_id
-        // → user_id) so the Production leaderboard matches AgentLink truth.
-        // Falls back to v_deals_leaderboard for any agent without al_user_id
-        // (so a producer who only has local entries still shows).
-        const [bookRes, localRes, agentsLink, { data: syncRow }] = await Promise.all([
-          // Book of business — the truth.
-          supabase
-            .from("agentlink_deals_snapshot" as any)
-            .select("user_id, annual_premium, effective_date")
-            .gte("effective_date", bounds.startIso.slice(0, 10))
-            .lt("effective_date", bounds.endIso.slice(0, 10)),
-          // Local fallback — for agents whose deals haven't synced to AgentLink.
-          supabase
-            .from("v_deals_leaderboard" as any)
-            .select("agent_id, annual_premium, posted_at")
-            .gte("posted_at", bounds.startIso)
-            .lt("posted_at", bounds.endIso),
-          // Map user_id (int) → agents.id (uuid) for the book half.
-          supabase
-            .from("agents")
-            .select("id, al_user_id")
-            .not("al_user_id", "is", null),
-          supabase
-            .from("agentlink_sync_log" as any)
-            .select("finished_at, started_at")
-            .eq("status", "ok")
-            .order("started_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-        ]);
-        const alUserIdToAgentId = new Map<number, string>(
-          ((agentsLink.data ?? []) as Array<{ id: string; al_user_id: number }>)
-            .map((r) => [Number(r.al_user_id), r.id])
-        );
-        const premiumRows = new Map<string, Array<{ annual_premium?: number | null }>>();
-        // Book of business — preferred source.
-        for (const deal of (bookRes.data ?? []) as Array<{ user_id: number; annual_premium: number | string | null }>) {
-          const agentId = alUserIdToAgentId.get(Number(deal.user_id));
-          if (!agentId) continue;
-          if (!premiumRows.has(agentId)) premiumRows.set(agentId, []);
-          premiumRows.get(agentId)!.push({ annual_premium: Number(deal.annual_premium ?? 0) });
-        }
-        // Local deals — only for agents WITHOUT al_user_id (no double count).
-        const linkedAgentIds = new Set(alUserIdToAgentId.values());
-        for (const deal of (localRes.data ?? []) as any[]) {
-          if (!deal.agent_id) continue;
-          if (linkedAgentIds.has(deal.agent_id)) continue;
-          if (!premiumRows.has(deal.agent_id)) premiumRows.set(deal.agent_id, []);
-          premiumRows.get(deal.agent_id)!.push({ annual_premium: deal.annual_premium });
-        }
-        for (const [agentId, premiums] of premiumRows) {
-          grouped.set(agentId, { primary: sumAnnualPremium(premiums), secondary: premiums.length, tertiary: 0 });
-        }
-        syncAt = (syncRow as any)?.finished_at || (syncRow as any)?.started_at || null;
+        // Source of truth: agentlink_book (fresh, name-attributed AgentLink
+        // book) via the leaderboard_book RPC. This fixes the four accuracy
+        // bugs the prior snapshot path carried:
+        //   1. Staleness — the book has its own upsert path, not the sync that
+        //      froze agentlink_deals_snapshot at 2026-07-06.
+        //   2. Unmapped producers — the RPC attributes by NAME first, so real
+        //      producers with no al_user_id (Marquay Vaughns, Pranav Kodali,
+        //      Matthew Anduha, Taylen Nash, Jorge Oyervidez, Raheem Sheikh,
+        //      Mahmod Imran, Logan Spatola) rank instead of being join-dropped.
+        //   3. Window — ranks on POSTED/sale date, not effective_date, so a
+        //      policy written this week effective next month counts this week.
+        //   4. Status — Declined / Not Taken / Withdrawn / Lapse are excluded.
+        // Dup identities are canonicalized inside the RPC (v_agent_canonical_map).
+        const { data: rpcRows } = await supabase.rpc("leaderboard_book" as any, {
+          p_start: bounds.startIso.slice(0, 10),
+          p_end: bounds.endIso.slice(0, 10),
+        });
+        const built: Row[] = ((rpcRows ?? []) as Array<{
+          agent_key: string;
+          agent_id: string | null;
+          agent_name: string | null;
+          avatar_url: string | null;
+          deals: number | string;
+          ap: number | string;
+        }>).map((r, index) => ({
+          rank: index + 1,
+          agent_key: r.agent_key,
+          agent_id: r.agent_id ?? r.agent_key,
+          primary: Number(r.ap ?? 0),
+          secondary: Number(r.deals ?? 0),
+          tertiary: 0,
+          agent_name: r.agent_name,
+          avatar_url: r.avatar_url,
+        }));
+        setRows(built);
+        setLastUpdatedAt(new Date().toISOString());
+        setLoading(false);
+        return;
       }
 
       if (board === "recruiting") {
@@ -448,12 +437,22 @@ export default function Leaderboard() {
         eyebrowIcon={<Trophy className="h-3 w-3" />}
         title="Leaderboard"
         subtitle="Production, recruiting, referral, and activity rankings from live platform tables."
-        actions={lastUpdatedAt && (
-          <Badge variant="outline" className="gap-1.5">
-            <CalendarIcon className="h-3 w-3" />
-            {formatDistanceToNowStrict(new Date(lastUpdatedAt), { addSuffix: true })}
-          </Badge>
-        )}
+        actions={
+          <div className="flex items-center gap-2">
+            {board === "production" && staleDays !== null && staleDays > 3 && (
+              <Badge variant="destructive" className="gap-1.5">
+                <Clock3 className="h-3 w-3" />
+                Book {staleDays}d stale
+              </Badge>
+            )}
+            {lastUpdatedAt && (
+              <Badge variant="outline" className="gap-1.5">
+                <CalendarIcon className="h-3 w-3" />
+                {formatDistanceToNowStrict(new Date(lastUpdatedAt), { addSuffix: true })}
+              </Badge>
+            )}
+          </div>
+        }
       />
 
       {/* v6 §31 canonical hero — production = money = emerald gradient.
@@ -537,7 +536,7 @@ export default function Leaderboard() {
           </div>
 
           <p className="mt-4 text-[10px] text-white/40 tracking-wide">
-            Source · agentlink_deals_snapshot · America/Phoenix month window · refreshes every 60s
+            Source · agentlink_book · posted date · America/Phoenix month window · refreshes every 60s
           </p>
         </div>
       </div>
@@ -673,7 +672,7 @@ export default function Leaderboard() {
                         : "";
                     return (
                       <div
-                        key={row.agent_id}
+                        key={row.agent_key}
                         className={cn(
                           "flex items-center gap-3 px-4 py-3 transition-all",
                           highlight && podiumStyle,

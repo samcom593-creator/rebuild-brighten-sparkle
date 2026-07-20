@@ -110,7 +110,10 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 //   accent="blue"), src/pages/StaleRecovery.tsx (description → subtitle).
 //   Nets 245 → 240 across wave-31 + wave-32 combined. Zero legacy
 //   PageHeader-prop misuses remain in src/**.
-const BASELINE = 240;
+// 2026-07-20: leaderboard-accuracy rebuild — replacing the agentlink_deals_
+//   snapshot merge in Leaderboard.tsx with the leaderboard_book RPCs removed
+//   3 net tsc errors (240 → 237). Ratchet locked at the new floor.
+const BASELINE = 237;
 
 let stdout = "";
 let stderr = "";

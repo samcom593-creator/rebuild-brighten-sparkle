@@ -685,7 +685,7 @@ export default function ReadyModeIntegration() {
 }
 
 function SkelList() {
-  return <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>;
+  return <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => /* stable-key-allow:skeleton */ <Skeleton key={i} className="h-14 w-full" />)}</div>;
 }
 
 function StatusTile({ label, status, okText, errText }: {

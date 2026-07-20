@@ -184,7 +184,7 @@ export default function Scripts() {
       {/* Cards */}
       {scripts.isLoading ? (
         <div className="grid gap-3 md:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40" />)}
+          {Array.from({ length: 4 }).map((_, i) => /* stable-key-allow:skeleton */ <Skeleton key={i} className="h-40" />)}
         </div>
       ) : filtered.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-13 text-muted-foreground">

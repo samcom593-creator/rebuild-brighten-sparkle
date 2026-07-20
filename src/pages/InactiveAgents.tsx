@@ -454,6 +454,7 @@ export default function InactiveAgents() {
         {isLoading && (
           <div className="space-y-2" aria-label="Loading inactive agents">
             {[0,1,2,3,4].map((i) => (
+              /* stable-key-allow:skeleton */
               <div key={i} className="h-16 rounded-lg bg-muted/40 animate-pulse" />
             ))}
           </div>

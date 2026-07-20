@@ -412,7 +412,7 @@ export default function PreLicensing() {
 
       {/* Student list */}
       {studentsQ.isLoading ? (
-        <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
+        <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => /* stable-key-allow:skeleton */ <Skeleton key={i} className="h-20 w-full" />)}</div>
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<GraduationCap className="h-7 w-7" />}

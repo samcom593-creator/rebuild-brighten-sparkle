@@ -278,7 +278,7 @@ export default function TransferRequests() {
       <section className="space-y-2">
         <h2 className="text-13 font-bold flex items-center gap-2"><Clock className="h-3.5 w-3.5 text-amber-500" /> Pending ({pending.length})</h2>
         {requests.isLoading ? (
-          Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-20" />)
+          Array.from({ length: 2 }).map((_, i) => /* stable-key-allow:skeleton */ <Skeleton key={i} className="h-20" />)
         ) : pending.length === 0 ? (
           <Card><CardContent className="p-6 text-center text-13 text-muted-foreground">Inbox is clear. Every upline is locked in.</CardContent></Card>
         ) : (

@@ -617,6 +617,7 @@ export default function Leaderboard() {
             {loading ? (
               <div className="space-y-2 py-2" aria-label="Loading leaderboard">
                 {[0,1,2,3,4,5,6,7].map((i) => (
+                  /* stable-key-allow:skeleton */
                   <div key={i} className="h-12 rounded-lg bg-muted/40 animate-pulse" />
                 ))}
               </div>

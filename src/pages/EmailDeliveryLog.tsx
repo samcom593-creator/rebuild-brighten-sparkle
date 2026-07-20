@@ -243,6 +243,7 @@ export default function EmailDeliveryLog() {
       {isLoading ? (
         <div className="space-y-2">
           {[...Array(6)].map((_, i) => (
+            /* stable-key-allow:skeleton */
             <div key={i} className="h-16 rounded-lg bg-muted/20 animate-pulse" />
           ))}
         </div>

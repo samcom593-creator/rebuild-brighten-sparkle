@@ -89,7 +89,7 @@ export default function CompTiersSettings() {
           <CardTitle className="text-sm">All agents</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
-          {isLoading && [...Array(6)].map((_, i) => <div key={i} className="h-14 rounded bg-muted/20 animate-pulse" />)}
+          {isLoading && [...Array(6)].map((_, i) => /* stable-key-allow:skeleton */ <div key={i} className="h-14 rounded bg-muted/20 animate-pulse" />)}
           {agents.map(agent => {
             const edit = edits[agent.id] || {};
             const contract = edit.contract_percentage ?? agent.contract_percentage;

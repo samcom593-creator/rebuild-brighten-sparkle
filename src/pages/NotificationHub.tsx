@@ -1606,6 +1606,7 @@ export default function NotificationHub() {
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
+                /* stable-key-allow:skeleton */
                 <Skeleton key={i} className="h-12 w-full rounded-lg" />
               ))}
             </div>

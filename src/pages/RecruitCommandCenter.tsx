@@ -229,7 +229,7 @@ export default function RecruitCommandCenter() {
       {/* Queue */}
       {loading ? (
         <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-20 bg-muted/20 rounded-md animate-pulse" />)}
+          {Array.from({ length: 5 }).map((_, i) => /* stable-key-allow:skeleton */ <div key={i} className="h-20 bg-muted/20 rounded-md animate-pulse" />)}
         </div>
       ) : bucketed.length === 0 ? (
         <GlassCard className="p-12 text-center text-muted-foreground">

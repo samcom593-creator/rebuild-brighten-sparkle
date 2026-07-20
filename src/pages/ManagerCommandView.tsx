@@ -247,6 +247,7 @@ export default function ManagerCommandView() {
         <CardContent className="pt-0">
           {downlineProd.isLoading ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {/* stable-key-allow:skeleton */}
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
             </div>
           ) : agentRows.length === 0 ? (

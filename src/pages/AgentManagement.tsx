@@ -424,7 +424,7 @@ export default function AgentManagement() {
       {/* Views */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[...Array(9)].map((_, i) => <div key={i} className="h-32 rounded-md bg-muted/20 animate-pulse" />)}
+          {[...Array(9)].map((_, i) => /* stable-key-allow:skeleton */ <div key={i} className="h-32 rounded-md bg-muted/20 animate-pulse" />)}
         </div>
       ) : filtered.length === 0 ? (
         <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">

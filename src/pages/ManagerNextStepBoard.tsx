@@ -93,6 +93,7 @@ export default function ManagerNextStepBoard() {
       {isLoading ? (
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2, 3, 4, 5].map((i) => (
+            /* stable-key-allow:skeleton */
             <Card key={i} className="h-48 animate-pulse" />
           ))}
         </div>

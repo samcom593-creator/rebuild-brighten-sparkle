@@ -550,7 +550,7 @@ export default function AwardGraphics() {
               <img src={fullscreenImage} alt="Award fullscreen" className="max-h-[80vh] w-auto rounded-lg" />
               <div className="flex gap-2">
                 <Button
-                  className="gap-2 bg-white dark:bg-slate-900 text-white"
+                  className="gap-2 bg-slate-900 text-white dark:bg-slate-800"
                   onClick={() => saveAsPng(fullscreenImage, `apex_award_${Date.now()}.png`)}
                 >
                   <Download className="h-4 w-4" />Save to Photos

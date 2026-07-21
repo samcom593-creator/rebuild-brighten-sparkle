@@ -629,7 +629,7 @@ export default function DashboardCRM() {
 
       const crmAgents: AgentCRM[] = agentData.map((agent, index) => {
         const profile = profileMapData.get(agent.user_id);
-        const ws = weeklyProductionMap.get(agent.id) || { aop: 0, presentations: 0, deals: 0 };
+        const ws = weeklyProductionMap.get(agent.id) || { alp: 0, presentations: 0, deals: 0 };
         const pay = paymentMap.get(agent.id) || { standard: false, premium: false };
         const emailKey = profile?.email?.toLowerCase().trim() || "";
         const licenseEntry = emailLicenseMap.get(emailKey);

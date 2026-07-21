@@ -173,6 +173,11 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           phone,
           managerId,
           licenseStatus,
+          // P0 fix: the "Unlicensed (sends XCEL course link)" option promises a
+          // course email, but the add-agent edge fn gates send-course-enrollment-
+          // email on hasTrainingCourse (default false). Without this flag every
+          // unlicensed add silently skipped the course link. Derive it here.
+          hasTrainingCourse: licenseStatus === "unlicensed",
           builderTrack: isAdmin ? builderTrack : undefined,
           // Sam-feedback 2026-06-03: Transfer block — only sent when ON
           transferNeeded,
@@ -274,7 +279,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Agent</DialogTitle>
         </DialogHeader>

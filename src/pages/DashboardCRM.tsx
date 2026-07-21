@@ -120,10 +120,17 @@ const attendanceLabels: Record<AttendanceStatus, string> = { good: "Good", warni
 
 const getTimeAgo = (dateString: string): string => {
   const date = new Date(dateString);
-  const diffMs = Date.now() - date.getTime();
+  if (Number.isNaN(date.getTime())) return "—";
+  // Guard future-dated timestamps. "Last activity" is derived from production
+  // dates, and an insurance policy's posted/effective date can legitimately be
+  // in the future — so the delta must be clamped to 0, otherwise it renders as
+  // a nonsensical negative ("-18690m ago"). A just-written future-dated policy
+  // reads as "just now", which is the honest meaning of the activity.
+  const diffMs = Math.max(0, Date.now() - date.getTime());
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffHours / 24);
+  if (diffMins < 1) return "just now";
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays === 1) return "Yesterday";

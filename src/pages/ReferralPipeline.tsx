@@ -207,7 +207,7 @@ export default function ReferralPipeline() {
                   <div className="text-xs text-muted-foreground truncate">
                     From {r.referrer_name ?? "?"} · {r.referred_email ?? r.referred_phone ?? "no contact"} ·
                     {" "}
-                    {r.days_since_submitted != null ? `${Math.floor(r.days_since_submitted)}d ago` : ""}
+                    {r.days_since_submitted != null ? `${Math.max(0, Math.floor(r.days_since_submitted))}d ago` : ""}
                     {r.next_action ? ` · next: ${r.next_action}` : ""}
                   </div>
                 </div>

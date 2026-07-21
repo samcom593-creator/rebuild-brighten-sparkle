@@ -23,7 +23,7 @@ type SyncLog = {
 
 function ageLabel(iso: string | null | undefined): string {
   if (!iso) return "Never";
-  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  const minutes = Math.round(Math.max(0, Date.now() - new Date(iso).getTime()) / 60_000);
   if (!Number.isFinite(minutes) || minutes < 0) return "—";
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.round(minutes / 60);

@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffMs = Math.max(0, Date.now() - new Date(iso).getTime());
   const mins = Math.floor(diffMs / 60_000);
   if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);

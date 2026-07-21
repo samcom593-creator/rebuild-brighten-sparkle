@@ -173,7 +173,7 @@ function minutesSince(iso: string | null): number | null {
   if (!iso) return null;
   const time = new Date(iso).getTime();
   if (!Number.isFinite(time)) return null;
-  return Math.round((Date.now() - time) / 60_000);
+  return Math.round(Math.max(0, Date.now() - time) / 60_000);
 }
 
 function ageLabel(iso: string | null): string {

@@ -43,7 +43,7 @@ function fmtDate(s: unknown): string {
 }
 function fmtAge(s: unknown): string {
   if (!s || typeof s !== "string") return "—";
-  const ms = Date.now() - new Date(s).getTime();
+  const ms = Math.max(0, Date.now() - new Date(s).getTime());
   if (!Number.isFinite(ms)) return "—";
   const mins = Math.round(ms / 60_000);
   if (mins < 60) return `${mins}m ago`;

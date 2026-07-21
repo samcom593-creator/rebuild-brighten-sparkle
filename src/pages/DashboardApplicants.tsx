@@ -451,7 +451,7 @@ export default function DashboardApplicants() {
   const getTimeAgo = (dateString: string): string => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
+    const diffMs = Math.max(0, now.getTime() - date.getTime());
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     
     if (diffHours < 1) return "Just now";

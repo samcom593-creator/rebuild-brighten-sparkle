@@ -71,7 +71,7 @@ function getContactBadge(app: PipelineCardData, now: Date) {
   const hours = differenceInHours(now, lastDate);
   if (hours > 48) {
     return {
-      label: `${Math.floor(hours / 24)}d ago`,
+      label: `${Math.max(0, Math.floor(hours / 24))}d ago`,
       color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
     };
   }

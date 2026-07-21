@@ -434,6 +434,16 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-empty-catch\.mjs$)'; then
   node scripts/check-empty-catch.mjs
 fi
 
+# ---------- check-inline-timeago (2026-07-21) ----------
+# Negative-time ratchet. Flags hand-rolled "X ago" formatters whose epoch delta
+# isn't clamped with Math.max(0,…) — the class that rendered "-18690m ago" in
+# the CRM Last Activity column (future-dated policy/effective dates). Canonical
+# formatter: formatTimeAgo() in src/lib/dateUtils.ts. Baseline-count ratchet.
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-inline-timeago\.mjs$)'; then
+  echo "[pre-commit] Relative-time-affecting file staged — running check:inline-timeago…"
+  node scripts/check-inline-timeago.mjs
+fi
+
 # ---------- check-debugger (wave-22, 2026-07-06) ----------
 # Trigger: any src/ tsx|ts|jsx|js change or the script itself.
 # Walks src/**/*.{tsx,ts,jsx,js} and fails on any bare `debugger;` statement
@@ -537,6 +547,23 @@ fi
 if match '^(src/.*\.(tsx|jsx)$|scripts/check-stale-key-in-list\.mjs$)'; then
   echo "[pre-commit] Stale-key-affecting file staged — running check:stale-key-in-list…"
   node scripts/check-stale-key-in-list.mjs
+fi
+
+# ---------- check-relative-time-guard (wave-negtime-1, 2026-07-21) ----------
+# Trigger: any src/ ts|tsx|js|jsx or the script itself. Class-of-fix ratchet
+# closing the negative-time render bug. f97f721d (DashboardCRM getTimeAgo)
+# fixed one instance where `Date.now() - date.getTime()` with no floor
+# rendered "-18690m ago" in the CRM Last Activity column every manager sees
+# — because a producer's newest policy had a future posted/effective date.
+# Same silent-render-wrong disease as the 465 InsuraCloud fake-success rows.
+# Baselined @ 40 → 36 after same-commit fix of the 4 twin renderer helpers
+# (TransferRequests / Finances / Announcements / LicensedInbox). Pay-down =
+# add `Math.max(0, ...)` clamp + NaN guard for renderers, or annotate legit
+# comparison-only sites with `relative-time-guard-allow:<reason>`. Cost when
+# fired: ~50-100ms (single linear regex sweep, ~566 files).
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-relative-time-guard\.mjs$)'; then
+  echo "[pre-commit] Relative-time-affecting file staged — running check:relative-time-guard…"
+  node scripts/check-relative-time-guard.mjs
 fi
 
 # ---------- check-notion-ban (MP221 §7.1) ----------

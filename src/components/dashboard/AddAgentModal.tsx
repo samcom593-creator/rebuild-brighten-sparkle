@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, type ReactNode } from "react";
-import { Crown, Loader2, User, UserPlus, Users, type LucideIcon } from "lucide-react";
+import { Check, Copy, Crown, Link2, Loader2, User, UserPlus, Users, type LucideIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -78,6 +78,11 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const [carriers, setCarriers] = useState("");
   const [writingNumbers, setWritingNumbers] = useState("");
   const [previousUpline, setPreviousUpline] = useState("");
+  // Sam 2026-07-21: self-signup link. Generate a /hire/:token invite that
+  // auto-creates the recruit's account (via consume-invite-token) when opened.
+  const [inviteUrl, setInviteUrl] = useState("");
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const fetchManagers = useCallback(async () => {
     setLoadingManagers(true);
@@ -267,6 +272,58 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     setCarriers("");
     setWritingNumbers("");
     setPreviousUpline("");
+    setInviteUrl("");
+    setLinkCopied(false);
+  };
+
+  // Sam 2026-07-21: mint a shareable self-signup link. Reuses the existing
+  // generate_invite_token('hire') RPC + consume-invite-token edge fn, so
+  // opening /hire/:token creates the recruit's auth user + agents row under
+  // the selected manager. No manual add needed.
+  const handleGenerateInvite = async () => {
+    if (!managerId) {
+      toast.error("Pick a manager first so the link places them on the right team");
+      return;
+    }
+    setGeneratingLink(true);
+    try {
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+      const prefill: Record<string, string> = {};
+      if (fullName) prefill.full_name = fullName;
+      if (email.trim()) prefill.email = email.trim();
+      if (phone.trim()) prefill.phone = phone.trim();
+
+      const { data, error } = await supabase.rpc("generate_invite_token", {
+        p_kind: "hire",
+        p_target_role: licenseStatus === "licensed" ? "hired_licensed" : "hired_unlicensed",
+        p_target_manager_id: managerId,
+        p_prefill: prefill,
+      });
+
+      if (error) throw error;
+      const url = isRecord(data) && typeof data.url === "string" ? data.url : "";
+      if (!url) throw new Error("No link returned from server");
+
+      setInviteUrl(url);
+      setLinkCopied(false);
+      playSound("celebrate");
+      toast.success("Invite link ready — send it to the recruit");
+    } catch (err: unknown) {
+      console.error("[AddAgentModal] generate invite failed:", err);
+      toast.error(err instanceof Error ? err.message : "Couldn't generate invite link");
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  const copyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      toast.error("Copy failed — select the link and copy manually");
+    }
   };
 
   return (
@@ -454,6 +511,64 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                 </div>
               </div>
             ) : null}
+          </div>
+
+          {/* Sam 2026-07-21: self-signup link. Send it to the recruit and their
+              account is created automatically when they open it — under the
+              selected manager. Backed by generate_invite_token + consume-invite-token. */}
+          <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+            <div className="flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-primary" />
+              <Label className="text-sm font-medium">Or send a self-signup link</Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The recruit opens the link and their account is created automatically
+              under the selected manager — no manual add needed. Name/email/phone above
+              (if filled) pre-fill their signup.
+            </p>
+            {inviteUrl ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <Input
+                    readOnly
+                    value={inviteUrl}
+                    className="text-xs"
+                    onFocus={(e) => e.currentTarget.select()}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={copyInvite}
+                    aria-label="Copy invite link"
+                  >
+                    {linkCopied ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Expires in 7 days · one-time use · creates the account on open.
+                </p>
+              </>
+            ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full gap-2"
+                disabled={generatingLink}
+                onClick={handleGenerateInvite}
+              >
+                {generatingLink ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Link2 className="h-4 w-4" />
+                )}
+                {generatingLink ? "Generating…" : "Generate invite link"}
+              </Button>
+            )}
           </div>
 
           {/* Single primary action — dialog X closes if user wants out. */}

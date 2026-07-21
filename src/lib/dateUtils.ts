@@ -245,3 +245,30 @@ export function formatRelativeFromNow(date: Date | string | null | undefined, no
   }
   return future ? `in ${body}` : `${body} ago`;
 }
+
+/**
+ * Canonical "time ago" formatter — the single source of truth for every
+ * "3m ago / 2h ago / Yesterday / Jul 20" label in the app.
+ *
+ * Guards future-dated and invalid inputs so it can NEVER render a negative
+ * ("-18690m ago"): insurance posted/effective dates can legitimately be in the
+ * future, so a just-written future-dated record reads "just now". Do NOT
+ * hand-roll inline `Date.now() - date` delta formatters — they reintroduce the
+ * negative-time class of bug. Enforced by scripts/check-inline-timeago.mjs.
+ */
+export function formatTimeAgo(input: Date | string | number | null | undefined): string {
+  if (input === null || input === undefined || input === "") return "—";
+  const d = input instanceof Date ? input : new Date(input);
+  const t = d.getTime();
+  if (Number.isNaN(t)) return "—";
+  const diffMs = Math.max(0, Date.now() - t);
+  const mins = Math.floor(diffMs / 60000);
+  const hours = Math.floor(diffMs / 3600000);
+  const days = Math.floor(hours / 24);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}

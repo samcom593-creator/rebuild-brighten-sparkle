@@ -164,7 +164,9 @@ function fmtRelative(iso: string | null | undefined): string {
   try {
     const d = new Date(iso);
     const now = Date.now();
-    const diffMs = now - d.getTime();
+    // Clamp future-dated inputs so a future policy/effective date never renders
+    // a negative ("-18690m ago"). Canonical formatter: formatTimeAgo in dateUtils.
+    const diffMs = Math.max(0, now - d.getTime());
     const mins = Math.round(diffMs / 60000);
     if (mins < 1) return "just now";
     if (mins < 60) return `${mins}m ago`;

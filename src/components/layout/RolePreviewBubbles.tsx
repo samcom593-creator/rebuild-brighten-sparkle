@@ -76,7 +76,9 @@ export function RolePreviewBubbles() {
       onDragEnd={onDragEnd}
       animate={{ x: pos.x, y: pos.y }}
       transition={{ type: "tween", duration: 0 }}
-      className="fixed right-4 top-4 z-30 hidden items-center gap-1 rounded-full border border-border/70 bg-background/90 p-1 shadow-sm backdrop-blur lg:flex select-none cursor-grab active:cursor-grabbing"
+      // Anchored below the sticky TopBar (top-0 z-40 h-14 = 56px). At top-4 the
+      // strip rendered *behind* the bar on every page; top-[4.5rem] clears it.
+      className="fixed right-4 top-[4.5rem] z-30 hidden items-center gap-1 rounded-full border border-border/70 bg-background/90 p-1 shadow-sm backdrop-blur lg:flex select-none cursor-grab active:cursor-grabbing"
       // Prevent the drag from also dispatching button clicks on touch + mouse.
       onClickCapture={(e) => { if (dragging.current) { e.preventDefault(); e.stopPropagation(); } }}
     >

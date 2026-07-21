@@ -293,7 +293,9 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
       if (email.trim()) prefill.email = email.trim();
       if (phone.trim()) prefill.phone = phone.trim();
 
-      const { data, error } = await supabase.rpc("generate_invite_token", {
+      // generate_invite_token exists in the DB but isn't in the generated
+      // Supabase types yet, so cast to keep tsc green (TS2345 on the fn name).
+      const { data, error } = await (supabase.rpc as (fn: string, args: Record<string, unknown>) => ReturnType<typeof supabase.rpc>)("generate_invite_token", {
         p_kind: "hire",
         p_target_role: licenseStatus === "licensed" ? "hired_licensed" : "hired_unlicensed",
         p_target_manager_id: managerId,

@@ -49,6 +49,9 @@ interface Plaque {
   image_png_url: string | null;
   custom_photo_url: string | null;
   awarded_at: string;
+  // /plaque/:slug (PlaqueShare.tsx) resolves the public page by share_slug,
+  // NOT plaque.id — copying plaque.id to the clipboard rendered a broken link.
+  share_slug: string | null;
   agent_name: string;
   agent_photo: string | null;
 }
@@ -142,7 +145,7 @@ export default function HallOfFame() {
         .select(`
           id, agent_id, milestone_type, milestone_date, amount,
           badge_label, color_hex, image_svg_url, image_png_url,
-          custom_photo_url, awarded_at,
+          custom_photo_url, awarded_at, share_slug,
           agent:agents!inner(profile:profiles!agents_profile_id_fkey(full_name, avatar_url))
         `)
         .order("awarded_at", { ascending: false })
@@ -553,15 +556,77 @@ function PlaqueCard({ plaque, onClick, delay }: PlaqueCardProps) {
 }
 
 interface PlaqueDetailProps { plaque: Plaque; onClose: () => void; }
+
+/**
+ * Build the public share URL for a plaque.
+ *
+ * Returns null when the plaque has no share_slug yet (created before the
+ * slug backfill). The public share page resolves by share_slug, NOT plaque.id
+ * — falling back to plaque.id would render "Plaque not found" for the recipient.
+ * Exported for testing so the slug-vs-id contract can be pinned by a unit test.
+ */
+export function buildPlaqueShareUrl(
+  plaque: Pick<Plaque, "share_slug">,
+  origin = typeof window !== "undefined" ? window.location.origin : "",
+): string | null {
+  if (!plaque.share_slug) return null;
+  return `${origin}/plaque/${plaque.share_slug}`;
+}
+
 function PlaqueDetail({ plaque, onClose }: PlaqueDetailProps) {
   const img = plaque.image_png_url || plaque.image_svg_url || plaque.custom_photo_url;
   const cat = CATEGORY_MAP[plaque.milestone_type];
   const catMeta = cat ? CATEGORY_META[cat] : null;
+  // Truthful fallback when clipboard is unavailable: reveal the URL in a
+  // read-only input the user can select manually or long-press to share.
+  // The prior copy said "select the URL manually" while rendering no URL.
+  const [manualShareUrl, setManualShareUrl] = useState<string | null>(null);
+  const manualShareInputRef = useRef<HTMLInputElement | null>(null);
 
-  function share() {
-    const url = `${window.location.origin}/plaque/${plaque.id}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Plaque link copied to clipboard");
+  useEffect(() => {
+    if (!manualShareUrl) return;
+    const el = manualShareInputRef.current;
+    if (!el) return;
+    el.focus();
+    try {
+      el.select();
+    } catch { /* empty-catch-allow:select-unavailable */ }
+  }, [manualShareUrl]);
+
+  async function share() {
+    // /plaque/:slug resolves by share_slug, not plaque.id — see PlaqueShare.tsx.
+    // If a plaque was created before the slug backfill, there's nothing to
+    // share yet; surface that honestly instead of copying a broken URL.
+    const url = buildPlaqueShareUrl(plaque);
+    if (!url) {
+      toast.error("This plaque doesn't have a public share link yet.");
+      return;
+    }
+
+    // Prefer navigator.share on mobile — hands the OS share sheet the URL
+    // directly, which is faster than clipboard-then-paste.
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: plaque.badge_label || "APEX Plaque",
+          text: `${plaque.agent_name} · ${plaque.badge_label ?? prettyMilestone(plaque.milestone_type)}`,
+          url,
+        });
+        return;
+      } catch { // empty-catch-allow:navigator-share-cancelled
+        // User cancelled or share failed — fall through to clipboard path.
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Plaque link copied to clipboard");
+      setManualShareUrl(null);
+    } catch {
+      // Copy failed. Show the URL so the user can actually select it,
+      // instead of telling them to select something invisible.
+      setManualShareUrl(url);
+    }
   }
 
   return (
@@ -626,6 +691,22 @@ function PlaqueDetail({ plaque, onClose }: PlaqueDetailProps) {
             <Copy className="h-4 w-4 mr-1.5" /> ID
           </Button>
         </div>
+        {manualShareUrl && (
+          <div className="pt-2 space-y-1.5">
+            <p className="text-xs text-muted-foreground">
+              Clipboard blocked. Select and copy this link manually:
+            </p>
+            <Input
+              ref={manualShareInputRef}
+              readOnly
+              value={manualShareUrl}
+              onFocus={(e) => e.currentTarget.select()}
+              aria-label="Plaque share URL"
+              className="text-xs font-mono"
+              data-testid="plaque-manual-share-url"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

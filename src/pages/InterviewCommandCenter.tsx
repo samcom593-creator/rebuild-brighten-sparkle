@@ -1253,6 +1253,7 @@ function InterviewSkeleton() {
   return (
     <section className="mt-4 grid gap-3 xl:grid-cols-2">
       {Array.from({ length: 6 }).map((_, index) => (
+        // stable-key-allow:skeleton-loader-static-length-array
         <div key={index} className="rounded-md border bg-card p-4">
           <Skeleton className="h-6 w-2/3" />
           <div className="mt-3 grid grid-cols-4 gap-1.5">

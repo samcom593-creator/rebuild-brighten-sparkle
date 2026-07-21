@@ -410,6 +410,7 @@ export function ControlTerminal() {
                   </thead>
                   <tbody className="font-mono text-slate-700 dark:text-slate-200">
                     {rows.slice(0, 200).map((row, index) => (
+                      // stable-key-allow:adhoc-sql-terminal-rows-no-primary-key
                       <tr key={index} className={index % 2 === 0 ? "bg-white dark:bg-slate-950/50" : "bg-white dark:bg-slate-900/50"}>
                         {headers.map((header) => {
                           const value = row[header];

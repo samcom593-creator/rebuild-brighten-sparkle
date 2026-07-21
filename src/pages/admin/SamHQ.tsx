@@ -341,7 +341,7 @@ function ShippedSection() {
           {!hires?.length && <div className="text-xs text-slate-600 dark:text-slate-300">No hires loaded yet</div>}
           <ul className="space-y-1">
             {(hires ?? []).map((h, i) => (
-              <li key={i} className="flex items-center justify-between border-b border-white/5 py-1">
+              <li key={`${h.hired_at ?? h.created_at ?? i}-${h.full_name ?? h.first_name ?? "unknown"}`} className="flex items-center justify-between border-b border-white/5 py-1">
                 <span>{h.full_name ?? h.first_name ?? "—"}</span>
                 <span className="text-xs text-slate-600 dark:text-slate-300">
                   {h.hired_at || h.created_at

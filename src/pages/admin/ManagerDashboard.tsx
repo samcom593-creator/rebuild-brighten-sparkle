@@ -171,7 +171,7 @@ function LicensingTab() {
         <CardContent className="p-0">
           {!hires ? <div className="p-6"><Skeleton className="h-40 w-full" /></div> :
             <ul className="divide-y divide-white/5">{hires.map((h, i) => (
-              <li key={i} className="flex items-center justify-between p-3 text-sm">
+              <li key={`${h.hired_at ?? h.created_at ?? i}-${h.full_name ?? h.first_name ?? "unknown"}`} className="flex items-center justify-between p-3 text-sm">
                 <span>{h.full_name ?? h.first_name ?? "—"}{h.state ? <span className="text-slate-600 dark:text-slate-300 ml-2">· {h.state}</span> : null}</span>
                 <span className="text-xs text-slate-600 dark:text-slate-300">{h.hired_at || h.created_at ? formatDistanceToNow(new Date(h.hired_at ?? h.created_at!), { addSuffix: true }) : ""}</span>
               </li>

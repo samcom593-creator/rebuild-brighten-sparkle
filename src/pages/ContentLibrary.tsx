@@ -1233,7 +1233,7 @@ function SensitiveContentCard({
       {item.sensitive_flags?.length > 0 && (
         <div className="flex flex-wrap gap-0.5 px-0.5">
           {item.sensitive_flags.map((f, i) => (
-            <Badge key={i} variant="destructive" className="text-[8px] h-3.5 px-1">{f}</Badge>
+            <Badge key={`${f}-${i}`} variant="destructive" className="text-[8px] h-3.5 px-1">{f}</Badge>
           ))}
         </div>
       )}

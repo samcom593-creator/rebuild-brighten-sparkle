@@ -225,9 +225,9 @@ export default function HelpCenter() {
         {filtered.length === 0 ? (
           <Card><CardContent className="p-8 text-center text-13 text-muted-foreground">Nothing matches yet — try a broader search term, or tap "All" to see every answer in the library.</CardContent></Card>
         ) : (
-          filtered.map((f, i) => {
+          filtered.map((f) => {
             const key = `${f.category}::${f.q}`;
-            return <FaqRow key={i} item={f} open={!!open[key]} onToggle={() => setOpen((s) => ({ ...s, [key]: !s[key] }))} />;
+            return <FaqRow key={key} item={f} open={!!open[key]} onToggle={() => setOpen((s) => ({ ...s, [key]: !s[key] }))} />;
           })
         )}
       </div>

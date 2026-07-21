@@ -198,7 +198,7 @@ export function AttendanceGrid({
             const isToday = isSameDay(day, today);
             
             return (
-              <Tooltip key={index}>
+              <Tooltip key={day.toISOString()}>
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => handleToggle(index)}

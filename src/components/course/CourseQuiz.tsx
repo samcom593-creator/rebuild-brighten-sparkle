@@ -186,6 +186,7 @@ export function CourseQuiz({
 
                 return (
                   <motion.div
+                    // stable-key-allow:quiz-options-fixed-per-question-no-reorder
                     key={index}
                     initial={false}
                     animate={showCorrectness ? {

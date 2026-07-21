@@ -1271,6 +1271,7 @@ export default function BookOfBusiness() {
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
+                  // stable-key-allow:skeleton-loader-static-length-array
                   <tr key={i} className="border-t border-border/30">
                     {Array.from({ length: 10 }).map((__, j) => (
                       <td key={j} className="px-3 py-3">

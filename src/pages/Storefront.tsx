@@ -121,6 +121,7 @@ export default function Storefront() {
           {/* Lightweight confetti via CSS */}
           {Array.from({ length: 40 }).map((_, i) => (
             <div
+              // stable-key-allow:decorative-confetti-particle-fixed-length
               key={i}
               className="absolute w-2 h-2 rounded-sm animate-fall"
               // palette-allow:storefront-confetti-particle-animation — 4-color falling-particle effect on gift purchase

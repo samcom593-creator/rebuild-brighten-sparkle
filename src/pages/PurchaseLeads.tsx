@@ -395,8 +395,8 @@ export default function PurchaseLeads() {
 
                 {/* Features */}
                 <ul className="space-y-2">
-                  {pkg.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
+                  {pkg.features.map((feature) => (
+                    <li key={feature} className="flex items-center gap-2 text-sm">
                       <Zap className="h-4 w-4 text-primary flex-shrink-0" />
                       <span className="text-muted-foreground">{feature}</span>
                     </li>

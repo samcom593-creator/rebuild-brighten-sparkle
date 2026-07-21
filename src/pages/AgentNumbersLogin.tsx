@@ -350,7 +350,7 @@ export default function AgentNumbersLogin() {
             >
               {features.map((feature, i) => (
                 <motion.div
-                  key={i}
+                  key={feature.text}
                   className="flex flex-col items-center gap-1 text-xs text-muted-foreground"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}

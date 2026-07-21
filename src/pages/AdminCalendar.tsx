@@ -667,7 +667,7 @@ export default function AdminCalendar() {
             {parsedBlocks.map((b, i) => {
               const cat = getCategoryStyle(b.category);
               return (
-                <div key={i} className={cn("flex items-center justify-between rounded-lg border p-3", cat.border)}>
+                <div key={`${b.category}-${b.start_hour}-${b.end_hour}-${b.title}-${i}`} className={cn("flex items-center justify-between rounded-lg border p-3", cat.border)}>
                   <div className="flex items-center gap-2 min-w-0">
                     <div className={cn("w-2 h-2 rounded-full flex-shrink-0", cat.color)} />
                     <div className="min-w-0">

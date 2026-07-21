@@ -189,6 +189,7 @@ export function AskApex() {
           </div>
         ) : (
           messages.map((m, i) => (
+            // stable-key-allow:append-only-chat-log-no-reorder
             <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
               <div
                 className={`inline-block max-w-[85%] rounded-md px-3 py-2 text-12 ${

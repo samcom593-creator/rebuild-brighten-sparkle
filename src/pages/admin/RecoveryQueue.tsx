@@ -1686,6 +1686,7 @@ function SkeletonList() {
   return (
     <div className="space-y-2">
       {Array.from({ length: 8 }).map((_, i) => (
+        // stable-key-allow:skeleton-loader-static-length-array
         <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1 space-y-2">

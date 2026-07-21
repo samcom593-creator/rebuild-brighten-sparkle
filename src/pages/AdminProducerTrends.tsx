@@ -1105,8 +1105,8 @@ function TrendCell({
     <div className="flex items-center gap-2">
       <div className="flex items-end gap-0.5 h-6 w-24">
         {(series.length ? series : Array.from({ length: 12 }, () => 0)).map((v, i) => (
-          // stable-key-allow:deterministic-week-index-fixed-length-sparkline
           <div
+            // stable-key-allow:deterministic-week-index-fixed-length-sparkline
             key={i}
             className={cn("w-1.5 rounded-sm", barClass)}
             style={{ height: `${Math.max(2, (v / max) * 100)}%` }}

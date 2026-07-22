@@ -179,8 +179,7 @@ export default function BusinessAnalytics() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_agents_needs_attention" as any)
-        .select("id, display_name, agent_code, deals_30d, premium_30d, potential_30d, recommendation")
-        .limit(3);
+        .select("id, display_name, agent_code, deals_30d, premium_30d, potential_30d, recommendation");
       if (error) throw error;
       return (data ?? []) as unknown as NeedsAttention[];
     },

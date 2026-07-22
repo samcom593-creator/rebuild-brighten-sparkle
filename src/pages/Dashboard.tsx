@@ -767,7 +767,7 @@ function ExecutiveDashboard({
   const mtdRangeLabel = `${monthStartLabel} - ${todayLabel}`;
 
   return (
-    <div className="space-y-6 pb-8 lg:pr-[18rem] ops-fade-in">
+    <div className="space-y-6 pb-8 ops-fade-in">
       <PageHeader
         accent="primary"
         eyebrow={role === "admin" ? "Apex Financial · CEO Command" : "Manager · Command"}
@@ -980,7 +980,7 @@ export default function Dashboard() {
 
   if (effectiveRole === "agent") {
     return (
-      <div className="space-y-4 lg:pr-[18rem]">
+      <div className="space-y-4">
         {isPreviewing && (
           <Badge variant="outline">Previewing Agent View from {actualRole}</Badge>
         )}
@@ -993,7 +993,7 @@ export default function Dashboard() {
 
   if (effectiveRole === "manager") {
     return (
-      <div className="space-y-4 lg:pr-[18rem]">
+      <div className="space-y-4">
         {isPreviewing && (
           <Badge variant="outline">Previewing Manager View from {actualRole}</Badge>
         )}
@@ -1011,7 +1011,7 @@ export default function Dashboard() {
   return (
     <>
       {isPreviewing && (
-        <div className="mb-4 lg:pr-[18rem]">
+        <div className="mb-4">
           <Badge variant="outline">Previewing {effectiveRole} dashboard from {actualRole}</Badge>
         </div>
       )}

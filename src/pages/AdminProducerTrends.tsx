@@ -398,7 +398,7 @@ export default function AdminProducerTrends() {
         (r.alp_1w_ago ?? 0) === 0 &&
         (r.alp_2w_ago ?? 0) === 0 &&
         (r.alp_3_weeks_ago ?? 0) === 0;
-      const noAgentlink = !!meta && !meta.al_user_id;
+      const noAgentlink = !meta?.al_user_id;
       const noRecentContact = daysSinceContact == null ? true : daysSinceContact >= 14;
       const rev = reviewMap.get(r.producer_id) ?? { reviewed: false, recovered: false };
 

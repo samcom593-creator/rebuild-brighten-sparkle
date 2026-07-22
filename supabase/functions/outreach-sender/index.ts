@@ -22,11 +22,15 @@ const corsHeaders = {
   "Access-Control-Max-Age": "86400",
 };
 
-const DEFAULT_FROM = "APEX Financial <notifications@apex-financial.org>";
+const DEFAULT_FROM = "Samuel James <info@kingofsales.net>";
 const DEFAULT_SUBJECT = "A quick note from APEX Financial";
 const DEFAULT_BATCH = 25;
 const MAX_BATCH = 200;
 const RESEND_SEND_URL = "https://api.resend.com/emails";
+// MP-232c (2026-07-12): Postmark migration.
+// Resend locked Sam's account after a 300-email burst on 2026-06-29.
+// Postmark is now preferred; Resend stays as fallback until the last edge fn migrates.
+const POSTMARK_SEND_URL = "https://api.postmarkapp.com/email";
 
 type QueueRow = {
   id: string;
@@ -50,6 +54,9 @@ type QueueRow = {
   to_email: string | null;
   from_email: string | null;
   provider_message_id: string | null;
+  reply_to: string | null;
+  list_unsubscribe: string | null;
+  text_body: string | null;
 };
 
 function sleep(ms: number) {
@@ -125,6 +132,7 @@ function defaultHtml(firstName: string | null, templateKey: string): string {
 async function sendOne(
   supabase: any,
   resendApiKey: string,
+  postmarkApiKey: string | null,
   row: QueueRow,
 ): Promise<{ outcome: "sent" | "failed" | "skipped_suppressed" | "skipped_idempotent"; error?: string; providerId?: string }> {
   // Idempotency: have we already sent something with this key?
@@ -207,24 +215,66 @@ async function sendOne(
   const subject = row.subject ?? DEFAULT_SUBJECT;
   const html = row.html_body ?? defaultHtml(recipient.firstName, row.template_key);
   const from = row.from_email ?? DEFAULT_FROM;
+  const replyTo = row.reply_to ?? "info@kingofsales.net";
+  const textBody = row.text_body ?? null;
+  // RFC 8058 one-click List-Unsubscribe headers (spam-guard requirement).
+  const listUnsub = row.list_unsubscribe ?? "<mailto:info@kingofsales.net?subject=Unsubscribe>";
 
   let resp: Response;
   let bodyText = "";
+  // MP-232c: prefer Postmark, fall back to Resend for backward compat during phased migration.
+  const usePostmark = !!postmarkApiKey;
   try {
-    resp = await fetch(RESEND_SEND_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-        ...(row.idempotency_key ? { "Idempotency-Key": row.idempotency_key } : {}),
-      },
-      body: JSON.stringify({
+    if (usePostmark) {
+      const pmPayload: Record<string, unknown> = {
+        From: from,
+        To: recipient.email,
+        ReplyTo: replyTo,
+        Subject: subject,
+        HtmlBody: html,
+        MessageStream: "outbound",
+        Headers: [
+          { Name: "List-Unsubscribe", Value: listUnsub },
+          { Name: "List-Unsubscribe-Post", Value: "List-Unsubscribe=One-Click" },
+          { Name: "X-Auto-Response-Suppress", Value: "All" },
+          { Name: "Precedence", Value: "bulk" },
+        ],
+      };
+      if (textBody) pmPayload.TextBody = textBody;
+      resp = await fetch(POSTMARK_SEND_URL, {
+        method: "POST",
+        headers: {
+          "X-Postmark-Server-Token": postmarkApiKey!,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify(pmPayload),
+      });
+    } else {
+      const resendPayload: Record<string, unknown> = {
         from,
         to: [recipient.email],
+        reply_to: replyTo,
         subject,
         html,
-      }),
-    });
+        headers: {
+          "List-Unsubscribe": listUnsub,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          "X-Auto-Response-Suppress": "All",
+          "Precedence": "bulk",
+        },
+      };
+      if (textBody) resendPayload.text = textBody;
+      resp = await fetch(RESEND_SEND_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+          ...(row.idempotency_key ? { "Idempotency-Key": row.idempotency_key } : {}),
+        },
+        body: JSON.stringify(resendPayload),
+      });
+    }
     bodyText = await resp.text();
   } catch (e: any) {
     const err = `network error: ${e?.message ?? e}`;
@@ -289,8 +339,10 @@ async function sendOne(
     return { outcome: "failed", error: err };
   }
 
-  if (!parsed || typeof parsed.id !== "string" || parsed.id.length < 6) {
-    const err = `resend 2xx without id: ${bodyText.slice(0, 300)}`;
+  // Postmark returns MessageID; Resend returns id — normalize.
+  const messageId = (parsed?.MessageID as string | undefined) ?? (parsed?.id as string | undefined);
+  if (!messageId || typeof messageId !== "string" || messageId.length < 6) {
+    const err = `${usePostmark ? "postmark" : "resend"} 2xx without id: ${bodyText.slice(0, 300)}`;
     await supabase
       .from("outreach_queue")
       .update({
@@ -310,7 +362,7 @@ async function sendOne(
       status: "sent",
       sent_at: new Date().toISOString(),
       attempt_count: row.attempt_count + 1,
-      provider_message_id: parsed.id,
+      provider_message_id: messageId,
       to_email: recipient.email,
       from_email: from,
       subject,
@@ -319,7 +371,7 @@ async function sendOne(
     })
     .eq("id", row.id);
 
-  return { outcome: "sent", providerId: parsed.id };
+  return { outcome: "sent", providerId: messageId };
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -330,17 +382,29 @@ serve(async (req: Request): Promise<Response> => {
   const startedAt = Date.now();
 
   try {
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendApiKey) {
-      return new Response(
-        JSON.stringify({ error: "RESEND_API_KEY not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
+    // MP-232c: Postmark is preferred; Resend stays as fallback until fully retired.
+    // Resolve postmark key from env first (fastest), then system_settings.
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    let postmarkApiKey: string | null = Deno.env.get("POSTMARK_API_KEY") ?? null;
+    if (!postmarkApiKey) {
+      const { data: ss } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "postmark_api_key")
+        .maybeSingle();
+      if (ss?.value) postmarkApiKey = String(ss.value).trim();
+    }
+
+    const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
+    if (!postmarkApiKey && !resendApiKey) {
+      return new Response(
+        JSON.stringify({ error: "no email provider configured (need postmark_api_key OR RESEND_API_KEY)" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     let batchSize = DEFAULT_BATCH;
     if (req.method === "POST") {
@@ -354,15 +418,44 @@ serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    const { data: rows, error: fetchErr } = await supabase
+    // MP-260 (2026-07-22): honor scheduled_for so staggered campaigns actually
+    // drip out over hours instead of blasting in a single batch. Also gate on
+    // status='queued' so 'dry_run' / 'paused' / 'skipped_*' rows do not fire.
+    const nowIso = new Date().toISOString();
+
+    // Global kill switch for the 40-day reissue campaign — if flipped true,
+    // skip anything with source_run='reissue-40d-*'. Fail open on error.
+    let reissue40dPaused = false;
+    try {
+      const { data: killRow } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "reissue_40d_paused")
+        .maybeSingle();
+      const v = (killRow as { value?: unknown } | null)?.value;
+      const raw = typeof v === "string" ? v.toLowerCase() : String(v ?? "").toLowerCase();
+      reissue40dPaused = raw === "true" || raw === "t" || raw === "1";
+    } catch (_e) {
+      reissue40dPaused = false;
+    }
+
+    let query = supabase
       .from("outreach_queue")
       .select(
-        "id, lead_id, application_id, agent_id, channel, template_key, scheduled_for, status, source_run, error_message, sent_at, created_at, attempt_count, last_error, idempotency_key, do_not_contact, subject, html_body, to_email, from_email, provider_message_id",
+        "id, lead_id, application_id, agent_id, channel, template_key, scheduled_for, status, source_run, error_message, sent_at, created_at, attempt_count, last_error, idempotency_key, do_not_contact, subject, html_body, to_email, from_email, provider_message_id, reply_to, list_unsubscribe, text_body",
       )
       .eq("channel", "email")
+      .eq("status", "pending")
       .is("sent_at", null)
       .lt("attempt_count", 3)
-      .order("created_at", { ascending: true })
+      .lte("scheduled_for", nowIso);
+
+    if (reissue40dPaused) {
+      query = query.not("source_run", "like", "reissue-40d-%");
+    }
+
+    const { data: rows, error: fetchErr } = await query
+      .order("scheduled_for", { ascending: true })
       .limit(batchSize);
 
     if (fetchErr) {
@@ -381,7 +474,7 @@ serve(async (req: Request): Promise<Response> => {
 
     for (let i = 0; i < queue.length; i++) {
       const row = queue[i];
-      const result = await sendOne(supabase, resendApiKey, row);
+      const result = await sendOne(supabase, resendApiKey, postmarkApiKey, row);
       if (result.outcome === "sent") sent++;
       else if (result.outcome === "failed") failed++;
       else if (result.outcome === "skipped_suppressed") skippedSuppressed++;

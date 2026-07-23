@@ -54,6 +54,12 @@ interface Props {
   applicantPhone?: string | null;
   licenseStatus?: "licensed" | "unlicensed" | "pending" | null;
   agentId?: string | null;
+  /**
+   * Real "mark phone bad" path — sets phone_bad_at + fires send-couldnt-reach-email.
+   * When provided, the "Bad #" button routes through here instead of a log-only insert
+   * so it matches the row-1 PhoneOff icon's behavior (single source of truth for badness).
+   */
+  onMarkBad?: () => void | Promise<void>;
 }
 
 export function ApplicationDispositionCluster({
@@ -63,6 +69,7 @@ export function ApplicationDispositionCluster({
   applicantPhone,
   licenseStatus,
   agentId,
+  onMarkBad,
 }: Props) {
   const { user } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
@@ -150,9 +157,18 @@ export function ApplicationDispositionCluster({
         label="Bad #"
         tone="rose"
         icon={Ban}
-        onClick={() =>
-          disposition("bad_number", "call", "Logged: Bad Number")
-        }
+        onClick={async () => {
+          if (onMarkBad) {
+            setBusy("bad_number");
+            try {
+              await onMarkBad();
+            } finally {
+              setBusy(null);
+            }
+            return;
+          }
+          await disposition("bad_number", "call", "Logged: Bad Number");
+        }}
       />
       <DispositionButton
         active={busy === "pass"}

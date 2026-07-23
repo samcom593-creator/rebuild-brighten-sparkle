@@ -219,9 +219,7 @@ export default function AdminProducerTrends() {
   const qc = useQueryClient();
   const [kpi, setKpi] = useState<KpiKey>("all");
   const [managerFilter, setManagerFilter] = useState<string>("all"); // manager_id | 'all'
-  const [teamFilter, setTeamFilter] = useState<string>("all");
   const [riskFilter, setRiskFilter] = useState<string>("all"); // risk level
-  const [weekOffset, setWeekOffset] = useState<string>("current");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [reviewQueue, setReviewQueue] = useState<string[] | null>(null);
@@ -386,6 +384,11 @@ export default function AdminProducerTrends() {
     return map;
   }, [reviewTagsQ.data]);
 
+  const neverActivatedSet = useMemo(
+    () => new Set((newHiresQ.data ?? []).map((h) => h.agent_id).filter(Boolean) as string[]),
+    [newHiresQ.data],
+  );
+
   const rows: RiskRow[] = useMemo(() => {
     const now = new Date();
     return (trendsQ.data ?? []).map((r) => {
@@ -401,10 +404,7 @@ export default function AdminProducerTrends() {
       const noAgentlink = !meta?.al_user_id;
       const noRecentContact = daysSinceContact == null ? true : daysSinceContact >= 14;
       const rev = reviewMap.get(r.producer_id) ?? { reviewed: false, recovered: false };
-
-      // never_activated_60_days: joined against v_new_hires_activation view.
-      // (Trend-alert view excludes never-activated hires — join runs downstream in the KPI count.)
-      const neverActivated = false;
+      const neverActivated = neverActivatedSet.has(r.producer_id);
 
       const enriched = {
         currently_dropping: r.currently_dropping,
@@ -456,7 +456,7 @@ export default function AdminProducerTrends() {
         risk_level: riskLevelFor(enriched),
       } satisfies RiskRow;
     });
-  }, [trendsQ.data, metaById, seriesByAgent, lastContactQ.data, reviewMap, managerNameById]);
+  }, [trendsQ.data, metaById, seriesByAgent, lastContactQ.data, reviewMap, managerNameById, neverActivatedSet]);
 
   const kpiCounts = useMemo(() => {
     const dropping3w = rows.filter((r) => r.currently_dropping).length;
@@ -487,6 +487,7 @@ export default function AdminProducerTrends() {
     }
     if (kpi === "dropping_3w") out = out.filter((r) => r.currently_dropping);
     else if (kpi === "down_this_week") out = out.filter((r) => r.direction === "down" && !r.currently_dropping);
+    else if (kpi === "never_activated_60d") out = out.filter((r) => r.never_activated_60_days);
     else if (kpi === "no_alp_30d") out = out.filter((r) => r.no_alp_30_days);
     else if (kpi === "recovered_this_week") out = out.filter((r) => r.recovered_this_week);
     else if (kpi === "manager_review_needed")
@@ -581,30 +582,6 @@ export default function AdminProducerTrends() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Week selector */}
-            <Select value={weekOffset} onValueChange={setWeekOffset}>
-              <SelectTrigger className="h-9 w-[150px] bg-muted/30 border-white/[0.08] text-foreground">
-                <SelectValue placeholder="Week" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="current">Current week</SelectItem>
-                <SelectItem value="last">Last week</SelectItem>
-                <SelectItem value="four_week">Last 4 weeks</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Team */}
-            <Select value={teamFilter} onValueChange={setTeamFilter}>
-              <SelectTrigger className="h-9 w-[140px] bg-muted/30 border-white/[0.08] text-foreground">
-                <SelectValue placeholder="Team" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All teams</SelectItem>
-                <SelectItem value="downline">Downline</SelectItem>
-                <SelectItem value="direct">Direct hires</SelectItem>
-              </SelectContent>
-            </Select>
-
             {/* Manager filter */}
             <Select value={managerFilter} onValueChange={setManagerFilter}>
               <SelectTrigger className="h-9 w-[180px] bg-muted/30 border-white/[0.08] text-foreground">

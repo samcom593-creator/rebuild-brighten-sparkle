@@ -1737,6 +1737,7 @@ export default function DashboardApplicants() {
                                 applicantPhone={app.phone}
                                 licenseStatus={app.license_status}
                                 agentId={app.assigned_agent_id}
+                                onMarkBad={() => handleMarkBadPhone(app)}
                               />
                             </td>
                           </tr>

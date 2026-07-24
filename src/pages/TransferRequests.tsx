@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { formatTimeAgo } from "@/lib/dateUtils";
 
 interface TransferRow {
   id: string;
@@ -38,12 +39,11 @@ interface ManagerOpt {
   display_name: string | null;
 }
 
+// MP-264 declutter: was a third local copy of the same relative-time ladder.
+// Routed through the shared formatTimeAgo(), which clamps the delta so a
+// clock-skewed future timestamp can't render "-3m ago".
 function relativeTime(iso: string): string {
-  const sec = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (sec < 60) return `${Math.round(sec)}s ago`;
-  if (sec < 3600) return `${Math.round(sec / 60)}m ago`;
-  if (sec < 86400) return `${Math.round(sec / 3600)}h ago`;
-  return `${Math.round(sec / 86400)}d ago`;
+  return formatTimeAgo(iso);
 }
 
 export default function TransferRequests() {

@@ -33,6 +33,7 @@ import {
   Minimize2,
   Percent,
   PhoneCall,
+  Rocket,
   Plus,
   Search,
   Settings,
@@ -228,6 +229,9 @@ export function GlobalSidebar({
         // MP-230 (2026-07-01): Headhunters Tracker removed per Sam directive.
         // Sam 2026-06-16: Headhunters Calendar removed — "remove headhunter's calendar as a whole"
         { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
+        // MP-264 (2026-07-24): recovery queue for the 105 Calendly bookings the
+        // webhook silently dropped. Catch Up mode lives here.
+        { icon: Rocket, label: "Interview Recovery", href: "/dashboard/interview-recovery", special: true },
         // Sam 2026-06-16: Whales removed — "remove whales as a whole"
         // Production + money
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
@@ -284,6 +288,9 @@ export function GlobalSidebar({
         // MP-230 (2026-07-01): Headhunters Tracker removed per Sam directive.
         // Sam 2026-06-16: Headhunters Calendar removed for manager nav too
         { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
+        // MP-264 (2026-07-24): recovery queue for the 105 Calendly bookings the
+        // webhook silently dropped. Catch Up mode lives here.
+        { icon: Rocket, label: "Interview Recovery", href: "/dashboard/interview-recovery", special: true },
         { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
         // MP-230 (2026-07-01): Hierarchy removed per Sam directive.
         { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },

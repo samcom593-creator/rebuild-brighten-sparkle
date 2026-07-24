@@ -141,6 +141,7 @@ const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 const LinksPage = lazy(() => import("./pages/LinksPage"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
 const InterviewCommandCenter = lazy(() => import("./pages/InterviewCommandCenter"));
+const InterviewRecovery = lazy(() => import("./pages/InterviewRecovery"));
 const AdminBoardAccess = lazy(() => import("./pages/AdminBoardAccess"));
 const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
 const SeminarPage = lazy(() => import("./pages/SeminarPage"));
@@ -555,7 +556,10 @@ const App = () => (
                      <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
                      <Route path="/dashboard/headhunters-calendar" element={<Navigate to="/dashboard/command" replace />} />
-                     <Route path="/dashboard/interviews" element={<ProtectedRoute requireAdmin allowManagers><InterviewCommandCenter /></ProtectedRoute>} />
+                     {/* MP-264: VAs book every one of these calls — they need to see
+                         the queue and the applicant names behind it. */}
+                     <Route path="/dashboard/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><InterviewCommandCenter /></ProtectedRoute>} />
+                     <Route path="/dashboard/interview-recovery" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><InterviewRecovery /></ProtectedRoute>} />
                      <Route path="/dashboard/hierarchy" element={<Navigate to="/dashboard/crm" replace />} />
                      <Route path="/dashboard/team-hierarchy" element={<Navigate to="/dashboard/agents" replace />} />
                        <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />

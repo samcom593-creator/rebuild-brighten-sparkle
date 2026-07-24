@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatTimeAgo } from "@/lib/dateUtils";
 
 /**
  * /admin/licensed-inbox: immediate-call surface for LICENSED applicants.
@@ -49,18 +50,10 @@ interface LicensedRow {
   created_at: string;
 }
 
+// MP-264 declutter: local copy of the shared relative-time ladder.
+// formatTimeAgo() clamps the delta and covers the same buckets.
 function relTime(iso: string): string {
-  const d = new Date(iso);
-  const diffMs = Date.now() - d.getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days === 1) return "1 day ago";
-  if (days < 7) return `${days}d ago`;
-  return `${Math.floor(days / 7)}w ago`;
+  return formatTimeAgo(iso);
 }
 
 function fullName(r: LicensedRow): string {

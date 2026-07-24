@@ -86,6 +86,20 @@ const LABEL_MAP: Record<string, string> = {
   "board-access": "Board Access",
 };
 
+// Structural URL prefixes that are NOT registered as routes in App.tsx —
+// they exist only as parents of concrete child routes. Rendering them as
+// clickable breadcrumb links dumps users into NotFound. Keep in lockstep
+// with App.tsx: if you register any of these as a real route, remove it here.
+const NON_ROUTE_PARENTS = new Set<string>([
+  "/admin",
+  "/agent",
+  "/dashboard/admin",
+  "/dashboard/agent",
+  "/dashboard/next-step",
+  "/dashboard/old-applicants",
+  "/admin/next-step",
+]);
+
 function labelize(segment: string) {
   if (LABEL_MAP[segment]) return LABEL_MAP[segment];
   // UUIDs / IDs — show short form
@@ -144,21 +158,27 @@ export function TopBar() {
         >
           <Home className="h-3.5 w-3.5" />
         </Link>
-        {crumbs.map((c, i) => (
-          <span key={c.path} className="flex items-center gap-1 min-w-0">
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
-            {i === crumbs.length - 1 ? (
-              <span className="text-sm font-semibold truncate">{c.label}</span>
-            ) : (
-              <Link
-                to={c.path}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors truncate"
-              >
-                {c.label}
-              </Link>
-            )}
-          </span>
-        ))}
+        {crumbs.map((c, i) => {
+          const isLast = i === crumbs.length - 1;
+          const isDeadParent = NON_ROUTE_PARENTS.has(c.path);
+          return (
+            <span key={c.path} className="flex items-center gap-1 min-w-0">
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+              {isLast ? (
+                <span className="text-sm font-semibold truncate">{c.label}</span>
+              ) : isDeadParent ? (
+                <span className="text-sm text-muted-foreground/70 truncate">{c.label}</span>
+              ) : (
+                <Link
+                  to={c.path}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors truncate"
+                >
+                  {c.label}
+                </Link>
+              )}
+            </span>
+          );
+        })}
       </nav>
 
       {/* Right cluster */}

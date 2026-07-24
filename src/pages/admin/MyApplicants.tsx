@@ -155,11 +155,11 @@ export default function MyApplicants() {
               Everyone you referred. Sorted by newest first.
             </p>
           </div>
-          <Link to="/admin/add-referral">
-            <Button>
+          <Button asChild>
+            <Link to="/admin/add-referral">
               + Add Referral Manually <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
 
         {/* Referral link */}

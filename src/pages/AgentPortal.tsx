@@ -439,18 +439,18 @@ export default function AgentPortal() {
               Please log in to access your portal and log your numbers.
             </p>
             <div className="space-y-3">
-              <Link to="/install">
-                <Button className="w-full" size="lg">
+              <Button asChild className="w-full" size="lg">
+                <Link to="/install">
                   <Zap className="h-4 w-4 mr-2" />
                   Instant Login
-                </Button>
-              </Link>
-              <Link to="/login">
-                <Button variant="outline" className="w-full" size="lg">
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full" size="lg">
+                <Link to="/login">
                   <User className="h-4 w-4 mr-2" />
                   Admin Login
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </GlassCard>
         </motion.div>

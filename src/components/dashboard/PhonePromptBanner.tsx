@@ -43,12 +43,12 @@ export function PhonePromptBanner() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/dashboard/settings">
-            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black">
+          <Button asChild size="sm" className="bg-amber-500 hover:bg-amber-600 text-black">
+            <Link to="/dashboard/settings">
               Add Phone
               <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <Button
             variant="ghost"
             size="icon"

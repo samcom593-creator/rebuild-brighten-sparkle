@@ -56,16 +56,16 @@ export default function ScheduleCall() {
                   on the other side.
                 </p>
                 <div className="flex flex-col gap-3">
-                  <Link to="/apply">
-                    <Button size="lg" className="w-full gap-2 btn-press">
+                  <Button asChild size="lg" className="w-full gap-2 btn-press">
+                    <Link to="/apply">
                       Start Application <CheckCircle2 className="h-5 w-5" />
-                    </Button>
-                  </Link>
-                  <Link to="/get-licensed">
-                    <Button size="lg" variant="outline" className="w-full">
+                    </Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline" className="w-full">
+                    <Link to="/get-licensed">
                       What does licensing involve?
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               </GlassCard>
             </motion.div>

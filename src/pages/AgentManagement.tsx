@@ -706,9 +706,9 @@ function PipelineHint() {
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
           Your full kanban by onboarding stage is on the CRM page — same data, same agents, arranged by stage. Agent Management is optimized for individual agent drill-down; CRM is optimized for stage flow.
         </p>
-        <Link to="/dashboard/crm">
-          <Button>Open CRM</Button>
-        </Link>
+        <Button asChild>
+          <Link to="/dashboard/crm">Open CRM</Link>
+        </Button>
       </CardContent>
     </Card>
   );

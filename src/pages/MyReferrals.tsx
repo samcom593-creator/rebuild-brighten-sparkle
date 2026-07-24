@@ -103,9 +103,9 @@ export default function MyReferrals() {
         title="My Referrals"
         subtitle={`${data?.length ?? 0} referral${(data?.length ?? 0) === 1 ? "" : "s"} sent across your career.`}
         actions={
-          <Link to="/dashboard/referrals/new">
-            <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Submit referral</Button>
-          </Link>
+          <Button asChild size="sm">
+            <Link to="/dashboard/referrals/new"><Plus className="h-4 w-4 mr-1" /> Submit referral</Link>
+          </Button>
         }
       />
 
@@ -204,7 +204,7 @@ export default function MyReferrals() {
           <CardContent className="text-center py-12 text-sm text-muted-foreground">
             You haven't sent any referrals yet.
             <div className="mt-3">
-              <Link to="/dashboard/referrals/new"><Button size="sm">Submit your first</Button></Link>
+              <Button asChild size="sm"><Link to="/dashboard/referrals/new">Submit your first</Link></Button>
             </div>
           </CardContent>
         </Card>

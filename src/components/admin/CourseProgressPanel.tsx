@@ -218,11 +218,11 @@ export function CourseProgressPanel() {
             Course Progress
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Link to="/course-progress">
-              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+            <Button asChild variant="ghost" size="sm" className="h-7 text-xs gap-1">
+              <Link to="/course-progress">
                 View Full <ArrowRight className="h-3 w-3" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </CardHeader>

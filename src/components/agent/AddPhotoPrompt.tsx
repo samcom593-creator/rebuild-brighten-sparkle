@@ -67,11 +67,11 @@ export function AddPhotoPrompt() {
             Every APEX plaque you earn gets rendered with your photo. Right now yours shows just your initials — takes 15 seconds to fix.
           </p>
         </div>
-        <Link to="/dashboard/settings" className="shrink-0">
-          <Button size="sm" className="gap-1.5">
+        <Button asChild size="sm" className="shrink-0 gap-1.5">
+          <Link to="/dashboard/settings">
             Upload Photo <ChevronRight className="h-3.5 w-3.5" />
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
     </GlassCard>
   );

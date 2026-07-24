@@ -170,9 +170,9 @@ export default function PlaqueShare() {
           <AlertCircle className="h-12 w-12 text-amber-500 mx-auto" />
           <h1 className="text-2xl font-bold text-white">Plaque not found</h1>
           <p className="text-muted-foreground">{error || "Something went wrong — refresh to try again"}</p>
-          <Link to="/">
-            <Button variant="outline">Go to APEX</Button>
-          </Link>
+          <Button asChild variant="outline">
+            <Link to="/">Go to APEX</Link>
+          </Button>
         </div>
       </div>
     );

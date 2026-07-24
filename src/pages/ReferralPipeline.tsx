@@ -173,9 +173,9 @@ export default function ReferralPipeline() {
         title="Referrals"
         subtitle={`${data.length} active referral${data.length === 1 ? "" : "s"} across your team's pipeline.`}
         actions={
-          <Link to="/dashboard/referrals/new">
-            <Button size="sm">Submit a referral</Button>
-          </Link>
+          <Button asChild size="sm">
+            <Link to="/dashboard/referrals/new">Submit a referral</Link>
+          </Button>
         }
       />
 

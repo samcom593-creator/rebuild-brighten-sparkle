@@ -226,11 +226,11 @@ export default function StaleRecovery() {
                       <Button size="sm" onClick={() => callAction(r.id, "mark_contacted")}>
                         <UserCheck className="h-4 w-4 mr-1" /> Mark Contacted
                       </Button>
-                      <Link to={`/dashboard/applicants?id=${r.id}`}>
-                        <Button size="sm" variant="outline" className="w-full">
+                      <Button asChild size="sm" variant="outline" className="w-full">
+                        <Link to={`/dashboard/applicants?id=${r.id}`}>
                           Open <ArrowRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      </Link>
+                        </Link>
+                      </Button>
                       <Button size="sm" variant="outline" className="text-amber-300 border-amber-500/30 hover:bg-amber-500/10" onClick={() => callAction(r.id, "ghost")}>
                         <Ghost className="h-4 w-4 mr-1" /> Ghost
                       </Button>

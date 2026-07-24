@@ -216,6 +216,33 @@ export default function BusinessAnalytics() {
   const growthPositive = growth >= 0;
   const totalPremium = Number(s?.total_premium_mtd ?? 0);
 
+  // wave-p1g · fake-success gate. The primary v_business_analytics_summary query
+  // drives every MTD number in the hero (premium, deals, producers, growth). On
+  // query failure the page previously accepted undefined and rendered $0 across
+  // the board — indistinguishable from a real zero-book month. Refuse to lie:
+  // render an explicit error card + Retry when summary fails with no data.
+  // Same pattern as DashboardCommandCenter (commit 4eeea338).
+  const refetchAll = () => {
+    summary.refetch(); carriers.refetch(); insights.refetch();
+    challenges.refetch(); trophy.refetch(); needsAttention.refetch();
+    learnFrom.refetch(); inactive.refetch();
+  };
+  if (summary.isError && !summary.data) {
+    const message = summary.error instanceof Error
+      ? summary.error.message
+      : "Unknown error loading Business Analytics data.";
+    return (
+      <div className="flex items-center justify-center h-[60vh] p-4">
+        <Card className="p-8 text-center max-w-md">
+          <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" aria-hidden="true" />
+          <h2 className="text-xl font-semibold mb-2">Business Analytics failed to load</h2>
+          <p className="text-sm text-muted-foreground mb-4 break-words">{message}</p>
+          <Button onClick={refetchAll} variant="default">Retry</Button>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
       <PageHeader
@@ -240,11 +267,7 @@ export default function BusinessAnalytics() {
               <Sparkles className="h-3.5 w-3.5 text-amber-500" />
               AI Insights
             </Button>
-            <Button variant="outline" size="sm" onClick={() => {
-              summary.refetch(); carriers.refetch(); insights.refetch();
-              challenges.refetch(); trophy.refetch(); needsAttention.refetch();
-              learnFrom.refetch(); inactive.refetch();
-            }}>
+            <Button variant="outline" size="sm" onClick={refetchAll}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${summary.isFetching || carriers.isFetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>

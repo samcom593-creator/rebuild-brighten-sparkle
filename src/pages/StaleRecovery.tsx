@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
@@ -171,8 +171,7 @@ export default function StaleRecovery() {
               >
                 <GlassCard className="p-4">
                   <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
-                    <Avatar className="h-12 w-12 ring-1 ring-border/60">
-                      <AvatarImage src={r.assigned_manager_avatar ?? undefined} alt={r.assigned_manager_name ?? "Unassigned"} />
+                    <Avatar className="h-12 w-12 ring-1 ring-border/60" aria-label={`${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || "Applicant"}>
                       <AvatarFallback>{(r.first_name?.[0] ?? "?")}{(r.last_name?.[0] ?? "")}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">

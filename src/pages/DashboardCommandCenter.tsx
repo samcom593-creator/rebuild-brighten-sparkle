@@ -202,7 +202,7 @@ export default function DashboardCommandCenter() {
   }, [timePeriod, customDateRange]);
 
   // Fetch all agents with production stats using server-side aggregation
-  const { data: agentsData, isLoading, refetch } = useQuery({
+  const { data: agentsData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["command-center-agents", dateRange],
     staleTime: 120_000,
     refetchInterval: 120_000,
@@ -592,6 +592,20 @@ export default function DashboardCommandCenter() {
 
   if (isLoading && !agentsData) {
     return <PageLoadingSkeleton variant="dashboard" />;
+  }
+
+  if (isError && !agentsData) {
+    const message = error instanceof Error ? error.message : "Unknown error loading Command Center data.";
+    return (
+      <div className="flex items-center justify-center h-[60vh] p-4">
+        <Card className="p-8 text-center max-w-md">
+          <AlertTriangle className="h-12 w-12 mx-auto text-destructive mb-4" aria-hidden="true" />
+          <h2 className="text-xl font-semibold mb-2">Command Center failed to load</h2>
+          <p className="text-sm text-muted-foreground mb-4 break-words">{message}</p>
+          <Button onClick={() => refetch()} variant="default">Retry</Button>
+        </Card>
+      </div>
+    );
   }
 
   return (

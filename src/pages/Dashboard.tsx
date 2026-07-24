@@ -460,7 +460,7 @@ async function loadDashboardSnapshot(
       liveAgents: new Set((liveDeals as any[]).map((row) => row.agent_id).filter(Boolean)).size,
       presentationsWeek: weekProduction.reduce((sum, row) => sum + Number(row.presentations ?? 0), 0),
       hoursWeek: weekProduction.reduce((sum, row) => sum + Number(row.hours_called ?? 0), 0),
-      closeRate: getCloseRate(weekDeals.length, weekProduction.reduce((sum, row) => sum + Number(row.presentations ?? 0), 0)),
+      closeRate: getCloseRate(alTruthAvailable ? alWeekDeals : weekDeals.length, weekProduction.reduce((sum, row) => sum + Number(row.presentations ?? 0), 0)),
     },
     recruiting: {
       applicants: applications.length,

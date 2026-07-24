@@ -108,7 +108,6 @@ const AdminFunnelHealth = lazy(() => import("./pages/AdminFunnelHealth"));
 const AdminEmailGaps = lazy(() => import("./pages/AdminEmailGaps"));
 const AdminMissingAlLink = lazy(() => import("./pages/AdminMissingAlLink"));
 const DashboardToday = lazy(() => import("./pages/DashboardToday"));
-const AdminJuneHires = lazy(() => import("./pages/AdminJuneHires"));
 const AdminProducerTrends = lazy(() => import("./pages/AdminProducerTrends"));
 const LicensedInbox = lazy(() => import("./pages/LicensedInbox"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
@@ -142,6 +141,7 @@ const LinksPage = lazy(() => import("./pages/LinksPage"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
 const InterviewCommandCenter = lazy(() => import("./pages/InterviewCommandCenter"));
 const InterviewRecovery = lazy(() => import("./pages/InterviewRecovery"));
+const ProducerReactivation = lazy(() => import("./pages/ProducerReactivation"));
 const AdminBoardAccess = lazy(() => import("./pages/AdminBoardAccess"));
 const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
 const SeminarPage = lazy(() => import("./pages/SeminarPage"));
@@ -490,8 +490,6 @@ const App = () => (
                     <Route path="/admin/email-gaps" element={<ProtectedRoute requireAdmin><AdminEmailGaps /></ProtectedRoute>} />
                     {/* 2026-07-05: agents missing insuracloud_user_id (AL user id) — accept suggestion or paste id */}
                     <Route path="/admin/missing-al-link" element={<ProtectedRoute requireAdmin><AdminMissingAlLink /></ProtectedRoute>} />
-                    {/* 2026-06-18 Sam: punch list of June hires needing email/phone/account/AgentLink */}
-                    <Route path="/admin/june-hires" element={<ProtectedRoute requireAdmin><AdminJuneHires /></ProtectedRoute>} />
                     {/* MP-232 regression restore: licensed applicants need the immediate-call inbox. */}
                     <Route path="/admin/licensed-inbox" element={<ProtectedRoute requireAdmin><LicensedInbox /></ProtectedRoute>} />
                     {/* 2026-07-05 Sam: unlicensed → licensed recovery queue for assistants. Sorted by cohort proximity to licensed. Tap-to-call. */}
@@ -560,6 +558,8 @@ const App = () => (
                          the queue and the applicant names behind it. */}
                      <Route path="/dashboard/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><InterviewCommandCenter /></ProtectedRoute>} />
                      <Route path="/dashboard/interview-recovery" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><InterviewRecovery /></ProtectedRoute>} />
+                     {/* MP-264: 60% of everyone who has ever produced is dark. */}
+                     <Route path="/dashboard/reactivation" element={<ProtectedRoute requireAdmin allowManagers><ProducerReactivation /></ProtectedRoute>} />
                      <Route path="/dashboard/hierarchy" element={<Navigate to="/dashboard/crm" replace />} />
                      <Route path="/dashboard/team-hierarchy" element={<Navigate to="/dashboard/agents" replace />} />
                        <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />

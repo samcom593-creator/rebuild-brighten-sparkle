@@ -720,3 +720,6 @@ verify_jwt = false
 
 [functions.xcel-csv-ingest]
 verify_jwt = false
+
+[functions.postmark-approval-monitor]
+verify_jwt = false

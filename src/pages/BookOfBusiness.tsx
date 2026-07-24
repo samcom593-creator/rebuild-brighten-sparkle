@@ -782,10 +782,19 @@ export default function BookOfBusiness() {
   // ─── KPI calcs ───────────────────────────────────────────────────────────
 
   const kpi = useMemo(() => {
+    // Non-admin viewers see a `deals` array scoped to their own agent_ids /
+    // AgentLink user_ids (see the `.in("user_id", agentLinkScopeUserIds)`
+    // branch above). v_agentlink_book_truth is agency-wide with NO viewer
+    // scope, so trusting it here would show one agent's ~40 policies under an
+    // agency-wide "Total Deals 1,558 / Annual Premium $X.XM" headline while
+    // the table beneath renders only their own book. Gate the truth-view
+    // fallback behind isAdmin; scoped viewers derive every KPI from `deals`.
     const totalDeals =
-      truth?.total_deals != null ? Number(truth.total_deals) : deals.length;
+      isAdmin && truth?.total_deals != null
+        ? Number(truth.total_deals)
+        : deals.length;
     const totalALP =
-      truth?.total_annual_premium != null
+      isAdmin && truth?.total_annual_premium != null
         ? Number(truth.total_annual_premium)
         : deals.reduce((s, d) => s + Number(d.annual_premium ?? 0), 0);
     const totalMonthly = deals.reduce(
@@ -803,7 +812,7 @@ export default function BookOfBusiness() {
       activePolicies,
       chargebackWatch,
     };
-  }, [deals, truth]);
+  }, [deals, truth, isAdmin]);
 
   // ─── Filter helpers ──────────────────────────────────────────────────────
 

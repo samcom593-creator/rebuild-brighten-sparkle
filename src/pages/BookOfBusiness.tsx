@@ -233,6 +233,19 @@ function isActivePolicy(deal: DealRow): boolean {
   return true;
 }
 
+// AgentLink snapshot rows set posted_at = snapshot_at (sync clock), so every
+// row would render the same "X ago" and the "Newest Posted" sort collapses to
+// a near no-op. effective_date is the real business date on both sources; fall
+// back to posted_at/created_at only when effective_date is missing, and mark
+// that case so the UI can say "Synced" instead of pretending it's a post time.
+function pickPostedTs(
+  deal: Pick<DealRow, "effective_date" | "posted_at" | "created_at">,
+): { ts: string | null; isFallback: boolean } {
+  if (deal.effective_date) return { ts: deal.effective_date, isFallback: false };
+  const fallback = deal.posted_at ?? deal.created_at ?? null;
+  return { ts: fallback, isFallback: Boolean(fallback) };
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────
 
 export default function BookOfBusiness() {
@@ -724,8 +737,8 @@ export default function BookOfBusiness() {
       })
       .filter((d) => {
         if (sinceTs == null && untilTs == null) return true;
-        const posted = d.posted_at ?? d.created_at;
-        const t = posted ? Date.parse(posted) : NaN;
+        const { ts } = pickPostedTs(d);
+        const t = ts ? Date.parse(ts) : NaN;
         if (!Number.isFinite(t)) return false;
         if (sinceTs != null && t < sinceTs) return false;
         if (untilTs != null && t > untilTs) return false;
@@ -770,8 +783,8 @@ export default function BookOfBusiness() {
             return (a.carrier_name ?? "").localeCompare(b.carrier_name ?? "");
           case "newest_posted":
           default: {
-            const bt = Date.parse(b.posted_at ?? b.created_at ?? "");
-            const at = Date.parse(a.posted_at ?? a.created_at ?? "");
+            const bt = Date.parse(pickPostedTs(b).ts ?? "");
+            const at = Date.parse(pickPostedTs(a).ts ?? "");
             return (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0);
           }
         }
@@ -1189,7 +1202,7 @@ export default function BookOfBusiness() {
                   </Select>
                 </FilterField>
               </div>
-              <FilterField label="Posted date">
+              <FilterField label="Effective date">
                 <div className="flex items-center gap-2">
                   <Input
                     type="date"
@@ -1232,7 +1245,7 @@ export default function BookOfBusiness() {
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="newest_posted">Newest Posted</SelectItem>
+              <SelectItem value="newest_posted">Newest Effective</SelectItem>
               <SelectItem value="highest_premium">Highest Premium</SelectItem>
               <SelectItem value="chargeback_risk">Chargeback Risk</SelectItem>
               <SelectItem value="by_agent">By Agent</SelectItem>
@@ -1294,7 +1307,7 @@ export default function BookOfBusiness() {
                 <th className="text-left px-3 py-2">Carrier</th>
                 <th className="text-right px-3 py-2">Monthly</th>
                 <th className="text-right px-3 py-2">ALP</th>
-                <th className="text-left px-3 py-2">Posted Date</th>
+                <th className="text-left px-3 py-2">Effective Date</th>
                 <th className="text-left px-3 py-2">Status</th>
                 <th className="text-right px-3 py-2">Actions</th>
               </tr>
@@ -1362,7 +1375,8 @@ export default function BookOfBusiness() {
                   const inCbWindow = isInChargebackWindow(d);
                   const daysEff = daysSinceEffective(d);
                   const isReviewed = reviewedIds.has(d.id);
-                  const posted = d.posted_at ?? d.created_at;
+                  const { ts: posted, isFallback: postedIsFallback } =
+                    pickPostedTs(d);
                   return (
                     <tr
                       key={d.id}
@@ -1428,6 +1442,7 @@ export default function BookOfBusiness() {
                               })}
                             </div>
                             <div className="text-[10px] opacity-70">
+                              {postedIsFallback ? "Synced " : ""}
                               {format(new Date(posted), "MMM d, yyyy")}
                             </div>
                           </div>

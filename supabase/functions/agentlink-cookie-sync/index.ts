@@ -229,6 +229,28 @@ Deno.serve(async (req) => {
       }, 502);
     }
 
+    // MP-268 truth-layer guard: a 200 with a non-JSON/HTML body means the cookie expired
+    // (AgentLink served a login page), NOT an empty book. Log auth_failed — never fake "empty ok".
+    // Purely additive: the happy path (valid JSON) has body !== null and skips this entirely.
+    if (dealsResp.body === null && dealsResp.text && dealsResp.text.trim().length > 0) {
+      const sample = dealsResp.text.trim().slice(0, 200).toLowerCase();
+      if (
+        sample.startsWith("<") || sample.includes("<!doctype") || sample.includes("<html") ||
+        sample.includes("login") || sample.includes("sign in")
+      ) {
+        await finishLog({
+          status: "auth_failed",
+          upstream_status: dealsResp.status,
+          error_message: `edge: cookie expired — /api/deals returned non-JSON (login/HTML) with HTTP ${dealsResp.status}`,
+        });
+        return json({
+          ok: false,
+          error: "AgentLink cookie expired (received login page, not JSON)",
+          upstream_status: dealsResp.status,
+        }, 401);
+      }
+    }
+
     const payload: any = dealsResp.body;
     const policies: any[] = Array.isArray(payload)
       ? payload

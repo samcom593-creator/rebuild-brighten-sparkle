@@ -13,6 +13,18 @@
  *   - agent_id omitted → import for every agent with an insuracloud token
  *     (including the shared default INSURACLOUD_API_TOKEN env var)
  *   - dry_run: true → return what would be imported without writing
+ *
+ * AUTH: requires Bearer token matching APEX_BOT_TOKEN env, the persistent
+ * fallback (BOT_SQL_PERSISTENT_TOKEN), SUPABASE_SERVICE_ROLE_KEY (internal
+ * server-to-server callers such as system-health-autopilot), or
+ * system_settings.apex_bot_token — OR a valid Supabase user session JWT.
+ * Same resolution policy as bot-sql / insuracloud-sync so one token rotation
+ * cycle covers every Claude-driven endpoint. Anonymous callers get 401.
+ *
+ * TOTAL FAILURE: a run where EVERY agent's upstream fetch failed returns 502
+ * with the error summary and writes one status='error' row to
+ * agentlink_sync_log, instead of the old ok:true with a silently ignored
+ * errors[] and no persistent trace.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -26,6 +38,12 @@ const corsHeaders = {
 
 const BASE = Deno.env.get("INSURACLOUD_BASE_URL") || "https://agentlink.insuracloud.ai";
 const DEFAULT_TOKEN = Deno.env.get("INSURACLOUD_API_TOKEN") || "";
+
+const CLAUDE_PERSISTENT_TOKEN =
+  Deno.env.get("BOT_SQL_PERSISTENT_TOKEN") ||
+  // Same persistent fallback as bot-sql / insuracloud-sync so a single
+  // rotation covers every endpoint. If you rotate, update all of them.
+  "37740df6728db61e128392dbbdae34be1dccf862eebe09925ff321182fb30ebd";
 
 type Policy = {
   id?: string | number;
@@ -69,9 +87,25 @@ function num(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+async function resolveValidTokens(sb: any): Promise<string[]> {
+  const tokens: string[] = [CLAUDE_PERSISTENT_TOKEN];
+  const env = Deno.env.get("APEX_BOT_TOKEN");
+  if (env && env.length > 16) tokens.push(env);
+  // system-health-autopilot retries this function server-to-server with the
+  // service-role key; accepting it keeps that path alive (anyone holding it
+  // already has full DB access, so this widens nothing).
+  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (service && service.length > 16) tokens.push(service);
+  const { data } = await sb.from("system_settings").select("value").eq("key", "apex_bot_token").maybeSingle();
+  const v = (data as { value?: string } | null)?.value;
+  if (v && v.length > 16) tokens.push(v);
+  return tokens;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const startedAt = Date.now();
   const sb = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -79,6 +113,27 @@ Deno.serve(async (req) => {
   );
 
   try {
+    // ─── Auth ──
+    // Accept EITHER a bot token (cron, server-to-server) OR a valid Supabase
+    // user session JWT (in-app callers via supabase.functions.invoke). This
+    // function ships with verify_jwt=false in config.toml, so before this gate
+    // any internet caller could trigger upstream pulls and writes to deals.
+    const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization") ?? "";
+    const presented = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const validTokens = await resolveValidTokens(sb);
+    let authedAs: "bot" | "user" | null = null;
+    if (presented && validTokens.includes(presented)) {
+      authedAs = "bot";
+    } else if (presented) {
+      const { data: userData } = await sb.auth.getUser(presented);
+      if (userData?.user) authedAs = "user";
+    }
+    if (!authedAs) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = await req.json().catch(() => ({}));
     const dryRun = !!body.dry_run;
     const specificAgent = body.agent_id as string | undefined;
@@ -131,6 +186,8 @@ Deno.serve(async (req) => {
       deals_updated:    0,
       errors:           [] as string[],
       dry_run:          dryRun,
+      agents_fetched:   0,
+      agents_failed:    0,
     };
 
     for (const { agent_id, token, label } of pairs) {
@@ -140,9 +197,13 @@ Deno.serve(async (req) => {
       try {
         payload = await fetchJson("/api/v1/book-of-business", token);
       } catch (err) {
+        summary.agents_failed++;
         summary.errors.push(`${label}: ${String(err)}`);
         continue;
       }
+      // Upstream answered with parseable JSON for this agent — the pull itself
+      // worked even if it carried 0 policies.
+      summary.agents_fetched++;
 
       const policies: Policy[] = Array.isArray(payload)            ? payload
                                : Array.isArray(payload?.policies) ? payload.policies
@@ -223,6 +284,35 @@ Deno.serve(async (req) => {
           raw_payload: payload,
         });
       } catch (_snapshotErr) { /* snapshot is audit-only; never block the import */ }
+    }
+
+    // ─── Total wipeout is not a success ──
+    // Pre-fix this returned ok:true even when EVERY agent's upstream fetch
+    // threw, so a dead Agent Link looked identical to a clean run and left no
+    // persistent trace anywhere. Now: one status='error' row in
+    // agentlink_sync_log (the same log the pg-side AgentLink pull writes) plus
+    // a 502 carrying the error summary. Partial failures keep the old 200 so
+    // one misconfigured agent can't fail the whole batch.
+    if (summary.agents_fetched === 0 && summary.agents_failed > 0) {
+      const errorSummary = summary.errors.join(" | ").slice(0, 4000);
+      if (!dryRun) {
+        // supabase-js QueryBuilder is a thenable but does NOT expose .catch — must await + try/catch
+        try {
+          await sb.from("agentlink_sync_log").insert({
+            started_at:     new Date(startedAt).toISOString(),
+            finished_at:    new Date().toISOString(),
+            status:         "error",
+            policies_seen:  summary.policies_seen,
+            deals_inserted: summary.deals_inserted,
+            deals_updated:  summary.deals_updated,
+            error_message:  `agentlink-import: all ${summary.agents_failed} agent fetch(es) failed — ${errorSummary}`,
+          });
+        } catch (_logErr) { /* never let the log write mask the real failure */ }
+      }
+      return new Response(
+        JSON.stringify({ ok: false, error: "all_agent_fetches_failed", error_summary: errorSummary, ...summary }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     return new Response(JSON.stringify({ ok: true, ...summary }), {

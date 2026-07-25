@@ -40,3 +40,6 @@ supabase/.temp/
 # Not a source file — gitignored so `git status` stays clean post-build.
 public/landing.css
 .claude/
+
+# TypeScript incremental build artifacts
+*.tsbuildinfo

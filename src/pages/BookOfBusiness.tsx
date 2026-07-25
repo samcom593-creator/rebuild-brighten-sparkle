@@ -111,6 +111,22 @@ interface ContactLogRow {
   logged_by: string | null;
 }
 
+interface BookPersistencyRow {
+  carrier: string;
+  in_force: number | string | null;
+  lapsed: number | string | null;
+  in_force_alp: number | string | null;
+  persistency_pct: number | string | null;
+}
+
+interface BookConcentrationRow {
+  dimension: string;
+  name: string;
+  in_force_policies: number | string | null;
+  in_force_alp: number | string | null;
+  pct_of_in_force_alp: number | string | null;
+}
+
 interface BookSegmentRow {
   segment: string;
   policies: number | null;
@@ -305,6 +321,8 @@ export default function BookOfBusiness() {
   // into one number. v_book_status_segments splits it so the in-force (actually
   // paying) book is never confused with business that has not adjudicated.
   const [segments, setSegments] = useState<BookSegmentRow[] | null>(null);
+  const [persistency, setPersistency] = useState<BookPersistencyRow[] | null>(null);
+  const [concentration, setConcentration] = useState<BookConcentrationRow[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [agentScopeIds, setAgentScopeIds] = useState<string[] | null>(null);
   const [agentLinkScopeUserIds, setAgentLinkScopeUserIds] = useState<
@@ -435,6 +453,31 @@ export default function BookOfBusiness() {
         setSegments(null);
       } else {
         setSegments((segRows as unknown as BookSegmentRow[]) ?? null);
+      }
+
+      const { data: persRows, error: persErr } = await supabase
+        .from("v_book_persistency" as any)
+        .select("carrier, in_force, lapsed, in_force_alp, persistency_pct");
+      if (persErr) {
+        logger.warn("[BookOfBusiness] v_book_persistency read failed", {
+          error: persErr.message,
+        });
+        setPersistency(null);
+      } else {
+        setPersistency((persRows as unknown as BookPersistencyRow[]) ?? null);
+      }
+
+      const { data: concRows, error: concErr } = await supabase
+        .from("v_book_concentration" as any)
+        .select("dimension, name, in_force_policies, in_force_alp, pct_of_in_force_alp")
+        .eq("dimension", "carrier");
+      if (concErr) {
+        logger.warn("[BookOfBusiness] v_book_concentration read failed", {
+          error: concErr.message,
+        });
+        setConcentration(null);
+      } else {
+        setConcentration((concRows as unknown as BookConcentrationRow[]) ?? null);
       }
 
       if (
@@ -1180,6 +1223,103 @@ export default function BookOfBusiness() {
           </div>
         </div>
       )}
+
+      {/* MP-268 — Persistency + carrier concentration.
+          Persistency answers "of the policies that actually reached a decision,
+          how many are still paying" (in_force / (in_force + lapsed)) — pending
+          and never-issued are excluded because they never had the chance to
+          lapse. Concentration answers "how much of the paying book sits with one
+          carrier", which is the risk that an appointment loss is existential. */}
+      {isAdmin && (persistency?.length || concentration?.length) ? (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {persistency && persistency.length > 0 && (
+            <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold text-foreground">Persistency by carrier</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Still in force, of policies that reached a decision. Pending and
+                never-issued excluded.
+              </p>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                {[...persistency]
+                  .sort((a, b) => Number(a.persistency_pct ?? 0) - Number(b.persistency_pct ?? 0))
+                  .map((row) => {
+                    const pct = Number(row.persistency_pct ?? 0);
+                    const overall = row.carrier === "__ALL__";
+                    const bad = pct < 50;
+                    return (
+                      <div
+                        key={row.carrier}
+                        className={
+                          "flex items-center justify-between gap-3 rounded-md px-2.5 py-1.5 " +
+                          (overall ? "bg-muted/60 font-semibold" : "bg-background")
+                        }
+                      >
+                        <span className="text-xs text-foreground truncate">
+                          {overall ? "All carriers" : row.carrier}
+                        </span>
+                        <span className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-[11px] text-muted-foreground">
+                            {Number(row.in_force ?? 0)} in force · {Number(row.lapsed ?? 0)} lapsed
+                          </span>
+                          <span
+                            className={
+                              "text-xs font-bold tabular-nums " +
+                              (bad ? "text-rose-500" : "text-emerald-500")
+                            }
+                          >
+                            {pct.toFixed(1)}%
+                          </span>
+                        </span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {concentration && concentration.length > 0 && (
+            <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Award className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold text-foreground">Carrier concentration</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Share of the in-force book. A high share means losing one
+                appointment takes that much of the paying book with it.
+              </p>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {[...concentration]
+                  .sort((a, b) => Number(b.in_force_alp ?? 0) - Number(a.in_force_alp ?? 0))
+                  .map((row) => {
+                    const pct = Number(row.pct_of_in_force_alp ?? 0);
+                    return (
+                      <div key={`${row.dimension}-${row.name}`}>
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className="text-foreground truncate">{row.name}</span>
+                          <span className="text-muted-foreground flex-shrink-0 tabular-nums">
+                            {fmt$(Number(row.in_force_alp ?? 0))} · {pct.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={
+                              "h-full rounded-full " +
+                              (pct >= 35 ? "bg-amber-500" : "bg-emerald-500")
+                            }
+                            style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {/* KPI cards — 6 metrics, per Sam brief */}
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">

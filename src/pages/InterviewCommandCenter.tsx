@@ -909,6 +909,42 @@ function InterviewCard({
   const licenseBadge = licenseBadgeFor(enrichment);
   const applicationBadge = applicationBadgeFor(row, enrichment);
 
+  // Extracted so terminal-row primary + non-terminal secondary reuse identical popover body
+  // without duplicating 30 lines of JSX. Only one Popover instance renders per row per branch,
+  // so no Radix ref/id collision.
+  const dispositionMenuChildren = (
+    <>
+      <div className="grid grid-cols-2 gap-1.5">
+        <DispositionButton active={!!row.contacted_at} disabled={busy} icon={MessageCircle} label="Contacted" tone="sky" onClick={() => onDisposition(row, "contacted")} />
+        <DispositionButton active={!!row.called_at} disabled={busy} icon={PhoneCall} label="Called" tone="emerald" onClick={() => onDisposition(row, "called")} />
+        <DispositionButton active={!!row.rescheduled_at} disabled={busy} icon={Clock} label="Reschedule" tone="violet" onClick={() => onDisposition(row, "rescheduled")} />
+        <DispositionButton active={!!row.no_show_at} disabled={busy} icon={UserX} label="No-Show" tone="rose" onClick={() => onDisposition(row, "no_show")} />
+        <DispositionButton active={!!row.hired_at} disabled={busy} icon={Trophy} label="Hired" tone="amber" onClick={() => onDisposition(row, "hired")} />
+        <DispositionButton active={!!row.contracted_at} disabled={busy} icon={CheckCircle2} label="Contracted" tone="emerald" onClick={() => onDisposition(row, "contracted")} />
+        <DispositionButton active={!!row.passed_at} disabled={busy} icon={XCircle} label="Pass" tone="slate" onClick={() => onDisposition(row, "passed")} />
+        <DispositionButton active={noteDraft !== undefined || !!row.outcome_notes} disabled={busy} icon={StickyNote} label="Notes" tone="sky" onClick={() => onOpenNotes(row)} />
+      </div>
+      <div className="mt-2 border-t border-border/50 pt-2">
+        <Popover open={followUpOpen} onOpenChange={onOpenFollowUp}>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs" aria-label="Schedule follow-up date">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Schedule follow-up date
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={undefined}
+              onSelect={(d: Date | undefined) => { if (d) onFollowUpPick(d); }}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+    </>
+  );
+
   return (
     <article
       onTouchStart={handleTouchStart}
@@ -1021,71 +1057,65 @@ function InterviewCard({
         />
       </div>
 
-      {/* Primary CTA + disposition popover */}
+      {/* Primary CTA + disposition popover — on terminal rows (hired/contracted/passed),
+          primary key is "edit_disposition" and the button IS the disposition-menu opener.
+          Non-terminal rows keep the confirm/reschedule/called-log fast path + secondary menu. */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          className="h-11 min-h-[44px] flex-1 gap-1.5"
-          disabled={busy}
-          data-cc-primary={primary.key}
-          aria-label={`${primary.label} ${row.candidate_name}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (primary.key === "confirm") return onConfirm(row);
-            if (primary.key === "reschedule") return onDisposition(row, "rescheduled");
-            onDisposition(row, "called");
-          }}
-        >
-          {primary.key === "confirm" && <MailCheck className="h-4 w-4" />}
-          {primary.key === "disposition" && <PhoneCall className="h-4 w-4" />}
-          {primary.key === "reschedule" && <Clock className="h-4 w-4" />}
-          {primary.label}
-        </Button>
-        <Popover>
-          <PopoverTrigger asChild>
+        {primary.key === "edit_disposition" ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                className="h-11 min-h-[44px] flex-1 gap-1.5"
+                disabled={busy}
+                data-cc-primary={primary.key}
+                aria-label={`${primary.label} ${row.candidate_name}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ClipboardCheck className="h-4 w-4" />
+                {primary.label}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64 p-2">{dispositionMenuChildren}</PopoverContent>
+          </Popover>
+        ) : (
+          <>
             <Button
               type="button"
-              variant="outline"
-              className="h-11 min-h-[44px] gap-1.5"
+              className="h-11 min-h-[44px] flex-1 gap-1.5"
               disabled={busy}
-              aria-label={`Disposition menu for ${row.candidate_name}`}
-              onClick={(e) => e.stopPropagation()}
+              data-cc-primary={primary.key}
+              aria-label={`${primary.label} ${row.candidate_name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (primary.key === "confirm") return onConfirm(row);
+                if (primary.key === "reschedule") return onDisposition(row, "rescheduled");
+                onDisposition(row, "called");
+              }}
             >
-              <MoreHorizontal className="h-4 w-4" />
-              Disposition
+              {primary.key === "confirm" && <MailCheck className="h-4 w-4" />}
+              {primary.key === "disposition" && <PhoneCall className="h-4 w-4" />}
+              {primary.key === "reschedule" && <Clock className="h-4 w-4" />}
+              {primary.label}
             </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-64 p-2">
-            <div className="grid grid-cols-2 gap-1.5">
-              <DispositionButton active={!!row.contacted_at} disabled={busy} icon={MessageCircle} label="Contacted" tone="sky" onClick={() => onDisposition(row, "contacted")} />
-              <DispositionButton active={!!row.called_at} disabled={busy} icon={PhoneCall} label="Called" tone="emerald" onClick={() => onDisposition(row, "called")} />
-              <DispositionButton active={!!row.rescheduled_at} disabled={busy} icon={Clock} label="Reschedule" tone="violet" onClick={() => onDisposition(row, "rescheduled")} />
-              <DispositionButton active={!!row.no_show_at} disabled={busy} icon={UserX} label="No-Show" tone="rose" onClick={() => onDisposition(row, "no_show")} />
-              <DispositionButton active={!!row.hired_at} disabled={busy} icon={Trophy} label="Hired" tone="amber" onClick={() => onDisposition(row, "hired")} />
-              <DispositionButton active={!!row.contracted_at} disabled={busy} icon={CheckCircle2} label="Contracted" tone="emerald" onClick={() => onDisposition(row, "contracted")} />
-              <DispositionButton active={!!row.passed_at} disabled={busy} icon={XCircle} label="Pass" tone="slate" onClick={() => onDisposition(row, "passed")} />
-              <DispositionButton active={noteDraft !== undefined || !!row.outcome_notes} disabled={busy} icon={StickyNote} label="Notes" tone="sky" onClick={() => onOpenNotes(row)} />
-            </div>
-            <div className="mt-2 border-t border-border/50 pt-2">
-              <Popover open={followUpOpen} onOpenChange={onOpenFollowUp}>
-                <PopoverTrigger asChild>
-                  <Button type="button" variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs" aria-label="Schedule follow-up date">
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    Schedule follow-up date
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={undefined}
-                    onSelect={(d: Date | undefined) => { if (d) onFollowUpPick(d); }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </PopoverContent>
-        </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 min-h-[44px] gap-1.5"
+                  disabled={busy}
+                  aria-label={`Disposition menu for ${row.candidate_name}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                  Disposition
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-64 p-2">{dispositionMenuChildren}</PopoverContent>
+            </Popover>
+          </>
+        )}
       </div>
 
       {noteDraft !== undefined && (
@@ -1109,8 +1139,14 @@ function InterviewCard({
   );
 }
 
-function pickPrimaryCta(row: UnifiedInterview, isPast: boolean): { key: "confirm" | "disposition" | "reschedule"; label: string } {
-  if (row.hired_at || row.contracted_at || row.passed_at) return { key: "disposition", label: "Update disposition" };
+function pickPrimaryCta(
+  row: UnifiedInterview,
+  isPast: boolean,
+): { key: "confirm" | "disposition" | "reschedule" | "edit_disposition"; label: string } {
+  // Terminal rows (hired/contracted/passed): primary opens the disposition menu so a click
+  // never silently regresses a completed candidate back to called_at. Same disease class
+  // as the 465 InsuraCloud + 198 AgentLink fake-success rows — a label must match its action.
+  if (row.hired_at || row.contracted_at || row.passed_at) return { key: "edit_disposition", label: "Update disposition" };
   if (row.no_show_at) return { key: "reschedule", label: "Reschedule" };
   if (!row.contacted_at && !row.called_at && !isPast) return { key: "confirm", label: "Confirm interview" };
   if (isPast && !row.called_at) return { key: "reschedule", label: "Reschedule" };

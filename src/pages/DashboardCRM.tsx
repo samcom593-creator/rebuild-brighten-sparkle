@@ -870,7 +870,7 @@ export default function DashboardCRM() {
     }
   };
 
-  const activeAgents = useMemo(() => agents.filter(a => {
+  const activeAgentsRaw = useMemo(() => agents.filter(a => {
     // "Deactivated" chip owns its own section — surface those agents regardless
     // of the top-level toggle when that chip is selected.
     if (activeStageTab === "deactivated") return true;
@@ -878,6 +878,30 @@ export default function DashboardCRM() {
     if (!showInactive && a.isInactive) return false;
     return true;
   }), [agents, showDeactivated, showInactive, activeStageTab]);
+
+  // Dedupe by lowercased email so tab counts + row lists stop double-counting
+  // ghost duplicates (e.g. two "Samuel James" rows). Retain the canonical row —
+  // prefer one with a real userId, then most-recent lastActivityAt, then lowest
+  // sortOrder. The Dupe badge below still surfaces because duplicateAgentIds is
+  // computed off activeAgentsRaw, not the deduped list.
+  const activeAgents = useMemo(() => {
+    const canonicalByEmail = new Map<string, AgentCRM>();
+    const noEmail: AgentCRM[] = [];
+    for (const a of activeAgentsRaw) {
+      const key = a.email?.toLowerCase().trim();
+      if (!key) { noEmail.push(a); continue; }
+      const prev = canonicalByEmail.get(key);
+      if (!prev) { canonicalByEmail.set(key, a); continue; }
+      const prevHasUser = !!prev.userId;
+      const nextHasUser = !!a.userId;
+      if (nextHasUser !== prevHasUser) { if (nextHasUser) canonicalByEmail.set(key, a); continue; }
+      const prevTs = prev.lastActivityAt ? new Date(prev.lastActivityAt).getTime() : 0;
+      const nextTs = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0;
+      if (nextTs !== prevTs) { if (nextTs > prevTs) canonicalByEmail.set(key, a); continue; }
+      if (a.sortOrder < prev.sortOrder) canonicalByEmail.set(key, a);
+    }
+    return [...canonicalByEmail.values(), ...noEmail];
+  }, [activeAgentsRaw]);
 
   const filteredAgents = useMemo(() => activeAgents.filter(a => {
     const matchesSearch = !searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()) || a.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -990,13 +1014,15 @@ export default function DashboardCRM() {
     [filteredAgents]
   );
 
+  // Detect emails with >1 row in the raw list so the canonical (deduped) row
+  // still surfaces a "Dupe" badge to Sam even after dedupe collapses the second.
   const duplicateAgentIds = useMemo(() => {
     const emailCount = new Map<string, number>();
-    activeAgents.forEach(a => { if (a.email) { const k = a.email.toLowerCase().trim(); emailCount.set(k, (emailCount.get(k) || 0) + 1); } });
+    activeAgentsRaw.forEach(a => { if (a.email) { const k = a.email.toLowerCase().trim(); emailCount.set(k, (emailCount.get(k) || 0) + 1); } });
     const dupeIds = new Set<string>();
     activeAgents.forEach(a => { if (a.email && (emailCount.get(a.email.toLowerCase().trim()) || 0) > 1) dupeIds.add(a.id); });
     return dupeIds;
-  }, [activeAgents]);
+  }, [activeAgentsRaw, activeAgents]);
 
   // MP-261 — unified 11-col table shape. Chips filter rows; columns stay stable.
   // Agent / Mentor / Stage / License / Present / Homework / Week ALP / Month ALP /
@@ -1036,7 +1062,11 @@ export default function DashboardCRM() {
   // every segment chip; only the row set changes. Columns after Agent:
   // Mentor / Stage / License / Present / Homework / Week ALP / Month ALP /
   // Last Activity / Next Best Action / Actions.
-  const renderKebabActions = (agent: AgentCRM) => (
+  const renderKebabActions = (agent: AgentCRM) => {
+    // Applicant rows (no auth user; id === applicationId) can't be hidden or
+    // deactivated as agents — those UPDATEs silently no-op / FK-fail.
+    const isApplicantRow = !agent.userId;
+    return (
     <TableCell className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -1095,17 +1125,28 @@ export default function DashboardCRM() {
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={async () => {
+              if (isApplicantRow) {
+                toast.info(`${agent.name} is still an unhired applicant — remove from the Applicants queue instead.`);
+                return;
+              }
               try {
-                await supabase.from("agents").update({ is_inactive: true }).eq("id", agent.id);
+                const { error } = await supabase.from("agents").update({ is_inactive: true }).eq("id", agent.id);
+                if (error) throw error;
                 onAgentUpdate(agent.id, { isInactive: true });
                 toast.success(`${agent.name} hidden`);
-              } catch { toast.error("Failed"); }
+              } catch (err: any) { toast.error(err?.message || "Failed"); }
             }}
           >
             <EyeOff className="h-3.5 w-3.5 mr-2" /> Hide
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => setDeactivateAgent(agent)}
+            onClick={() => {
+              if (isApplicantRow) {
+                toast.info(`${agent.name} is still an unhired applicant — remove from the Applicants queue instead.`);
+                return;
+              }
+              setDeactivateAgent(agent);
+            }}
             className="text-destructive focus:text-destructive"
           >
             <X className="h-3.5 w-3.5 mr-2" /> Remove
@@ -1113,19 +1154,35 @@ export default function DashboardCRM() {
         </DropdownMenuContent>
       </DropdownMenu>
     </TableCell>
-  );
+    );
+  };
 
   const getTableCells = (_sectionKey: string, agent: AgentCRM) => {
-    const contact = getContactInfo(agent);
     const attendanceState = meetingAttendance.get(agent.id) || "unmarked";
     const attendancePresent = attendanceState === "present";
     const stageLabel = PROGRESS_LABELS[agent.licenseProgress || "unlicensed"]
       || agent.onboardingStage.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
     const isTrainee = agent.onboardingStage === "in_field_training";
     const isLicensed = agent.agentLicenseStatus === "licensed";
-    const lastActivityLabel = agent.lastActivityAt
-      ? getTimeAgo(agent.lastActivityAt)
-      : (agent.lastContactedAt ? getTimeAgo(agent.lastContactedAt) : "—");
+    // Applicant rows (still in applications table, no auth user) share id with
+    // applicationId. Actions that write to agents/agent_attendance by agent.id
+    // silently FK-fail — gate those actions and surface a helpful toast.
+    const isApplicantRow = !agent.userId;
+    // Derive color from the SAME timestamp the label reads so fresh activity
+    // never renders red. Fall back to lastContactedAt only when both are absent.
+    const activitySourceTs = agent.lastActivityAt || agent.lastContactedAt;
+    const lastActivityLabel = activitySourceTs ? getTimeAgo(activitySourceTs) : "—";
+    let activityColor = "text-muted-foreground";
+    if (activitySourceTs) {
+      // Math.max(0, …) so a stray future timestamp from a bad AgentLink sync
+      // can't render as red-stale — relative-time-guard invariant.
+      const days = Math.max(0, Date.now() - new Date(activitySourceTs).getTime()) / (1000 * 60 * 60 * 24);
+      if (days < 3) activityColor = "text-emerald-600 dark:text-emerald-400";
+      else if (days < 6) activityColor = "text-amber-600 dark:text-amber-400";
+      else activityColor = "text-red-500 dark:text-red-400";
+    } else {
+      activityColor = "text-red-500 dark:text-red-400";
+    }
     return (
       <>
         <TableCell className="py-2">
@@ -1151,9 +1208,17 @@ export default function DashboardCRM() {
         </TableCell>
         <TableCell className="py-2 text-center" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => toggleMeetingAttendance(agent.id)}
-            className="focus:outline-none transition-base"
+            onClick={() => {
+              if (isApplicantRow) {
+                toast.info(`Hire ${agent.name} first — attendance is agent-scoped.`);
+                return;
+              }
+              toggleMeetingAttendance(agent.id);
+            }}
+            disabled={isApplicantRow}
+            className={cn("focus:outline-none transition-base", isApplicantRow && "opacity-40 cursor-not-allowed")}
             aria-label={`Toggle meeting attendance for ${agent.name}`}
+            title={isApplicantRow ? "Hire this applicant first to track attendance" : undefined}
           >
             {attendancePresent ? (
               <CircleCheck className="h-5 w-5 text-emerald-500 fill-emerald-500/20 mx-auto" />
@@ -1185,7 +1250,7 @@ export default function DashboardCRM() {
           </span>
         </TableCell>
         <TableCell className="py-2">
-          <span className={cn("text-xs font-medium tabular-nums", contact.color)}>{lastActivityLabel}</span>
+          <span className={cn("text-xs font-medium tabular-nums", activityColor)}>{lastActivityLabel}</span>
         </TableCell>
         {renderNBACell(agent)}
         {renderKebabActions(agent)}

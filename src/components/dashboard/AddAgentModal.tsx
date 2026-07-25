@@ -238,8 +238,18 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
         return;
       }
 
-      playSound("celebrate");
-      toast.success(data?.message || "Agent added successfully!");
+      // wave-p1j (audit L151): edge fn now returns per-side-effect status +
+      // partial:true when welcome-email or course-enrollment-email failed.
+      // Show a warning toast (not celebrate) so admins know to resend manually
+      // instead of the previous blanket-success lie.
+      const partial = isRecord(data) && data.partial === true;
+      const displayMessage = (isRecord(data) && typeof data.message === "string" && data.message) || "Agent added successfully!";
+      if (partial) {
+        toast.warning(displayMessage);
+      } else {
+        playSound("celebrate");
+        toast.success(displayMessage);
+      }
 
       // Invalidate dashboard queries so new agent appears immediately
       queryClient.invalidateQueries({ queryKey: ["manager-team-view"] });

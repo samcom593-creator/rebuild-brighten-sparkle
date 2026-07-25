@@ -418,18 +418,21 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-console-in-prod\.mjs$)'; then
   node scripts/check-console-in-prod.mjs
 fi
 
-# ---------- check-empty-catch (wave-21, 2026-07-06) ----------
-# Trigger: any src/ tsx|ts|jsx|js change or the script itself.
+# ---------- check-empty-catch (wave-21, 2026-07-06 / backend root 2026-07-25) ----------
+# Trigger: any src/ tsx|ts|jsx|js change, any supabase/functions/ ts|tsx
+# change, or the script itself.
 # Baseline-count ratchet (same shape as check-tsc-error-count): counts empty
-# .catch(() => {}) / .catch(() => null) / try/catch-with-empty-body sites in
-# src/**/*.{tsx,ts,jsx,js} and fails when count exceeds BASELINE. Silent-
+# .catch(() => {}) / .catch(() => null) / try/catch-with-empty-body sites and
+# fails when a root's count exceeds ITS OWN baseline. Silent-
 # swallow errors are the front-end analog of the 465 fake-success InsuraCloud
 # sync rows (memory: project_apex_2026_05_18_insuracloud_auth_dead) and the
 # 198 zombie AgentLink rows (memory: project_apex_2026_05_20_agentlink_
-# fake_success). Baseline locked at 60 after same-commit pay-down of 6 sites.
-# Pay-down: fix or annotate `empty-catch-allow:<reason>` and lower BASELINE
-# in the same commit. Cost when fired: ~150-250ms (linear in ~520 files).
-if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-empty-catch\.mjs$)'; then
+# fake_success) — and in supabase/functions/** they are not an analog, they
+# ARE that leak. Roots are budgeted separately so a front-end pay-down can
+# never fund a new backend swallow: src @ 0, supabase/functions @ 57.
+# Pay-down: fix or annotate `empty-catch-allow:<reason>` and lower that root's
+# baseline in the same commit. Cost when fired: ~90-170ms (~811 files).
+if match '^(src/.*\.(tsx?|jsx?)$|supabase/functions/.*\.(ts|tsx)$|scripts/check-empty-catch\.mjs$)'; then
   echo "[pre-commit] Empty-catch-affecting file staged — running check:empty-catch…"
   node scripts/check-empty-catch.mjs
 fi

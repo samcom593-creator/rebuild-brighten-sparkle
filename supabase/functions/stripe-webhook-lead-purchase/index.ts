@@ -74,6 +74,30 @@ serve(async (req) => {
     console.error("stripe_events_log upsert failed", e);
   }
 
+  // 1a) Replay guard. Stripe webhook delivery is at-least-once, and handler
+  // failures now return 5xx (see below) so redeliveries are expected. If we
+  // already handled this exact event_id, short-circuit — re-running handlers
+  // for an event that already succeeded has no legitimate purpose and only
+  // risks duplicate side-effects. First delivery of any event is unaffected
+  // (no prior row => alreadyHandled stays false).
+  let alreadyHandled = false;
+  try {
+    const { data: priorEvent } = await supabase
+      .from("stripe_events_log")
+      .select("handled")
+      .eq("event_id", event.id)
+      .maybeSingle();
+    alreadyHandled = priorEvent?.handled === true;
+  } catch (e) {
+    console.error("stripe_events_log replay check failed", e);
+  }
+  if (alreadyHandled) {
+    return new Response(
+      JSON.stringify({ received: true, handled: true, note: "duplicate delivery — already handled", error: null }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   let handlerNote = "";
   let handlerError: string | null = null;
 
@@ -126,9 +150,20 @@ serve(async (req) => {
     console.error("stripe_events_log update failed", e);
   }
 
-  return new Response(JSON.stringify({ received: true, handled: handlerError === null, note: handlerNote }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  // A failed handler must NOT return 200 — Stripe treats 2xx as "delivered" and
+  // never retries, so recovery used to depend on someone manually re-driving
+  // stripe_events_log. Return 500 so Stripe redelivers on its own backoff.
+  // Safe to retry because: (a) the replay guard above skips events already
+  // handled, (b) stripe_events_log upserts on its event_id PK, (c) the
+  // subscription + failed-payment inserts pre-check on event_id (see handlers).
+  // Signature failures stay 400 (permanent — must never be retried).
+  return new Response(
+    JSON.stringify({ received: true, handled: handlerError === null, note: handlerNote, error: handlerError }),
+    {
+      status: handlerError === null ? 200 : 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    },
+  );
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -405,6 +440,21 @@ async function handleDispute(supabase: any, event: Stripe.Event): Promise<string
 
 async function handleSubscriptionEvent(supabase: any, event: Stripe.Event): Promise<string> {
   const sub = event.data.object as any;
+
+  // Idempotency pre-check. stripe_subscription_events has no unique index on
+  // event_id (PK is the uuid `id`), so ON CONFLICT is unavailable here — an
+  // upsert on event_id would raise 42P10. Pre-check instead so an at-least-once
+  // redelivery cannot duplicate the row or re-fire the alert below.
+  const { data: priorSubEvent } = await supabase
+    .from("stripe_subscription_events")
+    .select("id")
+    .eq("event_id", event.id)
+    .limit(1)
+    .maybeSingle();
+  if (priorSubEvent?.id) {
+    return `sub ${event.type} ${sub.id} already recorded (idempotent replay)`;
+  }
+
   const previous = (event.data as any).previous_attributes || {};
   const item = sub.items?.data?.[0];
   const productId = item?.price?.product || null;
@@ -427,7 +477,7 @@ async function handleSubscriptionEvent(supabase: any, event: Stripe.Event): Prom
     }
   }
 
-  await supabase.from("stripe_subscription_events").insert({
+  const { error: subInsertErr } = await supabase.from("stripe_subscription_events").insert({
     subscription_id: sub.id,
     customer_id: sub.customer || null,
     customer_email: customerEmail,
@@ -444,6 +494,14 @@ async function handleSubscriptionEvent(supabase: any, event: Stripe.Event): Prom
     event_created: new Date(((event.created as number) || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
     raw: sub,
   });
+  // 23505 = the unique index landed after this deploy and a racing replay lost;
+  // that means the row already exists, which is the outcome we wanted anyway.
+  if (subInsertErr && subInsertErr.code !== "23505") {
+    throw new Error(`stripe_subscription_events insert failed: ${subInsertErr.message}`);
+  }
+  if (subInsertErr) {
+    return `sub ${event.type} ${sub.id} already recorded (concurrent replay)`;
+  }
 
   const isCancelled = event.type === "customer.subscription.deleted" || sub.status === "canceled";
   const isPastDue = sub.status === "past_due" || sub.status === "unpaid";
@@ -468,12 +526,27 @@ async function handlePaymentFailed(supabase: any, event: Stripe.Event): Promise<
   const obj = event.data.object as any;
   const isInvoice = event.type === "invoice.payment_failed";
 
+  // Idempotency pre-check — same reasoning as handleSubscriptionEvent:
+  // stripe_failed_payments has no unique index on event_id (PK is the uuid
+  // `id`), so ON CONFLICT is unavailable. Prod already carries one duplicate
+  // pair from a redelivery 26s apart (evt_3Tb0erC3Khd8IPVm1fd8fnmY), so this
+  // is a live defect, not a hypothetical one.
+  const { data: priorFailed } = await supabase
+    .from("stripe_failed_payments")
+    .select("id")
+    .eq("event_id", event.id)
+    .limit(1)
+    .maybeSingle();
+  if (priorFailed?.id) {
+    return `failed payment ${event.id} already recorded (idempotent replay)`;
+  }
+
   // Stripe API ≥2024 moved invoice.subscription to invoice.parent.subscription_details.subscription
   const subId = isInvoice
     ? (obj.subscription || obj.parent?.subscription_details?.subscription || null)
     : null;
 
-  await supabase.from("stripe_failed_payments").insert({
+  const { error: failedInsertErr } = await supabase.from("stripe_failed_payments").insert({
     invoice_id: isInvoice ? obj.id : null,
     payment_intent: isInvoice ? obj.payment_intent : obj.id,
     customer_id: obj.customer || null,
@@ -488,6 +561,14 @@ async function handlePaymentFailed(supabase: any, event: Stripe.Event): Promise<
     event_created: new Date(((event.created as number) || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
     raw: obj,
   });
+  // 23505 = the unique index landed after this deploy and a racing replay lost;
+  // that means the row already exists, which is the outcome we wanted anyway.
+  if (failedInsertErr && failedInsertErr.code !== "23505") {
+    throw new Error(`stripe_failed_payments insert failed: ${failedInsertErr.message}`);
+  }
+  if (failedInsertErr) {
+    return `failed payment ${event.id} already recorded (concurrent replay)`;
+  }
 
   const attemptCount = isInvoice ? (obj.attempt_count || 1) : 1;
   if (attemptCount >= 3) {

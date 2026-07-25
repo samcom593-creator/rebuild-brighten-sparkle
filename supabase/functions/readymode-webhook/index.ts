@@ -28,7 +28,15 @@ Deno.serve(async (req: Request) => {
   let payload: any;
   try { payload = await req.json(); } catch { return errorResponse("Bad JSON", 400); }
 
-  if (payload.secret !== Deno.env.get("READYMODE_WEBHOOK_SECRET")) {
+  // Fail closed. When READYMODE_WEBHOOK_SECRET is unset, Deno.env.get returns
+  // undefined and a body with no `secret` field used to pass the comparison
+  // (undefined === undefined) — letting any caller write aged_leads
+  // dispositions and DNC flags. Refuse the request instead.
+  const expectedSecret = Deno.env.get("READYMODE_WEBHOOK_SECRET") ?? "";
+  if (!expectedSecret) {
+    return errorResponse("Webhook secret not configured", 503);
+  }
+  if (payload.secret !== expectedSecret) {
     return errorResponse("Unauthorized", 401);
   }
 

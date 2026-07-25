@@ -150,11 +150,20 @@ Deno.serve(async (req) => {
   // works with ManyChat's External Request form (headers) or a stricter
   // Zapier proxy (body).
   const secret = Deno.env.get("MANYCHAT_WEBHOOK_SECRET");
+  // Fail closed. The old `secret && ...` guard let every caller through
+  // whenever MANYCHAT_WEBHOOK_SECRET was unset or rotated away. Refuse with
+  // 503 so the endpoint is never silently public.
+  if (!secret) {
+    return new Response(JSON.stringify({ error: "webhook_secret_unset" }), {
+      status: 503,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
   const headerSecret = req.headers.get("x-manychat-secret") ?? "";
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
   const bodySecret = body?.secret ?? "";
-  if (secret && headerSecret !== secret && bodySecret !== secret) {
+  if (headerSecret !== secret && bodySecret !== secret) {
     return new Response(JSON.stringify({ error: "forbidden" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

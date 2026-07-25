@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 // wave-21 (2026-07-06) — Empty-catch-swallow ratchet.
 //
-// Counts every empty error handler in src/*.{tsx,ts,jsx,js} and fails
-// the commit if the count exceeds BASELINE. Same shape as
+// Counts every empty error handler under each scanned root and fails the
+// commit if that root's count exceeds its own BASELINE. Same shape as
 // check-tsc-error-count: the count can only go DOWN (fix a site or add
 // an opt-out marker), never up. New empty catches are blocked at commit
 // time; existing ones are grandfathered but visible for pay-down.
+//
+// Roots are budgeted SEPARATELY (see ROOTS below) — the per-directory
+// budget shape already used by check-shadow-areas / check-bg-gradient-areas
+// / check-motion-areas. One shared budget would let a front-end pay-down
+// silently fund a new backend swallow; separate budgets cannot.
 //
 // Class of leak this closes:
 //   Silent-swallow errors are the exact pattern that produced the 465
@@ -44,11 +49,30 @@
 //     BASELINE now locked at 0. Every future empty catch must ship its
 //     opt-out marker in the same commit or the pre-commit gate blocks.
 //
+// Backend baseline history (supabase/functions/**):
+//   2026-07-25 initial lock @ 57 across 248 .ts files, measured against a
+//     clean HEAD checkout (`git archive HEAD supabase/functions`) so the
+//     number is reproducible and not a snapshot of one dirty worktree.
+//     Distribution: 39 try/catch with an empty (or comment-only) body +
+//     18 .catch arrow — of which 16 are the bare `.catch(() => {})`
+//     fire-and-forget form and 2 are `await res.json().catch(() => null)`
+//     parse fallbacks.
+//     Until now the ratchet scanned src/** only, so every edge function was
+//     ungated: the exact tier where a swallowed error becomes a fake-success
+//     DB row rather than a stale pixel. Locking the current count freezes
+//     the leak at today's size — no NEW backend swallow can land without an
+//     `empty-catch-allow:<reason>` marker. Pay-down is a later wave; this
+//     commit is the gate only, so not one existing site was touched.
+//     Pay-down order when that wave runs: the `} catch {}` / `} catch (_) {}`
+//     sites wrapping a DB write (insuracloud-sync:160, system-health-check:
+//     115/293, send-seminar-invite-blast:192/221) come first — those are
+//     literally the shape that produced the 465 fake-success rows.
+//
 // Companion to scripts/check-unsafe-supabase-catch.mjs which fails when a
 // Supabase QueryBuilder gets a .catch chained (the builder is thenable but
-// not a Promise; the .catch throws at runtime). That guard runs on
-// supabase/functions/**. This guard runs on src/** and catches the broader
-// disease: any empty error handler.
+// not a Promise; the .catch throws at runtime). That guard is shape-specific
+// (unsafe .catch on a builder, hard-fails at 0). This guard is the broader
+// disease across both tiers: any empty error handler, ratcheted per root.
 //
 // FLAGGED PATTERNS (must opt out or fix):
 //   .catch(() => {})
@@ -75,36 +99,42 @@
 //   Reason is required (guard prints the marker with the reason so future
 //   maintainers know why the error is intentionally swallowed).
 //
-// Cost when fired: ~150-250ms (linear in ~520 files).
+// Cost when fired: ~90-170ms (linear in ~811 files across both roots).
 
 import fs from "node:fs";
 import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const srcRoot = path.join(repoRoot, "src");
 
-if (!fs.existsSync(srcRoot)) {
-  console.log("[check-empty-catch] no src/ dir — skipping");
-  process.exit(0);
-}
+// Scanned roots, each with its OWN baseline. Lower a baseline when fixes
+// land in the same commit. NEVER raise one.
+const ROOTS = [
+  { dir: "src", baseline: 0 },
+  { dir: "supabase/functions", baseline: 56 },
+];
+
+const roots = ROOTS.map((r) => ({ ...r, abs: path.join(repoRoot, r.dir) })).filter((r) => {
+  if (fs.existsSync(r.abs)) return true;
+  console.log(`[check-empty-catch] no ${r.dir}/ dir — skipping`);
+  return false;
+});
+
+if (roots.length === 0) process.exit(0);
 
 const OPT_OUT_MARKER = /empty-catch-allow:([^\s*/]+)/;
 
-const files = [];
-function walk(dir) {
+function walk(dir, files = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       if (entry.name === "node_modules" || entry.name === "dist" || entry.name.startsWith(".")) continue;
-      walk(full);
+      walk(full, files);
     } else if (/\.(tsx?|jsx?)$/.test(entry.name)) {
       files.push(full);
     }
   }
+  return files;
 }
-walk(srcRoot);
-
-const violations = [];
 
 // Strip comments from a body chunk to decide if it is effectively empty.
 function stripComments(s) {
@@ -179,7 +209,7 @@ function optOutHit(lines, lineIdx) {
 const dotCatchRe = /\.catch\s*\(\s*/g;
 const tryCatchRe = /(?<![A-Za-z0-9_$])catch\s*(?:\(\s*[^)]*\s*\)\s*)?\{/g;
 
-for (const file of files) {
+function scanFile(file, violations) {
   const src = fs.readFileSync(file, "utf8");
   const lines = src.split("\n");
 
@@ -267,33 +297,50 @@ for (const file of files) {
   }
 }
 
-// Lower this number when fixes land. NEVER raise it.
-const BASELINE = 0;
+function scanFiles(files) {
+  const violations = [];
+  for (const file of files) scanFile(file, violations);
+  return violations;
+}
 
-const count = violations.length;
+// Per-root evaluation. A root is over budget only against its OWN baseline;
+// a surplus in one root can never pay for an overage in another.
+const results = roots.map((root) => {
+  const files = walk(root.abs);
+  const violations = scanFiles(files);
+  return { ...root, files: files.length, violations, count: violations.length };
+});
 
-if (count <= BASELINE) {
-  const delta = BASELINE - count;
+const over = results.filter((r) => r.count > r.baseline);
+
+// Always print the per-root receipt, pass or fail, so a failure in one root
+// never hides the state of the other.
+for (const r of results) {
+  if (r.count > r.baseline) continue;
+  const delta = r.baseline - r.count;
   if (delta > 0) {
     console.log(
-      `[check-empty-catch] OK — ${files.length} files scanned, ${count} unmarked empty catches (${delta} below baseline ${BASELINE}). ` +
-        `Lower BASELINE in scripts/check-empty-catch.mjs to ${count} in this commit.`,
+      `[check-empty-catch] OK — ${r.dir}: ${r.files} files scanned, ${r.count} unmarked empty catches (${delta} below baseline ${r.baseline}). ` +
+        `Lower the ${r.dir} baseline in scripts/check-empty-catch.mjs to ${r.count} in this commit.`,
     );
   } else {
-    console.log(`[check-empty-catch] OK — ${files.length} files scanned, ${count} unmarked empty catches (== baseline ${BASELINE}).`);
+    console.log(`[check-empty-catch] OK — ${r.dir}: ${r.files} files scanned, ${r.count} unmarked empty catches (== baseline ${r.baseline}).`);
   }
-  process.exit(0);
 }
 
-console.error(
-  `[check-empty-catch] FAIL — ${count} unmarked empty error handlers found, baseline is ${BASELINE}. ` +
-    `A new empty catch was added since the last baseline lock.`,
-);
-console.error("");
-for (const v of violations) {
-  console.error(`  ${v.file}:${v.line} [${v.kind}] ${v.snippet}`);
+if (over.length === 0) process.exit(0);
+
+for (const r of over) {
+  console.error(
+    `[check-empty-catch] FAIL — ${r.dir}: ${r.count} unmarked empty error handlers found, baseline is ${r.baseline}. ` +
+      `A new empty catch was added since the last baseline lock.`,
+  );
+  console.error("");
+  for (const v of r.violations) {
+    console.error(`  ${v.file}:${v.line} [${v.kind}] ${v.snippet}`);
+  }
+  console.error("");
 }
-console.error("");
 console.error("Fix by either:");
 console.error("  1. Handle the error (logger.error / toast.error / setState).");
 console.error("  2. Add an opt-out marker `empty-catch-allow:<short-reason>` on");

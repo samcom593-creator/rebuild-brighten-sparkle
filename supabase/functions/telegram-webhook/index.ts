@@ -811,7 +811,15 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("method not allowed", { status: 405, headers: corsHeaders });
 
   const incomingSecret = req.headers.get("x-telegram-bot-api-secret-token") ?? "";
-  if (WEBHOOK_SECRET && incomingSecret !== WEBHOOK_SECRET) {
+  // Fail closed. The old `WEBHOOK_SECRET && ...` guard turned this endpoint
+  // fully public the moment APEX_TELEGRAM_WEBHOOK_SECRET was missing or
+  // rotated away. 503 tells Telegram to retry once the secret is restored
+  // instead of us accepting spoofed updates in the meantime.
+  if (!WEBHOOK_SECRET) {
+    console.error("webhook: APEX_TELEGRAM_WEBHOOK_SECRET unset — refusing");
+    return new Response("webhook secret not configured", { status: 503, headers: corsHeaders });
+  }
+  if (incomingSecret !== WEBHOOK_SECRET) {
     console.warn("webhook: bad secret");
     return new Response("forbidden", { status: 403, headers: corsHeaders });
   }

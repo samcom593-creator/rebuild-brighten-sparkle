@@ -113,7 +113,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // 2026-07-20: leaderboard-accuracy rebuild — replacing the agentlink_deals_
 //   snapshot merge in Leaderboard.tsx with the leaderboard_book RPCs removed
 //   3 net tsc errors (240 → 237). Ratchet locked at the new floor.
-const BASELINE = 237;
+const BASELINE = 236;
 
 let stdout = "";
 let stderr = "";

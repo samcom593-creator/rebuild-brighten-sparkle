@@ -124,6 +124,15 @@ function daysTone(days: number): string {
 
 // ---------------------------------------------------------------------------
 
+interface AttentionRow {
+  agent_id: string;
+  agent: string | null;
+  owner: string | null;
+  days_stuck: number | string | null;
+  next_action: string | null;
+  kind: "licensed_inactive" | "no_first_sale";
+}
+
 export default function OnboardingLadder() {
   usePageTitle("Onboarding Ladder · APEX");
 
@@ -142,6 +151,33 @@ export default function OnboardingLadder() {
         .order("days_since_progress", { ascending: false });
       if (error) throw error;
       return (data ?? []) as LadderRow[];
+    },
+    staleTime: 60_000,
+  });
+
+  // Two populations the 8-rung ladder cannot express, because both are agents
+  // who already CLEARED the ladder and then stopped. They have no other surface.
+  const attention = useQuery<AttentionRow[]>({
+    queryKey: ["ladder-attention-queues"],
+    queryFn: async () => {
+      const [inactive, noSale] = await Promise.all([
+        (supabase as any)
+          .from("v_queue_licensed_inactive")
+          .select("agent_id,agent,owner,days_stuck,next_action")
+          .order("days_stuck", { ascending: false }),
+        (supabase as any)
+          .from("v_queue_active_no_first_sale")
+          .select("agent_id,agent,owner,days_stuck,next_action")
+          .order("days_stuck", { ascending: false }),
+      ]);
+      if (inactive.error) throw inactive.error;
+      if (noSale.error) throw noSale.error;
+      const tag = (rowsIn: unknown, kind: AttentionRow["kind"]): AttentionRow[] =>
+        ((rowsIn ?? []) as Omit<AttentionRow, "kind">[]).map((r) => ({ ...r, kind }));
+      return [
+        ...tag(inactive.data, "licensed_inactive"),
+        ...tag(noSale.data, "no_first_sale"),
+      ];
     },
     staleTime: 60_000,
   });
@@ -478,6 +514,65 @@ export default function OnboardingLadder() {
             </ul>
           )}
         </>
+      )}
+
+      {/* Cleared the ladder, then stopped.
+          These two are not rungs — they are agents who finished onboarding and
+          went quiet. The ladder cannot express them (every rung is green), so
+          without this they were invisible on every surface. */}
+      {attention.isError && (
+        <p className="mt-6 text-xs text-amber-500">
+          Could not load the attention queues — these agents are missing from
+          this view, not absent from the business.
+        </p>
+      )}
+
+      {!attention.isError && (attention.data?.length ?? 0) > 0 && (
+        <div className="mt-6 grid gap-3 lg:grid-cols-2">
+          {(["licensed_inactive", "no_first_sale"] as const).map((kind) => {
+            const list = (attention.data ?? []).filter((r) => r.kind === kind);
+            if (list.length === 0) return null;
+            const title =
+              kind === "licensed_inactive"
+                ? "Licensed, then went inactive"
+                : "Active, never made a first sale";
+            const why =
+              kind === "licensed_inactive"
+                ? "Licensed agents flagged inactive. This is the retention leak."
+                : "Fully active agents with no first deal on record.";
+            return (
+              <div key={kind} className="rounded-lg border border-border bg-card p-3 sm:p-4">
+                <div className="flex items-baseline justify-between gap-2 mb-1">
+                  <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+                  <span className="text-sm font-bold text-amber-500 tabular-nums">
+                    {list.length}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">{why}</p>
+                <ul className="space-y-1.5 max-h-72 overflow-y-auto">
+                  {list.map((r) => (
+                    <li
+                      key={r.agent_id}
+                      className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-2.5 py-1.5"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-xs font-medium text-foreground truncate">
+                          {r.agent ?? "(unnamed agent)"}
+                        </span>
+                        <span className="block text-[10px] text-muted-foreground truncate">
+                          {r.owner ?? "unassigned"}
+                        </span>
+                      </span>
+                      <span className="text-[11px] text-muted-foreground flex-shrink-0 tabular-nums">
+                        {Math.round(Number(r.days_stuck ?? 0))}d
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

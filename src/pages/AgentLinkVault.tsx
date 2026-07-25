@@ -57,30 +57,58 @@ function matches(haystack: unknown, q: string): boolean {
 }
 
 // ─── Overview ──────────────────────────────────────────────────────────────
+// wave-p1p 2026-07-25: every count was `select("id").length`, which PostgREST
+// silently caps at max-rows (default 1000). The tiles below render "Deals",
+// "Clients mirrored", "Total ALP", "Carriers" as authoritative agency totals,
+// so any table larger than the cap silently understated the number on Sam's
+// admin overview. Same data-truth class as the 465 InsuraCloud + 198 AgentLink
+// fake-success rows. Fix: use `{ count: "exact", head: true }` for every
+// count, and pull Total ALP from v_agentlink_book_truth (the SQL aggregate
+// BookOfBusiness already treats as the authoritative KPI source) so the
+// dollar tile can never be silently capped either.
 function OverviewPanel() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["alvault-overview"],
     queryFn: async () => {
-      const [deals, clients, contracts, agents, carriers, vault] = await Promise.all([
-        supabase.from("deals").select("id, annual_premium, status, source").eq("source", "agent_link"),
-        supabase.from("agentlink_clients" as any).select("id"),
-        supabase.from("agentlink_contracts" as any).select("id, status"),
-        supabase.from("agentlink_agents" as any).select("id, is_producer_active"),
-        supabase.from("carriers").select("id"),
+      const [
+        dealsTotal,
+        dealsVisible,
+        clientsTotal,
+        contractsTotal,
+        contractsActive,
+        agentsTotal,
+        agentsActive,
+        carriersTotal,
+        truth,
+        vault,
+      ] = await Promise.all([
+        supabase.from("deals").select("*", { count: "exact", head: true }).eq("source", "agent_link"),
+        supabase.from("deals").select("*", { count: "exact", head: true }).eq("source", "agent_link").in("status", ["submitted", "active"]),
+        supabase.from("agentlink_clients" as any).select("*", { count: "exact", head: true }),
+        supabase.from("agentlink_contracts" as any).select("*", { count: "exact", head: true }),
+        supabase.from("agentlink_contracts" as any).select("*", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("agentlink_agents" as any).select("*", { count: "exact", head: true }),
+        supabase.from("agentlink_agents" as any).select("*", { count: "exact", head: true }).eq("is_producer_active", true),
+        supabase.from("carriers").select("*", { count: "exact", head: true }),
+        supabase
+          .from("v_agentlink_book_truth" as any)
+          .select("total_annual_premium")
+          .maybeSingle(),
         supabase.from("agentlink_raw_exports" as any).select("id, endpoint, captured_at").order("captured_at", { ascending: false }).limit(1),
       ]);
-      const dealRows = (deals.data as AnyRow[] | null) ?? [];
-      const visible = dealRows.filter((d) => d.status === "submitted" || d.status === "active");
+      const truthRow = truth.data as { total_annual_premium?: number | string | null } | null;
+      const totalAlpRaw = truthRow?.total_annual_premium;
+      const totalAlp = totalAlpRaw == null ? null : Number(totalAlpRaw);
       return {
-        deals_total: dealRows.length,
-        deals_visible: visible.length,
-        total_alp: visible.reduce((s, d) => s + Number(d.annual_premium ?? 0), 0),
-        clients: clients.data?.length ?? 0,
-        contracts: contracts.data?.length ?? 0,
-        contracts_active: ((contracts.data as AnyRow[] | null) ?? []).filter((c) => c.status === "active").length,
-        agents: agents.data?.length ?? 0,
-        agents_active: ((agents.data as AnyRow[] | null) ?? []).filter((a) => a.is_producer_active === true).length,
-        carriers: carriers.data?.length ?? 0,
+        deals_total: dealsTotal.count ?? 0,
+        deals_visible: dealsVisible.count ?? 0,
+        total_alp: Number.isFinite(totalAlp as number) ? (totalAlp as number) : null,
+        clients: clientsTotal.count ?? 0,
+        contracts: contractsTotal.count ?? 0,
+        contracts_active: contractsActive.count ?? 0,
+        agents: agentsTotal.count ?? 0,
+        agents_active: agentsActive.count ?? 0,
+        carriers: carriersTotal.count ?? 0,
         last_vault_capture: ((vault.data as AnyRow[] | null) ?? [])[0]?.captured_at,
       };
     },
@@ -98,7 +126,7 @@ function OverviewPanel() {
     { label: "Visible deals · submitted + active", value: data.deals_visible.toLocaleString(), icon: FileText,
       gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30",
       iconColor: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30" },
-    { label: "Total ALP", value: fmtMoney(data.total_alp), icon: Briefcase,
+    { label: "Total ALP · book truth", value: data.total_alp == null ? "—" : fmtMoney(data.total_alp), icon: Briefcase,
       gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30",
       iconColor: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30" },
     { label: "Clients mirrored", value: data.clients.toLocaleString(), icon: Users,

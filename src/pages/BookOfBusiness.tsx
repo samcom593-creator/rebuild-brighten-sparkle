@@ -159,6 +159,10 @@ const STAGE_COLORS: Record<string, string> = {
 
 const CHARGEBACK_WINDOW_DAYS = 30;
 const PREMIUM_SLIDER_MAX = 5000;
+// Client-side cap on rows pulled from agentlink_deals_snapshot per fetch.
+// The DB count is fetched separately via {count:"exact"} so the footer can
+// tell the user when the returned slice is smaller than the real book.
+const AGENTLINK_SNAPSHOT_ROW_CAP = 5_000;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -234,6 +238,11 @@ function isActivePolicy(deal: DealRow): boolean {
 export default function BookOfBusiness() {
   const { user, isAdmin, isManager } = useAuth();
   const [deals, setDeals] = useState<DealRow[]>([]);
+  // Real DB row count for the current scope (from .select count:"exact"),
+  // NOT the length of the (potentially .limit-capped) returned rows.
+  // Footer "Showing X of Y" reads from this so it stops lying when the cap
+  // is hit — e.g. Total Deals 1,558 vs "Showing 1,000 of 1,000".
+  const [dealsSourceCount, setDealsSourceCount] = useState<number | null>(null);
   const [truth, setTruth] = useState<BookTruthRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [agentScopeIds, setAgentScopeIds] = useState<string[] | null>(null);
@@ -363,6 +372,7 @@ export default function BookOfBusiness() {
         agentLinkScopeUserIds.length === 0
       ) {
         setDeals([]);
+        setDealsSourceCount(0);
         return;
       }
 
@@ -373,7 +383,8 @@ export default function BookOfBusiness() {
           { count: "exact" },
         )
         .order("effective_date", { ascending: false, nullsFirst: false })
-        .limit(5_000);
+        .limit(AGENTLINK_SNAPSHOT_ROW_CAP);
+
 
       if (!isAdmin && agentLinkScopeUserIds !== null) {
         if (agentLinkScopeUserIds.length === 0) {
@@ -389,6 +400,8 @@ export default function BookOfBusiness() {
           "[BookOfBusiness] AgentLink snapshot fetch failed:",
           alError,
         );
+      // Persist DB truth (survives .limit cap) so the footer stops lying.
+      setDealsSourceCount(typeof alCount === "number" ? alCount : null);
 
       const alRawRows = ((alSnapshot ?? []) as Array<Record<string, unknown>>)
         .filter((r) => r.policy_number);
@@ -1242,9 +1255,18 @@ export default function BookOfBusiness() {
                 </span>
                 <span className="text-muted-foreground"> of </span>
                 <span className="font-semibold text-emerald-500">
-                  {deals.length.toLocaleString()}
+                  {(dealsSourceCount ?? deals.length).toLocaleString()}
                 </span>
                 <span className="text-muted-foreground"> deals</span>
+                {dealsSourceCount != null &&
+                  dealsSourceCount > deals.length && (
+                    <span
+                      className="ml-2 text-[10px] uppercase tracking-wide text-amber-500/80"
+                      title={`Client fetch is capped at ${AGENTLINK_SNAPSHOT_ROW_CAP.toLocaleString()} rows per load. ${(dealsSourceCount - deals.length).toLocaleString()} rows exist in the database but are not in the table below. Narrow filters to see the rest.`}
+                    >
+                      · capped ({(dealsSourceCount - deals.length).toLocaleString()} more in DB)
+                    </span>
+                  )}
               </>
             )}
           </div>

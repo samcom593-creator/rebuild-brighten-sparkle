@@ -108,6 +108,7 @@ const AdminFunnelHealth = lazy(() => import("./pages/AdminFunnelHealth"));
 const AdminEmailGaps = lazy(() => import("./pages/AdminEmailGaps"));
 const AdminMissingAlLink = lazy(() => import("./pages/AdminMissingAlLink"));
 const DashboardToday = lazy(() => import("./pages/DashboardToday"));
+const OnboardingLadder = lazy(() => import("./pages/OnboardingLadder"));
 const AdminProducerTrends = lazy(() => import("./pages/AdminProducerTrends"));
 const LicensedInbox = lazy(() => import("./pages/LicensedInbox"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
@@ -490,6 +491,9 @@ const App = () => (
                     <Route path="/admin/email-gaps" element={<ProtectedRoute requireAdmin><AdminEmailGaps /></ProtectedRoute>} />
                     {/* 2026-07-05: agents missing insuracloud_user_id (AL user id) — accept suggestion or paste id */}
                     <Route path="/admin/missing-al-link" element={<ProtectedRoute requireAdmin><AdminMissingAlLink /></ProtectedRoute>} />
+                    {/* 2026-07-25: month-agnostic replacement for the deleted June Hires Punch List.
+                        8-rung onboarding sequence per active agent; rung 2 deep-links to /admin/missing-al-link. */}
+                    <Route path="/dashboard/onboarding-ladder" element={<ProtectedRoute requireAdmin allowManagers><OnboardingLadder /></ProtectedRoute>} />
                     {/* MP-232 regression restore: licensed applicants need the immediate-call inbox. */}
                     <Route path="/admin/licensed-inbox" element={<ProtectedRoute requireAdmin><LicensedInbox /></ProtectedRoute>} />
                     {/* 2026-07-05 Sam: unlicensed → licensed recovery queue for assistants. Sorted by cohort proximity to licensed. Tap-to-call. */}

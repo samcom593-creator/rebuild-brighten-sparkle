@@ -13,7 +13,7 @@
  *  8. pipeline_leaderboard — stage_counts, fastest[], completion_rates[]
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   getBusinessMonthBounds,
@@ -74,6 +74,57 @@ const RECRUITING_EVENTS = new Set(["new_application", "agent_activated", "pipeli
 
 function getDiscordAudience(eventType: string): DiscordAudience {
   return RECRUITING_EVENTS.has(eventType) ? "recruiting" : "production";
+}
+
+// ─── Failure trace ────────────────────────────────────────────────────────────
+// A swallowed announce failure is the same class of leak as the 465 fake-success
+// InsuraCloud sync rows: Discord goes quiet and nothing anywhere says why. Write
+// the miss to error_logs (same shape readymode-webhook uses) so it leaves a
+// trace. Best-effort by design — the logging itself must never fail a request.
+async function logAnnounceFailure(
+  supabase: SupabaseClient<any, any, any>,
+  message: string,
+): Promise<void> {
+  console.error(`[discord-webhook-notify] ${message}`);
+  try {
+    await supabase.from("error_logs").insert({
+      url: "edge:discord-webhook-notify",
+      error_message: message.slice(0, 2000),
+    });
+  } catch (logErr) {
+    console.error(`[discord-webhook-notify] error_logs insert failed: ${String(logErr)}`);
+  }
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+// Tokens that identify a trusted internal caller. Verified caller inventory
+// (2026-07-25) — every one of these keeps working under the gate below:
+//   • DB triggers → public.run_automation_job → Bearer system_settings.service_role_key
+//   • supabase/functions/post-deal → Bearer SUPABASE_SERVICE_ROLE_KEY (env)
+//   • src/** supabase.functions.invoke → Bearer user session JWT (handled separately)
+// The anon key is deliberately excluded: it ships inside the browser bundle, so
+// accepting it would be the same as no gate at all.
+async function resolveValidTokens(sb: SupabaseClient<any, any, any>): Promise<string[]> {
+  const tokens: string[] = [];
+  const anonKey = (Deno.env.get("SUPABASE_ANON_KEY") ?? "").trim();
+  const push = (v: string | null | undefined) => {
+    const t = (v ?? "").trim();
+    if (t.length > 16 && t !== anonKey && !tokens.includes(t)) tokens.push(t);
+  };
+  push(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
+  push(Deno.env.get("APEX_BOT_TOKEN"));
+  try {
+    const { data } = await sb
+      .from("system_settings")
+      .select("key, value")
+      .in("key", ["service_role_key", "apex_bot_token"]);
+    for (const row of (data ?? []) as { key: string; value: string | null }[]) push(row.value);
+  } catch (err) {
+    // Env tokens above still gate the request; log so a silent settings-read
+    // failure can't be mistaken for "no trusted callers configured".
+    console.error(`[discord-webhook-notify] system_settings token read failed: ${String(err)}`);
+  }
+  return tokens;
 }
 
 // ─── Embed builders ───────────────────────────────────────────────────────────
@@ -349,7 +400,12 @@ async function checkAndFireMilestone(
         photo_url,
       });
       if (milestonePayload) {
-        await sendToDiscord(webhookUrl, milestonePayload).catch(() => {});
+        await sendToDiscord(webhookUrl, milestonePayload).catch((err) =>
+          logAnnounceFailure(
+            supabase,
+            `milestone announce failed tier=${t} agent_id=${agentId} mtd=${mtd}: ${String(err)}`,
+          )
+        );
       }
       break; // only fire the highest crossed threshold per deal
     }
@@ -368,6 +424,40 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
+
+    // ─── Auth ──
+    // This function shipped with verify_jwt=false and no in-code gate, so any
+    // stranger could POST a fabricated deal_closed / new_application embed into
+    // the live Discord. Gate on identity the same way insuracloud-sync does:
+    // accept EITHER a trusted server token (DB triggers via run_automation_job,
+    // post-deal, cron) OR a valid Supabase user session JWT (in-app callers via
+    // supabase.functions.invoke). OPTIONS is answered above and stays open so
+    // CORS preflight and the overseer-bot health probe are unaffected.
+    const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization") ?? "";
+    const presented = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const validTokens = await resolveValidTokens(supabase);
+    let authedAs: "bot" | "user" | null = null;
+    if (presented && validTokens.includes(presented)) {
+      authedAs = "bot";
+    } else if (presented) {
+      const { data: userData } = await supabase.auth.getUser(presented);
+      if (userData?.user) authedAs = "user";
+    }
+    if (!authedAs) {
+      // readymode-ingest precedent: an unset secret is a 503 (misconfiguration),
+      // not a 401 (bad caller), so a blank env never reads as an attacker.
+      const misconfigured = validTokens.length === 0;
+      if (misconfigured) {
+        console.error("[discord-webhook-notify] no trusted server token configured — refusing to post");
+      }
+      return new Response(
+        JSON.stringify({ ok: false, error: misconfigured ? "auth_not_configured" : "unauthorized" }),
+        {
+          status: misconfigured ? 503 : 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     const body        = await req.json();
     const event_type  = body.event_type as string;
@@ -408,7 +498,12 @@ Deno.serve(async (req: Request) => {
         webhookUrl,
         details.agent_id as string,
         Number(details.aop),
-      ).catch(() => {});
+      ).catch((err) =>
+        logAnnounceFailure(
+          supabase,
+          `milestone check failed agent_id=${details.agent_id} aop=${details.aop}: ${String(err)}`,
+        )
+      );
     }
 
     return new Response(

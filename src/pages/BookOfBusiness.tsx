@@ -111,6 +111,14 @@ interface ContactLogRow {
   logged_by: string | null;
 }
 
+interface BookSegmentRow {
+  segment: string;
+  policies: number | null;
+  annual_premium: number | null;
+  policies_30d: number | null;
+  producers: number | null;
+}
+
 interface BookTruthRow {
   total_deals: number | null;
   total_annual_premium: number | null;
@@ -293,6 +301,10 @@ export default function BookOfBusiness() {
   // is hit — e.g. Total Deals 1,558 vs "Showing 1,000 of 1,000".
   const [dealsSourceCount, setDealsSourceCount] = useState<number | null>(null);
   const [truth, setTruth] = useState<BookTruthRow | null>(null);
+  // MP-268: the headline ALP blends submitted + declined + withdrawn + lapsed
+  // into one number. v_book_status_segments splits it so the in-force (actually
+  // paying) book is never confused with business that has not adjudicated.
+  const [segments, setSegments] = useState<BookSegmentRow[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [agentScopeIds, setAgentScopeIds] = useState<string[] | null>(null);
   const [agentLinkScopeUserIds, setAgentLinkScopeUserIds] = useState<
@@ -412,6 +424,18 @@ export default function BookOfBusiness() {
         });
       }
       setTruth((truthRows as unknown as BookTruthRow) ?? null);
+
+      const { data: segRows, error: segErr } = await supabase
+        .from("v_book_status_segments" as any)
+        .select("segment, policies, annual_premium, policies_30d, producers");
+      if (segErr) {
+        logger.warn("[BookOfBusiness] v_book_status_segments read failed", {
+          error: segErr.message,
+        });
+        setSegments(null);
+      } else {
+        setSegments((segRows as unknown as BookSegmentRow[]) ?? null);
+      }
 
       if (
         !isAdmin &&
@@ -1079,6 +1103,83 @@ export default function BookOfBusiness() {
       />
 
       <AgentLinkConnectionPrompt />
+
+      {/* MP-268 — Book truth by status.
+          "Annual Premium" above sums EVERY status together, so submitted-but-not-
+          adjudicated business, declined/withdrawn policies that never issued, and
+          lapsed policies all land in one headline. This strip splits them so the
+          in-force (actually paying) book is never mistaken for the total. */}
+      {isAdmin && segments && segments.length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold text-foreground">Book by status</h3>
+            <span className="text-xs text-muted-foreground">
+              in-force is what is actually paying
+            </span>
+          </div>
+          <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
+            {segments.map((seg) => {
+              const inForce = seg.segment === "in_force";
+              const dead = seg.segment === "never_issued";
+              const label =
+                seg.segment === "in_force"
+                  ? "In force"
+                  : seg.segment === "submitted_pipeline"
+                    ? "Submitted · pending"
+                    : seg.segment === "lapsed"
+                      ? "Lapsed"
+                      : seg.segment === "never_issued"
+                        ? "Never issued"
+                        : seg.segment;
+              const note =
+                seg.segment === "in_force"
+                  ? "Active + Issued"
+                  : seg.segment === "submitted_pipeline"
+                    ? "Not adjudicated yet"
+                    : seg.segment === "lapsed"
+                      ? "Reached policy, then stopped"
+                      : seg.segment === "never_issued"
+                        ? "Declined · Withdrawn · Not taken"
+                        : "";
+              return (
+                <div
+                  key={seg.segment}
+                  className={
+                    "rounded-md border p-3 " +
+                    (inForce
+                      ? "border-emerald-500/40 bg-emerald-500/5"
+                      : dead
+                        ? "border-border bg-muted/30 opacity-80"
+                        : "border-border bg-background")
+                  }
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {label}
+                  </div>
+                  <div
+                    className={
+                      "text-lg font-bold leading-tight " +
+                      (inForce ? "text-emerald-500" : "text-foreground")
+                    }
+                  >
+                    {fmt$(Number(seg.annual_premium ?? 0))}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {Number(seg.policies ?? 0).toLocaleString()} policies
+                    {seg.producers != null ? ` · ${seg.producers} producers` : ""}
+                  </div>
+                  {note && (
+                    <div className="text-[10px] text-muted-foreground mt-1 leading-snug">
+                      {note}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* KPI cards — 6 metrics, per Sam brief */}
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">

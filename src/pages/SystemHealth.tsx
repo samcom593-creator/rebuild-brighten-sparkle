@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
@@ -68,12 +69,45 @@ function getServiceIcon(name: string) {
   return Zap;
 }
 
+interface DataQualityRow {
+  issue: string;
+  n: number | string | null;
+  detail: string | null;
+}
+
+// Plain-language names + where to go. The view returns machine keys; a page
+// that shows "interview_events_undispositioned_past" to a human is not a
+// surface, it is a log line.
+const DQ_LABELS: Record<string, { label: string; href?: string }> = {
+  interview_events_undispositioned_past: {
+    label: "Interviews held with no outcome recorded",
+    href: "/dashboard/interview-recovery",
+  },
+  prospects_no_person_record: {
+    label: "Booked prospects with no application on file",
+    href: "/dashboard/interview-recovery",
+  },
+  applications_flagged_duplicate: { label: "Applications flagged as duplicates" },
+  book_impossible_effective_future: { label: "Book rows dated in the future" },
+  agents_hired_licensed_no_agentlink: {
+    label: "Licensed agents with no AgentLink id",
+    href: "/admin/missing-al-link",
+  },
+  agents_active_no_manager: { label: "Active agents with no manager" },
+  interview_events_orphan_link: { label: "Interviews linked to a missing application" },
+  applications_assigned_to_missing_agent: { label: "Applications assigned to a missing agent" },
+  applications_no_owner_no_nextaction: { label: "Applications with no owner and no next action" },
+  book_unattributed_inforce: { label: "In-force book rows with no agent" },
+};
+
 export default function SystemHealth() {
   const [results, setResults] = useState<HealthResult[]>([]);
   const [lastCheck, setLastCheck] = useState<HealthLog | null>(null);
   const [recentLogs, setRecentLogs] = useState<HealthLog[]>([]);
   const [running, setRunning] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [dq, setDq] = useState<DataQualityRow[] | null>(null);
+  const [dqFailed, setDqFailed] = useState(false);
 
   const loadLastCheck = async () => {
     const { data } = await supabase
@@ -97,9 +131,23 @@ export default function SystemHealth() {
     if (data) setRecentLogs(data as unknown as HealthLog[]);
   };
 
+  const loadDataQuality = async () => {
+    const { data, error } = await supabase
+      .from("v_data_quality_dashboard" as any)
+      .select("issue, n, detail");
+    if (error) {
+      setDqFailed(true);
+      setDq(null);
+      return;
+    }
+    setDqFailed(false);
+    setDq((data as unknown as DataQualityRow[]) ?? null);
+  };
+
   useEffect(() => {
     loadLastCheck();
     loadRecentLogs();
+    loadDataQuality();
   }, []);
 
   const runCheck = async () => {
@@ -145,6 +193,71 @@ export default function SystemHealth() {
           </>
         }
       />
+
+      {/* MP-268 — Data quality. Service health answers "is the pipe up";
+          this answers "is what came through the pipe usable". Rows with a
+          count of 0 are hidden so the list is only ever work to do. */}
+      {(dq || dqFailed) && (
+        <GlassCard className="p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold text-foreground">Data quality</h3>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Records that exist but cannot be acted on. Each one is a person or a
+            policy the system currently cannot route.
+          </p>
+
+          {dqFailed && (
+            <p className="text-xs text-amber-500">
+              Could not read the data-quality view — these counts are missing,
+              not zero.
+            </p>
+          )}
+
+          {dq && dq.filter((r) => Number(r.n ?? 0) > 0).length === 0 && (
+            <p className="text-xs text-emerald-500">
+              Every checked record has an owner, a link, and a usable date.
+            </p>
+          )}
+
+          {dq && dq.filter((r) => Number(r.n ?? 0) > 0).length > 0 && (
+            <div className="space-y-1.5">
+              {dq
+                .filter((r) => Number(r.n ?? 0) > 0)
+                .sort((a, b) => Number(b.n ?? 0) - Number(a.n ?? 0))
+                .map((r) => {
+                  const meta = DQ_LABELS[r.issue];
+                  const count = Number(r.n ?? 0);
+                  const body = (
+                    <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-foreground truncate">
+                          {meta?.label ?? r.issue}
+                        </div>
+                        {r.detail && (
+                          <div className="text-[10px] text-muted-foreground truncate">
+                            {r.detail}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-sm font-bold tabular-nums text-amber-500 flex-shrink-0">
+                        {count.toLocaleString()}
+                      </span>
+                    </div>
+                  );
+                  return meta?.href ? (
+                    <Link key={r.issue} to={meta.href} className="block hover:opacity-80">
+                      {body}
+                    </Link>
+                  ) : (
+                    <div key={r.issue}>{body}</div>
+                  );
+                })}
+            </div>
+          )}
+        </GlassCard>
+      )}
 
       {/* Status Banner */}
       <div className={`p-4 rounded-md flex items-center gap-3 border ${

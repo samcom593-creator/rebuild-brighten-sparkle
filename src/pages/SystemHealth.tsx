@@ -236,12 +236,12 @@ export default function SystemHealth() {
                           {meta?.label ?? r.issue}
                         </div>
                         {r.detail && (
-                          <div className="text-[10px] text-muted-foreground truncate">
+                          <div className="text-[11px] text-muted-foreground tabular-nums truncate">
                             {r.detail}
                           </div>
                         )}
                       </div>
-                      <span className="text-sm font-bold tabular-nums text-amber-500 flex-shrink-0">
+                      <span className="text-sm font-bold tabular-nums flex-shrink-0 text-amber-500">
                         {count.toLocaleString()}
                       </span>
                     </div>

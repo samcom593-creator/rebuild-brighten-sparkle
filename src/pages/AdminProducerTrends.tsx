@@ -10,6 +10,8 @@
  *   - public.v_producer_trend_alert    → per-producer trend + 3-week drop flag
  *   - public.v_agent_weekly_production → 12-week ALP series
  *   - public.v_new_hires_activation    → licensed hires with no first deal
+ *   - public.v_manager_scorecard       → per-manager downline health (retention
+ *                                        risk + first-sale gap + team ALP)
  *   - public.agents                    → manager_id / al_user_id / onboarding_stage
  *   - public.agent_notes               → coaching history / review + recovery markers
  *
@@ -43,6 +45,7 @@ import {
   Minus,
   Play,
   RefreshCw,
+  ShieldAlert,
   TrendingDown,
   UserCheck,
   UserX,
@@ -113,6 +116,41 @@ type AgentMetaRow = {
 
 type ManagerRow = { id: string; display_name: string | null };
 
+/**
+ * public.v_manager_scorecard — one row per manager who holds a downline.
+ * Hand-written because src/integrations/supabase/types.ts predates this view;
+ * the query casts the table name so the client compiles against the real shape
+ * instead of a stale generated union.
+ *
+ * Column list verified against information_schema on 2026-07-25. The `bigint`
+ * counters land as JSON numbers; the `numeric` columns can arrive as strings
+ * depending on the driver in front of Postgres, so they are typed wide and
+ * every read goes through `toNum()`. A silent `"55.6".toFixed is not a
+ * function` would blank the exact numbers this section exists to show.
+ */
+interface ManagerScorecardRow {
+  manager_agent_id: string;
+  manager_name: string | null;
+  reports_total: number | null;
+  reports_activeroster: number | null;
+  reports_licensed: number | null;
+  reports_onboarding_incomplete: number | null;
+  reports_no_first_sale: number | null;
+  reports_licensed_inactive: number | null;
+  reports_contracted: number | null;
+  reports_appointment_set: number | null;
+  pct_licensed: number | string | null;
+  pct_licensed_producing: number | string | null;
+  team_in_force_alp: number | string | null;
+  team_deals_30d: number | null;
+  team_alp_30d: number | string | null;
+  retention_risk_pct: number | string | null;
+  manager_deactivated: boolean | null;
+}
+
+/** Severity tone shared by the manager scorecard hero stats + chips. */
+type ScoreTone = "rose" | "amber" | "emerald" | "neutral";
+
 type ReviewTagRow = { agent_id: string; note: string; created_at: string };
 
 type RiskLevel = "critical" | "dropping" | "watch" | "stable" | "recovered";
@@ -164,6 +202,36 @@ function fmtUSDCompact(n: number | null | undefined): string {
   return `$${n}`;
 }
 
+/**
+ * PostgREST serialises `numeric` as a JSON number, but a driver/proxy change
+ * can hand back a string. Coerce once here so a silent "NaN%" never renders.
+ */
+function toNum(v: number | string | null | undefined): number | null {
+  if (v == null) return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function fmtPct(v: number | string | null | undefined, digits = 1): string {
+  const n = toNum(v);
+  if (n == null) return "—";
+  return `${n.toFixed(digits)}%`;
+}
+
+function fmtInt(v: number | string | null | undefined): string {
+  const n = toNum(v);
+  if (n == null) return "—";
+  return n.toLocaleString();
+}
+
+/** Higher is worse: >= `bad` → rose, >= `warn` → amber, else emerald. */
+function severityTone(v: number | null, bad: number, warn: number): ScoreTone {
+  if (v == null) return "neutral";
+  if (v >= bad) return "rose";
+  if (v >= warn) return "amber";
+  return "emerald";
+}
+
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -178,7 +246,8 @@ function daysBetween(iso: string | null | undefined, now = new Date()): number |
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return Math.floor((now.getTime() - d.getTime()) / 86_400_000);
+  // Clamped at 0: a future-dated hire/stage row must never render "-3 days".
+  return Math.max(0, Math.floor((now.getTime() - d.getTime()) / 86_400_000));
 }
 
 function riskLevelFor(row: {
@@ -264,6 +333,22 @@ export default function AdminProducerTrends() {
         .order("week_start", { ascending: true });
       if (error) throw error;
       return ((data as unknown) as WeeklyRow[]) ?? [];
+    },
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+
+  // Per-manager downline health. Short list by construction — only managers
+  // who actually hold reports appear, so this renders as cards, not a table.
+  const managerScorecardQ = useQuery<ManagerScorecardRow[]>({
+    queryKey: ["manager-scorecard"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_manager_scorecard" as any)
+        .select("*")
+        .order("retention_risk_pct", { ascending: false });
+      if (error) throw error;
+      return ((data as unknown) as ManagerScorecardRow[]) ?? [];
     },
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
@@ -503,6 +588,18 @@ export default function AdminProducerTrends() {
     return out;
   }, [newHiresQ.data, managerFilter]);
 
+  // Worst retention risk first — a 9-person leg bleeding 55% outranks a
+  // 96-person leg bleeding 27%. Deactivated managers sink to the bottom.
+  const scorecardRows = useMemo(() => {
+    let out = managerScorecardQ.data ?? [];
+    if (managerFilter !== "all") out = out.filter((r) => r.manager_agent_id === managerFilter);
+    return [...out].sort((a, b) => {
+      const deactivated = Number(!!a.manager_deactivated) - Number(!!b.manager_deactivated);
+      if (deactivated !== 0) return deactivated;
+      return (toNum(b.retention_risk_pct) ?? -1) - (toNum(a.retention_risk_pct) ?? -1);
+    });
+  }, [managerScorecardQ.data, managerFilter]);
+
   // ---- Recovery Review workflow ----
   function startRecoveryReview() {
     const queue = filtered.map((r) => r.producer_id);
@@ -530,6 +627,7 @@ export default function AdminProducerTrends() {
     qc.invalidateQueries({ queryKey: ["producer-trend-alert"] });
     qc.invalidateQueries({ queryKey: ["new-hires-activation"] });
     qc.invalidateQueries({ queryKey: ["agent-weekly-production"] });
+    qc.invalidateQueries({ queryKey: ["manager-scorecard"] });
     qc.invalidateQueries({ queryKey: ["mp259-agent-meta"] });
     qc.invalidateQueries({ queryKey: ["mp259-review-tags"] });
     qc.invalidateQueries({ queryKey: ["mp259-last-contact"] });
@@ -710,6 +808,51 @@ export default function AdminProducerTrends() {
             onCta={() => setRiskFilter("watch")}
           />
         </div>
+
+        {/* Manager scorecard — v_manager_scorecard */}
+        <Card className="bg-card border-white/[0.08]">
+          <CardHeader>
+            <CardTitle className="text-base text-foreground flex flex-wrap items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-rose-300" />
+              Manager scorecard · retention risk + first-sale gap
+              <span className="ml-auto text-xs font-normal text-muted-foreground">
+                {scorecardRows.length} manager{scorecardRows.length === 1 ? "" : "s"} holding downline
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {managerScorecardQ.isLoading ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {/* stable-key-allow:skeleton */}
+                {["scorecard-a", "scorecard-b"].map((slot) => (
+                  <div
+                    key={slot}
+                    className="h-48 rounded-lg border border-white/[0.08] bg-muted/30 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : managerScorecardQ.isError ? (
+              <div className="py-8 text-center text-sm text-rose-300">
+                Manager scorecard failed to load. These numbers are missing, not zero.
+                <div className="text-xs text-muted-foreground mt-1">
+                  {managerScorecardQ.error?.message ?? "v_manager_scorecard returned an error."}
+                </div>
+              </div>
+            ) : scorecardRows.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                {managerFilter === "all"
+                  ? "No manager holds a downline yet. Set manager_id on agents and every leg scores itself here."
+                  : "The selected manager holds no downline. Switch to All managers to see the legs that do."}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {scorecardRows.map((r) => (
+                  <ManagerScorecardCard key={r.manager_agent_id} row={r} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* ProducerRiskTable */}
         <Card className="bg-card border-white/[0.08]">
@@ -918,6 +1061,241 @@ function ProducerAlertCard({
         </div>
       </div>
     </div>
+  );
+}
+
+// -------------------------------------------------------------------------
+// ManagerScorecardCard — one card per manager who holds a downline.
+//
+// Only a couple of managers carry reports, so this renders as a short stack of
+// cards instead of a 17-column table nobody reads on a phone. The two numbers
+// that cost Sam money get hero treatment (retention risk, reports with no first
+// sale); everything else the view returns rides a compact wrapping chip line so
+// no column is dropped and nothing needs a horizontal scrollbar.
+// -------------------------------------------------------------------------
+const SCORE_HERO_TONE: Record<ScoreTone, string> = {
+  rose: "border-rose-500/40 text-rose-300",
+  amber: "border-amber-500/40 text-amber-300",
+  emerald: "border-emerald-500/40 text-emerald-300",
+  neutral: "border-white/[0.08] text-foreground",
+};
+
+const SCORE_TEXT_TONE: Record<ScoreTone, string> = {
+  rose: "text-rose-300",
+  amber: "text-amber-300",
+  emerald: "text-emerald-300",
+  neutral: "text-foreground",
+};
+
+const SCORE_EDGE_TONE: Record<ScoreTone, string> = {
+  rose: "border-l-rose-500/70",
+  amber: "border-l-amber-500/70",
+  emerald: "border-l-emerald-500/70",
+  neutral: "border-l-white/[0.14]",
+};
+
+function ManagerScorecardCard({ row }: { row: ManagerScorecardRow }) {
+  const risk = toNum(row.retention_risk_pct);
+  const active = toNum(row.reports_activeroster) ?? 0;
+  const noFirstSale = toNum(row.reports_no_first_sale);
+  const noFirstSaleShare =
+    noFirstSale != null && active > 0 ? (noFirstSale / active) * 100 : null;
+
+  const riskTone = severityTone(risk, 50, 25);
+  const saleTone = severityTone(noFirstSaleShare, 50, 25);
+  // pct_licensed_producing is a "higher is better" number; severityTone reads
+  // "higher is worse", so score the shortfall instead of the value.
+  const producingPct = toNum(row.pct_licensed_producing);
+  const producingShortfall = producingPct == null ? null : 100 - producingPct;
+  // The view can hand back a percentage outside 0-100 (prod returned -14.5 for
+  // the largest leg on 2026-07-25). Surface it verbatim with a flag rather than
+  // clamping or blanking it — a hidden bad number is how a broken view survives.
+  const producingOutOfRange =
+    producingPct != null && (producingPct < 0 || producingPct > 100);
+  // Card edge takes whichever of the two headline numbers is screaming loudest.
+  const edgeTone: ScoreTone =
+    riskTone === "rose" || saleTone === "rose"
+      ? "rose"
+      : riskTone === "amber" || saleTone === "amber"
+        ? "amber"
+        : riskTone === "neutral" && saleTone === "neutral"
+          ? "neutral"
+          : "emerald";
+
+  // Everything the view returns that is not a hero stat or the header line.
+  // Keys are literal + stable so the chip row never index-keys a DB-derived list.
+  const chips: Array<{
+    key: string;
+    label: string;
+    value: string;
+    tone: ScoreTone;
+    title?: string;
+  }> = [
+    {
+      key: "licensed",
+      label: "Licensed",
+      value: `${fmtInt(row.reports_licensed)} · ${fmtPct(row.pct_licensed)}`,
+      tone: "neutral",
+    },
+    {
+      key: "licensed-producing",
+      label: producingOutOfRange ? "Licensed producing ⚠" : "Licensed producing",
+      value: fmtPct(producingPct),
+      tone: severityTone(producingShortfall, 75, 50),
+      title: producingOutOfRange
+        ? "v_manager_scorecard returned a percentage outside 0-100. That is the view's math, not a display bug — fix pct_licensed_producing upstream."
+        : undefined,
+    },
+    {
+      key: "onboarding-incomplete",
+      label: "Onboarding open",
+      value: fmtInt(row.reports_onboarding_incomplete),
+      tone: "neutral",
+    },
+    {
+      key: "contracted",
+      label: "Contracted",
+      value: fmtInt(row.reports_contracted),
+      tone: "neutral",
+    },
+    {
+      key: "appointment-set",
+      label: "Appt set",
+      value: fmtInt(row.reports_appointment_set),
+      tone: "neutral",
+    },
+    {
+      key: "in-force-alp",
+      label: "Team in-force ALP",
+      value: fmtUSDCompact(toNum(row.team_in_force_alp)),
+      tone: "neutral",
+    },
+    {
+      key: "deals-30d",
+      label: "Deals 30d",
+      value: fmtInt(row.team_deals_30d),
+      tone: (toNum(row.team_deals_30d) ?? 0) === 0 ? "amber" : "neutral",
+    },
+    {
+      key: "alp-30d",
+      label: "ALP 30d",
+      value: fmtUSDCompact(toNum(row.team_alp_30d)),
+      tone: (toNum(row.team_alp_30d) ?? 0) === 0 ? "amber" : "neutral",
+    },
+  ];
+
+  return (
+    <div
+      className={cn(
+        "rounded-lg border border-white/[0.08] bg-muted/30 p-4 border-l-4",
+        SCORE_EDGE_TONE[edgeTone],
+        row.manager_deactivated && "opacity-70",
+      )}
+    >
+      {/* Header — name opens the agent drawer, roster counts sit underneath. */}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Manager · downline health
+          </div>
+          <div className="text-base font-bold text-foreground mt-0.5 truncate">
+            <AgentNameLink agentId={row.manager_agent_id}>
+              {row.manager_name ?? "Unnamed manager"}
+            </AgentNameLink>
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5 tabular-nums">
+            {fmtInt(row.reports_activeroster)} on active roster · {fmtInt(row.reports_total)} total
+            reports
+          </div>
+        </div>
+        {row.manager_deactivated && (
+          <Badge
+            variant="outline"
+            className="border-rose-500/40 text-rose-400 text-[10px] shrink-0"
+          >
+            <UserX className="h-3 w-3 mr-1" />
+            deactivated
+          </Badge>
+        )}
+      </div>
+
+      {/* The two numbers that cost money. */}
+      <div className="grid grid-cols-2 gap-2 mt-3">
+        <ScorecardHeroStat
+          label="Retention risk"
+          value={fmtPct(risk)}
+          sub={`${fmtInt(row.reports_licensed_inactive)} licensed but not producing`}
+          tone={riskTone}
+        />
+        <ScorecardHeroStat
+          label="No first sale"
+          value={fmtInt(noFirstSale)}
+          sub={
+            noFirstSaleShare == null
+              ? "No active roster to measure against"
+              : `${fmtPct(noFirstSaleShare, 0)} of the active roster`
+          }
+          tone={saleTone}
+        />
+      </div>
+
+      {/* Everything else the view returns — wraps, never scrolls sideways. */}
+      <div className="flex flex-wrap gap-1.5 mt-3">
+        {chips.map((c) => (
+          <ScorecardChip
+            key={c.key}
+            label={c.label}
+            value={c.value}
+            tone={c.tone}
+            title={c.title}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ScorecardHeroStat({
+  label,
+  value,
+  sub,
+  tone,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  tone: ScoreTone;
+}) {
+  return (
+    <div className={cn("rounded-lg border bg-card p-3 min-w-0", SCORE_HERO_TONE[tone])}>
+      <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
+      <div className="text-3xl font-bold tabular-nums leading-none mt-1.5">{value}</div>
+      <div className="text-[11px] text-muted-foreground mt-1.5">{sub}</div>
+    </div>
+  );
+}
+
+function ScorecardChip({
+  label,
+  value,
+  tone,
+  title,
+}: {
+  label: string;
+  value: string;
+  tone: ScoreTone;
+  title?: string;
+}) {
+  return (
+    <span
+      title={title}
+      className="inline-flex items-baseline gap-1.5 rounded-md border border-white/[0.08] bg-card px-2 py-1"
+    >
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className={cn("text-xs font-semibold tabular-nums", SCORE_TEXT_TONE[tone])}>
+        {value}
+      </span>
+    </span>
   );
 }
 

@@ -327,26 +327,54 @@ const handler = async (req: Request): Promise<Response> => {
       contractingLink = crmSetupLink;
     }
 
-    // Trigger welcome email with managerId for CC and contracting link
-    supabaseAdmin.functions.invoke("welcome-new-agent", {
-      body: {
-        agentName: `${firstName} ${lastName}`,
-        agentEmail: normalizedEmail,
-        managerId,
-        contractingLink,
-      },
-    }).catch((err) => console.log("Welcome email skipped:", err));
+    // wave-p1j (audit L151): the previous fire-and-forget `.catch(console.log)`
+    // pattern silently swallowed welcome + course email failures — the modal
+    // then rendered a blanket "Agent added successfully" toast while the new
+    // agent never got either email. Same disease as the 465 InsuraCloud
+    // fake-success sync rows: side-effect failures buried, top-level lie.
+    // Now: await both invocations, capture per-side-effect status, ship it in
+    // the response so the modal can surface partial failure honestly.
+    type SideEffectStatus = { ok: boolean; skipped?: boolean; error?: string };
+    const invokeSideEffect = async (
+      fnName: string,
+      body: Record<string, unknown>,
+    ): Promise<SideEffectStatus> => {
+      try {
+        const { error } = await supabaseAdmin.functions.invoke(fnName, { body });
+        if (error) {
+          console.error(`[add-agent] ${fnName} failed:`, error);
+          return { ok: false, error: error.message ?? String(error) };
+        }
+        return { ok: true };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[add-agent] ${fnName} threw:`, msg);
+        return { ok: false, error: msg };
+      }
+    };
 
-    // Auto-send course enrollment email when enrolled in course
-    if (hasTrainingCourse) {
-      supabaseAdmin.functions.invoke("send-course-enrollment-email", {
-        body: {
+    const welcomeEmailStatus = await invokeSideEffect("welcome-new-agent", {
+      agentName: `${firstName} ${lastName}`,
+      agentEmail: normalizedEmail,
+      managerId,
+      contractingLink,
+    });
+
+    const courseEmailStatus: SideEffectStatus = hasTrainingCourse
+      ? await invokeSideEffect("send-course-enrollment-email", {
           agentName: `${firstName} ${lastName}`,
           agentEmail: normalizedEmail,
           agentId: newAgent.id,
-        },
-      }).catch((err) => console.log("Course enrollment email skipped:", err));
-    }
+        })
+      : { ok: true, skipped: true };
+
+    const sideEffectFailures: string[] = [];
+    if (!welcomeEmailStatus.ok) sideEffectFailures.push("welcome email");
+    if (!courseEmailStatus.ok) sideEffectFailures.push("course enrollment email");
+
+    const message = sideEffectFailures.length
+      ? `Agent ${firstName} ${lastName} added, but ${sideEffectFailures.join(" and ")} failed — resend manually.`
+      : `Agent ${firstName} ${lastName} added successfully`;
 
     return new Response(
       JSON.stringify({
@@ -354,7 +382,12 @@ const handler = async (req: Request): Promise<Response> => {
         agentId: newAgent.id,
         userId: userId,
         builderTrack,
-        message: `Agent ${firstName} ${lastName} added successfully`,
+        message,
+        sideEffects: {
+          welcomeEmail: welcomeEmailStatus,
+          courseEmail: courseEmailStatus,
+        },
+        partial: sideEffectFailures.length > 0,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

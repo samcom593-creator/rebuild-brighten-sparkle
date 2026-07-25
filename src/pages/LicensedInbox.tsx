@@ -76,6 +76,16 @@ export default function LicensedInbox() {
           "id, first_name, last_name, email, phone, state, city, license_status, status, created_at",
         )
         .eq("license_status", "licensed")
+        // wave-p1k: exclude terminal dispositions so the inbox actually drains.
+        // markHired flips status='contracting', markPassed flips status='rejected';
+        // without this filter, already-worked applicants re-surface on every refetch
+        // and the "call now" queue grows monotonically. 'active'/'hired'/'terminated'
+        // covered for the same reason (already-onboarded agents shouldn't reappear).
+        .not(
+          "status",
+          "in",
+          "(contracting,rejected,hired,active,terminated)",
+        )
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) {
@@ -143,6 +153,11 @@ export default function LicensedInbox() {
         return;
       }
       await logContact(applicationId, "note", "hired");
+      // wave-p1k: optimistically drop the row so the queue clears immediately;
+      // invalidate afterward to reconcile with the server.
+      qc.setQueryData<LicensedRow[]>(["licensed-inbox"], (prev) =>
+        (prev ?? []).filter((r) => r.id !== applicationId),
+      );
       qc.invalidateQueries({ queryKey: ["licensed-inbox"] });
     } finally {
       setBusy(null);
@@ -163,6 +178,10 @@ export default function LicensedInbox() {
         return;
       }
       await logContact(applicationId, "note", "passed");
+      // wave-p1k: optimistic drop mirroring markHired.
+      qc.setQueryData<LicensedRow[]>(["licensed-inbox"], (prev) =>
+        (prev ?? []).filter((r) => r.id !== applicationId),
+      );
       qc.invalidateQueries({ queryKey: ["licensed-inbox"] });
     } finally {
       setBusy(null);

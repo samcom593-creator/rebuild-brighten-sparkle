@@ -303,6 +303,39 @@ Deno.serve(async (req) => {
       dry_run: dryRun,
     };
 
+    // MP-268 perf: this loop used to issue one SELECT per policy before its
+    // UPDATE/INSERT — ~1,600 extra sequential round-trips against a 150s edge
+    // limit. Measured over 24h only 34% of runs finished (30 ok / 55 reaped as
+    // stuck); successful ones averaged 108s and peaked at 131s, i.e. right at
+    // the ceiling and getting worse as the book grows. Prefetch the identity
+    // map once (paginated — deals is already >1000 rows, past PostgREST's
+    // default page) and the per-policy SELECT disappears.
+    const existingByKey = new Map<string, string>();
+    {
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data: page, error: pageErr } = await sb
+          .from("deals")
+          .select("id, agent_id, policy_number")
+          .range(from, from + PAGE - 1);
+        if (pageErr) {
+          // Fail loud: a partial map would silently turn updates into inserts
+          // and duplicate the book.
+          await finishLog({
+            status: "error",
+            upstream_status: dealsResp.status,
+            error_message: `edge: deal prefetch failed: ${pageErr.message}`,
+          });
+          return json({ ok: false, error: `deal prefetch failed: ${pageErr.message}` }, 500);
+        }
+        const rows = (page ?? []) as { id: string; agent_id: string | null; policy_number: string | null }[];
+        for (const r of rows) {
+          if (r.agent_id && r.policy_number) existingByKey.set(`${r.agent_id}|${r.policy_number}`, r.id);
+        }
+        if (rows.length < PAGE) break;
+      }
+    }
+
     for (const p of policies) {
       const userId = upstreamUserId(p);
       const agentId = userId ? agentByInsuraId.get(userId) : null;
@@ -372,20 +405,11 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const { data: existing, error: lookupError } = await sb
-        .from("deals")
-        .select("id, status")
-        .eq("agent_id", row.agent_id)
-        .eq("policy_number", row.policy_number)
-        .limit(1)
-        .maybeSingle();
-      if (lookupError) {
-        summary.errors.push(`${policyNumber}: lookup ${lookupError.message}`);
-        continue;
-      }
+      const dealKey = `${row.agent_id}|${row.policy_number}`;
+      const existingId = existingByKey.get(dealKey);
 
-      if (existing?.id) {
-        const { error } = await sb.from("deals").update(row).eq("id", existing.id);
+      if (existingId) {
+        const { error } = await sb.from("deals").update(row).eq("id", existingId);
         if (error) {
           if (error.code === "23505") summary.deals_skipped++;
           else summary.errors.push(`${policyNumber}: update ${error.message}`);
@@ -395,12 +419,19 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const { error } = await sb.from("deals").insert(row);
+      const { data: inserted, error } = await sb
+        .from("deals")
+        .insert(row)
+        .select("id")
+        .maybeSingle();
       if (error) {
         if (error.code === "23505") summary.deals_skipped++;
         else summary.errors.push(`${policyNumber}: insert ${error.message}`);
       } else {
         summary.deals_inserted++;
+        // Keep the map truthful so a policy repeated inside one payload updates
+        // instead of inserting a second row.
+        if (inserted?.id) existingByKey.set(dealKey, inserted.id as string);
       }
     }
 

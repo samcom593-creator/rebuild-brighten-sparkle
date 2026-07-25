@@ -1154,13 +1154,15 @@ export default function BookOfBusiness() {
           in-force (actually paying) book is never mistaken for the total. */}
       {isAdmin && segments && segments.length > 0 && (
         <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-1">
             <DollarSign className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold text-foreground">Book by status</h3>
-            <span className="text-xs text-muted-foreground">
-              in-force is what is actually paying
-            </span>
           </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            In-force is what is actually paying. The headline premium above sums
+            every status together, so pending and never-issued business inflates
+            it.
+          </p>
           <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
             {segments.map((seg) => {
               const inForce = seg.segment === "in_force";
@@ -1189,7 +1191,7 @@ export default function BookOfBusiness() {
                 <div
                   key={seg.segment}
                   className={
-                    "rounded-md border p-3 " +
+                    "min-w-0 rounded-md border p-3 " +
                     (inForce
                       ? "border-emerald-500/40 bg-emerald-500/5"
                       : dead
@@ -1197,20 +1199,22 @@ export default function BookOfBusiness() {
                         : "border-border bg-background")
                   }
                 >
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground truncate">
                     {label}
                   </div>
                   <div
                     className={
-                      "text-lg font-bold leading-tight " +
+                      "text-lg font-bold leading-tight tabular-nums " +
                       (inForce ? "text-emerald-500" : "text-foreground")
                     }
                   >
                     {fmt$(Number(seg.annual_premium ?? 0))}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-[11px] text-muted-foreground tabular-nums">
                     {Number(seg.policies ?? 0).toLocaleString()} policies
-                    {seg.producers != null ? ` · ${seg.producers} producers` : ""}
+                    {seg.producers != null
+                      ? ` · ${Number(seg.producers).toLocaleString()} producers`
+                      : ""}
                   </div>
                   {note && (
                     <div className="text-[10px] text-muted-foreground mt-1 leading-snug">
@@ -1253,25 +1257,31 @@ export default function BookOfBusiness() {
                       <div
                         key={row.carrier}
                         className={
-                          "flex items-center justify-between gap-3 rounded-md px-2.5 py-1.5 " +
-                          (overall ? "bg-muted/60 font-semibold" : "bg-background")
+                          "flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 " +
+                          (overall ? "bg-muted/60" : "bg-background")
                         }
                       >
-                        <span className="text-xs text-foreground truncate">
-                          {overall ? "All carriers" : row.carrier}
-                        </span>
-                        <span className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-[11px] text-muted-foreground">
-                            {Number(row.in_force ?? 0)} in force · {Number(row.lapsed ?? 0)} lapsed
-                          </span>
-                          <span
+                        <div className="min-w-0">
+                          <div
                             className={
-                              "text-xs font-bold tabular-nums " +
-                              (bad ? "text-rose-500" : "text-emerald-500")
+                              "text-xs text-foreground truncate " +
+                              (overall ? "font-semibold" : "font-medium")
                             }
                           >
-                            {pct.toFixed(1)}%
-                          </span>
+                            {overall ? "All carriers" : row.carrier}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground tabular-nums">
+                            {Number(row.in_force ?? 0).toLocaleString()} in force ·{" "}
+                            {Number(row.lapsed ?? 0).toLocaleString()} lapsed
+                          </div>
+                        </div>
+                        <span
+                          className={
+                            "text-sm font-bold tabular-nums flex-shrink-0 " +
+                            (bad ? "text-rose-500" : "text-emerald-500")
+                          }
+                        >
+                          {pct.toFixed(1)}%
                         </span>
                       </div>
                     );
@@ -1290,24 +1300,40 @@ export default function BookOfBusiness() {
                 Share of the in-force book. A high share means losing one
                 appointment takes that much of the paying book with it.
               </p>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
+              <div className="space-y-1.5 max-h-64 overflow-y-auto">
                 {[...concentration]
                   .sort((a, b) => Number(b.in_force_alp ?? 0) - Number(a.in_force_alp ?? 0))
                   .map((row) => {
                     const pct = Number(row.pct_of_in_force_alp ?? 0);
+                    const heavy = pct >= 35;
                     return (
-                      <div key={`${row.dimension}-${row.name}`}>
-                        <div className="flex items-center justify-between gap-2 text-xs">
-                          <span className="text-foreground truncate">{row.name}</span>
-                          <span className="text-muted-foreground flex-shrink-0 tabular-nums">
-                            {fmt$(Number(row.in_force_alp ?? 0))} · {pct.toFixed(1)}%
+                      <div
+                        key={`${row.dimension}-${row.name}`}
+                        className="rounded-md border border-border bg-background px-3 py-2"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-xs font-medium text-foreground truncate">
+                              {row.name}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground tabular-nums">
+                              {fmt$(Number(row.in_force_alp ?? 0))} in force
+                            </div>
+                          </div>
+                          <span
+                            className={
+                              "text-sm font-bold tabular-nums flex-shrink-0 " +
+                              (heavy ? "text-amber-500" : "text-emerald-500")
+                            }
+                          >
+                            {pct.toFixed(1)}%
                           </span>
                         </div>
-                        <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
                           <div
                             className={
                               "h-full rounded-full " +
-                              (pct >= 35 ? "bg-amber-500" : "bg-emerald-500")
+                              (heavy ? "bg-amber-500" : "bg-emerald-500")
                             }
                             style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
                           />

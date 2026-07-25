@@ -150,12 +150,35 @@ const STAGE_COLORS: Record<string, string> = {
   submitted: "bg-blue-500/20 text-blue-300 border-blue-500/40",
   active: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
   approved: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+  in_force: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
   paid: "bg-amber-500/20 text-amber-300 border-amber-500/40",
   lapsed: "bg-rose-500/20 text-rose-300 border-rose-500/40",
   cancelled: "bg-rose-500/20 text-rose-300 border-rose-500/40",
   charged_back: "bg-red-500/20 text-red-300 border-red-500/40",
   pending: "bg-sky-500/20 text-sky-300 border-sky-500/40",
 };
+
+// User-facing label for a stage key. Keeps the badges/dropdown consistent
+// regardless of whether the upstream row shipped "Active" / "active" / "IN FORCE".
+const STAGE_LABEL: Record<string, string> = {
+  submitted: "Submitted",
+  active: "Active",
+  approved: "Approved",
+  in_force: "In Force",
+  paid: "Paid",
+  lapsed: "Lapsed",
+  cancelled: "Cancelled",
+  charged_back: "Chargeback",
+  pending: "Pending",
+};
+
+function titleCaseStageKey(key: string): string {
+  if (!key) return "";
+  return key
+    .split("_")
+    .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : ""))
+    .join(" ");
+}
 
 const CHARGEBACK_WINDOW_DAYS = 30;
 const PREMIUM_SLIDER_MAX = 5000;
@@ -195,6 +218,19 @@ function pipelineLabel(deal: DealRow): string {
   );
 }
 
+// Normalized key used for filter compare + STAGE_COLORS lookup.
+// AgentLink raw_status ships human-cased ("Active" / "In Force" / "Charged Back")
+// so without normalization the Stage <Select> exact-match returned zero rows
+// and status badges fell back to gray "muted" on the primary data source.
+function pipelineStageKey(deal: DealRow): string {
+  return pipelineLabel(deal).toLowerCase().trim().replace(/\s+/g, "_");
+}
+
+function stageDisplayLabel(deal: DealRow): string {
+  const key = pipelineStageKey(deal);
+  return STAGE_LABEL[key] ?? titleCaseStageKey(key) ?? pipelineLabel(deal);
+}
+
 // Chargeback-window heuristic: a policy is inside its live chargeback risk
 // window when the effective_date is within the last CHARGEBACK_WINDOW_DAYS.
 // Insurance chargeback cliffs are typically the first 30 days after issue.
@@ -221,7 +257,7 @@ function chargebackRisk(deal: DealRow): number {
 }
 
 function isActivePolicy(deal: DealRow): boolean {
-  const stage = pipelineLabel(deal).toLowerCase();
+  const stage = pipelineStageKey(deal);
   if (
     stage === "cancelled" ||
     stage === "lapsed" ||
@@ -693,6 +729,29 @@ export default function BookOfBusiness() {
     [chargebacks],
   );
 
+  // Any status key actually present in `deals` that isn't already one of the
+  // canonical hardcoded Stage <SelectItem>s. Keeps the dropdown from ever
+  // offering values the data can't match, and stops it from hiding real
+  // AgentLink statuses (e.g. "in_force") that don't fit the canonical 8.
+  const stageOptionExtras = useMemo(() => {
+    const canonical = new Set([
+      "submitted",
+      "pending",
+      "active",
+      "approved",
+      "paid",
+      "lapsed",
+      "cancelled",
+      "charged_back",
+    ]);
+    const seen = new Set<string>();
+    for (const d of deals) {
+      const k = pipelineStageKey(d);
+      if (k && !canonical.has(k)) seen.add(k);
+    }
+    return Array.from(seen).sort();
+  }, [deals]);
+
   // ─── Filter + sort ───────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
@@ -711,7 +770,7 @@ export default function BookOfBusiness() {
         (d) => sourceFilter === "all" || sourceKey(d.source) === sourceFilter,
       )
       .filter(
-        (d) => stageFilter === "all" || pipelineLabel(d) === stageFilter,
+        (d) => stageFilter === "all" || pipelineStageKey(d) === stageFilter,
       )
       .filter((d) => {
         if (!agentQ) return true;
@@ -925,7 +984,7 @@ export default function BookOfBusiness() {
           d.annual_premium ?? "",
           d.posted_at ?? d.created_at ?? "",
           d.effective_date ?? "",
-          pipelineLabel(d),
+          stageDisplayLabel(d),
           sourceKey(d.source) === "apex" ? "APEX" : "AgentLink",
         ]
           .map(escape)
@@ -1198,6 +1257,11 @@ export default function BookOfBusiness() {
                       <SelectItem value="lapsed">Lapsed</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
                       <SelectItem value="charged_back">Chargeback</SelectItem>
+                      {stageOptionExtras.map((k) => (
+                        <SelectItem key={k} value={k}>
+                          {STAGE_LABEL[k] ?? titleCaseStageKey(k)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </FilterField>
@@ -1454,11 +1518,11 @@ export default function BookOfBusiness() {
                         <Badge
                           className={cn(
                             "text-[10px] border",
-                            STAGE_COLORS[pipelineLabel(d)] ??
+                            STAGE_COLORS[pipelineStageKey(d)] ??
                               "bg-muted text-muted-foreground border-border",
                           )}
                         >
-                          {pipelineLabel(d)}
+                          {stageDisplayLabel(d)}
                         </Badge>
                         {d.insuracloud_sync_error && (
                           <div className="mt-1 text-[10px] text-amber-300">
@@ -1711,11 +1775,11 @@ function PolicyDetailDrawer({
             <Badge
               className={cn(
                 "border",
-                STAGE_COLORS[pipelineLabel(deal)] ??
+                STAGE_COLORS[pipelineStageKey(deal)] ??
                   "bg-muted text-muted-foreground border-border",
               )}
             >
-              {pipelineLabel(deal)}
+              {stageDisplayLabel(deal)}
             </Badge>
             {deal.policy_number && (
               <span className="font-mono text-muted-foreground">

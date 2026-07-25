@@ -148,16 +148,28 @@ export default function OnboardingLadder() {
 
   const rows = useMemo(() => ladder.data ?? [], [ladder.data]);
 
-  /** One pass over the data: per-rung counts, manager list, launched total. */
+  /** Dropdown options come from the full roster so picking one never empties it. */
+  const managers = useMemo(() => {
+    const set = new Set<string>();
+    for (const row of rows) if (row.manager) set.add(row.manager);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
+  /** Manager is the outer scope: the rung counts describe exactly the rows the
+   *  list is about to show, so a chip can never claim more than is on screen. */
+  const scoped = useMemo(
+    () => (managerFilter === "all" ? rows : rows.filter((r) => r.manager === managerFilter)),
+    [rows, managerFilter],
+  );
+
+  /** One pass: per-rung counts, bottleneck rung, launched total. */
   const summary = useMemo(() => {
     const counts = new Map<number, number>();
-    const managers = new Set<string>();
     let launched = 0;
-    for (const row of rows) {
+    for (const row of scoped) {
       const rung = stuckRung(row);
       if (rung === null) launched += 1;
       else counts.set(rung, (counts.get(rung) ?? 0) + 1);
-      if (row.manager) managers.add(row.manager);
     }
     let bottleneck: number | null = null;
     let peak = 0;
@@ -167,23 +179,13 @@ export default function OnboardingLadder() {
         bottleneck = rung;
       }
     }
-    return {
-      counts,
-      launched,
-      bottleneck,
-      managers: [...managers].sort((a, b) => a.localeCompare(b)),
-      stuck: rows.length - launched,
-    };
-  }, [rows]);
+    return { counts, launched, bottleneck, stuck: scoped.length - launched };
+  }, [scoped]);
 
-  const visible = useMemo(() => {
-    if (rungFilter === null && managerFilter === "all") return rows;
-    return rows.filter((row) => {
-      if (managerFilter !== "all" && row.manager !== managerFilter) return false;
-      if (rungFilter !== null && stuckRung(row) !== rungFilter) return false;
-      return true;
-    });
-  }, [rows, rungFilter, managerFilter]);
+  const visible = useMemo(
+    () => (rungFilter === null ? scoped : scoped.filter((row) => stuckRung(row) === rungFilter)),
+    [scoped, rungFilter],
+  );
 
   const agentLinkCount = summary.counts.get(AGENTLINK_RUNG) ?? 0;
   const filtered = rungFilter !== null || managerFilter !== "all";
@@ -269,7 +271,7 @@ export default function OnboardingLadder() {
                     aria-label={
                       clear
                         ? `Rung ${rung.n}, ${rung.label}: nobody waiting`
-                        : `Rung ${rung.n}, ${rung.label}: ${count} agents waiting. Filter the list.`
+                        : `Rung ${rung.n}, ${rung.label}: ${count} ${count === 1 ? "agent" : "agents"} waiting. Filter the list.`
                     }
                     onClick={() => setRungFilter(active ? null : rung.n)}
                     className={cn(
@@ -329,7 +331,9 @@ export default function OnboardingLadder() {
                   <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">
-                      {agentLinkCount} agents are waiting on an AgentLink invite
+                      {agentLinkCount === 1
+                        ? "1 agent is waiting on an AgentLink invite"
+                        : `${agentLinkCount} agents are waiting on an AgentLink invite`}
                     </p>
                     <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                       A manager has to send it. Contracting, appointments, and first deals all sit
@@ -356,7 +360,7 @@ export default function OnboardingLadder() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All managers</SelectItem>
-                {summary.managers.map((m) => (
+                {managers.map((m) => (
                   <SelectItem key={m} value={m}>
                     {m}
                   </SelectItem>

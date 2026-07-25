@@ -96,6 +96,33 @@ interface PipelineRow {
   was_rescheduled: boolean | null;
 }
 
+// Mirrors public.v_prospect_review_queue — Calendly bookings with no
+// application_id AND no agent_id. Licensed agents and team leaders who booked
+// a recruiting call and exist in no other Apex system: real inbound demand
+// that is currently invisible. Zero of them have ever had an outcome recorded,
+// which is why disposition is the only action this bucket needs to make easy.
+interface ProspectRow {
+  interview_event_id: string;
+  invitee_name: string | null;
+  invitee_email: string | null;
+  invitee_phone: string | null;
+  instagram_handle: string | null;
+  event_type_name: string | null;
+  call_track: "licensed" | "leader" | "other" | null;
+  scheduled_at: string;
+  owner: string | null;
+  last_action_at: string | null;
+  next_action: string | null;
+  due_at: string | null;
+  // numeric(8,1) and bigint — coerce with Number() rather than trusting the wire type.
+  days_stuck: number | string | null;
+  priority: number;
+  outcome: string | null;
+  notes: string | null;
+  va_notes: string | null;
+  candidate_count: number | string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Bucket presentation — colour is never the only signal, every chip has a label
 // ---------------------------------------------------------------------------
@@ -158,12 +185,41 @@ function priorityReasons(r: PipelineRow): string[] {
   return out;
 }
 
+// --- prospect helpers ------------------------------------------------------
+const num = (v: number | string | null | undefined): number => Number(v ?? 0) || 0;
+
+const prospectName = (p: ProspectRow): string =>
+  p.invitee_name?.trim() || "Unnamed booking";
+
+// The view's priority is 1 for anything still in the future. Comparison only —
+// nothing here renders a signed duration.
+const isUpcoming = (p: ProspectRow): boolean => p.priority === 1;
+
+// What this row is waiting on, in the fewest words that still decide the action.
+function prospectUrgency(p: ProspectRow): string {
+  if (isUpcoming(p)) return "upcoming";
+  if (p.outcome) return `logged ${p.outcome.replace(/_/g, " ")}`;
+  return `no outcome · ${relativeDays(Math.floor(Math.max(0, num(p.days_stuck))))}`;
+}
+
+const TRACK_TONE: Record<string, string> = {
+  licensed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
+  leader: "bg-violet-500/15 text-violet-300 border-violet-500/40",
+  other: "bg-slate-500/15 text-slate-300 border-slate-500/40",
+};
+
+const TRACK_LABEL: Record<string, string> = {
+  licensed: "Licensed",
+  leader: "Leader",
+  other: "Other",
+};
+
 // ---------------------------------------------------------------------------
 export default function InterviewRecovery() {
   usePageTitle("Interview Recovery");
   const qc = useQueryClient();
 
-  const [activeBucket, setActiveBucket] = useState<Bucket | "backlog" | "all">("backlog");
+  const [activeBucket, setActiveBucket] = useState<Bucket | "backlog" | "all" | "prospects">("backlog");
   const [search, setSearch] = useState("");
   const [catchUp, setCatchUp] = useState(false);
   const [catchIndex, setCatchIndex] = useState(0);
@@ -188,7 +244,31 @@ export default function InterviewRecovery() {
     refetchInterval: 60_000,
   });
 
+  const prospects = useQuery({
+    queryKey: ["prospect-review-queue"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("v_prospect_review_queue")
+        .select("*")
+        .order("priority", { ascending: true })
+        .order("scheduled_at", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as ProspectRow[];
+    },
+    refetchInterval: 60_000,
+  });
+
   const rows = useMemo(() => pipeline.data ?? [], [pipeline.data]);
+  const prospectRows = useMemo(() => prospects.data ?? [], [prospects.data]);
+
+  // The money number for this bucket. Disposed rows stay in the view (they only
+  // leave once linked to an application), so "still open" is what must count
+  // down as Sam works — not the raw row total.
+  const prospectsOpen = useMemo(
+    () => prospectRows.filter((p) => !p.outcome).length,
+    [prospectRows],
+  );
 
   const counts = useMemo(() => {
     const m: Record<string, number> = {};
@@ -199,6 +279,11 @@ export default function InterviewRecovery() {
   const backlog = useMemo(() => rows.filter((r) => r.is_backlog), [rows]);
 
   const filtered = useMemo(() => {
+    // The prospect bucket reads a different view and renders through its own
+    // list below — keeping this memo single-typed avoids a union guard on
+    // every field access in the pipeline row path.
+    if (activeBucket === "prospects") return [] as PipelineRow[];
+
     let base =
       activeBucket === "backlog" ? backlog
       : activeBucket === "all"   ? rows
@@ -214,6 +299,27 @@ export default function InterviewRecovery() {
     }
     return base;
   }, [rows, backlog, activeBucket, search]);
+
+  const filteredProspects = useMemo(() => {
+    if (activeBucket !== "prospects") return [] as ProspectRow[];
+
+    let base = prospectRows;
+    const q = search.trim().toLowerCase();
+    if (q) {
+      base = base.filter((p) =>
+        [p.invitee_name, p.invitee_email, p.invitee_phone, p.instagram_handle,
+         p.owner, p.event_type_name]
+          .some((f) => (f ?? "").toLowerCase().includes(q)),
+      );
+    }
+    // Already-logged rows sink; the rest keep the view's priority order.
+    return [...base].sort((a, b) =>
+      Number(Boolean(a.outcome)) - Number(Boolean(b.outcome)) ||
+      a.priority - b.priority ||
+      // relative-time-guard-allow: Array.sort comparator — the delta orders rows and is never rendered as a duration.
+      new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime(),
+    );
+  }, [prospectRows, activeBucket, search]);
 
   // Catch Up works the backlog in priority order — today's first, then
   // starting-soon, then high-value recruits, then oldest missed.
@@ -234,35 +340,46 @@ export default function InterviewRecovery() {
 
   useEffect(() => { setNoteDraft(current?.notes ?? ""); }, [current?.id, current?.notes]);
 
-  const dispose = useCallback(
-    async (row: PipelineRow, outcome: Outcome, notes?: string) => {
+  // Both queues read the same interview_events rows, so every write has to
+  // refresh both or one surface keeps rendering a stale outcome.
+  const invalidateQueues = useCallback(async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["interview-pipeline"] }),
+      qc.invalidateQueries({ queryKey: ["prospect-review-queue"] }),
+    ]);
+  }, [qc]);
+
+  // v_prospect_review_queue.interview_event_id IS interview_events.id, so the
+  // pipeline and prospect buckets dispose through one identical path.
+  const disposeById = useCallback(
+    async (id: string, label: string, outcome: Outcome, notes?: string) => {
       setBusy(true);
       try {
         const { error } = await (supabase as any).rpc("cc_dispose_interview", {
-          p_id: row.id,
+          p_id: id,
           p_outcome: outcome,
           p_notes: notes && notes.trim() ? notes.trim() : null,
           p_followup_due_at: null,
         });
         if (error) throw error;
 
-        toast.success(`${row.display_name} → ${outcome.replace(/_/g, " ")}`, {
+        toast.success(`${label} → ${outcome.replace(/_/g, " ")}`, {
           action: {
             label: "Undo",
             onClick: async () => {
               const { error: undoErr } = await (supabase as any)
                 .from("interview_events")
                 .update({ outcome: null, outcome_at: null })
-                .eq("id", row.id);
+                .eq("id", id);
               if (undoErr) toast.error(`Undo failed: ${undoErr.message}`);
               else {
                 toast.success("Reverted");
-                qc.invalidateQueries({ queryKey: ["interview-pipeline"] });
+                await invalidateQueues();
               }
             },
           },
         });
-        await qc.invalidateQueries({ queryKey: ["interview-pipeline"] });
+        await invalidateQueues();
       } catch (err) {
         // Never swallow — a silent failure here is the exact bug this page fixes.
         toast.error(`Could not log outcome: ${(err as Error).message}`);
@@ -270,7 +387,19 @@ export default function InterviewRecovery() {
         setBusy(false);
       }
     },
-    [qc],
+    [invalidateQueues],
+  );
+
+  const dispose = useCallback(
+    (row: PipelineRow, outcome: Outcome, notes?: string) =>
+      disposeById(row.id, row.display_name, outcome, notes),
+    [disposeById],
+  );
+
+  const disposeProspect = useCallback(
+    (p: ProspectRow, outcome: Outcome) =>
+      disposeById(p.interview_event_id, prospectName(p), outcome),
+    [disposeById],
   );
 
   const disposeAndAdvance = useCallback(
@@ -299,12 +428,20 @@ export default function InterviewRecovery() {
       }
       setBusy(false);
       setSelected(new Set());
-      await qc.invalidateQueries({ queryKey: ["interview-pipeline"] });
+      await invalidateQueues();
       if (failures.length) toast.error(`${ok} logged, ${failures.length} failed: ${failures[0]}`);
       else toast.success(`${ok} logged as ${outcome.replace(/_/g, " ")}`);
     },
-    [selected, qc],
+    [selected, invalidateQueues],
   );
+
+  // Selection is an id set shared by both buckets. Clearing it on every bucket
+  // change stops a bulk disposition from firing at rows Sam can no longer see.
+  const goBucket = useCallback((b: Bucket | "backlog" | "all" | "prospects") => {
+    setActiveBucket(b);
+    setSelected(new Set());
+    setExpandedId(null);
+  }, []);
 
   // Keyboard shortcuts for Catch Up mode
   useEffect(() => {
@@ -434,7 +571,14 @@ export default function InterviewRecovery() {
               {current.application_id ? (
                 <ApplicationFacts row={current} onOpenFull={() => setDetailAppId(current.application_id)} />
               ) : (
-                <UnmatchedPanel row={current} />
+                <UnmatchedPanel
+                  name={current.display_name}
+                  phone={current.best_phone}
+                  email={current.best_email}
+                  instagram={current.instagram_handle}
+                  theySaid={current.invitee_status}
+                  eventType={current.event_type_name}
+                />
               )}
             </div>
 
@@ -539,7 +683,9 @@ export default function InterviewRecovery() {
         <Kpi label="Starting soon"  value={counts.starting_soon ?? 0}          tone="amber"   icon={Zap} />
         <Kpi label="Upcoming"       value={counts.upcoming ?? 0}               tone="slate"   icon={CalendarClock} />
         <Kpi label="Completed"      value={counts.completed ?? 0}              tone="teal"    icon={CheckCircle2} />
-        <Kpi label="Unmatched"      value={rows.filter((r) => !r.application_id).length} tone="violet" icon={Link2Off} />
+        <Kpi label="Prospect Review" value={prospectsOpen} tone="violet" icon={Link2Off}
+             active={activeBucket === "prospects"}
+             onClick={() => goBucket("prospects")} />
       </div>
 
       {/* actions */}
@@ -563,20 +709,23 @@ export default function InterviewRecovery() {
           />
         </div>
         <Button variant="outline" size="icon" aria-label="Refresh interview queue"
-                onClick={() => void pipeline.refetch()}>
-          <RefreshCw className={cn("h-4 w-4", pipeline.isFetching && "animate-spin")} />
+                onClick={() => void Promise.all([pipeline.refetch(), prospects.refetch()])}>
+          <RefreshCw className={cn("h-4 w-4",
+            (pipeline.isFetching || prospects.isFetching) && "animate-spin")} />
         </Button>
       </div>
 
       {/* bucket chips */}
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         <Chip active={activeBucket === "backlog"} tone="text-rose-300 border-rose-500/40 bg-rose-500/10"
-              label="Catch Up Queue" count={backlog.length} onClick={() => setActiveBucket("backlog")} />
+              label="Catch Up Queue" count={backlog.length} onClick={() => goBucket("backlog")} />
+        <Chip active={activeBucket === "prospects"} tone="text-violet-300 border-violet-500/40 bg-violet-500/10"
+              label="Prospect Review" count={prospectsOpen} onClick={() => goBucket("prospects")} />
         <Chip active={activeBucket === "all"} tone="text-slate-300 border-slate-500/40 bg-slate-500/10"
-              label="All" count={rows.length} onClick={() => setActiveBucket("all")} />
+              label="All" count={rows.length} onClick={() => goBucket("all")} />
         {BUCKETS.filter((b) => (counts[b.key] ?? 0) > 0).map((b) => (
           <Chip key={b.key} active={activeBucket === b.key} tone={b.tone} label={b.label}
-                count={counts[b.key] ?? 0} onClick={() => setActiveBucket(b.key)} />
+                count={counts[b.key] ?? 0} onClick={() => goBucket(b.key)} />
         ))}
       </div>
 
@@ -597,7 +746,25 @@ export default function InterviewRecovery() {
       )}
 
       {/* list */}
-      {pipeline.isLoading ? (
+      {activeBucket === "prospects" ? (
+        <ProspectQueue
+          query={prospects}
+          rows={filteredProspects}
+          total={prospectRows.length}
+          open={prospectsOpen}
+          searching={Boolean(search.trim())}
+          expandedId={expandedId}
+          selected={selected}
+          busy={busy}
+          onToggleSelect={(id) => setSelected((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+          })}
+          onToggleExpand={(id) => setExpandedId((cur) => (cur === id ? null : id))}
+          onDispose={(p, o) => void disposeProspect(p, o)}
+        />
+      ) : pipeline.isLoading ? (
         <div className="space-y-2">
           {/* stable-key-allow:skeleton */}
           {[1, 2, 3, 4, 5].map((n) => <Skeleton key={n} className="h-20 w-full" />)}
@@ -644,8 +811,9 @@ export default function InterviewRecovery() {
 }
 
 // ---------------------------------------------------------------------------
-function Kpi({ label, value, tone, icon: Icon }: {
+function Kpi({ label, value, tone, icon: Icon, onClick, active }: {
   label: string; value: number; tone: string; icon: typeof Clock;
+  onClick?: () => void; active?: boolean;
 }) {
   const tones: Record<string, string> = {
     rose: "text-rose-300 border-rose-500/30",
@@ -655,14 +823,29 @@ function Kpi({ label, value, tone, icon: Icon }: {
     teal: "text-teal-300 border-teal-500/30",
     violet: "text-violet-300 border-violet-500/30",
   };
-  return (
-    <div className={cn("rounded-lg border bg-slate-950/60 p-3", tones[tone])}>
+  const body = (
+    <>
       <div className="flex items-center gap-1.5">
         <Icon className="h-3.5 w-3.5" />
         <span className="truncate text-xs text-muted-foreground">{label}</span>
       </div>
       <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-    </div>
+    </>
+  );
+  const base = cn("rounded-lg border bg-slate-950/60 p-3", tones[tone]);
+
+  if (!onClick) return <div className={base}>{body}</div>;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(base, "w-full text-left transition hover:bg-slate-900/60",
+        active && "ring-2 ring-violet-400/70")}
+    >
+      {body}
+    </button>
   );
 }
 
@@ -723,23 +906,42 @@ function ApplicationFacts({ row, onOpenFull }: { row: PipelineRow; onOpenFull: (
 
 // Calendly-only recruit — booked by a VA straight from Instagram, never
 // entered as an application. Surfacing it rather than hiding the row.
-function UnmatchedPanel({ row }: { row: PipelineRow }) {
+// Takes loose fields rather than a row type so the pipeline view and the
+// prospect view explain "no application on file" in exactly one place.
+function UnmatchedPanel({
+  name, phone, email, instagram, theySaid, owner, eventType, matchCandidates,
+}: {
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  instagram?: string | null;
+  theySaid?: string | null;
+  owner?: string | null;
+  eventType?: string | null;
+  matchCandidates?: number;
+}) {
+  const why =
+    matchCandidates === undefined
+      ? "Booked through Calendly without an APEX application. Everything known about them is below."
+      : matchCandidates > 0
+        ? `Booked through Calendly without an APEX application. ${matchCandidates} record${matchCandidates === 1 ? "" : "s"} in the system could be this person — nothing is linked yet.`
+        : "Booked through Calendly without an APEX application, and no record in the system looks like them. This booking is everything Apex knows.";
+
   return (
     <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-4">
       <div className="flex items-start gap-2">
         <Link2Off className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
         <div className="min-w-0">
           <p className="text-sm font-medium text-violet-200">No application on file</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Booked through Calendly without an APEX application. Everything known
-            about them is below.
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{why}</p>
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <Fact label="Name"      value={row.display_name} />
-            <Fact label="Phone"     value={row.best_phone} />
-            <Fact label="Instagram" value={row.instagram_handle ? `@${row.instagram_handle.replace(/^@/, "")}` : null} />
-            <Fact label="Email"     value={row.best_email} />
-            <Fact label="They said" value={row.invitee_status} />
+            <Fact label="Name"      value={name} />
+            <Fact label="Phone"     value={phone} />
+            <Fact label="Instagram" value={instagram ? `@${instagram.replace(/^@/, "")}` : null} />
+            <Fact label="Email"     value={email} />
+            <Fact label="Booked"    value={eventType?.trim() || null} />
+            <Fact label="Owner"     value={owner} />
+            <Fact label="They said" value={theySaid} />
           </div>
         </div>
       </div>
@@ -817,7 +1019,14 @@ function InterviewRow({
         <div className="border-t border-slate-800 p-3">
           {row.application_id
             ? <ApplicationFacts row={row} onOpenFull={onOpenFull} />
-            : <UnmatchedPanel row={row} />}
+            : <UnmatchedPanel
+                name={row.display_name}
+                phone={row.best_phone}
+                email={row.best_email}
+                instagram={row.instagram_handle}
+                theySaid={row.invitee_status}
+                eventType={row.event_type_name}
+              />}
 
           {row.prep_notes && (
             <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
@@ -833,6 +1042,261 @@ function InterviewRow({
                         className={cn("border text-xs", d.tone)}
                         onClick={() => onDispose(d.key)}
                         aria-label={`${d.label} — ${row.display_name}`}>
+                  <d.icon className="mr-1.5 h-3.5 w-3.5" />{d.label}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {row.outcome && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Logged as <span className="text-slate-200">{row.outcome.replace(/_/g, " ")}</span>
+              {row.notes ? ` — ${row.notes}` : ""}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Prospect Review — the bucket for people who booked a recruiting call and
+// exist in no other Apex system.
+// ---------------------------------------------------------------------------
+function ProspectQueue({
+  query, rows, total, open, searching, expandedId, selected, busy,
+  onToggleSelect, onToggleExpand, onDispose,
+}: {
+  query: { isLoading: boolean; isError: boolean; error: unknown; refetch: () => void };
+  rows: ProspectRow[];
+  total: number;
+  open: number;
+  searching: boolean;
+  expandedId: string | null;
+  selected: Set<string>;
+  busy: boolean;
+  onToggleSelect: (id: string) => void;
+  onToggleExpand: (id: string) => void;
+  onDispose: (p: ProspectRow, o: Outcome) => void;
+}) {
+  if (query.isLoading) {
+    return (
+      <div className="space-y-2">
+        {/* stable-key-allow:skeleton */}
+        {[1, 2, 3, 4, 5].map((n) => <Skeleton key={n} className="h-20 w-full" />)}
+      </div>
+    );
+  }
+
+  // A query that threw must say so. A blank list would read as "all clear".
+  if (query.isError) {
+    return (
+      <div className="rounded-xl border border-rose-500/40 bg-rose-500/5 p-6 text-center">
+        <AlertTriangle className="mx-auto h-8 w-8 text-rose-300" />
+        <p className="mt-3 font-medium">Prospect queue did not load</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {(query.error as Error)?.message ?? "The prospect review view could not be read."}
+        </p>
+        <Button variant="outline" size="sm" className="mt-4" onClick={() => void query.refetch()}>
+          <RefreshCw className="mr-2 h-4 w-4" /> Try again
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* What these people are. This is the whole point of the bucket. */}
+      <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-4">
+        <div className="flex items-start gap-2">
+          <Link2Off className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-violet-200">
+              Licensed agents and team leaders who booked a call and exist nowhere else in Apex
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              They never filled out an application, so no other screen in this product
+              knows they exist. This is real inbound recruiting demand.{" "}
+              <span className="font-medium text-slate-200">
+                {open} of {total} still have no outcome recorded.
+              </span>{" "}
+              Recording one is the action that puts them back in the pipeline.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-10 text-center">
+          <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-400" />
+          <p className="mt-3 font-medium">
+            {searching ? "No prospect matches that search" : "Every booked prospect has an outcome"}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {searching
+              ? "Try a first name, a phone number, or an Instagram handle."
+              : "Every recruiting call booked outside an application has been dispositioned."}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((p) => (
+            <ProspectRowCard
+              key={p.interview_event_id}
+              row={p}
+              expanded={expandedId === p.interview_event_id}
+              selected={selected.has(p.interview_event_id)}
+              busy={busy}
+              onToggleSelect={() => onToggleSelect(p.interview_event_id)}
+              onToggleExpand={() => onToggleExpand(p.interview_event_id)}
+              onDispose={(o) => onDispose(p, o)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProspectRowCard({
+  row, expanded, selected, busy, onToggleSelect, onToggleExpand, onDispose,
+}: {
+  row: ProspectRow;
+  expanded: boolean;
+  selected: boolean;
+  busy: boolean;
+  onToggleSelect: () => void;
+  onToggleExpand: () => void;
+  onDispose: (o: Outcome) => void;
+}) {
+  const name = prospectName(row);
+  const track = row.call_track ?? "other";
+  const handle = row.instagram_handle?.replace(/^@/, "") || null;
+  const matches = Math.max(0, num(row.candidate_count));
+
+  return (
+    <div className={cn(
+      "rounded-lg border bg-slate-950/60 transition",
+      expanded ? "border-violet-500/40" : "border-slate-800",
+    )}>
+      <div className="flex items-start gap-3 p-3 sm:items-center">
+        <Checkbox
+          checked={selected}
+          onCheckedChange={onToggleSelect}
+          aria-label={`Select ${name}`}
+          className="mt-1 sm:mt-0"
+        />
+
+        <button
+          type="button"
+          onClick={onToggleExpand}
+          className="min-w-0 flex-1 text-left"
+          aria-expanded={expanded}
+          aria-label={`Toggle details for ${name}`}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="truncate font-medium">{name}</span>
+            <Badge className={cn("shrink-0 text-[10px]", TRACK_TONE[track] ?? TRACK_TONE.other)}>
+              {TRACK_LABEL[track] ?? "Other"}
+            </Badge>
+            <Badge className="shrink-0 border-violet-500/40 bg-violet-500/10 text-[10px] text-violet-300">
+              {matches > 0 ? `No application · ${matches} possible match` : "No application"}
+            </Badge>
+            {isUpcoming(row) && (
+              <Badge className="shrink-0 border-amber-500/40 bg-amber-500/10 text-[10px] text-amber-300">
+                Upcoming
+              </Badge>
+            )}
+          </div>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {fmtChicago(row.scheduled_at)}
+            {` · ${prospectUrgency(row)}`}
+            {row.invitee_phone ? ` · ${row.invitee_phone}` : handle ? ` · @${handle}` : ""}
+          </p>
+        </button>
+
+        {/* Sam works this from his phone — call and DM stay one tap away. */}
+        <div className="flex shrink-0 items-center gap-1">
+          {row.invitee_phone && (
+            <Button asChild size="icon" variant="ghost" aria-label={`Call ${name}`}>
+              <a href={`tel:${row.invitee_phone.replace(/[^\d+]/g, "")}`}>
+                <Phone className="h-4 w-4" />
+              </a>
+            </Button>
+          )}
+          {handle && (
+            <Button asChild size="icon" variant="ghost" aria-label={`Open Instagram for ${name}`}>
+              <a href={`https://instagram.com/${handle}`} target="_blank" rel="noopener noreferrer">
+                <Instagram className="h-4 w-4" />
+              </a>
+            </Button>
+          )}
+          <Button size="icon" variant="ghost" onClick={onToggleExpand}
+                  aria-label={expanded ? "Collapse" : "Expand"}>
+            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="border-t border-slate-800 p-3">
+          <UnmatchedPanel
+            name={name}
+            phone={row.invitee_phone}
+            email={row.invitee_email}
+            instagram={row.instagram_handle}
+            owner={row.owner}
+            eventType={row.event_type_name}
+            matchCandidates={matches}
+          />
+
+          {row.next_action && (
+            <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
+              <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-300" />
+              <span>{row.next_action}</span>
+            </p>
+          )}
+
+          {row.va_notes && (
+            <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
+              <p className="text-[11px] uppercase tracking-wide text-sky-300">VA notes</p>
+              <p className="mt-1 text-sm text-slate-200">{row.va_notes}</p>
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {row.invitee_phone && (
+              <Button asChild size="sm" className="bg-teal-500 text-slate-950 hover:bg-teal-400">
+                <a href={`tel:${row.invitee_phone.replace(/[^\d+]/g, "")}`} aria-label={`Call ${name}`}>
+                  <Phone className="mr-1.5 h-3.5 w-3.5" /> Call
+                </a>
+              </Button>
+            )}
+            {row.invitee_email && (
+              <Button asChild size="sm" variant="outline">
+                <a href={`mailto:${row.invitee_email}`} aria-label={`Email ${name}`}>
+                  <Mail className="mr-1.5 h-3.5 w-3.5" /> Email
+                </a>
+              </Button>
+            )}
+            {handle && (
+              <Button asChild size="sm" variant="outline">
+                <a href={`https://instagram.com/${handle}`} target="_blank" rel="noopener noreferrer"
+                   aria-label={`Open Instagram for ${name}`}>
+                  <Instagram className="mr-1.5 h-3.5 w-3.5" /> @{handle}
+                </a>
+              </Button>
+            )}
+          </div>
+
+          {!row.outcome && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {DISPOSITIONS.map((d) => (
+                <Button key={d.key} size="sm" variant="outline" disabled={busy}
+                        className={cn("border text-xs", d.tone)}
+                        onClick={() => onDispose(d.key)}
+                        aria-label={`${d.label} — ${name}`}>
                   <d.icon className="mr-1.5 h-3.5 w-3.5" />{d.label}
                 </Button>
               ))}

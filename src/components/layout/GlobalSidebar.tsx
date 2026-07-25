@@ -260,11 +260,11 @@ export function GlobalSidebar({
         // because that's where Sam looks when he's about to run the import.
         { icon: FileSpreadsheet, label: "Import XCEL", href: "/admin/xcel-import", special: true },
         { icon: Flame, label: "License Push (cohorts)", href: "/admin/recovery-queue", special: true },
-        // 2026-06-18 Sam: June hires punch list with inline edit + Send Course.
-        // MP-264 declutter 2026-07-24: June Hires Punch List removed. Its view
-        // (v_june_hires_needs_attention) is hard-locked to June 2026 and was still
-        // rendering 23 stale rows as if current. The view is retained in the DB —
-        // those 23 agents genuinely still have gaps and need a month-agnostic home.
+        // 2026-07-25: the month-agnostic home the removed June Hires Punch List
+        // needed. Reads the 8-rung onboarding sequence for every active agent, so
+        // no month is ever hard-coded. Rung 2 (AgentLink invite) is the biggest
+        // throughput block and deep-links to /admin/missing-al-link.
+        { icon: UserCog, label: "Onboarding Ladder", href: "/dashboard/onboarding-ladder", special: true },
         // 2026-07-01 Sam: producer weekly trend + 3-week drop alarm (Daniel use case).
         { icon: TrendingDown, label: "Producer Trends", href: "/admin/producer-trends", special: true },
         // MP-230 (2026-07-01): AgentLink Backfill sidebar entry removed per Sam directive.

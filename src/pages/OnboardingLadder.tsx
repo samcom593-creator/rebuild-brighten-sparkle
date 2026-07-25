@@ -1,0 +1,480 @@
+// Onboarding Ladder — the month-agnostic home for "which agents are stuck, and on what".
+//
+// WHY THIS PAGE EXISTS:
+//   Every hire climbs the same 8 rungs: intake → AgentLink invite → carrier
+//   contracting → appointment → Discord → training → launch ready → first sale.
+//   Until now the only surface that showed the gaps was the June Hires Punch
+//   List, which was hard-locked to June 2026 and rendered stale rows as if they
+//   were current. It was removed; this page replaces it with no month lock.
+//
+//   Measured 2026-07-25: 57 agents sit on rung 2 waiting for a manager to send
+//   an AgentLink invite, 31 on rung 3 (carrier contracting), 21 on rung 1.
+//   Rung 2 is a one-click fix and it is the single biggest throughput block in
+//   the business, so it gets a dedicated call-out wired straight to the page
+//   that already owns the fix (/admin/missing-al-link).
+//
+// Reads public.v_onboarding_sequence — one row per active agent, one query,
+// server-side sorted. No per-row fetches.
+
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  Flame,
+  ListChecks,
+  RotateCw,
+  Users,
+} from "lucide-react";
+
+import { supabase } from "@/integrations/supabase/client";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
+
+// ---------------------------------------------------------------------------
+// Row shape — mirrors public.v_onboarding_sequence. The generated Supabase
+// types file does not carry this view, so the query is cast at the call site.
+// `days_since_progress` is a Postgres numeric, which PostgREST serialises as a
+// string — always coerce before comparing or formatting.
+// ---------------------------------------------------------------------------
+interface LadderRow {
+  agent_id: string;
+  agent_name: string | null;
+  manager: string | null;
+  rungs_complete: number | null;
+  next_missing_step: string | null;
+  days_since_progress: number | string | null;
+  r1_intake: boolean | null;
+  r2_agentlink: boolean | null;
+  r3_contracted: boolean | null;
+  r4_appointment: boolean | null;
+  r5_discord: boolean | null;
+  r6_training: boolean | null;
+  r7_launch_ready: boolean | null;
+  r8_first_sale: boolean | null;
+}
+
+type RungField =
+  | "r1_intake"
+  | "r2_agentlink"
+  | "r3_contracted"
+  | "r4_appointment"
+  | "r5_discord"
+  | "r6_training"
+  | "r7_launch_ready"
+  | "r8_first_sale";
+
+interface Rung {
+  n: number;
+  field: RungField;
+  label: string;
+}
+
+/** The ladder, in climb order. `label` is the chip caption; row copy always
+ *  renders the view's own `next_missing_step` so the two can never drift. */
+const RUNGS: Rung[] = [
+  { n: 1, field: "r1_intake", label: "Intake / profile" },
+  { n: 2, field: "r2_agentlink", label: "AgentLink invite" },
+  { n: 3, field: "r3_contracted", label: "Carrier contracting" },
+  { n: 4, field: "r4_appointment", label: "Carrier appointment" },
+  { n: 5, field: "r5_discord", label: "Discord access" },
+  { n: 6, field: "r6_training", label: "Training course" },
+  { n: 7, field: "r7_launch_ready", label: "Launch ready" },
+  { n: 8, field: "r8_first_sale", label: "First sale" },
+];
+
+/** Rung 2 is the only rung with a one-click fix already built. */
+const AGENTLINK_RUNG = 2;
+const AGENTLINK_FIX_ROUTE = "/admin/missing-al-link";
+
+/** Which rung a row is parked on. The view prefixes the step with its number
+ *  ("2. AgentLink invite (manager sends)"); fall back to the first unfinished
+ *  rung if that ever stops being true. */
+function stuckRung(row: LadderRow): number | null {
+  const parsed = Number.parseInt(row.next_missing_step ?? "", 10);
+  if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 8) return parsed;
+  if (!row.next_missing_step) return null;
+  const firstOpen = RUNGS.find((r) => row[r.field] !== true);
+  return firstOpen?.n ?? null;
+}
+
+function daysStalled(row: LadderRow): number {
+  const n = Number(row.days_since_progress);
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+}
+
+function daysTone(days: number): string {
+  if (days >= 30) return "text-rose-400";
+  if (days >= 14) return "text-amber-400";
+  return "text-muted-foreground";
+}
+
+// ---------------------------------------------------------------------------
+
+export default function OnboardingLadder() {
+  usePageTitle("Onboarding Ladder · APEX");
+
+  const [rungFilter, setRungFilter] = useState<number | null>(null);
+  const [managerFilter, setManagerFilter] = useState<string>("all");
+
+  const ladder = useQuery<LadderRow[]>({
+    queryKey: ["v_onboarding_sequence"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("v_onboarding_sequence")
+        .select(
+          "agent_id,agent_name,manager,rungs_complete,next_missing_step,days_since_progress,r1_intake,r2_agentlink,r3_contracted,r4_appointment,r5_discord,r6_training,r7_launch_ready,r8_first_sale",
+        )
+        .order("rungs_complete", { ascending: true })
+        .order("days_since_progress", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as LadderRow[];
+    },
+    staleTime: 60_000,
+  });
+
+  const rows = useMemo(() => ladder.data ?? [], [ladder.data]);
+
+  /** One pass over the data: per-rung counts, manager list, launched total. */
+  const summary = useMemo(() => {
+    const counts = new Map<number, number>();
+    const managers = new Set<string>();
+    let launched = 0;
+    for (const row of rows) {
+      const rung = stuckRung(row);
+      if (rung === null) launched += 1;
+      else counts.set(rung, (counts.get(rung) ?? 0) + 1);
+      if (row.manager) managers.add(row.manager);
+    }
+    let bottleneck: number | null = null;
+    let peak = 0;
+    for (const [rung, n] of counts) {
+      if (n > peak) {
+        peak = n;
+        bottleneck = rung;
+      }
+    }
+    return {
+      counts,
+      launched,
+      bottleneck,
+      managers: [...managers].sort((a, b) => a.localeCompare(b)),
+      stuck: rows.length - launched,
+    };
+  }, [rows]);
+
+  const visible = useMemo(() => {
+    if (rungFilter === null && managerFilter === "all") return rows;
+    return rows.filter((row) => {
+      if (managerFilter !== "all" && row.manager !== managerFilter) return false;
+      if (rungFilter !== null && stuckRung(row) !== rungFilter) return false;
+      return true;
+    });
+  }, [rows, rungFilter, managerFilter]);
+
+  const agentLinkCount = summary.counts.get(AGENTLINK_RUNG) ?? 0;
+  const filtered = rungFilter !== null || managerFilter !== "all";
+
+  return (
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-4 px-4 pb-24 sm:px-6">
+      <PageHeader
+        eyebrow="Onboarding · Throughput"
+        eyebrowIcon={<ListChecks className="h-3 w-3" />}
+        title="Onboarding Ladder"
+        accent="amber"
+        subtitle="Every active agent climbs the same eight rungs. This is where they are parked, who owns the next move, and how long they have been waiting."
+      />
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Error — surfaced, never swallowed.                                */}
+      {/* ---------------------------------------------------------------- */}
+      {ladder.isError && (
+        <div className="rounded-lg border border-rose-500/40 bg-rose-500/5 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">The ladder could not load</p>
+                <p className="mt-0.5 break-words text-xs text-muted-foreground">
+                  {(ladder.error as Error | null)?.message ?? "The onboarding view did not respond."}
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-10 w-full sm:h-9 sm:w-auto"
+              onClick={() => void ladder.refetch()}
+            >
+              <RotateCw className="mr-1.5 h-4 w-4" /> Try again
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Loading — strip + rows, shaped like the real thing.                */}
+      {/* ---------------------------------------------------------------- */}
+      {ladder.isLoading && (
+        <>
+          <div className="-mx-4 overflow-x-auto pb-1 sm:mx-0">
+            <div className="flex min-w-max gap-2 px-4 sm:px-0">
+              {RUNGS.map((rung) => (
+                // stable-key-allow:skeleton — static 8-rung loader, fixed order
+                <div key={rung.n} className="h-[86px] w-[136px] shrink-0 rounded-lg bg-muted/40 animate-pulse" />
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            {[...Array(8)].map((_, i) => (
+              // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
+              <div key={i} className="h-[76px] rounded-lg bg-muted/30 animate-pulse" />
+            ))}
+          </div>
+        </>
+      )}
+
+      {!ladder.isLoading && !ladder.isError && (
+        <>
+          {/* ------------------------------------------------------------ */}
+          {/* Rung strip — primary navigation. Scrolls inside itself so the */}
+          {/* page never scrolls sideways on a phone.                       */}
+          {/* ------------------------------------------------------------ */}
+          <div className="-mx-4 overflow-x-auto pb-1 sm:mx-0">
+            <div className="flex min-w-max gap-2 px-4 sm:px-0">
+              {RUNGS.map((rung) => {
+                const count = summary.counts.get(rung.n) ?? 0;
+                const active = rungFilter === rung.n;
+                const isBottleneck = summary.bottleneck === rung.n && count > 0;
+                const clear = count === 0;
+                return (
+                  <button
+                    key={rung.n}
+                    type="button"
+                    disabled={clear}
+                    aria-pressed={active}
+                    aria-label={
+                      clear
+                        ? `Rung ${rung.n}, ${rung.label}: nobody waiting`
+                        : `Rung ${rung.n}, ${rung.label}: ${count} agents waiting. Filter the list.`
+                    }
+                    onClick={() => setRungFilter(active ? null : rung.n)}
+                    className={cn(
+                      "relative w-[136px] shrink-0 overflow-hidden rounded-lg border px-3 pb-2.5 pt-3 text-left transition-colors",
+                      clear && "cursor-default border-border/50 bg-muted/20",
+                      !clear && !active && isBottleneck &&
+                        "border-rose-500/35 bg-rose-500/5 hover:border-rose-500/60 hover:bg-rose-500/10",
+                      !clear && !active && !isBottleneck &&
+                        "border-amber-500/25 bg-amber-500/5 hover:border-amber-500/50 hover:bg-amber-500/10",
+                      active && isBottleneck && "border-rose-500/70 bg-rose-500/15",
+                      active && !isBottleneck && "border-amber-500/70 bg-amber-500/15",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute inset-x-0 top-0 h-0.5",
+                        clear ? "bg-emerald-500/40" : isBottleneck ? "bg-rose-500" : "bg-amber-500",
+                      )}
+                    />
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        Rung {rung.n}
+                      </span>
+                      {isBottleneck && <Flame className="h-3 w-3 shrink-0 text-rose-400" />}
+                      {clear && <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-500/70" />}
+                    </div>
+                    <div
+                      className={cn(
+                        "mt-1 text-2xl font-extrabold leading-none tabular-nums",
+                        clear ? "text-muted-foreground/50" : isBottleneck ? "text-rose-400" : "text-amber-400",
+                      )}
+                    >
+                      {count}
+                    </div>
+                    <div
+                      className={cn(
+                        "mt-1 text-[11px] font-medium leading-tight",
+                        clear ? "text-muted-foreground/70" : "text-foreground",
+                      )}
+                    >
+                      {rung.label}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ------------------------------------------------------------ */}
+          {/* The one-click bottleneck. Rung 2 already has a fix surface.    */}
+          {/* ------------------------------------------------------------ */}
+          {agentLinkCount > 0 && (
+            <div className="rounded-lg border border-rose-500/35 bg-rose-500/5 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">
+                      {agentLinkCount} agents are waiting on an AgentLink invite
+                    </p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                      A manager has to send it. Contracting, appointments, and first deals all sit
+                      behind this one step.
+                    </p>
+                  </div>
+                </div>
+                <Button asChild size="sm" className="h-10 w-full sm:h-9 sm:w-auto">
+                  <Link to={AGENTLINK_FIX_ROUTE}>
+                    Send invites <ArrowRight className="ml-1.5 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ------------------------------------------------------------ */}
+          {/* Filters — manager + rung, nothing else.                       */}
+          {/* ------------------------------------------------------------ */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={managerFilter} onValueChange={setManagerFilter}>
+              <SelectTrigger className="h-10 w-full bg-muted/30 sm:h-9 sm:w-[210px]">
+                <SelectValue placeholder="All managers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All managers</SelectItem>
+                {summary.managers.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {rungFilter !== null && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 sm:h-9"
+                onClick={() => setRungFilter(null)}
+              >
+                Rung {rungFilter} only
+                <span aria-hidden className="ml-1.5 text-muted-foreground">
+                  ×
+                </span>
+              </Button>
+            )}
+
+            <span className="ml-auto shrink-0 text-xs tabular-nums text-muted-foreground">
+              {filtered ? `${visible.length} of ${rows.length}` : `${summary.stuck} climbing`}
+              {summary.launched > 0 && !filtered && ` · ${summary.launched} launched`}
+            </span>
+          </div>
+
+          {/* ------------------------------------------------------------ */}
+          {/* The list — most stuck, longest waiting, first.                */}
+          {/* ------------------------------------------------------------ */}
+          {visible.length === 0 ? (
+            <EmptyState
+              icon={<Users className="h-7 w-7" />}
+              variant={rows.length === 0 ? "success" : "default"}
+              title={rows.length === 0 ? "Every agent has cleared all eight rungs" : "No agent sits here"}
+              description={
+                rows.length === 0
+                  ? "Nobody is parked mid-onboarding. New hires will appear the moment they are added."
+                  : "That rung and manager combination is clear. Widen the filter to see who is still climbing."
+              }
+              actions={
+                rows.length > 0 ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 sm:h-9"
+                    onClick={() => {
+                      setRungFilter(null);
+                      setManagerFilter("all");
+                    }}
+                  >
+                    Show every agent
+                  </Button>
+                ) : undefined
+              }
+            />
+          ) : (
+            <ul className="space-y-2">
+              {visible.map((row) => {
+                const rung = stuckRung(row);
+                const days = daysStalled(row);
+                return (
+                  <li
+                    key={row.agent_id}
+                    className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 transition-colors hover:border-border hover:bg-card"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <AgentNameLink agentId={row.agent_id} className="text-sm font-semibold">
+                          <span className="min-w-0 truncate">{row.agent_name || "Unnamed agent"}</span>
+                        </AgentNameLink>
+                        <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                          {row.manager || "No manager assigned"}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className={cn("text-sm font-bold tabular-nums", daysTone(days))}>
+                          {days}d
+                        </div>
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          waiting
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                      <div
+                        className="flex shrink-0 items-center gap-1"
+                        role="img"
+                        aria-label={`${row.rungs_complete ?? 0} of 8 rungs cleared`}
+                      >
+                        {RUNGS.map((r) => {
+                          const done = row[r.field] === true;
+                          const isNext = !done && r.n === rung;
+                          return (
+                            <span
+                              key={r.n}
+                              className={cn(
+                                "h-2 w-2 rounded-full",
+                                done && "bg-emerald-500",
+                                isNext && "bg-amber-400",
+                                !done && !isNext && "bg-muted-foreground/25",
+                              )}
+                            />
+                          );
+                        })}
+                      </div>
+                      <span className="min-w-0 flex-1 text-[11px] font-medium text-amber-400 sm:text-xs">
+                        {row.next_missing_step ?? "All eight rungs cleared"}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

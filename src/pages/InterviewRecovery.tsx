@@ -914,6 +914,28 @@ export default function InterviewRecovery() {
               {/* stable-key-allow:skeleton */}
               {[1, 2, 3, 4, 5].map((n) => <Skeleton key={n} className="h-[76px] w-full rounded-lg" />)}
             </div>
+          ) : pipeline.isError ? (
+            // A query that threw must say so. Without this branch a failed read
+            // fell through to filtered.length === 0 and rendered the SUCCESS-toned
+            // "This queue is clear" — a broken query presented as an all-clear,
+            // the same fake-success class as the 465 InsuraCloud sync rows.
+            <div className="rounded-lg border border-rose-500/35 bg-rose-500/5 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <AlertTriangle className={cn("mt-0.5 h-5 w-5 shrink-0", BAD)} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">Interview queue did not load</p>
+                    <p className="mt-0.5 break-words text-xs text-muted-foreground">
+                      {(pipeline.error as Error | null)?.message ?? "The interview pipeline view could not be read."}
+                    </p>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" className="h-10 w-full sm:h-9 sm:w-auto"
+                        onClick={() => void pipeline.refetch()}>
+                  <RefreshCw className="mr-1.5 h-4 w-4" /> Try again
+                </Button>
+              </div>
+            </div>
           ) : filtered.length === 0 ? (
             <EmptyState
               icon={<CheckCircle2 className="h-7 w-7" />}

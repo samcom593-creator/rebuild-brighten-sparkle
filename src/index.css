@@ -18,35 +18,35 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
 @layer base {
   :root {
     /* Light mode - ULTRA SOFT: Muted warm gray background + soft cream cards (zero eye strain) */
-    --background: 220 14% 89%;
-    --foreground: 220 25% 20%;
+    --background: 220 20% 97%;
+    --foreground: 224 22% 14%;
 
-    --card: 45 20% 96%;
-    --card-foreground: 220 25% 18%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 22% 13%;
 
-    --popover: 45 18% 97%;
-    --popover-foreground: 220 25% 18%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 22% 13%;
 
-    --primary: 168 70% 34%;
+    --primary: 168 74% 30%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 10% 85%;
-    --secondary-foreground: 220 25% 18%;
+    --secondary: 220 16% 94%;
+    --secondary-foreground: 224 22% 16%;
 
-    --muted: 220 8% 83%;
-    --muted-foreground: 220 12% 45%;
+    --muted: 220 16% 95%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 168 70% 34%;
+    --accent: 168 74% 30%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 65% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 10% 78%;
-    --input: 220 10% 88%;
-    --ring: 168 70% 34%;
+    --border: 220 14% 90%;
+    --input: 220 14% 92%;
+    --ring: 168 74% 30%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* === Design Tokens v2 — spacing / motion / elevation === */
     /* Spacing scale (rem) — use as var(--space-3) etc. */
@@ -113,33 +113,33 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
 
   .light {
     /* ULTRA SOFT light mode: Muted warm gray background + soft cream cards (zero eye strain) */
-    --background: 220 14% 89%;
-    --foreground: 220 25% 20%;
+    --background: 220 20% 97%;
+    --foreground: 224 22% 14%;
 
-    --card: 45 20% 96%;
-    --card-foreground: 220 25% 18%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 22% 13%;
 
-    --popover: 45 18% 97%;
-    --popover-foreground: 220 25% 18%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 22% 13%;
 
-    --primary: 168 70% 34%;
+    --primary: 168 74% 30%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 10% 85%;
-    --secondary-foreground: 220 25% 18%;
+    --secondary: 220 16% 94%;
+    --secondary-foreground: 224 22% 16%;
 
-    --muted: 220 8% 83%;
-    --muted-foreground: 220 12% 45%;
+    --muted: 220 16% 95%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 168 70% 34%;
+    --accent: 168 74% 30%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 65% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 10% 78%;
-    --input: 220 10% 88%;
-    --ring: 168 70% 34%;
+    --border: 220 14% 90%;
+    --input: 220 14% 92%;
+    --ring: 168 74% 30%;
 
     /* Sidebar - soft warm gray */
     --sidebar-background: 220 12% 91%;
@@ -162,47 +162,47 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
   .dark {
     /* Bumped 2026-05-17: was too close to card bg, surfaces blended into each
      * other. Body slightly darker, card noticeably lighter for clear depth. */
-    --background: 222 60% 2%;
-    --foreground: 0 0% 98%;
+    --background: 224 16% 7%;
+    --foreground: 210 20% 97%;
 
-    --card: 222 35% 11%;
-    --card-foreground: 0 0% 97%;
+    --card: 224 14% 10%;
+    --card-foreground: 210 18% 96%;
 
-    --popover: 222 40% 13%;
-    --popover-foreground: 0 0% 97%;
+    --popover: 224 14% 12%;
+    --popover-foreground: 210 18% 96%;
 
     --primary: 164 72% 48%;
-    --primary-foreground: 222 47% 3%;
+    --primary-foreground: 224 20% 6%;
 
-    --secondary: 222 30% 12%;
-    --secondary-foreground: 180 100% 97%;
+    --secondary: 224 12% 13%;
+    --secondary-foreground: 210 20% 96%;
 
-    --muted: 222 30% 15%;
-    --muted-foreground: 220 15% 55%;
+    --muted: 224 12% 14%;
+    --muted-foreground: 220 10% 64%;
 
     --accent: 164 72% 48%;
-    --accent-foreground: 222 47% 3%;
+    --accent-foreground: 224 20% 6%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 25% 22%;
-    --input: 222 30% 14%;
+    --border: 224 12% 18%;
+    --input: 224 12% 14%;
     --ring: 164 72% 48%;
 
-    --sidebar-background: 222 47% 4%;
-    --sidebar-foreground: 180 100% 97%;
+    --sidebar-background: 224 18% 5%;
+    --sidebar-foreground: 210 18% 92%;
     --sidebar-primary: 164 72% 48%;
-    --sidebar-primary-foreground: 222 47% 3%;
-    --sidebar-accent: 222 35% 12%;
-    --sidebar-accent-foreground: 180 100% 97%;
-    --sidebar-border: 222 30% 12%;
+    --sidebar-primary-foreground: 224 20% 6%;
+    --sidebar-accent: 224 12% 12%;
+    --sidebar-accent-foreground: 210 18% 94%;
+    --sidebar-border: 224 12% 14%;
     --sidebar-ring: 164 72% 48%;
 
     /* Glass morphism - dark mode */
-    --glass-bg: hsl(222 47% 5% / 0.8);
-    --glass-border: hsl(222 30% 20% / 0.5);
-    --glass-shadow: 0 8px 32px hsl(222 47% 2% / 0.6);
+    --glass-bg: hsl(224 15% 9% / 0.86);
+    --glass-border: hsl(224 12% 20% / 0.6);
+    --glass-shadow: 0 8px 32px hsl(224 30% 2% / 0.5);
 
     /* Elevation scale (dark mode — deeper shadows) */
     --elev-1: 0 1px 2px hsl(222 47% 0% / 0.4);

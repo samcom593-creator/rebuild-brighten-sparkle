@@ -64,7 +64,7 @@ const WhatShippedTodayBanner = lazy(() =>
 );
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassCard } from "@/components/ui/glass-card";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { supabase } from "@/integrations/supabase/client";
@@ -189,7 +189,7 @@ function LazyPanel({ children, minHeight = "h-24" }: { children: ReactNode; minH
   return (
     <Suspense
       fallback={
-        <div className={cn("animate-pulse rounded-lg border border-border bg-muted/30", minHeight)} aria-hidden />
+        <div className={cn("animate-pulse rounded-lg bg-muted/30", minHeight)} aria-hidden />
       }
     >
       {children}
@@ -539,7 +539,10 @@ function StateBadge({ state }: { state: IntegrationState }) {
   return (
     <Badge
       variant={state === "critical" ? "destructive" : state === "ok" ? "default" : "outline"}
-      className={cn(state === "warning" && "border-amber-400/50 text-amber-600")}
+      className={cn(
+        "shrink-0",
+        state === "warning" && "border-amber-500/35 text-amber-600 dark:text-amber-400",
+      )}
     >
       {label}
     </Badge>
@@ -559,36 +562,24 @@ function StatTile({
   detail: string;
   tone?: "default" | "success" | "warning";
 }) {
-  // 2026-grade hero tiles: subtle gradient background, soft border, larger
-  // typography, icon in a glassmorphic pill. Tone changes the gradient
-  // color and icon accent.
-  const gradient =
+  // Flat KPI tile: no gradient fill, no icon pill. Severity rides the icon
+  // only (paired -600/dark:-400 so it survives the white light-theme card),
+  // and the number is the loudest thing on the page.
+  const iconTone =
     tone === "success"
-      ? "from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30"
+      ? "text-emerald-600 dark:text-emerald-400"
       : tone === "warning"
-        ? "from-amber-500/15 via-amber-500/5 to-transparent border-amber-500/30"
-        : "from-primary/15 via-primary/5 to-transparent border-primary/25";
-  const iconBg =
-    tone === "success"
-      ? "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30"
-      : tone === "warning"
-        ? "bg-amber-500/15 text-amber-400 ring-amber-500/30"
-        : "bg-primary/15 text-primary ring-primary/30";
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-muted-foreground";
   return (
-    <Card className={cn("rounded-md overflow-hidden  border", gradient)}>
-      <CardContent className="p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
-            <p className="mt-2 text-3xl font-bold tracking-tight tabular-nums">{value}</p>
-            <p className="mt-1.5 text-xs text-muted-foreground leading-snug">{detail}</p>
-          </div>
-          <div className={cn("rounded-lg p-2.5 ring-1", iconBg)}>
-            <Icon className="h-4 w-4" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <GlassCard className="p-4">
+      <div className="flex items-center gap-2">
+        <Icon className={cn("h-4 w-4 shrink-0", iconTone)} />
+        <p className="min-w-0 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      </div>
+      <p className="mt-2 break-words text-2xl font-bold leading-none tabular-nums text-foreground">{value}</p>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">{detail}</p>
+    </GlassCard>
   );
 }
 
@@ -608,26 +599,22 @@ function IntegrationCard({
   href: string;
 }) {
   return (
-    <Card className="rounded-lg">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Icon className="h-4 w-4 text-muted-foreground" />
-              <p className="truncate text-sm font-semibold">{title}</p>
-            </div>
-            <p className="mt-3 text-xl font-bold">{value}</p>
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{detail}</p>
-          </div>
-          <StateBadge state={state} />
-        </div>
-        <Button asChild variant="ghost" size="sm" className="mt-3 h-8 px-0 text-xs">
-          <Link to={href}>
-            Open <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
+    <GlassCard className="p-4">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">{title}</span>
+        </h3>
+        <StateBadge state={state} />
+      </div>
+      <p className="text-sm font-bold tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">{detail}</p>
+      <Button asChild variant="ghost" size="sm" className="mt-2 h-10 justify-start px-0 text-xs sm:h-9">
+        <Link to={href}>
+          Open <ArrowRight className="ml-1.5 h-4 w-4" />
+        </Link>
+      </Button>
+    </GlassCard>
   );
 }
 
@@ -649,25 +636,26 @@ function RecruitingGrid({ stats }: { stats: DashboardSnapshot["recruiting"] }) {
   ];
 
   return (
-    <Card className="rounded-lg">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Target className="h-4 w-4 text-primary" />
-          Recruiting Pipeline
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          <LazyPanel minHeight="h-16"><LicensedHiresRange /></LazyPanel>
-          {rows.map(([label, value]) => (
-            <div key={label} className="rounded-lg border border-border/70 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-              <p className="mt-1 text-xl font-bold">{number(Number(value))}</p>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <GlassCard className="p-4">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+          <Target className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">Recruiting Pipeline</span>
+        </h3>
+      </div>
+      <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+        Every stage of the hire funnel as an all-time count; a wide gap between two neighbouring stages is where applicants are dying.
+      </p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <LazyPanel minHeight="h-16"><LicensedHiresRange /></LazyPanel>
+        {rows.map(([label, value]) => (
+          <div key={label} className="rounded-lg border border-border bg-card p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+            <p className="mt-1.5 text-2xl font-bold leading-none tabular-nums text-foreground">{number(Number(value))}</p>
+          </div>
+        ))}
+      </div>
+    </GlassCard>
   );
 }
 
@@ -678,53 +666,63 @@ function WeekProductionCard({ snapshot }: { snapshot: DashboardSnapshot }) {
     : null;
 
   return (
-    <Card className="rounded-lg">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <BarChart3 className="h-4 w-4 text-primary" />
-          Week in Agency Production
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {hasWeekProduction ? (
-          <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <p className="text-xs text-muted-foreground">ALP posted this week</p>
-              <p className="mt-1 text-3xl font-bold">{money(snapshot.production.weekAlp)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Deals posted</p>
-              <p className="mt-1 text-3xl font-bold">{number(snapshot.production.weekDeals)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Presentations logged</p>
-              <p className="mt-1 text-3xl font-bold">{number(snapshot.production.presentationsWeek)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Vs prior matched week</p>
-              <p className={cn("mt-1 text-3xl font-bold", change !== null && change < 0 ? "text-amber-600" : "text-emerald-600")}>
-                {change === null ? "N/A" : percent(change)}
+    <GlassCard className="p-4">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+          <BarChart3 className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">Week in Agency Production</span>
+        </h3>
+      </div>
+      <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+        Posted ALP, deal count and presentations for the current business week, measured against the matched prior week.
+      </p>
+      {hasWeekProduction ? (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">ALP posted this week</p>
+            <p className="mt-1.5 break-words text-2xl font-bold leading-none tabular-nums text-foreground">{money(snapshot.production.weekAlp)}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Deals posted</p>
+            <p className="mt-1.5 text-2xl font-bold leading-none tabular-nums text-foreground">{number(snapshot.production.weekDeals)}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Presentations logged</p>
+            <p className="mt-1.5 text-2xl font-bold leading-none tabular-nums text-foreground">{number(snapshot.production.presentationsWeek)}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Vs prior matched week</p>
+            <p
+              className={cn(
+                "mt-1.5 text-2xl font-bold leading-none tabular-nums",
+                change === null
+                  ? "text-muted-foreground"
+                  : change < 0
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-emerald-600 dark:text-emerald-400",
+              )}
+            >
+              {change === null ? "—" : percent(change)}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-amber-500/35 bg-amber-500/5 p-3 sm:p-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">No posted production found for this scope this week.</p>
+              <p className="mt-0.5 break-words text-xs leading-relaxed text-muted-foreground">
+                This panel is no longer blank. It reads valid deals from `deals.posted_at` and presentations from `daily_production`; zero means no trusted records are visible to this role.
               </p>
             </div>
           </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-border p-5">
-            <div className="flex gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-500" />
-              <div>
-                <p className="font-semibold">No posted production found for this scope this week.</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  This panel is no longer blank. It reads valid deals from `deals.posted_at` and presentations from `daily_production`; zero means no trusted records are visible to this role.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-        <p className="mt-4 text-xs text-muted-foreground">
-          Source: deals.status in submitted/active filters, posted_at in America/Chicago business windows. Presentations remain manual `daily_production` input.
-        </p>
-      </CardContent>
-    </Card>
+        </div>
+      )}
+      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+        Source: deals.status in submitted/active filters, posted_at in America/Chicago business windows. Presentations remain manual `daily_production` input.
+      </p>
+    </GlassCard>
   );
 }
 
@@ -767,7 +765,7 @@ function ExecutiveDashboard({
   const mtdRangeLabel = `${monthStartLabel} - ${todayLabel}`;
 
   return (
-    <div className="space-y-6 pb-8 ops-fade-in">
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
         accent="primary"
         eyebrow={role === "admin" ? "Apex Financial · CEO Command" : "Manager · Command"}
@@ -777,12 +775,12 @@ function ExecutiveDashboard({
         actions={
           <>
             <Badge variant="outline" className="text-xs">{snapshot.scopeLabel}</Badge>
-            <Badge variant="secondary" className="text-xs">Generated {ageLabel(snapshot.sourceGeneratedAt)}</Badge>
-            <Button onClick={onRunSystemCheck} disabled={runningSystemCheck} size="sm">
+            <Badge variant="secondary" className="text-xs tabular-nums">Generated {ageLabel(snapshot.sourceGeneratedAt)}</Badge>
+            <Button onClick={onRunSystemCheck} disabled={runningSystemCheck} size="sm" className="h-10 w-full sm:h-9 sm:w-auto">
               {runningSystemCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Run System Check
             </Button>
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="sm" className="h-10 w-full sm:h-9 sm:w-auto">
               <Link to="/numbers">
                 Log Numbers <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -799,12 +797,12 @@ function ExecutiveDashboard({
       {/* Funnel-leak command row — biggest two leaks live in one strip
           at the top of every admin dashboard load: unclaimed applicants
           (recruiting side) + stalled XCEL students (licensing side). */}
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <LazyPanel minHeight="h-32"><UnclaimedLeadsCommandCard /></LazyPanel>
         <LazyPanel minHeight="h-32"><XcelStalledCard /></LazyPanel>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatTile
           icon={DollarSign}
           label="Today ALP"
@@ -829,7 +827,7 @@ function ExecutiveDashboard({
         <StatTile icon={CheckCircle2} label="Close rate" value={percent(snapshot.production.closeRate)} detail={`${number(snapshot.production.presentationsWeek)} presentations logged`} tone="success" />
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <IntegrationCard
           icon={Database}
           title="AgentLink"
@@ -883,7 +881,7 @@ function ExecutiveDashboard({
 
       {/* v9 audit fix 2026-06-10: AgentLink-style carrier breakdown + by-month trend.
           Two-column grid at desktop, stacked on mobile. */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <LazyPanel minHeight="h-64"><CarrierBreakdownCard /></LazyPanel>
         <LazyPanel minHeight="h-64"><BookTrendCard /></LazyPanel>
       </div>
@@ -892,22 +890,20 @@ function ExecutiveDashboard({
 
       {/* PL-026: removed "Activity And Referrals" 30-day widget per Sam.
           Recruiting block now spans full width. */}
-      <div className="grid gap-4">
-        <RecruitingGrid stats={snapshot.recruiting} />
-      </div>
+      <RecruitingGrid stats={snapshot.recruiting} />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Button asChild variant="outline" className="justify-between">
-          <Link to="/dashboard/leaderboard">Leaderboard <ArrowRight className="h-4 w-4" /></Link>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Button asChild variant="outline" className="h-10 justify-between sm:h-9">
+          <Link to="/dashboard/leaderboard"><span className="truncate">Leaderboard</span> <ArrowRight className="ml-2 h-4 w-4 shrink-0" /></Link>
         </Button>
-        <Button asChild variant="outline" className="justify-between">
-          <Link to="/dashboard/recruit">Recruiting <ArrowRight className="h-4 w-4" /></Link>
+        <Button asChild variant="outline" className="h-10 justify-between sm:h-9">
+          <Link to="/dashboard/recruit"><span className="truncate">Recruiting</span> <ArrowRight className="ml-2 h-4 w-4 shrink-0" /></Link>
         </Button>
-        <Button asChild variant="outline" className="justify-between">
-          <Link to="/dashboard/seminar-control">Seminar Control <ArrowRight className="h-4 w-4" /></Link>
+        <Button asChild variant="outline" className="h-10 justify-between sm:h-9">
+          <Link to="/dashboard/seminar-control"><span className="truncate">Seminar Control</span> <ArrowRight className="ml-2 h-4 w-4 shrink-0" /></Link>
         </Button>
-        <Button asChild variant="outline" className="justify-between">
-          <Link to="/dashboard/notifications">Communication Center <ArrowRight className="h-4 w-4" /></Link>
+        <Button asChild variant="outline" className="h-10 justify-between sm:h-9">
+          <Link to="/dashboard/notifications"><span className="truncate">Communication Center</span> <ArrowRight className="ml-2 h-4 w-4 shrink-0" /></Link>
         </Button>
       </div>
     </div>
@@ -980,9 +976,11 @@ export default function Dashboard() {
 
   if (effectiveRole === "agent") {
     return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         {isPreviewing && (
-          <Badge variant="outline">Previewing Agent View from {actualRole}</Badge>
+          <div className="px-4 pt-4 sm:px-6">
+            <Badge variant="outline">Previewing Agent View from {actualRole}</Badge>
+          </div>
         )}
         <Suspense fallback={<PageLoadingSkeleton />}>
           <AgentCommandDashboard />
@@ -993,9 +991,11 @@ export default function Dashboard() {
 
   if (effectiveRole === "manager") {
     return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         {isPreviewing && (
-          <Badge variant="outline">Previewing Manager View from {actualRole}</Badge>
+          <div className="px-4 pt-4 sm:px-6">
+            <Badge variant="outline">Previewing Manager View from {actualRole}</Badge>
+          </div>
         )}
         <Suspense fallback={<PageLoadingSkeleton />}>
           <ManagerCommandView />
@@ -1011,7 +1011,7 @@ export default function Dashboard() {
   return (
     <>
       {isPreviewing && (
-        <div className="mb-4">
+        <div className="mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6">
           <Badge variant="outline">Previewing {effectiveRole} dashboard from {actualRole}</Badge>
         </div>
       )}

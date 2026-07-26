@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
+import { GlassCard } from "@/components/ui/glass-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -114,7 +116,7 @@ interface AgentCRM {
 const attendanceColors: Record<AttendanceStatus, string> = {
   good: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
   warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-  critical: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+  critical: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
 };
 const attendanceLabels: Record<AttendanceStatus, string> = { good: "Good", warning: "Warning", critical: "Critical" };
 
@@ -149,12 +151,12 @@ const isStaleAgent = (agent: AgentCRM): boolean => {
 
 const getContactInfo = (agent: AgentCRM) => {
   if (!agent.lastContactedAt) {
-    return { label: "Never", color: "text-red-500 dark:text-red-400" };
+    return { label: "Never", color: "text-rose-600 dark:text-rose-400" };
   }
   const days = (Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24);
   if (days < 3) return { label: getTimeAgo(agent.lastContactedAt), color: "text-emerald-600 dark:text-emerald-400" };
   if (days < 6) return { label: getTimeAgo(agent.lastContactedAt), color: "text-amber-600 dark:text-amber-400" };
-  return { label: getTimeAgo(agent.lastContactedAt), color: "text-red-500 dark:text-red-400" };
+  return { label: getTimeAgo(agent.lastContactedAt), color: "text-rose-600 dark:text-rose-400" };
 };
 
 type PipelineBucket = "unlicensed" | "licensed";
@@ -175,19 +177,24 @@ const PROGRESS_LABELS: Record<string, string> = {
   waiting_on_license: "Waiting Lic.",
   licensed: "Licensed",
 };
+// 2026-07-26 visual pass — the per-section accent / headerBg / iconColor rainbow
+// (blue · purple · yellow · orange · teal · red · slate · gray · zinc) was the
+// loudest "different app" tell on this page. Severity is now carried by the row
+// itself in the three contract tokens (emerald / amber / rose); the segment
+// identity is carried by its label, icon, and one-sentence description.
 const SECTIONS = [
-  { key: "applied", bucket: "unlicensed" as PipelineBucket, label: "Applied", icon: Users, stages: ["applied"] as OnboardingStage[], accent: "border-l-blue-500", headerBg: "bg-blue-500/5", iconColor: "text-blue-500" },
-  { key: "meeting_attendance", bucket: "unlicensed" as PipelineBucket, label: "Meeting Attendance", icon: ClipboardCheck, stages: ["meeting_attendance"] as OnboardingStage[], accent: "border-l-purple-500", headerBg: "bg-purple-500/5", iconColor: "text-purple-500" },
-  { key: "pre_licensed", bucket: "unlicensed" as PipelineBucket, label: "Pre-Licensed", icon: GraduationCap, stages: ["pre_licensed", "onboarding", "training_online"] as OnboardingStage[], accent: "border-l-yellow-500", headerBg: "bg-yellow-500/5", iconColor: "text-amber-500" },
-  { key: "transfer", bucket: "licensed" as PipelineBucket, label: "Transfer", icon: Users, stages: ["transfer"] as OnboardingStage[], accent: "border-l-orange-500", headerBg: "bg-orange-500/5", iconColor: "text-amber-500" },
-  { key: "in_training", bucket: "licensed" as PipelineBucket, label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-teal-500", headerBg: "bg-teal-500/5", iconColor: "text-teal-500" },
-  { key: "below_10k", bucket: "licensed" as PipelineBucket, label: "Below $20K (last 30d)", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
-  { key: "live", bucket: "licensed" as PipelineBucket, label: "Live", icon: Briefcase, stages: ["live", "evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
-  { key: "needs_followup", bucket: "licensed" as PipelineBucket, label: "Needs Follow-Up", icon: AlertTriangle, stages: ["need_followup"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
-  { key: "hasnt_sold", bucket: "licensed" as PipelineBucket, label: "Hasn't Sold Yet", icon: AlertTriangle, stages: [] as OnboardingStage[], accent: "border-l-rose-500", headerBg: "bg-rose-500/5", iconColor: "text-rose-500" },
-  { key: "missing", bucket: "licensed" as PipelineBucket, label: "Missing / Silent", icon: Clock, stages: [] as OnboardingStage[], accent: "border-l-slate-500", headerBg: "bg-slate-500/5", iconColor: "text-slate-500" },
-  { key: "inactive", bucket: "licensed" as PipelineBucket, label: "Inactive", icon: UserX, stages: ["inactive"] as OnboardingStage[], accent: "border-l-gray-500", headerBg: "bg-gray-500/5", iconColor: "text-gray-500" },
-  { key: "deactivated", bucket: "licensed" as PipelineBucket, label: "Deactivated", icon: UserX, stages: [] as OnboardingStage[], accent: "border-l-zinc-500", headerBg: "bg-zinc-500/5", iconColor: "text-zinc-500" },
+  { key: "applied", bucket: "unlicensed" as PipelineBucket, label: "Applied", icon: Users, stages: ["applied"] as OnboardingStage[], desc: "Brand-new applications waiting on a first touch — every hour a row sits here is a hire cooling off." },
+  { key: "meeting_attendance", bucket: "unlicensed" as PipelineBucket, label: "Meeting Attendance", icon: ClipboardCheck, stages: ["meeting_attendance"] as OnboardingStage[], desc: "Today's agency meeting roll for licensed agents — an unfilled circle means attendance was never taken." },
+  { key: "pre_licensed", bucket: "unlicensed" as PipelineBucket, label: "Pre-Licensed", icon: GraduationCap, stages: ["pre_licensed", "onboarding", "training_online"] as OnboardingStage[], desc: "Recruits still working through licensing — a row stuck here is a seat that cannot earn yet." },
+  { key: "transfer", bucket: "licensed" as PipelineBucket, label: "Transfer", icon: Users, stages: ["transfer"] as OnboardingStage[], desc: "Licensed agents moving in from another agency — they stall until contracting and access are finished." },
+  { key: "in_training", bucket: "licensed" as PipelineBucket, label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], desc: "Agents riding along in the field — they need a mentor touch every week or the ramp slips." },
+  { key: "below_10k", bucket: "licensed" as PipelineBucket, label: "Below $20K (last 30d)", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], desc: "Licensed producers under $20K in the last 30 days, weakest first — this is the coaching list." },
+  { key: "live", bucket: "licensed" as PipelineBucket, label: "Live", icon: Briefcase, stages: ["live", "evaluated"] as OnboardingStage[], desc: "Fully live producers ranked by month ALP — the board the agency's revenue actually runs on." },
+  { key: "needs_followup", bucket: "licensed" as PipelineBucket, label: "Needs Follow-Up", icon: AlertTriangle, stages: ["need_followup"] as OnboardingStage[], desc: "Under $10K this month or six days with no contact — call these before the week closes." },
+  { key: "hasnt_sold", bucket: "licensed" as PipelineBucket, label: "Hasn't Sold Yet", icon: AlertTriangle, stages: [] as OnboardingStage[], desc: "Licensed with zero lifetime deals, longest-hired first — every row is a recruit who never activated." },
+  { key: "missing", bucket: "licensed" as PipelineBucket, label: "Missing / Silent", icon: Clock, stages: [] as OnboardingStage[], desc: "No production, contact, or record change in seven days — silence is the first sign of an agent leaving." },
+  { key: "inactive", bucket: "licensed" as PipelineBucket, label: "Inactive", icon: UserX, stages: ["inactive"] as OnboardingStage[], desc: "Hidden by hand or dormant for 35 days — confirm they are gone before the seat counts as active." },
+  { key: "deactivated", bucket: "licensed" as PipelineBucket, label: "Deactivated", icon: UserX, stages: [] as OnboardingStage[], desc: "Removed from the active roster, kept visible so a wrong removal can be caught and reversed." },
 ];
 
 /** Compute the deterministic Next Best Action for an agent row. Producer-risk lane per MP-261 spec. */
@@ -230,30 +237,30 @@ function ContactActions({ agent, onViewApp, onEditLogin, onDeactivate, onAgentUp
   onAgentUpdate: (id: string, updates: Partial<AgentCRM>) => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
+    <div className="flex flex-wrap items-center gap-2">
       {agent.phone && (
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" asChild>
+        <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8" asChild>
           <a href={`tel:${agent.phone}`}><Phone className="h-3 w-3" /> Call</a>
         </Button>
       )}
       {agent.email && (
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" asChild>
+        <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8" asChild>
           <a href={`mailto:${agent.email}`}><Mail className="h-3 w-3" /> Email</a>
         </Button>
       )}
       {agent.instagramHandle && (
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" asChild>
+        <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8" asChild>
           <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
             <Instagram className="h-3 w-3" /> IG
           </a>
         </Button>
       )}
-      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => onViewApp(agent.id)}>
+      <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8" onClick={() => onViewApp(agent.id)}>
         <FileText className="h-3 w-3" /> App
       </Button>
       {agent.userId && (
         <>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
+          <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8"
             onClick={async () => {
               try {
                 const { data, error } = await supabase.functions.invoke("send-agent-portal-login", { body: { agentId: agent.id } });
@@ -264,18 +271,18 @@ function ContactActions({ agent, onViewApp, onEditLogin, onDeactivate, onAgentUp
             }}>
             <Send className="h-3 w-3" /> Portal
           </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
+          <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8"
             onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/login`); toast.success("Login link copied!"); }}>
             <Copy className="h-3 w-3" /> Link
           </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+          <Button variant="outline" size="sm" className="h-10 gap-1 border-amber-500/30 text-xs text-amber-600 hover:bg-amber-500/10 dark:text-amber-400 sm:h-8"
             onClick={() => onEditLogin(agent)}>
             <KeyRound className="h-3 w-3" /> Login
           </Button>
         </>
       )}
       <div className="flex-1" />
-      <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+      <Button variant="ghost" size="sm" className="h-10 gap-1 text-xs text-amber-600 hover:bg-amber-500/10 dark:text-amber-400 sm:h-8"
         onClick={async () => {
           try {
             await supabase.from("agents").update({ is_inactive: true }).eq("id", agent.id);
@@ -285,7 +292,7 @@ function ContactActions({ agent, onViewApp, onEditLogin, onDeactivate, onAgentUp
         }}>
         <EyeOff className="h-3 w-3" /> Hide
       </Button>
-      <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:bg-destructive/10"
+      <Button variant="ghost" size="sm" className="h-10 gap-1 text-xs text-destructive hover:bg-destructive/10 sm:h-8"
         onClick={() => onDeactivate(agent)}>
         <X className="h-3 w-3" /> Remove
       </Button>
@@ -302,12 +309,12 @@ function CompactExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onEditL
   onAgentUpdate: (id: string, updates: Partial<AgentCRM>) => void;
 }) {
   return (
-    <div className="border-t border-border bg-card/80 px-4 py-3">
+    <div className="border-t border-border bg-muted/20 px-3 py-3 sm:px-4">
       <ContactActions agent={agent} onViewApp={onViewApp} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} />
-      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className={cn("text-xs", agent.agentLicenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-muted text-muted-foreground")}>
+            <Badge variant="outline" className={cn("text-[10px] font-bold uppercase tracking-wide", agent.agentLicenseStatus === "licensed" ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground")}>
               {agent.agentLicenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
             </Badge>
             {agent.agentLicenseStatus !== "licensed" && (
@@ -326,10 +333,10 @@ function CompactExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onEditL
           </div>
           {agent.userId && <AgentTrainingStageBar agentId={agent.id} />}
           <details className="group">
-            <summary className="flex cursor-pointer select-none items-center gap-1.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">
-              <KeyRound className="h-3 w-3 text-amber-500" />
+            <summary className="flex min-h-10 cursor-pointer select-none items-center gap-2 rounded-md py-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:min-h-0">
+              <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" />
               Access &amp; Credentials
-              <ChevronRight className="h-3 w-3 transition-base group-open:rotate-90" />
+              <ChevronRight className="h-4 w-4 shrink-0 transition-base group-open:rotate-90" />
             </summary>
             <AgentCredentialsPanel agentId={agent.id} agentName={agent.name} agentEmail={agent.email} />
           </details>
@@ -1029,17 +1036,17 @@ export default function DashboardCRM() {
   // Last Activity / Next Best Action / Actions.
   const getTableHeaders = (_sectionKey: string) => (
     <>
-      <TableHead className="w-[220px]">Agent</TableHead>
-      <TableHead className="w-[110px]">Mentor</TableHead>
-      <TableHead className="w-[110px]">Stage</TableHead>
-      <TableHead className="w-[100px]">License</TableHead>
-      <TableHead className="w-[80px] text-center">Present</TableHead>
-      <TableHead className="w-[80px] text-center">Homework</TableHead>
-      <TableHead className="w-[100px] text-right">Week ALP</TableHead>
-      <TableHead className="w-[100px] text-right">Month ALP</TableHead>
-      <TableHead className="w-[110px]">Last Activity</TableHead>
-      <TableHead className="w-[200px]">Next Best Action</TableHead>
-      <TableHead className="w-[70px] text-right">Actions</TableHead>
+      <TableHead className="w-[220px] px-2">Agent</TableHead>
+      <TableHead className="w-[110px] px-2">Mentor</TableHead>
+      <TableHead className="w-[110px] px-2">Stage</TableHead>
+      <TableHead className="w-[100px] px-2">License</TableHead>
+      <TableHead className="w-[80px] px-2 text-center">Present</TableHead>
+      <TableHead className="w-[80px] px-2 text-center">Homework</TableHead>
+      <TableHead className="w-[100px] px-2 text-right">Week ALP</TableHead>
+      <TableHead className="w-[100px] px-2 text-right">Month ALP</TableHead>
+      <TableHead className="w-[110px] px-2">Last Activity</TableHead>
+      <TableHead className="w-[200px] px-2">Next Best Action</TableHead>
+      <TableHead className="w-[70px] px-2 text-right">Actions</TableHead>
     </>
   );
 
@@ -1047,12 +1054,12 @@ export default function DashboardCRM() {
     const nba = computeAgentNBA(agent);
     const badge = priorityBadgeClasses(nba.priority);
     return (
-      <TableCell className="py-2">
-        <div className="flex flex-col gap-1 min-w-0 max-w-[200px]">
-          <Badge variant="outline" className={cn("text-[10px] w-fit", badge.className)}>
+      <TableCell className="px-2 py-2">
+        <div className="flex min-w-0 max-w-[200px] flex-col gap-1">
+          <Badge variant="outline" className={cn("w-fit text-[10px] font-bold uppercase tracking-wide", badge.className)}>
             {badge.text}
           </Badge>
-          <span className="text-[11px] font-medium truncate" title={nba.reason}>{nba.action}</span>
+          <span className="truncate text-[11px] font-medium text-foreground" title={nba.reason}>{nba.action}</span>
         </div>
       </TableCell>
     );
@@ -1067,15 +1074,15 @@ export default function DashboardCRM() {
     // deactivated as agents — those UPDATEs silently no-op / FK-fail.
     const isApplicantRow = !agent.userId;
     return (
-    <TableCell className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
+    <TableCell className="px-2 py-2 text-right" onClick={(e) => e.stopPropagation()}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label={`Actions for ${agent.name}`}>
+          <Button variant="ghost" size="sm" className="h-10 w-10 p-0 sm:h-8 sm:w-8" aria-label={`Actions for ${agent.name}`}>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
-          <DropdownMenuLabel className="text-[11px]">{agent.name}</DropdownMenuLabel>
+          <DropdownMenuLabel className="truncate text-[11px]">{agent.name}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setViewAppTarget({ agentId: agent.id, applicationId: agent.applicationId })}>
             <FileText className="h-3.5 w-3.5 mr-2" /> View application
@@ -1179,35 +1186,36 @@ export default function DashboardCRM() {
       const days = Math.max(0, Date.now() - new Date(activitySourceTs).getTime()) / (1000 * 60 * 60 * 24);
       if (days < 3) activityColor = "text-emerald-600 dark:text-emerald-400";
       else if (days < 6) activityColor = "text-amber-600 dark:text-amber-400";
-      else activityColor = "text-red-500 dark:text-red-400";
+      else activityColor = "text-rose-600 dark:text-rose-400";
     } else {
-      activityColor = "text-red-500 dark:text-red-400";
+      activityColor = "text-rose-600 dark:text-rose-400";
     }
     return (
       <>
-        <TableCell className="py-2">
-          <span className="text-xs text-muted-foreground truncate max-w-[110px] inline-block">
+        <TableCell className="px-2 py-2">
+          <span className="inline-block max-w-[110px] truncate text-[11px] text-muted-foreground">
             {agent.managerName?.split(" ")[0] || "—"}
           </span>
         </TableCell>
-        <TableCell className="py-2">
-          <Badge variant="outline" className="text-[10px]">{stageLabel}</Badge>
+        <TableCell className="px-2 py-2">
+          <Badge variant="outline" className="max-w-[104px] truncate text-[10px] font-bold uppercase tracking-wide">{stageLabel}</Badge>
         </TableCell>
-        <TableCell className="py-2">
+        <TableCell className="px-2 py-2">
           <Badge
             variant="outline"
             className={cn(
-              "text-[10px]",
+              "text-[10px] font-bold uppercase tracking-wide",
               isLicensed
-                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                 : "bg-muted text-muted-foreground",
             )}
           >
             {isLicensed ? "Licensed" : "Unlicensed"}
           </Badge>
         </TableCell>
-        <TableCell className="py-2 text-center" onClick={(e) => e.stopPropagation()}>
+        <TableCell className="px-2 py-2 text-center" onClick={(e) => e.stopPropagation()}>
           <button
+            type="button"
             onClick={() => {
               if (isApplicantRow) {
                 toast.info(`Hire ${agent.name} first — attendance is agent-scoped.`);
@@ -1216,41 +1224,53 @@ export default function DashboardCRM() {
               toggleMeetingAttendance(agent.id);
             }}
             disabled={isApplicantRow}
-            className={cn("focus:outline-none transition-base", isApplicantRow && "opacity-40 cursor-not-allowed")}
+            aria-pressed={attendancePresent}
+            className={cn(
+              "mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+              "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+              "sm:h-8 sm:w-8",
+              isApplicantRow ? "cursor-not-allowed opacity-40" : "hover:bg-muted/60",
+            )}
             aria-label={`Toggle meeting attendance for ${agent.name}`}
             title={isApplicantRow ? "Hire this applicant first to track attendance" : undefined}
           >
             {attendancePresent ? (
-              <CircleCheck className="h-5 w-5 text-emerald-500 fill-emerald-500/20 mx-auto" />
+              <CircleCheck className="h-5 w-5 fill-emerald-500/20 text-emerald-600 dark:text-emerald-400" />
             ) : (
               <Circle
                 className={cn(
-                  "h-5 w-5 mx-auto",
-                  attendanceState === "absent" ? "text-red-500" : "text-muted-foreground/40",
+                  "h-5 w-5",
+                  attendanceState === "absent" ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground/40",
                 )}
               />
             )}
           </button>
         </TableCell>
-        <TableCell className="py-2 text-center">
+        <TableCell className="px-2 py-2 text-center">
           {isTrainee ? (
-            <Circle className="h-4 w-4 text-muted-foreground/30 mx-auto" />
+            <Circle className="mx-auto h-4 w-4 text-muted-foreground/30" />
           ) : (
-            <span className="text-xs text-muted-foreground">—</span>
+            <span className="text-[11px] text-muted-foreground">—</span>
           )}
         </TableCell>
-        <TableCell className="py-2 text-right">
-          <span className="text-xs font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+        <TableCell className="px-2 py-2 text-right">
+          <span className={cn(
+            "text-sm font-bold tabular-nums",
+            agent.weeklyALP > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
+          )}>
             {agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}
           </span>
         </TableCell>
-        <TableCell className="py-2 text-right">
-          <span className="text-xs font-semibold tabular-nums">
+        <TableCell className="px-2 py-2 text-right">
+          <span className={cn(
+            "text-sm font-bold tabular-nums",
+            agent.monthlyALP > 0 ? "text-foreground" : "text-muted-foreground",
+          )}>
             {agent.monthlyALP > 0 ? `$${agent.monthlyALP.toLocaleString()}` : "—"}
           </span>
         </TableCell>
-        <TableCell className="py-2">
-          <span className={cn("text-xs font-medium tabular-nums", activityColor)}>{lastActivityLabel}</span>
+        <TableCell className="px-2 py-2">
+          <span className={cn("text-[11px] font-medium tabular-nums", activityColor)}>{lastActivityLabel}</span>
         </TableCell>
         {renderNBACell(agent)}
         {renderKebabActions(agent)}
@@ -1273,12 +1293,15 @@ export default function DashboardCRM() {
   );
 
   if (authLoading) {
-    return <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+    return <PageLoadingSkeleton variant="table" />;
   }
 
   return (
     <>
-      <div className="space-y-5 page-enter relative p-4 md:p-6">
+      {/* max-w-[1400px] (not max-w-6xl) — the primary content is an 11-column
+          table, the one width exception the visual contract allows. px-4 sm:px-6
+          is required so PageHeader's -mx-4 sm:-mx-6 cancels exactly. */}
+      <div className="page-enter mx-auto w-full max-w-[1400px] space-y-5 px-4 pb-24 sm:px-6">
         <PageHeader
           accent="cyan"
           eyebrow="Team"
@@ -1287,21 +1310,21 @@ export default function DashboardCRM() {
           actions={
             <>
               {(isAdmin || isManager) && (
-                <Button variant={bulkMode ? "secondary" : "outline"} size="sm" className="gap-1.5" onClick={() => { setBulkMode(!bulkMode); setSelectedAgents(new Set()); }}>
-                  <CheckSquare className="h-3.5 w-3.5" /> {bulkMode ? "Exit Bulk" : "Bulk Actions"}
+                <Button variant={bulkMode ? "secondary" : "outline"} size="sm" aria-pressed={bulkMode} className="h-10 gap-1.5 sm:h-9" onClick={() => { setBulkMode(!bulkMode); setSelectedAgents(new Set()); }}>
+                  <CheckSquare className="h-4 w-4 shrink-0" /> {bulkMode ? "Exit Bulk" : "Bulk Actions"}
                 </Button>
               )}
               {isAdmin && (
-                <Button onClick={handleBulkSendPortalLogins} variant="outline" size="sm" className="gap-1.5" disabled={sendingBulkLogins}>
-                  <Mail className="h-3.5 w-3.5" /> {sendingBulkLogins ? "Sending..." : "Email All Logins"}
+                <Button onClick={handleBulkSendPortalLogins} variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9" disabled={sendingBulkLogins}>
+                  <Mail className="h-4 w-4 shrink-0" /> {sendingBulkLogins ? "Sending..." : "Email All Logins"}
                 </Button>
               )}
               <AddAgentModal onAgentAdded={fetchAgents} />
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into WhatsApp"); }}>
-                <Link2 className="h-3.5 w-3.5" /> Check-In Link
+              <Button variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9" onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into WhatsApp"); }}>
+                <Link2 className="h-4 w-4 shrink-0" /> Check-In Link
               </Button>
-              <Button onClick={fetchAgents} variant="outline" size="sm" className="gap-1.5">
-                <RefreshCw className="h-3.5 w-3.5" /> Refresh
+              <Button onClick={fetchAgents} variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9">
+                <RefreshCw className="h-4 w-4 shrink-0" /> Refresh
               </Button>
             </>
           }
@@ -1316,34 +1339,34 @@ export default function DashboardCRM() {
               isEnabled={bulkMode} onToggle={() => { setBulkMode(false); setSelectedAgents(new Set()); }}
             />
             {selectedAgents.size > 0 && (
-              <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg border border-border/60 bg-muted/30">
-                <span className="text-xs text-muted-foreground mr-1">More actions:</span>
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3 sm:p-4">
+                <span className="mr-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">More actions</span>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5 h-8"
+                  className="h-10 gap-1.5 sm:h-8"
                   onClick={() => { setComposeChannel("email"); setComposeOpen(true); }}
                 >
-                  <Mail className="h-3.5 w-3.5" /> Compose Email
+                  <Mail className="h-4 w-4 shrink-0" /> Compose Email
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5 h-8"
+                  className="h-10 gap-1.5 sm:h-8"
                   onClick={() => { setComposeChannel("sms"); setComposeOpen(true); }}
                 >
-                  <Send className="h-3.5 w-3.5" /> Compose SMS
+                  <Send className="h-4 w-4 shrink-0" /> Compose SMS
                 </Button>
                 {ENABLE_BULK_DELETE && isAdmin && (
                   <Button
                     size="sm"
                     variant="destructive"
-                    className="gap-1.5 h-8 ml-auto"
+                    className="ml-auto h-10 gap-1.5 sm:h-8"
                     disabled={bulkDeleting}
                     onClick={handleBulkDelete}
                   >
-                    <UserX className="h-3.5 w-3.5" />
-                    {bulkDeleting ? "Deactivating…" : `Deactivate (${selectedAgents.size})`}
+                    <UserX className="h-4 w-4 shrink-0" />
+                    <span className="tabular-nums">{bulkDeleting ? "Deactivating…" : `Deactivate (${selectedAgents.size})`}</span>
                   </Button>
                 )}
               </div>
@@ -1351,143 +1374,162 @@ export default function DashboardCRM() {
           </div>
         )}
 
-        {/* palette-allow:mp261-apex-token-card-bg — APEX design-token bg #101720 per Sam MP-261 brief */}
-        <div className="flex flex-col sm:flex-row gap-2 flex-wrap p-3 rounded-2xl bg-[#101720] border border-white/[0.08]">
-          <div className="relative flex-1 min-w-[180px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder="Search agents..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 h-8 text-sm" />
-          </div>
-          {isAdmin && managers.length > 0 && (
-            <Select value={managerFilter} onValueChange={setManagerFilter}>
-              <SelectTrigger className="w-[140px] h-8 text-sm"><Filter className="h-3.5 w-3.5 mr-1.5" /><SelectValue placeholder="All Managers" /></SelectTrigger>
+        <GlassCard className="p-4">
+          <div className="flex flex-col flex-wrap gap-2 sm:flex-row">
+            <div className="relative min-w-0 flex-1 sm:min-w-[180px]">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 text-muted-foreground" />
+              <Input placeholder="Search agents..." aria-label="Search agents by name or email" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 pl-9 text-sm sm:h-9" />
+            </div>
+            {isAdmin && managers.length > 0 && (
+              <Select value={managerFilter} onValueChange={setManagerFilter}>
+                <SelectTrigger aria-label="Filter by manager" className="h-10 w-full text-sm sm:h-9 sm:w-[140px]"><Filter className="mr-1.5 h-4 w-4 shrink-0 text-muted-foreground" /><SelectValue placeholder="All Managers" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Managers</SelectItem>
+                  {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+            <Select value={licenseFilter} onValueChange={setLicenseFilter}>
+              <SelectTrigger aria-label="Filter by license status" className="h-10 w-full text-sm sm:h-9 sm:w-[130px]"><SelectValue placeholder="License" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Managers</SelectItem>
-                {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                <SelectItem value="all">All License</SelectItem>
+                <SelectItem value="licensed">Licensed</SelectItem>
+                <SelectItem value="unlicensed">Unlicensed</SelectItem>
               </SelectContent>
             </Select>
-          )}
-          <Select value={licenseFilter} onValueChange={setLicenseFilter}>
-            <SelectTrigger className="w-[130px] h-8 text-sm"><SelectValue placeholder="License" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All License</SelectItem>
-              <SelectItem value="licensed">Licensed</SelectItem>
-              <SelectItem value="unlicensed">Unlicensed</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={aiScoreFilter} onValueChange={setAiScoreFilter}>
-            <SelectTrigger className="w-[120px] h-8 text-sm"><Sparkles className="h-3.5 w-3.5 mr-1" /><SelectValue placeholder="AI Score" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Scores</SelectItem>
-              <SelectItem value="hot">🔥 Hot</SelectItem>
-              <SelectItem value="warm">☀️ Warm</SelectItem>
-              <SelectItem value="cool">❄️ Cool</SelectItem>
-              <SelectItem value="cold">🧊 Cold</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={sortMode} onValueChange={setSortMode}>
-            <SelectTrigger className="w-[160px] h-8 text-sm"><SelectValue placeholder="Sort" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="default">Default order</SelectItem>
-              <SelectItem value="alp_desc">Highest ALP</SelectItem>
-              <SelectItem value="newest">Newest</SelectItem>
-              <SelectItem value="stalest">Most Stale</SelectItem>
-              <SelectItem value="needs_followup">Needs Follow-Up</SelectItem>
-              <SelectItem value="by_stage">By Stage</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant={showDeactivated ? "secondary" : "outline"} size="sm" onClick={() => setShowDeactivated(!showDeactivated)} className="gap-1.5 h-8">
-            <UserX className="h-3.5 w-3.5" /> {showDeactivated ? "Deactivated ✓" : "Deactivated"}
-          </Button>
-          <Button variant={showInactive ? "secondary" : "outline"} size="sm" onClick={() => setShowInactive(!showInactive)} className="gap-1.5 h-8">
-            <Eye className="h-3.5 w-3.5" /> {showInactive ? "Inactive ✓" : "Inactive"}
-          </Button>
-          {activeFilterCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearAllFilters}
-              className="gap-1.5 h-8 text-muted-foreground hover:text-foreground ml-auto"
-            >
-              <X className="h-3.5 w-3.5" />
-              Clear filters
-              <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px] font-semibold">
-                {activeFilterCount}
-              </Badge>
+            <Select value={aiScoreFilter} onValueChange={setAiScoreFilter}>
+              <SelectTrigger aria-label="Filter by AI score" className="h-10 w-full text-sm sm:h-9 sm:w-[120px]"><Sparkles className="mr-1 h-4 w-4 shrink-0 text-muted-foreground" /><SelectValue placeholder="AI Score" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Scores</SelectItem>
+                <SelectItem value="hot">🔥 Hot</SelectItem>
+                <SelectItem value="warm">☀️ Warm</SelectItem>
+                <SelectItem value="cool">❄️ Cool</SelectItem>
+                <SelectItem value="cold">🧊 Cold</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortMode} onValueChange={setSortMode}>
+              <SelectTrigger aria-label="Sort rows" className="h-10 w-full text-sm sm:h-9 sm:w-[160px]"><SelectValue placeholder="Sort" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Default order</SelectItem>
+                <SelectItem value="alp_desc">Highest ALP</SelectItem>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="stalest">Most Stale</SelectItem>
+                <SelectItem value="needs_followup">Needs Follow-Up</SelectItem>
+                <SelectItem value="by_stage">By Stage</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant={showDeactivated ? "secondary" : "outline"} size="sm" aria-pressed={showDeactivated} onClick={() => setShowDeactivated(!showDeactivated)} className="h-10 gap-1.5 sm:h-9">
+              <UserX className="h-4 w-4 shrink-0" /> {showDeactivated ? "Deactivated ✓" : "Deactivated"}
             </Button>
-          )}
-        </div>
+            <Button variant={showInactive ? "secondary" : "outline"} size="sm" aria-pressed={showInactive} onClick={() => setShowInactive(!showInactive)} className="h-10 gap-1.5 sm:h-9">
+              <Eye className="h-4 w-4 shrink-0" /> {showInactive ? "Inactive ✓" : "Inactive"}
+            </Button>
+            {activeFilterCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="h-10 gap-1.5 text-muted-foreground hover:text-foreground sm:ml-auto sm:h-9"
+              >
+                <X className="h-4 w-4 shrink-0" />
+                Clear filters
+                <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px] font-bold tabular-nums">
+                  {activeFilterCount}
+                </Badge>
+              </Button>
+            )}
+          </div>
+        </GlassCard>
 
         {loading ? (
-          <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+          <GlassCard className="p-4">
+            <div className="mb-3 h-4 w-40 animate-pulse rounded bg-muted/40" />
+            <div className="space-y-2">
+              {[...Array(8)].map((_, i) => (
+                // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
+                <div key={i} className="h-[64px] animate-pulse rounded-lg bg-muted/30" />
+              ))}
+            </div>
+          </GlassCard>
         ) : (
           <>
           <Tabs value={activeStageTab} onValueChange={(v) => { setActiveStageTab(v); playSound("click"); }} className="space-y-3">
-            {/* MP-261 — compact rounded-full segment chips with teal ring active state. */}
-            <TabsList
-              // palette-allow:mp261-apex-token-tabs-card — APEX design-token surface per Sam MP-261 brief
-              className="w-full justify-start flex-wrap h-auto gap-1.5 rounded-2xl border border-white/[0.08] bg-[#101720] p-2 shadow-sm"
-            >
-              {SECTIONS.map(section => {
-                const count = (agentsBySection.get(section.key) ?? []).length;
-                const Icon = section.icon;
-                return (
-                  <TabsTrigger
-                    key={section.key}
-                    value={section.key}
-                    className={cn(
-                      // palette-allow:mp261-apex-token-chip-secondary — APEX text token #A8B3C5 per Sam MP-261 brief
-                      "gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-[#A8B3C5] transition-base",
-                      // palette-allow:mp261-apex-token-chip-primary — APEX text token #F5F7FA per Sam MP-261 brief
-                      "hover:bg-white/[0.03] hover:text-[#F5F7FA]",
-                      "data-[state=active]:bg-teal-500/10 data-[state=active]:text-teal-300",
-                      "data-[state=active]:ring-1 data-[state=active]:ring-teal-400/70",
-                    )}
-                  >
-                    <Icon className={cn("h-3.5 w-3.5", section.iconColor)} />
-                    {section.label}
-                    <Badge
-                      variant="outline"
+            {/* Segment chips. One scroll rail on phones so twelve chips never
+                wrap into six rows and never push the page body sideways. */}
+            <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+              <TabsList className="flex h-auto min-w-max justify-start gap-1.5 rounded-lg border border-border bg-card p-1.5">
+                {SECTIONS.map(section => {
+                  const count = (agentsBySection.get(section.key) ?? []).length;
+                  const Icon = section.icon;
+                  return (
+                    <TabsTrigger
+                      key={section.key}
+                      value={section.key}
                       className={cn(
-                        "text-[10px] h-4.5 px-1.5 font-bold tabular-nums",
-                        section.headerBg, section.iconColor, "border-current/20",
+                        "shrink-0 gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors",
+                        "hover:bg-muted/60 hover:text-foreground",
+                        "data-[state=active]:bg-primary/10 data-[state=active]:text-foreground",
+                        "data-[state=active]:ring-1 data-[state=active]:ring-primary/60",
                       )}
                     >
-                      {count}
-                    </Badge>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {section.label}
+                      <Badge
+                        variant="outline"
+                        className="h-4 px-1.5 text-[10px] font-bold tabular-nums"
+                      >
+                        {count}
+                      </Badge>
+                    </TabsTrigger>
+                  );
+                })}
+              </TabsList>
+            </div>
 
             {SECTIONS.map(section => {
               const sectionAgents = agentsBySection.get(section.key) ?? [];
+              const SectionIcon = section.icon;
 
               return (
                 <TabsContent key={section.key} value={section.key}>
-                  {sectionAgents.length === 0 ? (
-                    <div className="flex items-center justify-between gap-3 rounded-md border border-border px-4 py-3 text-sm">
-                      <span className="text-muted-foreground">
-                        {agents.length === 0 ? "No active agents fetched." : "No agents match this stage and filter set."}
+                  <GlassCard className="overflow-hidden p-4">
+                    <div className="mb-1 flex items-baseline justify-between gap-2">
+                      <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+                        <SectionIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{section.label}</span>
+                      </h3>
+                      <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+                        {sectionAgents.length}
                       </span>
-                      {agents.length > 0 && (
-                        <Button variant="outline" size="sm" onClick={clearAllFilters}>
+                    </div>
+                    <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                      {section.desc}
+                    </p>
+                  {sectionAgents.length === 0 ? (
+                    <EmptyState
+                      icon={<Users className="h-7 w-7" />}
+                      variant={agents.length === 0 ? "warning" : "default"}
+                      title={agents.length === 0 ? "No active agents fetched" : "No agents match this stage and filter set"}
+                      description={
+                        agents.length === 0
+                          ? "The roster query came back with nothing — hit Refresh, or check that this view is loading for your role."
+                          : "The segment itself may be clear, or the filters may be too tight. Clear them to see who really sits here."
+                      }
+                      actions={agents.length > 0 ? (
+                        <Button variant="outline" size="sm" className="h-10 sm:h-9" onClick={clearAllFilters}>
                           Clear filters
                         </Button>
-                      )}
-                    </div>
+                      ) : undefined}
+                    />
                   ) : (
-                    <div
-                      className={cn(
-                        // palette-allow:mp261-apex-token-table-card — APEX card surface #101720 per Sam MP-261 brief
-                        "rounded-2xl border border-white/[0.08] bg-[#101720] overflow-x-auto",
-                        section.accent,
-                        "border-l-4",
-                      )}
-                    >
+                    // The table's own wrapper supplies overflow-auto; -mx-4 lets that
+                    // scroll rail bleed to the card edge on a phone and inset on sm+.
+                    // The PAGE body never scrolls sideways.
+                    <div className="-mx-4 sm:mx-0">
                       <Table className="min-w-[900px]">
-                        <TableHeader className="bg-white dark:bg-slate-950">
-                          <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-transparent [&_th]:h-10 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide">
-                            {bulkMode && <TableHead className="w-8" />}
+                        <TableHeader>
+                          <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[10px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
+                            {bulkMode && <TableHead className="w-8 px-2" />}
                             {getTableHeaders(section.key)}
                           </TableRow>
                         </TableHeader>
@@ -1499,16 +1541,15 @@ export default function DashboardCRM() {
                                 <TableRow
                                   id={`agent-row-${agent.id}`}
                                   className={cn(
-                                    "cursor-pointer transition-all duration-150 hover:bg-muted/40",
-                                    isExpanded && "bg-muted/50",
-                                    !isExpanded && "even:bg-muted/15",
-                                    isStaleAgent(agent) && !isExpanded && "bg-red-500/[0.04] hover:bg-red-500/[0.08] border-l-2 border-l-red-500/40",
+                                    "cursor-pointer border-b border-border/60 transition-colors hover:bg-muted/30",
+                                    isExpanded && "bg-muted/40",
+                                    isStaleAgent(agent) && !isExpanded && "border-l-2 border-l-rose-500/50 bg-rose-500/[0.05] hover:bg-rose-500/10",
                                     agent.isDeactivated && "opacity-50"
                                   )}
                                   onClick={() => { setExpandedAgentId(isExpanded ? null : agent.id); playSound(isExpanded ? "click" : "whoosh"); }}
                                 >
                                   {bulkMode && (
-                                    <TableCell className="py-2" onClick={e => e.stopPropagation()}>
+                                    <TableCell className="px-2 py-2" onClick={e => e.stopPropagation()}>
                                       <AgentSelectCheckbox agentId={agent.id} isSelected={selectedAgents.has(agent.id)}
                                         onToggle={(id) => {
                                           const s = new Set(selectedAgents);
@@ -1519,43 +1560,42 @@ export default function DashboardCRM() {
                                         isEnabled={bulkMode} />
                                     </TableCell>
                                   )}
-                                  <TableCell className="py-2">
-                                    <div className="flex items-center gap-2 min-w-0">
+                                  <TableCell className="px-2 py-2">
+                                    <div className="flex min-w-0 items-center gap-2">
                                       <div className="relative shrink-0">
-                                        <AgentAvatar avatarUrl={getAvatarUrl(agent.avatarUrl)} name={agent.name} size="sm" className="ring-2 ring-background shadow-sm" />
+                                        <AgentAvatar avatarUrl={getAvatarUrl(agent.avatarUrl)} name={agent.name} size="sm" className="shadow-sm ring-2 ring-background" />
                                         {isStaleAgent(agent) && (
-                                          <div className={cn("absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-red-500")} />
+                                          <div className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-rose-500" />
                                         )}
                                       </div>
                                       <div className="min-w-0">
                                         {/* 2026-06-15 — clickable name opens AgentProfileDrawer in-place */}
-                                        <p className="font-medium text-xs truncate">
+                                        <p className="truncate text-sm font-medium text-foreground">
                                           <AgentNameLink agentId={agent.id}>{agent.name}</AgentNameLink>
                                         </p>
-                                        <div className="flex items-center gap-1 mt-0.5">
-                                          {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[10px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
-                                          {!agent.avatarUrl && <Badge variant="outline" className="text-[10px] h-3.5 px-1 bg-red-500/10 text-red-500 border-red-500/20">📷 Photo</Badge>}
+                                        <div className="mt-0.5 flex flex-wrap items-center gap-1">
+                                          {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="h-4 border-amber-500/20 bg-amber-500/10 px-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">Dupe</Badge>}
+                                          {!agent.avatarUrl && <Badge variant="outline" className="h-4 border-rose-500/20 bg-rose-500/10 px-1 text-[10px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">📷 Photo</Badge>}
                                           {agent.aiScoreTier && (
-                                            <Badge variant="outline" className={cn("text-[10px] h-3.5 px-1", {
-                                              "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
-                                              "bg-orange-500/10 text-amber-500 border-orange-500/20": agent.aiScoreTier === "warm",
-                                              "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
-                                              "bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20": agent.aiScoreTier === "cold",
+                                            <Badge variant="outline" className={cn("h-4 px-1 text-[10px] font-bold uppercase tracking-wide", {
+                                              "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400": agent.aiScoreTier === "hot",
+                                              "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400": agent.aiScoreTier === "warm",
+                                              "bg-muted text-muted-foreground": agent.aiScoreTier === "cool" || agent.aiScoreTier === "cold",
                                             })}>
                                               {agent.aiScoreTier === "hot" ? "🔥" : agent.aiScoreTier === "warm" ? "☀️" : agent.aiScoreTier === "cool" ? "❄️" : "🧊"} {agent.aiScoreTier}
                                             </Badge>
                                           )}
                                           {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
-                                            <Badge variant="outline" className="text-[11px] h-4.5 px-2 font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
+                                            <Badge variant="outline" className="h-4 max-w-[96px] truncate px-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{agent.managerName.split(" ")[0]}</Badge>
                                           )}
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
-                                        {agent.phone && <p className="text-[10px] text-muted-foreground select-all cursor-text" onClick={e => e.stopPropagation()}>{agent.phone}</p>}
+                                        <p className="truncate text-[11px] text-muted-foreground">{agent.email}</p>
+                                        {agent.phone && <p className="cursor-text select-all truncate text-[11px] tabular-nums text-muted-foreground" onClick={e => e.stopPropagation()}>{agent.phone}</p>}
                                       </div>
                                     </div>
                                   </TableCell>
                                   {getTableCells(section.key, agent)}
-                                  <TableCell className="py-2">
+                                  <TableCell className="px-2 py-2">
                                     <div className={`transition-base ${isExpanded ? 'rotate-90' : ''}`}>
                                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                     </div>
@@ -1571,6 +1611,7 @@ export default function DashboardCRM() {
                       </Table>
                     </div>
                   )}
+                  </GlassCard>
                 </TabsContent>
               );
             })}

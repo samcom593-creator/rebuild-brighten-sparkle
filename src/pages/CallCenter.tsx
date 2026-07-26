@@ -1,7 +1,10 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Phone, CheckCircle2, Sparkles, Instagram, Mail, PhoneCall } from "lucide-react";
+import { AnimatePresence } from "framer-motion";
+import { Phone, CheckCircle2, Sparkles, Instagram, Mail, PhoneCall, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GlassCard } from "@/components/ui/glass-card";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -953,101 +956,114 @@ export default function CallCenter() {
 
   // Active calling UI
   return (
-    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto p-2 md:p-6 page-enter">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 md:mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-md bg-slate-900 border border-teal-500/30">
-            <Phone className="h-5 w-5 text-teal-300" />
-          </div>
-          <div>
-            <h2 className="text-lg md:text-xl font-bold text-slate-100">Call Center</h2>
-            <p className="text-xs md:text-sm text-slate-400">
-              {totalLeads - processedCount} leads remaining · {processedCount} processed
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 md:gap-4">
-          <CallCenterProgressRing
-            current={processedCount}
-            total={totalLeads}
-          />
-          <Button variant="outline" onClick={() => setStarted(false)} aria-label="Exit call center">
-            Exit
-          </Button>
-        </div>
-      </div>
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+      <PageHeader
+        accent="cyan"
+        eyebrow="Recruiting · Dial session"
+        eyebrowIcon={<Phone className="h-3 w-3" />}
+        title="Call Center"
+        subtitle={
+          <span className="tabular-nums">
+            {totalLeads - processedCount} leads remaining · {processedCount} processed
+          </span>
+        }
+        actions={
+          <>
+            <CallCenterProgressRing
+              current={processedCount}
+              total={totalLeads}
+            />
+            <Button
+              variant="outline"
+              className="h-10 sm:h-9"
+              onClick={() => setStarted(false)}
+              aria-label="Exit call center"
+            >
+              Exit
+            </Button>
+          </>
+        }
+      />
 
       {/* Content */}
       {loading ? (
-        <div className="flex-1 flex flex-col gap-6 p-6">
-          {/* Skeleton loader */}
-          <div className="space-y-4 rounded-md border border-border/50 p-6">
+        <div className="space-y-5">
+          <GlassCard className="p-4">
             <div className="flex gap-2">
               <Skeleton className="h-6 w-24 rounded-full" />
               <Skeleton className="h-6 w-20 rounded-full" />
             </div>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-32" />
-            <div className="space-y-3 pt-4">
-              <Skeleton className="h-16 w-full rounded-md" />
-              <Skeleton className="h-12 w-full rounded-md" />
-              <Skeleton className="h-12 w-full rounded-md" />
+            <Skeleton className="mt-3 h-6 w-48" />
+            <Skeleton className="mt-2 h-4 w-32" />
+            <div className="mt-3 space-y-2">
+              <Skeleton className="h-16 w-full rounded-lg" />
+              <Skeleton className="h-12 w-full rounded-lg" />
+              <Skeleton className="h-12 w-full rounded-lg" />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Skeleton className="h-20 rounded-md" />
-            <Skeleton className="h-20 rounded-md" />
-          </div>
-          <Skeleton className="h-14 w-full rounded-md" />
+          </GlassCard>
+          <GlassCard className="p-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <Skeleton className="h-20 rounded-lg" />
+              <Skeleton className="h-20 rounded-lg" />
+              <Skeleton className="h-20 rounded-lg" />
+              <Skeleton className="h-20 rounded-lg" />
+            </div>
+          </GlassCard>
         </div>
       ) : !currentLead ? (
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="flex-1 flex flex-col items-center justify-center text-center"
-        >
-          <div className="p-6 rounded-full bg-white dark:bg-slate-900 mb-6">
-            <CheckCircle2 className="h-16 w-16 text-primary" />
-          </div>
-          <h3 className="text-2xl font-bold mb-2 text-foreground">All Done!</h3>
-          <p className="text-muted-foreground mb-6">
-            No more leads matching your filters.
-          </p>
-          <Button onClick={() => setStarted(false)}>Back to Filters</Button>
-        </motion.div>
+        <EmptyState
+          icon={<CheckCircle2 className="h-7 w-7" />}
+          variant="success"
+          title="No leads left in this queue"
+          description="Every lead matching your filters has been worked. Head back and widen the filters to keep dialing."
+          actions={
+            <Button
+              className="h-10 w-full sm:h-9 sm:w-auto"
+              onClick={() => setStarted(false)}
+            >
+              Back to filters
+            </Button>
+          }
+        />
       ) : (
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-4 lg:gap-6 overflow-hidden">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
           {/* CALL PANEL — left column on desktop, stacked on mobile */}
-          <div className="flex flex-col gap-4 overflow-hidden">
+          <div className="flex min-w-0 flex-col gap-3">
             {/* Priority + NBA strip */}
             {currentBadge && currentNba && (
-              <div className="flex flex-wrap items-center gap-2 rounded-md border border-white/10 bg-slate-900/60 p-3">
-                <span className={cn(
-                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium",
-                  currentBadge.className,
-                )}>
-                  {currentBadge.text}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-slate-100 truncate">
-                    Next best action: {currentNba.action}
+              <GlassCard className="p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={cn(
+                          "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                          currentBadge.className,
+                        )}>
+                          {currentBadge.text}
+                        </span>
+                        <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                          Next best action: {currentNba.action}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        {currentNba.reason}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-slate-400 truncate">{currentNba.reason}</div>
+                  {currentLead?.phone && (
+                    <Button
+                      onClick={handleCall}
+                      aria-label={`Call ${currentLead.firstName} now`}
+                      className="h-10 w-full shrink-0 sm:h-9 sm:w-auto"
+                    >
+                      <PhoneCall className="mr-1.5 h-4 w-4" />
+                      Call Now
+                    </Button>
+                  )}
                 </div>
-                {currentLead?.phone && (
-                  <Button
-                    size="sm"
-                    onClick={handleCall}
-                    aria-label={`Call ${currentLead.firstName} now`}
-                    className="bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold"
-                  >
-                    <PhoneCall className="h-4 w-4 mr-1.5" />
-                    Call Now
-                  </Button>
-                )}
-              </div>
+              </GlassCard>
             )}
 
             {/* Lead Card */}
@@ -1067,66 +1083,86 @@ export default function CallCenter() {
                 }}
                 onSendFollowUp={handleSendFollowUp}
                 onStatusChange={handleStatusChange}
-                className="flex-1 overflow-y-auto"
+                className="min-w-0 flex-1 overflow-y-auto"
               />
             </AnimatePresence>
 
-            {/* Position indicator */}
-            <div className="text-center text-xs text-slate-500">
-              Lead {currentIndex + 1} of {totalLeads}
-            </div>
+            {/* Disposition — 8-button grid + secondary actions */}
+            <GlassCard className="p-4">
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+                  <PhoneCall className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">Disposition</span>
+                </h3>
+                {/* Position indicator */}
+                <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+                  Lead {currentIndex + 1} of {totalLeads}
+                </span>
+              </div>
+              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                Log the outcome and the queue advances on its own. Keys 1 to 8 fire the same
+                eight buttons without leaving the keyboard.
+              </p>
 
-            {/* 8-button disposition grid */}
-            <CallCenterActions
-              onAction={handleAction}
-              onSkip={handleSkip}
-              onPrevious={handlePrevious}
-              processing={processing}
-              canGoPrevious={currentIndex > 0}
-            />
+              {/* 8-button disposition grid */}
+              <CallCenterActions
+                onAction={handleAction}
+                onSkip={handleSkip}
+                onPrevious={handlePrevious}
+                processing={processing}
+                canGoPrevious={currentIndex > 0}
+              />
 
-            {/* Secondary actions row — schedule meeting + open detail drawer */}
-            <div className="flex flex-wrap gap-2 justify-center mt-1">
+              {/* Secondary actions row — schedule meeting + open detail drawer */}
               {currentLead?.source === "applications" && (
-                <>
+                <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3 sm:flex-row sm:flex-wrap">
                   <Button
                     variant="outline"
-                    size="sm"
                     onClick={() => setShowScheduleModal(true)}
                     disabled={processing}
                     aria-label={`Schedule meeting with ${currentLead.firstName}`}
-                    className="gap-2 border-violet-500/40 text-violet-300 hover:bg-violet-500/10"
+                    className="h-10 w-full gap-2 sm:h-9 sm:w-auto"
                   >
                     <CalendarPlus className="h-4 w-4" />
                     Schedule a meeting
                   </Button>
                   <Button
                     variant="outline"
-                    size="sm"
                     onClick={() => setDetailAppId(currentLead.id)}
                     disabled={processing}
                     aria-label={`Open expanded detail for ${currentLead.firstName}`}
-                    className="gap-2 border-teal-500/40 text-teal-300 hover:bg-teal-500/10"
+                    className="h-10 w-full gap-2 sm:h-9 sm:w-auto"
                   >
                     <Rocket className="h-4 w-4" />
                     Expanded detail
                   </Button>
-                </>
+                </div>
               )}
-            </div>
+            </GlassCard>
           </div>
 
           {/* QUEUE RAIL — desktop-only right column showing next 10 leads */}
-          <aside className="hidden lg:flex flex-col rounded-md border border-white/10 bg-slate-950/60 overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Queue Rail
+          <GlassCard
+            role="complementary"
+            aria-label="Queue rail"
+            className="hidden min-w-0 overflow-hidden lg:flex lg:flex-col"
+          >
+            <div className="shrink-0 border-b border-border/60 p-4">
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+                  <ListChecks className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">Queue Rail</span>
+                </h3>
+                <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+                  {Math.max(0, leads.length - currentIndex - 1)}{" "}
+                  <span className="text-[10px] font-bold uppercase tracking-wide">ahead</span>
+                </span>
               </div>
-              <div className="text-[10px] text-slate-500">
-                {Math.max(0, leads.length - currentIndex - 1)} ahead
-              </div>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                The next ten leads in dial order. Tap a name to jump straight to it.
+              </p>
             </div>
-            <div className="flex-1 overflow-y-auto divide-y divide-white/5">
+            <div className="min-w-0 flex-1 divide-y divide-border/60 overflow-y-auto">
               {leads.slice(currentIndex + 1, currentIndex + 11).map((l, idx) => {
                 const name = `${l.firstName} ${l.lastName ?? ""}`.trim() || "Unnamed";
                 const isLicensed = (l.licenseStatus ?? "").toLowerCase() === "licensed";
@@ -1141,35 +1177,37 @@ export default function CallCenter() {
                     type="button"
                     onClick={() => setCurrentIndex(currentIndex + 1 + idx)}
                     aria-label={`Jump to ${name}`}
-                    className="w-full text-left px-3 py-2.5 hover:bg-teal-500/5 transition-colors"
+                    className="w-full px-3 py-2.5 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="text-sm font-medium text-slate-100 truncate">{name}</div>
+                      <div className="min-w-0 truncate text-sm font-medium text-foreground">{name}</div>
                       <span className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded-full border shrink-0",
+                        "shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
                         isLicensed
-                          ? "border-emerald-500/40 text-emerald-300 bg-emerald-500/10"
-                          : "border-rose-500/30 text-rose-300 bg-rose-500/10",
+                          ? "border-emerald-500/35 text-emerald-600 dark:text-emerald-400"
+                          : "border-rose-500/35 text-rose-600 dark:text-rose-400",
                       )}>
                         {isLicensed ? "Lic" : "Unlic"}
                       </span>
                     </div>
-                    <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-400">
-                      <span>{ageDays}d old</span>
+                    <div className="mt-0.5 flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="shrink-0">
+                        <span className="tabular-nums">{ageDays}d</span> old
+                      </span>
                       {hasPhone ? (
-                        <span className="inline-flex items-center gap-1 text-teal-300">
+                        <span className="inline-flex shrink-0 items-center gap-1 text-emerald-600 dark:text-emerald-400">
                           <Phone className="h-3 w-3" /> phone
                         </span>
                       ) : l.instagramHandle ? (
-                        <span className="inline-flex items-center gap-1 text-amber-300">
+                        <span className="inline-flex shrink-0 items-center gap-1 text-amber-600 dark:text-amber-400">
                           <Instagram className="h-3 w-3" /> IG
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-slate-500">
+                        <span className="inline-flex shrink-0 items-center gap-1 text-muted-foreground">
                           <Mail className="h-3 w-3" /> email
                         </span>
                       )}
-                      <span className="text-[10px] text-slate-500 truncate">
+                      <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                         {l.source === "aged_leads" ? "aged" : "applied"}
                       </span>
                     </div>
@@ -1177,12 +1215,12 @@ export default function CallCenter() {
                 );
               })}
               {leads.length - currentIndex - 1 <= 0 && (
-                <div className="p-4 text-center text-xs text-slate-500">
+                <p className="px-3 py-8 text-center text-xs text-muted-foreground">
                   No more leads in the queue.
-                </div>
+                </p>
               )}
             </div>
-          </aside>
+          </GlassCard>
         </div>
       )}
 

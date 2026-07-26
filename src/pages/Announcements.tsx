@@ -6,19 +6,24 @@
 //   2. NEWS FEED — v_culture_feed (live deal_posted celebrations w/ agent name + photo)
 //
 // Both fed from existing tables. No new SQL — schema verified 2026-06-13.
+//
+// 2026-07-26 — presentation converged onto the APEX visual contract
+// (business-ops/2026-07-24-apex-implementation/APEX-VISUAL-CONTRACT.md).
+// Queries, mutations, branches, and rendered values are untouched.
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Megaphone, Pin, Sparkles, TrendingUp, RefreshCw, Send, Plus, Trophy } from "lucide-react";
+import { Megaphone, Pin, TrendingUp, RefreshCw, Send, Plus, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
-import { Card, CardContent } from "@/components/ui/card";
+import { GlassCard } from "@/components/ui/glass-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { formatTimeAgo } from "@/lib/dateUtils";
@@ -160,40 +165,54 @@ export default function Announcements() {
     onError: (e: any) => toast.error(e?.message || "Failed to post deal"),
   });
 
+  // Severity text tone only — the priority word itself is the second channel
+  // (WCAG 1.4.1), so colour is never carrying the meaning on its own.
   const priorityColor = (p: string | null) => {
-    if (p === "high" || p === "urgent") return "bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300";
-    if (p === "normal") return "bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300";
-    return "bg-slate-500/15 border-slate-500/30 text-slate-700 dark:text-slate-300";
+    if (p === "high" || p === "urgent") return "text-rose-600 dark:text-rose-400";
+    if (p === "normal") return "text-amber-600 dark:text-amber-400";
+    return "text-muted-foreground";
   };
 
   return (
-    <div className="page-enter px-4 sm:px-6 pb-24 space-y-6">
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
         eyebrow="Updates"
         eyebrowIcon={<Megaphone className="h-3 w-3" />}
         title="Announcements + News Feed"
         subtitle="Active company announcements + live celebrations stream. Mirrors AgentLink's Announcements + News Feed."
         actions={
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-11">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="text-[11px] tabular-nums">
               {(announcements.data?.length ?? 0)} active · {(feed.data?.length ?? 0)} events
             </Badge>
-            <Button variant="outline" size="sm" onClick={() => { announcements.refetch(); feed.refetch(); }}>
-              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${announcements.isFetching ? "animate-spin" : ""}`} />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10 sm:h-9"
+              onClick={() => { announcements.refetch(); feed.refetch(); }}
+            >
+              <RefreshCw className={cn("mr-1.5 h-4 w-4", announcements.isFetching && "animate-spin")} />
               Refresh
             </Button>
             <Button
               size="sm"
               variant="default"
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="h-10 sm:h-9"
+              aria-pressed={showDealForm}
               onClick={() => setShowDealForm((v) => !v)}
             >
-              <Trophy className="h-3.5 w-3.5 mr-1.5" />
+              <Trophy className="mr-1.5 h-4 w-4" />
               Post a Deal
             </Button>
             {isAdmin && (
-              <Button size="sm" onClick={() => setShowForm((v) => !v)}>
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-10 sm:h-9"
+                aria-pressed={showForm}
+                onClick={() => setShowForm((v) => !v)}
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
                 Post
               </Button>
             )}
@@ -203,30 +222,45 @@ export default function Announcements() {
 
       {/* ADMIN POST FORM */}
       {isAdmin && showForm && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardContent className="p-4 space-y-3">
+        <GlassCard className="p-4">
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+              <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">New announcement</span>
+            </h3>
+          </div>
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            Anything published here sits at the top of every agent's feed until it is deactivated.
+          </p>
+
+          <div className="space-y-3">
             <Input
               placeholder="Title…"
+              aria-label="Announcement title"
+              className="h-10 sm:h-9"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
             />
             <Textarea
               placeholder="Announcement body…"
+              aria-label="Announcement body"
               value={form.body}
               onChange={(e) => setForm({ ...form, body: e.target.value })}
               rows={4}
             />
-            <div className="flex items-center gap-3 text-13">
-              <label className="flex items-center gap-1.5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <label className="flex min-h-10 items-center gap-2 text-xs font-medium text-foreground sm:min-h-9">
                 <input
                   type="checkbox"
+                  className="h-4 w-4 shrink-0 accent-primary focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
                   checked={form.pinned}
                   onChange={(e) => setForm({ ...form, pinned: e.target.checked })}
                 />
                 Pin to top
               </label>
               <select
-                className="border border-border bg-background rounded-md px-2 py-1 text-13"
+                aria-label="Announcement priority"
+                className="h-10 rounded-sm border border-border bg-background px-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: e.target.value })}
               >
@@ -235,44 +269,61 @@ export default function Announcements() {
                 <option value="high">High</option>
                 <option value="urgent">Urgent</option>
               </select>
-              <div className="ml-auto flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
+              <div className="flex items-center gap-2 sm:ml-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-10 flex-1 sm:h-9 sm:flex-none"
+                  onClick={() => setShowForm(false)}
+                >
+                  Cancel
+                </Button>
                 <Button
                   size="sm"
+                  className="h-10 flex-1 sm:h-9 sm:flex-none"
                   disabled={!form.title.trim() || !form.body.trim() || postAnnouncement.isPending}
                   onClick={() => postAnnouncement.mutate()}
                 >
-                  <Send className="h-3.5 w-3.5 mr-1.5" />
+                  <Send className="mr-1.5 h-4 w-4" />
                   Publish
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       )}
 
       {/* POST A DEAL FORM */}
       {showDealForm && (
-        <Card className="border-emerald-500/30 bg-emerald-500/5">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Trophy className="h-4 w-4 text-emerald-600" />
-              <p className="text-13 font-bold">Post a Deal</p>
-              {!myAgent.data?.id && (
-                <Badge variant="outline" className="text-11 ml-auto text-rose-600 border-rose-500/30">
-                  No agent linked
-                </Badge>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+        <GlassCard className="p-4">
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+              <Trophy className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Post a Deal</span>
+            </h3>
+            {!myAgent.data?.id && (
+              <span className="shrink-0 rounded-sm border border-rose-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">
+                No agent linked
+              </span>
+            )}
+          </div>
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            A posted deal lands on the live feed instantly, so the whole floor sees the win while it is still warm.
+          </p>
+
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Input
                 type="number"
                 placeholder="Annual premium ($)"
+                aria-label="Annual premium in dollars"
+                className="h-10 tabular-nums sm:h-9"
                 value={dealForm.premium}
                 onChange={(e) => setDealForm({ ...dealForm, premium: e.target.value })}
               />
               <select
-                className="border border-border bg-background rounded-md px-3 py-2 text-13"
+                aria-label="Product sold"
+                className="h-10 rounded-sm border border-border bg-background px-3 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
                 value={dealForm.product}
                 onChange={(e) => setDealForm({ ...dealForm, product: e.target.value })}
               >
@@ -289,121 +340,190 @@ export default function Announcements() {
             </div>
             <Textarea
               placeholder="Brag a little — what made this one yours? (optional)"
+              aria-label="Deal note"
               value={dealForm.note}
               onChange={(e) => setDealForm({ ...dealForm, note: e.target.value })}
               rows={2}
             />
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowDealForm(false)}>Cancel</Button>
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 flex-1 sm:h-9 sm:flex-none"
+                onClick={() => setShowDealForm(false)}
+              >
+                Cancel
+              </Button>
               <Button
                 size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700"
+                className="h-10 flex-1 sm:h-9 sm:flex-none"
                 disabled={!dealForm.premium || postDeal.isPending || !myAgent.data?.id}
                 onClick={() => postDeal.mutate()}
               >
-                <Trophy className="h-3.5 w-3.5 mr-1.5" />
+                <Trophy className="mr-1.5 h-4 w-4" />
                 {postDeal.isPending ? "Posting…" : "Celebrate It"}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       )}
 
       {/* ANNOUNCEMENTS */}
-      <section className="space-y-3">
-        <h2 className="text-15 font-bold flex items-center gap-2">
-          <Megaphone className="h-4 w-4 text-amber-500" /> Active Announcements
-        </h2>
+      <GlassCard className="p-4">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+            <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">Active announcements</span>
+          </h3>
+          <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+            {announcements.data?.length ?? 0}
+          </span>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          Everything the floor is expected to have read — pinned notices sit first, the rest run newest to oldest.
+        </p>
+
         {announcements.isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton — fixed-length loading placeholder */ className="h-24" />)}
-          </div>
-        ) : (announcements.data?.length ?? 0) === 0 ? (
-          <Card><CardContent className="p-6 text-center text-13 text-muted-foreground">No active announcements.</CardContent></Card>
-        ) : (
-          <div className="space-y-3">
-            {announcements.data!.map((a) => (
-              <Card key={a.id} className={a.pinned ? "border-amber-500/40 bg-amber-500/5" : ""}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {a.pinned && <Pin className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
-                      <p className="text-14 font-bold truncate">{a.title ?? "Announcement"}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Badge variant="outline" className={`text-11 ${priorityColor(a.priority)}`}>
-                        {a.priority ?? "normal"}
-                      </Badge>
-                      <span className="text-11 text-muted-foreground tabular-nums">
-                        {relativeTime(a.published_at ?? a.created_at)}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-13 text-foreground/85 leading-relaxed whitespace-pre-line">
-                    {a.body ?? a.content ?? ""}
-                  </p>
-                </CardContent>
-              </Card>
+          <div className="space-y-2">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div
+                // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
+                key={i}
+                className="h-[80px] animate-pulse rounded-lg bg-muted/30"
+              />
             ))}
           </div>
+        ) : (announcements.data?.length ?? 0) === 0 ? (
+          <EmptyState
+            icon={<Megaphone className="h-7 w-7" />}
+            variant="default"
+            title="No active announcements"
+            description="Nothing is published for the floor right now. Post one the moment there is something everyone has to know."
+          />
+        ) : (
+          <ul className="space-y-2">
+            {announcements.data!.map((a) => (
+              <li
+                key={a.id}
+                className={cn(
+                  "rounded-lg border border-border/60 bg-card/60 px-3 py-2.5",
+                  a.pinned && "border-amber-500/35",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    {a.pinned && (
+                      <Pin
+                        aria-label="Pinned"
+                        className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+                      />
+                    )}
+                    <span className="truncate text-sm font-medium text-foreground">
+                      {a.title ?? "Announcement"}
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span
+                      className={cn(
+                        "text-[10px] font-bold uppercase tracking-wide",
+                        priorityColor(a.priority),
+                      )}
+                    >
+                      {a.priority ?? "normal"}
+                    </span>
+                    <span className="text-[11px] tabular-nums text-muted-foreground">
+                      {relativeTime(a.published_at ?? a.created_at)}
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-1.5 whitespace-pre-line break-words text-xs leading-relaxed text-muted-foreground">
+                  {a.body ?? a.content ?? ""}
+                </p>
+              </li>
+            ))}
+          </ul>
         )}
-      </section>
+      </GlassCard>
 
       {/* NEWS FEED */}
-      <section className="space-y-3">
-        <h2 className="text-15 font-bold flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-emerald-500" /> Live News Feed
-        </h2>
+      <GlassCard className="p-4">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+            <TrendingUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">Live news feed</span>
+          </h3>
+          <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+            {feed.data?.length ?? 0}
+          </span>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          Every deal posted by the floor, newest first — the premium on the right is what the win was worth.
+        </p>
+
         {feed.isLoading ? (
           <div className="space-y-2">
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} /* stable-key-allow:skeleton — fixed-length loading placeholder */ className="h-14" />)}
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
+                key={i}
+                className="h-[60px] animate-pulse rounded-lg bg-muted/30"
+              />
+            ))}
           </div>
         ) : (feed.data?.length ?? 0) === 0 ? (
-          <Card><CardContent className="p-6 text-center text-13 text-muted-foreground">No recent activity.</CardContent></Card>
+          <EmptyState
+            icon={<Trophy className="h-7 w-7" />}
+            variant="default"
+            title="No deals on the feed yet"
+            description="The stream fills the second someone posts a win. Post yours and start it."
+          />
         ) : (
-          <div className="space-y-2">
+          <ul className="space-y-2">
             {feed.data!.map((ev) => (
-              <Card key={ev.id} className="hover:bg-muted/30 transition-base">
-                <CardContent className="p-3 flex items-center gap-3">
+              <li
+                key={ev.id}
+                className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5"
+              >
+                <div className="flex items-start gap-3">
                   {ev.agent_photo ? (
-                    <img src={ev.agent_photo} alt="" className="h-9 w-9 rounded-full object-cover ring-1 ring-border" />
+                    <img
+                      src={ev.agent_photo}
+                      alt=""
+                      className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-border"
+                    />
                   ) : (
-                    <div className="h-9 w-9 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-12 font-bold flex items-center justify-center">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">
                       {(ev.agent_name ?? "?").split(" ").map((s) => s[0]).slice(0, 2).join("")}
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-13 leading-snug">
-                      <span className="font-semibold">{ev.agent_name ?? "Someone"}</span>
-                      <span className="text-foreground/70">
-                        {" "}closed{" "}
-                      </span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                        {fmtUsd(ev.annual_premium)}
-                      </span>
-                      {ev.product_sold && (
-                        <>
-                          <span className="text-foreground/70"> · </span>
-                          <span className="text-foreground/85">{ev.product_sold}</span>
-                        </>
-                      )}
-                    </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-foreground">
+                      {ev.agent_name ?? "Someone"}
+                    </div>
+                    <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      closed
+                      {ev.product_sold && <> · {ev.product_sold}</>}
+                    </div>
                     {ev.draft_hook && (
-                      <p className="text-11 text-muted-foreground truncate italic">"{ev.draft_hook}"</p>
+                      <p className="mt-0.5 truncate text-[11px] italic text-muted-foreground">
+                        "{ev.draft_hook}"
+                      </p>
                     )}
                   </div>
-                  <div className="text-right shrink-0">
-                    <Sparkles className="h-3.5 w-3.5 text-amber-500 ml-auto mb-0.5" />
-                    <span className="text-11 text-muted-foreground tabular-nums">
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                      {fmtUsd(ev.annual_premium)}
+                    </div>
+                    <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
                       {relativeTime(ev.created_at)}
-                    </span>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-      </section>
+      </GlassCard>
     </div>
   );
 }

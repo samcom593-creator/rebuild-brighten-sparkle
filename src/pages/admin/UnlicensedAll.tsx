@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone,
   PhoneOff,
@@ -14,6 +13,7 @@ import {
   Ghost,
   UserCheck,
   UserMinus,
+  ListChecks,
   MapPin,
   Sparkles,
   Instagram,
@@ -30,8 +30,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { GlassCard } from "@/components/ui/glass-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -87,14 +87,16 @@ interface XcelProgressRow {
 
 // Every stage Sam actually uses — order matches the licensing funnel.
 // Tapping the stage badge cycles to the next one (which fires the RPC).
+// Tones are the three theme-paired severity tokens plus neutral. The dark-only
+// -300 weights this list used to carry were invisible on the white light card.
 const STAGES: Array<{ key: string; label: string; tone: string }> = [
-  { key: "unlicensed",         label: "unlicensed",         tone: "bg-slate-500/15 text-slate-300 border-slate-500/40" },
-  { key: "course_purchased",   label: "course purchased",   tone: "bg-rose-500/15 text-rose-300 border-rose-500/40" },
-  { key: "in_course",          label: "in course",          tone: "bg-sky-500/15 text-sky-300 border-sky-500/40" },
-  { key: "finished_course",    label: "finished course",    tone: "bg-amber-500/15 text-amber-300 border-amber-500/40" },
-  { key: "test_scheduled",     label: "test scheduled",     tone: "bg-amber-500/15 text-amber-300 border-amber-500/40" },
-  { key: "passed_test",        label: "passed test",        tone: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40" },
-  { key: "waiting_on_license", label: "waiting on license", tone: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40" },
+  { key: "unlicensed",         label: "unlicensed",         tone: "border-border text-muted-foreground" },
+  { key: "course_purchased",   label: "course purchased",   tone: "border-rose-500/35 text-rose-600 dark:text-rose-400" },
+  { key: "in_course",          label: "in course",          tone: "border-amber-500/35 text-amber-600 dark:text-amber-400" },
+  { key: "finished_course",    label: "finished course",    tone: "border-amber-500/35 text-amber-600 dark:text-amber-400" },
+  { key: "test_scheduled",     label: "test scheduled",     tone: "border-amber-500/35 text-amber-600 dark:text-amber-400" },
+  { key: "passed_test",        label: "passed test",        tone: "border-emerald-500/35 text-emerald-600 dark:text-emerald-400" },
+  { key: "waiting_on_license", label: "waiting on license", tone: "border-emerald-500/35 text-emerald-600 dark:text-emerald-400" },
 ];
 function stageMeta(k: string | null) {
   return STAGES.find((s) => s.key === (k ?? "unlicensed")) ?? STAGES[0];
@@ -143,11 +145,13 @@ function fullName(r: UnlicensedRow): string {
   return [r.first_name, r.last_name].filter(Boolean).join(" ") || "(unknown)";
 }
 
-function ghostTone(days: number | null): { badge: string; ring: string; dot: string } {
+// Severity on the numeral + a dot, never a filled tile. Theme-paired so the
+// same row reads correctly on the white light card and the graphite dark card.
+function ghostTone(days: number | null): { text: string; dot: string; border: string } {
   const d = days ?? 0;
-  if (d < 7) return { badge: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40", ring: "ring-emerald-500/20", dot: "bg-emerald-400" };
-  if (d < 30) return { badge: "bg-amber-500/15 text-amber-300 border-amber-500/40", ring: "ring-amber-500/20", dot: "bg-amber-400" };
-  return { badge: "bg-rose-500/20 text-rose-200 border-rose-500/50", ring: "ring-rose-500/30", dot: "bg-rose-400" };
+  if (d < 7) return { text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-500", border: "" };
+  if (d < 30) return { text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500", border: "" };
+  return { text: "text-rose-600 dark:text-rose-400", dot: "bg-rose-500", border: "border-rose-500/35" };
 }
 
 function prettyProgress(p: string | null): string {
@@ -553,85 +557,86 @@ export default function UnlicensedAll() {
   }, [filtered, selectedIds, bulkVaId, bulkFollowUp, qc, clearSelection, requestSuppress, toRecoveryBatchRow]);
 
   return (
-    <div className="page-enter px-4 sm:px-6 pb-24 space-y-5 max-w-6xl mx-auto">
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
         eyebrow="License Recovery"
-        eyebrowIcon={<Sparkles className="h-3 w-3" />}
+        eyebrowIcon={<Sparkles className="h-4 w-4" />}
         title="Unlicensed Queue"
         subtitle="Every applicant without a license. Route to a VA, work the ghosted 30d+ pile daily."
       />
 
       {/* MP-257: Start VA Recovery Batch CTA */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-[11px] text-slate-400">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="min-w-0 text-xs leading-relaxed text-muted-foreground">
           Batch mode filters to unassigned + ghosted 30d+ and walks them one-by-one with a script.
-        </div>
+        </p>
         <Button
           size="sm"
           onClick={startRecoveryBatch}
-          className="h-9 bg-teal-500 text-slate-950 hover:bg-teal-400"
+          className="h-10 w-full shrink-0 sm:h-9 sm:w-auto"
           aria-label="Start VA Recovery Batch"
         >
-          <Play className="h-3.5 w-3.5 mr-1.5" /> Start VA Recovery Batch
+          <Play className="h-4 w-4" /> Start VA Recovery Batch
         </Button>
       </div>
 
-      {/* Gradient totals card */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        className="relative overflow-hidden rounded-2xl border border-white/10 p-5 sm:p-6"
-        style={{
-          background:
-            "linear-gradient(135deg, hsl(20 90% 55% / 0.18) 0%, hsl(340 80% 55% / 0.14) 45%, hsl(260 70% 50% / 0.18) 100%)",
-          boxShadow:
-            "0 20px 60px -20px hsl(340 80% 30% / 0.45), inset 0 1px 0 hsl(0 0% 100% / 0.06)",
-        }}
-      >
-        <div className="absolute inset-0 pointer-events-none opacity-40" style={{ background: "radial-gradient(circle at 20% 20%, hsl(30 100% 60% / 0.35), transparent 60%)" }} />
-        <div className="relative grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-          <TotalTile label="Total unlicensed" value={totals.total} icon={<Users className="h-4 w-4" />} tone="text-white" />
-          <TotalTile label="Ghosted 30d+" value={totals.ghosted} icon={<Ghost className="h-4 w-4" />} tone="text-rose-300" />
-          <TotalTile label="Assigned" value={totals.assigned} icon={<UserCheck className="h-4 w-4" />} tone="text-emerald-300" />
-          <TotalTile label="Unassigned" value={totals.unassigned} icon={<UserMinus className="h-4 w-4" />} tone="text-amber-300" />
-          <TotalTile label="Recovered · 7d" value={mp257Kpis.recovered} icon={<Trophy className="h-4 w-4" />} tone="text-emerald-300" hint="Applications licensed in last 7 days" />
-          <TotalTile label="Suppressed · 7d" value={mp257Kpis.suppressed} icon={<ShieldOff className="h-4 w-4" />} tone="text-rose-300" hint="Applications terminated in last 7 days" />
+      {/* Queue snapshot */}
+      <GlassCard className="p-4">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+            <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">Queue snapshot</span>
+          </h3>
         </div>
-      </motion.div>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          Ghosted 30d+ is the number that decides the day — every record in it is a paid applicant nobody has spoken to in a month.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <TotalTile label="Total unlicensed" value={totals.total} icon={<Users className="h-4 w-4" />} tone="text-foreground" />
+          <TotalTile label="Ghosted 30d+" value={totals.ghosted} icon={<Ghost className="h-4 w-4" />} tone="text-rose-600 dark:text-rose-400" emphasis />
+          <TotalTile label="Assigned" value={totals.assigned} icon={<UserCheck className="h-4 w-4" />} tone="text-emerald-600 dark:text-emerald-400" />
+          <TotalTile label="Unassigned" value={totals.unassigned} icon={<UserMinus className="h-4 w-4" />} tone="text-amber-600 dark:text-amber-400" />
+          <TotalTile label="Recovered · 7d" value={mp257Kpis.recovered} icon={<Trophy className="h-4 w-4" />} tone="text-emerald-600 dark:text-emerald-400" hint="Applications licensed in last 7 days" />
+          <TotalTile label="Suppressed · 7d" value={mp257Kpis.suppressed} icon={<ShieldOff className="h-4 w-4" />} tone="text-rose-600 dark:text-rose-400" hint="Applications terminated in last 7 days" />
+        </div>
+      </GlassCard>
 
       {/* Filter + sort bar */}
-      <Card className="border-white/10 bg-white/[0.02] backdrop-blur">
-        <CardContent className="p-3 sm:p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-slate-500">
-              <Filter className="h-3 w-3" /> Filter
-            </span>
-            <FilterPill active={filter === "all"} onClick={() => setFilter("all")}>All</FilterPill>
-            <FilterPill active={filter === "unassigned"} onClick={() => setFilter("unassigned")}>Unassigned</FilterPill>
-            <FilterPill active={filter === "ghosted_30"} onClick={() => setFilter("ghosted_30")} tone="rose">Ghosted 30d+</FilterPill>
-            <FilterPill active={filter === "by_stage"} onClick={() => setFilter("by_stage")}>By stage</FilterPill>
-            {filter === "by_stage" && (
-              <Select value={stageFilter} onValueChange={setStageFilter}>
-                <SelectTrigger className="h-8 text-xs w-[180px] bg-white/5 border-white/10">
-                  <SelectValue placeholder="Pick a stage" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Every stage</SelectItem>
-                  {stageOptions.map((s) => (
-                    <SelectItem key={s} value={s}>{prettyProgress(s)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+      <GlassCard className="p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <Filter className="h-3.5 w-3.5 shrink-0" /> Filter
+            </div>
+            <div className="-mx-4 overflow-x-auto pb-1 sm:mx-0">
+              <div className="flex min-w-max items-center gap-2 px-4 sm:px-0">
+                <FilterPill active={filter === "all"} onClick={() => setFilter("all")}>All</FilterPill>
+                <FilterPill active={filter === "unassigned"} onClick={() => setFilter("unassigned")}>Unassigned</FilterPill>
+                <FilterPill active={filter === "ghosted_30"} onClick={() => setFilter("ghosted_30")} tone="rose">Ghosted 30d+</FilterPill>
+                <FilterPill active={filter === "by_stage"} onClick={() => setFilter("by_stage")}>By stage</FilterPill>
+                {filter === "by_stage" && (
+                  <Select value={stageFilter} onValueChange={setStageFilter}>
+                    <SelectTrigger aria-label="Filter by licensing stage" className="h-10 w-[180px] shrink-0 text-xs sm:h-9">
+                      <SelectValue placeholder="Pick a stage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Every stage</SelectItem>
+                      {stageOptions.map((s) => (
+                        <SelectItem key={s} value={s}>{prettyProgress(s)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="md:ml-auto flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-slate-500">
-              <ArrowUpDown className="h-3 w-3" /> Sort
-            </span>
+          <div className="min-w-0 lg:shrink-0">
+            <div className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              <ArrowUpDown className="h-3.5 w-3.5 shrink-0" /> Sort
+            </div>
             <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
-              <SelectTrigger className="h-8 text-xs w-[180px] bg-white/5 border-white/10">
+              <SelectTrigger aria-label="Sort the queue" className="h-10 w-full text-xs sm:h-9 lg:w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -641,153 +646,171 @@ export default function UnlicensedAll() {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
 
       {/* MP-257: bulk action bar — appears when any row is selected */}
       {selectedIds.size > 0 && (
-        <div className="rounded-xl border border-teal-500/40 bg-teal-500/[0.08] p-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-teal-100">
-            {selectedIds.size} selected
-          </span>
-          {selectedIds.size < filtered.length && (
-            <button
-              type="button"
-              onClick={selectAllVisible}
-              className="text-[11px] text-teal-300/80 underline decoration-dotted hover:text-teal-200"
-            >
-              Select all {filtered.length}
-            </button>
-          )}
-          <div className="ml-auto flex flex-wrap items-center gap-1.5">
-            <Select value={bulkVaId} onValueChange={setBulkVaId}>
-              <SelectTrigger className="h-8 w-[150px] text-xs bg-white/5 border-white/10">
-                <UserPlus className="h-3 w-3 mr-1.5" />
-                <SelectValue placeholder="Assign VA" />
-              </SelectTrigger>
-              <SelectContent>
-                {vas.length === 0 && (
-                  <div className="px-2 py-1.5 text-xs text-slate-500">No managers/VAs</div>
-                )}
-                {vas.map((v) => (
-                  <SelectItem key={v.user_id} value={v.user_id}>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className={cn("rounded px-1 py-0.5 text-[9px] uppercase tracking-wide",
-                        v.role === "manager" ? "bg-amber-500/20 text-amber-300" : "bg-sky-500/20 text-sky-300")}>
-                        {v.role}
+        <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 sm:p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-bold tabular-nums text-foreground">
+              {selectedIds.size.toLocaleString()}
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              selected
+            </span>
+            {selectedIds.size < filtered.length && (
+              <button
+                type="button"
+                onClick={selectAllVisible}
+                className="inline-flex h-10 items-center rounded-sm px-1 text-[11px] font-semibold text-muted-foreground underline decoration-dotted underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
+              >
+                Select all {filtered.length.toLocaleString()}
+              </button>
+            )}
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Select value={bulkVaId} onValueChange={setBulkVaId}>
+                <SelectTrigger aria-label="Pick the VA for the selected records" className="h-10 w-[150px] text-xs sm:h-9">
+                  <UserPlus className="mr-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <SelectValue placeholder="Assign VA" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vas.length === 0 && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">No managers/VAs</div>
+                  )}
+                  {vas.map((v) => (
+                    <SelectItem key={v.user_id} value={v.user_id}>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="rounded-sm border border-border px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                          {v.role}
+                        </span>
+                        {v.display_name || v.email || v.user_id.slice(0, 8)}
                       </span>
-                      {v.display_name || v.email || v.user_id.slice(0, 8)}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              size="sm"
-              disabled={bulkRunning || !bulkVaId}
-              onClick={() => runBulk("assign_va")}
-              className="h-8 gap-1 bg-teal-500 text-slate-950 hover:bg-teal-400 disabled:opacity-60"
-              aria-label="Assign selected records to VA"
-            >
-              Assign
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={bulkRunning}
-              onClick={() => runBulk("mark_contacted")}
-              className="h-8 gap-1 border-emerald-500/40 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"
-              aria-label="Mark selected records contacted"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" /> Mark contacted
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={bulkRunning}
-                  className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
-                  aria-label="Pick bulk follow-up date"
-                >
-                  <CalendarClock className="h-3.5 w-3.5" />
-                  {bulkFollowUp ? format(bulkFollowUp, "MMM d") : "Follow-up"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-[#0B1118] border-white/10" align="end"> {/* palette-allow:apex-panel-dark — matches sibling admin popovers */}
-                <Calendar
-                  mode="single"
-                  selected={bulkFollowUp}
-                  onSelect={setBulkFollowUp}
-                  initialFocus
-                />
-                <div className="p-2 border-t border-white/10">
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                disabled={bulkRunning || !bulkVaId}
+                onClick={() => runBulk("assign_va")}
+                className="h-10 sm:h-9"
+                aria-label="Assign selected records to VA"
+              >
+                Assign
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={bulkRunning}
+                onClick={() => runBulk("mark_contacted")}
+                className="h-10 gap-1.5 px-2.5 text-[11px] hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 sm:h-9"
+                aria-label="Mark selected records contacted"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> Mark contacted
+              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
                   <Button
                     size="sm"
-                    className="w-full h-8 bg-teal-500 text-slate-950 hover:bg-teal-400"
-                    disabled={!bulkFollowUp || bulkRunning}
-                    onClick={() => runBulk("schedule")}
-                    aria-label="Confirm bulk follow-up"
+                    variant="outline"
+                    disabled={bulkRunning}
+                    className="h-10 gap-1.5 px-2.5 text-[11px] sm:h-9"
+                    aria-label="Pick bulk follow-up date"
                   >
-                    Schedule {selectedIds.size}
+                    <CalendarClock className="h-3.5 w-3.5 shrink-0" />
+                    {bulkFollowUp ? format(bulkFollowUp, "MMM d") : "Follow-up"}
                   </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={bulkRunning}
-              onClick={() => runBulk("suppress")}
-              className="h-8 gap-1 border-rose-500/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
-              aria-label="Suppress selected records"
-            >
-              <ShieldOff className="h-3.5 w-3.5" /> Suppress
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={bulkRunning}
-              onClick={workSelectedInBatch}
-              className="h-8 gap-1 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]"
-              aria-label="Work selected records in recovery batch"
-            >
-              <Play className="h-3.5 w-3.5" /> Work in batch
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={clearSelection}
-              className="h-8 gap-1 text-slate-400 hover:text-slate-100"
-              aria-label="Clear selection"
-            >
-              <X className="h-3.5 w-3.5" />
-              Cancel
-            </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={bulkFollowUp}
+                    onSelect={setBulkFollowUp}
+                    initialFocus
+                  />
+                  <div className="border-t border-border p-2">
+                    <Button
+                      size="sm"
+                      className="h-10 w-full sm:h-9"
+                      disabled={!bulkFollowUp || bulkRunning}
+                      onClick={() => runBulk("schedule")}
+                      aria-label="Confirm bulk follow-up"
+                    >
+                      Schedule {selectedIds.size}
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={bulkRunning}
+                onClick={() => runBulk("suppress")}
+                className="h-10 gap-1.5 px-2.5 text-[11px] hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 sm:h-9"
+                aria-label="Suppress selected records"
+              >
+                <ShieldOff className="h-3.5 w-3.5 shrink-0" /> Suppress
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={bulkRunning}
+                onClick={workSelectedInBatch}
+                className="h-10 gap-1.5 px-2.5 text-[11px] sm:h-9"
+                aria-label="Work selected records in recovery batch"
+              >
+                <Play className="h-3.5 w-3.5 shrink-0" /> Work in batch
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={clearSelection}
+                className="h-10 gap-1.5 px-2.5 text-[11px] text-muted-foreground sm:h-9"
+                aria-label="Clear selection"
+              >
+                <X className="h-3.5 w-3.5 shrink-0" />
+                Cancel
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
-      {isLoading && (
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            /* stable-key-allow:skeleton */
-            <Skeleton key={i} className="h-20 w-full rounded-xl" />
-          ))}
+      <GlassCard className="p-4">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+            <ListChecks className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">Unlicensed queue</span>
+          </h3>
+          <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+            {filtered.length.toLocaleString()}
+          </span>
         </div>
-      )}
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          Applicants and Excel-imported leads in one pile — the higher the ghosted count on a row, the longer that producer has been paying for a course nobody followed up on.
+        </p>
 
-      {!isLoading && filtered.length === 0 && (
-        <Card className="border-white/10 bg-white/[0.02]">
-          <CardContent className="p-10 text-center text-sm text-slate-400">
-            No applicants match this filter. That's a good problem — or check that v_unlicensed_all is populated.
-          </CardContent>
-        </Card>
-      )}
+        {isLoading && (
+          <div className="space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              /* stable-key-allow:skeleton */
+              <Skeleton key={i} className="h-[132px] w-full rounded-lg" />
+            ))}
+          </div>
+        )}
 
-      <AnimatePresence initial={false}>
-        <div className="space-y-2">
-          {filtered.map((r, idx) => {
+        {!isLoading && filtered.length === 0 && (
+          <EmptyState
+            icon={<Users className="h-7 w-7" />}
+            variant="default"
+            title="No unlicensed record matches this filter"
+            description="Either the pile is genuinely clear or the filter is too narrow — widen it, and confirm v_unlicensed_all is populated."
+          />
+        )}
+
+        <ul className="space-y-2">
+          {filtered.map((r) => {
             const days = r.days_since_touch ?? 0;
             const tone = ghostTone(days);
             const stg = stageMeta(r.license_progress);
@@ -795,260 +818,260 @@ export default function UnlicensedAll() {
             const busyBad = markBadPhone.isPending && markBadPhone.variables?.id === r.id;
             const busyPromote = promoteAged.isPending && promoteAged.variables === r.id;
             const isBadPhone = !!r.phone_bad_at;
+            const selKey = `${r.source}:${r.id}`;
+            const isSelected = selectedIds.has(selKey);
             return (
-              <motion.div
+              <li
                 key={`${r.source}-${r.id}`}
-                layout
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.22, delay: Math.min(idx, 12) * 0.015 }}
+                className={cn(
+                  "rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 transition-colors hover:border-border hover:bg-card",
+                  tone.border,
+                  isSelected && "border-primary/50 bg-primary/5",
+                )}
               >
-                <div
-                  className={cn(
-                    "group relative overflow-hidden rounded-xl border border-white/10 p-3 sm:p-4",
-                    "bg-white/[0.03] backdrop-blur-xl ring-1",
-                    tone.ring,
-                    "hover:border-white/20 transition-colors",
-                    selectedIds.has(`${r.source}:${r.id}`) && "bg-teal-500/[0.05] border-teal-500/30",
-                  )}
-                  style={{ boxShadow: "inset 0 1px 0 hsl(0 0% 100% / 0.05), 0 8px 30px -12px hsl(222 60% 0% / 0.55)" }}
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                    {/* Identity + inline stage picker */}
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <Checkbox
-                        checked={selectedIds.has(`${r.source}:${r.id}`)}
-                        onCheckedChange={() => toggleSelected(`${r.source}:${r.id}`)}
-                        aria-label={`Select ${fullName(r)}`}
-                        className="h-4 w-4 border-white/20 data-[state=checked]:bg-teal-500 data-[state=checked]:text-slate-950"
-                      />
-                      <div className={cn("h-2.5 w-2.5 rounded-full shrink-0 animate-pulse", tone.dot)} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm sm:text-base truncate text-slate-100">{fullName(r)}</span>
-                          {r.state && (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
-                              <MapPin className="h-3 w-3" />{r.state}
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:gap-3">
+                  {/* Identity + inline stage picker */}
+                  <div className="flex min-w-0 flex-1 items-start gap-2">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleSelected(selKey)}
+                      aria-label={`Select ${fullName(r)}`}
+                      className="mt-0.5 h-5 w-5 shrink-0"
+                    />
+                    <span aria-hidden className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", tone.dot)} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="min-w-0 truncate text-sm font-medium text-foreground">{fullName(r)}</span>
+                        {r.state && (
+                          <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+                            <MapPin className="h-3 w-3 shrink-0" />{r.state}
+                          </span>
+                        )}
+                        {r.source === "aged_lead" && (
+                          <span title="Imported from Excel — hasn't formally applied yet" className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            <FileSpreadsheet className="h-3 w-3 shrink-0" /> excel
+                          </span>
+                        )}
+                        {r.source === "applied" && (
+                          <span title="Filled out the public application" className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            <ClipboardCheck className="h-3 w-3 shrink-0" /> applied
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        {/* XCEL course progress — merged in by email from v_xcel_person_progress */}
+                        {(r.xcel_overall_pct != null || r.xcel_final_exam_score != null || r.xcel_state_license_number) && (
+                          <>
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                              <span className="tabular-nums">XCEL {r.xcel_overall_pct ?? 0}%</span>
+                              {(r.xcel_final_exam_score ?? 0) >= 70 ? (
+                                <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                              ) : null}
+                              {r.xcel_state_license_number ? (
+                                <span className="tabular-nums">· lic {r.xcel_state_license_number}</span>
+                              ) : null}
                             </span>
-                          )}
-                          {r.source === "aged_lead" && (
-                            <span title="Imported from Excel — hasn't formally applied yet" className="inline-flex items-center gap-1 text-[10px] bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded-full px-1.5 py-0.5">
-                              <FileSpreadsheet className="h-2.5 w-2.5" /> excel
-                            </span>
-                          )}
-                          {r.source === "applied" && (
-                            <span title="Filled out the public application" className="inline-flex items-center gap-1 text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 rounded-full px-1.5 py-0.5">
-                              <ClipboardCheck className="h-2.5 w-2.5" /> applied
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                          {/* XCEL course progress — merged in by email from v_xcel_person_progress */}
-                          {(r.xcel_overall_pct != null || r.xcel_final_exam_score != null || r.xcel_state_license_number) && (
-                            <>
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] uppercase bg-indigo-500/15 text-indigo-200 border-indigo-500/40 gap-1"
-                              >
-                                <span>XCEL {r.xcel_overall_pct ?? 0}%</span>
-                                {(r.xcel_final_exam_score ?? 0) >= 70 ? (
-                                  <CheckCircle2 className="h-3 w-3 text-emerald-300" />
-                                ) : null}
-                                {r.xcel_state_license_number ? (
-                                  <span>· lic {r.xcel_state_license_number}</span>
-                                ) : null}
-                              </Badge>
-                              {(r.xcel_final_exam_score ?? 0) >= 70 &&
-                                r.license_progress !== "passed_test" &&
-                                r.license_progress !== "waiting_on_license" && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] uppercase bg-amber-500/15 text-amber-200 border-amber-500/40"
-                                    title="XCEL says they passed — advance the stage"
-                                  >
-                                    sync ready
-                                  </Badge>
-                                )}
-                            </>
-                          )}
-                          {/* Tap-to-cycle stage — Sam's #1 gripe */}
-                          <Select
-                            value={r.license_progress ?? "unlicensed"}
-                            onValueChange={(v) => setStage.mutate({ row: r, progress: v })}
+                            {(r.xcel_final_exam_score ?? 0) >= 70 &&
+                              r.license_progress !== "passed_test" &&
+                              r.license_progress !== "waiting_on_license" && (
+                                <span
+                                  title="XCEL says they passed — advance the stage"
+                                  className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-amber-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400"
+                                >
+                                  sync ready
+                                </span>
+                              )}
+                          </>
+                        )}
+                        {/* Tap-to-cycle stage — Sam's #1 gripe */}
+                        <Select
+                          value={r.license_progress ?? "unlicensed"}
+                          onValueChange={(v) => setStage.mutate({ row: r, progress: v })}
+                        >
+                          <SelectTrigger
+                            aria-label={`Licensing stage for ${fullName(r)}`}
+                            className={cn(
+                              "h-10 w-auto min-w-[150px] shrink-0 px-2 text-[10px] font-bold uppercase tracking-wide sm:h-9",
+                              stg.tone,
+                              busyStage && "opacity-60",
+                            )}
                           >
-                            <SelectTrigger className={cn("h-7 text-[10px] uppercase tracking-wide w-auto min-w-[150px] px-2 border", stg.tone, busyStage && "opacity-60")}>
-                              <SelectValue>
-                                {busyStage ? <Loader2 className="h-3 w-3 animate-spin" /> : stg.label}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {STAGES.map((s) => (
-                                <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Badge variant="outline" className={cn("text-[10px]", tone.badge)}>{days}d ghosted</Badge>
-                          {isBadPhone && (
-                            <Badge variant="outline" className="text-[10px] bg-rose-500/15 text-rose-300 border-rose-500/30 gap-1">
-                              <PhoneOff className="h-2.5 w-2.5" /> bad #
-                            </Badge>
-                          )}
-                          {r.assigned_va_email && (
-                            <span className="text-[10px] text-emerald-300/80 truncate">→ {r.assigned_va_email}</span>
-                          )}
-                        </div>
+                            <SelectValue>
+                              {busyStage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : stg.label}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STAGES.map((s) => (
+                              <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {isBadPhone && (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-rose-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">
+                            <PhoneOff className="h-3 w-3 shrink-0" /> bad #
+                          </span>
+                        )}
+                        {r.assigned_va_email && (
+                          <span className="min-w-0 max-w-[220px] truncate text-[11px] text-muted-foreground">→ {r.assigned_va_email}</span>
+                        )}
                       </div>
                     </div>
 
-                    {/* One-tap contact actions */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {r.phone && !isBadPhone && (
-                        <a
-                          href={telHref(r.phone)}
-                          className="inline-flex items-center gap-1.5 text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 py-1.5 rounded-md font-medium transition-colors"
-                          onClick={() => {
-                            if (r.source === 'applied') {
-                              supabase.rpc("log_contact_attempt" as any, {
-                                p_application_id: r.id, p_channel: 'phone', p_outcome: 'attempted', p_notes: null,
-                                // empty-catch-allow:fire-and-forget tel-click telemetry — must not block navigation
-                              }).catch(() => {});
-                            }
-                          }}
-                        >
-                          <Phone className="h-3 w-3" />{formatPhone(r.phone)}
-                        </a>
-                      )}
-                      {r.email && (
-                        <a
-                          href={`mailto:${r.email}`}
-                          className="inline-flex items-center gap-1.5 text-xs bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 px-2.5 py-1.5 rounded-md font-medium max-w-[200px] truncate"
-                          title={r.email}
-                          onClick={() => {
-                            if (r.source === 'applied') {
-                              supabase.rpc("log_contact_attempt" as any, {
-                                p_application_id: r.id, p_channel: 'email', p_outcome: 'attempted', p_notes: null,
-                                // empty-catch-allow:fire-and-forget mailto-click telemetry — must not block navigation
-                              }).catch(() => {});
-                            }
-                          }}
-                        >
-                          <Mail className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{r.email}</span>
-                        </a>
-                      )}
-                      {r.instagram_handle && (
-                        <a
-                          href={`https://instagram.com/${r.instagram_handle.replace(/^@+/, "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-pink-400 hover:text-pink-300 border border-pink-500/30 bg-pink-500/10 rounded-md px-2 py-1.5"
-                          title={`@${r.instagram_handle.replace(/^@+/, "")}`}
-                          aria-label={`Instagram @${r.instagram_handle.replace(/^@+/, "")}`}
-                        >
-                          <Instagram className="h-3 w-3" />
-                        </a>
-                      )}
-                      {r.phone && !isBadPhone && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
-                          title="Mark number bad + email them"
-                          aria-label="Mark phone number bad and email them"
-                          onClick={() => markBadPhone.mutate(r)}
-                          disabled={busyBad}
-                        >
-                          {busyBad ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PhoneOff className="h-3.5 w-3.5" />}
-                        </Button>
-                      )}
-                    </div>
-
-                    {/* Assignment + contacted + promote */}
-                    <div className="flex items-center gap-2 lg:ml-auto">
-                      <Select
-                        value={r.assigned_va_id ?? ""}
-                        onValueChange={(v) => v && assignVa.mutate({ row: r, vaId: v })}
-                      >
-                        <SelectTrigger className="h-8 w-[150px] text-xs bg-white/5 border-white/10">
-                          <UserPlus className="h-3 w-3 mr-1.5" />
-                          <SelectValue placeholder="Assign VA" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {vas.length === 0 && (
-                            <div className="px-2 py-1.5 text-xs text-slate-500">No managers/VAs found</div>
-                          )}
-                          {vas.map((v) => (
-                            <SelectItem key={v.user_id} value={v.user_id}>
-                              <span className="inline-flex items-center gap-1.5">
-                                <span className={cn("rounded px-1 py-0.5 text-[9px] uppercase tracking-wide",
-                                  v.role === "manager" ? "bg-amber-500/20 text-amber-300" : "bg-sky-500/20 text-sky-300")}>
-                                  {v.role}
-                                </span>
-                                {v.display_name || v.email || v.user_id.slice(0, 8)}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
-                        onClick={() => markContacted.mutate(r)}
-                        disabled={markContacted.isPending}
-                      >
-                        <CheckCircle2 className="h-3 w-3 mr-1.5" /> contacted
-                      </Button>
-
-                      <Button size="sm" variant="outline"
-                        className="h-8 text-xs border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
-                        onClick={() => passedTest.mutate(r)}
-                        disabled={passedTest.isPending}
-                        aria-label="Mark applicant as passed their test"
-                        title="Applicant passed their test — mark and notify manager">
-                        <Trophy className="h-3 w-3 mr-1.5" /> passed
-                      </Button>
-
-                      {r.source === "aged_lead" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 text-xs border-violet-500/40 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20"
-                          onClick={() => promoteAged.mutate(r.id)}
-                          disabled={busyPromote}
-                          title="Turn this Excel-imported lead into a real applicant record"
-                          aria-label="Convert Excel-imported lead to applicant"
-                        >
-                          {busyPromote ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> : <ArrowRight className="h-3 w-3 mr-1.5" />}
-                          convert
-                        </Button>
-                      )}
-
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
-                        title="Suppress this record"
-                        aria-label={`Suppress ${fullName(r)}`}
-                        onClick={() => requestSuppress(toRecoveryBatchRow(r))}
-                      >
-                        <ShieldOff className="h-3.5 w-3.5" />
-                      </Button>
+                    {/* The decision number: how long this record has been ghosted */}
+                    <div className="shrink-0 pl-2 text-right">
+                      <div className={cn("flex items-center justify-end gap-1 text-sm font-bold tabular-nums", tone.text)}>
+                        {days >= 30 && <Flame aria-hidden className="h-3.5 w-3.5 shrink-0" />}
+                        <span>{days}d</span>
+                      </div>
+                      <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        ghosted
+                      </div>
                     </div>
                   </div>
 
-                  {days >= 30 && (
-                    <div className="pointer-events-none absolute inset-y-0 left-0 w-1" style={{ background: "linear-gradient(180deg, hsl(0 80% 60%), hsl(340 80% 55%))" }} />
-                  )}
-                  {days >= 30 && <Flame className="pointer-events-none absolute top-2 right-2 h-3.5 w-3.5 text-rose-400/70" />}
+                  {/* One-tap contact actions */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {r.phone && !isBadPhone && (
+                      <a
+                        href={telHref(r.phone)}
+                        aria-label={`Call ${fullName(r)}`}
+                        className="inline-flex h-10 min-w-0 items-center gap-2 rounded-sm border border-border bg-background px-3 text-xs font-semibold tabular-nums text-foreground transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
+                        onClick={() => {
+                          if (r.source === 'applied') {
+                            supabase.rpc("log_contact_attempt" as any, {
+                              p_application_id: r.id, p_channel: 'phone', p_outcome: 'attempted', p_notes: null,
+                              // empty-catch-allow:fire-and-forget tel-click telemetry — must not block navigation
+                            }).catch(() => {});
+                          }
+                        }}
+                      >
+                        <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{formatPhone(r.phone)}</span>
+                      </a>
+                    )}
+                    {r.email && (
+                      <a
+                        href={`mailto:${r.email}`}
+                        className="inline-flex h-10 min-w-0 max-w-[220px] items-center gap-2 rounded-sm border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
+                        title={r.email}
+                        onClick={() => {
+                          if (r.source === 'applied') {
+                            supabase.rpc("log_contact_attempt" as any, {
+                              p_application_id: r.id, p_channel: 'email', p_outcome: 'attempted', p_notes: null,
+                              // empty-catch-allow:fire-and-forget mailto-click telemetry — must not block navigation
+                            }).catch(() => {});
+                          }
+                        }}
+                      >
+                        <Mail className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{r.email}</span>
+                      </a>
+                    )}
+                    {r.instagram_handle && (
+                      <a
+                        href={`https://instagram.com/${r.instagram_handle.replace(/^@+/, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border bg-background text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9 sm:w-9"
+                        title={`@${r.instagram_handle.replace(/^@+/, "")}`}
+                        aria-label={`Instagram @${r.instagram_handle.replace(/^@+/, "")}`}
+                      >
+                        <Instagram className="h-4 w-4" />
+                      </a>
+                    )}
+                    {r.phone && !isBadPhone && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-10 w-10 shrink-0 p-0 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-400 sm:h-9 sm:w-9"
+                        title="Mark number bad + email them"
+                        aria-label="Mark phone number bad and email them"
+                        onClick={() => markBadPhone.mutate(r)}
+                        disabled={busyBad}
+                      >
+                        {busyBad ? <Loader2 className="h-4 w-4 animate-spin" /> : <PhoneOff className="h-4 w-4" />}
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Assignment + contacted + promote */}
+                  <div className="flex flex-wrap items-center gap-2 lg:ml-auto lg:shrink-0 lg:justify-end">
+                    <Select
+                      value={r.assigned_va_id ?? ""}
+                      onValueChange={(v) => v && assignVa.mutate({ row: r, vaId: v })}
+                    >
+                      <SelectTrigger aria-label={`Assign a VA to ${fullName(r)}`} className="h-10 w-[150px] text-xs sm:h-9">
+                        <UserPlus className="mr-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        <SelectValue placeholder="Assign VA" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vas.length === 0 && (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">No managers/VAs found</div>
+                        )}
+                        {vas.map((v) => (
+                          <SelectItem key={v.user_id} value={v.user_id}>
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="rounded-sm border border-border px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                                {v.role}
+                              </span>
+                              {v.display_name || v.email || v.user_id.slice(0, 8)}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-10 gap-1.5 px-2.5 text-[11px] hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 sm:h-9"
+                      onClick={() => markContacted.mutate(r)}
+                      disabled={markContacted.isPending}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> contacted
+                    </Button>
+
+                    <Button size="sm" variant="outline"
+                      className="h-10 gap-1.5 px-2.5 text-[11px] hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 sm:h-9"
+                      onClick={() => passedTest.mutate(r)}
+                      disabled={passedTest.isPending}
+                      aria-label="Mark applicant as passed their test"
+                      title="Applicant passed their test — mark and notify manager">
+                      <Trophy className="h-3.5 w-3.5 shrink-0" /> passed
+                    </Button>
+
+                    {r.source === "aged_lead" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-10 gap-1.5 px-2.5 text-[11px] sm:h-9"
+                        onClick={() => promoteAged.mutate(r.id)}
+                        disabled={busyPromote}
+                        title="Turn this Excel-imported lead into a real applicant record"
+                        aria-label="Convert Excel-imported lead to applicant"
+                      >
+                        {busyPromote ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : <ArrowRight className="h-3.5 w-3.5 shrink-0" />}
+                        convert
+                      </Button>
+                    )}
+
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-10 w-10 shrink-0 p-0 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-400 sm:h-9 sm:w-9"
+                      title="Suppress this record"
+                      aria-label={`Suppress ${fullName(r)}`}
+                      onClick={() => requestSuppress(toRecoveryBatchRow(r))}
+                    >
+                      <ShieldOff className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </motion.div>
+              </li>
             );
           })}
-        </div>
-      </AnimatePresence>
+        </ul>
+      </GlassCard>
 
       <RecoveryBatchDrawer
         open={batchOpen}
@@ -1064,7 +1087,7 @@ export default function UnlicensedAll() {
         target={suppressTarget}
       />
 
-      <div className="text-center text-[10px] text-slate-500 uppercase tracking-widest pt-6 pb-2">
+      <div className="pb-2 pt-6 text-center text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
         Hold the Standard · Average is the disease
       </div>
     </div>
@@ -1077,20 +1100,29 @@ function TotalTile({
   icon,
   tone,
   hint,
+  emphasis,
 }: {
   label: string;
   value: number;
   icon: React.ReactNode;
   tone: string;
   hint?: string;
+  /** Border-only tint for the tile that is itself in a bad state. */
+  emphasis?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-lg p-3 sm:p-4" title={hint}>
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] uppercase tracking-widest text-slate-300/80">{label}</span>
-        <span className="text-slate-300/70">{icon}</span>
+    <div
+      className={cn(
+        "rounded-lg border border-border bg-card p-3 sm:p-4",
+        emphasis && "border-rose-500/35",
+      )}
+      title={hint}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+        <span className="shrink-0 text-muted-foreground">{icon}</span>
       </div>
-      <div className={cn("mt-1.5 text-2xl sm:text-3xl font-bold tabular-nums", tone)}>{value}</div>
+      <div className={cn("mt-2 text-2xl font-bold leading-none tabular-nums", tone)}>{value.toLocaleString()}</div>
     </div>
   );
 }
@@ -1110,13 +1142,14 @@ function FilterPill({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
-        "h-8 px-3 rounded-full text-xs font-medium border transition-colors",
+        "inline-flex h-10 shrink-0 items-center rounded-md border px-3 text-xs font-semibold transition-colors sm:h-9",
+        "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
         active
-          ? tone === "rose"
-            ? "bg-rose-500/25 text-rose-100 border-rose-500/50"
-            : "bg-amber-400/20 text-amber-200 border-amber-400/50"
-          : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10",
+          ? "border-primary/50 bg-primary/5 text-foreground ring-2 ring-primary/60"
+          : "border-border bg-background text-muted-foreground hover:bg-muted/30",
+        tone === "rose" && "text-rose-600 dark:text-rose-400",
       )}
     >
       {children}

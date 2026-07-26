@@ -88,7 +88,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // Intentional AgentLink-fidelity diagnostic surfaces.
 const AREAS = [
   // Active page + dashboard surfaces (carry brand glow, ratchet at floor)
-  { dir: "src/pages", baseline: 73 },
+  { dir: "src/pages", baseline: 49 },
   { dir: "src/components/dashboard", baseline: 3 },
   { dir: "src/components/landing", baseline: 6 },
   { dir: "src/components/awards", baseline: 3 },
@@ -117,6 +117,19 @@ const ARBITRARY_RX = /shadow-\[/;
 const CHUNKY_COLORED_RX = /shadow-(?:lg|xl|2xl)[^"'`]*shadow-[a-z]+(?:-\d+)?\/\d+/;
 const ALLOW_RX = /shadow-glow-allow/;
 
+// 2026-07-26: this guard and check-focus-ring-areas contradicted each other.
+// check-focus-ring-areas REQUIRES the canonical focus signal
+// `focus-visible:shadow-[var(--apex-focus-ring)]` and fails on the old
+// ring-2/ring-offset halo — but that token is literally `shadow-[`, so
+// ARBITRARY_RX counted every correct focus ring as a banned glow. Adding a
+// focus state to any element therefore raised this baseline, which taxes the
+// exact accessibility fix the other guard mandates. The focus-ring token is
+// not a decorative glow and is already policed by its own guard, so it is
+// excluded here rather than requiring a shadow-glow-allow marker on every
+// interactive element in the codebase.
+const FOCUS_RING_TOKEN_RX = /focus-visible:shadow-\[var\(--apex-focus-ring\)\]/g;
+const stripFocusRingToken = (line) => line.replace(FOCUS_RING_TOKEN_RX, "");
+
 function walk(dir, acc = []) {
   if (!fs.existsSync(dir)) return acc;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -136,7 +149,7 @@ function scanArea({ dir, baseline }) {
   for (const file of files) {
     const lines = fs.readFileSync(file, "utf8").split("\n");
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+      const line = stripFocusRingToken(lines[i]);
       const isBanned = ARBITRARY_RX.test(line) || CHUNKY_COLORED_RX.test(line);
       if (!isBanned) continue;
       const prev = i > 0 ? lines[i - 1] : "";

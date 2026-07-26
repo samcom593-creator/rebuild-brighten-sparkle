@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -100,6 +101,20 @@ const DQ_LABELS: Record<string, { label: string; href?: string }> = {
   book_unattributed_inforce: { label: "In-force book rows with no agent" },
 };
 
+// Severity tokens — three levels only, always the -600 dark:-400 pair so they
+// stay legible on the white light-theme card as well as the dark one.
+const SEV_TEXT = {
+  good: "text-emerald-600 dark:text-emerald-400",
+  warn: "text-amber-600 dark:text-amber-400",
+  bad: "text-rose-600 dark:text-rose-400",
+} as const;
+
+const SEV_DOT = {
+  good: "bg-emerald-500",
+  warn: "bg-amber-500",
+  bad: "bg-rose-500",
+} as const;
+
 export default function SystemHealth() {
   const [results, setResults] = useState<HealthResult[]>([]);
   const [lastCheck, setLastCheck] = useState<HealthLog | null>(null);
@@ -174,11 +189,12 @@ export default function SystemHealth() {
 
   const criticalCount = lastCheck?.critical_count || 0;
   const warningCount = lastCheck?.warning_count || 0;
+  const overallSeverity = criticalCount > 0 ? "bad" : warningCount > 0 ? "warn" : "good";
 
   if (loading) return <SkeletonLoader variant="page" />;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 p-4 md:p-6">
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
         accent="cyan"
         eyebrow="Admin · Operations"
@@ -186,11 +202,12 @@ export default function SystemHealth() {
         title="System Health"
         subtitle="Self-healing monitoring & diagnostics across every sync, cron, and integration."
         actions={
-          <>
-            <Badge variant={criticalCount > 0 ? "destructive" : warningCount > 0 ? "default" : "outline"} className="text-xs">
-              {criticalCount} critical · {warningCount} warning
-            </Badge>
-          </>
+          <Badge
+            variant={criticalCount > 0 ? "destructive" : warningCount > 0 ? "default" : "outline"}
+            className="text-xs tabular-nums"
+          >
+            {criticalCount} critical · {warningCount} warning
+          </Badge>
         }
       />
 
@@ -199,30 +216,38 @@ export default function SystemHealth() {
           count of 0 are hidden so the list is only ever work to do. */}
       {(dq || dqFailed) && (
         <GlassCard className="p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold text-foreground">Data quality</h3>
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Data quality</span>
+            </h3>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
             Records that exist but cannot be acted on. Each one is a person or a
             policy the system currently cannot route.
           </p>
 
           {dqFailed && (
-            <p className="text-xs text-amber-500">
-              Could not read the data-quality view — these counts are missing,
-              not zero.
+            <p className={cn("flex items-start gap-2 text-xs leading-relaxed", SEV_TEXT.warn)}>
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span className="min-w-0">
+                Could not read the data-quality view — these counts are missing,
+                not zero.
+              </span>
             </p>
           )}
 
           {dq && dq.filter((r) => Number(r.n ?? 0) > 0).length === 0 && (
-            <p className="text-xs text-emerald-500">
-              Every checked record has an owner, a link, and a usable date.
+            <p className={cn("flex items-start gap-2 text-xs leading-relaxed", SEV_TEXT.good)}>
+              <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span className="min-w-0">
+                Every checked record has an owner, a link, and a usable date.
+              </span>
             </p>
           )}
 
           {dq && dq.filter((r) => Number(r.n ?? 0) > 0).length > 0 && (
-            <div className="space-y-1.5">
+            <ul className="space-y-2">
               {dq
                 .filter((r) => Number(r.n ?? 0) > 0)
                 .sort((a, b) => Number(b.n ?? 0) - Number(a.n ?? 0))
@@ -230,113 +255,154 @@ export default function SystemHealth() {
                   const meta = DQ_LABELS[r.issue];
                   const count = Number(r.n ?? 0);
                   const body = (
-                    <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2">
+                    <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-xs font-medium text-foreground truncate">
+                        <div className="truncate text-sm font-medium text-foreground">
                           {meta?.label ?? r.issue}
                         </div>
                         {r.detail && (
-                          <div className="text-[11px] text-muted-foreground tabular-nums truncate">
+                          <div className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
                             {r.detail}
                           </div>
                         )}
                       </div>
-                      <span className="text-sm font-bold tabular-nums flex-shrink-0 text-amber-500">
+                      <span className={cn("shrink-0 text-sm font-bold tabular-nums", SEV_TEXT.warn)}>
                         {count.toLocaleString()}
                       </span>
                     </div>
                   );
-                  return meta?.href ? (
-                    <Link key={r.issue} to={meta.href} className="block hover:opacity-80">
-                      {body}
-                    </Link>
-                  ) : (
-                    <div key={r.issue}>{body}</div>
+                  return (
+                    <li key={r.issue}>
+                      {meta?.href ? (
+                        <Link
+                          to={meta.href}
+                          className="block rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 transition-colors hover:border-border hover:bg-card focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                        >
+                          {body}
+                        </Link>
+                      ) : (
+                        <div className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5">
+                          {body}
+                        </div>
+                      )}
+                    </li>
                   );
                 })}
-            </div>
+            </ul>
           )}
         </GlassCard>
       )}
 
       {/* Status Banner */}
-      <div className={`p-4 rounded-md flex items-center gap-3 border ${
-        criticalCount > 0 ? "bg-red-500/10 border-red-500/30" :
-        warningCount > 0 ? "bg-yellow-500/10 border-yellow-500/30" :
-        "bg-emerald-500/10 border-emerald-500/30"
-      }`}>
-        <div className={`w-3 h-3 rounded-full animate-pulse ${
-          criticalCount > 0 ? "bg-red-500" : warningCount > 0 ? "bg-yellow-500" : "bg-emerald-500"
-        }`} />
-        <div className="flex-1">
-          <div className="font-bold text-sm">
-            {criticalCount > 0 ? `${criticalCount} Critical Issue${criticalCount > 1 ? "s" : ""}` :
-             warningCount > 0 ? `${warningCount} Warning${warningCount > 1 ? "s" : ""}` :
-             "All Systems Operational"}
+      <div
+        className={cn(
+          "rounded-lg border p-3 sm:p-4",
+          overallSeverity === "bad" && "border-rose-500/35 bg-rose-500/5",
+          overallSeverity === "warn" && "border-amber-500/35 bg-amber-500/5",
+          overallSeverity === "good" && "border-emerald-500/35 bg-emerald-500/5",
+        )}
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <span aria-hidden className={cn("h-2 w-2 shrink-0 rounded-full", SEV_DOT[overallSeverity])} />
+            <div className="min-w-0">
+              <div className={cn("text-sm font-semibold tabular-nums", SEV_TEXT[overallSeverity])}>
+                {criticalCount > 0 ? `${criticalCount} Critical Issue${criticalCount > 1 ? "s" : ""}` :
+                 warningCount > 0 ? `${warningCount} Warning${warningCount > 1 ? "s" : ""}` :
+                 "All Systems Operational"}
+              </div>
+              <div className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+                Last checked: {lastCheck ? format(new Date(lastCheck.checked_at), "MMM d, h:mm a") : "Never"}
+              </div>
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground">
-            Last checked: {lastCheck ? format(new Date(lastCheck.checked_at), "MMM d, h:mm a") : "Never"}
-          </div>
+          <Button
+            size="sm"
+            onClick={runCheck}
+            disabled={running}
+            className="h-10 w-full shrink-0 gap-2 sm:h-9 sm:w-auto"
+          >
+            <RefreshCw className={cn("h-4 w-4", running && "animate-spin")} />
+            {running ? "Checking..." : "Run Check Now"}
+          </Button>
         </div>
-        <Button size="sm" onClick={runCheck} disabled={running} className="gap-2">
-          <RefreshCw className={`h-3.5 w-3.5 ${running ? "animate-spin" : ""}`} />
-          {running ? "Checking..." : "Run Check Now"}
-        </Button>
       </div>
 
       {/* Auto-fixed items */}
       {lastCheck?.auto_fixed && lastCheck.auto_fixed.length > 0 && (
         <GlassCard className="p-4">
-          <div className="text-xs font-bold text-emerald-400 mb-2 flex items-center gap-2">
-            <Zap className="h-3.5 w-3.5" />
-            Auto-Fixed ({lastCheck.auto_fixed.length})
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+              <Zap className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Auto-Fixed</span>
+            </h3>
+            <span className={cn("shrink-0 text-sm font-bold tabular-nums", SEV_TEXT.good)}>
+              {lastCheck.auto_fixed.length}
+            </span>
           </div>
-          <div className="space-y-1">
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            Faults the last run repaired on its own. Nothing in this list is
+            waiting on you.
+          </p>
+          <ul className="space-y-2">
             {lastCheck.auto_fixed.map((fix) => (
-              <div key={fix} className="text-xs text-emerald-400/80 flex items-center gap-2">
-                <CheckCircle className="h-3 w-3 shrink-0" />
-                {fix}
-              </div>
+              <li key={fix} className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                <CheckCircle className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", SEV_TEXT.good)} />
+                <span className="min-w-0 break-words">{fix}</span>
+              </li>
             ))}
-          </div>
+          </ul>
         </GlassCard>
       )}
 
       {/* Service Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {results.map((result) => {
           const Icon = getServiceIcon(result.service);
           return (
-            <GlassCard key={result.service} className="p-4">
+            <GlassCard
+              key={result.service}
+              className={cn(
+                "p-4",
+                result.status === "down" && "border-rose-500/35",
+                result.status === "degraded" && "border-amber-500/35",
+              )}
+            >
               <div className="flex items-start gap-3">
-                <div className={`p-2 rounded-lg ${
-                  result.status === "healthy" ? "bg-emerald-500/10 text-emerald-400" :
-                  result.status === "degraded" ? "bg-yellow-500/10 text-amber-500" :
-                  "bg-red-500/10 text-red-400"
-                }`}>
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm truncate">{result.service}</span>
-                    <Badge variant={result.status === "healthy" ? "default" : result.status === "degraded" ? "secondary" : "destructive"} className="text-[10px] h-5">
-                      {result.status === "healthy" ? <CheckCircle className="h-3 w-3 mr-1" /> :
-                       result.status === "degraded" ? <AlertTriangle className="h-3 w-3 mr-1" /> :
-                       <XCircle className="h-3 w-3 mr-1" />}
+                <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="min-w-0 truncate text-sm font-medium text-foreground">{result.service}</span>
+                    <Badge
+                      variant={result.status === "healthy" ? "default" : result.status === "degraded" ? "secondary" : "destructive"}
+                      className="h-5 shrink-0 text-[10px]"
+                    >
+                      {result.status === "healthy" ? <CheckCircle className="mr-1 h-3 w-3" /> :
+                       result.status === "degraded" ? <AlertTriangle className="mr-1 h-3 w-3" /> :
+                       <XCircle className="mr-1 h-3 w-3" />}
                       {result.status}
                     </Badge>
                     {result.autoFixed && (
-                      <Badge variant="outline" className="text-[10px] h-5 text-emerald-400 border-emerald-400/30">auto-fixed</Badge>
+                      <Badge
+                        variant="outline"
+                        className={cn("h-5 shrink-0 border-emerald-500/30 text-[10px]", SEV_TEXT.good)}
+                      >
+                        auto-fixed
+                      </Badge>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">{result.message}</div>
+                  <div className="mt-1 break-words text-[11px] leading-relaxed text-muted-foreground">
+                    {result.message}
+                  </div>
                   {result.responseTime > 0 && (
-                    <div className="text-[10px] text-muted-foreground mt-0.5">Response: {result.responseTime}ms</div>
+                    <div className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+                      Response: {result.responseTime}ms
+                    </div>
                   )}
                   {result.requiresAction && result.actionRequired && (
-                    <div className="text-xs text-red-400 mt-1.5 flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3 shrink-0" />
-                      {result.actionRequired}
+                    <div className={cn("mt-1.5 flex items-start gap-2 text-[11px] leading-relaxed", SEV_TEXT.bad)}>
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span className="min-w-0 break-words">{result.actionRequired}</span>
                     </div>
                   )}
                 </div>
@@ -349,40 +415,65 @@ export default function SystemHealth() {
       {/* Recent Health Logs */}
       {recentLogs.length > 0 && (
         <GlassCard className="p-4">
-          <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            Recent Health Checks
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+              <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Recent Health Checks</span>
+            </h3>
+          </div>
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            The most recent runs, newest first. A row with a non-zero critical
+            count is a window where something was down and nobody was watching.
+          </p>
+          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/50">
-                  <th className="text-left pb-2 font-medium text-muted-foreground">Time</th>
-                  <th className="text-left pb-2 font-medium text-muted-foreground">Status</th>
-                  <th className="text-center pb-2 font-medium text-muted-foreground">Critical</th>
-                  <th className="text-center pb-2 font-medium text-muted-foreground">Warnings</th>
-                  <th className="text-center pb-2 font-medium text-muted-foreground">Auto-Fixed</th>
+                <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  <th className="px-2 py-2 text-left">Time</th>
+                  <th className="px-2 py-2 text-left">Status</th>
+                  <th className="px-2 py-2 text-right">Critical</th>
+                  <th className="px-2 py-2 text-right">Warnings</th>
+                  <th className="px-2 py-2 text-right">Auto-Fixed</th>
                 </tr>
               </thead>
               <tbody>
                 {recentLogs.map((log) => (
-                  <tr key={log.id} className="border-b border-border/20 hover:bg-muted/30">
-                    <td className="py-2">{format(new Date(log.checked_at), "MMM d, h:mm a")}</td>
-                    <td className="py-2">
-                      <span className={`inline-flex items-center gap-1 ${
-                        log.overall_status === "healthy" ? "text-emerald-400" :
-                        log.overall_status === "degraded" ? "text-amber-500" : "text-red-400"
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          log.overall_status === "healthy" ? "bg-emerald-400" :
-                          log.overall_status === "degraded" ? "bg-yellow-400" : "bg-red-400"
-                        }`} />
+                  <tr key={log.id} className="border-b border-border/60 transition-colors hover:bg-muted/30">
+                    <td className="whitespace-nowrap px-2 py-2 tabular-nums text-foreground">
+                      {format(new Date(log.checked_at), "MMM d, h:mm a")}
+                    </td>
+                    <td className="px-2 py-2">
+                      <span className={cn(
+                        "inline-flex items-center gap-2 whitespace-nowrap font-medium",
+                        log.overall_status === "healthy" ? SEV_TEXT.good :
+                        log.overall_status === "degraded" ? SEV_TEXT.warn : SEV_TEXT.bad,
+                      )}>
+                        <span aria-hidden className={cn(
+                          "h-2 w-2 shrink-0 rounded-full",
+                          log.overall_status === "healthy" ? SEV_DOT.good :
+                          log.overall_status === "degraded" ? SEV_DOT.warn : SEV_DOT.bad,
+                        )} />
                         {log.overall_status}
                       </span>
                     </td>
-                    <td className="py-2 text-center">{log.critical_count}</td>
-                    <td className="py-2 text-center">{log.warning_count}</td>
-                    <td className="py-2 text-center">{log.auto_fixed?.length || 0}</td>
+                    <td className={cn(
+                      "px-2 py-2 text-right font-semibold tabular-nums",
+                      log.critical_count > 0 ? SEV_TEXT.bad : "text-muted-foreground",
+                    )}>
+                      {log.critical_count}
+                    </td>
+                    <td className={cn(
+                      "px-2 py-2 text-right font-semibold tabular-nums",
+                      log.warning_count > 0 ? SEV_TEXT.warn : "text-muted-foreground",
+                    )}>
+                      {log.warning_count}
+                    </td>
+                    <td className={cn(
+                      "px-2 py-2 text-right font-semibold tabular-nums",
+                      (log.auto_fixed?.length || 0) > 0 ? SEV_TEXT.good : "text-muted-foreground",
+                    )}>
+                      {log.auto_fixed?.length || 0}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -392,7 +483,7 @@ export default function SystemHealth() {
       )}
 
       {/* New observability panels — populated as functions migrate to createHandler() */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <FunctionErrorsPanel />
         <AuditLogPanel />
       </div>

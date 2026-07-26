@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Phone,
+  PhoneOutgoing,
+  ListChecks,
   Voicemail,
   MessageSquare,
   UserCheck,
@@ -12,9 +14,9 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { GlassCard } from "@/components/ui/glass-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -189,7 +191,7 @@ export default function LicensedInbox() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-6">
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
         eyebrowIcon={<Phone className="h-4 w-4" />}
         eyebrow="Immediate outbound"
@@ -198,146 +200,184 @@ export default function LicensedInbox() {
         accent="emerald"
       />
 
-      <div className="mx-auto max-w-6xl space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <GlassCard className="p-4">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+            <PhoneOutgoing className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">Call queue</span>
+          </h3>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          Licensed applicants who have not been worked yet — every row is a
+          producer who can write business today and is still waiting on a call.
+        </p>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="shrink-0">
+            <div className="text-2xl font-bold leading-none tabular-nums text-foreground">
+              {filtered.length.toLocaleString()}
+            </div>
+            <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              Waiting to call
+            </div>
+          </div>
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search name / email / phone / state"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              aria-label="Search the licensed call queue"
+              className="h-10 pl-9 sm:h-9"
             />
           </div>
-          <Badge variant="outline" className="whitespace-nowrap text-xs">
-            {filtered.length} licensed
-          </Badge>
         </div>
+      </GlassCard>
+
+      <GlassCard className="p-4">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+            <ListChecks className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">Newest first</span>
+          </h3>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          The freshest application sits at the top because a licensed applicant
+          is easiest to reach in the minutes right after they apply.
+        </p>
 
         {isLoading && (
-          <div className="flex justify-center py-8 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
+          <div className="space-y-2">
+            {[...Array(6)].map((_, i) => (
+              <div
+                // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
+                key={i}
+                className="h-[144px] animate-pulse rounded-lg bg-muted/30"
+              />
+            ))}
           </div>
         )}
 
         {!isLoading && filtered.length === 0 && (
-          <Card>
-            <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
-              <MailX className="h-8 w-8" />
-              <p className="text-sm">No hits.</p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={<MailX className="h-7 w-7" />}
+            variant="default"
+            title="No licensed applicant is waiting"
+            description="Nothing matches the current search, and an empty queue means every licensed application has already been worked."
+          />
         )}
 
-        <div className="space-y-2">
+        <ul className="space-y-2">
           {filtered.map((r) => {
             const name = fullName(r);
             const applied = relTime(r.created_at);
             return (
-              <Card
+              <li
                 key={r.id}
-                className="border-emerald-500/20 hover:border-emerald-500/40 transition-colors"
+                className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 transition-colors hover:border-border hover:bg-card"
               >
-                <CardContent className="flex flex-col gap-3 p-3 sm:p-4">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-base font-semibold">{name}</span>
-                      <Badge
-                        variant="outline"
-                        className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-[10px]"
-                      >
-                        licensed
-                      </Badge>
-                      {r.state && (
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] uppercase"
-                        >
-                          {r.state}
-                        </Badge>
-                      )}
-                      <span className="text-xs text-muted-foreground">
-                        applied {applied}
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-sm font-medium text-foreground">
+                        {name}
                       </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      {r.phone ? (
-                        <a
-                          href={`tel:${r.phone}`}
-                          className="inline-flex items-center gap-1 font-mono text-sm text-primary hover:underline"
-                          aria-label={`Call ${name} at ${r.phone}`}
-                          onClick={() => logContact(r.id, "call", "call_started")}
-                        >
-                          <Phone className="h-3.5 w-3.5" />
-                          {r.phone}
-                        </a>
-                      ) : (
-                        <span className="italic text-muted-foreground">
-                          no phone on file
+                      <span className="shrink-0 rounded-sm border border-emerald-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                        Licensed
+                      </span>
+                      {r.state && (
+                        <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                          {r.state}
                         </span>
                       )}
-                      {r.email && (
-                        <a
-                          href={`mailto:${r.email}`}
-                          className="truncate hover:underline"
-                        >
-                          {r.email}
-                        </a>
-                      )}
                     </div>
                   </div>
-
-                  <div
-                    className="flex flex-wrap items-center gap-1"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <DispBtn
-                      label="Called"
-                      icon={Phone}
-                      tone="sky"
-                      busy={busy === `${r.id}:called`}
-                      onClick={() => logContact(r.id, "call", "called")}
-                    />
-                    <DispBtn
-                      label="Voicemail"
-                      icon={Voicemail}
-                      tone="amber"
-                      busy={busy === `${r.id}:voicemail`}
-                      onClick={() => logContact(r.id, "call", "voicemail")}
-                    />
-                    <DispBtn
-                      label="Text sent"
-                      icon={MessageSquare}
-                      tone="violet"
-                      busy={busy === `${r.id}:text_sent`}
-                      onClick={() => logContact(r.id, "sms", "text_sent")}
-                    />
-                    <DispBtn
-                      label="Hired"
-                      icon={UserCheck}
-                      tone="emerald"
-                      busy={busy === `${r.id}:hired`}
-                      onClick={() => markHired(r.id)}
-                    />
-                    <DispBtn
-                      label="Passed"
-                      icon={XCircle}
-                      tone="rose"
-                      busy={busy === `${r.id}:passed`}
-                      onClick={() => markPassed(r.id)}
-                    />
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-bold tabular-nums text-foreground">
+                      {applied}
+                    </div>
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      Applied
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {r.phone ? (
+                    <a
+                      href={`tel:${r.phone}`}
+                      className="inline-flex h-10 min-w-0 items-center gap-2 rounded-sm border border-border bg-background px-3 text-sm font-semibold tabular-nums text-foreground transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
+                      aria-label={`Call ${name} at ${r.phone}`}
+                      onClick={() => logContact(r.id, "call", "call_started")}
+                    >
+                      <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{r.phone}</span>
+                    </a>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground">
+                      No phone on file
+                    </span>
+                  )}
+                  {r.email && (
+                    <a
+                      href={`mailto:${r.email}`}
+                      className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                    >
+                      {r.email}
+                    </a>
+                  )}
+                </div>
+
+                <div
+                  className="mt-2 flex flex-wrap items-center gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DispBtn
+                    label="Called"
+                    icon={Phone}
+                    tone="neutral"
+                    busy={busy === `${r.id}:called`}
+                    onClick={() => logContact(r.id, "call", "called")}
+                  />
+                  <DispBtn
+                    label="Voicemail"
+                    icon={Voicemail}
+                    tone="amber"
+                    busy={busy === `${r.id}:voicemail`}
+                    onClick={() => logContact(r.id, "call", "voicemail")}
+                  />
+                  <DispBtn
+                    label="Text sent"
+                    icon={MessageSquare}
+                    tone="neutral"
+                    busy={busy === `${r.id}:text_sent`}
+                    onClick={() => logContact(r.id, "sms", "text_sent")}
+                  />
+                  <DispBtn
+                    label="Hired"
+                    icon={UserCheck}
+                    tone="emerald"
+                    busy={busy === `${r.id}:hired`}
+                    onClick={() => markHired(r.id)}
+                  />
+                  <DispBtn
+                    label="Passed"
+                    icon={XCircle}
+                    tone="rose"
+                    busy={busy === `${r.id}:passed`}
+                    onClick={() => markPassed(r.id)}
+                  />
+                </div>
+              </li>
             );
           })}
-        </div>
-      </div>
+        </ul>
+      </GlassCard>
     </div>
   );
 }
 
-type Tone = "sky" | "amber" | "violet" | "emerald" | "rose";
+type Tone = "neutral" | "amber" | "emerald" | "rose";
 
 function DispBtn({
   label,
@@ -352,15 +392,16 @@ function DispBtn({
   busy?: boolean;
   onClick: () => void;
 }) {
+  // Severity discipline: rose / amber / emerald only, always theme-paired so the
+  // hover text stays legible on the white light-theme card. Neutral actions
+  // ("Called", "Text sent") carry no severity colour — the icon distinguishes them.
   const toneMap: Record<Tone, string> = {
-    sky: "hover:border-sky-500/50 hover:bg-sky-500/10 hover:text-sky-200",
+    neutral: "hover:bg-muted/30",
     amber:
-      "hover:border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-200",
-    violet:
-      "hover:border-violet-500/50 hover:bg-violet-500/10 hover:text-violet-200",
+      "hover:border-amber-500/50 hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400",
     emerald:
-      "hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-200",
-    rose: "hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-200",
+      "hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400",
+    rose: "hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400",
   };
   const slug = label.toLowerCase().replace(/[^a-z0-9]/g, "-");
   return (
@@ -371,17 +412,14 @@ function DispBtn({
       aria-label={label}
       data-cc-action={slug}
       disabled={busy}
-      className={cn(
-        "min-h-[44px] h-11 gap-1 px-2 text-[11px] sm:text-xs",
-        toneMap[tone],
-      )}
+      className={cn("h-10 gap-1.5 px-2.5 text-[11px] sm:h-9", toneMap[tone])}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
       }}
     >
       {busy ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
       ) : (
         <Icon className="h-3.5 w-3.5 shrink-0" />
       )}

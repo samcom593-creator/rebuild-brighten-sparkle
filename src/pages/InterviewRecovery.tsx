@@ -43,6 +43,8 @@ import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -124,35 +126,55 @@ interface ProspectRow {
 }
 
 // ---------------------------------------------------------------------------
+// Severity vocabulary — three levels, theme-paired so every one of them stays
+// legible on the white light-theme card and the dark card. Colour is never the
+// only signal: every use below sits next to an icon, a word, or a numeral.
+// ---------------------------------------------------------------------------
+const GOOD = "text-emerald-600 dark:text-emerald-400";
+const WARN = "text-amber-600 dark:text-amber-400";
+const BAD = "text-rose-600 dark:text-rose-400";
+const NEUTRAL = "text-muted-foreground";
+
+// A category chip carries meaning in its label, not its hue — tinting it would
+// collide with the severity vocabulary above.
+const CATEGORY_CHIP =
+  "border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wide text-muted-foreground";
+
+// ---------------------------------------------------------------------------
 // Bucket presentation — colour is never the only signal, every chip has a label
 // ---------------------------------------------------------------------------
 const BUCKETS: { key: Bucket; label: string; tone: string }[] = [
-  { key: "starting_soon",     label: "Starting in 15 min", tone: "text-amber-300 border-amber-500/40 bg-amber-500/10" },
-  { key: "overdue_today",     label: "Overdue Today",      tone: "text-rose-300 border-rose-500/40 bg-rose-500/10" },
-  { key: "today",             label: "Today",              tone: "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" },
-  { key: "missed_yesterday",  label: "Missed Yesterday",   tone: "text-rose-300 border-rose-500/40 bg-rose-500/10" },
-  { key: "missed_2_7",        label: "Missed 2–7 Days",    tone: "text-orange-300 border-orange-500/40 bg-orange-500/10" },
-  { key: "missed_7_plus",     label: "Missed 7+ Days",     tone: "text-red-300 border-red-500/40 bg-red-500/10" },
-  { key: "needs_reschedule",  label: "Needs Reschedule",   tone: "text-amber-300 border-amber-500/40 bg-amber-500/10" },
-  { key: "contacted_waiting", label: "Contacted · Waiting",tone: "text-sky-300 border-sky-500/40 bg-sky-500/10" },
-  { key: "confirmed",         label: "Confirmed",          tone: "text-teal-300 border-teal-500/40 bg-teal-500/10" },
-  { key: "upcoming",          label: "Upcoming",           tone: "text-slate-300 border-slate-500/40 bg-slate-500/10" },
-  { key: "completed",         label: "Completed",          tone: "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" },
-  { key: "no_show",           label: "No Show",            tone: "text-zinc-300 border-zinc-500/40 bg-zinc-500/10" },
-  { key: "not_interested",    label: "Not Interested",     tone: "text-zinc-400 border-zinc-600/40 bg-zinc-600/10" },
-  { key: "canceled",          label: "Canceled",           tone: "text-zinc-400 border-zinc-600/40 bg-zinc-600/10" },
+  { key: "starting_soon",     label: "Starting in 15 min", tone: WARN },
+  { key: "overdue_today",     label: "Overdue Today",      tone: BAD },
+  { key: "today",             label: "Today",              tone: GOOD },
+  { key: "missed_yesterday",  label: "Missed Yesterday",   tone: BAD },
+  { key: "missed_2_7",        label: "Missed 2–7 Days",    tone: BAD },
+  { key: "missed_7_plus",     label: "Missed 7+ Days",     tone: BAD },
+  { key: "needs_reschedule",  label: "Needs Reschedule",   tone: WARN },
+  { key: "contacted_waiting", label: "Contacted · Waiting",tone: WARN },
+  { key: "confirmed",         label: "Confirmed",          tone: GOOD },
+  { key: "upcoming",          label: "Upcoming",           tone: NEUTRAL },
+  { key: "completed",         label: "Completed",          tone: GOOD },
+  { key: "no_show",           label: "No Show",            tone: NEUTRAL },
+  { key: "not_interested",    label: "Not Interested",     tone: NEUTRAL },
+  { key: "canceled",          label: "Canceled",           tone: NEUTRAL },
 ];
 
 const DISPOSITIONS: { key: Outcome; label: string; icon: typeof Check; tone: string; hotkey: string }[] = [
-  { key: "completed",      label: "Completed",   icon: CheckCircle2, tone: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40", hotkey: "1" },
-  { key: "hired",          label: "Hired",       icon: UserCheck,    tone: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40", hotkey: "2" },
-  { key: "no_answer",      label: "No Answer",   icon: PhoneOff,     tone: "bg-slate-500/15 text-slate-300 border-slate-500/40",       hotkey: "3" },
-  { key: "no_show",        label: "No Show",     icon: UserX,        tone: "bg-zinc-500/15 text-zinc-300 border-zinc-500/40",          hotkey: "4" },
-  { key: "rescheduled",    label: "Reschedule",  icon: CalendarClock,tone: "bg-amber-500/15 text-amber-300 border-amber-500/40",       hotkey: "5" },
-  { key: "callback",       label: "Call Back",   icon: Phone,        tone: "bg-sky-500/15 text-sky-300 border-sky-500/40",             hotkey: "6" },
-  { key: "not_interested", label: "Not Interested", icon: XCircle,   tone: "bg-rose-500/15 text-rose-300 border-rose-500/40",          hotkey: "7" },
-  { key: "bad_number",     label: "Bad Number",  icon: PhoneOff,     tone: "bg-rose-500/15 text-rose-300 border-rose-500/40",          hotkey: "8" },
+  { key: "completed",      label: "Completed",   icon: CheckCircle2, tone: GOOD,    hotkey: "1" },
+  { key: "hired",          label: "Hired",       icon: UserCheck,    tone: GOOD,    hotkey: "2" },
+  { key: "no_answer",      label: "No Answer",   icon: PhoneOff,     tone: NEUTRAL, hotkey: "3" },
+  { key: "no_show",        label: "No Show",     icon: UserX,        tone: NEUTRAL, hotkey: "4" },
+  { key: "rescheduled",    label: "Reschedule",  icon: CalendarClock,tone: WARN,    hotkey: "5" },
+  { key: "callback",       label: "Call Back",   icon: Phone,        tone: WARN,    hotkey: "6" },
+  { key: "not_interested", label: "Not Interested", icon: XCircle,   tone: BAD,     hotkey: "7" },
+  { key: "bad_number",     label: "Bad Number",  icon: PhoneOff,     tone: BAD,     hotkey: "8" },
 ];
+
+// One disposition button, identical in Catch Up, the pipeline rows and the
+// prospect rows. Severity lives on the icon + label; the surface stays neutral.
+const dispositionClass = (tone: string) =>
+  cn("h-10 justify-start px-2.5 text-xs sm:h-9", tone);
 
 const CHICAGO = "America/Chicago";
 
@@ -201,12 +223,6 @@ function prospectUrgency(p: ProspectRow): string {
   if (p.outcome) return `logged ${p.outcome.replace(/_/g, " ")}`;
   return `no outcome · ${relativeDays(Math.floor(Math.max(0, num(p.days_stuck))))}`;
 }
-
-const TRACK_TONE: Record<string, string> = {
-  licensed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
-  leader: "bg-violet-500/15 text-violet-300 border-violet-500/40",
-  other: "bg-slate-500/15 text-slate-300 border-slate-500/40",
-};
 
 const TRACK_LABEL: Record<string, string> = {
   licensed: "Licensed",
@@ -466,17 +482,42 @@ export default function InterviewRecovery() {
     ? Math.max(...backlog.map((r) => r.days_overdue))
     : 0;
 
+  // The heading the list section carries — same vocabulary as the chip strip,
+  // so the selected chip and the section title always read the same.
+  const activeLabel =
+    activeBucket === "backlog" ? "Catch Up Queue"
+    : activeBucket === "prospects" ? "Prospect Review"
+    : activeBucket === "all" ? "All interviews"
+    : BUCKETS.find((b) => b.key === activeBucket)?.label ?? "Interviews";
+
   // -------------------------------------------------------------------------
   // Catch Up — one candidate at a time, full screen
   // -------------------------------------------------------------------------
   if (catchUp) {
     if (!current) {
       return (
-        <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 p-6 text-center">
-          <CheckCircle2 className="h-16 w-16 text-emerald-400" />
-          <h2 className="text-2xl font-semibold">Backlog clear</h2>
-          <p className="text-muted-foreground">Every interview has an outcome logged.</p>
-          <Button onClick={() => setCatchUp(false)}>Back to queue</Button>
+        <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+          <PageHeader
+            eyebrow="Catch Up"
+            eyebrowIcon={<Rocket className="h-3.5 w-3.5" />}
+            title="Backlog clear"
+            subtitle="Nothing is waiting on an outcome."
+            actions={
+              <Button
+                variant="outline"
+                className="h-10 w-full sm:h-9 sm:w-auto"
+                onClick={() => setCatchUp(false)}
+              >
+                Back to queue
+              </Button>
+            }
+          />
+          <EmptyState
+            icon={<CheckCircle2 className="h-7 w-7" />}
+            variant="success"
+            title="Backlog clear"
+            description="Every interview has an outcome logged. Head back to the queue to work upcoming calls or the prospect review bucket."
+          />
         </div>
       );
     }
@@ -484,80 +525,105 @@ export default function InterviewRecovery() {
     const reasons = priorityReasons(current);
 
     return (
-      <div className="mx-auto w-full max-w-5xl p-4 sm:p-6">
+      <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+        <PageHeader
+          eyebrow="Catch Up"
+          eyebrowIcon={<Rocket className="h-3.5 w-3.5" />}
+          title={current.display_name}
+          subtitle={
+            <>
+              {current.event_type_name?.trim() || "Interview"} · scheduled {fmtChicago(current.scheduled_at)}
+              {current.days_overdue > 0 && (
+                <span className={BAD}> · {relativeDays(current.days_overdue)}</span>
+              )}
+            </>
+          }
+          actions={
+            <Button
+              variant="outline"
+              className="h-10 w-full sm:h-9 sm:w-auto"
+              onClick={() => setCatchUp(false)}
+              aria-label="Exit Catch Up mode"
+            >
+              <X className="mr-1.5 h-4 w-4" /> Exit
+            </Button>
+          }
+        />
+
         {/* progress */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Badge className="bg-teal-500/15 text-teal-300 border-teal-500/40">
+        <GlassCard className="p-4">
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+              <Rocket className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Catch Up progress</span>
+            </h3>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
               {catchIndex + 1} of {catchQueue.length}
-            </Badge>
-            <span className="text-sm text-muted-foreground">
-              {catchQueue.length - catchIndex - 1} left
             </span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setCatchUp(false)} aria-label="Exit Catch Up mode">
-            <X className="mr-1 h-4 w-4" /> Exit
-          </Button>
-        </div>
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            <span className="font-bold tabular-nums text-foreground">
+              {catchQueue.length - catchIndex - 1}
+            </span>{" "}
+            interviews still have no outcome after this one.
+          </p>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary"
+              style={{ width: `${((catchIndex + 1) / Math.max(1, catchQueue.length)) * 100}%` }}
+            />
+          </div>
+        </GlassCard>
 
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-          <div
-            className="h-full rounded-full bg-teal-500 transition-all"
-            style={{ width: `${((catchIndex + 1) / Math.max(1, catchQueue.length)) * 100}%` }}
-          />
-        </div>
-
-        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
           {/* main */}
-          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className="truncate text-2xl font-semibold">{current.display_name}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {current.event_type_name?.trim() || "Interview"} · scheduled {fmtChicago(current.scheduled_at)}
-                  {current.days_overdue > 0 && (
-                    <span className="text-rose-300"> · {relativeDays(current.days_overdue)}</span>
-                  )}
-                </p>
-              </div>
-              <Badge className={cn("shrink-0", current.call_track === "licensed"
-                ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
-                : "bg-violet-500/15 text-violet-300 border-violet-500/40")}>
+          <GlassCard className="p-4">
+            <div className="mb-1 flex items-baseline justify-between gap-2">
+              <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+                <UserCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">Who you are calling</span>
+              </h3>
+              <Badge variant="outline" className={cn("shrink-0", CATEGORY_CHIP)}>
                 {current.call_track === "licensed" ? "Licensed Call" : "Leader Call"}
               </Badge>
             </div>
+            <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+              Every contact route and the whole application, so the call starts without a lookup.
+            </p>
 
             {reasons.length > 0 && (
-              <p className="mt-2 text-xs text-teal-300/90">{reasons.join(" · ")}</p>
+              <p className="mb-3 text-[11px] text-muted-foreground">{reasons.join(" · ")}</p>
             )}
 
             {/* contact actions */}
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               {current.best_phone && (
-                <Button asChild className="bg-teal-500 text-slate-950 hover:bg-teal-400">
+                <Button asChild className="h-10 sm:h-9">
                   <a href={`tel:${current.best_phone.replace(/[^\d+]/g, "")}`} aria-label={`Call ${current.display_name}`}>
-                    <Phone className="mr-2 h-4 w-4" /> Call {current.best_phone}
+                    <Phone className="mr-2 h-4 w-4" /> Call{" "}
+                    <span className="tabular-nums">{current.best_phone}</span>
                   </a>
                 </Button>
               )}
               {current.best_email && (
-                <Button asChild variant="outline">
+                <Button asChild variant="outline" className="h-10 sm:h-9">
                   <a href={`mailto:${current.best_email}`} aria-label={`Email ${current.display_name}`}>
                     <Mail className="mr-2 h-4 w-4" /> Email
                   </a>
                 </Button>
               )}
               {current.instagram_handle && (
-                <Button asChild variant="outline">
+                <Button asChild variant="outline" className="h-10 max-w-full sm:h-9">
                   <a href={`https://instagram.com/${current.instagram_handle.replace(/^@/, "")}`}
                      target="_blank" rel="noopener noreferrer"
                      aria-label={`Open Instagram for ${current.display_name}`}>
-                    <Instagram className="mr-2 h-4 w-4" /> @{current.instagram_handle.replace(/^@/, "")}
+                    <Instagram className="mr-2 h-4 w-4" />
+                    <span className="truncate">@{current.instagram_handle.replace(/^@/, "")}</span>
                   </a>
                 </Button>
               )}
               {current.reschedule_url && (
-                <Button asChild variant="outline">
+                <Button asChild variant="outline" className="h-10 sm:h-9">
                   <a href={current.reschedule_url} target="_blank" rel="noopener noreferrer"
                      aria-label={`Reschedule ${current.display_name}`}>
                     <CalendarClock className="mr-2 h-4 w-4" /> Reschedule link
@@ -567,7 +633,7 @@ export default function InterviewRecovery() {
             </div>
 
             {/* the full application, inline */}
-            <div className="mt-6">
+            <div className="mt-3">
               {current.application_id ? (
                 <ApplicationFacts row={current} onOpenFull={() => setDetailAppId(current.application_id)} />
               ) : (
@@ -583,36 +649,48 @@ export default function InterviewRecovery() {
             </div>
 
             {current.prep_notes && (
-              <div className="mt-4 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-sky-300">They wrote</p>
-                <p className="mt-1 text-sm text-slate-200">{current.prep_notes}</p>
+              <div className="mt-3 rounded-lg border border-border bg-card p-3 sm:p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">They wrote</p>
+                <p className="mt-1 break-words text-sm text-foreground">{current.prep_notes}</p>
               </div>
             )}
-          </div>
+          </GlassCard>
 
           {/* right rail */}
-          <div className="space-y-4">
-            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Call agenda
+          <div className="space-y-3">
+            <GlassCard className="p-4">
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+                  <Check className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">Call agenda</span>
+                </h3>
+              </div>
+              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                The five beats this track has to cover before the call ends.
               </p>
-              <ul className="space-y-1.5 text-sm text-slate-300">
+              <ul className="space-y-2">
                 {(current.call_track === "licensed"
                   ? ["Confirm license + states", "Current production", "Why leaving", "Apex comp", "Close to contracting"]
                   : ["Team size today", "Income goal", "Leadership history", "Apex override structure", "Close to next step"]
                 ).map((line) => (
                   <li key={line} className="flex items-start gap-2">
-                    <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-400" />
-                    <span>{line}</span>
+                    <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 text-sm font-medium text-foreground">{line}</span>
                   </li>
                 ))}
               </ul>
-            </div>
+            </GlassCard>
 
-            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-              <label htmlFor="catchup-notes" className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <GlassCard className="p-4">
+              <label
+                htmlFor="catchup-notes"
+                className="mb-1 block text-sm font-semibold text-foreground"
+              >
                 Call notes
               </label>
+              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                Whatever is typed here is filed with the outcome you log next.
+              </p>
               <Textarea
                 id="catchup-notes"
                 value={noteDraft}
@@ -620,36 +698,49 @@ export default function InterviewRecovery() {
                 placeholder="What happened on this call…"
                 rows={5}
               />
-            </div>
+            </GlassCard>
 
-            <div className="grid grid-cols-2 gap-2">
-              {DISPOSITIONS.map((d) => (
-                <Button
-                  key={d.key}
-                  variant="outline"
-                  disabled={busy}
-                  className={cn("justify-start border", d.tone)}
-                  onClick={() => void disposeAndAdvance(d.key)}
-                  aria-label={`${d.label} — ${current.display_name}`}
-                >
-                  <d.icon className="mr-2 h-4 w-4" />
-                  <span className="truncate">{d.label}</span>
-                  <kbd className="ml-auto hidden text-[10px] opacity-60 sm:inline">{d.hotkey}</kbd>
+            <GlassCard className="p-4">
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">Log the outcome</span>
+                </h3>
+              </div>
+              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                One tap files this interview and advances the queue. Number keys do the same thing.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {DISPOSITIONS.map((d) => (
+                  <Button
+                    key={d.key}
+                    variant="outline"
+                    disabled={busy}
+                    className={dispositionClass(d.tone)}
+                    onClick={() => void disposeAndAdvance(d.key)}
+                    aria-label={`${d.label} — ${current.display_name}`}
+                  >
+                    <d.icon className="mr-1.5 h-4 w-4 shrink-0" />
+                    <span className="truncate">{d.label}</span>
+                    <kbd className="ml-auto hidden shrink-0 text-[10px] font-bold tabular-nums text-muted-foreground sm:inline">
+                      {d.hotkey}
+                    </kbd>
+                  </Button>
+                ))}
+              </div>
+
+              <div className="mt-3 flex gap-2">
+                <Button variant="outline" className="h-10 flex-1 sm:h-9" disabled={catchIndex === 0}
+                        onClick={() => setCatchIndex((i) => Math.max(0, i - 1))} aria-label="Previous candidate">
+                  Previous
                 </Button>
-              ))}
-            </div>
-
-            <div className="flex gap-2">
-              <Button variant="ghost" className="flex-1" disabled={catchIndex === 0}
-                      onClick={() => setCatchIndex((i) => Math.max(0, i - 1))} aria-label="Previous candidate">
-                Previous
-              </Button>
-              <Button variant="ghost" className="flex-1"
-                      onClick={() => setCatchIndex((i) => Math.min(i + 1, catchQueue.length - 1))}
-                      aria-label="Skip to next candidate">
-                <SkipForward className="mr-1 h-4 w-4" /> Skip
-              </Button>
-            </div>
+                <Button variant="outline" className="h-10 flex-1 sm:h-9"
+                        onClick={() => setCatchIndex((i) => Math.min(i + 1, catchQueue.length - 1))}
+                        aria-label="Skip to next candidate">
+                  <SkipForward className="mr-1.5 h-4 w-4" /> Skip
+                </Button>
+              </div>
+            </GlassCard>
           </div>
         </div>
 
@@ -666,7 +757,7 @@ export default function InterviewRecovery() {
   // Queue view
   // -------------------------------------------------------------------------
   return (
-    <div className="w-full max-w-full space-y-5 p-4 sm:p-6">
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
         title="Interview Recovery"
         subtitle={
@@ -674,75 +765,113 @@ export default function InterviewRecovery() {
             ? `${backlog.length} interviews waiting to be logged · oldest ${relativeDays(oldest)}`
             : "Every interview has an outcome logged."
         }
+        actions={
+          <Button
+            className="h-10 w-full sm:h-9 sm:w-auto"
+            disabled={!backlog.length}
+            onClick={() => { setCatchIndex(0); setCatchUp(true); }}
+          >
+            <Rocket className="mr-2 h-4 w-4" />
+            Catch Up{backlog.length ? ` (${backlog.length})` : ""}
+          </Button>
+        }
       />
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Kpi label="Backlog"        value={backlog.length}                     tone="rose"    icon={AlertTriangle} />
-        <Kpi label="Today"          value={(counts.today ?? 0) + (counts.overdue_today ?? 0)} tone="emerald" icon={Clock} />
-        <Kpi label="Starting soon"  value={counts.starting_soon ?? 0}          tone="amber"   icon={Zap} />
-        <Kpi label="Upcoming"       value={counts.upcoming ?? 0}               tone="slate"   icon={CalendarClock} />
-        <Kpi label="Completed"      value={counts.completed ?? 0}              tone="teal"    icon={CheckCircle2} />
-        <Kpi label="Prospect Review" value={prospectsOpen} tone="violet" icon={Link2Off}
-             active={activeBucket === "prospects"}
-             onClick={() => goBucket("prospects")} />
-      </div>
-
-      {/* actions */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          className="bg-teal-500 text-slate-950 hover:bg-teal-400"
-          disabled={!backlog.length}
-          onClick={() => { setCatchIndex(0); setCatchUp(true); }}
-        >
-          <Rocket className="mr-2 h-4 w-4" />
-          Catch Up{backlog.length ? ` (${backlog.length})` : ""}
-        </Button>
-        <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Name, phone, IG, company…"
-            className="pl-9"
-            aria-label="Search interviews"
-          />
+      <GlassCard className="p-4">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+            <CalendarClock className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">Where the queue stands</span>
+          </h3>
+          <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+            {rows.length.toLocaleString()}
+          </span>
         </div>
-        <Button variant="outline" size="icon" aria-label="Refresh interview queue"
-                onClick={() => void Promise.all([pipeline.refetch(), prospects.refetch()])}>
-          <RefreshCw className={cn("h-4 w-4",
-            (pipeline.isFetching || prospects.isFetching) && "animate-spin")} />
-        </Button>
-      </div>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          Backlog is every interview that happened with no outcome written down — that is the number this
+          page exists to drive to zero.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <Kpi label="Backlog"        value={backlog.length}                     tone="bad"     icon={AlertTriangle} />
+          <Kpi label="Today"          value={(counts.today ?? 0) + (counts.overdue_today ?? 0)} tone="good" icon={Clock} />
+          <Kpi label="Starting soon"  value={counts.starting_soon ?? 0}          tone="warn"    icon={Zap} />
+          <Kpi label="Upcoming"       value={counts.upcoming ?? 0}               tone="neutral" icon={CalendarClock} />
+          <Kpi label="Completed"      value={counts.completed ?? 0}              tone="good"    icon={CheckCircle2} />
+          <Kpi label="Prospect Review" value={prospectsOpen} tone="warn" icon={Link2Off}
+               active={activeBucket === "prospects"}
+               onClick={() => goBucket("prospects")} />
+        </div>
+      </GlassCard>
 
-      {/* bucket chips */}
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-        <Chip active={activeBucket === "backlog"} tone="text-rose-300 border-rose-500/40 bg-rose-500/10"
-              label="Catch Up Queue" count={backlog.length} onClick={() => goBucket("backlog")} />
-        <Chip active={activeBucket === "prospects"} tone="text-violet-300 border-violet-500/40 bg-violet-500/10"
-              label="Prospect Review" count={prospectsOpen} onClick={() => goBucket("prospects")} />
-        <Chip active={activeBucket === "all"} tone="text-slate-300 border-slate-500/40 bg-slate-500/10"
-              label="All" count={rows.length} onClick={() => goBucket("all")} />
-        {BUCKETS.filter((b) => (counts[b.key] ?? 0) > 0).map((b) => (
-          <Chip key={b.key} active={activeBucket === b.key} tone={b.tone} label={b.label}
-                count={counts[b.key] ?? 0} onClick={() => goBucket(b.key)} />
-        ))}
-      </div>
+      {/* search + bucket chips */}
+      <GlassCard className="p-4">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">Find and filter</span>
+          </h3>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          Search runs across name, phone, Instagram, company and state; the chips below narrow the list to
+          one bucket.
+        </p>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Name, phone, IG, company…"
+              className="h-10 pl-9 sm:h-9"
+              aria-label="Search interviews"
+            />
+          </div>
+          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 sm:h-9 sm:w-9"
+                  aria-label="Refresh interview queue"
+                  onClick={() => void Promise.all([pipeline.refetch(), prospects.refetch()])}>
+            <RefreshCw className={cn("h-4 w-4",
+              (pipeline.isFetching || prospects.isFetching) && "animate-spin")} />
+          </Button>
+        </div>
+
+        {/* bucket chips — one scroll container, the page body never moves */}
+        <div className="-mx-4 mt-3 overflow-x-auto pb-1 sm:mx-0">
+          <div className="flex min-w-max gap-2 px-4 sm:px-0">
+            <Chip active={activeBucket === "backlog"} tone={BAD}
+                  label="Catch Up Queue" count={backlog.length} onClick={() => goBucket("backlog")} />
+            <Chip active={activeBucket === "prospects"} tone={WARN}
+                  label="Prospect Review" count={prospectsOpen} onClick={() => goBucket("prospects")} />
+            <Chip active={activeBucket === "all"} tone={NEUTRAL}
+                  label="All" count={rows.length} onClick={() => goBucket("all")} />
+            {BUCKETS.filter((b) => (counts[b.key] ?? 0) > 0).map((b) => (
+              <Chip key={b.key} active={activeBucket === b.key} tone={b.tone} label={b.label}
+                    count={counts[b.key] ?? 0} onClick={() => goBucket(b.key)} />
+            ))}
+          </div>
+        </div>
+      </GlassCard>
 
       {/* bulk bar */}
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-teal-500/30 bg-teal-500/5 p-3">
-          <span className="text-sm font-medium">{selected.size} selected</span>
-          <Button size="sm" variant="outline" disabled={busy}
-                  onClick={() => void bulkDispose("no_answer")}>
-            <PhoneOff className="mr-1.5 h-3.5 w-3.5" /> No Answer
-          </Button>
-          <Button size="sm" variant="outline" disabled={busy}
-                  onClick={() => void bulkDispose("no_show")}>
-            <UserX className="mr-1.5 h-3.5 w-3.5" /> No Show
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
-        </div>
+        <GlassCard className="p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-sm font-semibold text-foreground">
+              <span className="tabular-nums">{selected.size}</span> selected
+            </span>
+            <Button size="sm" variant="outline" className="h-10 sm:h-9" disabled={busy}
+                    onClick={() => void bulkDispose("no_answer")}>
+              <PhoneOff className={cn("mr-1.5 h-4 w-4", NEUTRAL)} /> No Answer
+            </Button>
+            <Button size="sm" variant="outline" className="h-10 sm:h-9" disabled={busy}
+                    onClick={() => void bulkDispose("no_show")}>
+              <UserX className={cn("mr-1.5 h-4 w-4", NEUTRAL)} /> No Show
+            </Button>
+            <Button size="sm" variant="ghost" className="h-10 sm:h-9"
+                    onClick={() => setSelected(new Set())}>Clear</Button>
+          </div>
+        </GlassCard>
       )}
 
       {/* list */}
@@ -764,41 +893,62 @@ export default function InterviewRecovery() {
           onToggleExpand={(id) => setExpandedId((cur) => (cur === id ? null : id))}
           onDispose={(p, o) => void disposeProspect(p, o)}
         />
-      ) : pipeline.isLoading ? (
-        <div className="space-y-2">
-          {/* stable-key-allow:skeleton */}
-          {[1, 2, 3, 4, 5].map((n) => <Skeleton key={n} className="h-20 w-full" />)}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-10 text-center">
-          <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-400" />
-          <p className="mt-3 font-medium">Nothing here</p>
-          <p className="text-sm text-muted-foreground">
-            {search ? "No interviews match that search." : "This queue is empty."}
-          </p>
-        </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map((r) => (
-            <InterviewRow
-              key={r.id}
-              row={r}
-              expanded={expandedId === r.id}
-              selected={selected.has(r.id)}
-              busy={busy}
-              onToggleSelect={() => {
-                setSelected((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(r.id)) next.delete(r.id); else next.add(r.id);
-                  return next;
-                });
-              }}
-              onToggleExpand={() => setExpandedId((cur) => (cur === r.id ? null : r.id))}
-              onDispose={(o) => void dispose(r, o)}
-              onOpenFull={() => setDetailAppId(r.application_id)}
+        <GlassCard className="p-4">
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+              <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">{activeLabel}</span>
+            </h3>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+              {filtered.length.toLocaleString()}
+            </span>
+          </div>
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            Open a row to read the application and log what happened; the number on the right is how many
+            days late that interview already is.
+          </p>
+
+          {pipeline.isLoading ? (
+            <div className="space-y-2">
+              {/* stable-key-allow:skeleton */}
+              {[1, 2, 3, 4, 5].map((n) => <Skeleton key={n} className="h-[76px] w-full rounded-lg" />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={<CheckCircle2 className="h-7 w-7" />}
+              variant={search ? "default" : "success"}
+              title={search ? "No interviews match that search" : "This queue is clear"}
+              description={
+                search
+                  ? "Try a first name, a phone number, an Instagram handle, or the company they came from."
+                  : "Every interview in this bucket already has an outcome logged. Switch buckets to find work."
+              }
             />
-          ))}
-        </div>
+          ) : (
+            <ul className="space-y-2">
+              {filtered.map((r) => (
+                <InterviewRow
+                  key={r.id}
+                  row={r}
+                  expanded={expandedId === r.id}
+                  selected={selected.has(r.id)}
+                  busy={busy}
+                  onToggleSelect={() => {
+                    setSelected((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(r.id)) next.delete(r.id); else next.add(r.id);
+                      return next;
+                    });
+                  }}
+                  onToggleExpand={() => setExpandedId((cur) => (cur === r.id ? null : r.id))}
+                  onDispose={(o) => void dispose(r, o)}
+                  onOpenFull={() => setDetailAppId(r.application_id)}
+                />
+              ))}
+            </ul>
+          )}
+        </GlassCard>
       )}
 
       <ApplicationDetailSheet
@@ -811,28 +961,33 @@ export default function InterviewRecovery() {
 }
 
 // ---------------------------------------------------------------------------
+// Severity lives on the numeral, never on the tile surface — a filled tile
+// reads as an alert even when the count is zero.
+const KPI_TONES: Record<string, string> = {
+  bad: BAD,
+  good: GOOD,
+  warn: WARN,
+  neutral: NEUTRAL,
+};
+
 function Kpi({ label, value, tone, icon: Icon, onClick, active }: {
   label: string; value: number; tone: string; icon: typeof Clock;
   onClick?: () => void; active?: boolean;
 }) {
-  const tones: Record<string, string> = {
-    rose: "text-rose-300 border-rose-500/30",
-    emerald: "text-emerald-300 border-emerald-500/30",
-    amber: "text-amber-300 border-amber-500/30",
-    slate: "text-slate-300 border-slate-500/30",
-    teal: "text-teal-300 border-teal-500/30",
-    violet: "text-violet-300 border-violet-500/30",
-  };
   const body = (
     <>
-      <div className="flex items-center gap-1.5">
-        <Icon className="h-3.5 w-3.5" />
-        <span className="truncate text-xs text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-2">
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
       </div>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+      <p className={cn("mt-2 text-2xl font-bold leading-none tabular-nums", KPI_TONES[tone] ?? NEUTRAL)}>
+        {value.toLocaleString()}
+      </p>
     </>
   );
-  const base = cn("rounded-lg border bg-slate-950/60 p-3", tones[tone]);
+  const base = "rounded-lg border border-border bg-card p-3 sm:p-4";
 
   if (!onClick) return <div className={base}>{body}</div>;
 
@@ -841,8 +996,12 @@ function Kpi({ label, value, tone, icon: Icon, onClick, active }: {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={cn(base, "w-full text-left transition hover:bg-slate-900/60",
-        active && "ring-2 ring-violet-400/70")}
+      className={cn(
+        base,
+        "w-full text-left transition-colors hover:bg-muted/30",
+        "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+        active && "ring-2 ring-primary/60",
+      )}
     >
       {body}
     </button>
@@ -858,13 +1017,14 @@ function Chip({ active, tone, label, count, onClick }: {
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition",
-        tone,
-        active && "ring-2 ring-teal-400/70",
+        "flex h-10 shrink-0 items-center gap-2 rounded-md border border-border bg-card px-3",
+        "text-xs font-medium transition-colors hover:bg-muted/30 sm:h-9",
+        "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+        active && "ring-2 ring-primary/60",
       )}
     >
-      {label}
-      <span className="rounded-full bg-black/30 px-1.5 tabular-nums">{count}</span>
+      <span className={cn("truncate", tone)}>{label}</span>
+      <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">{count}</span>
     </button>
   );
 }
@@ -873,8 +1033,8 @@ function Fact({ label, value }: { label: string; value: React.ReactNode }) {
   if (value === null || value === undefined || value === "") return null;
   return (
     <div className="min-w-0">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="truncate text-sm text-slate-200">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="truncate text-sm font-medium tabular-nums text-foreground">{value}</p>
     </div>
   );
 }
@@ -882,11 +1042,14 @@ function Fact({ label, value }: { label: string; value: React.ReactNode }) {
 // The full application, inline — no popup, no navigating away.
 function ApplicationFacts({ row, onOpenFull }: { row: PipelineRow; onOpenFull: () => void }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Application</p>
-        <Button size="sm" variant="ghost" onClick={onOpenFull} aria-label={`Open full application for ${row.display_name}`}>
-          Full record <ArrowRight className="ml-1 h-3.5 w-3.5" />
+    <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          Application
+        </p>
+        <Button size="sm" variant="ghost" className="h-10 shrink-0 sm:h-9" onClick={onOpenFull}
+                aria-label={`Open full application for ${row.display_name}`}>
+          Full record <ArrowRight className="ml-1 h-4 w-4" />
         </Button>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -928,12 +1091,12 @@ function UnmatchedPanel({
         : "Booked through Calendly without an APEX application, and no record in the system looks like them. This booking is everything Apex knows.";
 
   return (
-    <div className="rounded-lg border border-violet-500/30 bg-violet-500/5 p-4">
-      <div className="flex items-start gap-2">
-        <Link2Off className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
+    <div className="rounded-lg border border-amber-500/35 bg-amber-500/5 p-3 sm:p-4">
+      <div className="flex items-start gap-3">
+        <Link2Off className={cn("mt-0.5 h-5 w-5 shrink-0", WARN)} />
         <div className="min-w-0">
-          <p className="text-sm font-medium text-violet-200">No application on file</p>
-          <p className="mt-1 text-xs text-muted-foreground">{why}</p>
+          <p className={cn("text-sm font-semibold", WARN)}>No application on file</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{why}</p>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <Fact label="Name"      value={name} />
             <Fact label="Phone"     value={phone} />
@@ -965,11 +1128,13 @@ function InterviewRow({
   const reasons = priorityReasons(row);
 
   return (
-    <div className={cn(
-      "rounded-lg border bg-slate-950/60 transition",
-      expanded ? "border-teal-500/40" : "border-slate-800",
+    <li className={cn(
+      "rounded-lg border transition-colors",
+      expanded
+        ? "border-primary/50 bg-card"
+        : "border-border/60 bg-card/60 hover:border-border hover:bg-card",
     )}>
-      <div className="flex items-start gap-3 p-3 sm:items-center">
+      <div className="flex items-start gap-3 px-3 py-2.5 sm:items-center">
         <Checkbox
           checked={selected}
           onCheckedChange={onToggleSelect}
@@ -980,35 +1145,45 @@ function InterviewRow({
         <button
           type="button"
           onClick={onToggleExpand}
-          className="min-w-0 flex-1 text-left"
+          className="min-w-0 flex-1 rounded-sm text-left focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
           aria-expanded={expanded}
           aria-label={`Toggle details for ${row.display_name}`}
         >
           <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate font-medium">{row.display_name}</span>
+            <span className="truncate text-sm font-medium text-foreground">{row.display_name}</span>
             {bucketMeta && (
-              <Badge className={cn("shrink-0 text-[10px]", bucketMeta.tone)}>{bucketMeta.label}</Badge>
+              <Badge variant="outline" className={cn("shrink-0 border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wide", bucketMeta.tone)}>
+                {bucketMeta.label}
+              </Badge>
             )}
             {!row.application_id && (
-              <Badge className="shrink-0 border-violet-500/40 bg-violet-500/10 text-[10px] text-violet-300">
+              <Badge variant="outline" className={cn("shrink-0", CATEGORY_CHIP)}>
                 No application
               </Badge>
             )}
           </div>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
             {fmtChicago(row.scheduled_at)}
             {row.best_phone ? ` · ${row.best_phone}` : ""}
             {reasons.length ? ` · ${reasons.join(" · ")}` : ""}
           </p>
         </button>
 
+        {row.days_overdue > 0 && (
+          <div className="shrink-0 text-right">
+            <div className={cn("text-sm font-bold tabular-nums", BAD)}>{row.days_overdue}d</div>
+            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">late</div>
+          </div>
+        )}
+
         <div className="flex shrink-0 items-center gap-1">
           {row.best_phone && (
-            <Button asChild size="icon" variant="ghost" aria-label={`Call ${row.display_name}`}>
+            <Button asChild size="icon" variant="ghost" className="h-10 w-10 sm:h-9 sm:w-9"
+                    aria-label={`Call ${row.display_name}`}>
               <a href={`tel:${row.best_phone.replace(/[^\d+]/g, "")}`}><Phone className="h-4 w-4" /></a>
             </Button>
           )}
-          <Button size="icon" variant="ghost" onClick={onToggleExpand}
+          <Button size="icon" variant="ghost" className="h-10 w-10 sm:h-9 sm:w-9" onClick={onToggleExpand}
                   aria-label={expanded ? "Collapse" : "Expand"}>
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
@@ -1016,7 +1191,7 @@ function InterviewRow({
       </div>
 
       {expanded && (
-        <div className="border-t border-slate-800 p-3">
+        <div className="border-t border-border/60 p-3">
           {row.application_id
             ? <ApplicationFacts row={row} onOpenFull={onOpenFull} />
             : <UnmatchedPanel
@@ -1029,34 +1204,34 @@ function InterviewRow({
               />}
 
           {row.prep_notes && (
-            <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
-              <p className="text-[11px] uppercase tracking-wide text-sky-300">They wrote</p>
-              <p className="mt-1 text-sm text-slate-200">{row.prep_notes}</p>
+            <div className="mt-3 rounded-lg border border-border bg-card p-3 sm:p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">They wrote</p>
+              <p className="mt-1 break-words text-sm text-foreground">{row.prep_notes}</p>
             </div>
           )}
 
           {!row.outcome && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-3 flex flex-wrap gap-2">
               {DISPOSITIONS.map((d) => (
                 <Button key={d.key} size="sm" variant="outline" disabled={busy}
-                        className={cn("border text-xs", d.tone)}
+                        className={dispositionClass(d.tone)}
                         onClick={() => onDispose(d.key)}
                         aria-label={`${d.label} — ${row.display_name}`}>
-                  <d.icon className="mr-1.5 h-3.5 w-3.5" />{d.label}
+                  <d.icon className="mr-1.5 h-4 w-4 shrink-0" />{d.label}
                 </Button>
               ))}
             </div>
           )}
 
           {row.outcome && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Logged as <span className="text-slate-200">{row.outcome.replace(/_/g, " ")}</span>
+            <p className="mt-3 break-words text-xs text-muted-foreground">
+              Logged as <span className="font-medium text-foreground">{row.outcome.replace(/_/g, " ")}</span>
               {row.notes ? ` — ${row.notes}` : ""}
             </p>
           )}
         </div>
       )}
-    </div>
+    </li>
   );
 }
 
@@ -1082,65 +1257,84 @@ function ProspectQueue({
 }) {
   if (query.isLoading) {
     return (
-      <div className="space-y-2">
-        {/* stable-key-allow:skeleton */}
-        {[1, 2, 3, 4, 5].map((n) => <Skeleton key={n} className="h-20 w-full" />)}
-      </div>
+      <GlassCard className="p-4">
+        <div className="space-y-2">
+          {/* stable-key-allow:skeleton */}
+          {[1, 2, 3, 4, 5].map((n) => <Skeleton key={n} className="h-[76px] w-full rounded-lg" />)}
+        </div>
+      </GlassCard>
     );
   }
 
   // A query that threw must say so. A blank list would read as "all clear".
   if (query.isError) {
     return (
-      <div className="rounded-xl border border-rose-500/40 bg-rose-500/5 p-6 text-center">
-        <AlertTriangle className="mx-auto h-8 w-8 text-rose-300" />
-        <p className="mt-3 font-medium">Prospect queue did not load</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {(query.error as Error)?.message ?? "The prospect review view could not be read."}
-        </p>
-        <Button variant="outline" size="sm" className="mt-4" onClick={() => void query.refetch()}>
-          <RefreshCw className="mr-2 h-4 w-4" /> Try again
-        </Button>
+      <div className="rounded-lg border border-rose-500/35 bg-rose-500/5 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <AlertTriangle className={cn("mt-0.5 h-5 w-5 shrink-0", BAD)} />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Prospect queue did not load</p>
+              <p className="mt-0.5 break-words text-xs text-muted-foreground">
+                {(query.error as Error | null)?.message ?? "The prospect review view could not be read."}
+              </p>
+            </div>
+          </div>
+          <Button size="sm" variant="outline" className="h-10 w-full sm:h-9 sm:w-auto"
+                  onClick={() => void query.refetch()}>
+            <RefreshCw className="mr-1.5 h-4 w-4" /> Try again
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <GlassCard className="p-4">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+          <Link2Off className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">Prospect Review</span>
+        </h3>
+        <span className={cn("shrink-0 text-sm font-bold tabular-nums", open > 0 ? WARN : GOOD)}>
+          {open.toLocaleString()} / {total.toLocaleString()}
+        </span>
+      </div>
+      <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+        Licensed agents and team leaders who booked a call and exist nowhere else in Apex — no application,
+        so no other screen in this product knows they are here.
+      </p>
+
       {/* What these people are. This is the whole point of the bucket. */}
-      <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-4">
-        <div className="flex items-start gap-2">
-          <Link2Off className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
+      <div className="mb-3 rounded-lg border border-amber-500/35 bg-amber-500/5 p-3 sm:p-4">
+        <div className="flex items-start gap-3">
+          <Link2Off className={cn("mt-0.5 h-5 w-5 shrink-0", WARN)} />
           <div className="min-w-0">
-            <p className="text-sm font-medium text-violet-200">
-              Licensed agents and team leaders who booked a call and exist nowhere else in Apex
+            <p className={cn("text-sm font-semibold", WARN)}>
+              <span className="tabular-nums">{open}</span> of{" "}
+              <span className="tabular-nums">{total}</span> still have no outcome recorded
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              They never filled out an application, so no other screen in this product
-              knows they exist. This is real inbound recruiting demand.{" "}
-              <span className="font-medium text-slate-200">
-                {open} of {total} still have no outcome recorded.
-              </span>{" "}
-              Recording one is the action that puts them back in the pipeline.
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              This is real inbound recruiting demand. Recording an outcome is the action that puts them
+              back in the pipeline.
             </p>
           </div>
         </div>
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-10 text-center">
-          <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-400" />
-          <p className="mt-3 font-medium">
-            {searching ? "No prospect matches that search" : "Every booked prospect has an outcome"}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {searching
+        <EmptyState
+          icon={<CheckCircle2 className="h-7 w-7" />}
+          variant={searching ? "default" : "success"}
+          title={searching ? "No prospect matches that search" : "Every booked prospect has an outcome"}
+          description={
+            searching
               ? "Try a first name, a phone number, or an Instagram handle."
-              : "Every recruiting call booked outside an application has been dispositioned."}
-          </p>
-        </div>
+              : "Every recruiting call booked outside an application has been dispositioned."
+          }
+        />
       ) : (
-        <div className="space-y-2">
+        <ul className="space-y-2">
           {rows.map((p) => (
             <ProspectRowCard
               key={p.interview_event_id}
@@ -1153,9 +1347,9 @@ function ProspectQueue({
               onDispose={(o) => onDispose(p, o)}
             />
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+    </GlassCard>
   );
 }
 
@@ -1174,13 +1368,16 @@ function ProspectRowCard({
   const track = row.call_track ?? "other";
   const handle = row.instagram_handle?.replace(/^@/, "") || null;
   const matches = Math.max(0, num(row.candidate_count));
+  const stuck = Math.floor(Math.max(0, num(row.days_stuck)));
 
   return (
-    <div className={cn(
-      "rounded-lg border bg-slate-950/60 transition",
-      expanded ? "border-violet-500/40" : "border-slate-800",
+    <li className={cn(
+      "rounded-lg border transition-colors",
+      expanded
+        ? "border-primary/50 bg-card"
+        : "border-border/60 bg-card/60 hover:border-border hover:bg-card",
     )}>
-      <div className="flex items-start gap-3 p-3 sm:items-center">
+      <div className="flex items-start gap-3 px-3 py-2.5 sm:items-center">
         <Checkbox
           checked={selected}
           onCheckedChange={onToggleSelect}
@@ -1191,48 +1388,57 @@ function ProspectRowCard({
         <button
           type="button"
           onClick={onToggleExpand}
-          className="min-w-0 flex-1 text-left"
+          className="min-w-0 flex-1 rounded-sm text-left focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
           aria-expanded={expanded}
           aria-label={`Toggle details for ${name}`}
         >
           <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate font-medium">{name}</span>
-            <Badge className={cn("shrink-0 text-[10px]", TRACK_TONE[track] ?? TRACK_TONE.other)}>
+            <span className="truncate text-sm font-medium text-foreground">{name}</span>
+            <Badge variant="outline" className={cn("shrink-0", CATEGORY_CHIP)}>
               {TRACK_LABEL[track] ?? "Other"}
             </Badge>
-            <Badge className="shrink-0 border-violet-500/40 bg-violet-500/10 text-[10px] text-violet-300">
+            <Badge variant="outline" className={cn("shrink-0 border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wide", WARN)}>
               {matches > 0 ? `No application · ${matches} possible match` : "No application"}
             </Badge>
             {isUpcoming(row) && (
-              <Badge className="shrink-0 border-amber-500/40 bg-amber-500/10 text-[10px] text-amber-300">
+              <Badge variant="outline" className={cn("shrink-0 border-border bg-muted/40 text-[10px] font-bold uppercase tracking-wide", GOOD)}>
                 Upcoming
               </Badge>
             )}
           </div>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
             {fmtChicago(row.scheduled_at)}
             {` · ${prospectUrgency(row)}`}
             {row.invitee_phone ? ` · ${row.invitee_phone}` : handle ? ` · @${handle}` : ""}
           </p>
         </button>
 
+        {!isUpcoming(row) && !row.outcome && (
+          <div className="shrink-0 text-right">
+            <div className={cn("text-sm font-bold tabular-nums", WARN)}>{stuck}d</div>
+            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">stuck</div>
+          </div>
+        )}
+
         {/* Sam works this from his phone — call and DM stay one tap away. */}
         <div className="flex shrink-0 items-center gap-1">
           {row.invitee_phone && (
-            <Button asChild size="icon" variant="ghost" aria-label={`Call ${name}`}>
+            <Button asChild size="icon" variant="ghost" className="h-10 w-10 sm:h-9 sm:w-9"
+                    aria-label={`Call ${name}`}>
               <a href={`tel:${row.invitee_phone.replace(/[^\d+]/g, "")}`}>
                 <Phone className="h-4 w-4" />
               </a>
             </Button>
           )}
           {handle && (
-            <Button asChild size="icon" variant="ghost" aria-label={`Open Instagram for ${name}`}>
+            <Button asChild size="icon" variant="ghost" className="h-10 w-10 sm:h-9 sm:w-9"
+                    aria-label={`Open Instagram for ${name}`}>
               <a href={`https://instagram.com/${handle}`} target="_blank" rel="noopener noreferrer">
                 <Instagram className="h-4 w-4" />
               </a>
             </Button>
           )}
-          <Button size="icon" variant="ghost" onClick={onToggleExpand}
+          <Button size="icon" variant="ghost" className="h-10 w-10 sm:h-9 sm:w-9" onClick={onToggleExpand}
                   aria-label={expanded ? "Collapse" : "Expand"}>
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
@@ -1240,7 +1446,7 @@ function ProspectRowCard({
       </div>
 
       {expanded && (
-        <div className="border-t border-slate-800 p-3">
+        <div className="border-t border-border/60 p-3">
           <UnmatchedPanel
             name={name}
             phone={row.invitee_phone}
@@ -1253,64 +1459,65 @@ function ProspectRowCard({
 
           {row.next_action && (
             <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
-              <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-300" />
-              <span>{row.next_action}</span>
+              <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 break-words">{row.next_action}</span>
             </p>
           )}
 
           {row.va_notes && (
-            <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3">
-              <p className="text-[11px] uppercase tracking-wide text-sky-300">VA notes</p>
-              <p className="mt-1 text-sm text-slate-200">{row.va_notes}</p>
+            <div className="mt-3 rounded-lg border border-border bg-card p-3 sm:p-4">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">VA notes</p>
+              <p className="mt-1 break-words text-sm text-foreground">{row.va_notes}</p>
             </div>
           )}
 
           <div className="mt-3 flex flex-wrap gap-2">
             {row.invitee_phone && (
-              <Button asChild size="sm" className="bg-teal-500 text-slate-950 hover:bg-teal-400">
+              <Button asChild size="sm" className="h-10 sm:h-9">
                 <a href={`tel:${row.invitee_phone.replace(/[^\d+]/g, "")}`} aria-label={`Call ${name}`}>
-                  <Phone className="mr-1.5 h-3.5 w-3.5" /> Call
+                  <Phone className="mr-1.5 h-4 w-4" /> Call
                 </a>
               </Button>
             )}
             {row.invitee_email && (
-              <Button asChild size="sm" variant="outline">
+              <Button asChild size="sm" variant="outline" className="h-10 sm:h-9">
                 <a href={`mailto:${row.invitee_email}`} aria-label={`Email ${name}`}>
-                  <Mail className="mr-1.5 h-3.5 w-3.5" /> Email
+                  <Mail className="mr-1.5 h-4 w-4" /> Email
                 </a>
               </Button>
             )}
             {handle && (
-              <Button asChild size="sm" variant="outline">
+              <Button asChild size="sm" variant="outline" className="h-10 max-w-full sm:h-9">
                 <a href={`https://instagram.com/${handle}`} target="_blank" rel="noopener noreferrer"
                    aria-label={`Open Instagram for ${name}`}>
-                  <Instagram className="mr-1.5 h-3.5 w-3.5" /> @{handle}
+                  <Instagram className="mr-1.5 h-4 w-4" />
+                  <span className="truncate">@{handle}</span>
                 </a>
               </Button>
             )}
           </div>
 
           {!row.outcome && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-3 flex flex-wrap gap-2">
               {DISPOSITIONS.map((d) => (
                 <Button key={d.key} size="sm" variant="outline" disabled={busy}
-                        className={cn("border text-xs", d.tone)}
+                        className={dispositionClass(d.tone)}
                         onClick={() => onDispose(d.key)}
                         aria-label={`${d.label} — ${name}`}>
-                  <d.icon className="mr-1.5 h-3.5 w-3.5" />{d.label}
+                  <d.icon className="mr-1.5 h-4 w-4 shrink-0" />{d.label}
                 </Button>
               ))}
             </div>
           )}
 
           {row.outcome && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Logged as <span className="text-slate-200">{row.outcome.replace(/_/g, " ")}</span>
+            <p className="mt-3 break-words text-xs text-muted-foreground">
+              Logged as <span className="font-medium text-foreground">{row.outcome.replace(/_/g, " ")}</span>
               {row.notes ? ` — ${row.notes}` : ""}
             </p>
           )}
         </div>
       )}
-    </div>
+    </li>
   );
 }

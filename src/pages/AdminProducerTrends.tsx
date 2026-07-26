@@ -18,14 +18,28 @@
  * The KPIs, ProducerAlertCards, table rows, and drawer all read from the
  * SAME derived data — clicking a KPI or an alert card filters the risk table
  * in place. Recovery Review sorts by highest risk and walks the queue.
+ *
+ * 2026-07-26 visual contract pass (presentation only — no query, hook,
+ * condition, route, handler, permission gate, or rendered value changed):
+ *   §1 page root      → page-enter mx-auto max-w-[1400px] space-y-5 px-4 pb-24 sm:px-6
+ *   §2 sections       → GlassCard p-4 (the shadcn Card header/content stack is gone)
+ *   §3 headers        → h3 + count + one-sentence description
+ *   §4 type scale     → oversized headings + arbitrary tracking retired below PageHeader
+ *   §6 severity       → rose/amber/emerald in the -600 dark:-400 paired form only
+ *   §7 numerics       → tabular-nums + right-aligned on every numeric column
+ *   §8 tables         → one dedicated -mx-4 overflow-x-auto scroll rail each
+ *   §9 states         → every loading/empty/error branch kept, restyled
+ *   §10 focus         → the single --apex-focus-ring token, never the multi-utility halo
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   Select,
   SelectContent,
@@ -48,6 +62,7 @@ import {
   ShieldAlert,
   TrendingDown,
   UserCheck,
+  Users,
   UserX,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -266,18 +281,39 @@ function riskLevelFor(row: {
   return "stable";
 }
 
+/**
+ * Visual contract §6: rose / amber / emerald are the only severity hues and a
+ * fourth level is not allowed, so "watch" reads as amber-outline (no fill)
+ * against "dropping" amber-filled. The label word carries the distinction too —
+ * colour is never the only channel.
+ */
 function riskBadgeClasses(level: RiskLevel): { className: string; label: string } {
   switch (level) {
     case "critical":
-      return { className: "bg-rose-500/15 text-rose-300 border border-rose-500/40", label: "Critical" };
+      return {
+        className: "border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400",
+        label: "Critical",
+      };
     case "dropping":
-      return { className: "bg-amber-500/15 text-amber-300 border border-amber-500/40", label: "Dropping" };
+      return {
+        className: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+        label: "Dropping",
+      };
     case "watch":
-      return { className: "bg-blue-500/15 text-blue-300 border border-blue-500/40", label: "Watch" };
+      return {
+        className: "border-amber-500/30 text-amber-600 dark:text-amber-400",
+        label: "Watch",
+      };
     case "stable":
-      return { className: "bg-slate-500/15 text-slate-300 border border-slate-500/40", label: "Stable" };
+      return {
+        className: "border-border bg-muted/40 text-muted-foreground",
+        label: "Stable",
+      };
     case "recovered":
-      return { className: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/40", label: "Recovered" };
+      return {
+        className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+        label: "Recovered",
+      };
   }
 }
 
@@ -664,76 +700,81 @@ export default function AdminProducerTrends() {
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="container mx-auto px-4 py-6 space-y-6 max-w-7xl">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
-              <TrendingDown className="h-3.5 w-3.5" /> Producers · Trend Surface
-            </div>
-            <h1 className="text-3xl font-bold text-foreground">Producer Trends</h1>
-            <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              Weekly ALP trends, activation gaps, and production drop alerts.
-              Nobody dips silently.
-            </p>
-          </div>
+    <>
+      {/* max-w-[1400px] (not max-w-6xl) — the primary content is a 12-column
+          risk table, one of the two width exceptions the visual contract
+          allows. px-4 sm:px-6 is required so PageHeader's -mx-4 sm:-mx-6
+          cancels exactly; pb-24 clears the fixed Recovery Review dock. */}
+      <div className="page-enter mx-auto w-full max-w-[1400px] space-y-5 px-4 pb-24 sm:px-6">
+        <PageHeader
+          accent="rose"
+          eyebrow="Producers · Trend Surface"
+          eyebrowIcon={<TrendingDown className="h-3 w-3" />}
+          title="Producer Trends"
+          subtitle="Weekly ALP trends, activation gaps, and production drop alerts. Nobody dips silently."
+          actions={
+            <>
+              {/* Manager filter */}
+              <Select value={managerFilter} onValueChange={setManagerFilter}>
+                <SelectTrigger
+                  aria-label="Filter by manager"
+                  className="h-10 w-[150px] text-sm sm:h-9 sm:w-[170px]"
+                >
+                  <SelectValue placeholder="Manager" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All managers</SelectItem>
+                  {(managersQ.data ?? []).map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.display_name ?? "—"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Manager filter */}
-            <Select value={managerFilter} onValueChange={setManagerFilter}>
-              <SelectTrigger className="h-9 w-[180px] bg-muted/30 border-white/[0.08] text-foreground">
-                <SelectValue placeholder="Manager" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All managers</SelectItem>
-                {(managersQ.data ?? []).map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.display_name ?? "—"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {/* Risk filter */}
+              <Select value={riskFilter} onValueChange={setRiskFilter}>
+                <SelectTrigger
+                  aria-label="Filter by risk level"
+                  className="h-10 w-[150px] text-sm sm:h-9 sm:w-[140px]"
+                >
+                  <SelectValue placeholder="Risk" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All risks</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                  <SelectItem value="dropping">Dropping</SelectItem>
+                  <SelectItem value="watch">Watch</SelectItem>
+                  <SelectItem value="stable">Stable</SelectItem>
+                  <SelectItem value="recovered">Recovered</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {/* Risk filter */}
-            <Select value={riskFilter} onValueChange={setRiskFilter}>
-              <SelectTrigger className="h-9 w-[140px] bg-muted/30 border-white/[0.08] text-foreground">
-                <SelectValue placeholder="Risk" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All risks</SelectItem>
-                <SelectItem value="critical">Critical</SelectItem>
-                <SelectItem value="dropping">Dropping</SelectItem>
-                <SelectItem value="watch">Watch</SelectItem>
-                <SelectItem value="stable">Stable</SelectItem>
-                <SelectItem value="recovered">Recovered</SelectItem>
-              </SelectContent>
-            </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshAll}
+                className="h-10 gap-1.5 sm:h-9"
+              >
+                <RefreshCw className="h-4 w-4 shrink-0" />
+                Refresh
+              </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={refreshAll}
-              className="border-white/[0.14] text-foreground hover:bg-white/[0.04]"
-            >
-              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-              Refresh
-            </Button>
-
-            <Button
-              size="sm"
-              onClick={startRecoveryReview}
-              disabled={filtered.length === 0}
-              className="bg-teal-500 hover:bg-teal-500/90 text-slate-950 font-semibold"
-            >
-              <Play className="h-3.5 w-3.5 mr-1.5" />
-              Start Recovery Review
-            </Button>
-          </div>
-        </div>
+              <Button
+                size="sm"
+                onClick={startRecoveryReview}
+                disabled={filtered.length === 0}
+                className="h-10 gap-1.5 sm:h-9"
+              >
+                <Play className="h-4 w-4 shrink-0" />
+                Start Recovery Review
+              </Button>
+            </>
+          }
+        />
 
         {/* KPI Grid — clickable filters */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <KpiTile
             active={kpi === "dropping_3w"}
             onClick={() => setKpi(kpi === "dropping_3w" ? "all" : "dropping_3w")}
@@ -774,15 +815,17 @@ export default function AdminProducerTrends() {
             onClick={() => setKpi(kpi === "manager_review_needed" ? "all" : "manager_review_needed")}
             label="Manager review needed"
             value={kpiCounts.manager_review_needed}
-            tone="blue"
+            tone="rose"
           />
         </div>
 
         {/* Alert Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <ProducerAlertCard
             tone="rose"
-            icon={<AlertTriangle className="h-5 w-5 text-rose-300" />}
+            icon={
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+            }
             eyebrow="3-Week Drop Alert"
             title={`${kpiCounts.dropping_3w} producer${kpiCounts.dropping_3w === 1 ? "" : "s"} dropped ALP 3 weeks in a row`}
             body="Same slide Daniel had. Nobody caught it. Reach out today."
@@ -791,7 +834,9 @@ export default function AdminProducerTrends() {
           />
           <ProducerAlertCard
             tone="rose"
-            icon={<UserCheck className="h-5 w-5 text-rose-300" />}
+            icon={
+              <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+            }
             eyebrow="Never Activated"
             title={`${kpiCounts.never_activated_60d} licensed hire${kpiCounts.never_activated_60d === 1 ? "" : "s"} without a first deal`}
             body="Licensed, cleared the finish line, still zero production."
@@ -800,7 +845,9 @@ export default function AdminProducerTrends() {
           />
           <ProducerAlertCard
             tone="amber"
-            icon={<Link2Off className="h-5 w-5 text-amber-300" />}
+            icon={
+              <Link2Off className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            }
             eyebrow="No AgentLink"
             title={`${noAgentLinkCount} producer${noAgentLinkCount === 1 ? "" : "s"} missing AgentLink`}
             body="Production is invisible until AgentLink is linked. Fix the pipe."
@@ -810,100 +857,140 @@ export default function AdminProducerTrends() {
         </div>
 
         {/* Manager scorecard — v_manager_scorecard */}
-        <Card className="bg-card border-white/[0.08]">
-          <CardHeader>
-            <CardTitle className="text-base text-foreground flex flex-wrap items-center gap-2">
-              <ShieldAlert className="h-4 w-4 text-rose-300" />
-              Manager scorecard · retention risk + first-sale gap
-              <span className="ml-auto text-xs font-normal text-muted-foreground">
-                {scorecardRows.length} manager{scorecardRows.length === 1 ? "" : "s"} holding downline
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {managerScorecardQ.isLoading ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {/* stable-key-allow:skeleton */}
-                {["scorecard-a", "scorecard-b"].map((slot) => (
-                  <div
-                    key={slot}
-                    className="h-48 rounded-lg border border-white/[0.08] bg-muted/30 animate-pulse"
-                  />
-                ))}
-              </div>
-            ) : managerScorecardQ.isError ? (
-              <div className="py-8 text-center text-sm text-rose-300">
-                Manager scorecard failed to load. These numbers are missing, not zero.
-                <div className="text-xs text-muted-foreground mt-1">
-                  {managerScorecardQ.error?.message ?? "v_manager_scorecard returned an error."}
+        <GlassCard className="p-4">
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+              <ShieldAlert className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Manager scorecard</span>
+            </h3>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+              {scorecardRows.length}
+            </span>
+          </div>
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            Retention risk and first-sale gap for every manager holding a downline — a leg
+            scoring high is losing licensed agents faster than it activates them.
+          </p>
+
+          {managerScorecardQ.isLoading ? (
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {/* stable-key-allow:skeleton */}
+              {["scorecard-a", "scorecard-b"].map((slot) => (
+                <div
+                  key={slot}
+                  className="h-48 animate-pulse rounded-lg border border-border bg-muted/30"
+                />
+              ))}
+            </div>
+          ) : managerScorecardQ.isError ? (
+            <div className="rounded-lg border border-rose-500/35 bg-rose-500/5 p-3 sm:p-4">
+              <div className="flex min-w-0 items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">
+                    Manager scorecard failed to load
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                    These numbers are missing, not zero.
+                  </p>
+                  <p className="mt-1 break-words text-xs text-muted-foreground">
+                    {managerScorecardQ.error?.message ?? "v_manager_scorecard returned an error."}
+                  </p>
                 </div>
               </div>
-            ) : scorecardRows.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">
-                {managerFilter === "all"
-                  ? "No manager holds a downline yet. Set manager_id on agents and every leg scores itself here."
-                  : "The selected manager holds no downline. Switch to All managers to see the legs that do."}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {scorecardRows.map((r) => (
-                  <ManagerScorecardCard key={r.manager_agent_id} row={r} />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          ) : scorecardRows.length === 0 ? (
+            <EmptyState
+              icon={<ShieldAlert className="h-7 w-7" />}
+              variant={managerFilter === "all" ? "warning" : "default"}
+              title={
+                managerFilter === "all"
+                  ? "No manager holds a downline yet"
+                  : "The selected manager holds no downline"
+              }
+              description={
+                managerFilter === "all"
+                  ? "Set manager_id on agents and every leg scores itself here."
+                  : "Switch to All managers to see the legs that do."
+              }
+            />
+          ) : (
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {scorecardRows.map((r) => (
+                <ManagerScorecardCard key={r.manager_agent_id} row={r} />
+              ))}
+            </div>
+          )}
+        </GlassCard>
 
         {/* ProducerRiskTable */}
-        <Card className="bg-card border-white/[0.08]">
-          <CardHeader>
-            <CardTitle className="text-base text-foreground flex items-center justify-between">
-              <span>Producer risk queue</span>
-              <span className="text-xs font-normal text-muted-foreground">
-                {filtered.length} row{filtered.length === 1 ? "" : "s"}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {trendsQ.isLoading ? (
-              <div className="py-10 text-center text-muted-foreground">Loading producer trends…</div>
-            ) : filtered.length === 0 ? (
-              <div className="py-10 text-center text-muted-foreground">
-                No producers match the current filters. Adjust the KPI, manager, or risk filter above.
-              </div>
-            ) : (
-              <ProducerRiskTable
-                rows={filtered}
-                onOpen={(id) => {
-                  setDrawerId(id);
-                  setDrawerOpen(true);
-                }}
-              />
-            )}
-          </CardContent>
-        </Card>
+        <GlassCard className="overflow-hidden p-4">
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+              <TrendingDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Producer risk queue</span>
+            </h3>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+              {filtered.length}
+            </span>
+          </div>
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            Hardest problem first — a row sits here because the week-over-week ALP moved
+            against the producer or the pipe carrying their production is broken.
+          </p>
+
+          {trendsQ.isLoading ? (
+            <div className="space-y-2">
+              {[...Array(6)].map((_, i) => (
+                // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
+                <div key={i} className="h-11 animate-pulse rounded-lg bg-muted/30" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={<Users className="h-7 w-7" />}
+              variant="default"
+              title="No producers match the current filters"
+              description="Adjust the KPI, manager, or risk filter above to widen the queue."
+            />
+          ) : (
+            <ProducerRiskTable
+              rows={filtered}
+              onOpen={(id) => {
+                setDrawerId(id);
+                setDrawerOpen(true);
+              }}
+            />
+          )}
+        </GlassCard>
 
         {/* NeverActivatedTable */}
-        <Card className="bg-card border-white/[0.08]">
-          <CardHeader>
-            <CardTitle className="text-base text-foreground flex items-center gap-2">
-              <UserCheck className="h-4 w-4 text-rose-300" />
-              Never activated · licensed hires without a first deal
-              <span className="ml-auto text-xs font-normal text-muted-foreground">
-                {filteredNewHires.length} row{filteredNewHires.length === 1 ? "" : "s"}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {filteredNewHires.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">
-                Every recently-licensed hire has produced a first deal. Ship it.
-              </div>
-            ) : (
-              <NeverActivatedTable rows={filteredNewHires} />
-            )}
-          </CardContent>
-        </Card>
+        <GlassCard className="overflow-hidden p-4">
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+              <UserCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Never activated</span>
+            </h3>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+              {filteredNewHires.length}
+            </span>
+          </div>
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            Licensed hires that have never written a first deal — every day on this list is a
+            paid-for license returning nothing.
+          </p>
+
+          {filteredNewHires.length === 0 ? (
+            <EmptyState
+              icon={<UserCheck className="h-7 w-7" />}
+              variant="success"
+              title="Every recently-licensed hire has produced a first deal"
+              description="Nobody is sitting licensed and idle. Keep the activation push running so this list stays empty."
+            />
+          ) : (
+            <NeverActivatedTable rows={filteredNewHires} />
+          )}
+        </GlassCard>
       </div>
 
       {/* Producer details drawer */}
@@ -918,32 +1005,32 @@ export default function AdminProducerTrends() {
 
       {/* Recovery Review dock */}
       {reviewQueue && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-background/95 backdrop-blur">
-          <div className="container mx-auto max-w-7xl px-4 py-3 flex items-center gap-3 text-sm">
-            <ClipboardCheck className="h-4 w-4 text-teal-400" />
-            <span className="text-foreground font-semibold">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background">
+          <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-2 px-4 py-3 sm:px-6">
+            <ClipboardCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
               Recovery Review · {reviewIdx + 1} of {reviewQueue.length}
             </span>
-            <span className="text-muted-foreground truncate">
+            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
               {drawerRow?.display_name ?? "—"}
             </span>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => stepReview(-1)}
                 disabled={reviewIdx === 0}
-                className="border-white/[0.14] text-foreground hover:bg-white/[0.04]"
+                className="h-10 sm:h-9"
               >
                 Prev
               </Button>
               <Button
                 size="sm"
                 onClick={() => stepReview(1)}
-                className="bg-teal-500 hover:bg-teal-500/90 text-slate-950 font-semibold"
+                className="h-10 gap-1.5 sm:h-9"
               >
                 Next
-                <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                <ChevronRight className="h-4 w-4 shrink-0" />
               </Button>
               <Button
                 size="sm"
@@ -952,7 +1039,7 @@ export default function AdminProducerTrends() {
                   setReviewQueue(null);
                   setDrawerOpen(false);
                 }}
-                className="border-white/[0.14] text-foreground hover:bg-white/[0.04]"
+                className="h-10 sm:h-9"
               >
                 Exit
               </Button>
@@ -960,13 +1047,20 @@ export default function AdminProducerTrends() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
 // -------------------------------------------------------------------------
 // KpiTile
 // -------------------------------------------------------------------------
+const KPI_TONE: Record<"rose" | "amber" | "emerald" | "neutral", string> = {
+  rose: "text-rose-600 dark:text-rose-400",
+  amber: "text-amber-600 dark:text-amber-400",
+  emerald: "text-emerald-600 dark:text-emerald-400",
+  neutral: "text-foreground",
+};
+
 function KpiTile({
   label,
   value,
@@ -976,39 +1070,43 @@ function KpiTile({
 }: {
   label: string;
   value: number;
-  tone: "rose" | "amber" | "emerald" | "blue" | "neutral";
+  tone: "rose" | "amber" | "emerald" | "neutral";
   active?: boolean;
   onClick?: () => void;
 }) {
-  const toneClass: Record<typeof tone, string> = {
-    rose: "border-rose-500/30 text-rose-300",
-    amber: "border-amber-500/30 text-amber-300",
-    emerald: "border-emerald-500/30 text-emerald-300",
-    blue: "border-blue-500/30 text-blue-300",
-    neutral: "border-white/[0.08] text-foreground",
-  };
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "text-left rounded-lg border bg-muted/30 p-3 transition hover:bg-muted/50",
-        toneClass[tone],
-        active && "ring-2 ring-teal-400/60",
+        // h-full + justify-between keeps every headline number on the same
+        // baseline even when a two-word label wraps to two lines.
+        "flex h-full min-w-0 flex-col justify-between rounded-lg border border-border bg-card p-3 text-left",
+        "transition-colors hover:bg-muted/30",
+        "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+        active && "ring-2 ring-primary/60",
       )}
     >
-      <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
-      <div className="text-2xl font-bold tabular-nums leading-none mt-1.5">
+      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <span className={cn("mt-2 text-2xl font-bold leading-none tabular-nums", KPI_TONE[tone])}>
         {value.toLocaleString()}
-      </div>
+      </span>
     </button>
   );
 }
 
 // -------------------------------------------------------------------------
-// ProducerAlertCard — richer than KPI tiles, subtle rose border-l-4
+// ProducerAlertCard — whole-block severity callout (visual contract §6)
 // -------------------------------------------------------------------------
+const ALERT_TONE: Record<"rose" | "amber" | "emerald", string> = {
+  rose: "border-rose-500/35 bg-rose-500/5",
+  amber: "border-amber-500/35 bg-amber-500/5",
+  emerald: "border-emerald-500/35 bg-emerald-500/5",
+};
+
 function ProducerAlertCard({
   tone,
   icon,
@@ -1019,44 +1117,31 @@ function ProducerAlertCard({
   onCta,
 }: {
   tone: "rose" | "amber" | "emerald";
-  icon: React.ReactNode;
+  icon: ReactNode;
   eyebrow: string;
   title: string;
   body: string;
   cta: string;
   onCta: () => void;
 }) {
-  const borderClass =
-    tone === "rose"
-      ? "border-l-rose-500/70"
-      : tone === "amber"
-        ? "border-l-amber-500/70"
-        : "border-l-emerald-500/70";
   return (
-    <div
-      className={cn(
-        "rounded-lg border border-white/[0.08] bg-muted/30 p-4 border-l-4",
-        borderClass,
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <div className="rounded-md border border-white/[0.08] bg-card p-2 shrink-0">
-          {icon}
-        </div>
+    <div className={cn("rounded-lg border p-3 sm:p-4", ALERT_TONE[tone])}>
+      <div className="flex min-w-0 items-start gap-3">
+        {icon}
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
             {eyebrow}
           </div>
-          <div className="text-base font-bold text-foreground mt-0.5">{title}</div>
-          <p className="text-sm text-muted-foreground mt-1">{body}</p>
+          <p className="mt-0.5 text-sm font-semibold text-foreground">{title}</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{body}</p>
           <Button
             size="sm"
             variant="outline"
             onClick={onCta}
-            className="mt-3 border-white/[0.14] text-foreground hover:bg-white/[0.04]"
+            className="mt-3 h-10 w-full gap-1.5 sm:h-9 sm:w-auto"
           >
             {cta}
-            <ArrowRight className="h-3 w-3 ml-1.5" />
+            <ArrowRight className="h-4 w-4 shrink-0" />
           </Button>
         </div>
       </div>
@@ -1073,17 +1158,19 @@ function ProducerAlertCard({
 // sale); everything else the view returns rides a compact wrapping chip line so
 // no column is dropped and nothing needs a horizontal scrollbar.
 // -------------------------------------------------------------------------
-const SCORE_HERO_TONE: Record<ScoreTone, string> = {
-  rose: "border-rose-500/40 text-rose-300",
-  amber: "border-amber-500/40 text-amber-300",
-  emerald: "border-emerald-500/40 text-emerald-300",
-  neutral: "border-white/[0.08] text-foreground",
+
+/** Border-only tint — the container states severity, the number carries it. */
+const SCORE_EDGE_BORDER: Record<ScoreTone, string> = {
+  rose: "border-rose-500/35",
+  amber: "border-amber-500/35",
+  emerald: "border-emerald-500/35",
+  neutral: "border-border",
 };
 
 const SCORE_TEXT_TONE: Record<ScoreTone, string> = {
-  rose: "text-rose-300",
-  amber: "text-amber-300",
-  emerald: "text-emerald-300",
+  rose: "text-rose-600 dark:text-rose-400",
+  amber: "text-amber-600 dark:text-amber-400",
+  emerald: "text-emerald-600 dark:text-emerald-400",
   neutral: "text-foreground",
 };
 
@@ -1091,7 +1178,7 @@ const SCORE_EDGE_TONE: Record<ScoreTone, string> = {
   rose: "border-l-rose-500/70",
   amber: "border-l-amber-500/70",
   emerald: "border-l-emerald-500/70",
-  neutral: "border-l-white/[0.14]",
+  neutral: "border-l-border",
 };
 
 function ManagerScorecardCard({ row }: { row: ManagerScorecardRow }) {
@@ -1187,23 +1274,25 @@ function ManagerScorecardCard({ row }: { row: ManagerScorecardRow }) {
   return (
     <div
       className={cn(
-        "rounded-lg border border-white/[0.08] bg-muted/30 p-4 border-l-4",
+        "rounded-lg border border-border border-l-4 bg-card p-3 sm:p-4",
         SCORE_EDGE_TONE[edgeTone],
         row.manager_deactivated && "opacity-70",
       )}
     >
       {/* Header — name opens the agent drawer, roster counts sit underneath. */}
-      <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
             Manager · downline health
           </div>
-          <div className="text-base font-bold text-foreground mt-0.5 truncate">
+          <div className="mt-0.5 min-w-0">
             <AgentNameLink agentId={row.manager_agent_id}>
-              {row.manager_name ?? "Unnamed manager"}
+              <span className="min-w-0 truncate text-sm font-semibold text-foreground">
+                {row.manager_name ?? "Unnamed manager"}
+              </span>
             </AgentNameLink>
           </div>
-          <div className="text-xs text-muted-foreground mt-0.5 tabular-nums">
+          <div className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
             {fmtInt(row.reports_activeroster)} on active roster · {fmtInt(row.reports_total)} total
             reports
           </div>
@@ -1211,16 +1300,16 @@ function ManagerScorecardCard({ row }: { row: ManagerScorecardRow }) {
         {row.manager_deactivated && (
           <Badge
             variant="outline"
-            className="border-rose-500/40 text-rose-400 text-[10px] shrink-0"
+            className="shrink-0 border-rose-500/40 text-[10px] text-rose-600 dark:text-rose-400"
           >
-            <UserX className="h-3 w-3 mr-1" />
+            <UserX className="mr-1 h-3 w-3 shrink-0" />
             deactivated
           </Badge>
         )}
       </div>
 
       {/* The two numbers that cost money. */}
-      <div className="grid grid-cols-2 gap-2 mt-3">
+      <div className="mt-3 grid grid-cols-2 gap-3">
         <ScorecardHeroStat
           label="Retention risk"
           value={fmtPct(risk)}
@@ -1240,7 +1329,7 @@ function ManagerScorecardCard({ row }: { row: ManagerScorecardRow }) {
       </div>
 
       {/* Everything else the view returns — wraps, never scrolls sideways. */}
-      <div className="flex flex-wrap gap-1.5 mt-3">
+      <div className="mt-3 flex flex-wrap gap-2">
         {chips.map((c) => (
           <ScorecardChip
             key={c.key}
@@ -1267,10 +1356,14 @@ function ScorecardHeroStat({
   tone: ScoreTone;
 }) {
   return (
-    <div className={cn("rounded-lg border bg-card p-3 min-w-0", SCORE_HERO_TONE[tone])}>
-      <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
-      <div className="text-3xl font-bold tabular-nums leading-none mt-1.5">{value}</div>
-      <div className="text-[11px] text-muted-foreground mt-1.5">{sub}</div>
+    <div className={cn("min-w-0 rounded-lg border bg-background p-3", SCORE_EDGE_BORDER[tone])}>
+      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className={cn("mt-1.5 text-2xl font-bold leading-none tabular-nums", SCORE_TEXT_TONE[tone])}>
+        {value}
+      </div>
+      <div className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">{sub}</div>
     </div>
   );
 }
@@ -1289,18 +1382,22 @@ function ScorecardChip({
   return (
     <span
       title={title}
-      className="inline-flex items-baseline gap-1.5 rounded-md border border-white/[0.08] bg-card px-2 py-1"
+      className="inline-flex min-w-0 items-baseline gap-1.5 rounded-md border border-border bg-background px-2 py-1"
     >
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
-      <span className={cn("text-xs font-semibold tabular-nums", SCORE_TEXT_TONE[tone])}>
-        {value}
+      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
       </span>
+      <span className={cn("text-xs font-bold tabular-nums", SCORE_TEXT_TONE[tone])}>{value}</span>
     </span>
   );
 }
 
 // -------------------------------------------------------------------------
 // ProducerRiskTable
+//
+// 12 real columns, so it stays a table rather than a card list. The
+// `-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0` wrapper is the only element
+// allowed to scroll sideways — the page body never does.
 // -------------------------------------------------------------------------
 function ProducerRiskTable({
   rows,
@@ -1310,22 +1407,22 @@ function ProducerRiskTable({
   onOpen: (producer_id: string) => void;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <table className="w-full min-w-[1120px] text-sm">
         <thead>
-          <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-white/[0.08]">
-            <th className="text-left py-2 px-2">Producer</th>
-            <th className="text-left py-2 px-2">Manager</th>
-            <th className="text-right py-2 px-2">This Week</th>
-            <th className="text-right py-2 px-2">Prev Week</th>
-            <th className="text-left py-2 px-2">3-Week Trend</th>
-            <th className="text-right py-2 px-2">Policies</th>
-            <th className="text-left py-2 px-2">Stage</th>
-            <th className="text-left py-2 px-2">AgentLink</th>
-            <th className="text-left py-2 px-2">Last Contact</th>
-            <th className="text-left py-2 px-2">Risk</th>
-            <th className="text-left py-2 px-2">Next Best Action</th>
-            <th className="text-right py-2 px-2">Actions</th>
+          <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <th className="px-2 py-2 text-left">Producer</th>
+            <th className="px-2 py-2 text-left">Manager</th>
+            <th className="px-2 py-2 text-right">This Week</th>
+            <th className="px-2 py-2 text-right">Prev Week</th>
+            <th className="px-2 py-2 text-left">3-Week Trend</th>
+            <th className="px-2 py-2 text-right">Policies</th>
+            <th className="px-2 py-2 text-left">Stage</th>
+            <th className="px-2 py-2 text-left">AgentLink</th>
+            <th className="px-2 py-2 text-right">Last Contact</th>
+            <th className="px-2 py-2 text-left">Risk</th>
+            <th className="px-2 py-2 text-left">Next Best Action</th>
+            <th className="px-2 py-2 text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -1348,23 +1445,28 @@ function ProducerRiskTable({
                 key={r.producer_id}
                 onClick={() => onOpen(r.producer_id)}
                 className={cn(
-                  "border-b border-white/[0.06] hover:bg-white/[0.03] cursor-pointer",
-                  r.currently_dropping && "bg-rose-500/[0.04]",
+                  "cursor-pointer border-b border-border/60 transition-colors hover:bg-muted/30",
+                  r.currently_dropping &&
+                    "border-l-2 border-l-rose-500/50 bg-rose-500/[0.05] hover:bg-rose-500/10",
                 )}
               >
-                <td className="py-2 px-2 font-medium text-foreground" onClick={(e) => e.stopPropagation()}>
+                <td className="max-w-[200px] px-2 py-2" onClick={(e) => e.stopPropagation()}>
                   <AgentNameLink agentId={r.producer_id}>
-                    {r.display_name}
+                    <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                      {r.display_name}
+                    </span>
                   </AgentNameLink>
                 </td>
-                <td className="py-2 px-2 text-muted-foreground text-xs">{r.manager_name}</td>
-                <td className="py-2 px-2 text-right tabular-nums font-semibold text-foreground">
+                <td className="max-w-[140px] px-2 py-2">
+                  <div className="truncate text-[11px] text-muted-foreground">{r.manager_name}</div>
+                </td>
+                <td className="px-2 py-2 text-right text-sm font-bold tabular-nums text-foreground">
                   {fmtUSDCompact(r.current_week_alp)}
                 </td>
-                <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
+                <td className="px-2 py-2 text-right text-sm tabular-nums text-muted-foreground">
                   {fmtUSDCompact(r.previous_week_alp)}
                 </td>
-                <td className="py-2 px-2">
+                <td className="px-2 py-2">
                   <TrendCell
                     series={r.weekly_series}
                     delta_pct={r.delta_pct}
@@ -1372,45 +1474,57 @@ function ProducerRiskTable({
                     dropping={r.currently_dropping}
                   />
                 </td>
-                <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
+                <td className="px-2 py-2 text-right text-sm tabular-nums text-muted-foreground">
                   {r.total_policies ?? "—"}
                 </td>
-                <td className="py-2 px-2 text-muted-foreground text-xs">
-                  {r.stage ?? "—"}
+                <td className="max-w-[120px] px-2 py-2">
+                  <div className="truncate text-[11px] text-muted-foreground">{r.stage ?? "—"}</div>
                 </td>
-                <td className="py-2 px-2">
+                <td className="px-2 py-2">
                   {r.agentlink_linked ? (
-                    <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-[10px]">
-                      <Link2 className="h-3 w-3 mr-1" /> linked
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/40 text-[10px] text-emerald-600 dark:text-emerald-400"
+                    >
+                      <Link2 className="mr-1 h-3 w-3 shrink-0" /> linked
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px]">
-                      <Link2Off className="h-3 w-3 mr-1" /> unlinked
+                    <Badge
+                      variant="outline"
+                      className="border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400"
+                    >
+                      <Link2Off className="mr-1 h-3 w-3 shrink-0" /> unlinked
                     </Badge>
                   )}
                 </td>
-                <td className="py-2 px-2 text-muted-foreground text-xs">
+                <td className="px-2 py-2 text-right text-[11px] tabular-nums text-muted-foreground">
                   {fmtDate(r.last_contact)}
                 </td>
-                <td className="py-2 px-2">
-                  <div className="flex flex-col gap-1">
-                    <Badge className={cn("text-[10px] font-semibold", riskBadge.className)}>
-                      {riskBadge.label}
-                    </Badge>
-                    <Badge className={cn("text-[9px] font-semibold", priorityBadge.className)}>
-                      {priorityBadge.text}
-                    </Badge>
+                <td className="px-2 py-2">
+                  {/* Risk carries the severity colour; priority rides underneath as a
+                      micro-label so one cell never stacks two competing hues. */}
+                  <Badge
+                    variant="outline"
+                    className={cn("text-[10px] font-bold", riskBadge.className)}
+                  >
+                    {riskBadge.label}
+                  </Badge>
+                  <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                    {priorityBadge.text}
                   </div>
                 </td>
-                <td className="py-2 px-2 max-w-[220px]">
-                  <div className="text-xs text-foreground font-medium truncate" title={nba.action}>
+                <td className="max-w-[220px] px-2 py-2">
+                  <div
+                    className="truncate text-sm font-medium text-foreground"
+                    title={nba.action}
+                  >
                     {nba.action}
                   </div>
-                  <div className="text-[10px] text-muted-foreground truncate" title={nba.reason}>
+                  <div className="mt-0.5 truncate text-[11px] text-muted-foreground" title={nba.reason}>
                     {nba.reason}
                   </div>
                 </td>
-                <td className="py-2 px-2 text-right">
+                <td className="px-2 py-2 text-right">
                   <Button
                     size="sm"
                     variant="outline"
@@ -1419,7 +1533,7 @@ function ProducerRiskTable({
                       onOpen(r.producer_id);
                     }}
                     aria-label={`Open ${r.display_name}`}
-                    className="border-white/[0.14] text-foreground hover:bg-white/[0.04]"
+                    className="h-10 sm:h-8"
                   >
                     Open
                   </Button>
@@ -1451,14 +1565,14 @@ function TrendCell({
       : "muted";
   const barClass =
     highlight === "rose"
-      ? "bg-rose-400/70"
+      ? "bg-rose-500"
       : highlight === "emerald"
-        ? "bg-emerald-400/70"
+        ? "bg-emerald-500"
         : "bg-muted-foreground/40";
   const max = Math.max(...(series.length ? series : [1]), 1);
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-end gap-0.5 h-6 w-24">
+      <div className="flex h-6 w-24 shrink-0 items-end gap-0.5">
         {(series.length ? series : Array.from({ length: 12 }, () => 0)).map((v, i) => (
           <div
             // stable-key-allow:deterministic-week-index-fixed-length-sparkline
@@ -1471,16 +1585,16 @@ function TrendCell({
       </div>
       <span
         className={cn(
-          "text-xs tabular-nums font-semibold inline-flex items-center gap-0.5",
-          delta_pct < -25 && "text-rose-400",
-          delta_pct >= -25 && delta_pct < 0 && "text-amber-400",
+          "inline-flex shrink-0 items-center gap-0.5 text-sm font-bold tabular-nums",
+          delta_pct < -25 && "text-rose-600 dark:text-rose-400",
+          delta_pct >= -25 && delta_pct < 0 && "text-amber-600 dark:text-amber-400",
           delta_pct === 0 && "text-muted-foreground",
-          delta_pct > 0 && "text-emerald-400",
+          delta_pct > 0 && "text-emerald-600 dark:text-emerald-400",
         )}
       >
-        {direction === "down" && <ArrowDownRight className="h-3 w-3" />}
-        {direction === "up" && <ArrowUpRight className="h-3 w-3" />}
-        {direction === "flat" && <Minus className="h-3 w-3" />}
+        {direction === "down" && <ArrowDownRight className="h-3 w-3 shrink-0" />}
+        {direction === "up" && <ArrowUpRight className="h-3 w-3 shrink-0" />}
+        {direction === "flat" && <Minus className="h-3 w-3 shrink-0" />}
         {delta_pct > 0 ? "+" : ""}
         {delta_pct}%
       </span>
@@ -1493,73 +1607,91 @@ function TrendCell({
 // -------------------------------------------------------------------------
 function NeverActivatedTable({ rows }: { rows: NewHireActivationRow[] }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <table className="w-full min-w-[880px] text-sm">
         <thead>
-          <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-white/[0.08]">
-            <th className="text-left py-2 px-2">Producer</th>
-            <th className="text-right py-2 px-2">Days Since Hire</th>
-            <th className="text-left py-2 px-2">Stage</th>
-            <th className="text-left py-2 px-2">Manager</th>
-            <th className="text-left py-2 px-2">AgentLink</th>
-            <th className="text-left py-2 px-2">Last Activity</th>
-            <th className="text-left py-2 px-2">Next Action</th>
-            <th className="text-right py-2 px-2">Actions</th>
+          <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <th className="px-2 py-2 text-left">Producer</th>
+            <th className="px-2 py-2 text-right">Days Since Hire</th>
+            <th className="px-2 py-2 text-left">Stage</th>
+            <th className="px-2 py-2 text-left">Manager</th>
+            <th className="px-2 py-2 text-left">AgentLink</th>
+            <th className="px-2 py-2 text-right">Last Activity</th>
+            <th className="px-2 py-2 text-left">Next Action</th>
+            <th className="px-2 py-2 text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.agent_id} className="border-b border-white/[0.06] hover:bg-white/[0.03]">
-              <td className="py-2 px-2 font-medium text-foreground">
-                <AgentNameLink agentId={r.agent_id}>{r.display_name}</AgentNameLink>
+            <tr
+              key={r.agent_id}
+              className="border-b border-border/60 transition-colors hover:bg-muted/30"
+            >
+              <td className="max-w-[200px] px-2 py-2">
+                <AgentNameLink agentId={r.agent_id}>
+                  <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                    {r.display_name}
+                  </span>
+                </AgentNameLink>
               </td>
               <td
                 className={cn(
-                  "py-2 px-2 text-right tabular-nums font-semibold",
-                  r.days_since_hire >= 30 && "text-rose-400",
-                  r.days_since_hire >= 14 && r.days_since_hire < 30 && "text-amber-400",
+                  "px-2 py-2 text-right text-sm font-bold tabular-nums",
+                  r.days_since_hire >= 30 && "text-rose-600 dark:text-rose-400",
+                  r.days_since_hire >= 14 && r.days_since_hire < 30 && "text-amber-600 dark:text-amber-400",
                   r.days_since_hire < 14 && "text-muted-foreground",
                 )}
               >
                 {r.days_since_hire}d
               </td>
-              <td className="py-2 px-2 text-muted-foreground text-xs">{r.onboarding_stage ?? "—"}</td>
-              <td className="py-2 px-2 text-muted-foreground text-xs">{r.manager_name ?? "—"}</td>
-              <td className="py-2 px-2">
+              <td className="max-w-[140px] px-2 py-2">
+                <div className="truncate text-[11px] text-muted-foreground">
+                  {r.onboarding_stage ?? "—"}
+                </div>
+              </td>
+              <td className="max-w-[140px] px-2 py-2">
+                <div className="truncate text-[11px] text-muted-foreground">
+                  {r.manager_name ?? "—"}
+                </div>
+              </td>
+              <td className="px-2 py-2">
                 {r.agentlink_linked ? (
-                  <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 text-[10px]">
-                    <Link2 className="h-3 w-3 mr-1" />
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/40 text-[10px] text-emerald-600 dark:text-emerald-400"
+                  >
+                    <Link2 className="mr-1 h-3 w-3 shrink-0" />
                     linked
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="border-amber-500/40 text-amber-400 text-[10px]">
-                    <Link2Off className="h-3 w-3 mr-1" />
+                  <Badge
+                    variant="outline"
+                    className="border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400"
+                  >
+                    <Link2Off className="mr-1 h-3 w-3 shrink-0" />
                     unlinked
                   </Badge>
                 )}
               </td>
-              <td className="py-2 px-2 text-muted-foreground text-xs">
+              <td className="px-2 py-2 text-right text-[11px] tabular-nums text-muted-foreground">
                 {fmtDate(r.hire_date)}
               </td>
-              <td className="py-2 px-2 max-w-[220px]">
-                <div className="text-xs text-foreground truncate" title={r.next_action_text ?? undefined}>
+              <td className="max-w-[220px] px-2 py-2">
+                <div
+                  className="truncate text-sm font-medium text-foreground"
+                  title={r.next_action_text ?? undefined}
+                >
                   {r.next_action_text ?? "AgentLink check + first-deal push"}
                 </div>
                 {r.next_action_due_at && (
-                  <div className="text-[10px] text-muted-foreground">
+                  <div className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
                     Due {fmtDate(r.next_action_due_at)}
                   </div>
                 )}
               </td>
-              <td className="py-2 px-2 text-right">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  asChild
-                  className="border-white/[0.14] text-foreground hover:bg-white/[0.04]"
-                >
+              <td className="px-2 py-2 text-right">
+                <Button size="sm" variant="outline" asChild className="h-10 sm:h-8">
                   <a href={`/dashboard/agents/${r.agent_id}`} aria-label={`Open ${r.display_name}`}>
-                    <UserX className="h-3.5 w-3.5 mr-1" />
                     Open
                   </a>
                 </Button>

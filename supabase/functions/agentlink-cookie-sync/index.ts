@@ -175,6 +175,32 @@ Deno.serve(async (req) => {
   const auth = await authorize(req, sb);
   if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
+  // MP-268: single-flight guard. The 1-minute watchdog kept firing while a run
+  // was still in flight — measured 3 syncs starting inside 61s and 2 more 19s
+  // apart. Each one re-reads the whole book and writes the same rows, so they
+  // contend on `deals` and every run gets slower: a solo run finishes in 46s,
+  // overlapping runs stretched to 133-168s and some were reaped as stuck. The
+  // reaper already retires abandoned rows, so anything still `running` and
+  // younger than the reap window is genuinely alive — yield to it.
+  {
+    const { data: inFlight } = await sb
+      .from("agentlink_sync_log")
+      .select("id, started_at")
+      .eq("status", "running")
+      .gte("started_at", new Date(Date.now() - 5 * 60_000).toISOString())
+      .limit(1)
+      .maybeSingle();
+    if (inFlight?.id) {
+      // Not a fake success: no work was needed, and no log row is written so
+      // this never pollutes the ok/stuck ratio.
+      return json({
+        ok: true,
+        skipped: "already_running",
+        in_flight_since: (inFlight as { started_at?: string }).started_at ?? null,
+      });
+    }
+  }
+
   const startedAt = new Date().toISOString();
   const { data: logRow } = await sb
     .from("agentlink_sync_log")

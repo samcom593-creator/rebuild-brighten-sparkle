@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, Copy, Check, Link2, Users, Briefcase, ClipboardList, FileSignature, Sparkles } from "lucide-react";
+import { AlertTriangle, ExternalLink, Copy, Check, Link2, Users, Briefcase, ClipboardList, FileSignature, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { GlassCard } from "@/components/ui/glass-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
@@ -307,7 +309,7 @@ export default function CarrierContracts() {
   const totalLinks = sections.reduce((sum, s) => sum + s.items.length, 0);
 
   return (
-    <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
         eyebrow="Contracts & Links"
         eyebrowIcon={<Link2 className="h-3 w-3" />}
@@ -316,36 +318,61 @@ export default function CarrierContracts() {
       />
 
       {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-40 w-full" />
-          <Skeleton className="h-40 w-full" />
+        /* Loading — shaped like the real sections: header, description, rows. */
+        <div className="space-y-5">
+          {[...Array(3)].map((_, i) => (
+            // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
+            <GlassCard key={i} className="p-4">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="mt-2 h-3 w-full max-w-xs" />
+              <div className="mt-3 space-y-2">
+                <Skeleton className="h-[72px] w-full rounded-lg" />
+                <Skeleton className="h-[72px] w-full rounded-lg" />
+              </div>
+            </GlassCard>
+          ))}
         </div>
       ) : errorMsg ? (
-        <EmptyState
-          icon={<Link2 className="h-6 w-6" />}
-          title="Couldn't load links"
-          description={`Query failed: ${errorMsg.slice(0, 120)}. Check Supabase RLS or system_settings / agentlink_carriers / v_my_carrier_contracts visibility.`}
-        />
+        <div className="rounded-lg border border-rose-500/35 bg-rose-500/5 p-3 sm:p-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">The link hub could not load</p>
+              <p className="mt-0.5 break-words text-xs text-muted-foreground">
+                Query failed: {errorMsg.slice(0, 120)}
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                Check Supabase RLS on system_settings, agentlink_carriers, and v_my_carrier_contracts.
+              </p>
+            </div>
+          </div>
+        </div>
       ) : totalLinks === 0 ? (
-        <div className="rounded-lg border border-border/60 bg-card/80 p-6 text-center space-y-3 max-w-md mx-auto">
-          <Link2 className="h-10 w-10 mx-auto text-muted-foreground/40" />
-          <h3 className="text-sm font-semibold">No links available yet</h3>
-          <p className="text-13 text-muted-foreground">
-            Fetched <span className="font-bold text-foreground tabular-nums">0</span> link rows across recruiting, agent, onboarding, application, and contracting sources.
-          </p>
-          <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
-            Likely causes:
-            <ul className="list-disc list-inside mt-2">
+        <div className="space-y-3">
+          <EmptyState
+            icon={<Link2 className="h-7 w-7" />}
+            variant="warning"
+            title="No links available yet"
+            description={
+              <>
+                Fetched <span className="font-bold tabular-nums text-foreground">0</span> link rows across recruiting, agent, onboarding, application, and contracting sources.
+              </>
+            }
+          />
+          <div className="mx-auto max-w-md rounded-lg border border-amber-500/35 bg-amber-500/5 p-3 sm:p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              Likely causes
+            </p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-xs leading-relaxed text-muted-foreground">
               <li>system_settings rows hidden by RLS for your role</li>
               <li>agentlink_carriers rows all have NULL contract_invite_url</li>
               <li>You aren't signed in — agent contract rows require a session</li>
             </ul>
-            <p className="mt-2 italic">Hold the Standard.</p>
+            <p className="mt-2 text-[11px] italic text-muted-foreground">Hold the Standard.</p>
           </div>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {sections.map((section) => (
             <LinkSectionView
               key={section.key}
@@ -371,17 +398,23 @@ function LinkSectionView({
 }) {
   const Icon = section.icon;
   return (
-    <section className="space-y-2">
-      <header className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-slate-500" />
-        <h2 className="text-13 font-semibold uppercase tracking-wider text-slate-500">
-          {section.title} · {section.items.length}
-        </h2>
-      </header>
-      <p className="text-12 text-muted-foreground -mt-1">{section.description}</p>
+    <GlassCard className="p-4">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">{section.title}</span>
+        </h3>
+        <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+          {section.items.length}
+        </span>
+      </div>
+      <p className="mb-3 text-xs leading-relaxed text-muted-foreground">{section.description}</p>
       {section.items.length === 0 ? (
-        <div className="text-12 text-muted-foreground/70 italic border border-dashed border-border/50 rounded-lg p-3">
-          No links configured for this section yet — set the relevant system_settings keys or populate agentlink_carriers.contract_invite_url to surface them here.
+        <div className="rounded-lg border border-dashed border-border/60 px-3 py-4">
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            No links configured here yet. Set the matching system_settings key, or fill
+            agentlink_carriers.contract_invite_url, and the rows appear.
+          </p>
         </div>
       ) : (
         <ul className="space-y-2">
@@ -395,7 +428,7 @@ function LinkSectionView({
           ))}
         </ul>
       )}
-    </section>
+    </GlassCard>
   );
 }
 
@@ -409,28 +442,37 @@ function LinkCardView({
   isCopied: boolean;
 }) {
   return (
-    <li className="flex flex-col gap-2 p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-base sm:flex-row sm:items-center">
-      <div className="flex-1 min-w-0">
-        <p className="text-14 font-semibold truncate">{item.label}</p>
-        <p className="text-11 text-muted-foreground font-mono truncate" title={item.url}>{item.url}</p>
-        {item.meta && (
-          <p className="text-11 text-muted-foreground/80 mt-0.5">{item.meta}</p>
-        )}
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <Button
-          size="sm"
-          variant={isCopied ? "default" : "outline"}
-          className={isCopied ? "bg-emerald-600 hover:bg-emerald-700" : ""}
-          onClick={() => copyLink(item.id, item.url)}
-        >
-          {isCopied ? <><Check className="h-3.5 w-3.5 mr-1" /> Copied</> : <><Copy className="h-3.5 w-3.5 mr-1" /> Copy</>}
-        </Button>
-        <Button asChild size="sm">
-          <a href={item.url} target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open
-          </a>
-        </Button>
+    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 transition-colors hover:border-border hover:bg-card">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-foreground">{item.label}</div>
+          <div className="truncate font-mono text-[11px] text-muted-foreground" title={item.url}>
+            {item.url}
+          </div>
+          {item.meta && (
+            <div className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground" title={item.meta}>
+              {item.meta}
+            </div>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className={cn(
+              "h-10 flex-1 sm:h-9 sm:flex-none",
+              isCopied && "border-emerald-500/40 text-emerald-600 dark:text-emerald-400",
+            )}
+            onClick={() => copyLink(item.id, item.url)}
+          >
+            {isCopied ? <><Check className="h-4 w-4" /> Copied</> : <><Copy className="h-4 w-4" /> Copy</>}
+          </Button>
+          <Button asChild size="sm" className="h-10 flex-1 sm:h-9 sm:flex-none">
+            <a href={item.url} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4" /> Open
+            </a>
+          </Button>
+        </div>
       </div>
     </li>
   );

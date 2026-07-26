@@ -32,6 +32,7 @@ import {
   ArrowRight,
   X as XIcon,
   Columns3,
+  AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { logger } from "@/shared/lib/logger";
@@ -78,6 +79,8 @@ import type { PipelineCardData } from "@/components/pipeline/PipelineCard";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
+import { GlassCard } from "@/components/ui/glass-card";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Application {
   id: string;
@@ -120,16 +123,17 @@ const APPLICATION_SELECT =
   "id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contacted_at, next_step_due_at, referral_source, phone_bad_at, phone_bad_reason, couldnt_reach_email_sent_at";
 
 const statusColors: Record<string, string> = {
-  new: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  hired: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  contracted: "bg-violet-500/20 text-primary border-violet-500/30",
-  terminated: "bg-red-500/20 text-red-400 border-red-500/30",
+  new: "border-border bg-muted/50 text-muted-foreground",
+  contacted: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  hired: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  contracted: "border-primary/30 bg-primary/10 text-primary",
+  terminated: "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400",
 };
 
 const licenseColors: Record<string, string> = {
-  licensed: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  unlicensed: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  pending: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  licensed: "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  unlicensed: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  pending: "border-border bg-muted/50 text-muted-foreground",
 };
 
 export default function DashboardApplicants() {
@@ -949,7 +953,9 @@ export default function DashboardApplicants() {
 
   return (
     <div className="apex-fullbleed-page -mx-4 sm:-mx-6 lg:-mx-8 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)]">
-      <div className="px-4 sm:px-6 lg:px-8">
+      {/* Root wrapper padding is px-4 sm:px-6 so PageHeader's -mx-4 sm:-mx-6 cancels exactly.
+          The full-bleed opt-out above is deliberate (11-column table on ultrawide). */}
+      <div className="page-enter w-full space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
         accent="cyan"
         eyebrow="Recruiting · Applicants"
@@ -961,10 +967,11 @@ export default function DashboardApplicants() {
             ? <Button
                 variant={myDirectsOnly ? "default" : "outline"}
                 size="sm"
-                className="h-8 text-xs gap-1.5"
+                aria-pressed={myDirectsOnly}
+                className="h-10 w-full gap-1.5 sm:h-9 sm:w-auto"
                 onClick={() => setMyDirectsOnly(!myDirectsOnly)}
               >
-                <Users className="h-3.5 w-3.5" />
+                <Users className="h-4 w-4 shrink-0" />
                 {myDirectsOnly ? "My Directs" : "Full Team"}
               </Button>
             : null
@@ -975,61 +982,96 @@ export default function DashboardApplicants() {
         <ReferralLinkBanner agentId={agentId} />
       )}
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card/70 px-3 py-2 text-xs">
-        <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
-          <span className="font-semibold text-foreground tabular-nums">{filteredApplications.length.toLocaleString()} / {counterTotal.toLocaleString()}</span>
-          <span>{counterLabel}</span>
-          {todayCount > 0 && <Badge variant="outline">{todayCount.toLocaleString()} today</Badge>}
-          {hiredThisMonth > 0 && (
-            <Badge variant="outline" className="border-emerald-500/30 text-emerald-400">
-              {hiredThisMonth.toLocaleString()} hired this mo.
-            </Badge>
-          )}
-          {terminatedApplications.length > 0 && <Badge variant="outline">{terminatedApplications.length.toLocaleString()} terminated</Badge>}
-          {queryError && <span className="max-w-md truncate text-rose-600">{(queryError as any)?.message?.slice(0, 100) ?? String(queryError).slice(0, 100)}</span>}
+      <GlassCard className="p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="text-2xl font-bold leading-none tabular-nums text-foreground">
+              {filteredApplications.length.toLocaleString()}
+            </span>
+            <span className="text-sm font-bold tabular-nums text-muted-foreground">
+              / {counterTotal.toLocaleString()}
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              {counterLabel}
+            </span>
+            {todayCount > 0 && (
+              <Badge variant="outline" className="text-[10px] tabular-nums">{todayCount.toLocaleString()} today</Badge>
+            )}
+            {hiredThisMonth > 0 && (
+              <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-[10px] tabular-nums text-emerald-600 dark:text-emerald-400">
+                {hiredThisMonth.toLocaleString()} hired this mo.
+              </Badge>
+            )}
+            {terminatedApplications.length > 0 && (
+              <Badge variant="outline" className="text-[10px] tabular-nums">{terminatedApplications.length.toLocaleString()} terminated</Badge>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1 rounded-md bg-muted p-1">
+            <Button variant={viewMode === "list" ? "default" : "ghost"} size="sm" aria-pressed={viewMode === "list"} className="h-10 gap-1.5 px-2.5 sm:h-9" onClick={() => setViewMode("list")}>
+              <List className="h-4 w-4 shrink-0" />
+              List
+            </Button>
+            <Button variant={viewMode === "kanban" ? "default" : "ghost"} size="sm" aria-pressed={viewMode === "kanban"} className="h-10 gap-1.5 px-2.5 sm:h-9" onClick={() => setViewMode("kanban")}>
+              <LayoutGrid className="h-4 w-4 shrink-0" />
+              Kanban
+            </Button>
+            <Button variant={viewMode === "pipeline" ? "default" : "ghost"} size="sm" aria-pressed={viewMode === "pipeline"} className="h-10 gap-1.5 px-2.5 sm:h-9" onClick={() => setViewMode("pipeline")}>
+              <Columns3 className="h-4 w-4 shrink-0" />
+              Pipeline
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-          <Button variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="h-7 px-2" onClick={() => setViewMode("list")}>
-            <List className="h-3.5 w-3.5" />
-            List
-          </Button>
-          <Button variant={viewMode === "kanban" ? "default" : "ghost"} size="sm" className="h-7 px-2" onClick={() => setViewMode("kanban")}>
-            <LayoutGrid className="h-3.5 w-3.5" />
-            Kanban
-          </Button>
-          <Button variant={viewMode === "pipeline" ? "default" : "ghost"} size="sm" className="h-7 px-2" onClick={() => setViewMode("pipeline")}>
-            <Columns3 className="h-3.5 w-3.5" />
-            Pipeline
-          </Button>
+      </GlassCard>
+
+      {/* Query error — same branch as before, promoted out of the counter strip into the
+          canonical severity callout so a failed fetch cannot read as "zero applicants". */}
+      {queryError && (
+        <div className="rounded-lg border border-rose-500/35 bg-rose-500/5 p-3 sm:p-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Applicants could not load</p>
+              <p className="mt-0.5 break-words text-xs text-muted-foreground">
+                {(queryError as any)?.message?.slice(0, 100) ?? String(queryError).slice(0, 100)}
+              </p>
+              <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                The counts above are missing, not zero.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 2026-07-08 MP-256: 8-card applicant metric grid — each card is a click-filter. */}
-      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
         {[
-          { key: "total", label: "Total Active", value: totalLeads, icon: Users, tone: "teal", meaning: "All active applicants" },
-          { key: "in_funnel", label: "In Funnel", value: inFunnel, icon: Filter, tone: "blue", meaning: "Not hired, not terminated" },
-          { key: "course_bought", label: "Course Bought", value: coursePurchased, icon: GraduationCap, tone: "amber", meaning: "Course purchased" },
-          { key: "hired", label: "Hired", value: hired, icon: UserCheck, tone: "green", meaning: "Marked hired" },
-          { key: "rejected", label: "Rejected", value: rejected, icon: XCircle, tone: "rose", meaning: "Rejected / disqualified" },
-          { key: "needs_followup", label: "Needs Follow-Up", value: needsFollowupCount, icon: Bell, tone: "gold", meaning: "48h+ no contact" },
-          { key: "hot", label: "Hot Leads", value: hotLeadsCount, icon: Flame, tone: "rose", meaning: "Hot + warm score" },
-          { key: "duplicates", label: "Duplicates", value: activeDuplicateCount, icon: Copy, tone: "purple", meaning: "Flagged is_duplicate" },
+          { key: "total", label: "Total Active", value: totalLeads, icon: Users, tone: "neutral", meaning: "All active applicants" },
+          { key: "in_funnel", label: "In Funnel", value: inFunnel, icon: Filter, tone: "neutral", meaning: "Not hired, not terminated" },
+          { key: "course_bought", label: "Course Bought", value: coursePurchased, icon: GraduationCap, tone: "neutral", meaning: "Course purchased" },
+          { key: "hired", label: "Hired", value: hired, icon: UserCheck, tone: "good", meaning: "Marked hired" },
+          { key: "rejected", label: "Rejected", value: rejected, icon: XCircle, tone: "bad", meaning: "Rejected / disqualified" },
+          { key: "needs_followup", label: "Needs Follow-Up", value: needsFollowupCount, icon: Bell, tone: "warn", meaning: "48h+ no contact" },
+          { key: "hot", label: "Hot Leads", value: hotLeadsCount, icon: Flame, tone: "warn", meaning: "Hot + warm score" },
+          { key: "duplicates", label: "Duplicates", value: activeDuplicateCount, icon: Copy, tone: "warn", meaning: "Flagged is_duplicate" },
         ].map((card) => {
           const active = metricFilter === card.key;
           const Icon = card.icon;
-          const toneMap: Record<string, string> = {
-            teal: "text-teal-300",
-            blue: "text-blue-300",
-            amber: "text-amber-300",
-            green: "text-emerald-300",
-            rose: "text-rose-300",
-            gold: "text-amber-200",
-            purple: "text-fuchsia-300",
+          const toneValue: Record<string, string> = {
+            neutral: "text-foreground",
+            good: "text-emerald-600 dark:text-emerald-400",
+            warn: "text-amber-600 dark:text-amber-400",
+            bad: "text-rose-600 dark:text-rose-400",
+          };
+          const toneIcon: Record<string, string> = {
+            neutral: "text-muted-foreground",
+            good: "text-emerald-600 dark:text-emerald-400",
+            warn: "text-amber-600 dark:text-amber-400",
+            bad: "text-rose-600 dark:text-rose-400",
           };
           return (
             <button
               key={card.key}
+              type="button"
               onClick={() => {
                 setMetricFilter(card.key);
                 // Reset dependent filters first
@@ -1046,35 +1088,54 @@ export default function DashboardApplicants() {
                 else if (card.key === "duplicates") setDuplicatesOnly(true);
               }}
               title={card.meaning}
+              aria-pressed={active}
               aria-label={`Filter to ${card.label} — ${card.meaning}`}
               className={cn(
-                "flex items-center gap-2 rounded-lg border bg-card px-2.5 py-2 text-left transition-all hover:bg-muted/70",
-                active ? "ring-2 ring-teal-400/70 border-teal-500/40 bg-teal-500/[0.06]" : "border-border"
+                "min-w-0 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:bg-muted/40",
+                "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                active ? "border-primary/40 ring-2 ring-primary/60" : "border-border"
               )}
             >
-              <Icon className={cn("h-4 w-4 shrink-0", toneMap[card.tone] || "text-muted-foreground")} />
-              <div className="min-w-0 flex-1">
-                <div className="text-base font-semibold tabular-nums leading-tight">{card.value.toLocaleString()}</div>
-                <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide truncate">{card.label}</div>
+              <div className="flex min-w-0 items-center gap-2">
+                <Icon className={cn("h-4 w-4 shrink-0", toneIcon[card.tone] || "text-muted-foreground")} />
+                <span className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{card.label}</span>
+              </div>
+              <div className={cn("mt-1.5 text-2xl font-bold leading-none tabular-nums", toneValue[card.tone] || "text-foreground")}>
+                {card.value.toLocaleString()}
               </div>
             </button>
           );
         })}
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <GlassCard className="p-4">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+            <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">Filters</span>
+          </h3>
+          <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+            {activeFilterChips.length.toLocaleString()}
+          </span>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          Narrow the feed down to the applicants you are actually going to work in the next hour.
+        </p>
+
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search applicants..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-input"
+            className="h-10 bg-input pl-9 sm:h-9"
           />
         </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-40 bg-input">
-            <Filter className="h-4 w-4 mr-2" />
+          <SelectTrigger className="h-10 w-full bg-input sm:h-9">
+            <Filter className="mr-2 h-4 w-4 shrink-0" />
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -1087,8 +1148,8 @@ export default function DashboardApplicants() {
           </SelectContent>
         </Select>
         <Select value={licenseFilter} onValueChange={setLicenseFilter}>
-          <SelectTrigger className="w-full sm:w-40 bg-input">
-            <Award className="h-4 w-4 mr-2" />
+          <SelectTrigger className="h-10 w-full bg-input sm:h-9">
+            <Award className="mr-2 h-4 w-4 shrink-0" />
             <SelectValue placeholder="License" />
           </SelectTrigger>
           <SelectContent>
@@ -1099,8 +1160,8 @@ export default function DashboardApplicants() {
           </SelectContent>
         </Select>
         <Select value={sortOrder} onValueChange={setSortOrder}>
-          <SelectTrigger className="w-full sm:w-40 bg-input">
-            <Clock className="h-4 w-4 mr-2" />
+          <SelectTrigger className="h-10 w-full bg-input sm:h-9">
+            <Clock className="mr-2 h-4 w-4 shrink-0" />
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
@@ -1110,8 +1171,8 @@ export default function DashboardApplicants() {
         </Select>
         {recruiterOptions.length > 0 && (
           <Select value={agentFilter} onValueChange={setAgentFilter}>
-            <SelectTrigger className="w-full sm:w-44 bg-input">
-              <Users className="h-4 w-4 mr-2" />
+            <SelectTrigger className="h-10 w-full bg-input sm:h-9">
+              <Users className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Agent" />
             </SelectTrigger>
             <SelectContent>
@@ -1124,8 +1185,8 @@ export default function DashboardApplicants() {
         )}
         {uplineOptions.length > 0 && (
           <Select value={uplineFilter} onValueChange={setUplineFilter}>
-            <SelectTrigger className="w-full sm:w-44 bg-input">
-              <Users className="h-4 w-4 mr-2" />
+            <SelectTrigger className="h-10 w-full bg-input sm:h-9">
+              <Users className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Upline" />
             </SelectTrigger>
             <SelectContent>
@@ -1137,8 +1198,8 @@ export default function DashboardApplicants() {
           </Select>
         )}
         <Select value={interviewFilter} onValueChange={setInterviewFilter}>
-          <SelectTrigger className="w-full sm:w-44 bg-input">
-            <Calendar className="h-4 w-4 mr-2" />
+          <SelectTrigger className="h-10 w-full bg-input sm:h-9">
+            <Calendar className="mr-2 h-4 w-4 shrink-0" />
             <SelectValue placeholder="Interview" />
           </SelectTrigger>
           <SelectContent>
@@ -1147,35 +1208,41 @@ export default function DashboardApplicants() {
             <SelectItem value="none">No interview yet</SelectItem>
           </SelectContent>
         </Select>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button
           variant={needsFollowupOnly ? "default" : "outline"}
           size="sm"
+          aria-pressed={needsFollowupOnly}
           onClick={() => setNeedsFollowupOnly(!needsFollowupOnly)}
-          className={cn("gap-1.5 whitespace-nowrap", needsFollowupOnly && "bg-amber-500 hover:bg-amber-400 text-slate-950")}
+          className="h-10 gap-1.5 whitespace-nowrap sm:h-9"
           title="Created over 48h ago with no contact attempt yet"
         >
-          <Clock className="h-3.5 w-3.5" />
-          Needs follow-up ({needsFollowupCount.toLocaleString()})
+          <Clock className="h-4 w-4 shrink-0" />
+          Needs follow-up
+          <span className="tabular-nums">({needsFollowupCount.toLocaleString()})</span>
         </Button>
         <Button
           variant={hotLeadsOnly ? "default" : "outline"}
           size="sm"
+          aria-pressed={hotLeadsOnly}
           onClick={() => setHotLeadsOnly(!hotLeadsOnly)}
-          className={cn("gap-1.5", hotLeadsOnly && "bg-orange-500 hover:bg-orange-600")}
+          className="h-10 gap-1.5 whitespace-nowrap sm:h-9"
         >
-          🔥 Hot Leads
+          <Flame className="h-4 w-4 shrink-0" />
+          Hot Leads
         </Button>
         <Button
           variant={showDuplicates ? "default" : "outline"}
           size="sm"
+          aria-pressed={showDuplicates}
           onClick={() => setShowDuplicates(!showDuplicates)}
-          className={cn(
-            "gap-1.5 whitespace-nowrap",
-            showDuplicates && "bg-amber-500 text-slate-950 hover:bg-amber-400"
-          )}
+          className="h-10 gap-1.5 whitespace-nowrap sm:h-9"
         >
-          <Copy className="h-3.5 w-3.5" />
-          {showDuplicates ? "Duplicates shown" : "Show duplicates"} ({activeDuplicateCount.toLocaleString()})
+          <Copy className="h-4 w-4 shrink-0" />
+          {showDuplicates ? "Duplicates shown" : "Show duplicates"}
+          <span className="tabular-nums">({activeDuplicateCount.toLocaleString()})</span>
         </Button>
         {(isAdmin || isManager) && (
           <Button
@@ -1192,15 +1259,16 @@ export default function DashboardApplicants() {
                 fetchApplications();
               }
             }}
-            className="gap-1.5"
+            className="h-10 gap-1.5 whitespace-nowrap sm:h-9"
           >
-            <Sparkles className="h-3.5 w-3.5" />
+            <Sparkles className="h-4 w-4 shrink-0" />
             Score All
           </Button>
         )}
         <Button
           variant={speedActive ? "default" : "outline"}
           size="sm"
+          aria-pressed={speedActive}
           onClick={() => {
             if (speedActive) {
               setSpeedActive(false);
@@ -1211,11 +1279,11 @@ export default function DashboardApplicants() {
               setSpeedActive(true);
             }
           }}
-          className={cn("gap-1.5 whitespace-nowrap", speedActive && "bg-teal-500 hover:bg-teal-400 text-slate-950")}
+          className="h-10 gap-1.5 whitespace-nowrap sm:h-9"
           aria-label={speedActive ? "Exit Speed-to-Lead workflow" : "Start Speed-to-Lead workflow"}
           title="Auto-focus hottest, newest, and follow-up-due-today applicants back-to-back"
         >
-          <Rocket className="h-3.5 w-3.5" />
+          <Rocket className="h-4 w-4 shrink-0" />
           {speedActive ? "Exit Speed-to-Lead" : "Start Speed-to-Lead"}
         </Button>
         {activeFilterChips.length > 0 && (
@@ -1223,31 +1291,33 @@ export default function DashboardApplicants() {
             variant="ghost"
             size="sm"
             onClick={resetAllFilters}
-            className="gap-1.5 whitespace-nowrap text-muted-foreground"
+            className="h-10 gap-1.5 whitespace-nowrap text-muted-foreground sm:h-9"
             aria-label="Reset all filters"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <RotateCcw className="h-4 w-4 shrink-0" />
             Reset filters
           </Button>
         )}
-      </div>
-
-      {activeFilterChips.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Active:</span>
-          {activeFilterChips.map((chip) => (
-            <button
-              key={chip.key}
-              onClick={chip.clear}
-              className="inline-flex items-center gap-1 rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-0.5 text-[11px] text-teal-200 hover:bg-teal-500/20"
-              aria-label={`Clear filter: ${chip.label}`}
-            >
-              {chip.label}
-              <XIcon className="h-3 w-3" />
-            </button>
-          ))}
         </div>
-      )}
+
+        {activeFilterChips.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Active</span>
+            {activeFilterChips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={chip.clear}
+                className="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                aria-label={`Clear filter: ${chip.label}`}
+              >
+                <span className="truncate">{chip.label}</span>
+                <XIcon className="h-3 w-3 shrink-0" />
+              </button>
+            ))}
+          </div>
+        )}
+      </GlassCard>
 
       {duplicatesOnly && duplicatePairs.length > 0 && (
         <DuplicateReviewPanel
@@ -1281,14 +1351,14 @@ export default function DashboardApplicants() {
       )}
 
       {viewMode === "kanban" ? (
-        <div>
+        <GlassCard className="p-4">
           <KanbanBoard
             applications={kanbanApps}
             onStageChange={handleKanbanStageChange}
             onCardClick={(app) => setNotesApp(applications.find(a => a.id === app.id) || null)}
             readOnly={!isAdmin && !isManager}
           />
-        </div>
+        </GlassCard>
       ) : viewMode === "pipeline" ? (
         <PipelineView
           applications={filteredApplications}
@@ -1296,29 +1366,41 @@ export default function DashboardApplicants() {
           onCardClick={(id) => setDetailAppId(id)}
         />
       ) : (
-        <div>
+        <GlassCard className="p-4">
           <div className="min-w-0">
+            <div className="mb-1 flex items-baseline justify-between gap-2">
+              <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+                <List className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">Applicant feed</span>
+              </h3>
+              <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+                {filteredApplications.length.toLocaleString()}
+              </span>
+            </div>
+            <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+              Every applicant in scope with their next best action — a row sitting here uncontacted is a lead going cold.
+            </p>
             {filteredApplications.length > 0 ? (
-              <div className="relative w-full border border-border rounded-md max-h-[calc(100vh-170px)] overflow-y-auto">
-                <table className="w-full caption-bottom text-sm min-w-[1100px]">
-                  <thead className="[&_tr]:border-b">
-                    <tr className="border-b bg-muted/50">
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Score</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Email</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Phone</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">License</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Location</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Manager</th>
+              <div className="-mx-4 max-h-[calc(100vh-170px)] overflow-auto px-4 sm:mx-0 sm:px-0">
+                <table className="w-full min-w-[1100px] text-sm">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      <th className="bg-card px-2 py-2 text-left">Name</th>
+                      <th className="bg-card px-2 py-2 text-left">Score</th>
+                      <th className="bg-card px-2 py-2 text-left">Email</th>
+                      <th className="bg-card px-2 py-2 text-left">Phone</th>
+                      <th className="bg-card px-2 py-2 text-left">Status</th>
+                      <th className="bg-card px-2 py-2 text-left">License</th>
+                      <th className="bg-card px-2 py-2 text-left">Location</th>
+                      <th className="bg-card px-2 py-2 text-left">Manager</th>
                       <th
-                        className="h-10 px-4 text-left align-middle font-medium text-muted-foreground"
+                        className="bg-card px-2 py-2 text-left"
                         title="Recruiter's upline manager — who the referring agent reports to"
                       >
                         Upline
                       </th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Created</th>
-                      <th className="h-10 px-4 text-right align-middle font-medium text-muted-foreground">Actions</th>
+                      <th className="bg-card px-2 py-2 text-left">Created</th>
+                      <th className="bg-card px-2 py-2 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="[&_tr:last-child]:border-0">
@@ -1363,24 +1445,24 @@ export default function DashboardApplicants() {
                         <tr
                           id={`lead-${app.id}`}
                           className={cn(
-                            "border-b transition-colors hover:bg-muted/50",
-                            status === "new" && "bg-sky-500/[0.04]",
+                            "border-b border-border/60 transition-colors hover:bg-muted/30",
+                            status === "new" && "bg-primary/[0.04]",
                             status === "contacted" && "bg-amber-500/[0.04]",
                             status === "contracted" && "bg-emerald-500/[0.04]",
                             status === "hired" && "bg-emerald-500/[0.06]",
                             isTerminated && "opacity-60",
-                            isHighlighted && "ring-2 ring-primary bg-primary/5"
+                            isHighlighted && "bg-primary/5 ring-2 ring-primary"
                           )}
                         >
-                          <td className="p-3 align-middle">
+                          <td className="px-2 py-2 align-middle">
                             <div className="flex items-center gap-2">
                               <div className={cn(
-                                "w-11 h-11 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold uppercase",
+                                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold uppercase",
                                 isTerminated ? "bg-destructive/20 text-destructive" : "bg-primary/20 text-primary"
                               )}>
                                 {(app.first_name?.[0] || "") + (app.last_name?.[0] || "") || <Users className="h-4 w-4" />}
                               </div>
-                              <div className="min-w-0 flex items-center gap-1.5">
+                              <div className="flex min-w-0 items-center gap-1.5">
                                 {/* 2026-06-18 Sam: inline-edit first + last name */}
                                 <div className="flex flex-col min-w-0">
                                   <InlineEditApplicantField
@@ -1388,7 +1470,7 @@ export default function DashboardApplicants() {
                                     field="first_name"
                                     value={app.first_name}
                                     placeholder="First name"
-                                    className="font-medium"
+                                    className="text-sm font-medium text-foreground"
                                     onSaved={fetchApplications}
                                   />
                                   <InlineEditApplicantField
@@ -1396,32 +1478,32 @@ export default function DashboardApplicants() {
                                     field="last_name"
                                     value={app.last_name}
                                     placeholder="Last name"
-                                    className="text-xs text-muted-foreground"
+                                    className="text-[11px] text-muted-foreground"
                                     onSaved={fetchApplications}
                                   />
                                 </div>
-                                {app.is_duplicate && <Badge variant="outline" className="text-[9px] bg-amber-500/20 text-amber-400 border-amber-500/30 px-1">DUP</Badge>}
-                                {app.is_ghosted && <Badge variant="outline" className="text-[9px] bg-red-500/20 text-red-400 border-red-500/30 px-1">👻</Badge>}
+                                {app.is_duplicate && <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 px-1 text-[9px] font-bold text-amber-600 dark:text-amber-400">DUP</Badge>}
+                                {app.is_ghosted && <Badge variant="outline" className="border-rose-500/30 bg-rose-500/10 px-1 text-[9px] text-rose-600 dark:text-rose-400">👻</Badge>}
                               </div>
                             </div>
-                            <div className="mt-1 ml-[52px] flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <div className="ml-11 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                               {app.instagram_handle && (
                                 <a
                                   href={`https://instagram.com/${app.instagram_handle.replace(/^@+/, "")}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center gap-1 text-[11px] text-pink-400 hover:text-pink-300 hover:underline font-medium"
+                                  className="inline-flex min-w-0 items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
                                   title={`Open @${app.instagram_handle.replace(/^@+/, "")} on Instagram`}
                                 >
-                                  <Instagram className="h-3 w-3" />
-                                  @{app.instagram_handle.replace(/^@+/, "")}
+                                  <Instagram className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">@{app.instagram_handle.replace(/^@+/, "")}</span>
                                 </a>
                               )}
                               {app.phone_bad_at && (
                                 <Badge
                                   variant="outline"
-                                  className="text-[10px] bg-rose-500/15 text-rose-300 border-rose-500/30 gap-1"
+                                  className="gap-1 border-rose-500/30 bg-rose-500/10 text-[10px] text-rose-600 dark:text-rose-400"
                                   title={
                                     app.couldnt_reach_email_sent_at
                                       ? `Bad number since ${new Date(app.phone_bad_at).toLocaleDateString()} · we emailed them ${new Date(app.couldnt_reach_email_sent_at).toLocaleDateString()}`
@@ -1434,26 +1516,26 @@ export default function DashboardApplicants() {
                               )}
                             </div>
                             {/* 2026-07-07 Sam: compact Next Best Action row. */}
-                            <div className="mt-1 ml-[52px] flex items-center gap-1.5 text-[11px]">
-                              <span className={cn('h-1.5 w-1.5 rounded-full', nbaDotClasses)} />
-                              <span className="text-slate-300 truncate">{nba.action}</span>
+                            <div className="ml-11 mt-1 flex min-w-0 items-center gap-1.5 text-[11px]">
+                              <span className={cn('h-2 w-2 shrink-0 rounded-full', nbaDotClasses)} />
+                              <span className="truncate text-muted-foreground">{nba.action}</span>
                             </div>
                           </td>
-                          <td className="p-3 align-middle">
+                          <td className="px-2 py-2 align-middle">
                             {app.ai_score_tier ? (
-                              <Badge variant="outline" className={cn("text-[10px] font-bold uppercase",
-                                app.ai_score_tier === "hot" && "bg-orange-500/20 text-amber-500 border-orange-500/30",
-                                app.ai_score_tier === "warm" && "bg-amber-500/20 text-amber-400 border-amber-500/30",
-                                app.ai_score_tier === "cool" && "bg-blue-500/20 text-blue-400 border-blue-500/30",
-                                app.ai_score_tier === "cold" && "bg-slate-500/20 text-slate-400 border-slate-500/30",
+                              <Badge variant="outline" className={cn("text-[10px] font-bold uppercase tabular-nums",
+                                app.ai_score_tier === "hot" && "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400",
+                                app.ai_score_tier === "warm" && "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                                app.ai_score_tier === "cool" && "border-border bg-muted/50 text-muted-foreground",
+                                app.ai_score_tier === "cold" && "border-border bg-muted/50 text-muted-foreground",
                               )}>
                                 {app.ai_score_tier === "hot" && "🔥"}{app.ai_score_tier === "warm" && "🌤"}{app.ai_score_tier === "cool" && "❄️"}{app.ai_score_tier === "cold" && "🧊"} {app.lead_score}
                               </Badge>
                             ) : (
-                              <span className="text-muted-foreground text-xs">—</span>
+                              <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </td>
-                          <td className="p-3 align-middle text-muted-foreground">
+                          <td className="max-w-[220px] px-2 py-2 align-middle text-[11px] text-muted-foreground">
                             {/* 2026-06-17 Sam: inline-edit any applicant field. */}
                             <InlineEditApplicantField
                               applicationId={app.id}
@@ -1463,7 +1545,7 @@ export default function DashboardApplicants() {
                               onSaved={fetchApplications}
                             />
                           </td>
-                          <td className="p-3 align-middle text-muted-foreground">
+                          <td className="max-w-[160px] px-2 py-2 align-middle text-[11px] tabular-nums text-muted-foreground">
                             <InlineEditApplicantField
                               applicationId={app.id}
                               field="phone"
@@ -1472,12 +1554,12 @@ export default function DashboardApplicants() {
                               onSaved={fetchApplications}
                             />
                           </td>
-                          <td className="p-3 align-middle">
-                            <Badge variant="outline" className={cn("capitalize text-[10px]", statusColors[status])}>
+                          <td className="px-2 py-2 align-middle">
+                            <Badge variant="outline" className={cn("text-[10px] capitalize", statusColors[status])}>
                               {status}
                             </Badge>
                           </td>
-                          <td className="p-3 align-middle">
+                          <td className="px-2 py-2 align-middle">
                             {!isTerminated && app.license_status !== "licensed" ? (
                               <LicenseProgressSelector
                                 applicationId={app.id}
@@ -1485,18 +1567,18 @@ export default function DashboardApplicants() {
                                 onProgressUpdated={fetchApplications}
                               />
                             ) : (
-                              <Badge variant="outline" className={cn("capitalize text-[10px]", licenseColors[app.license_status])}>
+                              <Badge variant="outline" className={cn("text-[10px] capitalize", licenseColors[app.license_status])}>
                                 {app.license_status}
                               </Badge>
                             )}
                           </td>
-                          <td className="p-3 align-middle text-muted-foreground text-xs">
-                            {app.city && app.state ? `${app.city}, ${app.state}` : "—"}
+                          <td className="max-w-[160px] px-2 py-2 align-middle text-[11px] text-muted-foreground">
+                            <div className="truncate">{app.city && app.state ? `${app.city}, ${app.state}` : "—"}</div>
                           </td>
-                          <td className="p-3 align-middle text-xs">
+                          <td className="max-w-[160px] px-2 py-2 align-middle text-[11px]">
                             {app.assigned_agent_id ? (
                               <AgentNameLink agentId={app.assigned_agent_id} variant="bare">
-                                <Badge variant="outline" className="bg-violet-500/10 text-primary border-violet-500/30 text-[10px] hover:bg-violet-500/20 cursor-pointer">
+                                <Badge variant="outline" className="cursor-pointer border-primary/30 bg-primary/10 text-[10px] text-primary transition-colors hover:bg-primary/20">
                                   {managerNames.get(app.assigned_agent_id) || "Manager"}
                                 </Badge>
                               </AgentNameLink>
@@ -1504,7 +1586,7 @@ export default function DashboardApplicants() {
                               <span className="text-muted-foreground">Unassigned</span>
                             )}
                           </td>
-                          <td className="p-3 align-middle text-xs">
+                          <td className="max-w-[160px] px-2 py-2 align-middle text-[11px]">
                             {(() => {
                               const recruiter = app.recruiter_id
                                 ? recruiterDirectory.get(app.recruiter_id)
@@ -1530,7 +1612,7 @@ export default function DashboardApplicants() {
                                   <AgentNameLink agentId={recruiter.uplineId} variant="bare">
                                     <Badge
                                       variant="outline"
-                                      className="bg-indigo-500/10 text-indigo-300 border-indigo-500/30 text-[10px] hover:bg-indigo-500/20 cursor-pointer"
+                                      className="cursor-pointer border-border bg-muted/50 text-[10px] text-foreground transition-colors hover:bg-muted"
                                       title={`Referred by ${recruiter.name} — under ${uplineName}`}
                                     >
                                       {uplineName}
@@ -1539,7 +1621,7 @@ export default function DashboardApplicants() {
                                 ) : (
                                   <Badge
                                     variant="outline"
-                                    className="bg-indigo-500/10 text-indigo-300 border-indigo-500/30 text-[10px]"
+                                    className="border-border bg-muted/50 text-[10px] text-foreground"
                                     title={`Referred by ${recruiter.name} — under ${uplineName}`}
                                   >
                                     {uplineName}
@@ -1548,10 +1630,10 @@ export default function DashboardApplicants() {
                               );
                             })()}
                           </td>
-                          <td className="p-3 align-middle text-muted-foreground text-xs">
+                          <td className="whitespace-nowrap px-2 py-2 align-middle text-[11px] tabular-nums text-muted-foreground">
                             {getTimeAgo(app.created_at)}
                           </td>
-                          <td className="p-3 align-middle text-right">
+                          <td className="px-2 py-2 align-middle text-right">
                             <div className="flex items-center justify-end gap-1">
                               {!isTerminated && (
                                 <>
@@ -1575,7 +1657,7 @@ export default function DashboardApplicants() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 text-foreground hover:text-pink-300 hover:bg-rose-500/10"
+                                      className="h-8 w-8"
                                       onClick={() => openInstagram(app.instagram_handle!)}
                                       title={`@${app.instagram_handle}`}
                                       aria-label={`Open Instagram profile @${app.instagram_handle.replace(/^@+/, "")}`}
@@ -1587,7 +1669,7 @@ export default function DashboardApplicants() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7"
+                                      className="h-8 w-8"
                                       title={`Call ${app.phone}`}
                                       aria-label={`Call ${app.first_name} ${app.last_name}`}
                                       asChild
@@ -1604,7 +1686,7 @@ export default function DashboardApplicants() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7"
+                                      className="h-8 w-8"
                                       title={`Text ${app.phone}`}
                                       aria-label={`Text ${app.first_name} ${app.last_name}`}
                                       asChild
@@ -1621,7 +1703,7 @@ export default function DashboardApplicants() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                                      className="h-8 w-8 text-rose-600 dark:text-rose-400"
                                       title="Mark number bad + email applicant we couldn't reach them"
                                       aria-label={`Mark ${app.first_name} ${app.last_name}'s phone as bad`}
                                       disabled={badPhoneBusy === app.id}
@@ -1636,7 +1718,7 @@ export default function DashboardApplicants() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7"
+                                      className="h-8 w-8"
                                       title={`Email ${app.email}`}
                                       aria-label={`Email ${app.first_name} ${app.last_name}`}
                                       asChild
@@ -1652,7 +1734,7 @@ export default function DashboardApplicants() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7"
+                                    className="h-8 w-8"
                                     onClick={() => setNotesApp(app)}
                                     title="Notes"
                                     aria-label={`Open notes for ${app.first_name} ${app.last_name}`}
@@ -1662,7 +1744,7 @@ export default function DashboardApplicants() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7"
+                                    className="h-8 w-8"
                                     onClick={() => setRecorderApp(app)}
                                     title="Record"
                                     aria-label={`Record interview with ${app.first_name} ${app.last_name}`}
@@ -1684,14 +1766,14 @@ export default function DashboardApplicants() {
                                       currentAgentId={app.assigned_agent_id}
                                       onAssigned={fetchApplications}
                                       displayMode="icon"
-                                      className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                      className="h-8 w-8 text-muted-foreground hover:text-primary"
                                     />
                                   )}
                                   {status !== "hired" && status !== "contracted" && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 text-primary"
+                                      className="h-8 w-8 text-primary"
                                       onClick={() => handleMarkAsHired(app.id)}
                                       title="Hired"
                                       aria-label={`Mark ${app.first_name} ${app.last_name} as hired`}
@@ -1703,7 +1785,7 @@ export default function DashboardApplicants() {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-7 w-7 text-destructive"
+                                      className="h-8 w-8 text-destructive"
                                       onClick={() => setTerminateApp(app)}
                                       title="Terminate"
                                       aria-label={`Terminate ${app.first_name} ${app.last_name}`}
@@ -1714,7 +1796,7 @@ export default function DashboardApplicants() {
                                 </>
                               )}
                               {isTerminated && (
-                                <Button variant="outline" size="sm" onClick={() => handleRestoreLead(app.id)} className="text-emerald-400 border-emerald-500/30 h-7 text-xs">
+                                <Button variant="outline" size="sm" onClick={() => handleRestoreLead(app.id)} className="h-8 border-emerald-500/30 text-xs text-emerald-600 dark:text-emerald-400">
                                   <RotateCcw className="h-3 w-3 mr-1" /> Restore
                                 </Button>
                               )}
@@ -1725,11 +1807,11 @@ export default function DashboardApplicants() {
                           <tr
                             id={`lead-disp-${app.id}`}
                             className={cn(
-                              "border-b bg-muted/20",
+                              "border-b border-border/60 bg-muted/20",
                               isHighlighted && "bg-primary/5",
                             )}
                           >
-                            <td colSpan={11} className="px-3 py-2">
+                            <td colSpan={11} className="px-2 py-2">
                               <ApplicationDispositionCluster
                                 applicationId={app.id}
                                 applicantEmail={app.email}
@@ -1749,37 +1831,45 @@ export default function DashboardApplicants() {
                 </table>
               </div>
             ) : (
-              <div className="flex items-center justify-between gap-3 rounded-md border border-border px-4 py-3 text-sm">
-                <span className="text-muted-foreground">
-                  {activeApplications.length === 0 ? "No active applications fetched." : "No applicants match the current filters."}
-                </span>
-                {activeApplications.length > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setStatusFilter("all");
-                      setLicenseFilter("all");
-                      setMyDirectsOnly(false);
-                      setHotLeadsOnly(false);
-                      setShowDuplicates(true);
-                      setAgentFilter("all");
-                      setUplineFilter("all");
-                      setInterviewFilter("all");
-                      setNeedsFollowupOnly(false);
-                      const params = new URLSearchParams(searchParams);
-                      ["status", "license", "contacted", "stage"].forEach((key) => params.delete(key));
-                      setSearchParams(params, { replace: true });
-                    }}
-                  >
-                    Clear filters
-                  </Button>
-                )}
-              </div>
+              <EmptyState
+                icon={<Users className="h-7 w-7" />}
+                variant={activeApplications.length === 0 ? "warning" : "default"}
+                title={activeApplications.length === 0 ? "No active applications fetched" : "No applicants match these filters"}
+                description={
+                  activeApplications.length === 0
+                    ? "Nothing came back for your scope. If you expect rows here, your session or assignment scope is the thing to check."
+                    : "The feed is filtered down to nothing. Clear the filters to get the full applicant list back."
+                }
+                actions={
+                  activeApplications.length > 0 ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-10 w-full sm:h-9 sm:w-auto"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setStatusFilter("all");
+                        setLicenseFilter("all");
+                        setMyDirectsOnly(false);
+                        setHotLeadsOnly(false);
+                        setShowDuplicates(true);
+                        setAgentFilter("all");
+                        setUplineFilter("all");
+                        setInterviewFilter("all");
+                        setNeedsFollowupOnly(false);
+                        const params = new URLSearchParams(searchParams);
+                        ["status", "license", "contacted", "stage"].forEach((key) => params.delete(key));
+                        setSearchParams(params, { replace: true });
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  ) : null
+                }
+              />
             )}
           </div>
-        </div>
+        </GlassCard>
       )}
 
       {notesApp && (
@@ -1805,8 +1895,8 @@ export default function DashboardApplicants() {
       <Dialog open={!!terminateApp} onOpenChange={(open) => !open && setTerminateApp(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-400">
-              <XCircle className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+              <XCircle className="h-5 w-5 shrink-0" />
               Terminate Lead
             </DialogTitle>
             <DialogDescription>
@@ -1827,11 +1917,12 @@ export default function DashboardApplicants() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTerminateApp(null)}>
+            <Button variant="outline" className="h-10 w-full sm:h-9 sm:w-auto" onClick={() => setTerminateApp(null)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
+              className="h-10 w-full sm:h-9 sm:w-auto"
               onClick={handleTerminate}
               disabled={isTerminating}
             >
@@ -1905,61 +1996,67 @@ interface DuplicatePairsProps {
 
 function DuplicateReviewPanel({ pairs, onMarkDup, onKeepBoth, onOpen }: DuplicatePairsProps) {
   return (
-    <div className="mb-4 rounded-xl border border-fuchsia-500/25 bg-fuchsia-500/[0.04] p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Copy className="h-4 w-4 text-fuchsia-300" />
-          <span className="text-sm font-semibold">Duplicate review · {pairs.length.toLocaleString()} groups</span>
-        </div>
-        <span className="text-[11px] text-muted-foreground">Same email or last 10 phone digits</span>
+    <GlassCard className="p-4">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+          <Copy className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">Duplicate review</span>
+        </h3>
+        <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+          {pairs.length.toLocaleString()}
+        </span>
       </div>
-      <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+      <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+        Grouped by the same email or the last 10 phone digits — two rows here means one person is being worked twice.
+      </p>
+      <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
         {pairs.slice(0, 25).map(({ key, apps }) => {
           const [left, right] = apps;
           if (!left || !right) return null;
           return (
-            <div key={key} className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-card p-2 md:grid-cols-[1fr_auto_1fr]">
+            <div key={key} className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-card p-3 sm:p-4 md:grid-cols-[1fr_auto_1fr]">
               <DupMiniCard app={left} onOpen={() => onOpen(left.id)} onMarkDup={() => onMarkDup(left.id)} />
-              <div className="flex flex-col items-center justify-center gap-1 self-center">
-                <Button size="sm" variant="outline" className="h-7 text-[11px] whitespace-nowrap" onClick={() => onKeepBoth(left.id, right.id)}>
+              <div className="flex flex-col items-center justify-center gap-2 self-center">
+                <Button size="sm" variant="outline" className="h-10 w-full whitespace-nowrap text-[11px] sm:h-9 sm:w-auto" onClick={() => onKeepBoth(left.id, right.id)}>
                   Keep both
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-7 text-[11px] whitespace-nowrap text-muted-foreground"
+                  className="h-10 w-full whitespace-nowrap text-[11px] text-muted-foreground sm:h-9 sm:w-auto"
                   disabled
                   title="Merge coming next wave"
                 >
                   Merge into left
                 </Button>
-                <span className="text-[9px] uppercase tracking-widest text-muted-foreground">vs</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">vs</span>
               </div>
               <DupMiniCard app={right} onOpen={() => onOpen(right.id)} onMarkDup={() => onMarkDup(right.id)} />
             </div>
           );
         })}
       </div>
-    </div>
+    </GlassCard>
   );
 }
 
 function DupMiniCard({ app, onOpen, onMarkDup }: { app: Application; onOpen: () => void; onMarkDup: () => void }) {
   return (
-    <div className="rounded-md border border-border bg-background/40 p-2">
-      <div className="flex items-center justify-between gap-2">
+    <div className="rounded-lg border border-border bg-card/60 p-3 sm:p-4">
+      <div className="flex items-start justify-between gap-3">
         <button
+          type="button"
           onClick={onOpen}
-          className="min-w-0 text-left"
+          className="min-w-0 rounded-md text-left transition-colors hover:text-primary focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
           aria-label={`Open ${app.first_name} ${app.last_name}`}
         >
-          <div className="truncate text-sm font-medium">
+          <div className="truncate text-sm font-medium text-foreground">
             {app.first_name} {app.last_name}
           </div>
-          <div className="truncate text-[11px] text-muted-foreground">{app.email || "no email"} · {app.phone || "no phone"}</div>
-          <div className="text-[10px] text-muted-foreground">Applied {new Date(app.created_at).toLocaleDateString()}</div>
+          <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{app.email || "no email"} · {app.phone || "no phone"}</div>
+          <div className="text-[10px] tabular-nums text-muted-foreground">Applied {new Date(app.created_at).toLocaleDateString()}</div>
         </button>
-        <Button size="sm" variant="outline" className="h-7 shrink-0 text-[11px]" onClick={onMarkDup} aria-label={`Mark ${app.first_name} as duplicate`}>
+        <Button size="sm" variant="outline" className="h-10 shrink-0 text-[11px] sm:h-9" onClick={onMarkDup} aria-label={`Mark ${app.first_name} as duplicate`}>
           Mark dup
         </Button>
       </div>
@@ -1988,15 +2085,15 @@ function PipelineView({ applications, getStatus, onCardClick }: PipelineViewProp
   ];
   const buckets = columns.map((c) => ({ ...c, apps: applications.filter(c.match) }));
   return (
-    <div className="w-full overflow-x-auto pb-2">
-      <div className="flex gap-3 min-w-max">
+    <div className="-mx-4 w-auto overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+      <div className="flex min-w-max gap-3">
         {buckets.map((col) => (
-          <div key={col.key} className="w-64 shrink-0 rounded-xl border border-border bg-card/50">
-            <div className="sticky top-0 flex items-center justify-between rounded-t-xl bg-background/80 backdrop-blur px-3 py-2 border-b border-border">
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{col.label}</span>
-              <span className="text-[11px] tabular-nums text-foreground/80">{col.apps.length.toLocaleString()}</span>
+          <div key={col.key} className="w-64 shrink-0 rounded-lg border border-border bg-card/60">
+            <div className="sticky top-0 flex items-center justify-between gap-2 rounded-t-lg border-b border-border bg-card px-3 py-2">
+              <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{col.label}</span>
+              <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">{col.apps.length.toLocaleString()}</span>
             </div>
-            <div className="max-h-[70vh] overflow-y-auto p-2 space-y-1.5">
+            <div className="max-h-[70vh] space-y-2 overflow-y-auto p-2">
               {col.apps.slice(0, 100).map((a) => {
                 const endOfToday = new Date();
                 endOfToday.setHours(23, 59, 59, 999);
@@ -2022,25 +2119,26 @@ function PipelineView({ applications, getStatus, onCardClick }: PipelineViewProp
                 return (
                   <button
                     key={a.id}
+                    type="button"
                     onClick={() => onCardClick(a.id)}
-                    className="w-full rounded-md border border-border bg-background/40 p-2 text-left hover:bg-muted/30 transition-colors"
+                    className="w-full rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-left transition-colors hover:border-border hover:bg-card focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
                     aria-label={`Open ${a.first_name} ${a.last_name}`}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dot)} />
-                      <span className="min-w-0 truncate text-[13px] font-medium">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={cn("h-2 w-2 shrink-0 rounded-full", dot)} />
+                      <span className="min-w-0 truncate text-sm font-medium text-foreground">
                         {a.first_name} {a.last_name}
                       </span>
                     </div>
-                    <div className="mt-1 truncate text-[11px] text-muted-foreground">
+                    <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
                       {a.phone || a.email || "—"}
                     </div>
                   </button>
                 );
               })}
               {col.apps.length === 0 && (
-                <div className="rounded-md border border-dashed border-border/60 p-3 text-center text-[11px] text-muted-foreground">
-                  Empty
+                <div className="rounded-lg border border-dashed border-border/60 p-3 text-center text-[11px] text-muted-foreground">
+                  Nobody sits here
                 </div>
               )}
             </div>
@@ -2065,40 +2163,40 @@ interface SpeedToLeadBarProps {
 function SpeedToLeadBar({ index, total, current, onSkip, onExit, onLogCall, onLogText, onLogEmail }: SpeedToLeadBarProps) {
   if (!current) return null;
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-teal-500/30 bg-slate-950/95 backdrop-blur px-4 py-2 shadow-lg">
+    <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 px-4 py-2 shadow-sm sm:px-6">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <Rocket className="h-4 w-4 text-teal-300 shrink-0" />
+        <div className="flex min-w-0 items-center gap-2">
+          <Rocket className="h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-widest text-teal-200/80">
-              Speed-to-Lead · {index + 1} of {total}
+            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              Speed-to-Lead · <span className="tabular-nums">{index + 1} of {total}</span>
             </div>
-            <div className="truncate text-sm font-semibold">
+            <div className="truncate text-sm font-medium text-foreground">
               {current.first_name} {current.last_name} · {current.phone || current.email || "no contact"}
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           {current.phone && (
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => onLogCall(current)} aria-label={`Call ${current.first_name}`}>
-              <Phone className="h-3.5 w-3.5" /> Call
+            <Button size="sm" variant="outline" className="h-10 gap-1.5 sm:h-9" onClick={() => onLogCall(current)} aria-label={`Call ${current.first_name}`}>
+              <Phone className="h-4 w-4 shrink-0" /> Call
             </Button>
           )}
           {current.phone && (
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => onLogText(current)} aria-label={`Text ${current.first_name}`}>
-              <MessageCircle className="h-3.5 w-3.5" /> Text
+            <Button size="sm" variant="outline" className="h-10 gap-1.5 sm:h-9" onClick={() => onLogText(current)} aria-label={`Text ${current.first_name}`}>
+              <MessageCircle className="h-4 w-4 shrink-0" /> Text
             </Button>
           )}
           {current.email && (
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => onLogEmail(current)} aria-label={`Email ${current.first_name}`}>
-              <Mail className="h-3.5 w-3.5" /> Email
+            <Button size="sm" variant="outline" className="h-10 gap-1.5 sm:h-9" onClick={() => onLogEmail(current)} aria-label={`Email ${current.first_name}`}>
+              <Mail className="h-4 w-4 shrink-0" /> Email
             </Button>
           )}
-          <Button size="sm" variant="default" className="h-8 gap-1.5 bg-teal-500 text-slate-950 hover:bg-teal-400" onClick={onSkip} aria-label="Next applicant">
-            Next <ArrowRight className="h-3.5 w-3.5" />
+          <Button size="sm" variant="default" className="h-10 gap-1.5 sm:h-9" onClick={onSkip} aria-label="Next applicant">
+            Next <ArrowRight className="h-4 w-4 shrink-0" />
           </Button>
-          <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-muted-foreground" onClick={onExit} aria-label="Exit Speed-to-Lead">
-            <XIcon className="h-3.5 w-3.5" /> Exit
+          <Button size="sm" variant="ghost" className="h-10 gap-1.5 text-muted-foreground sm:h-9" onClick={onExit} aria-label="Exit Speed-to-Lead">
+            <XIcon className="h-4 w-4 shrink-0" /> Exit
           </Button>
         </div>
       </div>
@@ -2150,29 +2248,31 @@ function ReferralLinkBanner({ agentId }: { agentId: string }) {
     }
   };
   return (
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border border-amber-500/30 bg-amber-500/[0.06]">
-      <div className="flex items-center gap-3 min-w-0 flex-1">
-        <Award className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <p className="text-11 uppercase tracking-widest text-muted-foreground mb-0.5">Your referral link · paste anywhere</p>
-          <p className="text-13 font-mono truncate text-foreground">{url}</p>
+    <div className="rounded-lg border border-amber-500/35 bg-amber-500/5 p-3 sm:p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <Award className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="min-w-0 flex-1">
+            <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Your referral link · paste anywhere</p>
+            <p className="truncate font-mono text-xs text-foreground">{url}</p>
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <Button size="sm" variant={copied ? "default" : "outline"} onClick={copy} className={copied ? "bg-emerald-600 hover:bg-emerald-700" : ""}>
-          <Copy className="h-3.5 w-3.5 mr-1.5" />
-          {copied ? "Copied" : "Copy"}
-        </Button>
-        <Button size="sm" variant="outline" onClick={shareIfSupported}>
-          <Send className="h-3.5 w-3.5 mr-1.5" />
-          Share
-        </Button>
-        <Button asChild size="sm" variant="outline">
-          <a href={url} target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-            Open
-          </a>
-        </Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button size="sm" variant={copied ? "default" : "outline"} className="h-10 gap-1.5 sm:h-9" onClick={copy}>
+            <Copy className="h-4 w-4 shrink-0" />
+            {copied ? "Copied" : "Copy"}
+          </Button>
+          <Button size="sm" variant="outline" className="h-10 gap-1.5 sm:h-9" onClick={shareIfSupported}>
+            <Send className="h-4 w-4 shrink-0" />
+            Share
+          </Button>
+          <Button asChild size="sm" variant="outline" className="h-10 gap-1.5 sm:h-9">
+            <a href={url} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 shrink-0" />
+              Open
+            </a>
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Crown, Loader2, Medal, TrendingUp, Calendar as CalendarIcon, Clock3, Target, Users, Activity, CalendarDays, Trophy, DollarSign, TrendingDown } from "lucide-react";
+import { Crown, Loader2, Medal, TrendingUp, Calendar as CalendarIcon, Clock3, Target, Users, Activity, CalendarDays, Trophy, DollarSign, TrendingDown, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDistanceToNowStrict } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -38,10 +39,12 @@ type Row = {
   leg_size?: number;
 };
 
+// Podium tints are theme-paired: the bare -400/-500 weights washed out on the
+// white light-theme card (--apex-card: 0 0% 100%).
 const RANK_ICONS: Record<number, { icon: typeof Crown; color: string }> = {
-  1: { icon: Crown, color: "text-amber-400" },
+  1: { icon: Crown, color: "text-amber-600 dark:text-amber-400" },
   2: { icon: Medal, color: "text-slate-600 dark:text-slate-300" },
-  3: { icon: Medal, color: "text-rose-500" },
+  3: { icon: Medal, color: "text-amber-700 dark:text-amber-500" },
 };
 
 const BOARD_META: Record<Board, { label: string; icon: typeof Crown; source: string }> = {
@@ -433,7 +436,7 @@ export default function Leaderboard() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 p-4 md:p-6 ops-surface ops-fade-in">
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
         accent="amber"
         eyebrow="Production · Rankings"
@@ -458,93 +461,93 @@ export default function Leaderboard() {
         }
       />
 
-      {/* v6 §31 canonical hero — production = money = emerald gradient.
-          Truth source: agentlink_deals_snapshot (Sam's permanent memory).
-          Shows month-to-date agency AP, producer count, avg per producer,
-          and projected pace vs prior month. */}
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_64px_-12px_hsl(168_70%_45%/0.35)]">
-        <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,hsl(168_70%_45%/0.06),transparent_60%)] pointer-events-none" />
-        <div className="relative p-5 sm:p-6">
-          <div className="mb-4 flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-            </span>
-            <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">AGENCY PRODUCTION · LIVE</p>
-          </div>
-
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
-            <div>
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <DollarSign className="h-3 w-3 text-emerald-400" />
-                <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">MONTH-TO-DATE AP</p>
-              </div>
-              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-white">
-                {heroData.isLoading ? "—" : formatMoney(heroData.data?.totalAp ?? 0)}
-              </p>
-              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
-                {heroData.data?.dealCount ?? 0} deals · day {heroData.data?.dayOfMonth ?? "—"}/{heroData.data?.daysInMonth ?? "—"}
-              </p>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Users className="h-3 w-3 text-amber-400" />
-                <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">PRODUCERS</p>
-              </div>
-              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-amber-300">
-                {heroData.isLoading ? "—" : (heroData.data?.producers ?? 0).toLocaleString()}
-              </p>
-              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
-                {heroData.data?.producers === 1 ? "agent posting deals" : "agents posting deals"}
-              </p>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Target className="h-3 w-3 text-emerald-400" />
-                <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">AVG / PRODUCER</p>
-              </div>
-              <p className="text-[32px] sm:text-[40px] leading-none font-black tabular-nums text-emerald-300">
-                {heroData.isLoading ? "—" : formatMoney(heroData.data?.avgPerProducer ?? 0)}
-              </p>
-              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
-                month-to-date per active producer
-              </p>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5 mb-1.5">
-                {(heroData.data?.paceDelta ?? 0) >= 0 ? (
-                  <TrendingUp className="h-3 w-3 text-emerald-400" />
-                ) : (
-                  <TrendingDown className="h-3 w-3 text-rose-400" />
-                )}
-                <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">PACE VS PRIOR MO</p>
-              </div>
-              <p className={cn(
-                "text-[32px] sm:text-[40px] leading-none font-black tabular-nums",
-                (heroData.data?.paceDelta ?? 0) >= 0 ? "text-emerald-300" : "text-rose-300",
-              )}>
-                {heroData.isLoading
-                  ? "—"
-                  : `${(heroData.data?.paceDelta ?? 0) >= 0 ? "+" : ""}${(heroData.data?.paceDelta ?? 0).toFixed(0)}%`}
-              </p>
-              <p className="text-[10px] text-white/50 mt-1 tabular-nums">
-                proj {formatMoney(heroData.data?.projected ?? 0)} · prior {formatMoney(heroData.data?.priorAp ?? 0)}
-              </p>
-            </div>
-          </div>
-
-          <p className="mt-4 text-[10px] text-white/40 tracking-wide">
-            Source · agentlink_book · posted date · America/Phoenix month window · refreshes every 60s
-          </p>
+      {/* v6 §31 canonical hero — month-to-date agency AP, producer count, avg
+          per producer, and projected pace vs prior month.
+          Truth source: agentlink_book via leaderboard_book_hero.
+          Month-to-date AP is the one number Sam reads first, so it is the only
+          emerald figure in the strip; every other tile stays neutral. */}
+      <GlassCard className="p-4">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+            <Activity className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">Agency production</span>
+          </h3>
+          <span className="flex shrink-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            <span aria-hidden className="h-2 w-2 rounded-full bg-emerald-500" />
+            Live
+          </span>
         </div>
-      </div>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          Source · agentlink_book · posted date · America/Phoenix month window · refreshes every 60s
+        </p>
 
-      <p className="text-xs text-muted-foreground">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
+            <div className="mb-1.5 flex items-center gap-2">
+              <DollarSign className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Month-to-date AP</p>
+            </div>
+            <p className="truncate text-2xl font-bold leading-none tabular-nums text-emerald-600 dark:text-emerald-400">
+              {heroData.isLoading ? "—" : formatMoney(heroData.data?.totalAp ?? 0)}
+            </p>
+            <p className="mt-1.5 truncate text-[11px] tabular-nums text-muted-foreground">
+              {heroData.data?.dealCount ?? 0} deals · day {heroData.data?.dayOfMonth ?? "—"}/{heroData.data?.daysInMonth ?? "—"}
+            </p>
+          </div>
+
+          <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
+            <div className="mb-1.5 flex items-center gap-2">
+              <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Producers</p>
+            </div>
+            <p className="truncate text-2xl font-bold leading-none tabular-nums text-foreground">
+              {heroData.isLoading ? "—" : (heroData.data?.producers ?? 0).toLocaleString()}
+            </p>
+            <p className="mt-1.5 truncate text-[11px] text-muted-foreground">
+              {heroData.data?.producers === 1 ? "agent posting deals" : "agents posting deals"}
+            </p>
+          </div>
+
+          <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
+            <div className="mb-1.5 flex items-center gap-2">
+              <Target className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Avg / producer</p>
+            </div>
+            <p className="truncate text-2xl font-bold leading-none tabular-nums text-foreground">
+              {heroData.isLoading ? "—" : formatMoney(heroData.data?.avgPerProducer ?? 0)}
+            </p>
+            <p className="mt-1.5 truncate text-[11px] text-muted-foreground">
+              month-to-date per active producer
+            </p>
+          </div>
+
+          <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
+            <div className="mb-1.5 flex items-center gap-2">
+              {(heroData.data?.paceDelta ?? 0) >= 0 ? (
+                <TrendingUp className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <TrendingDown className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              )}
+              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Pace vs prior mo</p>
+            </div>
+            <p className={cn(
+              "truncate text-2xl font-bold leading-none tabular-nums",
+              (heroData.data?.paceDelta ?? 0) >= 0
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-rose-600 dark:text-rose-400",
+            )}>
+              {heroData.isLoading
+                ? "—"
+                : `${(heroData.data?.paceDelta ?? 0) >= 0 ? "+" : ""}${(heroData.data?.paceDelta ?? 0).toFixed(0)}%`}
+            </p>
+            <p className="mt-1.5 truncate text-[11px] tabular-nums text-muted-foreground">
+              proj {formatMoney(heroData.data?.projected ?? 0)} · prior {formatMoney(heroData.data?.priorAp ?? 0)}
+            </p>
+          </div>
+        </div>
+      </GlassCard>
+
+      <p className="text-xs leading-relaxed text-muted-foreground">
         {sourceHint}
         {board === "production" && productionMode === "top_legs" && (
           <> · Top Producing Leg sources v_top_legs_excl_sam (AgentLink book, excludes Sam's leg).</>
@@ -557,24 +560,30 @@ export default function Leaderboard() {
           writes. Nested productionMode + period Tabs stay as independent roots — they govern
           orthogonal axes and don't conflict. */}
       <Tabs value={board} onValueChange={(value) => setBoard(value as Board)}>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <TabsList className="grid grid-cols-4">
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto">
             <TabsTrigger value="production">Production</TabsTrigger>
             <TabsTrigger value="recruiting">Recruiting</TabsTrigger>
             <TabsTrigger value="referrals">Referral</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
           {board === "production" && (
-            <Tabs value={productionMode} onValueChange={(value) => setProductionMode(value as ProductionMode)}>
-              <TabsList>
-                <TabsTrigger value="individuals">Individuals</TabsTrigger>
-                <TabsTrigger value="top_legs">Top Producing Leg (excl. Sam)</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            // The "Top Producing Leg (excl. Sam)" trigger is wider than a phone
+            // viewport — it scrolls inside its own rail so the page body never does.
+            <div className="-mx-4 min-w-0 overflow-x-auto pb-1 sm:mx-0">
+              <div className="flex min-w-max px-4 sm:px-0">
+                <Tabs value={productionMode} onValueChange={(value) => setProductionMode(value as ProductionMode)}>
+                  <TabsList>
+                    <TabsTrigger value="individuals">Individuals</TabsTrigger>
+                    <TabsTrigger value="top_legs">Top Producing Leg (excl. Sam)</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+            </div>
           )}
-          <div className="flex flex-wrap items-center gap-2">
-            <Tabs value={period} onValueChange={(value) => setPeriod(value as Period)}>
-              <TabsList>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <Tabs value={period} onValueChange={(value) => setPeriod(value as Period)} className="min-w-0 flex-1 lg:flex-none">
+              <TabsList className="grid w-full grid-cols-4 lg:w-auto">
                 <TabsTrigger value="daily">Daily</TabsTrigger>
                 <TabsTrigger value="weekly">Weekly</TabsTrigger>
                 <TabsTrigger value="monthly">Monthly</TabsTrigger>
@@ -582,11 +591,11 @@ export default function Leaderboard() {
               </TabsList>
             </Tabs>
             {period === "custom" && (
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+                <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="h-9 w-[160px] justify-start text-left font-normal">
+                    <Button variant="outline" className="h-10 min-w-0 flex-1 justify-start truncate text-left font-normal sm:h-9 sm:w-[160px] sm:flex-none">
                       {customFrom ? fmtDate(new Date(customFrom + "T00:00:00"), "MMM d, yyyy") : "From"}
                     </Button>
                   </PopoverTrigger>
@@ -595,10 +604,10 @@ export default function Leaderboard() {
                       onSelect={(d) => setCustomFrom(d ? fmtDate(d, "yyyy-MM-dd") : "")} initialFocus />
                   </PopoverContent>
                 </Popover>
-                <span className="text-muted-foreground text-sm">→</span>
+                <span className="shrink-0 text-sm text-muted-foreground">→</span>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="h-9 w-[160px] justify-start text-left font-normal">
+                    <Button variant="outline" className="h-10 min-w-0 flex-1 justify-start truncate text-left font-normal sm:h-9 sm:w-[160px] sm:flex-none">
                       {customTo ? fmtDate(new Date(customTo + "T00:00:00"), "MMM d, yyyy") : "To"}
                     </Button>
                   </PopoverTrigger>
@@ -613,106 +622,121 @@ export default function Leaderboard() {
         </div>
 
         {(["production", "recruiting", "referrals", "activity"] as Board[]).map((tab) => (
-          <TabsContent key={tab} value={tab} className="mt-0">
+          <TabsContent key={tab} value={tab} className="mt-3">
             {loading ? (
-              <div className="space-y-2 py-2" aria-label="Loading leaderboard">
-                {[0,1,2,3,4,5,6,7].map((i) => (
-                  /* stable-key-allow:skeleton */
-                  <div key={i} className="h-12 rounded-lg bg-muted/40 animate-pulse" />
-                ))}
-              </div>
+              <GlassCard className="p-4">
+                <div className="space-y-2" aria-label="Loading leaderboard">
+                  {[0,1,2,3,4,5,6,7].map((i) => (
+                    /* stable-key-allow:skeleton */
+                    <div key={i} className="h-16 rounded-lg bg-muted/30 animate-pulse" />
+                  ))}
+                </div>
+              </GlassCard>
             ) : rows.length === 0 ? (
-              <GlassCard className="p-0">
+              <div className="space-y-3">
                 {/* 2026-06-15 v7.2 diagnostic empty-state · Sam's mandate: never leave
                     the user wondering WHY. Tell them: fetched count + what's been queried
                     + a one-tap fallback to widen the window. */}
-                <div className="text-center py-12">
-                  <Trophy className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">
-                    {rows.length === 0 ? `No ${BOARD_META[tab].label.toLowerCase()} rows fetched` : "Filters are hiding everything"}
-                  </h3>
-                  <div className="space-y-3 max-w-md mx-auto">
-                    <p className="text-13 text-muted-foreground">
-                      Fetched <span className="font-bold text-foreground tabular-nums">{rows.length.toLocaleString()}</span> ranked rows for the <span className="font-bold">{period}</span> window.
-                    </p>
-                    <div className="text-12 text-rose-600 dark:text-rose-400">
-                      Zero rows in this window. Likely causes:
-                      <ul className="list-disc list-inside mt-2 text-left">
-                        <li>The current {period} window genuinely has no {BOARD_META[tab].label.toLowerCase()} yet</li>
-                        <li>Source ({BOARD_META[tab].source}) is dark or RLS-restricted</li>
-                        <li>Your role can't see other agents' rows on this view</li>
-                      </ul>
-                      <p className="mt-2 font-semibold">Hold the Standard.</p>
-                    </div>
-                    {period !== "monthly" && (
+                <EmptyState
+                  icon={<Trophy className="h-7 w-7" />}
+                  variant="warning"
+                  title={rows.length === 0 ? `No ${BOARD_META[tab].label.toLowerCase()} rows fetched` : "Filters are hiding everything"}
+                  description={
+                    <>
+                      Fetched <span className="font-bold tabular-nums text-foreground">{rows.length.toLocaleString()}</span> ranked rows for the <span className="font-bold text-foreground">{period}</span> window.
+                    </>
+                  }
+                  actions={
+                    period !== "monthly" ? (
                       <Button
                         size="sm"
+                        className="h-10 w-full sm:h-9 sm:w-auto"
                         onClick={() => setPeriod("monthly")}
-                        className="bg-amber-500 hover:bg-amber-400 text-slate-950"
                       >
                         Widen window · switch to monthly
                       </Button>
-                    )}
+                    ) : undefined
+                  }
+                />
+                <GlassCard className="p-4">
+                  <div className="mb-1 flex items-baseline justify-between gap-2">
+                    <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate">Zero rows in this window. Likely causes:</span>
+                    </h3>
                   </div>
-                </div>
-              </GlassCard>
+                  <p className="mb-3 text-xs leading-relaxed text-amber-600 dark:text-amber-400">
+                    Empty here means the board fetched nothing — treat the number as missing, not as zero, until one of these is ruled out.
+                  </p>
+                  <ul className="space-y-2">
+                    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                      The current {period} window genuinely has no {BOARD_META[tab].label.toLowerCase()} yet
+                    </li>
+                    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                      Source ({BOARD_META[tab].source}) is dark or RLS-restricted
+                    </li>
+                    <li className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                      Your role can't see other agents' rows on this view
+                    </li>
+                  </ul>
+                  <p className="mt-3 text-[11px] font-semibold text-muted-foreground">Hold the Standard.</p>
+                </GlassCard>
+              </div>
             ) : (
-              <GlassCard className="overflow-hidden p-0">
-                <div className="divide-y divide-border/40">
+              <GlassCard className="p-4">
+                <ul className="space-y-2">
                   {rows.map((row) => {
                     const RankIcon = RANK_ICONS[row.rank]?.icon ?? TrendingUp;
                     const rankColor = RANK_ICONS[row.rank]?.color ?? "text-muted-foreground";
                     const highlight = row.rank <= 3;
 
-                    // v6 §31 Sam: #1 amber-glow ring, #2 slate, #3 amber-700,
-                    // rest neutral. Stronger top-3 contrast for the podium.
+                    // v6 §31 Sam: #1 gold, #2 silver, #3 bronze, rest neutral.
+                    // Flattened to a border/soft-fill tint — the ring + glow
+                    // shadow form was the "bolted-on" tell the 2026-06-10 audit
+                    // deleted, and the rank icon + numeral already carry the tier.
                     const podiumStyle =
                       row.rank === 1
-                        ? "bg-amber-500/15 ring-1 ring-amber-400/60 shadow-[0_0_24px_-8px_hsl(45_90%_55%/0.45)]"
+                        ? "border-amber-500/50 bg-amber-500/10"
                         : row.rank === 2
-                        ? "bg-slate-400/10 ring-1 ring-slate-300/40"
+                        ? "border-border bg-muted/40"
                         : row.rank === 3
-                        ? "bg-amber-700/15 ring-1 ring-amber-700/50"
+                        ? "border-border bg-muted/20"
                         : "";
                     return (
-                      <div
+                      <li
                         key={row.agent_key}
                         className={cn(
-                          "flex items-center gap-3 px-4 py-3 transition-all",
+                          "flex items-center gap-3 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 transition-colors hover:border-border hover:bg-card",
                           highlight && podiumStyle,
                         )}
                       >
-                        <div className={cn("w-10 text-center text-lg font-bold tabular-nums", rankColor, highlight && "text-shadow")}>
+                        <div className={cn("w-9 shrink-0 text-center text-sm font-bold tabular-nums", rankColor)}>
                           #{row.rank}
                         </div>
-                        <RankIcon className={cn("h-5 w-5", rankColor)} />
+                        <RankIcon className={cn("h-4 w-4 shrink-0", rankColor)} />
                         {row.avatar_url ? (
-                          <img src={row.avatar_url} alt="" className={cn("h-9 w-9 rounded-full ring-2", row.rank === 1 ? "ring-amber-400/70" : "ring-border/40")} />
+                          <img src={row.avatar_url} alt="" className={cn("h-8 w-8 shrink-0 rounded-full ring-2", row.rank === 1 ? "ring-amber-500/50" : "ring-border/40")} />
                         ) : (
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/50 text-xs font-semibold">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/50 text-[10px] font-bold text-muted-foreground">
                             {(row.agent_name ?? "?").split(" ").map((part) => part[0]).slice(0, 2).join("")}
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <div className={cn("truncate font-semibold", highlight && "text-foreground")}>{row.agent_name ?? "—"}</div>
-                          <div className={cn("text-xs", highlight ? "text-foreground/75" : "text-muted-foreground")}>{subValue(row)}</div>
+                          <div className="truncate text-sm font-medium text-foreground">{row.agent_name ?? "—"}</div>
+                          <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{subValue(row)}</div>
                         </div>
-                        <div className="text-right">
-                          <div className={cn(
-                            "text-[26px] leading-none font-black tabular-nums",
-                            highlight ? "text-emerald-300" : "text-emerald-400",
-                          )}>
+                        <div className="shrink-0 text-right">
+                          <div className="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                             {primaryValue(row)}
                           </div>
-                          <div className="mt-1 flex items-center justify-end gap-1 text-[10px] uppercase tracking-widest text-muted-foreground">
-                            <Clock3 className="h-3 w-3" />
+                          <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                             {BOARD_META[tab].label}
                           </div>
                         </div>
-                      </div>
+                      </li>
                     );
                   })}
-                </div>
+                </ul>
               </GlassCard>
             )}
           </TabsContent>

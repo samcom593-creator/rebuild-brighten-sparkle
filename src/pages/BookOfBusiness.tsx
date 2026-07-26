@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
 import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { AgentLinkConnectionPrompt } from "@/components/dashboard/AgentLinkConnectionPrompt";
@@ -170,16 +171,27 @@ type SortMode =
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
+// Severity is the only colour channel: emerald = paying, amber = in flight,
+// rose = money lost, muted = not adjudicated yet. Every value is the
+// light/dark paired weight so the chip stays legible on the white card.
+const STAGE_NEUTRAL = "border-border bg-muted text-muted-foreground";
+const STAGE_GOOD =
+  "border-emerald-500/35 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+const STAGE_WARN =
+  "border-amber-500/35 bg-amber-500/10 text-amber-600 dark:text-amber-400";
+const STAGE_BAD =
+  "border-rose-500/35 bg-rose-500/10 text-rose-600 dark:text-rose-400";
+
 const STAGE_COLORS: Record<string, string> = {
-  submitted: "bg-blue-500/20 text-blue-300 border-blue-500/40",
-  active: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
-  approved: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
-  in_force: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
-  paid: "bg-amber-500/20 text-amber-300 border-amber-500/40",
-  lapsed: "bg-rose-500/20 text-rose-300 border-rose-500/40",
-  cancelled: "bg-rose-500/20 text-rose-300 border-rose-500/40",
-  charged_back: "bg-red-500/20 text-red-300 border-red-500/40",
-  pending: "bg-sky-500/20 text-sky-300 border-sky-500/40",
+  submitted: STAGE_NEUTRAL,
+  active: STAGE_GOOD,
+  approved: STAGE_GOOD,
+  in_force: STAGE_GOOD,
+  paid: STAGE_WARN,
+  lapsed: STAGE_BAD,
+  cancelled: STAGE_BAD,
+  charged_back: STAGE_BAD,
+  pending: STAGE_NEUTRAL,
 };
 
 // User-facing label for a stage key. Keeps the badges/dropdown consistent
@@ -1095,7 +1107,7 @@ export default function BookOfBusiness() {
   // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-4 p-4 md:p-6 max-w-[1400px] mx-auto">
+    <div className="page-enter mx-auto w-full max-w-[1400px] space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
         eyebrow="Production · Book of Business"
         eyebrowIcon={<Book className="h-3 w-3" />}
@@ -1103,9 +1115,14 @@ export default function BookOfBusiness() {
         subtitle="Every policy record across the agency. Synced from AgentLink."
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={load}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={load}
+              className="h-10 sm:h-9"
+            >
               <RefreshCw
-                className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")}
+                className={cn("mr-1.5 h-4 w-4", loading && "animate-spin")}
               />
               Refresh
             </Button>
@@ -1113,30 +1130,39 @@ export default function BookOfBusiness() {
               variant="outline"
               size="sm"
               asChild
+              className="h-10 sm:h-9"
             >
               <a
                 href="https://agentlink.insuracloud.ai/book-of-business"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                <ExternalLink className="mr-1.5 h-4 w-4" />
                 Open AgentLink
               </a>
             </Button>
-            <Button variant="outline" size="sm" onClick={exportCsv}>
-              <Download className="h-3.5 w-3.5 mr-1.5" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportCsv}
+              className="h-10 sm:h-9"
+            >
+              <Download className="mr-1.5 h-4 w-4" />
               Export
             </Button>
             <Button
-              variant="default"
+              variant="destructive"
               size="sm"
               onClick={() => setChargebackOpen(true)}
-              className="bg-rose-600 hover:bg-rose-500"
+              className="h-10 sm:h-9"
             >
-              <TrendingDown className="h-3.5 w-3.5 mr-1.5" />
+              <TrendingDown className="mr-1.5 h-4 w-4" />
               Chargeback Watch
               {kpi.chargebackWatch > 0 && (
-                <Badge className="ml-2 bg-white/10 text-white border-white/30 tabular-nums">
+                <Badge
+                  variant="outline"
+                  className="ml-2 border-destructive-foreground/30 bg-destructive-foreground/15 text-[10px] font-bold tabular-nums text-destructive-foreground"
+                >
                   {kpi.chargebackWatch}
                 </Badge>
               )}
@@ -1153,17 +1179,19 @@ export default function BookOfBusiness() {
           lapsed policies all land in one headline. This strip splits them so the
           in-force (actually paying) book is never mistaken for the total. */}
       {isAdmin && segments && segments.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold text-foreground">Book by status</h3>
+        <GlassCard className="p-4">
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+              <DollarSign className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Book by status</span>
+            </h3>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            In-force is what is actually paying. The headline premium above sums
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+            In-force is what is actually paying; the headline premium above sums
             every status together, so pending and never-issued business inflates
             it.
           </p>
-          <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {segments.map((seg) => {
               const inForce = seg.segment === "in_force";
               const dead = seg.segment === "never_issued";
@@ -1190,34 +1218,34 @@ export default function BookOfBusiness() {
               return (
                 <div
                   key={seg.segment}
-                  className={
-                    "min-w-0 rounded-md border p-3 " +
-                    (inForce
-                      ? "border-emerald-500/40 bg-emerald-500/5"
-                      : dead
-                        ? "border-border bg-muted/30 opacity-80"
-                        : "border-border bg-background")
-                  }
+                  className={cn(
+                    "min-w-0 rounded-lg border bg-card p-3 sm:p-4",
+                    inForce ? "border-emerald-500/35" : "border-border",
+                  )}
                 >
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground truncate">
+                  <div className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                     {label}
                   </div>
                   <div
-                    className={
-                      "text-lg font-bold leading-tight tabular-nums " +
-                      (inForce ? "text-emerald-500" : "text-foreground")
-                    }
+                    className={cn(
+                      "mt-1 text-2xl font-bold leading-none tabular-nums",
+                      inForce
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : dead
+                          ? "text-muted-foreground"
+                          : "text-foreground",
+                    )}
                   >
                     {fmt$(Number(seg.annual_premium ?? 0))}
                   </div>
-                  <div className="text-[11px] text-muted-foreground tabular-nums">
+                  <div className="mt-1 text-[11px] tabular-nums text-muted-foreground">
                     {Number(seg.policies ?? 0).toLocaleString()} policies
                     {seg.producers != null
                       ? ` · ${Number(seg.producers).toLocaleString()} producers`
                       : ""}
                   </div>
                   {note && (
-                    <div className="text-[10px] text-muted-foreground mt-1 leading-snug">
+                    <div className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
                       {note}
                     </div>
                   )}
@@ -1225,7 +1253,7 @@ export default function BookOfBusiness() {
               );
             })}
           </div>
-        </div>
+        </GlassCard>
       )}
 
       {/* MP-268 — Persistency + carrier concentration.
@@ -1235,18 +1263,24 @@ export default function BookOfBusiness() {
           lapse. Concentration answers "how much of the paying book sits with one
           carrier", which is the risk that an appointment loss is existential. */}
       {isAdmin && (persistency?.length || concentration?.length) ? (
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {persistency && persistency.length > 0 && (
-            <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingDown className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold text-foreground">Persistency by carrier</h3>
+            <GlassCard className="p-4">
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+                  <TrendingDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">Persistency by carrier</span>
+                </h3>
+                <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+                  {persistency.length}
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Still in force, of policies that reached a decision. Pending and
-                never-issued excluded.
+              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                Still in force, of policies that reached a decision — pending and
+                never-issued are excluded because they never had a chance to
+                lapse.
               </p>
-              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              <ul className="max-h-64 space-y-2 overflow-y-auto">
                 {[...persistency]
                   .sort((a, b) => Number(a.persistency_pct ?? 0) - Number(b.persistency_pct ?? 0))
                   .map((row) => {
@@ -1254,106 +1288,127 @@ export default function BookOfBusiness() {
                     const overall = row.carrier === "__ALL__";
                     const bad = pct < 50;
                     return (
-                      <div
+                      <li
                         key={row.carrier}
-                        className={
-                          "flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 " +
-                          (overall ? "bg-muted/60" : "bg-background")
-                        }
+                        className={cn(
+                          "rounded-lg border border-border/60 px-3 py-2.5",
+                          overall ? "bg-muted/40" : "bg-card/60",
+                        )}
                       >
-                        <div className="min-w-0">
-                          <div
-                            className={
-                              "text-xs text-foreground truncate " +
-                              (overall ? "font-semibold" : "font-medium")
-                            }
-                          >
-                            {overall ? "All carriers" : row.carrier}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div
+                              className={cn(
+                                "truncate text-sm text-foreground",
+                                overall ? "font-semibold" : "font-medium",
+                              )}
+                            >
+                              {overall ? "All carriers" : row.carrier}
+                            </div>
+                            <div className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
+                              {Number(row.in_force ?? 0).toLocaleString()} in force ·{" "}
+                              {Number(row.lapsed ?? 0).toLocaleString()} lapsed
+                            </div>
                           </div>
-                          <div className="text-[11px] text-muted-foreground tabular-nums">
-                            {Number(row.in_force ?? 0).toLocaleString()} in force ·{" "}
-                            {Number(row.lapsed ?? 0).toLocaleString()} lapsed
+                          <div className="shrink-0 text-right">
+                            <div
+                              className={cn(
+                                "text-sm font-bold tabular-nums",
+                                bad
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : "text-emerald-600 dark:text-emerald-400",
+                              )}
+                            >
+                              {pct.toFixed(1)}%
+                            </div>
+                            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                              still paying
+                            </div>
                           </div>
                         </div>
-                        <span
-                          className={
-                            "text-sm font-bold tabular-nums flex-shrink-0 " +
-                            (bad ? "text-rose-500" : "text-emerald-500")
-                          }
-                        >
-                          {pct.toFixed(1)}%
-                        </span>
-                      </div>
+                      </li>
                     );
                   })}
-              </div>
-            </div>
+              </ul>
+            </GlassCard>
           )}
 
           {concentration && concentration.length > 0 && (
-            <div className="rounded-lg border border-border bg-card p-3 sm:p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Award className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold text-foreground">Carrier concentration</h3>
+            <GlassCard className="p-4">
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+                  <Award className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate">Carrier concentration</span>
+                </h3>
+                <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+                  {concentration.length}
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Share of the in-force book. A high share means losing one
+              <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                Share of the in-force book — a high share means losing one
                 appointment takes that much of the paying book with it.
               </p>
-              <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              <ul className="max-h-64 space-y-2 overflow-y-auto">
                 {[...concentration]
                   .sort((a, b) => Number(b.in_force_alp ?? 0) - Number(a.in_force_alp ?? 0))
                   .map((row) => {
                     const pct = Number(row.pct_of_in_force_alp ?? 0);
                     const heavy = pct >= 35;
                     return (
-                      <div
+                      <li
                         key={`${row.dimension}-${row.name}`}
-                        className="rounded-md border border-border bg-background px-3 py-2"
+                        className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5"
                       >
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="text-xs font-medium text-foreground truncate">
+                            <div className="truncate text-sm font-medium text-foreground">
                               {row.name}
                             </div>
-                            <div className="text-[11px] text-muted-foreground tabular-nums">
+                            <div className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
                               {fmt$(Number(row.in_force_alp ?? 0))} in force
                             </div>
                           </div>
-                          <span
-                            className={
-                              "text-sm font-bold tabular-nums flex-shrink-0 " +
-                              (heavy ? "text-amber-500" : "text-emerald-500")
-                            }
-                          >
-                            {pct.toFixed(1)}%
-                          </span>
+                          <div className="shrink-0 text-right">
+                            <div
+                              className={cn(
+                                "text-sm font-bold tabular-nums",
+                                heavy
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-emerald-600 dark:text-emerald-400",
+                              )}
+                            >
+                              {pct.toFixed(1)}%
+                            </div>
+                            <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                              of book
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                           <div
-                            className={
-                              "h-full rounded-full " +
-                              (heavy ? "bg-amber-500" : "bg-emerald-500")
-                            }
+                            className={cn(
+                              "h-full rounded-full",
+                              heavy ? "bg-amber-500" : "bg-emerald-500",
+                            )}
                             style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
                           />
                         </div>
-                      </div>
+                      </li>
                     );
                   })}
-              </div>
-            </div>
+              </ul>
+            </GlassCard>
           )}
         </div>
       ) : null}
 
       {/* KPI cards — 6 metrics, per Sam brief */}
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <KpiCard
           icon={<Award className="h-4 w-4" />}
           label="Total Deals"
           value={loading ? "…" : kpi.totalDeals.toLocaleString()}
-          tone="teal"
+          tone="neutral"
           sub={
             truth?.deals_this_month != null
               ? `${Number(truth.deals_this_month).toLocaleString()} this month`
@@ -1364,7 +1419,7 @@ export default function BookOfBusiness() {
           icon={<DollarSign className="h-4 w-4" />}
           label="Annual Premium"
           value={loading ? "…" : fmt$(kpi.totalALP)}
-          tone="gold"
+          tone="neutral"
           sub={
             truth?.premium_this_month != null
               ? `${fmt$(Number(truth.premium_this_month))} this month`
@@ -1375,77 +1430,87 @@ export default function BookOfBusiness() {
           icon={<DollarSign className="h-4 w-4" />}
           label="Monthly Premium"
           value={loading ? "…" : fmt$(kpi.totalMonthly)}
-          tone="gold"
+          tone="neutral"
         />
         <KpiCard
           icon={<TrendingUp className="h-4 w-4" />}
           label="Avg Per Deal"
           value={loading ? "…" : fmt$(kpi.avgPerDeal)}
-          tone="blue"
+          tone="neutral"
         />
         <KpiCard
           icon={<Shield className="h-4 w-4" />}
           label="Active Policies"
           value={loading ? "…" : kpi.activePolicies.toLocaleString()}
-          tone="green"
+          tone="emerald"
         />
         <KpiCard
           icon={<AlertTriangle className="h-4 w-4" />}
           label="Chargeback Watch"
           value={loading ? "…" : kpi.chargebackWatch.toLocaleString()}
-          tone="rose"
+          tone={kpi.chargebackWatch > 0 ? "rose" : "neutral"}
           sub={`Within ${CHARGEBACK_WINDOW_DAYS}d window`}
           onClick={() => setChargebackOpen(true)}
         />
       </div>
 
       {syncErrors > 0 && (
-        <GlassCard className="border-amber-500/30 bg-amber-500/10 p-3">
-          <div className="flex items-center gap-2 text-sm text-amber-200">
-            <AlertTriangle className="h-4 w-4" />
-            {syncErrors} deal{syncErrors === 1 ? "" : "s"} have AgentLink sync
-            errors. Filter/search by policy or external id before trusting
-            totals.
+        <div className="rounded-lg border border-amber-500/35 bg-amber-500/5 p-3 sm:p-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <p className="min-w-0 text-sm text-foreground">
+              <span className="font-semibold tabular-nums">{syncErrors}</span>{" "}
+              deal{syncErrors === 1 ? "" : "s"} have AgentLink sync errors.
+              Filter/search by policy or external id before trusting totals.
+            </p>
           </div>
-        </GlassCard>
+        </div>
       )}
 
       {/* Filters row + sort */}
-      <GlassCard className="p-3">
+      <GlassCard className="p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search agent, client, policy, carrier…"
-              className="pl-9 h-9"
+              className="h-10 pl-9 sm:h-9"
             />
           </div>
 
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9">
-                <Filter className="h-3.5 w-3.5 mr-1.5" />
+              <Button variant="outline" size="sm" className="h-10 sm:h-9">
+                <Filter className="mr-1.5 h-4 w-4" />
                 Filters
                 {activeFilterCount > 0 && (
-                  <Badge className="ml-2 bg-primary/20 text-primary border-primary/30 tabular-nums">
+                  <Badge
+                    variant="outline"
+                    className="ml-2 border-primary/30 bg-primary/10 text-[10px] font-bold tabular-nums text-primary"
+                  >
                     {activeFilterCount}
                   </Badge>
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-[360px] p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold">Filters</h4>
+            <PopoverContent
+              align="end"
+              className="max-h-[70vh] w-[min(22rem,calc(100vw-2rem))] space-y-3 overflow-y-auto p-4"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-sm font-semibold text-foreground">
+                  Filters
+                </h4>
                 {activeFilterCount > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 text-xs"
+                    className="h-10 shrink-0 text-xs sm:h-9"
                     onClick={resetFilters}
                   >
-                    <X className="h-3 w-3 mr-1" />
+                    <X className="mr-1 h-4 w-4" />
                     Clear all
                   </Button>
                 )}
@@ -1455,7 +1520,7 @@ export default function BookOfBusiness() {
                   value={agentFilter}
                   onChange={(e) => setAgentFilter(e.target.value)}
                   placeholder="Agent name"
-                  className="h-8 text-xs"
+                  className="h-10 text-xs sm:h-9"
                 />
               </FilterField>
               <FilterField label="Client">
@@ -1463,7 +1528,7 @@ export default function BookOfBusiness() {
                   value={clientFilter}
                   onChange={(e) => setClientFilter(e.target.value)}
                   placeholder="Client name"
-                  className="h-8 text-xs"
+                  className="h-10 text-xs sm:h-9"
                 />
               </FilterField>
               <FilterField label="Policy #">
@@ -1471,7 +1536,7 @@ export default function BookOfBusiness() {
                   value={policyFilter}
                   onChange={(e) => setPolicyFilter(e.target.value)}
                   placeholder="Policy number"
-                  className="h-8 text-xs"
+                  className="h-10 text-xs sm:h-9"
                 />
               </FilterField>
               <FilterField label="Carrier">
@@ -1479,7 +1544,7 @@ export default function BookOfBusiness() {
                   value={carrierFilter}
                   onChange={(e) => setCarrierFilter(e.target.value)}
                   placeholder="Carrier name"
-                  className="h-8 text-xs"
+                  className="h-10 text-xs sm:h-9"
                 />
               </FilterField>
               <FilterField label="Product">
@@ -1487,7 +1552,7 @@ export default function BookOfBusiness() {
                   value={productFilter}
                   onChange={(e) => setProductFilter(e.target.value)}
                   placeholder="Product"
-                  className="h-8 text-xs"
+                  className="h-10 text-xs sm:h-9"
                 />
               </FilterField>
               <div className="grid grid-cols-2 gap-2">
@@ -1496,7 +1561,7 @@ export default function BookOfBusiness() {
                     value={sourceFilter}
                     onValueChange={(v) => setSource(v as any)}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-10 text-xs sm:h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1511,7 +1576,7 @@ export default function BookOfBusiness() {
                     value={stageFilter}
                     onValueChange={(v) => setStage(v as any)}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-10 text-xs sm:h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1539,7 +1604,7 @@ export default function BookOfBusiness() {
                     type="date"
                     value={postedSince}
                     onChange={(e) => setPostedSince(e.target.value)}
-                    className="h-8 text-xs"
+                    className="h-10 text-xs sm:h-9"
                     max={postedUntil || undefined}
                   />
                   <span className="text-xs text-muted-foreground">→</span>
@@ -1547,7 +1612,7 @@ export default function BookOfBusiness() {
                     type="date"
                     value={postedUntil}
                     onChange={(e) => setPostedUntil(e.target.value)}
-                    className="h-8 text-xs"
+                    className="h-10 text-xs sm:h-9"
                     min={postedSince || undefined}
                   />
                 </div>
@@ -1572,7 +1637,7 @@ export default function BookOfBusiness() {
             value={sortMode}
             onValueChange={(v) => setSortMode(v as SortMode)}
           >
-            <SelectTrigger className="h-9 w-full sm:w-[190px]">
+            <SelectTrigger className="h-10 w-full sm:h-9 sm:w-[190px]">
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
             <SelectContent>
@@ -1585,27 +1650,25 @@ export default function BookOfBusiness() {
           </Select>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-border/40 flex items-center justify-between text-xs">
-          <div className="tabular-nums">
+        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2 border-t border-border/60 pt-3 text-xs">
+          <div className="min-w-0 tabular-nums text-muted-foreground">
             {loading ? (
-              <span className="text-muted-foreground">
-                Loading full book of business…
-              </span>
+              <span>Loading full book of business…</span>
             ) : (
               <>
                 Showing{" "}
-                <span className="font-semibold text-amber-500">
+                <span className="font-bold tabular-nums text-foreground">
                   {filtered.length.toLocaleString()}
                 </span>
-                <span className="text-muted-foreground"> of </span>
-                <span className="font-semibold text-emerald-500">
+                <span> of </span>
+                <span className="font-bold tabular-nums text-foreground">
                   {(dealsSourceCount ?? deals.length).toLocaleString()}
                 </span>
-                <span className="text-muted-foreground"> deals</span>
+                <span> deals</span>
                 {dealsSourceCount != null &&
                   dealsSourceCount > deals.length && (
                     <span
-                      className="ml-2 text-[10px] uppercase tracking-wide text-amber-500/80"
+                      className="ml-2 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400"
                       title={`Client fetch is capped at ${AGENTLINK_SNAPSHOT_ROW_CAP.toLocaleString()} rows per load. ${(dealsSourceCount - deals.length).toLocaleString()} rows exist in the database but are not in the table below. Narrow filters to see the rest.`}
                     >
                       · capped ({(dealsSourceCount - deals.length).toLocaleString()} more in DB)
@@ -1615,7 +1678,7 @@ export default function BookOfBusiness() {
             )}
           </div>
           {truth?.last_synced_at && (
-            <span className="text-muted-foreground">
+            <span className="shrink-0 text-[11px] text-muted-foreground">
               Synced{" "}
               {formatDistanceToNowStrict(new Date(truth.last_synced_at), {
                 addSuffix: true,
@@ -1626,79 +1689,78 @@ export default function BookOfBusiness() {
       </GlassCard>
 
       {/* Table */}
-      <GlassCard className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="text-left px-3 py-2">Client</th>
-                <th className="text-left px-3 py-2">Agent</th>
-                <th className="text-left px-3 py-2">Policy #</th>
-                <th className="text-left px-3 py-2">Product</th>
-                <th className="text-left px-3 py-2">Carrier</th>
-                <th className="text-right px-3 py-2">Monthly</th>
-                <th className="text-right px-3 py-2">ALP</th>
-                <th className="text-left px-3 py-2">Effective Date</th>
-                <th className="text-left px-3 py-2">Status</th>
-                <th className="text-right px-3 py-2">Actions</th>
+      <GlassCard className="overflow-hidden p-4">
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <table className="w-full min-w-[920px] text-sm">
+            <thead>
+              <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                <th className="px-2 py-2 text-left">Client</th>
+                <th className="px-2 py-2 text-left">Agent</th>
+                <th className="px-2 py-2 text-left">Policy #</th>
+                <th className="px-2 py-2 text-left">Product</th>
+                <th className="px-2 py-2 text-left">Carrier</th>
+                <th className="px-2 py-2 text-right">Monthly</th>
+                <th className="px-2 py-2 text-right">ALP</th>
+                <th className="px-2 py-2 text-left">Effective Date</th>
+                <th className="px-2 py-2 text-left">Status</th>
+                <th className="px-2 py-2 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   // stable-key-allow:skeleton-loader-static-length-array
-                  <tr key={i} className="border-t border-border/30">
+                  <tr key={i} className="border-b border-border/60">
                     {Array.from({ length: 10 }).map((__, j) => (
-                      <td key={j} className="px-3 py-3">
-                        <div className="h-3 bg-muted/30 rounded animate-pulse" />
+                      <td key={j} className="px-2 py-2">
+                        <div className="h-5 animate-pulse rounded bg-muted/30" />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center">
-                    <Book className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                    <h3 className="text-15 font-bold mb-2">
-                      {deals.length === 0
-                        ? "No deals fetched"
-                        : "Filters are hiding the book"}
-                    </h3>
-                    <div className="max-w-md mx-auto space-y-3">
-                      <p className="text-13 text-muted-foreground">
-                        Fetched{" "}
-                        <span className="font-bold text-foreground tabular-nums">
-                          {deals.length.toLocaleString()}
-                        </span>{" "}
-                        deals from the database.
-                      </p>
-                      {deals.length === 0 ? (
-                        <div className="text-12 text-rose-600 dark:text-rose-400 text-left">
-                          Zero rows came back. Likely causes:
-                          <ul className="list-disc list-inside mt-2">
+                  <td colSpan={10} className="px-2 py-4">
+                    <EmptyState
+                      icon={<Book className="h-7 w-7" />}
+                      variant={deals.length === 0 ? "warning" : "default"}
+                      title={
+                        deals.length === 0
+                          ? "No deals came back"
+                          : "Filters are hiding the book"
+                      }
+                      description={
+                        deals.length === 0
+                          ? "Zero rows returned for your scope. The book is not empty until the sync and your AgentLink mapping both check out."
+                          : `Fetched ${deals.length.toLocaleString()} deals from the database. Nothing in the book matches the current filter set.`
+                      }
+                      actions={
+                        deals.length === 0 ? (
+                          <ul className="max-w-md list-disc space-y-1 pl-5 text-left text-xs leading-relaxed text-muted-foreground">
                             <li>
                               Agent has no AgentLink user mapping (al_user_id
                               NULL)
                             </li>
                             <li>Your session expired (log out + back in)</li>
                             <li>
-                              AgentLink sync is dark — check
-                              /dashboard/finances · CFO bot
+                              AgentLink sync is dark — check /dashboard/finances
+                              · CFO bot
                             </li>
                           </ul>
-                        </div>
-                      ) : (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={resetFilters}
-                          className="bg-amber-500 hover:bg-amber-400 text-slate-950"
-                        >
-                          Clear all filters · show{" "}
-                          {deals.length.toLocaleString()} deals
-                        </Button>
-                      )}
-                    </div>
+                        ) : (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={resetFilters}
+                            className="h-10 sm:h-9"
+                          >
+                            Clear all filters · show{" "}
+                            {deals.length.toLocaleString()} deals
+                          </Button>
+                        )
+                      }
+                      className="border-0 bg-transparent px-4 py-8 dark:bg-transparent"
+                    />
                   </td>
                 </tr>
               ) : (
@@ -1712,67 +1774,84 @@ export default function BookOfBusiness() {
                     <tr
                       key={d.id}
                       className={cn(
-                        "border-t border-border/30 hover:bg-muted/20 transition-colors",
+                        "border-b border-border/60 transition-colors hover:bg-muted/30",
                         isReviewed && "opacity-60",
                       )}
                     >
-                      <td className="px-3 py-2 font-medium">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedDeal(d)}
-                          className="inline-flex items-center gap-1.5 text-left text-primary hover:underline"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          {d.client_first_name} {d.client_last_name}
-                        </button>
-                        {inCbWindow && (
-                          <Badge className="ml-2 bg-rose-500/15 text-rose-300 border-rose-500/40 text-[10px]">
-                            <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
-                            {daysEff}d
-                          </Badge>
-                        )}
+                      <td className="max-w-[240px] px-2 py-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDeal(d)}
+                            className="inline-flex min-w-0 items-center gap-1.5 rounded-sm text-left text-sm font-medium text-primary transition-colors hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                          >
+                            <Eye className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">
+                              {d.client_first_name} {d.client_last_name}
+                            </span>
+                          </button>
+                          {inCbWindow && (
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 gap-0.5 border-rose-500/35 bg-rose-500/10 px-1.5 py-0 text-[10px] font-bold tabular-nums text-rose-600 dark:text-rose-400"
+                            >
+                              <AlertTriangle className="h-2.5 w-2.5" />
+                              {daysEff}d
+                            </Badge>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">
+                      <td className="max-w-[180px] px-2 py-2">
                         {d.agent_id ? (
                           <AgentNameLink
                             agentId={d.agent_id}
                             variant="bare"
                             className="text-sm"
                           >
-                            <span className="hover:text-primary hover:underline decoration-dotted underline-offset-2">
+                            <span className="block truncate text-sm text-muted-foreground decoration-dotted underline-offset-2 transition-colors hover:text-primary hover:underline">
                               {d.agent_name}
                             </span>
                           </AgentNameLink>
                         ) : (
-                          d.agent_name
+                          <span className="block truncate text-sm text-muted-foreground">
+                            {d.agent_name}
+                          </span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-xs font-mono text-muted-foreground">
-                        {d.policy_number}
+                      <td className="max-w-[140px] px-2 py-2">
+                        <div className="truncate font-mono text-[11px] tabular-nums text-muted-foreground">
+                          {d.policy_number}
+                        </div>
                       </td>
-                      <td className="px-3 py-2">{d.product_sold}</td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {d.carrier_name}
+                      <td className="max-w-[160px] px-2 py-2">
+                        <div className="truncate text-sm text-foreground">
+                          {d.product_sold}
+                        </div>
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-emerald-400">
+                      <td className="max-w-[160px] px-2 py-2">
+                        <div className="truncate text-sm text-muted-foreground">
+                          {d.carrier_name}
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-muted-foreground">
                         {d.monthly_premium
                           ? fmt$(Number(d.monthly_premium))
                           : "—"}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums font-semibold text-emerald-400">
+                      <td className="px-2 py-2 text-right text-sm font-bold tabular-nums text-foreground">
                         {d.annual_premium
                           ? fmt$(Number(d.annual_premium))
                           : "—"}
                       </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                      <td className="px-2 py-2 text-[11px] text-muted-foreground">
                         {posted ? (
-                          <div>
-                            <div>
+                          <div className="min-w-0">
+                            <div className="truncate tabular-nums">
                               {formatDistanceToNowStrict(new Date(posted), {
                                 addSuffix: true,
                               })}
                             </div>
-                            <div className="text-[10px] opacity-70">
+                            <div className="mt-0.5 truncate text-[10px] tabular-nums">
                               {postedIsFallback ? "Synced " : ""}
                               {format(new Date(posted), "MMM d, yyyy")}
                             </div>
@@ -1781,48 +1860,48 @@ export default function BookOfBusiness() {
                           "—"
                         )}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-2 py-2">
                         <Badge
+                          variant="outline"
                           className={cn(
-                            "text-[10px] border",
-                            STAGE_COLORS[pipelineStageKey(d)] ??
-                              "bg-muted text-muted-foreground border-border",
+                            "px-2 py-0 text-[10px] font-bold",
+                            STAGE_COLORS[pipelineStageKey(d)] ?? STAGE_NEUTRAL,
                           )}
                         >
                           {stageDisplayLabel(d)}
                         </Badge>
                         {d.insuracloud_sync_error && (
-                          <div className="mt-1 text-[10px] text-amber-300">
+                          <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">
                             sync issue
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-2 py-2 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7"
+                              className="h-10 w-10 sm:h-9 sm:w-9"
                               aria-label="Row actions"
                             >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel className="text-[10px] uppercase tracking-wide">
+                            <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                               Actions
                             </DropdownMenuLabel>
                             <DropdownMenuItem
                               onClick={() => setSelectedDeal(d)}
                             >
-                              <Eye className="h-3.5 w-3.5 mr-2" />
+                              <Eye className="mr-2 h-4 w-4" />
                               View policy
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => openAgentLink(d)}
                             >
-                              <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                              <ExternalLink className="mr-2 h-4 w-4" />
                               Open AgentLink
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
@@ -1830,7 +1909,7 @@ export default function BookOfBusiness() {
                               onClick={() => markReviewed(d.id)}
                               disabled={isReviewed}
                             >
-                              <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
                               {isReviewed ? "Reviewed" : "Mark reviewed"}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -1885,65 +1964,55 @@ function KpiCard({
   label: string;
   value: string;
   sub?: string;
-  tone: "teal" | "gold" | "blue" | "green" | "rose";
+  tone: "neutral" | "emerald" | "rose";
   onClick?: () => void;
 }) {
-  const toneMap = {
-    teal: {
-      text: "text-teal-300",
-      icon: "text-teal-400",
-      border: "border-teal-500/20",
-    },
-    gold: {
-      text: "text-amber-300",
-      icon: "text-amber-400",
-      border: "border-amber-500/20",
-    },
-    blue: {
-      text: "text-sky-300",
-      icon: "text-sky-400",
-      border: "border-sky-500/20",
-    },
-    green: {
-      text: "text-emerald-300",
-      icon: "text-emerald-400",
-      border: "border-emerald-500/20",
-    },
-    rose: {
-      text: "text-rose-300",
-      icon: "text-rose-400",
-      border: "border-rose-500/30",
-    },
-  }[tone];
+  // Severity is the only reason a headline number is coloured. Everything
+  // that is just "a number" stays foreground so the two that mean something
+  // (book still paying / money at risk) are the ones the eye lands on.
+  const valueTone =
+    tone === "emerald"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : tone === "rose"
+        ? "text-rose-600 dark:text-rose-400"
+        : "text-foreground";
   const inner = (
     <>
-      <div className="flex items-center gap-2 mb-1">
-        <span className={cn(toneMap.icon)}>{icon}</span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="shrink-0 text-muted-foreground">{icon}</span>
+        <span className="min-w-0 truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
           {label}
         </span>
       </div>
-      <div className={cn("text-2xl font-bold tabular-nums", toneMap.text)}>
+      <div
+        className={cn(
+          "text-2xl font-bold leading-none tabular-nums",
+          valueTone,
+        )}
+      >
         {value}
       </div>
       {sub && (
-        <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>
+        <div className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">
+          {sub}
+        </div>
       )}
     </>
   );
-  const baseClass = cn(
-    "text-left rounded-xl border bg-card/60 backdrop-blur-sm p-3 transition-all",
-    toneMap.border,
-    onClick && "hover:shadow-lg hover:-translate-y-0.5 cursor-pointer",
-  );
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className={baseClass}>
-        {inner}
-      </button>
+      <GlassCard className="min-w-0 p-0" hoverEffect>
+        <button
+          type="button"
+          onClick={onClick}
+          className="w-full rounded-md p-4 text-left focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+        >
+          {inner}
+        </button>
+      </GlassCard>
     );
   }
-  return <div className={baseClass}>{inner}</div>;
+  return <GlassCard className="min-w-0 p-4">{inner}</GlassCard>;
 }
 
 // ─── Filter field wrapper ────────────────────────────────────────────────────
@@ -1957,7 +2026,7 @@ function FilterField({
 }) {
   return (
     <div className="space-y-1">
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
       {children}
@@ -2035,28 +2104,28 @@ function PolicyDetailDrawer({
         className="w-full sm:max-w-[560px] overflow-y-auto"
       >
         <SheetHeader className="text-left">
-          <SheetTitle className="text-xl">
+          <SheetTitle className="min-w-0 break-words">
             {deal.client_first_name} {deal.client_last_name}
           </SheetTitle>
-          <div className="flex items-center gap-2 mt-1 text-xs flex-wrap">
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
             <Badge
+              variant="outline"
               className={cn(
-                "border",
-                STAGE_COLORS[pipelineStageKey(deal)] ??
-                  "bg-muted text-muted-foreground border-border",
+                "px-2 py-0 text-[10px] font-bold",
+                STAGE_COLORS[pipelineStageKey(deal)] ?? STAGE_NEUTRAL,
               )}
             >
               {stageDisplayLabel(deal)}
             </Badge>
             {deal.policy_number && (
-              <span className="font-mono text-muted-foreground">
+              <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
                 #{deal.policy_number}
               </span>
             )}
             {deal.carrier_name && (
               <>
                 <span className="text-muted-foreground">·</span>
-                <span className="text-muted-foreground">
+                <span className="min-w-0 truncate text-[11px] text-muted-foreground">
                   {deal.carrier_name}
                 </span>
               </>
@@ -2064,7 +2133,7 @@ function PolicyDetailDrawer({
           </div>
         </SheetHeader>
 
-        <div className="space-y-5 mt-4">
+        <div className="mt-4 space-y-5">
           {/* 1. Client info */}
           <DrawerSection title="Client">
             <DrawerRow
@@ -2075,7 +2144,7 @@ function PolicyDetailDrawer({
           </DrawerSection>
 
           {/* 2. Agent */}
-          <DrawerSection title="Agent" accent="text-blue-400">
+          <DrawerSection title="Agent">
             {deal.agent_id ? (
               <div className="col-span-2">
                 <AgentNameLink
@@ -2098,7 +2167,7 @@ function PolicyDetailDrawer({
           </DrawerSection>
 
           {/* 3-8 Policy detail */}
-          <DrawerSection title="Policy" accent="text-emerald-400">
+          <DrawerSection title="Policy">
             <DrawerRow label="Policy Number" value={deal.policy_number} />
             <DrawerRow label="Product" value={deal.product_sold} />
             <DrawerRow label="Carrier" value={deal.carrier_name} />
@@ -2145,9 +2214,9 @@ function PolicyDetailDrawer({
           </DrawerSection>
 
           {/* 8. Chargeback window */}
-          <DrawerSection title="Chargeback Window" accent="text-rose-300">
+          <DrawerSection title="Chargeback Window">
             {daysEff == null ? (
-              <p className="text-xs text-muted-foreground col-span-2">
+              <p className="col-span-full text-xs leading-relaxed text-muted-foreground">
                 No effective date — cannot compute chargeback window.
               </p>
             ) : inCbWindow ? (
@@ -2159,62 +2228,73 @@ function PolicyDetailDrawer({
                 <DrawerRow
                   label="Days until safe"
                   value={
-                    <span className="text-rose-300 font-semibold">
+                    <span className="font-bold tabular-nums text-rose-600 dark:text-rose-400">
                       {cbDaysRemaining}d remaining
                     </span>
                   }
                 />
-                <div className="col-span-2 text-[11px] text-rose-300/80">
-                  Inside the {CHARGEBACK_WINDOW_DAYS}-day chargeback risk
-                  window. Confirm payment posted at carrier.
+                <div className="col-span-full flex items-start gap-2 rounded-lg border border-rose-500/35 bg-rose-500/5 p-3">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                  <p className="min-w-0 text-xs leading-relaxed text-foreground">
+                    Inside the {CHARGEBACK_WINDOW_DAYS}-day chargeback risk
+                    window. Confirm payment posted at carrier.
+                  </p>
                 </div>
               </>
             ) : (
-              <p className="text-xs text-emerald-300 col-span-2">
-                {daysEff}d in-force — cleared the {CHARGEBACK_WINDOW_DAYS}-day
-                cliff.
+              <p className="col-span-full flex items-center gap-2 text-xs leading-relaxed text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span className="min-w-0">
+                  <span className="tabular-nums">{daysEff}d</span> in-force —
+                  cleared the {CHARGEBACK_WINDOW_DAYS}-day cliff.
+                </span>
               </p>
             )}
           </DrawerSection>
 
           {/* 9. Timeline */}
-          <DrawerSection title="Timeline" accent="text-purple-300">
+          <DrawerSection title="Timeline">
             {timelineLoading ? (
-              <p className="text-xs text-muted-foreground col-span-2">
-                Loading contact log…
-              </p>
+              <div className="col-span-full space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
+                  <div key={i} className="h-[52px] animate-pulse rounded-lg bg-muted/30" />
+                ))}
+              </div>
             ) : timeline.length === 0 ? (
-              <p className="text-xs text-muted-foreground col-span-2">
+              <p className="col-span-full text-xs leading-relaxed text-muted-foreground">
                 No contact log entries for this policy.
               </p>
             ) : (
-              <div className="col-span-2 space-y-1">
+              <ul className="col-span-full space-y-2">
                 {timeline.map((t) => (
-                  <div
+                  <li
                     key={t.id}
-                    className="text-xs px-2 py-1.5 rounded bg-background/40 border border-border/30"
+                    className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 truncate text-sm font-medium text-foreground">
                         {t.channel ?? "log"}
                       </span>
-                      <span className="text-muted-foreground text-[10px]">
+                      <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
                         {t.logged_at
                           ? format(new Date(t.logged_at), "MMM d, yyyy HH:mm")
                           : "—"}
                       </span>
                     </div>
                     {t.outcome && (
-                      <div className="text-[10px] text-muted-foreground">
+                      <div className="mt-0.5 text-[11px] text-muted-foreground">
                         {t.outcome}
                       </div>
                     )}
                     {t.notes && (
-                      <div className="text-[11px] mt-1">{t.notes}</div>
+                      <div className="mt-1 break-words text-[11px] leading-relaxed text-foreground">
+                        {t.notes}
+                      </div>
                     )}
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
           </DrawerSection>
 
@@ -2223,7 +2303,7 @@ function PolicyDetailDrawer({
             client?.reminder_notes ||
             client?.medical_notes ||
             client?.objectives) && (
-            <DrawerSection title="Notes" accent="text-amber-300">
+            <DrawerSection title="Notes">
               <DrawerRow
                 label="Objectives"
                 value={client?.objectives as string | null | undefined}
@@ -2244,14 +2324,17 @@ function PolicyDetailDrawer({
           )}
 
           {clientLoading && (
-            <p className="text-xs text-muted-foreground italic">
-              Loading full client profile…
-            </p>
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                Loading full client profile
+              </p>
+              <div className="h-[76px] animate-pulse rounded-lg bg-muted/30" />
+            </div>
           )}
 
           {isAdmin &&
             (client?.bank_name || client?.bank_account_number) && (
-              <DrawerSection title="Banking · Admin only" accent="text-amber-400">
+              <DrawerSection title="Banking · Admin only">
                 <DrawerRow label="Bank Name" value={client?.bank_name as any} />
                 <DrawerRow
                   label="Account Type"
@@ -2269,7 +2352,7 @@ function PolicyDetailDrawer({
             )}
 
           {client && (
-            <DrawerSection title="Financial Profile" accent="text-emerald-400">
+            <DrawerSection title="Financial Profile">
               <DrawerRow
                 label="Monthly Income"
                 value={formatCurrency(client.total_monthly_income as any)}
@@ -2290,15 +2373,19 @@ function PolicyDetailDrawer({
           )}
 
           {/* 11. Open AgentLink CTA */}
-          <div className="pt-2 flex gap-2">
+          <div className="flex gap-2 pt-2">
             <Button
-              className="flex-1"
+              className="h-10 flex-1 sm:h-9"
               onClick={() => onOpenAgentLink(deal)}
             >
-              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+              <ExternalLink className="mr-1.5 h-4 w-4" />
               Open AgentLink
             </Button>
-            <Button variant="outline" onClick={onClose}>
+            <Button
+              variant="outline"
+              className="h-10 sm:h-9"
+              onClick={onClose}
+            >
               Close
             </Button>
           </div>
@@ -2311,23 +2398,16 @@ function PolicyDetailDrawer({
 function DrawerSection({
   title,
   children,
-  accent,
 }: {
   title: string;
   children: React.ReactNode;
-  accent?: string;
 }) {
   return (
     <div className="space-y-2">
-      <h3
-        className={cn(
-          "text-[11px] font-semibold uppercase tracking-wider",
-          accent ?? "text-muted-foreground",
-        )}
-      >
+      <h3 className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
         {title}
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{children}</div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
     </div>
   );
 }
@@ -2347,11 +2427,11 @@ function DrawerRow({
   )
     return null;
   return (
-    <div className="rounded-md border border-border/50 p-2.5 bg-card/30">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="min-w-0 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="mt-0.5 break-words text-xs font-medium">
+      <p className="mt-0.5 break-words text-sm font-medium tabular-nums text-foreground">
         {typeof value === "string" || typeof value === "number"
           ? String(value)
           : value}
@@ -2404,11 +2484,11 @@ function ChargebackWatchDrawer({
         className="w-full sm:max-w-[560px] overflow-y-auto"
       >
         <SheetHeader className="text-left">
-          <SheetTitle className="flex items-center gap-2">
-            <TrendingDown className="h-5 w-5 text-rose-400" />
-            Chargeback Watch
+          <SheetTitle className="flex min-w-0 items-center gap-2">
+            <TrendingDown className="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+            <span className="truncate">Chargeback Watch</span>
           </SheetTitle>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs leading-relaxed text-muted-foreground">
             Two lenses: active {CHARGEBACK_WINDOW_DAYS}-day cliff window (right
             now) and historical chargebacks (period picker).
           </p>
@@ -2417,66 +2497,76 @@ function ChargebackWatchDrawer({
         <div className="mt-4 space-y-5">
           {/* Active risk window */}
           <div className="space-y-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-rose-300">
+            <h3 className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
               Active {CHARGEBACK_WINDOW_DAYS}-day window
             </h3>
-            <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-3">
-              <div className="text-2xl font-bold tabular-nums text-rose-300">
-                {activeWatch.toLocaleString()}
-              </div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Policies still in cliff window
+            <div className="rounded-lg border border-rose-500/35 bg-rose-500/5 p-3 sm:p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+                <div className="min-w-0">
+                  <div className="text-2xl font-bold leading-none tabular-nums text-rose-600 dark:text-rose-400">
+                    {activeWatch.toLocaleString()}
+                  </div>
+                  <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                    Policies still in cliff window
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="max-h-[240px] overflow-y-auto space-y-1">
+            <ul className="max-h-[240px] space-y-2 overflow-y-auto">
               {inWindow.slice(0, 50).map((d) => {
                 const daysEff = daysSinceEffective(d);
                 return (
-                  <div
+                  <li
                     key={d.id}
-                    className="flex items-center justify-between gap-2 text-xs px-2 py-1.5 rounded bg-background/40 border border-border/30"
+                    className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {d.client_first_name} {d.client_last_name}
-                        {d.policy_number && (
-                          <span className="ml-2 font-mono text-[10px] text-muted-foreground">
-                            #{d.policy_number}
-                          </span>
-                        )}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-foreground">
+                          {d.client_first_name} {d.client_last_name}
+                          {d.policy_number && (
+                            <span className="ml-2 font-mono text-[10px] tabular-nums text-muted-foreground">
+                              #{d.policy_number}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                          {d.agent_name} · {d.carrier_name || "—"} · Eff{" "}
+                          {d.effective_date
+                            ? format(new Date(d.effective_date), "MMM d")
+                            : "—"}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-muted-foreground truncate">
-                        {d.agent_name} · {d.carrier_name || "—"} · Eff{" "}
-                        {d.effective_date
-                          ? format(new Date(d.effective_date), "MMM d")
-                          : "—"}
+                      <div className="shrink-0 text-right">
+                        <div className="text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">
+                          {daysEff}d in
+                        </div>
+                        <div className="text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
+                          {d.annual_premium
+                            ? fmt$(Number(d.annual_premium))
+                            : "—"}{" "}
+                          ALP
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right tabular-nums shrink-0">
-                      <div className="text-rose-300 font-semibold">
-                        {daysEff}d in
-                      </div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {d.annual_premium
-                          ? fmt$(Number(d.annual_premium))
-                          : "—"}{" "}
-                        ALP
-                      </div>
-                    </div>
-                  </div>
+                  </li>
                 );
               })}
               {inWindow.length === 0 && (
-                <p className="text-xs text-emerald-300">
-                  No policies in the active chargeback window. Book is clean.
-                </p>
+                <li className="flex items-center gap-2 text-xs leading-relaxed text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span className="min-w-0">
+                    No policies in the active chargeback window. Book is clean.
+                  </span>
+                </li>
               )}
-            </div>
+            </ul>
           </div>
 
           {/* Historical chargebacks */}
           <div className="space-y-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
               Historical chargebacks
             </h3>
             <div className="flex flex-wrap items-center gap-2">
@@ -2484,7 +2574,7 @@ function ChargebackWatchDrawer({
                 type="date"
                 value={cbSince}
                 onChange={(e) => setCbSince(e.target.value)}
-                className="h-8 w-full sm:w-[140px] text-xs"
+                className="h-10 w-full text-xs sm:h-9 sm:w-[140px]"
                 max={cbUntil}
               />
               <span className="text-xs text-muted-foreground">to</span>
@@ -2492,7 +2582,7 @@ function ChargebackWatchDrawer({
                 type="date"
                 value={cbUntil}
                 onChange={(e) => setCbUntil(e.target.value)}
-                className="h-8 w-full sm:w-[140px] text-xs"
+                className="h-10 w-full text-xs sm:h-9 sm:w-[140px]"
                 min={cbSince}
                 max={format(new Date(), "yyyy-MM-dd")}
               />
@@ -2500,7 +2590,7 @@ function ChargebackWatchDrawer({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 text-xs"
+                  className="h-10 text-xs sm:h-9"
                   onClick={() => {
                     setCbSince(format(subDays(new Date(), 30), "yyyy-MM-dd"));
                     setCbUntil(format(new Date(), "yyyy-MM-dd"));
@@ -2511,7 +2601,7 @@ function ChargebackWatchDrawer({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 text-xs"
+                  className="h-10 text-xs sm:h-9"
                   onClick={() => {
                     setCbSince(format(subDays(new Date(), 90), "yyyy-MM-dd"));
                     setCbUntil(format(new Date(), "yyyy-MM-dd"));
@@ -2522,7 +2612,7 @@ function ChargebackWatchDrawer({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 text-xs"
+                  className="h-10 text-xs sm:h-9"
                   onClick={() => {
                     setCbSince(format(subDays(new Date(), 365), "yyyy-MM-dd"));
                     setCbUntil(format(new Date(), "yyyy-MM-dd"));
@@ -2533,78 +2623,80 @@ function ChargebackWatchDrawer({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-2.5">
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="min-w-0 rounded-lg border border-border bg-card p-3">
+                <div className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                   Count
                 </div>
-                <div className="text-lg font-bold tabular-nums text-rose-300">
+                <div className="mt-1 text-2xl font-bold leading-none tabular-nums text-rose-600 dark:text-rose-400">
                   {cbLoading ? "…" : chargebacks.length}
                 </div>
               </div>
-              <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-2.5">
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              <div className="min-w-0 rounded-lg border border-border bg-card p-3">
+                <div className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                   Monthly
                 </div>
-                <div className="text-lg font-bold tabular-nums text-rose-300">
+                <div className="mt-1 text-2xl font-bold leading-none tabular-nums text-rose-600 dark:text-rose-400">
                   {cbLoading ? "…" : fmt$(cbTotalMonthly)}
                 </div>
               </div>
-              <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-2.5">
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              <div className="min-w-0 rounded-lg border border-border bg-card p-3">
+                <div className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                   ALP
                 </div>
-                <div className="text-lg font-bold tabular-nums text-rose-300">
+                <div className="mt-1 text-2xl font-bold leading-none tabular-nums text-rose-600 dark:text-rose-400">
                   {cbLoading ? "…" : fmt$(cbTotalALP)}
                 </div>
               </div>
             </div>
 
-            <div className="max-h-[280px] overflow-y-auto space-y-1">
+            <ul className="max-h-[280px] space-y-2 overflow-y-auto">
               {!cbLoading && chargebacks.length === 0 && (
-                <p className="text-xs text-muted-foreground">
+                <li className="text-xs leading-relaxed text-muted-foreground">
                   No chargebacks in this range. Widen the window if you expect
                   older ones.
-                </p>
+                </li>
               )}
               {chargebacks.map((c) => (
-                <div
+                <li
                   key={c.id}
-                  className="flex items-center justify-between gap-2 text-xs px-2 py-1.5 rounded bg-background/40 border border-border/30"
+                  className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">
-                      {c.client_first_name} {c.client_last_name}
-                      {c.policy_number && (
-                        <span className="ml-2 font-mono text-[10px] text-muted-foreground">
-                          #{c.policy_number}
-                        </span>
-                      )}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-foreground">
+                        {c.client_first_name} {c.client_last_name}
+                        {c.policy_number && (
+                          <span className="ml-2 font-mono text-[10px] tabular-nums text-muted-foreground">
+                            #{c.policy_number}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        {c.agent_name} · {c.carrier_name || "—"} ·{" "}
+                        {c.status_updated_at
+                          ? format(new Date(c.status_updated_at), "MMM d, yyyy")
+                          : "—"}
+                      </div>
                     </div>
-                    <div className="text-[10px] text-muted-foreground truncate">
-                      {c.agent_name} · {c.carrier_name || "—"} ·{" "}
-                      {c.status_updated_at
-                        ? format(new Date(c.status_updated_at), "MMM d, yyyy")
-                        : "—"}
+                    <div className="shrink-0 text-right">
+                      <div className="text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">
+                        {c.monthly_premium
+                          ? fmt$(Number(c.monthly_premium))
+                          : "—"}
+                        /mo
+                      </div>
+                      <div className="text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
+                        {c.annual_premium
+                          ? fmt$(Number(c.annual_premium))
+                          : "—"}{" "}
+                        ALP
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right tabular-nums shrink-0">
-                    <div className="text-rose-300 font-semibold">
-                      {c.monthly_premium
-                        ? fmt$(Number(c.monthly_premium))
-                        : "—"}
-                      /mo
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {c.annual_premium
-                        ? fmt$(Number(c.annual_premium))
-                        : "—"}{" "}
-                      ALP
-                    </div>
-                  </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
       </SheetContent>

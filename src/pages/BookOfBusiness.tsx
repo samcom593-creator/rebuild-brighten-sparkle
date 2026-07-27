@@ -1988,6 +1988,8 @@ export default function BookOfBusiness() {
         cbTotalMonthly={cbTotalMonthly}
         cbTotalALP={cbTotalALP}
         activeWatch={kpi.chargebackWatch}
+        exposure={kpi.chargebackExposure}
+        cbWatch={cbWatch}
         deals={deals}
       />
     </div>
@@ -2498,6 +2500,8 @@ function ChargebackWatchDrawer({
   cbTotalMonthly,
   cbTotalALP,
   activeWatch,
+  exposure,
+  cbWatch,
   deals,
 }: {
   open: boolean;
@@ -2511,8 +2515,28 @@ function ChargebackWatchDrawer({
   cbTotalMonthly: number;
   cbTotalALP: number;
   activeWatch: number;
+  exposure: number;
+  cbWatch: ChargebackWatchRow[] | null;
   deals: DealRow[];
 }) {
+  // The KPI was repointed to v_chargeback_watch in PR #20 but this list was not, so the
+  // headline said 9 while the list underneath still showed all 252 policies inside a
+  // 30-day effective-date window — 243 of them healthy active business. Tapping a
+  // corrected number must not open the uncorrected list.
+  //
+  // Ranked by est_clawback_exposure (unearned advance), so the top of the list is the
+  // money most at risk, not merely the most recent policy.
+  const atRisk = useMemo(() => {
+    if (!cbWatch) return null;
+    return [...cbWatch]
+      .filter((c) => Number(c.priority ?? 9) === 1)
+      .sort(
+        (a, b) =>
+          Number(b.est_clawback_exposure ?? 0) - Number(a.est_clawback_exposure ?? 0),
+      );
+  }, [cbWatch]);
+
+  // Only used if v_chargeback_watch is unavailable; clearly labelled when it happens.
   const inWindow = useMemo(
     () =>
       deals
@@ -2542,7 +2566,7 @@ function ChargebackWatchDrawer({
           {/* Active risk window */}
           <div className="space-y-2">
             <h3 className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-              Active {CHARGEBACK_WINDOW_DAYS}-day window
+              {atRisk ? "Closest to chargeback" : `Active ${CHARGEBACK_WINDOW_DAYS}-day window`}
             </h3>
             <div className="rounded-lg border border-rose-500/35 bg-rose-500/5 p-3 sm:p-4">
               <div className="flex items-start gap-3">
@@ -2552,11 +2576,62 @@ function ChargebackWatchDrawer({
                     {activeWatch.toLocaleString()}
                   </div>
                   <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                    Policies still in cliff window
+                    {atRisk ? "Policies signalling lapse" : "Policies still in cliff window"}
                   </div>
+                  {atRisk && exposure > 0 && (
+                    <div className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                      <span className="font-semibold text-rose-600 dark:text-rose-400">
+                        {fmt$(exposure)}
+                      </span>{" "}
+                      estimated unearned advance at risk
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
+
+            {atRisk ? (
+              <ul className="max-h-[240px] space-y-2 overflow-y-auto">
+                {atRisk.slice(0, 50).map((c) => (
+                  <li
+                    key={c.deal_key ?? `${c.policy_number}-${c.client_name}`}
+                    className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-foreground">
+                          {c.client_name || "—"}
+                          {c.policy_number && (
+                            <span className="ml-2 font-mono text-[10px] tabular-nums text-muted-foreground">
+                              #{c.policy_number}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                          {c.agent_name || "—"} · {c.carrier || "—"} · {c.status || "—"}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">
+                          {fmt$(Number(c.est_clawback_exposure ?? 0))}
+                        </div>
+                        <div className="text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
+                          {Number(c.months_in_force ?? 0).toFixed(1)}mo in force
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+                {atRisk.length === 0 && (
+                  <li className="flex items-center gap-2 text-xs leading-relaxed text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span className="min-w-0">
+                      Nothing is signalling lapse inside the advance window right now.
+                    </span>
+                  </li>
+                )}
+              </ul>
+            ) : (
             <ul className="max-h-[240px] space-y-2 overflow-y-auto">
               {inWindow.slice(0, 50).map((d) => {
                 const daysEff = daysSinceEffective(d);
@@ -2606,6 +2681,14 @@ function ChargebackWatchDrawer({
                 </li>
               )}
             </ul>
+            )}
+            {!atRisk && (
+              <p className="text-[11px] leading-relaxed text-amber-600 dark:text-amber-400">
+                Showing the effective-date window because the chargeback-watch view did not
+                load. That list counts healthy new business too — treat it as a rough proxy,
+                not the real risk list.
+              </p>
+            )}
           </div>
 
           {/* Historical chargebacks */}

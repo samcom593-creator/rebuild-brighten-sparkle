@@ -32,6 +32,9 @@ const ManagerCommandView = lazy(() => import("@/pages/ManagerCommandView"));
 const UnclaimedLeadsCommandCard = lazy(() =>
   import("@/components/dashboard/UnclaimedLeadsCommandCard").then((m) => ({ default: m.UnclaimedLeadsCommandCard })),
 );
+const EarningsEstimateCard = lazy(() =>
+  import("@/components/dashboard/EarningsEstimateCard").then((m) => ({ default: m.EarningsEstimateCard })),
+);
 const XcelStalledCard = lazy(() =>
   import("@/components/dashboard/XcelStalledCard").then((m) => ({ default: m.XcelStalledCard })),
 );
@@ -577,7 +580,9 @@ function StatTile({
         <Icon className={cn("h-4 w-4 shrink-0", iconTone)} />
         <p className="min-w-0 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
       </div>
-      <p className="mt-2 break-words text-2xl font-bold leading-none tabular-nums text-foreground">{value}</p>
+      {/* text-3xl, not the text-2xl contract scale. Sam reads these five tiles from across
+          the room; the redesign shrank them and that read as the number being taken away. */}
+      <p className="mt-2 break-words text-3xl font-bold leading-none tabular-nums text-foreground">{value}</p>
       <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">{detail}</p>
     </GlassCard>
   );
@@ -800,6 +805,12 @@ function ExecutiveDashboard({
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <LazyPanel minHeight="h-32"><UnclaimedLeadsCommandCard /></LazyPanel>
         <LazyPanel minHeight="h-32"><XcelStalledCard /></LazyPanel>
+      </div>
+
+      {/* MP-268: earnings restored to the dashboard. ALP tiles above are premium volume,
+          not income — this is the only honest income answer the data supports. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <LazyPanel minHeight="h-32"><EarningsEstimateCard /></LazyPanel>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

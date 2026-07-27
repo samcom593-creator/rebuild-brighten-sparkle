@@ -28,6 +28,7 @@ import {
   LogOut,
   Maximize2,
   Megaphone,
+  PenSquare,
   ScrollText,
   Menu,
   Minimize2,
@@ -242,6 +243,11 @@ export function GlobalSidebar({
         // MP-230 (2026-07-01): Team Analytics + Hierarchy + Builders + Managers removed per Sam directive.
         // Culture + comms (drives momentum, low maintenance)
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },
+        // 2026-07-27: /dashboard/admin/content-command was built and routed but reachable
+        // ONLY from Sam HQ — it was in no nav. Meanwhile social_bot_drafts holds 559 drafts
+        // awaiting approval (newest today) against 1 approved ever and 0 shipped. The
+        // content bot has been writing daily into a queue with no front door.
+        { icon: PenSquare, label: "Content Command", href: "/dashboard/admin/content-command", special: true },
         // Sam 2026-06-16: Scripts removed — "scripts you can also remove those"
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
         // Admin hub (everything that isn't daily flow)

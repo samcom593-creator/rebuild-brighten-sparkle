@@ -1779,6 +1779,23 @@ export default function DashboardApplicants() {
                             <div className="flex items-center justify-end gap-1">
                               {!isTerminated && (
                                 <>
+                                  {/* 2026-07-27 wave-p1r (audit L42): the 7
+                                      disposition buttons used to render as a
+                                      full second <tr> beneath every active
+                                      applicant. Consolidated into this Log ▾
+                                      popover trigger so the primary daily-driver
+                                      table reclaims one full row per applicant
+                                      without losing any disposition action. */}
+                                  <ApplicationDispositionCluster
+                                    variant="compact-popover"
+                                    applicationId={app.id}
+                                    applicantEmail={app.email}
+                                    applicantFirstName={app.first_name}
+                                    applicantPhone={app.phone}
+                                    licenseStatus={app.license_status}
+                                    agentId={app.assigned_agent_id}
+                                    onMarkBad={() => handleMarkBadPhone(app)}
+                                  />
                                   {/* 2026-06-17 Sam directive: "I didn't type in
                                       anybody in CRM. I took the applicant and
                                       pushed them through." One-tap Promote → Agent. */}
@@ -1945,27 +1962,6 @@ export default function DashboardApplicants() {
                             </div>
                           </td>
                         </tr>
-                        {!isTerminated && (
-                          <tr
-                            id={`lead-disp-${app.id}`}
-                            className={cn(
-                              "border-b border-border/60 bg-muted/20",
-                              isHighlighted && "bg-primary/5",
-                            )}
-                          >
-                            <td colSpan={11} className="px-2 py-2">
-                              <ApplicationDispositionCluster
-                                applicationId={app.id}
-                                applicantEmail={app.email}
-                                applicantFirstName={app.first_name}
-                                applicantPhone={app.phone}
-                                licenseStatus={app.license_status}
-                                agentId={app.assigned_agent_id}
-                                onMarkBad={() => handleMarkBadPhone(app)}
-                              />
-                            </td>
-                          </tr>
-                        )}
                         </Fragment>
                       );
                     })}

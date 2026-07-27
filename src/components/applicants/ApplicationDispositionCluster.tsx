@@ -11,6 +11,7 @@ import {
   Calendar,
   Pencil,
   Loader2,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +44,12 @@ import { cn } from "@/lib/utils";
  *
  * Sam directive: 7 disposition buttons total in a single horizontal cluster
  * — Called · No Answer · Voicemail · Texted · Emailed · Bad Number · Pass.
+ *
+ * 2026-07-27 wave-p1r (audit L42): added variant="compact-popover" so the
+ * primary applicant list can render the same 7 dispositions behind a single
+ * "Log ▾" trigger inside the existing row-action icon strip, instead of
+ * consuming a full second <tr> per active applicant. Default variant="row"
+ * preserves the wide inline cluster for any surface that wants it.
  */
 
 type Tone = "sky" | "slate" | "amber" | "violet" | "emerald" | "rose" | "slate-dim";
@@ -60,6 +67,14 @@ interface Props {
    * so it matches the row-1 PhoneOff icon's behavior (single source of truth for badness).
    */
   onMarkBad?: () => void | Promise<void>;
+  /**
+   * 'row' (default) — inline flex-wrap of the 7 disposition buttons.
+   *   Kept for any surface that wants the wide cluster.
+   * 'compact-popover' — single "Log ▾" trigger that opens the same 7
+   *   disposition buttons in a popover. Used by DashboardApplicants row-action
+   *   strip so each active applicant no longer renders a full second <tr>.
+   */
+  variant?: "row" | "compact-popover";
 }
 
 export function ApplicationDispositionCluster({
@@ -70,6 +85,7 @@ export function ApplicationDispositionCluster({
   licenseStatus,
   agentId,
   onMarkBad,
+  variant = "row",
 }: Props) {
   const { user } = useAuth();
   const [busy, setBusy] = useState<string | null>(null);
@@ -107,11 +123,8 @@ export function ApplicationDispositionCluster({
     if (ok) toast.success(label);
   }
 
-  return (
-    <div
-      className="flex flex-wrap items-center gap-1"
-      onClick={(e) => e.stopPropagation()}
-    >
+  const buttons = (
+    <>
       <DispositionButton
         active={busy === "called"}
         label="Called"
@@ -177,6 +190,48 @@ export function ApplicationDispositionCluster({
         icon={XCircle}
         onClick={() => disposition("pass", "note", "Logged: Pass")}
       />
+    </>
+  );
+
+  if (variant === "compact-popover") {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="Log outreach"
+            data-cc-action="log-outreach"
+            className="h-8 gap-1 px-2 text-[11px] text-muted-foreground hover:bg-primary/10 hover:text-primary"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ClipboardList className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Log</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          className="w-auto max-w-[min(92vw,28rem)] p-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="mb-2 px-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+            Log outreach
+          </p>
+          <div className="flex flex-wrap items-center gap-1">
+            {buttons}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  return (
+    <div
+      className="flex flex-wrap items-center gap-1"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {buttons}
     </div>
   );
 }

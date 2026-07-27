@@ -17,7 +17,7 @@ import type { ShippedItem } from "@/data/shipped-data";
 
 // Counted at split time from shipped-data.ts. Kept as plain numbers so the
 // header can render without pulling in the payload.
-const SHIPPED_TOTAL = 265;
+const SHIPPED_TOTAL = 266;
 
 // Newest entries render first; the rest stay behind an explicit action so a
 // long history can never slow the first paint again.

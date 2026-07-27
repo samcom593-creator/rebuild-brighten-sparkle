@@ -62,6 +62,38 @@ const NumOptional = (min: number, max: number) =>
     z.number().min(min).max(max).optional(),
   );
 
+function normalizeSubmittedPhone(value: string): string | null {
+  const raw = value.trim();
+  const digits = raw.replace(/\D/g, "");
+  let normalized: string | null = null;
+
+  if (raw.startsWith("+")) normalized = digits;
+  else if (digits.startsWith("011")) normalized = digits.slice(3);
+  else if (digits.startsWith("00")) normalized = digits.slice(2);
+  else if (digits.length === 10) normalized = `1${digits}`;
+  else if (digits.length === 11 && digits.startsWith("1")) normalized = digits;
+
+  return normalized && normalized.length >= 8 && normalized.length <= 15 && !/^0+$/.test(normalized)
+    ? `+${normalized}`
+    : null;
+}
+
+const PhoneSchema = z
+  .string()
+  .trim()
+  .max(32)
+  .transform((value, ctx) => {
+    const normalized = normalizeSubmittedPhone(value);
+    if (!normalized) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter a valid US number or an international number with country code",
+      });
+      return z.NEVER;
+    }
+    return normalized;
+  });
+
 // Consent data schema for Twilio compliance
 const ConsentSchema = z.object({
   smsConsentGiven: z.boolean().default(false),
@@ -79,7 +111,7 @@ const FullSubmitApplicationSchema = z.object({
   firstName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
   lastName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
   email: z.string().email().max(254),
-  phone: z.string().min(10).max(20).regex(/^[\d\s\-\+\(\)]+$/, "Invalid phone format"),
+  phone: PhoneSchema,
   city: z.string().min(1).max(100),
   state: z.string().min(2).max(50),
   instagramHandle: z.string().max(50).optional().nullable(),
@@ -120,7 +152,7 @@ const QuickQualifySchema = z.object({
   quickQualify: z.literal(true),
   firstName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
   email: z.string().email().max(254),
-  phone: z.string().min(10).max(20).regex(/^[\d\s\-\+\(\)]+$/, "Invalid phone format"),
+  phone: PhoneSchema,
   licenseStatus: z.enum(["licensed", "unlicensed"]),
   selectedReferralAgentId: z.string().uuid().optional().nullable(),
   recruiterId: z.string().uuid().optional().nullable(),

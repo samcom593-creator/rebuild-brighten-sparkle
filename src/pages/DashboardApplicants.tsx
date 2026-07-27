@@ -81,6 +81,7 @@ import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { GlassCard } from "@/components/ui/glass-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { phoneHref, smsHref } from "@/lib/phone";
 
 interface Application {
   id: string;
@@ -120,7 +121,7 @@ interface Application {
 }
 
 const APPLICATION_SELECT =
-  "id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contacted_at, next_step_due_at, referral_source, phone_bad_at, phone_bad_reason, couldnt_reach_email_sent_at";
+  "id, first_name, last_name, email, phone, city, state, status, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contacted_at, next_step_due_at, referral_source, phone_bad_at, phone_bad_reason, couldnt_reach_email_sent_at";
 
 // MP-268 pipeline ladder. Sam asked for one filter per recruiting stage:
 // applied · course · passed test · fingerprints · onboarding · carrier appointments · first sale.
@@ -670,24 +671,49 @@ export default function DashboardApplicants() {
         return;
       }
 
-      // 2. If we have an email, fire the templated "couldn't reach you" send.
+      // Reflect the successful DB write immediately. Email notification is a
+      // separate side effect and must never make this button look broken.
+      queryClient.setQueriesData(
+        { queryKey: ["applicants"] },
+        (current: typeof queryData | undefined) => {
+          if (!current) return current;
+          const mark = (rows: Application[]) =>
+            rows.map((row) =>
+              row.id === app.id
+                ? {
+                    ...row,
+                    phone_bad_at: row.phone_bad_at ?? new Date().toISOString(),
+                    phone_bad_reason: row.phone_bad_reason ?? "user_marked_bad",
+                  }
+                : row,
+            );
+          return {
+            ...current,
+            apps: mark(current.apps),
+            terminatedApps: mark(current.terminatedApps),
+          };
+        },
+      );
+      toast.success("Number marked bad");
+      playSound("success");
+
+      // Email runs independently after the phone state is saved.
       if (app.email) {
-        const { data: sent, error: fnErr } = await supabase.functions.invoke(
-          "send-couldnt-reach-email",
-          { body: { application_id: app.id, reason: "user_marked_bad" } },
-        );
-        if (fnErr || (sent as any)?.ok === false) {
-          const detail = (sent as any)?.error ?? fnErr?.message ?? "unknown";
-          toast.error(`Marked bad, but email failed: ${detail}`);
-        } else {
-          toast.success(`Marked bad · emailed ${app.email}`);
-          playSound("success");
-        }
+        void supabase.functions
+          .invoke("send-couldnt-reach-email", {
+            body: { application_id: app.id, reason: "user_marked_bad" },
+          })
+          .then(({ data: sent, error: fnErr }) => {
+            if (fnErr || (sent as any)?.ok === false) {
+              toast.warning("Number saved, but the follow-up email did not send");
+              return;
+            }
+            toast.success(`Follow-up emailed to ${app.email}`);
+            fetchApplications();
+          });
       } else {
-        toast.warning("Marked bad — no email on file to notify");
-        playSound("success");
+        toast.info("Number saved · no email on file");
       }
-      fetchApplications();
     } finally {
       setBadPhoneBusy(null);
     }
@@ -1773,7 +1799,7 @@ export default function DashboardApplicants() {
                                       <Instagram className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
-                                  {app.phone && !app.phone_bad_at && (
+                                  {phoneHref(app.phone) && !app.phone_bad_at && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -1783,14 +1809,14 @@ export default function DashboardApplicants() {
                                       asChild
                                     >
                                       <a
-                                        href={`tel:${app.phone}`}
+                                        href={phoneHref(app.phone)!}
                                         onClick={() => logContactAttempt(app.id, "call")}
                                       >
                                         <Phone className="h-3.5 w-3.5" />
                                       </a>
                                     </Button>
                                   )}
-                                  {app.phone && !app.phone_bad_at && (
+                                  {smsHref(app.phone) && !app.phone_bad_at && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -1800,7 +1826,7 @@ export default function DashboardApplicants() {
                                       asChild
                                     >
                                       <a
-                                        href={`sms:${app.phone}`}
+                                        href={smsHref(app.phone)!}
                                         onClick={() => logContactAttempt(app.id, "sms")}
                                       >
                                         <MessageCircle className="h-3.5 w-3.5" />
@@ -2077,12 +2103,22 @@ export default function DashboardApplicants() {
             setDetailAppId(null);
           }}
           onLogCall={async (app) => {
+            const href = phoneHref(app.phone);
+            if (!href) {
+              toast.error("This application does not have a dialable phone number");
+              return;
+            }
             void logContactAttempt(app.id, "call");
-            window.location.href = `tel:${app.phone || ""}`;
+            window.location.href = href;
           }}
           onLogText={async (app) => {
+            const href = smsHref(app.phone);
+            if (!href) {
+              toast.error("This application does not have a textable phone number");
+              return;
+            }
             void logContactAttempt(app.id, "sms");
-            window.location.href = `sms:${app.phone || ""}`;
+            window.location.href = href;
           }}
           onLogEmail={async (app) => {
             void logContactAttempt(app.id, "email");

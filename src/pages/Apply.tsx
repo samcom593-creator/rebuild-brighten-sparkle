@@ -43,13 +43,18 @@ import { QuickQualifyStep } from "@/pages/apply/QuickQualifyStep";
 // mount. Cleared on successful submit so it doesn't leak into a second
 // application from the same browser.
 import { getRefSlug, clearRefSlug } from "@/lib/refSlug";
+import { isDialablePhone, normalizePhoneForDial } from "@/lib/phone";
 
 const applicationSchema = z.object({
   // Step 1: Personal Info
   firstName: z.string().min(2, "First name is required").max(50),
   lastName: z.string().min(2, "Last name is required").max(50),
   email: z.string().email("Valid email is required"),
-  phone: z.string().min(10, "Valid phone number is required").max(20),
+  phone: z
+    .string()
+    .trim()
+    .max(32)
+    .refine(isDialablePhone, "Enter a valid US number or an international number with country code"),
   city: z.string().min(2, "City is required").max(100),
   state: z.string().min(2, "State is required"),
   instagramHandle: z.string().max(50).optional(),
@@ -273,7 +278,7 @@ export default function Apply() {
       const partialData = {
         session_id: sessionId,
         email: values.email || null,
-        phone: values.phone || null,
+        phone: normalizePhoneForDial(values.phone),
         first_name: values.firstName || null,
         last_name: values.lastName || null,
         city: values.city || null,
@@ -471,7 +476,7 @@ export default function Apply() {
             quickQualify: true,
             firstName: parsed.data.firstName,
             email: parsed.data.email,
-            phone: parsed.data.phone,
+            phone: normalizePhoneForDial(parsed.data.phone),
             licenseStatus: parsed.data.licenseStatus === "pending" ? "unlicensed" : parsed.data.licenseStatus,
             recruiterId:
               referrerId ??
@@ -593,7 +598,7 @@ export default function Apply() {
             firstName: data.firstName,
             lastName: data.lastName,
             email: data.email,
-            phone: data.phone,
+            phone: normalizePhoneForDial(data.phone),
             city: data.city,
             state: data.state,
             instagramHandle,

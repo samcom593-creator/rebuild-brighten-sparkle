@@ -267,6 +267,31 @@ export function AgentProfileDrawer() {
     staleTime: 30_000,
   });
 
+interface DealQualityRow {
+  deals_total: number | string | null;
+  deals_30d: number | string | null;
+  pct_with_policy_number: number | string | null;
+  avg_deal_alp: number | string | null;
+  persistency_pct: number | string | null;
+  pct_never_issued: number | string | null;
+  in_force: number | string | null;
+  lapsed: number | string | null;
+  carriers_used: number | string | null;
+  top_carrier: string | null;
+  top_carrier_share_pct: number | string | null;
+}
+interface EarningsRow {
+  contract_pct: number | string | null;
+  est_earned_in_force: number | string | null;
+  est_pending_if_issued: number | string | null;
+  est_earned_mtd: number | string | null;
+}
+const qnum = (v: number | string | null | undefined): number | null => {
+  if (v === null || v === undefined) return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
   const { data: activity } = useQuery<ActivityRow | null>({
     queryKey: ["agent-profile-drawer-activity", agentId],
     enabled: !!agentId,
@@ -302,6 +327,44 @@ export function AgentProfileDrawer() {
       };
     },
     staleTime: 30_000,
+  });
+
+  // MP-268: book QUALITY, not just volume. A manager taps an agent and sees what
+  // the book is actually made of — how much of it sticks, how much never issued,
+  // and how concentrated it is on one carrier.
+  const { data: quality } = useQuery<DealQualityRow | null>({
+    queryKey: ["agent-drawer-deal-quality", agentId],
+    enabled: !!agentId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      if (!agentId) return null;
+      const { data, error } = await (supabase as any)
+        .from("v_agent_deal_quality")
+        .select("deals_total, deals_30d, pct_with_policy_number, avg_deal_alp, persistency_pct, pct_never_issued, in_force, lapsed, carriers_used, top_carrier, top_carrier_share_pct")
+        .eq("agent_id", agentId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as DealQualityRow) ?? null;
+    },
+  });
+
+  // ESTIMATED earnings only. No payout feed exists (agentlink_commissions and
+  // insuracloud_payouts have never had a row), so this is premium x contract %
+  // and is labelled as an estimate wherever it renders.
+  const { data: earnings } = useQuery<EarningsRow | null>({
+    queryKey: ["agent-drawer-earnings-estimate", agentId],
+    enabled: !!agentId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      if (!agentId) return null;
+      const { data, error } = await (supabase as any)
+        .from("v_earnings_estimate")
+        .select("contract_pct, est_earned_in_force, est_pending_if_issued, est_earned_mtd")
+        .eq("agent_id", agentId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as EarningsRow) ?? null;
+    },
   });
 
   // Monthly production: IT (deals this month), AV (annual volume this month), Legs.
@@ -931,6 +994,111 @@ export function AgentProfileDrawer() {
                 <p className="text-sm font-bold tabular-nums">{(activity?.downline_count ?? 0).toLocaleString()}</p>
               </div>
             </div>
+
+            {/* MP-268 · Book quality + estimated earnings.
+                Volume hides the truth: an agent can write 120 deals and keep 38%
+                while another writes 75 and keeps 81%. This shows what the book is
+                actually made of. Earnings are an ESTIMATE (premium x contract %) —
+                there is no payout feed, so it is never presented as settled money. */}
+            {quality && qnum(quality.deals_total) ? (
+              <div className="rounded-lg border border-border bg-card/60 p-3">
+                <div className="mb-1 flex items-baseline justify-between gap-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wide">Book quality</h3>
+                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                    {qnum(quality.deals_total)?.toLocaleString()} deals
+                  </span>
+                </div>
+                <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
+                  What this agent's book is made of — how much of it sticks, and how much never issued.
+                </p>
+
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="min-w-0 rounded-lg border border-border bg-background p-2.5">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Persistency</div>
+                    <p className={
+                      "mt-1 text-lg font-bold leading-none tabular-nums " +
+                      ((qnum(quality.persistency_pct) ?? 0) >= 70
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : (qnum(quality.persistency_pct) ?? 0) >= 50
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-rose-600 dark:text-rose-400")
+                    }>
+                      {qnum(quality.persistency_pct) !== null ? `${qnum(quality.persistency_pct)}%` : "—"}
+                    </p>
+                    <div className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+                      {qnum(quality.in_force) ?? 0} in force · {qnum(quality.lapsed) ?? 0} lapsed
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 rounded-lg border border-border bg-background p-2.5">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Avg deal</div>
+                    <p className="mt-1 text-lg font-bold leading-none tabular-nums text-foreground">
+                      {qnum(quality.avg_deal_alp) !== null ? fmtUSD(qnum(quality.avg_deal_alp)) : "—"}
+                    </p>
+                    <div className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+                      {qnum(quality.deals_30d) ?? 0} in 30d
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 rounded-lg border border-border bg-background p-2.5">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Never issued</div>
+                    <p className={
+                      "mt-1 text-lg font-bold leading-none tabular-nums " +
+                      ((qnum(quality.pct_never_issued) ?? 0) >= 15
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-foreground")
+                    }>
+                      {qnum(quality.pct_never_issued) !== null ? `${qnum(quality.pct_never_issued)}%` : "—"}
+                    </p>
+                    <div className="mt-0.5 text-[10px] text-muted-foreground">declined · withdrawn · NTO</div>
+                  </div>
+
+                  <div className="min-w-0 rounded-lg border border-border bg-background p-2.5">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Top carrier</div>
+                    <p className="mt-1 truncate text-sm font-bold leading-tight text-foreground">
+                      {quality.top_carrier ?? "—"}
+                    </p>
+                    <div className={
+                      "mt-0.5 text-[10px] tabular-nums " +
+                      ((qnum(quality.top_carrier_share_pct) ?? 0) >= 60
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-muted-foreground")
+                    }>
+                      {qnum(quality.top_carrier_share_pct) !== null
+                        ? `${qnum(quality.top_carrier_share_pct)}% of book`
+                        : ""}
+                      {(qnum(quality.carriers_used) ?? 0) > 0 ? ` · ${qnum(quality.carriers_used)} carriers` : ""}
+                    </div>
+                  </div>
+                </div>
+
+                {earnings && (
+                  <div className="mt-3 rounded-lg border border-border bg-background p-2.5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                        Estimated earnings
+                      </span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        contract {qnum(earnings.contract_pct) ?? "—"}%
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                      <span className="text-lg font-bold leading-none tabular-nums text-foreground">
+                        {fmtUSD(qnum(earnings.est_earned_in_force))}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">earned on in-force</span>
+                      <span className="text-sm font-bold leading-none tabular-nums text-amber-600 dark:text-amber-400">
+                        {fmtUSD(qnum(earnings.est_pending_if_issued))}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">pending if it issues</span>
+                    </div>
+                    <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">
+                      Estimate — annual premium x contract %. There is no payout feed, so this is not settled money.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : null}
 
             {/* Call Notes Timeline — Sam directive 2026-06-16 voice:
                 "notes from the call." Merges call_activity + agent_notes via

@@ -121,6 +121,11 @@ interface Application {
 }
 
 const APPLICATION_SELECT =
+  // 2026-07-27: `status` was missing from this list while the Application interface
+  // declared it, so app.status was undefined on every row. Five call sites read it —
+  // getApplicationStatus(), the rejected/disqualified filter, and the Rejected metric
+  // card, which therefore showed 0 while 19 applications were actually rejected or
+  // disqualified. TypeScript could not catch it: the select string is a plain literal.
   "id, first_name, last_name, email, phone, city, state, status, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contacted_at, next_step_due_at, referral_source, phone_bad_at, phone_bad_reason, couldnt_reach_email_sent_at";
 
 // MP-268 pipeline ladder. Sam asked for one filter per recruiting stage:

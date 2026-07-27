@@ -11,6 +11,7 @@ import {
   Loader2,
   Search,
   MailX,
+  AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,7 @@ export default function LicensedInbox() {
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState<string | null>(null); // key = `${appId}:${outcome}`
 
-  const { data: rows, isLoading } = useQuery<LicensedRow[]>({
+  const { data: rows, isLoading, isError, error } = useQuery<LicensedRow[]>({
     queryKey: ["licensed-inbox"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -79,21 +80,28 @@ export default function LicensedInbox() {
         )
         .eq("license_status", "licensed")
         // wave-p1k: exclude terminal dispositions so the inbox actually drains.
-        // markHired flips status='contracting', markPassed flips status='rejected';
-        // without this filter, already-worked applicants re-surface on every refetch
-        // and the "call now" queue grows monotonically. 'active'/'hired'/'terminated'
-        // covered for the same reason (already-onboarded agents shouldn't reappear).
-        .not(
-          "status",
-          "in",
-          "(contracting,rejected,hired,active,terminated)",
-        )
+        // markHired flips status='contracting', markPassed flips status='rejected'.
+        //
+        // 2026-07-27: this list also carried 'hired', 'active' and 'terminated', none of
+        // which are members of the application_status enum. Those are agent_status values.
+        // PostgREST coerces the literals during planning, so the whole request failed with
+        // 400 / 22P02 "invalid input value for enum application_status", the catch below
+        // turned it into `return []`, and this page rendered EMPTY for three days while
+        // looking like a legitimately clear queue. 73 licensed applicants were invisible.
+        //
+        // Only real enum members belong here. Full set:
+        //   new, reviewing, interview, contracting, approved, rejected, no_pickup, lead,
+        //   registered, attended, attended_no_show, paid, onboarding, producing, lapsed,
+        //   disqualified, quick_qualified
+        .not("status", "in", "(contracting,rejected)")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) {
         console.error("[licensed-inbox] load failed:", error);
-        toast.error(`Load failed: ${error.message.slice(0, 80)}`);
-        return [];
+        // Do NOT return [] here. Swallowing the error is what let a hard 400 render as
+        // "No licensed applicants" for three days. Throw so react-query reports isError
+        // and the page can say the list is MISSING rather than empty.
+        throw error;
       }
       return (data ?? []) as LicensedRow[];
     },
@@ -258,7 +266,27 @@ export default function LicensedInbox() {
           </div>
         )}
 
-        {!isLoading && filtered.length === 0 && (
+        {/* A failed fetch must never read as a cleared queue. This exact surface spent
+            three days telling Sam every licensed application had been worked while the
+            query was 400-ing on a bad enum literal. */}
+        {isError && (
+          <div className="rounded-lg border border-rose-500/35 bg-rose-500/5 p-3 sm:p-4">
+            <div className="flex min-w-0 items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Licensed applicants could not load</p>
+                <p className="mt-0.5 break-words text-xs text-muted-foreground">
+                  {(error as any)?.message?.slice(0, 120) ?? "Unknown error"}
+                </p>
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  This list is missing, not empty. Do not read it as a cleared queue.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isLoading && !isError && filtered.length === 0 && (
           <EmptyState
             icon={<MailX className="h-7 w-7" />}
             variant="default"

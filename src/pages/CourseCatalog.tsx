@@ -86,16 +86,16 @@ export default function CourseCatalog() {
         // Agents table may already have a license flag; otherwise fall back
         // to applications.license_status / license_progress for this user.
         const [agentRes, appRes] = await Promise.all([
-          supabase.from("agents").select("is_licensed").eq("user_id", user.id).maybeSingle(),
+          supabase.from("agents").select("license_status").eq("user_id", user.id).maybeSingle(),
           supabase
             .from("applications")
             .select("license_status, license_progress")
-            .eq("email", user.email || "__nope__")
+            .ilike("email", user.email || "__nope__")
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle(),
         ]);
-        const agentLicensed = (agentRes.data as any)?.is_licensed === true;
+        const agentLicensed = (agentRes.data as any)?.license_status === "licensed";
         const app = appRes.data as { license_status?: string; license_progress?: string } | null;
         const appLicensed = app?.license_status === "licensed"
           || ["licensed", "fingerprints_done", "waiting_on_license"].includes(app?.license_progress || "");

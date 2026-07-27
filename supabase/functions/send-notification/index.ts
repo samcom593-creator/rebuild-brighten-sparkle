@@ -183,7 +183,11 @@ const handler = async (req: Request): Promise<Response> => {
     // 3. ALWAYS send email if we have a recipient (not just fallback)
     if (recipientEmail) {
       try {
-        await resend.emails.send({
+        // MP-269: resend.emails.send() resolves with { data, error } — it does NOT throw
+        // on an API error. The old code awaited it, never inspected `error`, and logged
+        // status:"sent" unconditionally. Result: 24,806 rows in July marked "sent" while
+        // Resend was returning 429 monthly_quota_exceeded on every call. Inspect `error`.
+        const { data: sendData, error: sendError } = await resend.emails.send({
           from: "Apex Financial <notifications@apex-financial.org>",
           to: [recipientEmail],
           cc: [ADMIN_EMAIL],
@@ -198,16 +202,32 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
           `,
         });
-        results.email = true;
-        await logNotification(supabase, {
-          recipient_user_id: userId,
-          recipient_email: recipientEmail,
-          channel: "email",
-          title: title || "Notification",
-          message: message || "",
-          status: "sent",
-          metadata: { ...logMeta, cc: ADMIN_EMAIL },
-        });
+
+        if (sendError) {
+          console.error("Email send rejected by provider:", sendError);
+          results.email = false;
+          await logNotification(supabase, {
+            recipient_user_id: userId,
+            recipient_email: recipientEmail,
+            channel: "email",
+            title: title || "Notification",
+            message: message || "",
+            status: "failed",
+            error_message: sendError.message ?? String(sendError),
+            metadata: { ...logMeta, cc: ADMIN_EMAIL, provider: "resend" },
+          });
+        } else {
+          results.email = true;
+          await logNotification(supabase, {
+            recipient_user_id: userId,
+            recipient_email: recipientEmail,
+            channel: "email",
+            title: title || "Notification",
+            message: message || "",
+            status: "sent",
+            metadata: { ...logMeta, cc: ADMIN_EMAIL, provider: "resend", provider_message_id: sendData?.id ?? null },
+          });
+        }
       } catch (err: any) {
         console.error("Email send failed:", err);
         await logNotification(supabase, {

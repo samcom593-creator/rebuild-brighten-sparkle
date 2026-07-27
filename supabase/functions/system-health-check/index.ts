@@ -101,9 +101,16 @@ serve(async (req) => {
       .is("contacted_at", null);
 
     if (stalledApplicants && stalledApplicants.length > 0) {
+      // MP-269: this block previously re-sent to the SAME applicants every 15 min forever
+      // because it never recorded that it had contacted them. 24,806 duplicate sends to
+      // 40 people in July alone, which exhausted the Resend monthly quota and silently
+      // killed every new-application notification. Send once, stamp contacted_at, verify.
+      let stampedCount = 0;
+      const sendErrors: string[] = [];
+
       for (const app of stalledApplicants.slice(0, 10)) {
         try {
-          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification`, {
+          const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
             body: JSON.stringify({
@@ -112,10 +119,40 @@ serve(async (req) => {
               message: `Hey ${app.first_name}, we noticed you applied but haven't heard back. Are you still interested in getting licensed? Reply to this email or call us.`,
             })
           });
-        } catch {}
+
+          // A non-2xx is a failure. Do not stamp contacted_at, so it retries next tick
+          // instead of silently dropping the applicant.
+          if (!res.ok) {
+            sendErrors.push(`${app.email}: HTTP ${res.status}`);
+            continue;
+          }
+
+          const { error: stampError } = await supabase
+            .from("applications")
+            .update({ contacted_at: new Date().toISOString() })
+            .eq("id", app.id);
+
+          // If the stamp fails the loop would repeat, so surface it rather than swallow it.
+          if (stampError) {
+            sendErrors.push(`${app.email}: sent but contacted_at not stamped — ${stampError.message}`);
+            continue;
+          }
+
+          stampedCount++;
+        } catch (err) {
+          sendErrors.push(`${app.email}: ${String(err)}`);
+        }
       }
-      autoFixed.push(`Re-sent follow-up to ${stalledApplicants.length} stalled applicants`);
-      results.push({ service: "Applicant Pipeline", status: "degraded", responseTime: 0, message: `${stalledApplicants.length} applicants stalled 3+ days — auto follow-up sent`, autoFixed: true });
+
+      if (stampedCount > 0) autoFixed.push(`Sent first follow-up to ${stampedCount} stalled applicants`);
+      const detail = sendErrors.length > 0 ? ` — ${sendErrors.length} failed: ${sendErrors.slice(0, 3).join("; ")}` : "";
+      results.push({
+        service: "Applicant Pipeline",
+        status: sendErrors.length > 0 ? "degraded" : (stampedCount > 0 ? "degraded" : "healthy"),
+        responseTime: 0,
+        message: `${stalledApplicants.length} applicants stalled 3+ days — ${stampedCount} contacted this run${detail}`,
+        autoFixed: stampedCount > 0,
+      });
     } else {
       results.push({ service: "Applicant Pipeline", status: "healthy", responseTime: 0, message: "All applicants being worked" });
     }

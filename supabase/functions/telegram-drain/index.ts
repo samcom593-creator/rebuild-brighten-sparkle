@@ -47,14 +47,35 @@ async function render(key: string, ctx: Record<string, unknown>) {
 }
 
 async function tgSend(chat_id: number, text: string, parse_mode: string, reply_markup: any) {
+  // 2026-07-27: 24 queued messages died on
+  //   400 "Bad Request: object expected as reply markup"
+  // All 45 rows in telegram_templates have buttons = NULL, and that null was passed
+  // straight through, so the payload carried "reply_markup": null. Telegram accepts the
+  // key being ABSENT but rejects an explicit null. Only attach it when it is a real object
+  // (or a JSON string, which is also valid and is parsed here so a stringified keyboard
+  // cannot cause the same rejection).
+  const payload: Record<string, unknown> = {
+    chat_id,
+    text,
+    parse_mode,
+    disable_web_page_preview: true,
+  };
+  let markup = reply_markup;
+  if (typeof markup === "string") {
+    try {
+      markup = JSON.parse(markup);
+    } catch {
+      markup = null;
+    }
+  }
+  if (markup && typeof markup === "object" && Object.keys(markup).length > 0) {
+    payload.reply_markup = markup;
+  }
+
   const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      chat_id, text, parse_mode,
-      reply_markup,
-      disable_web_page_preview: true,
-    }),
+    body: JSON.stringify(payload),
   });
   if (!r.ok) {
     const errText = await r.text();

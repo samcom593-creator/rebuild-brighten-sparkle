@@ -838,7 +838,7 @@ function getAgencyPeriodBounds(period: AgencyPeriod, customStart: string, custom
 }
 
 function AgencyCommandView() {
-  usePageTitle("Agency Command · APEX");
+  usePageTitle("Apex Financial · APEX");
   const [period, setPeriod] = useState<AgencyPeriod>("month");
   const [customStart, setCustomStart] = useState(() => dateInputValue(new Date(Date.now() - 6 * 86_400_000)));
   const [customEnd, setCustomEnd] = useState(() => dateInputValue(new Date()));
@@ -1748,7 +1748,7 @@ function AgencyCommandView() {
             <p className="text-[10px] uppercase tracking-[0.28em] font-bold text-teal-400 flex items-center gap-1.5">
               <Crown className="h-3 w-3" /> Agency · Owner Mode
             </p>
-            <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-slate-100 leading-tight">Agency Command</h1>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-slate-100 leading-tight">Apex Financial</h1>
             <p className="mt-1 text-13 text-slate-400 leading-snug">
               Live agency-wide pulse on production, recruiting, licensing, and activity.
               {c?.as_of && <> · As of {format(new Date(c.as_of), "MMM d, h:mm a")}</>}

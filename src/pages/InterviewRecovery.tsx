@@ -243,6 +243,8 @@ export default function InterviewRecovery() {
   const [detailAppId, setDetailAppId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [noteDraft, setNoteDraft] = useState("");
+  // 0 = no follow-up scheduled. Days from now, applied on the next disposition.
+  const [followupDays, setFollowupDays] = useState(0);
   const [busy, setBusy] = useState(false);
 
   const pipeline = useQuery({
@@ -291,6 +293,20 @@ export default function InterviewRecovery() {
     for (const r of rows) m[r.bucket] = (m[r.bucket] ?? 0) + 1;
     return m;
   }, [rows]);
+
+  // Measured across both queues, deduped by interview_events.id — the two views overlap,
+  // so a naive sum would inflate the denominator and flatter the rate.
+  const dispositionRate = useMemo(() => {
+    const seen = new Map<string, boolean>();
+    for (const r of rows) seen.set(r.id, Boolean(r.outcome));
+    for (const p of prospectRows) {
+      if (p.interview_event_id) seen.set(p.interview_event_id, Boolean(p.outcome));
+    }
+    const total = seen.size;
+    let done = 0;
+    for (const hasOutcome of seen.values()) if (hasOutcome) done += 1;
+    return { done, total, pct: total ? Math.round((done / total) * 100) : 0 };
+  }, [rows, prospectRows]);
 
   const backlog = useMemo(() => rows.filter((r) => r.is_backlog), [rows]);
 
@@ -368,14 +384,23 @@ export default function InterviewRecovery() {
   // v_prospect_review_queue.interview_event_id IS interview_events.id, so the
   // pipeline and prospect buckets dispose through one identical path.
   const disposeById = useCallback(
-    async (id: string, label: string, outcome: Outcome, notes?: string) => {
+    async (
+      id: string,
+      label: string,
+      outcome: Outcome,
+      notes?: string,
+      followupDueAt?: string | null,
+    ) => {
       setBusy(true);
       try {
+        // cc_dispose_interview has always accepted p_followup_due_at; the UI hardcoded
+        // null, so "call them back Tuesday" had nowhere to live and the callback outcome
+        // was a dead end. Now the caller can schedule the next touch in the same tap.
         const { error } = await (supabase as any).rpc("cc_dispose_interview", {
           p_id: id,
           p_outcome: outcome,
           p_notes: notes && notes.trim() ? notes.trim() : null,
-          p_followup_due_at: null,
+          p_followup_due_at: followupDueAt ?? null,
         });
         if (error) throw error;
 
@@ -407,8 +432,8 @@ export default function InterviewRecovery() {
   );
 
   const dispose = useCallback(
-    (row: PipelineRow, outcome: Outcome, notes?: string) =>
-      disposeById(row.id, row.display_name, outcome, notes),
+    (row: PipelineRow, outcome: Outcome, notes?: string, followupDueAt?: string | null) =>
+      disposeById(row.id, row.display_name, outcome, notes, followupDueAt),
     [disposeById],
   );
 
@@ -421,11 +446,16 @@ export default function InterviewRecovery() {
   const disposeAndAdvance = useCallback(
     async (outcome: Outcome) => {
       if (!current) return;
-      await dispose(current, outcome, noteDraft);
+      const due =
+        followupDays > 0
+          ? new Date(Date.now() + followupDays * 86_400_000).toISOString()
+          : null;
+      await dispose(current, outcome, noteDraft, due);
       setNoteDraft("");
+      setFollowupDays(0);
       setCatchIndex((i) => Math.min(i + 1, Math.max(0, catchQueue.length - 2)));
     },
-    [current, dispose, noteDraft, catchQueue.length],
+    [current, dispose, noteDraft, followupDays, catchQueue.length],
   );
 
   const bulkDispose = useCallback(
@@ -573,6 +603,21 @@ export default function InterviewRecovery() {
               style={{ width: `${((catchIndex + 1) / Math.max(1, catchQueue.length)) * 100}%` }}
             />
           </div>
+
+          {/* Disposition rate is the number that says whether this queue is actually being
+              worked. It started at 1 of 164 — every other interview ever held has no
+              recorded outcome. Showing it makes the habit visible instead of theoretical. */}
+          <div className="mt-3 flex items-baseline justify-between gap-2 border-t border-border pt-3">
+            <span className="min-w-0 text-xs leading-relaxed text-muted-foreground">
+              Interviews with an outcome logged
+            </span>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-foreground">
+              {dispositionRate.done.toLocaleString()} / {dispositionRate.total.toLocaleString()}
+              <span className="ml-1.5 font-semibold text-muted-foreground">
+                {dispositionRate.pct}%
+              </span>
+            </span>
+          </div>
         </GlassCard>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -698,6 +743,43 @@ export default function InterviewRecovery() {
                 placeholder="What happened on this call…"
                 rows={5}
               />
+
+              {/* Follow-up rides along with the next disposition. Without this, "callback"
+                  was a dead end — you could log that they want calling back, but not when,
+                  so nothing ever resurfaced them. */}
+              <div className="mt-4 border-t border-border pt-3">
+                <p className="text-sm font-semibold text-foreground">Follow up</p>
+                <p className="mb-2 mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  Filed with the outcome, so they come back to you instead of going quiet.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { days: 0, label: "None" },
+                    { days: 1, label: "Tomorrow" },
+                    { days: 3, label: "In 3 days" },
+                    { days: 7, label: "Next week" },
+                  ].map((opt) => {
+                    const active = followupDays === opt.days;
+                    return (
+                      <button
+                        key={opt.days}
+                        type="button"
+                        onClick={() => setFollowupDays(opt.days)}
+                        aria-pressed={active}
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                          "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                          active
+                            ? "border-primary/40 bg-primary/10 text-primary ring-2 ring-primary/60"
+                            : "border-border bg-card text-foreground hover:bg-muted/40",
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </GlassCard>
 
             <GlassCard className="p-4">

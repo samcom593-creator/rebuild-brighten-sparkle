@@ -267,10 +267,18 @@ export function AgentProfileDrawer() {
     staleTime: 30_000,
   });
 
+interface CarrierMixRow {
+  carrier: string | null;
+  policies: number | string | null;
+  pct_of_policies: number | string | null;
+  alp: number | string | null;
+  pct_of_alp: number | string | null;
+  in_force: number | string | null;
+}
+
 interface DealQualityRow {
   deals_total: number | string | null;
   deals_30d: number | string | null;
-  pct_with_policy_number: number | string | null;
   avg_deal_alp: number | string | null;
   persistency_pct: number | string | null;
   pct_never_issued: number | string | null;
@@ -340,11 +348,33 @@ const qnum = (v: number | string | null | undefined): number | null => {
       if (!agentId) return null;
       const { data, error } = await (supabase as any)
         .from("v_agent_deal_quality")
-        .select("deals_total, deals_30d, pct_with_policy_number, avg_deal_alp, persistency_pct, pct_never_issued, in_force, lapsed, carriers_used, top_carrier, top_carrier_share_pct")
+        // pct_with_policy_number deliberately dropped 2026-07-27. It reads 100.0 for all 50
+        // agents — one distinct value — because agentlink_book has 0 of 1607 rows missing a
+        // policy number and deals has 0 of 1598; neither system records a deal without one.
+        // It was fetched here but never rendered. A metric that cannot vary is not a quality
+        // signal, and putting it on screen would train Sam to ignore the panel.
+        .select("deals_total, deals_30d, avg_deal_alp, persistency_pct, pct_never_issued, in_force, lapsed, carriers_used, top_carrier, top_carrier_share_pct")
         .eq("agent_id", agentId)
         .maybeSingle();
       if (error) throw error;
       return (data as DealQualityRow) ?? null;
+    },
+  });
+
+  // Full carrier breakdown — what "top carrier" alone cannot show.
+  const { data: carrierMix } = useQuery<CarrierMixRow[] | null>({
+    queryKey: ["agent-drawer-carrier-mix", agentId],
+    enabled: !!agentId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      if (!agentId) return null;
+      const { data, error } = await (supabase as any)
+        .from("v_agent_carrier_mix")
+        .select("carrier, policies, pct_of_policies, alp, pct_of_alp, in_force")
+        .eq("agent_id", agentId)
+        .order("policies", { ascending: false });
+      if (error) throw error;
+      return (data as CarrierMixRow[]) ?? [];
     },
   });
 
@@ -1071,6 +1101,55 @@ const qnum = (v: number | string | null | undefined): number | null => {
                     </div>
                   </div>
                 </div>
+
+                {/* Full carrier mix. "Top carrier" answers whether they are concentrated;
+                    this answers where the rest of the book actually sits, which is what Sam
+                    asked for. The in-force column is the payoff — it exposes a carrier an
+                    agent writes heavily that never issues (Aisha Kebbeh: 30 Foresters
+                    policies, $37.5K ALP, 0 in force). */}
+                {carrierMix && carrierMix.length > 0 && (
+                  <div className="mt-3 rounded-lg border border-border bg-background p-2.5">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      Carrier mix
+                    </div>
+                    <ul className="mt-1.5 space-y-1">
+                      {carrierMix.slice(0, 6).map((c) => {
+                        const pct = qnum(c.pct_of_policies) ?? 0;
+                        const inForce = qnum(c.in_force) ?? 0;
+                        const pols = qnum(c.policies) ?? 0;
+                        const noneIssued = pols >= 5 && inForce === 0;
+                        return (
+                          <li key={c.carrier ?? "unknown"} className="min-w-0">
+                            <div className="flex items-baseline justify-between gap-2 text-xs">
+                              <span className="truncate text-foreground">{c.carrier ?? "—"}</span>
+                              <span className="shrink-0 tabular-nums text-muted-foreground">
+                                {pols} · {fmtUSD(qnum(c.alp))}
+                              </span>
+                            </div>
+                            <div className="mt-0.5 flex items-center gap-2">
+                              <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full rounded-full bg-primary"
+                                  style={{ width: `${Math.min(100, pct)}%` }}
+                                />
+                              </div>
+                              <span
+                                className={
+                                  "shrink-0 text-[10px] tabular-nums " +
+                                  (noneIssued
+                                    ? "text-rose-600 dark:text-rose-400"
+                                    : "text-muted-foreground")
+                                }
+                              >
+                                {noneIssued ? `${pols} written, 0 in force` : `${inForce} in force`}
+                              </span>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
 
                 {earnings && (
                   <div className="mt-3 rounded-lg border border-border bg-background p-2.5">

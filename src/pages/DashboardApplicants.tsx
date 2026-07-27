@@ -122,6 +122,45 @@ interface Application {
 const APPLICATION_SELECT =
   "id, first_name, last_name, email, phone, city, state, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contacted_at, next_step_due_at, referral_source, phone_bad_at, phone_bad_reason, couldnt_reach_email_sent_at";
 
+// MP-268 pipeline ladder. Sam asked for one filter per recruiting stage:
+// applied · course · passed test · fingerprints · onboarding · carrier appointments · first sale.
+//
+// Only the rungs below are actually captured. Verified against production 2026-07-27:
+//   fingerprints          — applications.fingerprints_submitted_at has 1 row total
+//   carrier appointments  — agentlink_appointments has 0 rows, ever
+//   first sale            — applications.first_deal_at is bulk-backfilled and unusable
+//                           (600 rows across 65 timestamps; 199 share one minute).
+//                           agents.first_deal_at is clean and is where that rung belongs.
+// Shipping empty chips for uncaptured stages would be the same fake-success pattern as the
+// 465 InsuraCloud rows: a control that looks live but can never populate. Those three rungs
+// are deliberately absent until capture exists.
+//
+// The ladder is resolved MOST-ADVANCED-FIRST so every applicant lands in exactly one stage and
+// the chip counts sum to the roster. license_progress alone overlaps (someone can be
+// 'course_purchased' AND contracted), which is why the raw column is not used as the filter.
+const PIPELINE_STAGES = [
+  { key: "applied", label: "Applied" },
+  { key: "course", label: "Course" },
+  { key: "finished_course", label: "Finished Course" },
+  { key: "test_scheduled", label: "Test Scheduled" },
+  { key: "passed_test", label: "Passed Test" },
+  { key: "licensed", label: "Licensed" },
+  { key: "contracted", label: "Contracted" },
+] as const;
+
+type PipelineStageKey = (typeof PIPELINE_STAGES)[number]["key"];
+
+function resolvePipelineStage(app: Application): PipelineStageKey {
+  const lp = String((app as any).license_progress ?? "");
+  if (app.contracted_at || (app as any).ica_paid) return "contracted";
+  if (lp === "licensed" || (app as any).licensed_at || app.license_status === "licensed") return "licensed";
+  if (lp === "passed_test" || lp === "waiting_on_license" || (app as any).exam_passed_at) return "passed_test";
+  if (lp === "test_scheduled" || (app as any).exam_scheduled_at) return "test_scheduled";
+  if (lp === "finished_course") return "finished_course";
+  if (lp === "course_purchased" || app.course_purchased_at) return "course";
+  return "applied";
+}
+
 const statusColors: Record<string, string> = {
   new: "border-border bg-muted/50 text-muted-foreground",
   contacted: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
@@ -168,6 +207,8 @@ export default function DashboardApplicants() {
 
   const [viewMode, setViewMode] = useState<"list" | "kanban" | "pipeline">("list");
   const [metricFilter, setMetricFilter] = useState<string>("total");
+  // MP-268: null = no stage constraint ("All stages" chip).
+  const [pipelineStage, setPipelineStage] = useState<PipelineStageKey | null>(null);
   const [duplicatesOnly, setDuplicatesOnly] = useState(false);
   // Speed-to-Lead workflow
   const [speedActive, setSpeedActive] = useState(false);
@@ -772,14 +813,27 @@ export default function DashboardApplicants() {
       }
     }
 
+    const matchesPipelineStage =
+      pipelineStage === null || resolvePipelineStage(app) === pipelineStage;
+
     return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot &&
       matchesDuplicates && matchesDuplicatesOnly && matchesAgent && matchesUpline && matchesInterview &&
-      matchesNeedsFollowup && matchesStage && matchesContacted;
+      matchesNeedsFollowup && matchesStage && matchesContacted && matchesPipelineStage;
   }, [
     searchQuery, statusFilter, licenseFilter, myDirectsOnly, hotLeadsOnly, showDuplicates,
     duplicatesOnly, agentFilter, uplineFilter, interviewFilter, needsFollowupOnly,
-    contactedParam, stageFilter, agentId, recruiterDirectory, interviewByAppId,
+    contactedParam, stageFilter, agentId, recruiterDirectory, interviewByAppId, pipelineStage,
   ]);
+
+  // Counts are computed off the live roster, not hardcoded, so a stage that stops being
+  // captured shows 0 on its own chip instead of silently rendering an empty list.
+  const pipelineStageCounts = useMemo(() => {
+    const counts = Object.fromEntries(
+      PIPELINE_STAGES.map((s) => [s.key, 0])
+    ) as Record<PipelineStageKey, number>;
+    for (const app of activeApplications) counts[resolvePipelineStage(app)] += 1;
+    return counts;
+  }, [activeApplications]);
 
   const kanbanApps: PipelineCardData[] = useMemo(() =>
     activeApplications
@@ -900,10 +954,15 @@ export default function DashboardApplicants() {
     if (agentFilter !== "all") chips.push({ key: "agent", label: `Agent: ${recruiterDirectory.get(agentFilter)?.name || agentFilter}`, clear: () => setAgentFilter("all") });
     if (uplineFilter !== "all") chips.push({ key: "upline", label: `Upline: ${uplineNames.get(uplineFilter) || uplineFilter}`, clear: () => setUplineFilter("all") });
     if (interviewFilter !== "all") chips.push({ key: "interview", label: `Interview: ${interviewFilter}`, clear: () => setInterviewFilter("all") });
+    if (pipelineStage) {
+      const stage = PIPELINE_STAGES.find((s) => s.key === pipelineStage);
+      chips.push({ key: "stage", label: `Stage: ${stage?.label ?? pipelineStage}`, clear: () => setPipelineStage(null) });
+    }
     return chips;
   }, [
     searchQuery, statusFilter, licenseFilter, myDirectsOnly, hotLeadsOnly, duplicatesOnly,
     needsFollowupOnly, agentFilter, uplineFilter, interviewFilter, recruiterDirectory, uplineNames,
+    pipelineStage,
   ]);
 
   const resetAllFilters = () => {
@@ -919,6 +978,7 @@ export default function DashboardApplicants() {
     setInterviewFilter("all");
     setMetricFilter("total");
     setShowDuplicates(true);
+    setPipelineStage(null);
   };
 
   const counterTotal = statusFilter === "terminated" ? terminatedApplications.length : activeApplications.length;
@@ -1107,6 +1167,54 @@ export default function DashboardApplicants() {
           );
         })}
       </div>
+
+      {/* MP-268 pipeline ladder — one chip per captured recruiting stage, mutually exclusive
+          so the counts sum to the active roster. See PIPELINE_STAGES for why fingerprints,
+          carrier appointments and first sale are not rungs here yet. */}
+      <GlassCard className="p-4">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+            <GraduationCap className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">Pipeline stage</span>
+          </h3>
+          <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+            {activeApplications.length.toLocaleString()}
+          </span>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          Every active applicant sits on exactly one rung. Pick a rung to work just that group.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {[{ key: null, label: "All stages", count: activeApplications.length }, ...PIPELINE_STAGES.map((s) => ({
+            key: s.key as PipelineStageKey | null,
+            label: s.label,
+            count: pipelineStageCounts[s.key],
+          }))].map((chip) => {
+            const active = pipelineStage === chip.key;
+            const empty = chip.count === 0;
+            return (
+              <button
+                key={chip.key ?? "all"}
+                type="button"
+                onClick={() => setPipelineStage(chip.key)}
+                aria-pressed={active}
+                aria-label={`Filter to ${chip.label} — ${chip.count} applicants`}
+                className={cn(
+                  "inline-flex min-w-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                  "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                  active
+                    ? "border-primary/40 bg-primary/10 text-primary ring-2 ring-primary/60"
+                    : "border-border bg-card text-foreground hover:bg-muted/40",
+                  empty && !active && "opacity-55"
+                )}
+              >
+                <span className="truncate">{chip.label}</span>
+                <span className="shrink-0 tabular-nums text-muted-foreground">{chip.count.toLocaleString()}</span>
+              </button>
+            );
+          })}
+        </div>
+      </GlassCard>
 
       <GlassCard className="p-4">
         <div className="mb-1 flex items-baseline justify-between gap-2">

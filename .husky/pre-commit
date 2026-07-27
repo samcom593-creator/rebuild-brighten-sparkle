@@ -584,3 +584,12 @@ if echo "$STAGED" | grep -qE '\.(ts|tsx|js|jsx|mjs)$'; then
     exit 1
   fi
 fi
+
+# ---------- check-enum-filter-literals (2026-07-27) ----------
+# A PostgREST filter literal that is not a member of the column's enum 400s the WHOLE
+# request (22P02). LicensedInbox swallowed that error and rendered a cleared-queue empty
+# state for three days while 73 licensed applicants were invisible.
+if match '^(src/.*\.(tsx|jsx|ts)$|scripts/check-enum-filter-literals\.mjs$)'; then
+  echo "[pre-commit] Supabase-filter-affecting file staged — running check:enum-filter-literals…"
+  npm run --silent check:enum-filter-literals || exit 1
+fi

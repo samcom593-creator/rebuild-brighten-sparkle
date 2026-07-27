@@ -24,7 +24,6 @@ interface WhaleRow {
   status: string | null;
   license_status: string | null;
   license_progress: string | null;
-  onboarding_stage: string | null;
   course_purchased_at: string | null;
   course_started_at: string | null;
   exam_passed_at: string | null;
@@ -32,7 +31,7 @@ interface WhaleRow {
   contracted_at: string | null;
   ica_paid_at: string | null;
   first_deal_at: string | null;
-  last_contact_at: string | null;
+  last_contacted_at: string | null;
   created_at: string;
   next_action: string | null;
   next_action_due_at: string | null;
@@ -75,11 +74,18 @@ export default function WhaleRecruiting() {
     queryFn: async (): Promise<WhaleRow[]> => {
       const { data, error } = await supabase
         .from("applications")
+        // 2026-07-27: this query had THREE independent reasons to fail, so the page was
+        // dead. It selected `onboarding_stage` (which lives on agents, not applications)
+        // and `last_contact_at` (the real column is last_contacted_at), and it filtered
+        // .neq("status","terminated") / .neq("status","lost") — neither of which is an
+        // application_status member, so PostgREST 400'd with 22P02 before returning a row.
+        // Real terminal statuses are rejected / disqualified / lapsed; actual termination
+        // is the terminated_at timestamp, not a status label.
         .select(
-          "id, first_name, last_name, email, phone, state, status, license_status, license_progress, onboarding_stage, course_purchased_at, course_started_at, exam_passed_at, licensed_at, contracted_at, ica_paid_at, first_deal_at, last_contact_at, created_at, next_action, next_action_due_at, referral_source, recruiter_id, assigned_agent_id"
+          "id, first_name, last_name, email, phone, state, status, license_status, license_progress, course_purchased_at, course_started_at, exam_passed_at, licensed_at, contracted_at, ica_paid_at, first_deal_at, last_contacted_at, created_at, next_action, next_action_due_at, referral_source, recruiter_id, assigned_agent_id"
         )
-        .neq("status", "terminated")
-        .neq("status", "lost")
+        .is("terminated_at", null)
+        .not("status", "in", "(rejected,disqualified,lapsed)")
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -132,8 +138,8 @@ export default function WhaleRecruiting() {
         const aDue = a.next_action_due_at ? new Date(a.next_action_due_at).getTime() : Infinity;
         const bDue = b.next_action_due_at ? new Date(b.next_action_due_at).getTime() : Infinity;
         if (aDue !== bDue) return aDue - bDue;
-        const aLast = a.last_contact_at ? new Date(a.last_contact_at).getTime() : 0;
-        const bLast = b.last_contact_at ? new Date(b.last_contact_at).getTime() : 0;
+        const aLast = a.last_contacted_at ? new Date(a.last_contacted_at).getTime() : 0;
+        const bLast = b.last_contacted_at ? new Date(b.last_contacted_at).getTime() : 0;
         if (aLast !== bLast) return aLast - bLast;
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
@@ -278,7 +284,7 @@ function inferStage(w: WhaleRow): string {
 
 function inferHeat(w: WhaleRow): Heat {
   // HOT: contacted in last 48h OR has next_action_due_at within 2 days
-  const lastContact = w.last_contact_at ? new Date(w.last_contact_at) : null;
+  const lastContact = w.last_contacted_at ? new Date(w.last_contacted_at) : null;
   const dueDate = w.next_action_due_at ? new Date(w.next_action_due_at) : null;
   const now = Date.now();
   const recent = lastContact && (now - lastContact.getTime() < 48 * 3600_000);

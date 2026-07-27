@@ -93,7 +93,7 @@ export function GlobalSidebar({
 }: GlobalSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAdmin, isManager, isVaManager } = useAuth();
+  const { user, isAdmin, isManager, isVaManager, isVa } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<{ id: string; name: string; email: string; kind: "agent" | "applicant"; licenseStatus?: string | null; phone?: string }>>([]);
   const [showSearch, setShowSearch] = useState(false);
@@ -308,11 +308,30 @@ export function GlobalSidebar({
         { icon: Archive, label: "Old Managers", href: "/dashboard/old-applicants/managers" },
         { icon: Archive, label: "Old Licensed Recruiters", href: "/dashboard/old-applicants/licensed-recruiters" },
       );
-    } else if (isVaManager) {
-      // VA Manager (operator) — a single-purpose portal to run the VA team.
+    } else if (isVaManager || isVa) {
+      // VA OPS (2026-07-27 Sam directive: "this is all milver can see — how
+      // could he possibly work effectively"). VA manager + sub-VAs get the
+      // recruiting-operations work queues. Production/finance surfaces stay
+      // excluded on purpose (matches the 2026-07-26 AgentLink visibility
+      // lockdown — VAs work the pipeline, they don't see the money).
       primary.push(
-        { icon: Users, label: "VA Team", href: "/va-team", special: true },
+        { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
+        { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
+        { icon: Rocket, label: "Interview Recovery", href: "/dashboard/interview-recovery", special: true },
+        { icon: GraduationCap, label: "Unlicensed Queue", href: "/admin/unlicensed-all", special: true },
       );
+      if (isVaManager) {
+        primary.push({ icon: Users, label: "VA Team", href: "/va-team", special: true });
+      }
+      more.push(
+        { icon: Inbox, label: "Licensed Inbox", href: "/admin/licensed-inbox", special: true },
+        { icon: Flame, label: "License Push (cohorts)", href: "/admin/recovery-queue", special: true },
+        { icon: UserCog, label: "Onboarding Ladder", href: "/dashboard/onboarding-ladder", special: true },
+      );
+      if (isVaManager) {
+        // Bulk XCEL ingest writes aged_leads + upgrades applications — manager-tier only.
+        more.push({ icon: FileSpreadsheet, label: "Import XCEL", href: "/admin/xcel-import", special: true });
+      }
     } else {
       // AGENT = the daily producer. Their flow: take inbound calls → write apps
       // → check production → reference scripts/carriers/comp. Anything beyond
@@ -341,7 +360,7 @@ export function GlobalSidebar({
       ...(more.length ? [{ label: "MORE", items: more }] : []),
       ...(oldApplicants.length ? [{ label: "OLD APPLICANTS", items: oldApplicants }] : []),
     ];
-  }, [isAdmin, isManager, isVaManager]);
+  }, [isAdmin, isManager, isVaManager, isVa]);
 
   const handleLogout = useCallback(async () => {
     await supabase.auth.signOut();

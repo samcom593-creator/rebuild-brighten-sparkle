@@ -369,7 +369,7 @@ export default function StaleRecovery() {
   const [filter, setFilter] = useState<"all" | "stale" | "icy" | "cold">("all");
   const [segment, setSegment] = useState<RowGroup>("working");
 
-  const { data: rows, isLoading } = useQuery<StaleRow[]>({
+  const { data: rows, isLoading, isError: staleFailed } = useQuery<StaleRow[]>({
     queryKey: ["stale-applicants"],
     refetchOnWindowFocus: false,
     queryFn: async () => {
@@ -716,6 +716,26 @@ export default function StaleRecovery() {
             {[1, 2, 3, 4, 5].map((n) => (
               <Skeleton key={n} className="h-32 w-full rounded-lg" />
             ))}
+          </div>
+        ) : (segment === "working" ? staleFailed : queueFailed) ? (
+          // A failed read must never render the success-toned empty state. Without
+          // this branch, a thrown query left filtered=[] and the page said "Every
+          // applicant has been contacted" — a broken query reported as an all-clear,
+          // the same class as the 465 InsuraCloud rows and the sibling bug fixed on
+          // InterviewRecovery in 0fc83aef.
+          <div className="rounded-lg border border-rose-500/35 bg-rose-500/5 p-3 sm:p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">
+                  {segment === "working" ? "Working list did not load" : "Stalled queue did not load"}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  These applicants are missing from this view, not absent from the
+                  business. Refresh to try again.
+                </p>
+              </div>
+            </div>
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState

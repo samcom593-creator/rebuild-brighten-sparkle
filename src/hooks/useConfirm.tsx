@@ -1,16 +1,11 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, lazy, Suspense, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+
+const ConfirmDialog = lazy(() =>
+  import("@/components/ui/confirm-dialog").then((module) => ({
+    default: module.ConfirmDialog,
+  })),
+);
 
 export type ConfirmTone = "danger" | "primary";
 
@@ -56,44 +51,14 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => confirm, [confirm]);
 
-  const tone = pending?.tone ?? "primary";
-  const confirmLabel = pending?.confirmText ?? "Confirm";
-  const cancelLabel = pending?.cancelText ?? "Cancel";
-
   return (
     <ConfirmContext.Provider value={value}>
       {children}
-      <AlertDialog
-        open={pending !== null}
-        onOpenChange={(open) => {
-          if (!open) finish(false);
-        }}
-      >
-        {pending && (
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{pending.title}</AlertDialogTitle>
-              {pending.description !== undefined && (
-                <AlertDialogDescription asChild>
-                  <div className="text-sm text-muted-foreground">{pending.description}</div>
-                </AlertDialogDescription>
-              )}
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => finish(false)}>{cancelLabel}</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => finish(true)}
-                className={cn(
-                  tone === "danger" &&
-                    "bg-rose-600 text-white hover:bg-rose-500 focus-visible:ring-rose-400",
-                )}
-              >
-                {confirmLabel}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        )}
-      </AlertDialog>
+      {pending && (
+        <Suspense fallback={null}>
+          <ConfirmDialog options={pending} onFinish={finish} />
+        </Suspense>
+      )}
     </ConfirmContext.Provider>
   );
 }

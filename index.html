@@ -22,7 +22,7 @@
       // so BUMP_VERSION must also change. Embedding the videoId makes
       // that mechanical: the build can't ship without a bump.
       (function() {
-        var BUMP_VERSION = "2026-07-08-v7-54-mp265-get-licensed-E2VJ1v85IRE";
+        var BUMP_VERSION = "2026-07-26-performance-route-integrity-E2VJ1v85IRE";
         try {
           var staleKeys = [];
           for (var i = 0; i < localStorage.length; i++) {
@@ -31,7 +31,15 @@
           }
           var seenBump = localStorage.getItem('apex_bump_version');
           var hadStaleAuth = staleKeys.length > 0 && !sessionStorage.getItem('apex_cache_busted');
-          var needsBump = seenBump !== BUMP_VERSION;
+          // A first-time visitor has no cache to evict. Reloading that visitor
+          // doubled the initial document request and made the site feel slow
+          // before React even started. Only reload an existing installation
+          // whose recorded build is genuinely stale.
+          var isExistingInstall = seenBump !== null;
+          var needsBump = isExistingInstall && seenBump !== BUMP_VERSION;
+          if (!isExistingInstall) {
+            localStorage.setItem('apex_bump_version', BUMP_VERSION);
+          }
           if (hadStaleAuth || needsBump) {
             sessionStorage.setItem('apex_cache_busted', '1');
             localStorage.setItem('apex_bump_version', BUMP_VERSION);

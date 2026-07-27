@@ -17,8 +17,7 @@ import { isCwModuleKey, type CwModuleKey } from "@/components/contentwheel/modul
  *
  * The cw_ schema, RLS, triggers, and views are deployed. Live modules
  * (Dashboard, Ideation Rolodex, Hook Lab) query real data directly.
- * Any not-yet-built module key falls back to the live Dashboard rather
- * than rendering a static placeholder.
+ * Navigation only exposes modules with a working UI and live data contract.
  */
 export default function ContentWheel() {
   const [params, setParams] = useSearchParams();
@@ -57,9 +56,7 @@ export default function ContentWheel() {
             <IdeationRolodexModule />
           ) : active === "hooks" ? (
             <HookLabModule />
-          ) : (
-            <DashboardModule />
-          )}
+          ) : null}
         </main>
       </div>
     </div>

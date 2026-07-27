@@ -326,7 +326,7 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
       linear-gradient(90deg, hsl(222 47% 10% / 0.18) 1px, transparent 1px),
       radial-gradient(circle at 50% 0%, hsl(164 72% 48% / 0.055), transparent 34rem);
     background-size: 28px 28px, 28px 28px, 100% 100%;
-    background-attachment: fixed;
+    background-attachment: scroll;
   }
 
   .ops-card-depth {
@@ -1365,7 +1365,7 @@ input:focus, textarea:focus, select:focus {
 .dark html { background-color: hsl(222 60% 2%); }
 .dark body { background-color: transparent !important; }
 .dark #root { background-color: transparent !important; }
-html { background-attachment: fixed; }
+html { background-attachment: scroll; }
 /* Light mode: NO aurora. Solid bg-background everywhere. */
 .light body, .light #root, body:not(.dark *), #root:not(.dark *) {
   background-color: hsl(var(--background));

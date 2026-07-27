@@ -7,7 +7,7 @@ interface Props {
 }
 
 /**
- * Vertical sub-nav for the 12 ContentWheel modules.
+ * Vertical sub-nav for shipped ContentWheel modules.
  * Order = the cycle (see modules.ts). Persisted via ?m=<key> on the parent page.
  */
 export function ContentWheelSubNav({ active, onSelect }: Props) {
@@ -15,13 +15,12 @@ export function ContentWheelSubNav({ active, onSelect }: Props) {
     <nav className="rounded-md border border-border bg-card/40  p-2 sticky top-4">
       <div className="px-3 py-2 border-b border-border/60 mb-2">
         <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">The Wheel</p>
-        <p className="text-sm font-semibold text-foreground">12 Modules</p>
+        <p className="text-sm font-semibold text-foreground">Working Modules</p>
       </div>
       <ul className="space-y-0.5">
         {CW_MODULES.map((m) => {
           const Icon = m.icon;
           const isActive = m.key === active;
-          const isShipped = m.phase === "P1";
           return (
             <li key={m.key}>
               <button
@@ -44,11 +43,6 @@ export function ContentWheelSubNav({ active, onSelect }: Props) {
                     {m.short}
                   </span>
                 </span>
-                {!isShipped && (
-                  <span className="text-[9px] uppercase tracking-wider font-mono mt-1 rounded-sm bg-muted/40 px-1.5 py-0.5 text-muted-foreground/70">
-                    {m.phase}
-                  </span>
-                )}
               </button>
             </li>
           );

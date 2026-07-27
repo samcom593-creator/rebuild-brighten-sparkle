@@ -177,7 +177,23 @@ export default defineConfig(({ mode }) => ({
       },
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // Precache the boot shell, not every one of the 300+ lazy admin
+        // chunks. The old broad glob installed ~6.5 MB after first load and
+        // competed with real navigation on mobile. Visited route chunks are
+        // cached by the /assets/ CacheFirst rule below.
+        globPatterns: [
+          "index.html",
+          "assets/index-*.{js,css}",
+          "assets/rolldown-runtime-*.js",
+          "assets/vendor-{router,react,react-dom,icons-landing}-*.js",
+          "assets/apex-icon-*.{js,png}",
+          "assets/client-*.js",
+          "fonts/*.woff2",
+          "img/hero-poster-*.jpg",
+          "favicon.ico",
+          "pwa-*.png",
+          "manifest.webmanifest",
+        ],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         importScripts: ["/sw-push.js"],
         // Take over every tab on the new SW install, wipe stale caches.
@@ -205,30 +221,18 @@ export default defineConfig(({ mode }) => ({
               url.href.includes("supabase.co") && request.method !== "GET",
             handler: "NetworkOnly",
           },
-          // Static assets from our own origin.
-          //
-          // Was: StaleWhileRevalidate — that strategy serves the OLD cached
-          // bundle on the FIRST visit after a deploy and only revalidates in
-          // the background, meaning the NEW UI doesn't appear until the
-          // SECOND page load. Sam reported "site looks unchanged after
-          // deploy" — this was the cause.
-          //
-          // Now: NetworkFirst with a 3-second timeout. The browser will
-          // try to fetch fresh code first; if the network is slow or
-          // offline, it falls back to the precached version. Asset URLs
-          // are content-hashed by Vite so we never serve a stale hash.
-          //
-          // For HTML navigation (the SPA shell), Workbox's default
-          // navigation handler still uses the precached index.html; the
-          // CSS/JS bundles linked from it are fetched fresh via this rule.
+          // Vite assets are content-hashed. A cached URL is therefore the
+          // exact current file, never an older build with the same name.
+          // NetworkFirst made every route chunk wait on the network and could
+          // add three seconds on weak mobile service. CacheFirst makes repeat
+          // route loads immediate; a deployment's new hashes still fetch once.
           {
-            urlPattern: ({ sameOrigin, request }) =>
-              sameOrigin && (request.destination === "script" || request.destination === "style"),
-            handler: "NetworkFirst",
+            urlPattern: ({ sameOrigin, url }) =>
+              sameOrigin && url.pathname.startsWith("/assets/"),
+            handler: "CacheFirst",
             options: {
               cacheName: "apex-assets",
-              networkTimeoutSeconds: 3,
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              expiration: { maxEntries: 250, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
         ],

@@ -70,7 +70,7 @@ initTelemetry();
 // Login + Apply moved to lazy so a visitor who only sees the home page
 // doesn't pay for their (~50-100 kB each) bundles up front.
 import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
+const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const Apply = lazy(() => import("./pages/Apply"));
 const AssistantInterviewForm = lazy(() => import("./pages/AssistantInterviewForm"));

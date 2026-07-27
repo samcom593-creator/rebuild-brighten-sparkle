@@ -128,6 +128,20 @@ interface BookConcentrationRow {
   pct_of_in_force_alp: number | string | null;
 }
 
+interface ChargebackWatchRow {
+  deal_key: string | null;
+  policy_number: string | null;
+  client_name: string | null;
+  carrier: string | null;
+  agent_name: string | null;
+  status: string | null;
+  months_in_force: number | string | null;
+  annual_premium: number | string | null;
+  est_clawback_exposure: number | string | null;
+  priority: number | string | null;
+  what_this_means: string | null;
+}
+
 interface BookSegmentRow {
   segment: string;
   policies: number | null;
@@ -333,6 +347,10 @@ export default function BookOfBusiness() {
   // into one number. v_book_status_segments splits it so the in-force (actually
   // paying) book is never confused with business that has not adjudicated.
   const [segments, setSegments] = useState<BookSegmentRow[] | null>(null);
+  // Real chargeback exposure. The old KPI counted any policy effective in the
+  // last 30 days regardless of status — 243 of its 252 were HEALTHY active
+  // business, and it missed the 62 policies actually signalling lapse.
+  const [cbWatch, setCbWatch] = useState<ChargebackWatchRow[] | null>(null);
   const [persistency, setPersistency] = useState<BookPersistencyRow[] | null>(null);
   const [concentration, setConcentration] = useState<BookConcentrationRow[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -465,6 +483,19 @@ export default function BookOfBusiness() {
         setSegments(null);
       } else {
         setSegments((segRows as unknown as BookSegmentRow[]) ?? null);
+      }
+
+      const { data: cbRows, error: cbErr } = await supabase
+        .from("v_chargeback_watch" as any)
+        .select("deal_key, policy_number, client_name, carrier, agent_name, status, months_in_force, annual_premium, est_clawback_exposure, priority, what_this_means")
+        .order("priority", { ascending: true })
+        .order("est_clawback_exposure", { ascending: false })
+        .limit(200);
+      if (cbErr) {
+        logger.warn("[BookOfBusiness] v_chargeback_watch read failed", { error: cbErr.message });
+        setCbWatch(null);
+      } else {
+        setCbWatch((cbRows as unknown as ChargebackWatchRow[]) ?? null);
       }
 
       const { data: persRows, error: persErr } = await supabase
@@ -967,7 +998,19 @@ export default function BookOfBusiness() {
     );
     const avgPerDeal = totalDeals > 0 ? totalALP / totalDeals : 0;
     const activePolicies = deals.filter(isActivePolicy).length;
-    const chargebackWatch = deals.filter(isInChargebackWindow).length;
+    // Real exposure, not recency. The old heuristic counted every policy with an
+    // effective_date inside 30 days regardless of status: 252 counted, 243 of them
+    // healthy active business, while the 62 policies actually signalling lapse were
+    // invisible because they were older than the window. Now sourced from
+    // v_chargeback_watch priority 1 = Lapse Pending still inside the advance window.
+    const chargebackWatch = cbWatch
+      ? cbWatch.filter((c) => Number(c.priority ?? 9) === 1).length
+      : deals.filter(isInChargebackWindow).length;
+    const chargebackExposure = cbWatch
+      ? cbWatch
+          .filter((c) => Number(c.priority ?? 9) === 1)
+          .reduce((sum, c) => sum + Number(c.est_clawback_exposure ?? 0), 0)
+      : 0;
     return {
       totalDeals,
       totalALP,
@@ -975,8 +1018,9 @@ export default function BookOfBusiness() {
       avgPerDeal,
       activePolicies,
       chargebackWatch,
+      chargebackExposure,
     };
-  }, [deals, truth, isAdmin]);
+  }, [deals, truth, isAdmin, cbWatch]);
 
   // ─── Filter helpers ──────────────────────────────────────────────────────
 
@@ -1449,7 +1493,7 @@ export default function BookOfBusiness() {
           label="Chargeback Watch"
           value={loading ? "…" : kpi.chargebackWatch.toLocaleString()}
           tone={kpi.chargebackWatch > 0 ? "rose" : "neutral"}
-          sub={`Within ${CHARGEBACK_WINDOW_DAYS}d window`}
+          sub={cbWatch ? `${fmt$(kpi.chargebackExposure)} est. clawback` : `Within ${CHARGEBACK_WINDOW_DAYS}d window`}
           onClick={() => setChargebackOpen(true)}
         />
       </div>

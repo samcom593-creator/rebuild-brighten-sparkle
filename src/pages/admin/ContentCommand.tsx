@@ -409,6 +409,47 @@ export default function ContentCommand() {
     shipped: statusCounts?.shipped ?? 0,
   }), [statusCounts]);
 
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  // Chunked so a 561-row selection cannot blow the PostgREST URL length or time out as one
+  // statement. Reports the real number written, and does NOT clear the selection on failure
+  // so a partial run can be retried against exactly what is left.
+  const runBulk = async (status: "approved" | "rejected") => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    const now = new Date().toISOString();
+    const patch: Record<string, unknown> = { status, updated_at: now };
+    if (status === "approved") patch.approved_at = now;
+    let done = 0;
+    try {
+      for (let i = 0; i < ids.length; i += 100) {
+        const slice = ids.slice(i, i + 100);
+        const { error } = await (supabase as any)
+          .from("social_bot_drafts")
+          .update(patch)
+          .in("id", slice);
+        if (error) throw error;
+        done += slice.length;
+      }
+      toast.success(`${done.toLocaleString()} draft${done === 1 ? "" : "s"} ${status}`);
+      setSelectedIds(new Set());
+      qc.invalidateQueries({ queryKey: ["content_command_drafts"] });
+      qc.invalidateQueries({ queryKey: ["content_command_status_counts"] });
+    } catch (err) {
+      // Say how far it got. "Failed" alone would leave Sam unable to tell whether 0 or 400
+      // drafts moved, and he would have to go count them by hand.
+      toast.error(
+        `Stopped after ${done.toLocaleString()} of ${ids.length.toLocaleString()}: ${(err as Error).message.slice(0, 90)}`,
+      );
+      qc.invalidateQueries({ queryKey: ["content_command_drafts"] });
+      qc.invalidateQueries({ queryKey: ["content_command_status_counts"] });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const openEditor = (d: Draft) => {
     setEditing(d);
     setEditTitle(d.title ?? "");
@@ -518,22 +559,95 @@ export default function ContentCommand() {
                 </div>
               </div>
             </CardHeader>
+            {/* Bulk bar. 561 drafts sit awaiting approval and one-at-a-time will never
+                clear that; it is why the backlog reached a year deep. Acts ONLY on what is
+                selected from the current filter — there is no "approve everything" button,
+                because approving content Sam has not looked at is not a feature.
+                Safe to bulk: the only trigger on social_bot_drafts
+                (trg_cw_smb_drafts_auto_ingest) returns early unless status='shipped', and
+                even then it just records an already-published URL into cw_posts. Approving
+                posts nothing anywhere. */}
+            {selectedIds.size > 0 && (
+              <div className="mx-6 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
+                <span className="text-xs font-semibold tabular-nums">
+                  {selectedIds.size} selected
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkBusy}
+                  onClick={() => runBulk("approved")}
+                >
+                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Approve selected
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkBusy}
+                  onClick={() => runBulk("rejected")}
+                >
+                  <XCircle className="mr-1.5 h-3.5 w-3.5" /> Reject selected
+                </Button>
+                <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => setSelectedIds(new Set())}>
+                  Clear
+                </Button>
+                <span className="text-[11px] text-muted-foreground">
+                  Nothing is posted — this only sets the review state.
+                </span>
+              </div>
+            )}
+
             <CardContent className="space-y-2">
               {isLoading ? <Skeleton className="h-96 w-full" /> : filtered.length === 0 ? (
                 <HonestEmpty
                   title="No drafts match this filter"
                   detail="Source checked: public.social_bot_drafts. Change filters or run the Social Media Bot draft generator."
                 />
-              ) : filtered.map((d) => (
-                <DraftRow
-                  key={d.id}
-                  draft={d}
-                  onApprove={() => statusMutation.mutate({ id: d.id, status: "approved" })}
-                  onReject={() => statusMutation.mutate({ id: d.id, status: "rejected" })}
-                  onShip={() => statusMutation.mutate({ id: d.id, status: "shipped" })}
-                  onEdit={() => openEditor(d)}
-                />
-              ))}
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 border-b border-border pb-2">
+                    <input
+                      type="checkbox"
+                      id="cc-select-all"
+                      className="h-4 w-4 cursor-pointer accent-[hsl(var(--primary))]"
+                      checked={filtered.length > 0 && filtered.every((d) => selectedIds.has(d.id))}
+                      onChange={(e) => {
+                        setSelectedIds(e.target.checked ? new Set(filtered.map((d) => d.id)) : new Set());
+                      }}
+                    />
+                    <label htmlFor="cc-select-all" className="cursor-pointer text-xs text-muted-foreground">
+                      Select all {filtered.length.toLocaleString()} in this filter
+                    </label>
+                  </div>
+                  {filtered.map((d) => (
+                    <div key={d.id} className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select draft ${d.title ?? d.id}`}
+                        className="mt-4 h-4 w-4 shrink-0 cursor-pointer accent-[hsl(var(--primary))]"
+                        checked={selectedIds.has(d.id)}
+                        onChange={(e) => {
+                          setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            if (e.target.checked) next.add(d.id);
+                            else next.delete(d.id);
+                            return next;
+                          });
+                        }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <DraftRow
+                          draft={d}
+                          onApprove={() => statusMutation.mutate({ id: d.id, status: "approved" })}
+                          onReject={() => statusMutation.mutate({ id: d.id, status: "rejected" })}
+                          onShip={() => statusMutation.mutate({ id: d.id, status: "shipped" })}
+                          onEdit={() => openEditor(d)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

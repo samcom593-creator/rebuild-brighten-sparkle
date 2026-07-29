@@ -59,6 +59,27 @@ type QueueRow = {
   text_body: string | null;
 };
 
+// 2026-07-28: outreach_queue_status_check allows ONLY
+//   pending | sent | error | skipped | snoozed
+// This function used to write "failed", "skipped_idempotent", "skipped_suppressed" and
+// "skipped_wrong_cohort" — none of which are legal. Every non-success write was rejected by
+// Postgres, and because the update result was never inspected the rejection was silently
+// swallowed: the row stayed `pending`, attempt_count never incremented, so the
+// `.lt("attempt_count", 3)` retry cap never engaged and rows retried forever.
+// Symptom: a drain reporting `failed: 5` while the queue was untouched and nothing sent.
+const QUEUE_STATUS_ERROR = "error";
+const QUEUE_STATUS_SKIPPED = "skipped";
+
+// Never swallow the write. If the queue cannot record an outcome, the drain is lying about
+// what it did — the same fake-success class as the 465 InsuraCloud rows.
+async function updateQueueRow(supabase: any, id: string, patch: Record<string, unknown>) {
+  const { error } = await supabase.from("outreach_queue").update(patch).eq("id", id);
+  if (error) {
+    console.error(`[outreach-sender] queue write FAILED id=${id}: ${error.message}`, patch);
+  }
+  return !error;
+}
+
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -148,7 +169,7 @@ async function sendOne(
       await supabase
         .from("outreach_queue")
         .update({
-          status: "skipped_idempotent",
+          status: QUEUE_STATUS_SKIPPED,
           last_error: "duplicate idempotency_key already sent",
           attempt_count: row.attempt_count + 1,
         })
@@ -163,7 +184,7 @@ async function sendOne(
     await supabase
       .from("outreach_queue")
       .update({
-        status: "skipped_suppressed",
+        status: QUEUE_STATUS_SKIPPED,
         last_error: "do_not_contact=true",
         attempt_count: row.attempt_count + 1,
       })
@@ -189,7 +210,7 @@ async function sendOne(
       await supabase
         .from("outreach_queue")
         .update({
-          status: "skipped_wrong_cohort",
+          status: QUEUE_STATUS_SKIPPED,
           last_error: `skipped_wrong_cohort: license_status=${licStr || "null"} but source_run=${row.source_run} requires NULL or unlicensed`,
           attempt_count: row.attempt_count + 1,
         })
@@ -203,7 +224,7 @@ async function sendOne(
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        status: QUEUE_STATUS_ERROR,
         last_error: err,
         attempt_count: row.attempt_count + 1,
         error_message: err,
@@ -223,7 +244,22 @@ async function sendOne(
   let resp: Response;
   let bodyText = "";
   // MP-232c: prefer Postmark, fall back to Resend for backward compat during phased migration.
-  const usePostmark = !!postmarkApiKey;
+  //
+  // 2026-07-28: Postmark is PENDING APPROVAL, and a pending Postmark account may only send
+  // to addresses on the From domain:
+  //   422 ErrorCode 412 "...all recipient addresses must share the same domain as the
+  //   'From' address... From is 'kingofsales.net' but you are sending to 'gmail.com'."
+  // Every applicant is on gmail/outlook/etc, so Postmark rejects the entire queue while
+  // Resend is demonstrably delivering (3 real applicant confirmations landed 2026-07-28
+  // 17:23 from notifications@apex-financial.org, Resend's verified domain).
+  //
+  // So: try Postmark, and on ANY non-2xx fall through to Resend rather than burning the row.
+  // 405 of the 671 queued rows already carry a notifications@apex-financial.org From and
+  // will deliver on the Resend leg immediately. The rest use info@kingofsales.net, which is
+  // not a verified Resend domain — those will still fail, honestly and visibly, until either
+  // Postmark approves the account or kingofsales.net is verified on Resend.
+  let usePostmark = !!postmarkApiKey;
+  let providerUsed = usePostmark ? "postmark" : "resend";
   try {
     if (usePostmark) {
       const pmPayload: Record<string, unknown> = {
@@ -276,12 +312,46 @@ async function sendOne(
       });
     }
     bodyText = await resp.text();
+
+    // Postmark rejected — fall through to Resend instead of burning the row.
+    if (usePostmark && !resp.ok && resendApiKey) {
+      const pmErr = `postmark ${resp.status}: ${bodyText.slice(0, 200)}`;
+      console.warn(`[outreach-sender] ${pmErr} — retrying via resend for row ${row.id}`);
+      const resendPayload: Record<string, unknown> = {
+        from,
+        to: [recipient.email],
+        reply_to: replyTo,
+        subject,
+        html,
+        headers: {
+          "List-Unsubscribe": listUnsub,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          "X-Auto-Response-Suppress": "All",
+          "Precedence": "bulk",
+        },
+      };
+      if (textBody) resendPayload.text = textBody;
+      resp = await fetch(RESEND_SEND_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+          ...(row.idempotency_key ? { "Idempotency-Key": row.idempotency_key } : {}),
+        },
+        body: JSON.stringify(resendPayload),
+      });
+      bodyText = await resp.text();
+      usePostmark = false;
+      providerUsed = "resend";
+      // Keep the Postmark reason attached so a later failure is not blamed on Resend alone.
+      if (!resp.ok) bodyText = `${bodyText} | first-leg ${pmErr}`;
+    }
   } catch (e: any) {
     const err = `network error: ${e?.message ?? e}`;
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        status: QUEUE_STATUS_ERROR,
         last_error: err,
         attempt_count: row.attempt_count + 1,
         error_message: err,
@@ -298,7 +368,7 @@ async function sendOne(
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        status: QUEUE_STATUS_ERROR,
         last_error: err,
         attempt_count: row.attempt_count + 1,
         error_message: err,
@@ -308,11 +378,11 @@ async function sendOne(
   }
 
   if (!resp.ok) {
-    const err = `resend ${resp.status}: ${bodyText.slice(0, 500)}`;
+    const err = `${providerUsed} ${resp.status}: ${bodyText.slice(0, 500)}`;
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        status: QUEUE_STATUS_ERROR,
         last_error: err,
         attempt_count: row.attempt_count + 1,
         error_message: err,
@@ -326,11 +396,11 @@ async function sendOne(
   try {
     parsed = JSON.parse(bodyText);
   } catch (_e) {
-    const err = `resend non-json 2xx: ${bodyText.slice(0, 300)}`;
+    const err = `${providerUsed} non-json 2xx: ${bodyText.slice(0, 300)}`;
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        status: QUEUE_STATUS_ERROR,
         last_error: err,
         attempt_count: row.attempt_count + 1,
         error_message: err,
@@ -342,11 +412,11 @@ async function sendOne(
   // Postmark returns MessageID; Resend returns id — normalize.
   const messageId = (parsed?.MessageID as string | undefined) ?? (parsed?.id as string | undefined);
   if (!messageId || typeof messageId !== "string" || messageId.length < 6) {
-    const err = `${usePostmark ? "postmark" : "resend"} 2xx without id: ${bodyText.slice(0, 300)}`;
+    const err = `${providerUsed} 2xx without id: ${bodyText.slice(0, 300)}`;
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        status: QUEUE_STATUS_ERROR,
         last_error: err,
         attempt_count: row.attempt_count + 1,
         error_message: err,
@@ -355,21 +425,22 @@ async function sendOne(
     return { outcome: "failed", error: err };
   }
 
-  // Real success.
-  await supabase
-    .from("outreach_queue")
-    .update({
-      status: "sent",
-      sent_at: new Date().toISOString(),
-      attempt_count: row.attempt_count + 1,
-      provider_message_id: messageId,
-      to_email: recipient.email,
-      from_email: from,
-      subject,
-      last_error: null,
-      error_message: null,
-    })
-    .eq("id", row.id);
+  // Real success. Routed through updateQueueRow so a rejected write is logged rather than
+  // swallowed — a send that the queue never records will simply be sent again next drain.
+  const wrote = await updateQueueRow(supabase, row.id, {
+    status: "sent",
+    sent_at: new Date().toISOString(),
+    attempt_count: row.attempt_count + 1,
+    provider_message_id: messageId,
+    to_email: recipient.email,
+    from_email: from,
+    subject,
+    last_error: null,
+    error_message: null,
+  });
+  if (!wrote) {
+    return { outcome: "failed", error: `sent ${messageId} but queue write failed — DUPLICATE RISK` };
+  }
 
   return { outcome: "sent", providerId: messageId };
 }

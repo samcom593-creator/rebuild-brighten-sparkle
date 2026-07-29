@@ -357,7 +357,18 @@ export function GlobalSidebar({
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
         // Sam 2026-06-16: Scripts removed for agent nav too
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
-        { icon: GraduationCap, label: "Licensing", href: "/dashboard/pre-licensing" },
+        // 2026-07-29: "Licensing" → /dashboard/pre-licensing removed from the AGENT branch.
+        // This item was only ever pushed in the plain-agent else-branch, but App.tsx:659
+        // gates that route `requireAdmin allowManagers` — so the single role that could see
+        // the link was the one role that could not open it. ProtectedRoute silently
+        // <Navigate>s back to /dashboard: no toast, no explanation. 471 agents had a nav
+        // item that quietly bounced them.
+        //
+        // NOT repointed at /dashboard/prelicensing (App.tsx:628) despite that route being
+        // ungated: PrelicensingManager is a management surface — its own header says
+        // "Managers see their recruits; admins see everyone" — and it UPDATEs applications.
+        // Sending every agent into a tool that writes other people's records would be worse
+        // than the dead link. Agents keep "Apex Course" above, which is theirs.
       );
     }
 

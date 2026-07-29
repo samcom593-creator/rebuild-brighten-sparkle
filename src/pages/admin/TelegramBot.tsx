@@ -361,7 +361,7 @@ export default function TelegramBot() {
                 <HealthLine
                   label="Telegram bot identity"
                   status={proof?.botUsername ? "ok" : "warn"}
-                  hint={proof?.botUsername ? `@${proof.botUsername} · ${proof.botDmUrl ?? "DM URL missing"}` : "BotFather token not proven in system_settings. Drop ~/.config/apex-creds/telegram-bot.token and run apex-tg-hq-activate.sh."}
+                  hint={proof?.botUsername ? `@${proof.botUsername} · ${proof.botDmUrl ?? "DM URL missing"}` : "BotFather token not proven in system_settings. Drop ~/.config/apex-creds/telegram-bot.token, then set system_settings telegram_bot_username + telegram_bot_dm_url."}
                 />
               </ol>
             </GlassCard>
@@ -944,7 +944,7 @@ function ActivationChecklist({
     {
       ok: Boolean(proof?.botUsername && proof?.botDmUrl),
       label: "Bot identity proven",
-      fix: "Drop the BotFather token at ~/.config/apex-creds/telegram-bot.token then run apex-tg-hq-activate.sh — script writes telegram_bot_username + telegram_bot_dm_url to system_settings.",
+      fix: "Drop the BotFather token at ~/.config/apex-creds/telegram-bot.token, then write telegram_bot_username + telegram_bot_dm_url into system_settings (already set to @ApexOnboardbot / https://t.me/ApexOnboardbot).",
     },
     {
       ok: (proof?.registeredChats ?? 0) > 0,
@@ -954,12 +954,12 @@ function ActivationChecklist({
     {
       ok: boundGroups.length >= 5,
       label: "5 Pre-Agent HQ channels bound",
-      fix: "Create the 5 Telegram super-groups (START HERE / LICENSING CENTER / DAILY MOVEMENT / SEMINAR REMINDERS / ASK APEX AI), add the bot as admin, post a message in each, then run `apex-tg-hq-activate.sh bind '<title>' <chat_id>` for each.",
+      fix: "Real path (no external script): create each Telegram group, add @ApexOnboardbot as admin — the webhook auto-registers the chat and the bot replies with a /register menu. Then in each group send `/register <type>` to activate. NOTE: the shipped webhook only accepts pipeline · onboarding · manager_alerts · wins — it does NOT accept the licensing_reference/daily_movement/seminar_reminders/ask_apex_ai types this tab expects. Either add those types to supabase/functions/telegram-webhook (valid[] + register reply) or drop this 5-channel model for the current two-layer design (1:1 DMs + one pipeline group). Decision pending — see NEXT-CHAPTER-HANDOFF.",
     },
     {
       ok: activeGroups.length >= 5,
       label: "Bot confirmed admin in all 5 channels",
-      fix: "Activation script flips telegram_groups.is_active to true once it can validate getChatMember for the bot in each channel. If a channel stays sentinel, bot wasn't made admin.",
+      fix: "Sending `/register <type>` inside a channel sets telegram_groups.is_active=true. If a channel stays inactive, the bot wasn't made admin there or /register was never sent.",
     },
     {
       ok: Boolean(proof?.lastSentAt),

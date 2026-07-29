@@ -59,6 +59,27 @@ type QueueRow = {
   text_body: string | null;
 };
 
+// 2026-07-28: outreach_queue_status_check allows ONLY
+//   pending | sent | error | skipped | snoozed
+// This function used to write "failed", "skipped_idempotent", "skipped_suppressed" and
+// "skipped_wrong_cohort" — none of which are legal. Every non-success write was rejected by
+// Postgres, and because the update result was never inspected the rejection was silently
+// swallowed: the row stayed `pending`, attempt_count never incremented, so the
+// `.lt("attempt_count", 3)` retry cap never engaged and rows retried forever.
+// Symptom: a drain reporting `failed: 5` while the queue was untouched and nothing sent.
+const QUEUE_STATUS_ERROR = "error";
+const QUEUE_STATUS_SKIPPED = "skipped";
+
+// Never swallow the write. If the queue cannot record an outcome, the drain is lying about
+// what it did — the same fake-success class as the 465 InsuraCloud rows.
+async function updateQueueRow(supabase: any, id: string, patch: Record<string, unknown>) {
+  const { error } = await supabase.from("outreach_queue").update(patch).eq("id", id);
+  if (error) {
+    console.error(`[outreach-sender] queue write FAILED id=${id}: ${error.message}`, patch);
+  }
+  return !error;
+}
+
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -148,7 +169,7 @@ async function sendOne(
       await supabase
         .from("outreach_queue")
         .update({
-          status: "skipped_idempotent",
+          status: QUEUE_STATUS_SKIPPED,
           last_error: "duplicate idempotency_key already sent",
           attempt_count: row.attempt_count + 1,
         })
@@ -163,7 +184,7 @@ async function sendOne(
     await supabase
       .from("outreach_queue")
       .update({
-        status: "skipped_suppressed",
+        status: QUEUE_STATUS_SKIPPED,
         last_error: "do_not_contact=true",
         attempt_count: row.attempt_count + 1,
       })
@@ -189,7 +210,7 @@ async function sendOne(
       await supabase
         .from("outreach_queue")
         .update({
-          status: "skipped_wrong_cohort",
+          status: QUEUE_STATUS_SKIPPED,
           last_error: `skipped_wrong_cohort: license_status=${licStr || "null"} but source_run=${row.source_run} requires NULL or unlicensed`,
           attempt_count: row.attempt_count + 1,
         })
@@ -203,7 +224,7 @@ async function sendOne(
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        status: QUEUE_STATUS_ERROR,
         last_error: err,
         attempt_count: row.attempt_count + 1,
         error_message: err,
@@ -281,7 +302,7 @@ async function sendOne(
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        status: QUEUE_STATUS_ERROR,
         last_error: err,
         attempt_count: row.attempt_count + 1,
         error_message: err,
@@ -298,7 +319,7 @@ async function sendOne(
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        status: QUEUE_STATUS_ERROR,
         last_error: err,
         attempt_count: row.attempt_count + 1,
         error_message: err,
@@ -312,7 +333,7 @@ async function sendOne(
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        status: QUEUE_STATUS_ERROR,
         last_error: err,
         attempt_count: row.attempt_count + 1,
         error_message: err,
@@ -330,7 +351,7 @@ async function sendOne(
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        status: QUEUE_STATUS_ERROR,
         last_error: err,
         attempt_count: row.attempt_count + 1,
         error_message: err,
@@ -346,7 +367,7 @@ async function sendOne(
     await supabase
       .from("outreach_queue")
       .update({
-        status: "failed",
+        status: QUEUE_STATUS_ERROR,
         last_error: err,
         attempt_count: row.attempt_count + 1,
         error_message: err,
@@ -355,21 +376,22 @@ async function sendOne(
     return { outcome: "failed", error: err };
   }
 
-  // Real success.
-  await supabase
-    .from("outreach_queue")
-    .update({
-      status: "sent",
-      sent_at: new Date().toISOString(),
-      attempt_count: row.attempt_count + 1,
-      provider_message_id: messageId,
-      to_email: recipient.email,
-      from_email: from,
-      subject,
-      last_error: null,
-      error_message: null,
-    })
-    .eq("id", row.id);
+  // Real success. Routed through updateQueueRow so a rejected write is logged rather than
+  // swallowed — a send that the queue never records will simply be sent again next drain.
+  const wrote = await updateQueueRow(supabase, row.id, {
+    status: "sent",
+    sent_at: new Date().toISOString(),
+    attempt_count: row.attempt_count + 1,
+    provider_message_id: messageId,
+    to_email: recipient.email,
+    from_email: from,
+    subject,
+    last_error: null,
+    error_message: null,
+  });
+  if (!wrote) {
+    return { outcome: "failed", error: `sent ${messageId} but queue write failed — DUPLICATE RISK` };
+  }
 
   return { outcome: "sent", providerId: messageId };
 }

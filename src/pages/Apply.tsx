@@ -303,13 +303,33 @@ export default function Apply() {
         user_agent: navigator.userAgent,
       };
 
-      // Upsert partial application
-      const { error } = await supabase
-        .from("partial_applications")
-        .upsert(partialData, { 
-          onConflict: "session_id",
-          ignoreDuplicates: false 
-        });
+      // 2026-07-29: this used to upsert directly into partial_applications with
+      // onConflict:"session_id". It had been failing silently for months — the table held
+      // 4 rows, newest 2026-05-19, while applications kept arriving daily. Every abandoned
+      // application in that window, people who typed an email and phone then dropped off,
+      // was lost.
+      //
+      // Reproduced against the live API with the anon key:
+      //   plain INSERT                          -> 201
+      //   upsert (resolution=merge-duplicates)  -> 401, 42501 RLS violation
+      // anon may INSERT and UPDATE, but has NO SELECT policy, and ON CONFLICT DO UPDATE has
+      // to read the conflicting row. Granting anon SELECT was not an option: this table
+      // holds the email and phone of every partial lead.
+      //
+      // Now goes through a SECURITY DEFINER RPC, which needs no SELECT grant and returns
+      // nothing to the caller.
+      const { error } = await (supabase.rpc as any)("save_partial_application", {
+        p_session_id: sessionId,
+        p_email: partialData.email,
+        p_phone: partialData.phone,
+        p_first_name: partialData.first_name,
+        p_last_name: partialData.last_name,
+        p_city: partialData.city,
+        p_state: partialData.state,
+        p_step_completed: partialData.step_completed,
+        p_form_data: partialData.form_data,
+        p_user_agent: partialData.user_agent,
+      });
 
       if (error) {
         console.error("Error saving partial application:", error);

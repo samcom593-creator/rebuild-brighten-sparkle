@@ -39,6 +39,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useConfirm } from "@/hooks/useConfirm";
 import { formatBusinessTimeWithDay, formatRelativeFromNow } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 import { getNextBestAction, type NBAInput } from "@/lib/nextBestAction";
@@ -170,6 +171,15 @@ export default function InterviewCommandCenter() {
   const [exitingRows, setExitingRows] = useState<Set<string>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
+  // wave-p1s: explicit keyboard-focused row so 1-7 hotkeys can't silently
+  // stamp the wrong (top) row when Sam has scrolled or clicked away.
+  // Null means no focused row — hotkeys are inert until the user presses
+  // ArrowDown/ArrowUp/j/k to opt in.
+  const [focusedRowKey, setFocusedRowKey] = useState<string | null>(null);
+  // Bound to `confirmDialog` (not `confirm`) so the check:blocking-modal
+  // ratchet — which bans bare `confirm(` to catch native window.confirm —
+  // isn't false-flagged by our Radix AlertDialog path.
+  const confirmDialog = useConfirm();
   const [addOpen, setAddOpen] = useState(false);
   const [followUpFor, setFollowUpFor] = useState<string | null>(null);
 
@@ -528,12 +538,57 @@ export default function InterviewCommandCenter() {
     }
   };
 
+  // wave-p1s: reset the keyboard focus when the visible-row set changes
+  // (filter/tab/search) so we never carry a stale key that would land on
+  // a different candidate after the list shifts.
+  useEffect(() => {
+    if (!focusedRowKey) return;
+    const stillVisible = visibleRows.some((r) => `${r.source}:${r.id}` === focusedRowKey);
+    if (!stillVisible) setFocusedRowKey(null);
+  }, [visibleRows, focusedRowKey]);
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (bulkMode) return;
       if (!visibleRows.length) return;
       const tag = (e.target as HTMLElement | null)?.tagName ?? "";
       if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement | null)?.isContentEditable) return;
+
+      // wave-p1s: arrow / j / k navigate the keyboard-focused row. Escape
+      // clears it. Hotkeys 1-7 only apply to the explicitly-focused row —
+      // no more silent stamp on visibleRows[0].
+      const currentIdx = focusedRowKey
+        ? visibleRows.findIndex((r) => `${r.source}:${r.id}` === focusedRowKey)
+        : -1;
+
+      if (e.key === "Escape" && focusedRowKey) {
+        e.preventDefault();
+        setFocusedRowKey(null);
+        return;
+      }
+      if (e.key === "ArrowDown" || e.key === "j") {
+        e.preventDefault();
+        const next = currentIdx < 0 ? 0 : Math.min(currentIdx + 1, visibleRows.length - 1);
+        const nextRow = visibleRows[next];
+        if (nextRow) {
+          const nk = `${nextRow.source}:${nextRow.id}`;
+          setFocusedRowKey(nk);
+          document.querySelector(`[data-cc-row-key="${nk}"]`)?.scrollIntoView({ block: "nearest" });
+        }
+        return;
+      }
+      if (e.key === "ArrowUp" || e.key === "k") {
+        e.preventDefault();
+        const next = currentIdx < 0 ? 0 : Math.max(currentIdx - 1, 0);
+        const nextRow = visibleRows[next];
+        if (nextRow) {
+          const nk = `${nextRow.source}:${nextRow.id}`;
+          setFocusedRowKey(nk);
+          document.querySelector(`[data-cc-row-key="${nk}"]`)?.scrollIntoView({ block: "nearest" });
+        }
+        return;
+      }
+
       const map: Record<string, DispositionField | undefined> = {
         "1": "contacted",
         "2": "called",
@@ -545,13 +600,43 @@ export default function InterviewCommandCenter() {
       };
       const field = map[e.key];
       if (!field) return;
+      if (currentIdx < 0) {
+        // No focused row — refuse to guess. Prompt with a toast so Sam
+        // knows why the digit did nothing.
+        e.preventDefault();
+        toast.message("No focused row", {
+          description: "Press ↓ or j to pick a row before using 1-7 hotkeys.",
+          duration: 2500,
+        });
+        return;
+      }
       e.preventDefault();
-      const target = visibleRows[0];
-      if (target) saveDisposition(target, field);
+      const target = visibleRows[currentIdx];
+      if (!target) return;
+
+      // wave-p1s: terminal fields (hired/contracted/passed/no_show) require
+      // an explicit confirmation before a single keystroke rewrites a
+      // candidate's outcome — matches the file_apex_dispatcher no-fake-
+      // success discipline for irreversible-ish state.
+      const isTerminal = field === "hired" || field === "contracted" || field === "passed" || field === "no_show";
+      if (isTerminal) {
+        void (async () => {
+          const ok = await confirmDialog({
+            title: `Mark ${target.candidate_name} as ${field.replace("_", " ")}?`,
+            description: "Terminal disposition — this removes the row from active queues and fires downstream effects. Press cancel to abort.",
+            confirmText: `Yes, mark ${field.replace("_", " ")}`,
+            cancelText: "Cancel",
+            tone: "danger",
+          });
+          if (ok) await saveDisposition(target, field);
+        })();
+        return;
+      }
+      void saveDisposition(target, field);
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [bulkMode, visibleRows]);
+  }, [bulkMode, visibleRows, focusedRowKey, confirmDialog]);
 
   return (
     <div className="page-enter px-3 pb-24 sm:px-6">
@@ -690,17 +775,21 @@ export default function InterviewCommandCenter() {
             const rk = `${row.source}:${row.id}`;
             const isExiting = exitingRows.has(rk);
             const isBulkSelected = bulkSelected.has(rk);
+            const isKeyboardFocused = focusedRowKey === rk;
             return (
               <div
                 key={rk}
                 data-entity-type={row.source}
                 data-entity-id={row.id}
                 data-cc-status={isRowDone(row) ? "done" : "active"}
+                data-cc-row-key={rk}
                 aria-busy={isExiting}
+                onClick={() => setFocusedRowKey((cur) => (cur === rk ? cur : rk))}
                 className={cn(
-                  "transition-all duration-300 ease-out",
+                  "transition-all duration-300 ease-out rounded-lg",
                   isExiting && "opacity-0 scale-95 max-h-0 overflow-hidden",
                   !isExiting && "opacity-100 max-h-[900px]",
+                  isKeyboardFocused && "ring-2 ring-amber-400/80 ring-offset-2 ring-offset-background",
                 )}
               >
                 <InterviewCard

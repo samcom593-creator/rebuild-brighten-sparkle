@@ -29,6 +29,7 @@ import {
 // per route condition.
 const AgentCommandDashboard = lazy(() => import("@/pages/AgentCommandDashboard"));
 const ManagerCommandView = lazy(() => import("@/pages/ManagerCommandView"));
+const VaOpsCommandCenter = lazy(() => import("@/pages/VaOpsCommandCenter"));
 const UnclaimedLeadsCommandCard = lazy(() =>
   import("@/components/dashboard/UnclaimedLeadsCommandCard").then((m) => ({ default: m.UnclaimedLeadsCommandCard })),
 );
@@ -922,9 +923,12 @@ function ExecutiveDashboard({
 }
 
 export default function Dashboard() {
-  const { user, isLoading, isAdmin } = useAuth();
+  const { user, isLoading, isAdmin, isVaManager, isVa } = useAuth();
   const { effectiveRole, actualRole, isPreviewing, previewRole } = useRolePreview();
   const shouldRenderDefaultAdminCommand = isAdmin && !previewRole && effectiveRole === "admin";
+  // VA ops staff get their own /dashboard home (VaOpsCommandCenter) — the
+  // agent/manager snapshot below scopes to an `agents` row they don't have.
+  const isVaOps = !isAdmin && (isVaManager || isVa);
 
   const currentAgent = useCurrentAgent(user?.id);
   const downline = useMyDownline();
@@ -943,7 +947,7 @@ export default function Dashboard() {
   const snapshotQuery = useQuery({
     queryKey: ["launch-dashboard-snapshot", user?.id, effectiveRole, scopedAgentIds ? [...scopedAgentIds].sort() : "agency"],
     queryFn: () => loadDashboardSnapshot(effectiveRole, user!.id, scopedAgentIds),
-    enabled: Boolean(user?.id) && !shouldRenderDefaultAdminCommand && !currentAgent.isLoading && !downline.isLoading,
+    enabled: Boolean(user?.id) && !shouldRenderDefaultAdminCommand && !isVaOps && !currentAgent.isLoading && !downline.isLoading,
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });
@@ -967,6 +971,14 @@ export default function Dashboard() {
   }
 
   if (!user) return null;
+
+  if (isVaOps) {
+    return (
+      <Suspense fallback={<PageLoadingSkeleton />}>
+        <VaOpsCommandCenter />
+      </Suspense>
+    );
+  }
 
   // Role preview routing contract:
   // - no preview + real admin: AgentCommandDashboard

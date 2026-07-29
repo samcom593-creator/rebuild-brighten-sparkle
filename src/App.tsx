@@ -493,15 +493,16 @@ const App = () => (
                     <Route path="/admin/missing-al-link" element={<ProtectedRoute requireAdmin><AdminMissingAlLink /></ProtectedRoute>} />
                     {/* 2026-07-25: month-agnostic replacement for the deleted June Hires Punch List.
                         8-rung onboarding sequence per active agent; rung 2 deep-links to /admin/missing-al-link. */}
-                    <Route path="/dashboard/onboarding-ladder" element={<ProtectedRoute requireAdmin allowManagers><OnboardingLadder /></ProtectedRoute>} />
+                    <Route path="/dashboard/onboarding-ladder" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><OnboardingLadder /></ProtectedRoute>} />
                     {/* MP-232 regression restore: licensed applicants need the immediate-call inbox. */}
-                    <Route path="/admin/licensed-inbox" element={<ProtectedRoute requireAdmin><LicensedInbox /></ProtectedRoute>} />
+                    <Route path="/admin/licensed-inbox" element={<ProtectedRoute requireAdmin allowRoles={["va_manager", "va"]}><LicensedInbox /></ProtectedRoute>} />
                     {/* 2026-07-05 Sam: unlicensed → licensed recovery queue for assistants. Sorted by cohort proximity to licensed. Tap-to-call. */}
-                    <Route path="/admin/recovery-queue" element={<ProtectedRoute requireAdmin allowManagers><RecoveryQueue /></ProtectedRoute>} />
+                    <Route path="/admin/recovery-queue" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><RecoveryQueue /></ProtectedRoute>} />
                     {/* 2026-07-05 Sam: full unlicensed roster w/ VA assignment + ghosted-30d+ filter. */}
-                    <Route path="/admin/unlicensed-all" element={<ProtectedRoute requireAdmin allowManagers><UnlicensedAll /></ProtectedRoute>} />
+                    <Route path="/admin/unlicensed-all" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><UnlicensedAll /></ProtectedRoute>} />
                     {/* 2026-07-07 Sam: raw Xcel DataExport CSV upload → xcel-csv-ingest edge fn (MP-250). */}
-                    <Route path="/admin/xcel-import" element={<ProtectedRoute requireAdmin allowManagers><XcelImport /></ProtectedRoute>} />
+                    {/* XCEL import writes bulk data — va_manager yes, sub-VAs no. */}
+                    <Route path="/admin/xcel-import" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager"]}><XcelImport /></ProtectedRoute>} />
                     {/* 2026-07-01 Sam: producer weekly trend + 3-week drop alert — Daniel-didn't-know use case */}
                     <Route path="/admin/producer-trends" element={<ProtectedRoute requireAdmin><AdminProducerTrends /></ProtectedRoute>} />
                     <Route path="/dashboard/producer-trends" element={<ProtectedRoute requireAdmin><AdminProducerTrends /></ProtectedRoute>} />

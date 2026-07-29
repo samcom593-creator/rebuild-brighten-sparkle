@@ -139,7 +139,10 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       <ScrollProgress />
       <main
         className={cn(
-          "apex-main-canvas min-h-screen pt-16 lg:pt-0"
+          // Mobile header = p-4 (16+16) + h-10 icon row (40) = 72px base (4.5rem),
+          // plus env(safe-area-inset-top) on notched iPhones. Reserving the real
+          // height keeps the first page heading from sliding under the fixed header.
+          "apex-main-canvas min-h-screen pt-[calc(4.5rem+env(safe-area-inset-top,0px))] lg:pt-0"
         )}
         style={{
           marginLeft: isDesktop ? `${marginLeft}px` : 0,

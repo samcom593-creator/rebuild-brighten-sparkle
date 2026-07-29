@@ -88,6 +88,12 @@ type InboundRow = {
 
 const ACTIVE_STATUSES = ["pending", "awaiting_approval", "approved"];
 
+// Sits above the live active-draft count (559 awaiting_approval + 1 approved as of
+// 2026-07-28) so a normal day is never truncated. If the queue ever grows past this the
+// page says so out loud instead of quietly showing a subset — silent truncation on a
+// review queue reads as "that's all of them", which is how 387 drafts stayed invisible.
+const DRAFT_FETCH_LIMIT = 1000;
+
 function platformIcon(platform?: string | null) {
   const p = (platform ?? "").toLowerCase();
   if (p.includes("youtube")) return Youtube;
@@ -249,11 +255,22 @@ export default function ContentCommand() {
     queryKey: ["content_command_drafts"],
     refetchInterval: 30_000,
     queryFn: async () => {
+      // 2026-07-28: this query used to be `.order(draft_date ASC).limit(200)` against 587
+      // rows, which returned the OLDEST 200 — draft_date 2025-12-10 through 2026-06-04 —
+      // and hid 387 drafts, ALL of them awaiting_approval, including everything written
+      // from 2026-06-05 to today. The page whose entire job is "what should Sam post today"
+      // was showing him last December and hiding today.
+      //
+      // Now: newest first, and filtered to the active statuses server-side so the 23
+      // archived rows cannot eat slots in the window. Limit sits above the current active
+      // count (~560) so nothing is silently cut; if the backlog ever exceeds it, the UI
+      // reports the overflow rather than quietly truncating (see truncated banner below).
       const { data, error } = await (supabase as any)
         .from("social_bot_drafts").select("id, draft_date, platform, slot, pillar, title, hook, body, cta, caption, hashtags, file_path, status, created_at")
-        .order("draft_date", { ascending: true, nullsFirst: false })
+        .in("status", ACTIVE_STATUSES)
+        .order("draft_date", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(DRAFT_FETCH_LIMIT);
       if (error) throw error;
       return (data ?? []) as Draft[];
     },
@@ -359,15 +376,79 @@ export default function ContentCommand() {
     [drafts],
   );
 
-  const totals = useMemo(() => {
-    const rows = drafts ?? [];
-    return {
-      active: rows.filter((d) => ACTIVE_STATUSES.includes(d.status)).length,
-      awaiting: rows.filter((d) => d.status === "awaiting_approval").length,
-      approved: rows.filter((d) => d.status === "approved").length,
-      shipped: rows.filter((d) => d.status === "shipped").length,
-    };
-  }, [drafts]);
+  // The draft list is now filtered to ACTIVE_STATUSES server-side, so `shipped` rows are
+  // never in `drafts` — counting them from that array would peg the Shipped tile at 0
+  // forever. These counts come straight from the table with head:true (no rows fetched),
+  // so every tile stays true regardless of what the list window holds.
+  const { data: statusCounts } = useQuery({
+    queryKey: ["content_command_status_counts"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const count = async (status: string) => {
+        const { count: c, error } = await (supabase as any)
+          .from("social_bot_drafts")
+          .select("id", { count: "exact", head: true })
+          .eq("status", status);
+        if (error) throw error;
+        return c ?? 0;
+      };
+      const [awaiting, approved, shipped, pending] = await Promise.all([
+        count("awaiting_approval"),
+        count("approved"),
+        count("shipped"),
+        count("pending"),
+      ]);
+      return { awaiting, approved, shipped, pending };
+    },
+  });
+
+  const totals = useMemo(() => ({
+    active: (statusCounts?.awaiting ?? 0) + (statusCounts?.approved ?? 0) + (statusCounts?.pending ?? 0),
+    awaiting: statusCounts?.awaiting ?? 0,
+    approved: statusCounts?.approved ?? 0,
+    shipped: statusCounts?.shipped ?? 0,
+  }), [statusCounts]);
+
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  // Chunked so a 561-row selection cannot blow the PostgREST URL length or time out as one
+  // statement. Reports the real number written, and does NOT clear the selection on failure
+  // so a partial run can be retried against exactly what is left.
+  const runBulk = async (status: "approved" | "rejected") => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    const now = new Date().toISOString();
+    const patch: Record<string, unknown> = { status, updated_at: now };
+    if (status === "approved") patch.approved_at = now;
+    let done = 0;
+    try {
+      for (let i = 0; i < ids.length; i += 100) {
+        const slice = ids.slice(i, i + 100);
+        const { error } = await (supabase as any)
+          .from("social_bot_drafts")
+          .update(patch)
+          .in("id", slice);
+        if (error) throw error;
+        done += slice.length;
+      }
+      toast.success(`${done.toLocaleString()} draft${done === 1 ? "" : "s"} ${status}`);
+      setSelectedIds(new Set());
+      qc.invalidateQueries({ queryKey: ["content_command_drafts"] });
+      qc.invalidateQueries({ queryKey: ["content_command_status_counts"] });
+    } catch (err) {
+      // Say how far it got. "Failed" alone would leave Sam unable to tell whether 0 or 400
+      // drafts moved, and he would have to go count them by hand.
+      toast.error(
+        `Stopped after ${done.toLocaleString()} of ${ids.length.toLocaleString()}: ${(err as Error).message.slice(0, 90)}`,
+      );
+      qc.invalidateQueries({ queryKey: ["content_command_drafts"] });
+      qc.invalidateQueries({ queryKey: ["content_command_status_counts"] });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const openEditor = (d: Draft) => {
     setEditing(d);
@@ -400,6 +481,19 @@ export default function ContentCommand() {
       <PoolOverview drafts={drafts ?? []} />
 
       <CultureFeed onApproveDraft={(id) => statusMutation.mutate({ id, status: "approved" })} />
+
+      {/* Silent truncation on a review queue reads as "that is all of them". It is exactly
+          how 387 drafts stayed invisible behind an ascending .limit(200). If the queue ever
+          fills the window, say so. */}
+      {(drafts?.length ?? 0) >= DRAFT_FETCH_LIMIT && (
+        <div className="rounded-lg border border-amber-500/35 bg-amber-500/5 p-3">
+          <p className="text-sm font-semibold">Showing the newest {DRAFT_FETCH_LIMIT.toLocaleString()} drafts</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            The queue has reached the fetch window, so older drafts are not on this page.
+            This list is a subset, not the whole backlog.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric label="Active drafts" value={totals.active} tone="text-cyan-300" />
@@ -465,22 +559,95 @@ export default function ContentCommand() {
                 </div>
               </div>
             </CardHeader>
+            {/* Bulk bar. 561 drafts sit awaiting approval and one-at-a-time will never
+                clear that; it is why the backlog reached a year deep. Acts ONLY on what is
+                selected from the current filter — there is no "approve everything" button,
+                because approving content Sam has not looked at is not a feature.
+                Safe to bulk: the only trigger on social_bot_drafts
+                (trg_cw_smb_drafts_auto_ingest) returns early unless status='shipped', and
+                even then it just records an already-published URL into cw_posts. Approving
+                posts nothing anywhere. */}
+            {selectedIds.size > 0 && (
+              <div className="mx-6 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2.5">
+                <span className="text-xs font-semibold tabular-nums">
+                  {selectedIds.size} selected
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkBusy}
+                  onClick={() => runBulk("approved")}
+                >
+                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Approve selected
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkBusy}
+                  onClick={() => runBulk("rejected")}
+                >
+                  <XCircle className="mr-1.5 h-3.5 w-3.5" /> Reject selected
+                </Button>
+                <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => setSelectedIds(new Set())}>
+                  Clear
+                </Button>
+                <span className="text-[11px] text-muted-foreground">
+                  Nothing is posted — this only sets the review state.
+                </span>
+              </div>
+            )}
+
             <CardContent className="space-y-2">
               {isLoading ? <Skeleton className="h-96 w-full" /> : filtered.length === 0 ? (
                 <HonestEmpty
                   title="No drafts match this filter"
                   detail="Source checked: public.social_bot_drafts. Change filters or run the Social Media Bot draft generator."
                 />
-              ) : filtered.map((d) => (
-                <DraftRow
-                  key={d.id}
-                  draft={d}
-                  onApprove={() => statusMutation.mutate({ id: d.id, status: "approved" })}
-                  onReject={() => statusMutation.mutate({ id: d.id, status: "rejected" })}
-                  onShip={() => statusMutation.mutate({ id: d.id, status: "shipped" })}
-                  onEdit={() => openEditor(d)}
-                />
-              ))}
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 border-b border-border pb-2">
+                    <input
+                      type="checkbox"
+                      id="cc-select-all"
+                      className="h-4 w-4 cursor-pointer accent-[hsl(var(--primary))]"
+                      checked={filtered.length > 0 && filtered.every((d) => selectedIds.has(d.id))}
+                      onChange={(e) => {
+                        setSelectedIds(e.target.checked ? new Set(filtered.map((d) => d.id)) : new Set());
+                      }}
+                    />
+                    <label htmlFor="cc-select-all" className="cursor-pointer text-xs text-muted-foreground">
+                      Select all {filtered.length.toLocaleString()} in this filter
+                    </label>
+                  </div>
+                  {filtered.map((d) => (
+                    <div key={d.id} className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select draft ${d.title ?? d.id}`}
+                        className="mt-4 h-4 w-4 shrink-0 cursor-pointer accent-[hsl(var(--primary))]"
+                        checked={selectedIds.has(d.id)}
+                        onChange={(e) => {
+                          setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            if (e.target.checked) next.add(d.id);
+                            else next.delete(d.id);
+                            return next;
+                          });
+                        }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <DraftRow
+                          draft={d}
+                          onApprove={() => statusMutation.mutate({ id: d.id, status: "approved" })}
+                          onReject={() => statusMutation.mutate({ id: d.id, status: "rejected" })}
+                          onShip={() => statusMutation.mutate({ id: d.id, status: "shipped" })}
+                          onEdit={() => openEditor(d)}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

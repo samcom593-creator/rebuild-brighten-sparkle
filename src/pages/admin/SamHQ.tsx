@@ -319,7 +319,10 @@ function ShippedSection() {
   const { data: hires } = useQuery({
     queryKey: ["sam_hq_recent_hires"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Cast: v_recent_hires is a view and is not in the generated Supabase types, so the
+      // typed client rejects both the table name and the ordered select. Same pattern the
+      // rest of this file already uses for untyped views.
+      const { data, error } = await (supabase as any)
         // 2026-07-29: this selected full_name, hired_at and created_at — NONE of which
         // exist on v_recent_hires. PostgREST 400s on an unknown column, the error was
         // thrown, and the panel rendered "No hires loaded yet" forever while the view

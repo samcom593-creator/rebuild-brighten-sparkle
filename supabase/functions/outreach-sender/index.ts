@@ -244,7 +244,22 @@ async function sendOne(
   let resp: Response;
   let bodyText = "";
   // MP-232c: prefer Postmark, fall back to Resend for backward compat during phased migration.
-  const usePostmark = !!postmarkApiKey;
+  //
+  // 2026-07-28: Postmark is PENDING APPROVAL, and a pending Postmark account may only send
+  // to addresses on the From domain:
+  //   422 ErrorCode 412 "...all recipient addresses must share the same domain as the
+  //   'From' address... From is 'kingofsales.net' but you are sending to 'gmail.com'."
+  // Every applicant is on gmail/outlook/etc, so Postmark rejects the entire queue while
+  // Resend is demonstrably delivering (3 real applicant confirmations landed 2026-07-28
+  // 17:23 from notifications@apex-financial.org, Resend's verified domain).
+  //
+  // So: try Postmark, and on ANY non-2xx fall through to Resend rather than burning the row.
+  // 405 of the 671 queued rows already carry a notifications@apex-financial.org From and
+  // will deliver on the Resend leg immediately. The rest use info@kingofsales.net, which is
+  // not a verified Resend domain — those will still fail, honestly and visibly, until either
+  // Postmark approves the account or kingofsales.net is verified on Resend.
+  let usePostmark = !!postmarkApiKey;
+  let providerUsed = usePostmark ? "postmark" : "resend";
   try {
     if (usePostmark) {
       const pmPayload: Record<string, unknown> = {
@@ -297,6 +312,40 @@ async function sendOne(
       });
     }
     bodyText = await resp.text();
+
+    // Postmark rejected — fall through to Resend instead of burning the row.
+    if (usePostmark && !resp.ok && resendApiKey) {
+      const pmErr = `postmark ${resp.status}: ${bodyText.slice(0, 200)}`;
+      console.warn(`[outreach-sender] ${pmErr} — retrying via resend for row ${row.id}`);
+      const resendPayload: Record<string, unknown> = {
+        from,
+        to: [recipient.email],
+        reply_to: replyTo,
+        subject,
+        html,
+        headers: {
+          "List-Unsubscribe": listUnsub,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          "X-Auto-Response-Suppress": "All",
+          "Precedence": "bulk",
+        },
+      };
+      if (textBody) resendPayload.text = textBody;
+      resp = await fetch(RESEND_SEND_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+          ...(row.idempotency_key ? { "Idempotency-Key": row.idempotency_key } : {}),
+        },
+        body: JSON.stringify(resendPayload),
+      });
+      bodyText = await resp.text();
+      usePostmark = false;
+      providerUsed = "resend";
+      // Keep the Postmark reason attached so a later failure is not blamed on Resend alone.
+      if (!resp.ok) bodyText = `${bodyText} | first-leg ${pmErr}`;
+    }
   } catch (e: any) {
     const err = `network error: ${e?.message ?? e}`;
     await supabase
@@ -329,7 +378,7 @@ async function sendOne(
   }
 
   if (!resp.ok) {
-    const err = `resend ${resp.status}: ${bodyText.slice(0, 500)}`;
+    const err = `${providerUsed} ${resp.status}: ${bodyText.slice(0, 500)}`;
     await supabase
       .from("outreach_queue")
       .update({
@@ -347,7 +396,7 @@ async function sendOne(
   try {
     parsed = JSON.parse(bodyText);
   } catch (_e) {
-    const err = `resend non-json 2xx: ${bodyText.slice(0, 300)}`;
+    const err = `${providerUsed} non-json 2xx: ${bodyText.slice(0, 300)}`;
     await supabase
       .from("outreach_queue")
       .update({
@@ -363,7 +412,7 @@ async function sendOne(
   // Postmark returns MessageID; Resend returns id — normalize.
   const messageId = (parsed?.MessageID as string | undefined) ?? (parsed?.id as string | undefined);
   if (!messageId || typeof messageId !== "string" || messageId.length < 6) {
-    const err = `${usePostmark ? "postmark" : "resend"} 2xx without id: ${bodyText.slice(0, 300)}`;
+    const err = `${providerUsed} 2xx without id: ${bodyText.slice(0, 300)}`;
     await supabase
       .from("outreach_queue")
       .update({

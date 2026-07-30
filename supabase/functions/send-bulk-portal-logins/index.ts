@@ -157,7 +157,11 @@ const handler = async (req: Request): Promise<Response> => {
           .filter(e => e !== profile.email) as string[];
 
         // Send email with magic links
-        await resend.emails.send({
+        // 2026-07-30: same defect as send-agent-portal-login — the { data, error } tuple
+        // was discarded, and Resend v2 does not throw on API errors, so results.sent++ ran
+        // for every attempt regardless of outcome. A bulk run could report "42 sent" having
+        // delivered zero.
+        const { data: sendData, error: sendError } = await resend.emails.send({
           from: "APEX Financial <notifications@apex-financial.org>",
           to: [profile.email],
           cc: ccList.length > 0 ? ccList : undefined,
@@ -266,6 +270,21 @@ const handler = async (req: Request): Promise<Response> => {
             </html>
           `,
         });
+
+        if (sendError || !sendData?.id) {
+          const msg = sendError
+            ? (typeof sendError === "string" ? sendError : JSON.stringify(sendError))
+            : "resend returned no message id";
+          console.error(`✗ Resend rejected ${profile.email}: ${msg}`);
+          results.failed++;
+          results.details.push({
+            name: profile.full_name || "Unknown",
+            email: profile.email,
+            status: "failed",
+            error: msg.slice(0, 300),
+          });
+          continue;
+        }
 
         console.log(`✓ Sent magic link email to ${profile.email}`);
         results.sent++;

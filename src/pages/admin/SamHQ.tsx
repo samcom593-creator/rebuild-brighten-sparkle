@@ -382,7 +382,8 @@ function ContentCommandSection() {
         .from("social_bot_drafts")
         .select("id, draft_date, platform, title, hook, status, file_path, created_at")
         .in("status", ["pending", "awaiting_approval", "approved"])
-        .order("draft_date", { ascending: true, nullsFirst: false })
+        .order("draft_date", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
         .limit(5);
       if (error) throw error;
       return (data ?? []) as Array<{
@@ -399,8 +400,31 @@ function ContentCommandSection() {
     refetchInterval: 60_000,
   });
 
-  const awaiting = useMemo(() => (drafts ?? []).filter((d) => d.status === "awaiting_approval" || d.status === "pending").length, [drafts]);
-  const approved = useMemo(() => (drafts ?? []).filter((d) => d.status === "approved").length, [drafts]);
+  // The 5-row preview above is a window, not the population — deriving the tile stats
+  // from it capped both numbers at 5 while the real awaiting queue sat at ~560. These
+  // head:true counts fetch zero rows and return the true table totals.
+  const { data: counts } = useQuery({
+    queryKey: ["sam_hq_content_draft_counts"],
+    queryFn: async () => {
+      const [awaitingRes, approvedRes] = await Promise.all([
+        (supabase as any)
+          .from("social_bot_drafts")
+          .select("id", { count: "exact", head: true })
+          .in("status", ["pending", "awaiting_approval"]),
+        (supabase as any)
+          .from("social_bot_drafts")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "approved"),
+      ]);
+      if (awaitingRes.error) throw awaitingRes.error;
+      if (approvedRes.error) throw approvedRes.error;
+      return { awaiting: awaitingRes.count ?? 0, approved: approvedRes.count ?? 0 };
+    },
+    refetchInterval: 60_000,
+  });
+
+  const awaiting = counts?.awaiting ?? 0;
+  const approved = counts?.approved ?? 0;
 
   return (
     <Card className="border-amber-500/30 bg-amber-500/[0.03]">

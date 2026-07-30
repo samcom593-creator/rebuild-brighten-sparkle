@@ -21,56 +21,13 @@ interface Parsed {
   agentName: string;
 }
 
-const SEED = `Charles Walker
-Newbridge
-Level Death Benefit Ages 0-79
-ARCF26110g319	—	$150.49	$1,805.88	04/20/2026	04/20/2026
-Grey Bowman
-Brenda Barber
-American Home Life
-Final Expense
-000008211854	—	$91.00	$1,092.00	05/03/2026	04/20/2026
-Mahmod Imran
-Gary Thomas
-American Home Life
-Final Expense
-Transamerica	—	$69.26	$831.12	05/11/2026	04/20/2026
-Cooper Ubert
-Dianne Carstensen
-American Home Life
-Final Expense
-000008274439	—	$97.75	$1,173.00	04/20/2026	04/20/2026
-Xaviar Watts
-Joy Talbert
-Newbridge
-Level Death Benefit Ages 80-85
-ARCF26110g381	—	$190.20	$2,282.40	05/04/2026	04/20/2026
-Chukwudi Ifediora
-Stephanie Young
-Transamerica
-FE Express
-POL	—	$88.97	$1,067.64	05/03/2026	04/20/2026
-Michael Kayembe
-Arlitha Mcdowell
-Royal Neighbors
-Simplified Issue WL Ages 50-75
-000008274359	—	$155.51	$1,866.12	04/30/2026	04/20/2026
-Aisha Kebbeh
-Sheryl Thomas
-American Home Life
-Final Expense
-POL-12345	—	$172.73	$2,072.76	05/15/2026	04/20/2026
-Cooper Ubert
-Eric Cremmeans
-Foresters
-PlanRight - Immediate/Graded - Issue Ages 50 - 80
-97966442	—	$86.14	$1,033.68	05/03/2026	04/20/2026
-Obiajulu Ifediora
-Scott Hepfler
-American Home Life
-Final Expense
-AMH6312600	—	$217.00	$2,604.00	04/23/2026	04/20/2026
-Aisha Kebbeh`;
+// 2026-07-30: SEED used to be 10 REAL deals — real agent names (Xaviar Watts,
+// Chukwudi Ifediora, Michael Kayembe, Aisha Kebbeh...), real clients, and junk policy
+// numbers ("POL", a carrier name in the policy slot). It pre-filled the textarea on every
+// visit, so the page loaded with a live "Insert 10 deals" button armed — one accidental
+// click away from writing 10 stale rows into the real book. The paste format lives in the
+// textarea placeholder; an import tool must start EMPTY.
+const SEED = "";
 
 function parse(raw: string): Parsed[] {
   const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
@@ -173,7 +130,10 @@ export default function BulkDeals() {
           policy_number:     d.policyNumber || `AUTO-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
           monthly_premium:   d.monthly,
           annual_premium:    d.annual,
-          face_amount:       d.annual * 10,
+          // 2026-07-30: was d.annual * 10 — a fabricated face amount that looked
+          // captured and passed every check. The column is NOT NULL, so 0: the existing
+          // carrier data-gap views treat zero-face as "missing", which is the truth.
+          face_amount:       0,
           effective_date:    d.effectiveDate,
           status:            "submitted",
         };
@@ -208,7 +168,7 @@ export default function BulkDeals() {
                 eyebrow="Admin · Import"
         eyebrowIcon={<Upload className="h-3 w-3" />}
         title="Bulk Deal Import"
-        subtitle="Paste raw deal text, click Insert. Upserts by policy number — duplicates are merged automatically."
+        subtitle="Paste raw deal text, click Insert. Rows whose policy number already exists are SKIPPED — re-pasting corrected numbers will not update them."
       />
 
       <GlassCard className="p-4 space-y-3">

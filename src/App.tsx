@@ -603,8 +603,8 @@ const App = () => (
                        <Route path="/recruit" element={<ProtectedRoute><RecruitCommandCenter /></ProtectedRoute>} />
                        <Route path="/dashboard/team-chat" element={<ProtectedRoute><TeamChat /></ProtectedRoute>} />
                        <Route path="/team-chat" element={<ProtectedRoute><TeamChat /></ProtectedRoute>} />
-                       <Route path="/dashboard/bulk-deals" element={<ProtectedRoute><BulkDeals /></ProtectedRoute>} />
-                       <Route path="/bulk-deals" element={<ProtectedRoute><BulkDeals /></ProtectedRoute>} />
+                       <Route path="/dashboard/bulk-deals" element={<ProtectedRoute requireAdmin allowManagers><BulkDeals /></ProtectedRoute>} />
+                       <Route path="/bulk-deals" element={<ProtectedRoute requireAdmin allowManagers><BulkDeals /></ProtectedRoute>} />
                        <Route path="/dashboard/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />
                        <Route path="/dashboard/agent-link-sync" element={<Navigate to="/dashboard/agentlink-sync" replace />} />
                        <Route path="/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />

@@ -40,7 +40,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type DraftStatus = "pending" | "awaiting_approval" | "approved" | "shipped" | "rejected" | string;
+type DraftStatus = "pending" | "awaiting_approval" | "awaiting_film" | "approved" | "shipped" | "rejected" | string;
 
 type Draft = {
   id: number;
@@ -86,7 +86,10 @@ type InboundRow = {
   conversion_value_usd: number | null;
 };
 
-const ACTIVE_STATUSES = ["pending", "awaiting_approval", "approved"];
+// awaiting_film is a real status in the table (drafts written but not yet filmed).
+// It was missing from this list, which made those rows invisible on every surface of
+// this page — not filtered out, just never fetched.
+const ACTIVE_STATUSES = ["pending", "awaiting_approval", "awaiting_film", "approved"];
 
 // Sits above the live active-draft count (559 awaiting_approval + 1 approved as of
 // 2026-07-28) so a normal day is never truncated. If the queue ever grows past this the
@@ -117,6 +120,7 @@ function statusTone(status: DraftStatus) {
   if (status === "approved") return "bg-amber-500/15 text-amber-300 border-amber-500/30";
   if (status === "rejected") return "bg-rose-500/15 text-rose-300 border-rose-500/30";
   if (status === "awaiting_approval") return "bg-slate-500/15 text-cyan-300 border-cyan-500/30";
+  if (status === "awaiting_film") return "bg-violet-500/15 text-violet-300 border-violet-500/30";
   return "bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/30";
 }
 
@@ -252,7 +256,7 @@ export default function ContentCommand() {
   const [editBody, setEditBody] = useState("");
 
   const { data: drafts, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["content_command_drafts"],
+    queryKey: ["content_command_drafts", statusFilter],
     refetchInterval: 30_000,
     queryFn: async () => {
       // 2026-07-28: this query used to be `.order(draft_date ASC).limit(200)` against 587
@@ -261,13 +265,18 @@ export default function ContentCommand() {
       // from 2026-06-05 to today. The page whose entire job is "what should Sam post today"
       // was showing him last December and hiding today.
       //
-      // Now: newest first, and filtered to the active statuses server-side so the 23
-      // archived rows cannot eat slots in the window. Limit sits above the current active
-      // count (~560) so nothing is silently cut; if the backlog ever exceeds it, the UI
-      // reports the overflow rather than quietly truncating (see truncated banner below).
-      const { data, error } = await (supabase as any)
-        .from("social_bot_drafts").select("id, draft_date, platform, slot, pillar, title, hook, body, cta, caption, hashtags, file_path, status, created_at")
-        .in("status", ACTIVE_STATUSES)
+      // 2026-07-30: the fetch then hard-coded `.in(status, ACTIVE_STATUSES)` while the
+      // dropdown still offered Rejected / Shipped / All statuses — three filter options
+      // that could never return a row because the server never sent one. The filter now
+      // drives the fetch: a specific status fetches that status, "Active only" fetches
+      // the active set, "All statuses" drops the status clause entirely. Limit sits above
+      // the current active count (~560) so nothing is silently cut; if any fetch fills the
+      // window, the UI reports the overflow rather than quietly truncating (banner below).
+      let query = (supabase as any)
+        .from("social_bot_drafts").select("id, draft_date, platform, slot, pillar, title, hook, body, cta, caption, hashtags, file_path, status, created_at");
+      if (statusFilter === "active") query = query.in("status", ACTIVE_STATUSES);
+      else if (statusFilter !== "all") query = query.eq("status", statusFilter);
+      const { data, error } = await query
         .order("draft_date", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(DRAFT_FETCH_LIMIT);
@@ -392,19 +401,21 @@ export default function ContentCommand() {
         if (error) throw error;
         return c ?? 0;
       };
-      const [awaiting, approved, shipped, pending] = await Promise.all([
+      const [awaiting, approved, shipped, pending, awaitingFilm] = await Promise.all([
         count("awaiting_approval"),
         count("approved"),
         count("shipped"),
         count("pending"),
+        count("awaiting_film"),
       ]);
-      return { awaiting, approved, shipped, pending };
+      return { awaiting, approved, shipped, pending, awaitingFilm };
     },
   });
 
   const totals = useMemo(() => ({
-    active: (statusCounts?.awaiting ?? 0) + (statusCounts?.approved ?? 0) + (statusCounts?.pending ?? 0),
+    active: (statusCounts?.awaiting ?? 0) + (statusCounts?.approved ?? 0) + (statusCounts?.pending ?? 0) + (statusCounts?.awaitingFilm ?? 0),
     awaiting: statusCounts?.awaiting ?? 0,
+    awaitingFilm: statusCounts?.awaitingFilm ?? 0,
     approved: statusCounts?.approved ?? 0,
     shipped: statusCounts?.shipped ?? 0,
   }), [statusCounts]);
@@ -478,7 +489,7 @@ export default function ContentCommand() {
         }
       />
 
-      <PoolOverview drafts={drafts ?? []} />
+      <PoolOverview counts={statusCounts} />
 
       <CultureFeed onApproveDraft={(id) => statusMutation.mutate({ id, status: "approved" })} />
 
@@ -495,9 +506,10 @@ export default function ContentCommand() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <Metric label="Active drafts" value={totals.active} tone="text-cyan-300" />
         <Metric label="Awaiting stamp" value={totals.awaiting} tone="text-amber-300" />
+        <Metric label="Awaiting film" value={totals.awaitingFilm} tone="text-violet-300" />
         <Metric label="Approved" value={totals.approved} tone="text-emerald-300" />
         <Metric label="Shipped" value={totals.shipped} tone="text-slate-600 dark:text-slate-300" />
       </div>
@@ -514,7 +526,7 @@ export default function ContentCommand() {
               {isLoading ? <Skeleton className="h-28 w-full" /> : ranked.length === 0 ? (
                 <HonestEmpty
                   title="No active drafts found"
-                  detail="Expected source: public.social_bot_drafts with status pending, awaiting_approval, or approved."
+                  detail="Expected source: public.social_bot_drafts with status pending, awaiting_approval, awaiting_film, or approved. A non-active status filter also empties this card — it only ranks active drafts."
                 />
               ) : ranked.map((d, index) => (
                 <DraftRow
@@ -542,6 +554,7 @@ export default function ContentCommand() {
                     <SelectContent>
                       <SelectItem value="active">Active only</SelectItem>
                       <SelectItem value="awaiting_approval">Awaiting approval</SelectItem>
+                      <SelectItem value="awaiting_film">Awaiting film</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
                       <SelectItem value="approved">Approved</SelectItem>
                       <SelectItem value="rejected">Rejected</SelectItem>
@@ -836,10 +849,17 @@ function HonestEmpty({ title, detail }: { title: string; detail: string }) {
 
 /* ------------------------------------------------------------------------
    PoolOverview — 7-pool flow strip per Sam's add-on. Reads real ContentWheel
-   tables (cw_ideas / cw_hooks / cw_demand_mines / cw_outliers) + the local
-   drafts param. Empty pools render '—' instead of fake zero.
+   tables (cw_ideas / cw_hooks / cw_demand_mines / cw_outliers) + the shared
+   head-count totals for the draft pools (the fetched draft window is scoped
+   to the status filter, so deriving pool counts from it would zero the strip
+   whenever a non-active filter is selected). Empty pools render '—' instead
+   of fake zero.
    ------------------------------------------------------------------------ */
-function PoolOverview({ drafts }: { drafts: any[] }) {
+function PoolOverview({
+  counts,
+}: {
+  counts?: { awaiting: number; awaitingFilm: number; approved: number; shipped: number; pending: number };
+}) {
   const { data } = useQuery({
     queryKey: ["content_command_pools"],
     queryFn: async () => {
@@ -861,9 +881,9 @@ function PoolOverview({ drafts }: { drafts: any[] }) {
     staleTime: 5 * 60_000,
   });
 
-  const draftAwait = drafts.filter((d) => d.status === "awaiting_approval" || d.status === "pending").length;
-  const draftApproved = drafts.filter((d) => d.status === "approved").length;
-  const draftShipped = drafts.filter((d) => d.status === "shipped").length;
+  const draftAwait = counts ? counts.awaiting + counts.pending + counts.awaitingFilm : undefined;
+  const draftApproved = counts?.approved;
+  const draftShipped = counts === undefined ? undefined : counts.shipped + (data?.posts ?? 0);
 
   const pools = [
     { label: "Raw Ideas", value: data?.ideas, hint: "cw_ideas", tone: "text-slate-600 dark:text-slate-300" },
@@ -872,7 +892,7 @@ function PoolOverview({ drafts }: { drafts: any[] }) {
     { label: "Outliers", value: data?.outliers, hint: "cw_outliers", tone: "text-cyan-300" },
     { label: "Drafts awaiting", value: draftAwait, hint: "social_bot_drafts", tone: "text-amber-300" },
     { label: "Approved to post", value: draftApproved, hint: "social_bot_drafts", tone: "text-emerald-300" },
-    { label: "Shipped", value: draftShipped + (data?.posts ?? 0), hint: "social_bot_drafts + cw_posts", tone: "text-slate-400" },
+    { label: "Shipped", value: draftShipped, hint: "social_bot_drafts + cw_posts", tone: "text-slate-400" },
   ];
 
   return (

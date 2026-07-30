@@ -205,6 +205,39 @@ async function loadSettings(): Promise<SeminarSettings> {
 }
 
 // ---------------------------------------------------------------------------
+// Failure receipt — every early-return failure path writes an email_delivery_log
+// row BEFORE exiting. Without this the function could 404/422/500 and leave zero
+// trace in the audit table: the same silent-failure class as the 465 InsuraCloud
+// fake-success rows. Mirrors the column shape of the success-path insert at the
+// bottom of the handler; sent_at stays null because no send was ever attempted.
+// recipient_email is NOT NULL in the table, so unknown recipients get a labeled
+// placeholder instead of a fabricated address.
+// ---------------------------------------------------------------------------
+
+async function logFailureReceipt(opts: {
+  applicationId: string;
+  recipientEmail: string | null;
+  reason: string;
+}): Promise<void> {
+  try {
+    await supabase.from("email_delivery_log").insert({
+      template: "seminar-confirmation",
+      recipient_email: opts.recipientEmail || "(unknown)",
+      subject: null,
+      provider: "resend",
+      provider_message_id: null,
+      status: "error",
+      error: opts.reason,
+      related_record_id: opts.applicationId,
+      related_record_type: "application",
+      sent_at: null,
+    });
+  } catch (e) {
+    console.error("[seminar-confirmation] failure-receipt insert failed:", e);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 
@@ -248,6 +281,11 @@ const handler = async (req: Request): Promise<Response> => {
 
   if (appErr || !app) {
     console.error("[seminar-confirmation] application lookup failed:", appErr);
+    await logFailureReceipt({
+      applicationId,
+      recipientEmail: null,
+      reason: `application not found: ${appErr?.message ?? "no row for id"}`,
+    });
     return new Response(JSON.stringify({ error: "application not found" }), {
       status: 404,
       headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -255,6 +293,11 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   if (!app.email) {
+    await logFailureReceipt({
+      applicationId,
+      recipientEmail: null,
+      reason: "application has no email address",
+    });
     return new Response(JSON.stringify({ error: "application missing email" }), {
       status: 422,
       headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -269,6 +312,11 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: slotRow, error: slotErr } = await supabase.rpc("fn_next_seminar_slot");
     if (slotErr || !slotRow) {
       console.error("[seminar-confirmation] fn_next_seminar_slot failed:", slotErr);
+      await logFailureReceipt({
+        applicationId,
+        recipientEmail: app.email,
+        reason: `fn_next_seminar_slot failed: ${slotErr?.message ?? "returned no slot"}`,
+      });
       return new Response(JSON.stringify({ error: "could not pick seminar slot" }), {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

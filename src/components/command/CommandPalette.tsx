@@ -12,6 +12,7 @@ import {
 import { useUIStore } from "@/shared/store/uiStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 import {
   LayoutDashboard,
   Users,
@@ -84,6 +85,8 @@ export function CommandPalette() {
   const open = useUIStore((s) => s.commandPaletteOpen);
   const setOpen = useUIStore((s) => s.setCommandPaletteOpen);
   const navigate = useNavigate();
+  // Same store the sidebar search uses, so both surfaces open the identical drawer.
+  const openAgentProfile = useAgentProfileDrawer((s) => s.openAgent);
   const { isAdmin, isManager } = useAuth();
   const [query, setQuery] = useState("");
   const [agents, setAgents] = useState<AgentResult[]>([]);
@@ -200,7 +203,17 @@ export function CommandPalette() {
                 <CommandItem
                   key={`agent-${a.id}`}
                   value={`agent-${a.id}`}
-                  onSelect={() => go(`/dashboard/team`)}
+                  // 2026-07-29: was go(`/dashboard/team`) — a template literal with no
+                  // interpolation, so a.id was discarded and every agent row landed on the
+                  // same unfiltered CRM list (/dashboard/team is itself just a redirect to
+                  // /dashboard/crm, which is admin+manager only — so agents and VAs got
+                  // bounced to /dashboard entirely). The sidebar's identical search already
+                  // does the right thing via openAgentProfile; this now mirrors it.
+                  onSelect={() => {
+                    setOpen(false);
+                    setQuery("");
+                    openAgentProfile(a.id);
+                  }}
                 >
                   <Users className="mr-2 h-4 w-4" />
                   <span>{a.display_name || "Unnamed"}</span>
@@ -221,7 +234,10 @@ export function CommandPalette() {
                 <CommandItem
                   key={`app-${app.id}`}
                   value={`app-${app.id}`}
-                  onSelect={() => go(`/dashboard/applicants`)}
+                  // 2026-07-29: same bug — app.id was dropped, so picking a named
+                  // applicant opened the unfiltered list. DashboardApplicants already reads
+                  // ?id= to focus a row.
+                  onSelect={() => go(`/dashboard/applicants?id=${app.id}`)}
                 >
                   <FileText className="mr-2 h-4 w-4" />
                   <span>{app.first_name} {app.last_name}</span>

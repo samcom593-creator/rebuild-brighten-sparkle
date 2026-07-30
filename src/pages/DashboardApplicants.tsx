@@ -120,6 +120,25 @@ interface Application {
   couldnt_reach_email_sent_at?: string | null;
 }
 
+// wave-p1q: single source of truth for every click-filterable metric card.
+// The card's count and the list's click-filter MUST share these predicates so
+// (card value) === (rows shown after click) by construction — no more
+// 'Course Bought 47' -> click -> 31 rows because two definitions disagreed.
+// Same fix discipline as the 2026-07-27 status-missing-from-select comment
+// below: keep every read of the same signal on one definition.
+const CARD_PREDICATES = {
+  in_funnel: (a: Application) => !a.closed_at && !a.contracted_at && !a.terminated_at,
+  course_bought: (a: Application) =>
+    Boolean(a.course_purchased_at) ||
+    a.license_progress === "course_purchased" ||
+    (a.license_progress as string) === "finished_course",
+  hired: (a: Application) => Boolean(a.closed_at) && !a.contracted_at && !a.terminated_at,
+  rejected: (a: Application) => {
+    const s = (a.status ?? "").toLowerCase();
+    return s === "rejected" || s === "disqualified";
+  },
+} as const;
+
 const APPLICATION_SELECT =
   // 2026-07-27: `status` was missing from this list while the Application interface
   // declared it, so app.status was undefined on every row. Five call sites read it —
@@ -782,13 +801,17 @@ export default function DashboardApplicants() {
       (app.phone && app.phone.includes(q));
 
     const appStatus = getApplicationStatus(app);
-    const lowerStatus = (app.status ?? "").toLowerCase();
+    // wave-p1q: card click-filters MUST share the same predicate the card
+    // used to compute its value (see CARD_PREDICATES above). Never inline a
+    // second definition here — that's how 'Course Bought' shipped with
+    // divergent count vs list rows.
     const matchesStatus =
       statusFilter === "all" ||
       statusFilter === "terminated" ||
-      (statusFilter === "in_funnel" && !app.closed_at && !app.contracted_at) ||
-      (statusFilter === "course_bought" && Boolean(app.course_purchased_at)) ||
-      (statusFilter === "rejected" && (lowerStatus === "rejected" || lowerStatus === "disqualified")) ||
+      (statusFilter === "in_funnel" && CARD_PREDICATES.in_funnel(app)) ||
+      (statusFilter === "course_bought" && CARD_PREDICATES.course_bought(app)) ||
+      (statusFilter === "rejected" && CARD_PREDICATES.rejected(app)) ||
+      (statusFilter === "hired" && CARD_PREDICATES.hired(app)) ||
       appStatus === statusFilter;
     const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
     const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
@@ -1024,22 +1047,23 @@ export default function DashboardApplicants() {
     const todayIso = todayDate.toISOString().slice(0, 10);
     const monthStartMs = new Date(tzNow.getFullYear(), tzNow.getMonth(), 1).getTime();
     let hired = 0, coursePurchased = 0, inFunnel = 0, rejected = 0, todayCount = 0, hiredThisMonth = 0;
-    const all = [...activeApplications, ...terminatedApplications];
-    for (const a of all) {
-      if (a.closed_at && !a.contracted_at) hired++;
+    // wave-p1q: count off activeApplications ONLY — this is the population
+    // the click-filter operates on (baseApplications = activeApplications
+    // for every non-terminated filter). Counting off active+terminated
+    // was the root cause of card N -> click -> fewer-than-N rows.
+    for (const a of activeApplications) {
+      if (CARD_PREDICATES.hired(a)) hired++;
       if (a.closed_at) {
         const t = new Date(a.closed_at).getTime();
         if (!Number.isNaN(t) && t >= monthStartMs) hiredThisMonth++;
       }
-      const lp = a.license_progress as string | null;
-      if (a.course_purchased_at || lp === "course_purchased" || lp === "finished_course") coursePurchased++;
-      if (!a.closed_at && !a.contracted_at && !a.terminated_at) inFunnel++;
-      const status = (a.status ?? "").toLowerCase();
-      if (status === "rejected" || status === "disqualified") rejected++;
+      if (CARD_PREDICATES.course_bought(a)) coursePurchased++;
+      if (CARD_PREDICATES.in_funnel(a)) inFunnel++;
+      if (CARD_PREDICATES.rejected(a)) rejected++;
       if (a.created_at && a.created_at.slice(0, 10) === todayIso) todayCount++;
     }
     return { totalLeads: activeApplications.length, hired, coursePurchased, inFunnel, rejected, todayCount, hiredThisMonth };
-  }, [activeApplications, terminatedApplications]);
+  }, [activeApplications]);
 
   if (isLoading && applications.length === 0) {
     return <PageLoadingSkeleton variant="cards" />;

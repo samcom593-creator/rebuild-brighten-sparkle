@@ -266,10 +266,23 @@ async function sendManagerNotification(
     await resend.emails.send({
        from: "APEX Financial <notifications@apex-financial.org>",
       to: [manager.email],
-      subject: `🎯 New Team Applicant: ${sanitized.firstName} ${sanitized.lastName}`,
+      // 2026-07-29 Sam: same rule as the admin email — a manager must see licensed vs
+      // unlicensed BEFORE anything else, because it decides whether they call now or
+      // enroll. Status leads the subject so it survives phone truncation.
+      subject: `${sanitized.licenseStatus === 'licensed' ? 'LICENSED ✅' : 'UNLICENSED'} — ${sanitized.firstName} ${sanitized.lastName} · your referral`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0;">
+          <div style="background: ${sanitized.licenseStatus === 'licensed' ? '#047857' : '#b45309'}; padding: 22px 20px; text-align: center;">
+            <div style="color: #ffffff; font-size: 30px; font-weight: 800; letter-spacing: 2px; line-height: 1.1;">
+              ${sanitized.licenseStatus === 'licensed' ? 'LICENSED' : 'UNLICENSED'}
+            </div>
+            <div style="color: ${sanitized.licenseStatus === 'licensed' ? '#a7f3d0' : '#fde68a'}; font-size: 15px; margin-top: 6px; font-weight: 600;">
+              ${sanitized.licenseStatus === 'licensed'
+                ? 'Can write business today — call now'
+                : 'Needs the course first — do not sell, enroll'}
+            </div>
+          </div>
+          <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 0;">
             <h1 style="color: white; margin: 0; font-size: 24px;">New Team Application!</h1>
             <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">Hi ${manager.name}, someone applied using your referral link!</p>
           </div>
@@ -401,9 +414,17 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     const isLicensedApplicant = sanitized.licenseStatus === 'licensed';
     
     // Build different admin email based on license status
-    const adminSubject = isLicensedApplicant 
-      ? `🔥 HOT LEAD - CALL NOW: ${sanitized.firstName} ${sanitized.lastName} is LICENSED!`
-      : `New ${licenseStatusDisplay.toUpperCase()} Application — ${sanitized.firstName} ${sanitized.lastName} | ${sanitized.city}, ${sanitized.state}`;
+    // 2026-07-29 Sam: "the first thing I should be able to see is: is this prospect
+    // licensed or unlicensed... so I know whether to call them accordingly."
+    //
+    // The status is now the FIRST TOKEN of the subject, before the emoji and before the
+    // name. Mail clients truncate subjects hard — iOS Mail shows ~35 chars in the list —
+    // and the old subject led with "🔥 HOT LEAD - CALL NOW: <name>", so the word LICENSED
+    // fell off the end on a phone. The one fact that decides whether Sam picks up the phone
+    // has to survive truncation.
+    const adminSubject = isLicensedApplicant
+      ? `LICENSED ✅ — ${sanitized.firstName} ${sanitized.lastName} · ${sanitized.state} · CALL NOW`
+      : `UNLICENSED — ${sanitized.firstName} ${sanitized.lastName} · ${sanitized.state} · course first`;
     
     const urgentBanner = isLicensedApplicant ? `
       <div style="background: linear-gradient(135deg, #dc2626, #991b1b); padding: 15px; text-align: center; margin-bottom: 0;">
@@ -439,6 +460,20 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
       subject: adminSubject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <!-- Status-first strip. Sam's #1 question on every one of these emails is
+               "licensed or not" — it decides whether he calls immediately or routes them
+               into the course. It is now the first pixel in the body, full-width, high
+               contrast, readable in a preview pane without scrolling or opening. -->
+          <div style="background: ${isLicensedApplicant ? '#047857' : '#b45309'}; padding: 22px 20px; text-align: center;">
+            <div style="color: #ffffff; font-size: 30px; font-weight: 800; letter-spacing: 2px; line-height: 1.1;">
+              ${isLicensedApplicant ? 'LICENSED' : 'UNLICENSED'}
+            </div>
+            <div style="color: ${isLicensedApplicant ? '#a7f3d0' : '#fde68a'}; font-size: 15px; margin-top: 6px; font-weight: 600;">
+              ${isLicensedApplicant
+                ? 'Can write business today — call now'
+                : 'Needs the course first — do not sell, enroll'}
+            </div>
+          </div>
           ${urgentBanner}
           <div style="background: ${headerGradient}; padding: 30px; border-radius: ${isLicensedApplicant ? '0' : '10px 10px 0 0'};">
             <h1 style="color: white; margin: 0; font-size: 24px;">${headerTitle}</h1>

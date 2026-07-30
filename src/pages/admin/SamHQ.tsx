@@ -319,11 +319,19 @@ function ShippedSection() {
   const { data: hires } = useQuery({
     queryKey: ["sam_hq_recent_hires"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("v_recent_hires").select("first_name,full_name,hired_at,created_at")
+      // Cast: v_recent_hires is a view and is not in the generated Supabase types, so the
+      // typed client rejects both the table name and the ordered select. Same pattern the
+      // rest of this file already uses for untyped views.
+      const { data, error } = await (supabase as any)
+        // 2026-07-29: this selected full_name, hired_at and created_at — NONE of which
+        // exist on v_recent_hires. PostgREST 400s on an unknown column, the error was
+        // thrown, and the panel rendered "No hires loaded yet" forever while the view
+        // held 25 real rows. Actual columns: display_name, first_name, hired_on.
+        .from("v_recent_hires").select("id,display_name,first_name,hired_on,manager_name")
+        .order("hired_on", { ascending: false, nullsFirst: false })
         .limit(5);
       if (error) throw error;
-      return data as Array<{ first_name?: string; full_name?: string; hired_at?: string; created_at?: string }>;
+      return data as Array<{ id?: string; display_name?: string; first_name?: string; hired_on?: string; manager_name?: string }>;
     },
     refetchInterval: 120_000,
   });
@@ -341,12 +349,15 @@ function ShippedSection() {
           {!hires?.length && <div className="text-xs text-slate-600 dark:text-slate-300">No hires loaded yet</div>}
           <ul className="space-y-1">
             {(hires ?? []).map((h, i) => (
-              <li key={`${h.hired_at ?? h.created_at ?? i}-${h.full_name ?? h.first_name ?? "unknown"}`} className="flex items-center justify-between border-b border-white/5 py-1">
-                <span>{h.full_name ?? h.first_name ?? "—"}</span>
-                <span className="text-xs text-slate-600 dark:text-slate-300">
-                  {h.hired_at || h.created_at
-                    ? formatDistanceToNow(new Date(h.hired_at ?? h.created_at!), { addSuffix: true })
-                    : ""}
+              <li key={h.id ?? `${h.hired_on ?? i}-${h.display_name ?? h.first_name ?? "unknown"}`} className="flex items-center justify-between border-b border-white/5 py-1">
+                <span className="min-w-0 truncate">
+                  {h.display_name ?? h.first_name ?? "—"}
+                  {h.manager_name && (
+                    <span className="ml-2 text-xs text-slate-600 dark:text-slate-300">· {h.manager_name}</span>
+                  )}
+                </span>
+                <span className="shrink-0 text-xs text-slate-600 dark:text-slate-300">
+                  {h.hired_on ? formatDistanceToNow(new Date(h.hired_on), { addSuffix: true }) : ""}
                 </span>
               </li>
             ))}

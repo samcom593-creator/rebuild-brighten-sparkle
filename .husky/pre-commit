@@ -593,3 +593,11 @@ if match '^(src/.*\.(tsx|jsx|ts)$|scripts/check-enum-filter-literals\.mjs$)'; th
   echo "[pre-commit] Supabase-filter-affecting file staged — running check:enum-filter-literals…"
   npm run --silent check:enum-filter-literals || exit 1
 fi
+
+# ---------- check-discarded-email-send (2026-07-30) ----------
+# Resend SDK v2 does not throw on API errors; it resolves { data, error }. Discarding that
+# tuple reports a rejected send as a successful one. 100 pre-existing sites are baselined.
+if match '^(supabase/functions/.*\.(ts|js)$|scripts/check-discarded-email-send\.mjs$)'; then
+  echo "[pre-commit] Edge function staged — running check:discarded-email-send…"
+  npm run --silent check:discarded-email-send || exit 1
+fi

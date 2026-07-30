@@ -139,7 +139,12 @@ const handler = async (req: Request): Promise<Response> => {
       : "";
 
     try {
-      await resend.emails.send({
+      // 2026-07-30: this discarded Resend's return value. The Resend SDK v2 does NOT
+      // throw on API errors — it resolves with { data, error } — so the try/catch below
+      // never fired and the function returned success:true for sends that never left the
+      // building. With the provider account currently under review and rejecting every
+      // external recipient, this reported 100% delivery while delivering nothing.
+      const { data: sendData, error: sendError } = await resend.emails.send({
         from: "APEX Financial <notifications@apex-financial.org>",
         to: [profile.email],
         cc: ccList.length > 0 ? ccList : undefined,
@@ -256,6 +261,23 @@ const handler = async (req: Request): Promise<Response> => {
           </html>
         `,
       });
+
+      if (sendError) {
+        const msg = typeof sendError === "string" ? sendError : JSON.stringify(sendError);
+        console.error("Resend rejected portal login email:", msg);
+        return new Response(
+          JSON.stringify({ success: false, error: `resend: ${msg.slice(0, 300)}` }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      // A 2xx with no id is not a send either — same guard the outreach-sender uses.
+      if (!sendData?.id) {
+        console.error("Resend returned 2xx with no message id");
+        return new Response(
+          JSON.stringify({ success: false, error: "resend returned no message id" }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
 
       await supabaseClient
         .from("agents")

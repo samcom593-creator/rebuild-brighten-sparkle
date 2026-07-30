@@ -475,7 +475,12 @@ export default function SocialMediaBot() {
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {statusBadge(d.status)}
-                          {d.status === "pending" && (
+                          {/* 2026-07-29: gated on status === "pending", but social_bot_drafts has ZERO
+                              rows in that state — 560 are "awaiting_approval", 23 "archived",
+                              2 "awaiting_film", 3 "approved". So Approve/Reject never rendered
+                              on this page at all. ContentCommand.tsx:779 already had the
+                              correct gate; this now matches it. */}
+                          {d.status !== "approved" && d.status !== "shipped" && d.status !== "archived" && (
                             <>
                               <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); mutateDraftStatus(d.id, "approved"); }}>
                                 <CheckCircle2 className="h-4 w-4 mr-1" /> Approve

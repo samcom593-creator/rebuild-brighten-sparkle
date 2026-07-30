@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useDashboardPayload } from "./useDashboardPayload";
 import { SmbBridgeCard } from "./SmbBridgeCard";
 import { Card } from "@/components/ui/card";
@@ -15,6 +17,23 @@ function fmt(n: number | null | undefined, digits = 0): string {
 
 export function DashboardModule() {
   const { data, isLoading, error } = useDashboardPayload();
+
+  // 2026-07-30: cw_posts has ZERO rows ever — no post has ever been recorded, so every
+  // KPI below computes over nothing. Without this gate the page opened on "0 / 2 Ship
+  // now", "0.00%", a 30-day gray heatmap — a wall of red that reads as "the content
+  // business is failing" when the truth is "tracking has never started". Head-count only;
+  // no rows fetched.
+  const { data: postsEver } = useQuery({
+    queryKey: ["cw_posts_ever_count"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { count, error: cntErr } = await (supabase as any)
+        .from("cw_posts")
+        .select("id", { count: "exact", head: true });
+      if (cntErr) throw cntErr;
+      return count ?? 0;
+    },
+  });
 
   if (isLoading) {
     return (

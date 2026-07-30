@@ -590,8 +590,16 @@ export default function BookOfBusiness() {
               .in("al_user_id", alUserIds)
           : Promise.resolve({ data: [] } as any),
         alCarrierIds.length
+          // 2026-07-29: this queried `carriers`, whose id is a UUID, using AgentLink
+          // carrier ids, which are INTEGERS (agentlink_book.carrier_id is integer).
+          // The two key spaces cannot intersect, so the lookup returned nothing and the
+          // Carrier column, the Carrier filter and the "By Carrier" sort were blank across
+          // all 1,629 book rows carrying a carrier_id. agentlink_carriers is the
+          // integer-keyed table and holds the 16 real names.
+          // NOTE: the `carriers` lookups further down are CORRECT and deliberately left
+          // alone — they resolve deals.carrier_id, which really is a uuid.
           ? supabase
-              .from("carriers")
+              .from("agentlink_carriers")
               .select("id, name")
               .in("id", alCarrierIds)
           : Promise.resolve({ data: [] } as any),

@@ -104,10 +104,10 @@ export default function BoardLive() {
               APEX <span className="text-amber-400">{bounds.label}</span>
             </h1>
           </div>
-          <div className="flex gap-6">
+          <div className="grid w-full grid-cols-3 gap-3 sm:flex sm:w-auto sm:gap-8">
             <div>
-              <div className="text-[11px] uppercase tracking-widest text-slate-400">Total AP</div>
-              <div className="text-2xl font-black tabular-nums text-white sm:text-3xl">
+              <div className="text-[9px] uppercase tracking-widest text-slate-400 sm:text-[11px]">Total AP</div>
+              <div className="text-lg font-black tabular-nums text-white sm:text-3xl">
                 <AnimatedCounter value={totalAp} prefix="$" />
               </div>
             </div>
@@ -115,14 +115,14 @@ export default function BoardLive() {
               {/* Labeled "Est." on purpose: no actual paid-commission feed exists yet
                   (agentlink_commissions + insuracloud_payouts are empty), so this is
                   contract-level math, not money confirmed paid. */}
-              <div className="text-[11px] uppercase tracking-widest text-slate-400">Est. agent earnings</div>
-              <div className="text-2xl font-black tabular-nums text-emerald-400 sm:text-3xl">
+              <div className="text-[9px] uppercase tracking-widest text-slate-400 sm:text-[11px]">Est. earnings</div>
+              <div className="text-lg font-black tabular-nums text-emerald-400 sm:text-3xl">
                 <AnimatedCounter value={totalEst} prefix="$" />
               </div>
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-widest text-slate-400">Policies</div>
-              <div className="text-2xl font-black tabular-nums text-white sm:text-3xl">
+              <div className="text-[9px] uppercase tracking-widest text-slate-400 sm:text-[11px]">Policies</div>
+              <div className="text-lg font-black tabular-nums text-white sm:text-3xl">
                 <AnimatedCounter value={totalDeals} />
               </div>
             </div>
@@ -173,49 +173,51 @@ export default function BoardLive() {
                     style && `ring-1 ${style.ring} ${style.glow}`
                   )}
                 >
-                  <div className="flex flex-wrap items-center gap-4">
-                    {/* rank */}
-                    <div
-                      className={cn(
-                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border text-lg font-black tabular-nums",
-                        style ? style.badge : "border-white/10 bg-white/5 text-slate-400"
-                      )}
-                    >
-                      {rank}
+                  {/* Mobile stacks (identity row, then a 3-up stat grid) so long
+                      names are never truncated; from sm: it becomes one row. */}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    {/* identity: rank + name + tenure */}
+                    <div className="flex items-center gap-3 sm:min-w-0 sm:flex-1">
+                      <div
+                        className={cn(
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border text-base font-black tabular-nums sm:h-11 sm:w-11 sm:text-lg",
+                          style ? style.badge : "border-white/10 bg-white/5 text-slate-400"
+                        )}
+                      >
+                        {rank}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-base font-bold leading-tight text-white sm:text-xl">
+                          {r.agent_name ?? "Unknown"}
+                        </div>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className="whitespace-nowrap rounded-md border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+                            {r.tenure_label ?? "New"}
+                          </span>
+                          <span className="whitespace-nowrap text-xs text-slate-400 tabular-nums">
+                            {r.dealsNum} policies
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* name + tenure */}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-lg font-bold text-white sm:text-xl">
-                        {r.agent_name ?? "Unknown"}
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-300">
-                          {r.tenure_label ?? "New"}
-                        </span>
-                        <span className="text-xs text-slate-400 tabular-nums">
-                          {r.dealsNum} policies
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* stats */}
-                    <div className="flex items-center gap-5 sm:gap-8">
-                      <div className="text-right">
-                        <div className="text-[10px] uppercase tracking-widest text-slate-500">Production</div>
-                        <div className="text-xl font-black tabular-nums text-white sm:text-2xl">
+                    {/* stats — even 3-up grid on mobile, right-aligned row on desktop */}
+                    <div className="grid grid-cols-3 gap-2 border-t border-white/5 pt-3 sm:flex sm:shrink-0 sm:items-center sm:gap-8 sm:border-0 sm:pt-0">
+                      <div className="sm:text-right">
+                        <div className="text-[9px] uppercase tracking-widest text-slate-500 sm:text-[10px]">Production</div>
+                        <div className="text-base font-black tabular-nums text-white sm:text-2xl">
                           <AnimatedCounter value={r.apNum} prefix="$" />
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-[10px] uppercase tracking-widest text-slate-500">Est. income</div>
-                        <div className="text-xl font-black tabular-nums text-emerald-400 sm:text-2xl">
+                      <div className="sm:text-right">
+                        <div className="text-[9px] uppercase tracking-widest text-slate-500 sm:text-[10px]">Est. income</div>
+                        <div className="text-base font-black tabular-nums text-emerald-400 sm:text-2xl">
                           <AnimatedCounter value={r.estNum} prefix="$" />
                         </div>
                       </div>
-                      <div className="hidden text-right sm:block">
-                        <div className="text-[10px] uppercase tracking-widest text-slate-500">Lead spend</div>
-                        <div className="text-xl font-bold tabular-nums text-slate-300">
+                      <div className="sm:text-right">
+                        <div className="text-[9px] uppercase tracking-widest text-slate-500 sm:text-[10px]">Lead spend</div>
+                        <div className="text-base font-bold tabular-nums text-slate-300 sm:text-2xl">
                           ${money(r.leadNum)}
                         </div>
                       </div>

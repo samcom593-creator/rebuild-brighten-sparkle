@@ -285,21 +285,25 @@ export default function InterviewCommandCenter() {
     return rows.filter((row) => isInDateFilter(row.scheduled_at, dateFilter, customRange));
   }, [dateFilter, customRange, interviews.data]);
 
-  // KPI stats — every tile queries the currently date-scoped rows so the
-  // grid stays consistent with the tab filter below. Real counts only.
+  // KPI stats. "Called Today" and "Hired This Week" describe absolute time
+  // windows, so they source from the full unscoped row set — otherwise a
+  // dateFilter set to a range that excludes today makes both tiles read 0
+  // while real activity happened. The remaining tiles describe what's inside
+  // the current filter, so they stay scoped to dateScopedRows. wave-p1v.
   const kpi = useMemo(() => {
     const todayStart = startOfToday();
     const weekStart = startOfWeek();
+    const allRows = interviews.data ?? [];
     return {
-      calledToday: dateScopedRows.filter((r) => r.called_at && new Date(r.called_at) >= todayStart).length,
-      hiredThisWeek: dateScopedRows.filter((r) => r.hired_at && new Date(r.hired_at) >= weekStart).length,
+      calledToday: allRows.filter((r) => r.called_at && new Date(r.called_at) >= todayStart).length,
+      hiredThisWeek: allRows.filter((r) => r.hired_at && new Date(r.hired_at) >= weekStart).length,
       active: dateScopedRows.filter((r) => !isRowDone(r)).length,
       done: dateScopedRows.filter(isRowDone).length,
       noShow: dateScopedRows.filter((r) => !!r.no_show_at).length,
       reschedules: dateScopedRows.filter((r) => !!r.rescheduled_at).length,
       passes: dateScopedRows.filter((r) => !!r.passed_at).length,
     };
-  }, [dateScopedRows]);
+  }, [dateScopedRows, interviews.data]);
 
   const stateCounts = useMemo(() => ({
     active: dateScopedRows.filter((r) => !isRowDone(r)).length,

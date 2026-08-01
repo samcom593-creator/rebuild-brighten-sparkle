@@ -69,6 +69,10 @@ function classifyEvent(name: string | null, slug: string | null): string {
   const txt = `${name ?? ""} ${slug ?? ""}`.toLowerCase().trim();
   if (txt.includes("seminar")) return "seminar";
   if (txt.includes("exam") || txt.includes("test")) return "exam";
+  // "unlicensed" CONTAINS "licensed" — this check must run first. The substring
+  // bug misfiled 9 "Unlicensed Prospect Call " bookings as licensed-track
+  // (fixed + reclassified 2026-08-01).
+  if (txt.includes("unlicensed")) return "leader";
   if (txt.includes("licensed")) return "licensed";
   if (txt.includes("leader")) return "leader";
   if (txt.includes("interview") || txt.includes("1on1") || txt.includes("prospect") || txt.includes("manager")) {

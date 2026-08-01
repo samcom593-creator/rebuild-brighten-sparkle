@@ -79,6 +79,8 @@ function classify(name: string | null, slug: string | null): string {
   const t = `${name ?? ""} ${slug ?? ""}`.toLowerCase().trim();
   if (t.includes("seminar")) return "seminar";
   if (t.includes("exam") || t.includes("test")) return "exam";
+  // "unlicensed" CONTAINS "licensed" — must check first (bug fixed 2026-08-01)
+  if (t.includes("unlicensed")) return "leader";
   if (t.includes("licensed")) return "licensed";
   if (t.includes("leader")) return "leader";
   if (/interview|1on1|prospect|manager/.test(t)) return "leader";

@@ -52,7 +52,7 @@ async function cal(pathOrUrl: string): Promise<any> {
 function extractInstagram(qa: any[]): string | null {
   for (const q of qa ?? []) {
     if (/instagram|ig handle/i.test(String(q?.question ?? ""))) {
-      const a = String(q?.answer ?? "").trim().replace(/^@+/, "");
+      const a = String(q?.answer ?? "").trim().replace(/^(https?:\/\/)?(www\.)?instagram\.com\//i, "").replace(/\/+$/, "").replace(/^@+/, "");
       if (a) return a;
     }
   }
@@ -69,7 +69,7 @@ function extractAnswer(qa: any[], needle: RegExp): string | null {
   return null;
 }
 
-const PLACEHOLDER_EMAILS = new Set(["name@noname.com", "noname@noname.com", "test@test.com", "none@none.com"]);
+const PLACEHOLDER_EMAILS = new Set(["name@noname.com", "noname@noname.com", "test@test.com", "none@none.com", "n/a@gmail.com"]);
 const cleanEmail = (e: string | null | undefined) => {
   const v = (e ?? "").trim().toLowerCase();
   return !v || PLACEHOLDER_EMAILS.has(v) ? null : v;

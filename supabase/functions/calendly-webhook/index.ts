@@ -87,6 +87,7 @@ const PLACEHOLDER_EMAILS = new Set([
   "noname@noname.com",
   "test@test.com",
   "none@none.com",
+  "n/a@gmail.com",
 ]);
 
 function cleanEmail(raw: string | null | undefined): string | null {
@@ -105,7 +106,7 @@ function extractInstagram(qa: any[]): string | null {
   for (const item of qa) {
     const q = String(item?.question ?? "").toLowerCase();
     if (q.includes("instagram") || q.includes("ig handle")) {
-      const a = String(item?.answer ?? "").trim().replace(/^@+/, "");
+      const a = String(item?.answer ?? "").trim().replace(/^(https?:\/\/)?(www\.)?instagram\.com\//i, "").replace(/\/+$/, "").replace(/^@+/, "");
       if (a) return a;
     }
   }

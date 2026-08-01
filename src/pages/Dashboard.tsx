@@ -79,6 +79,7 @@ import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds, ge
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
 import { getCloseRate, getLiveAgentCutoffIso, LIVE_AGENT_DEAL_WINDOW_DAYS, sumAnnualPremium } from "@/lib/metricTruth";
 import { cn } from "@/lib/utils";
+import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
 
 type IntegrationState = "ok" | "warning" | "critical" | "unavailable";
 
@@ -794,6 +795,10 @@ function ExecutiveDashboard({
           </>
         }
       />
+
+      {/* Producer recruiting link — unlocks at the production threshold so
+          earners can recruit onto their own team instead of the general pool. */}
+      <ReferralLinkCard />
 
       {/* Pinned receipts banner — what shipped to the platform between
           this login and the last one. Sam reported "everything looks the

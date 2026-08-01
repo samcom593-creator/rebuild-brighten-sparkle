@@ -82,6 +82,7 @@ import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetail
 import { GlassCard } from "@/components/ui/glass-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { phoneHref, smsHref } from "@/lib/phone";
+import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
 
 interface Application {
   id: string;
@@ -1099,6 +1100,11 @@ export default function DashboardApplicants() {
       {(isAdmin || isManager) && agentId && (
         <ReferralLinkBanner agentId={agentId} />
       )}
+
+      {/* Producers (non-admin/manager) unlock their own recruiting link once they
+          cross the production threshold — below it they see the gap instead of
+          nothing, so it reads as a target. Self-gating via my_referral_status(). */}
+      {!(isAdmin || isManager) && <ReferralLinkCard />}
 
       <GlassCard className="p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

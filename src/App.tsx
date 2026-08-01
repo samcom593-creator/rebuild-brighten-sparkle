@@ -605,9 +605,12 @@ const App = () => (
                        <Route path="/team-chat" element={<ProtectedRoute><TeamChat /></ProtectedRoute>} />
                        <Route path="/dashboard/bulk-deals" element={<ProtectedRoute requireAdmin allowManagers><BulkDeals /></ProtectedRoute>} />
                        <Route path="/bulk-deals" element={<ProtectedRoute requireAdmin allowManagers><BulkDeals /></ProtectedRoute>} />
-                       <Route path="/dashboard/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />
+                       {/* AgentLinkSync writes the shared agency cookie (system_settings.agent_link_session_cookie
+                           + agent_link_live_agent_id) that every AgentLink pull runs against — admin-only
+                           per SAM-REDESIGN-P0-2026-07-25 audit row L65. Matches AgentLinkVault's gate below. */}
+                       <Route path="/dashboard/agentlink-sync" element={<ProtectedRoute requireAdmin><AgentLinkSync /></ProtectedRoute>} />
                        <Route path="/dashboard/agent-link-sync" element={<Navigate to="/dashboard/agentlink-sync" replace />} />
-                       <Route path="/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />
+                       <Route path="/agentlink-sync" element={<ProtectedRoute requireAdmin><AgentLinkSync /></ProtectedRoute>} />
                        <Route path="/dashboard/agentlink-vault" element={<ProtectedRoute requireAdmin><AgentLinkVault /></ProtectedRoute>} />
                        <Route path="/setup" element={<ProtectedRoute requireAdmin><Setup /></ProtectedRoute>} />
                        <Route path="/dashboard/setup" element={<ProtectedRoute requireAdmin><Setup /></ProtectedRoute>} />

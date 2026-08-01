@@ -27,9 +27,22 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const CALENDLY_TOKEN = Deno.env.get("CALENDLY_API_TOKEN") ?? "";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+
+// Token source, in order: env secret (preferred) -> service-role-only
+// apex_edge_secrets row. The DB fallback exists because the Supabase management
+// PAT is dead and there is no MCP set-secret tool, so the MFA-gated Calendly PAT
+// can only be delivered via SQL. Resolved per-request into this module-level
+// mutable, which cal() reads.
+let CALENDLY_TOKEN = "";
+async function resolveCalendlyToken(): Promise<string> {
+  const envTok = (Deno.env.get("CALENDLY_API_TOKEN") ?? "").trim();
+  if (envTok) return envTok;
+  const { data } = await sb.from("apex_edge_secrets")
+    .select("value").eq("key", "CALENDLY_API_TOKEN").maybeSingle();
+  return (data?.value ?? "").trim();
+}
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -90,6 +103,7 @@ function classify(name: string | null, slug: string | null): string {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
+  CALENDLY_TOKEN = await resolveCalendlyToken();
   if (!CALENDLY_TOKEN) {
     // Fail loud. Never a 200 that reconciled nothing.
     return json({
@@ -97,8 +111,8 @@ Deno.serve(async (req) => {
       error: "CALENDLY_API_TOKEN not set",
       detail:
         "Reconciliation cannot run without a Calendly Personal Access Token. " +
-        "Minting one requires clearing Calendly's MFA challenge. Set the secret " +
-        "and this begins reconciling on the next 6-hour tick.",
+        "Minting one requires clearing Calendly's MFA challenge. Deliver the token " +
+        "(env CALENDLY_API_TOKEN or apex_edge_secrets) and this reconciles on the next tick.",
     }, 503);
   }
 

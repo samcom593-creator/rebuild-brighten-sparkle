@@ -354,6 +354,7 @@ export default function InterviewCommandCenter() {
     row: UnifiedInterview,
     field: DispositionField,
     value?: string,
+    opts?: { silent?: boolean },
   ) => {
     const key = `${row.source}:${row.id}:${field}`;
     const timestamp = value ?? new Date().toISOString();
@@ -453,11 +454,13 @@ export default function InterviewCommandCenter() {
         if (r.promoted && r.promoted_agent_id) {
           toast.success(`${row.candidate_name} promoted to Agent`);
         }
-        if (r.emails_queued && r.emails_queued > 0) {
+        if (!opts?.silent && r.emails_queued && r.emails_queued > 0) {
           try { await supabase.functions.invoke("send-agent-onboarding-email", { body: {} }); } catch { /* drained on cron tick anyway */ } // empty-catch-allow:batch-drain
           toast.success("Course + Discord emails fired");
         }
-        window.open("https://agentlink.insuracloud.ai/admin/agents/invite", "_blank", "noopener,noreferrer");
+        if (!opts?.silent) {
+          window.open("https://agentlink.insuracloud.ai/admin/agents/invite", "_blank", "noopener,noreferrer");
+        }
       }
 
       await queryClient.invalidateQueries({ queryKey: ["interviews-unified", JUNE_START] });
@@ -871,13 +874,32 @@ export default function InterviewCommandCenter() {
                         action: {
                           label: `Yes · ${label} All`,
                           onClick: async () => {
+                            const isPromotion = field === "contracted" || field === "hired";
+                            let promotedCount = 0;
                             for (const row of targets) {
-                              try { await saveDisposition(row, field); } catch { /* keep going */ } // empty-catch-allow:batch-drain
+                              try {
+                                await saveDisposition(row, field, undefined, { silent: isPromotion });
+                                if (isPromotion) promotedCount++;
+                              } catch { /* keep going */ } // empty-catch-allow:batch-drain
                             }
                             setBulkMode(false);
                             setBulkSelected(new Set());
                             toast.success(`${label} applied to ${targets.length}`);
                             toast.dismiss(id);
+                            if (isPromotion && promotedCount > 0) {
+                              try { await supabase.functions.invoke("send-agent-onboarding-email", { body: {} }); } catch { /* drained on cron tick anyway */ } // empty-catch-allow:batch-drain
+                              toast.success(`Course + Discord emails fired for ${promotedCount}`);
+                              toast.message(
+                                `Open AgentLink to invite ${promotedCount} agent${promotedCount === 1 ? "" : "s"}?`,
+                                {
+                                  duration: 10000,
+                                  action: {
+                                    label: "Open AgentLink",
+                                    onClick: () => window.open("https://agentlink.insuracloud.ai/admin/agents/invite", "_blank", "noopener,noreferrer"),
+                                  },
+                                },
+                              );
+                            }
                           },
                         },
                       },

@@ -57,6 +57,10 @@ const EXCLUDE_FILES = new Set([
   // the pattern itself. Excluded so the shipped log stays readable without
   // breaking the guard.
   "src/components/dashboard/WhatShippedTodayBanner.tsx",
+  // The SHIPPED[] payload was split out of WhatShippedTodayBanner.tsx on
+  // 2026-07-25 so the 722 KB history no longer ships on every dashboard.
+  // Same prose-quotes-the-pattern exclusion reason.
+  "src/data/shipped-data.ts",
   // The guard's own doc comments quote the pattern.
   "scripts/check-external-link-noopener.mjs",
 ]);

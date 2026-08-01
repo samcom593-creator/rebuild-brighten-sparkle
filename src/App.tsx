@@ -214,6 +214,7 @@ const UnlicensedAll = lazy(() => import("./pages/admin/UnlicensedAll"));
 const XcelImport = lazy(() => import("./pages/admin/XcelImport"));
 const AgentDetail = lazy(() => import("./pages/AgentDetail"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const BoardLive = lazy(() => import("./pages/BoardLive"));
 const Rewards = lazy(() => import("./pages/Rewards"));
 const AgentManagement = lazy(() => import("./pages/AgentManagement"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
@@ -619,6 +620,7 @@ const App = () => (
                        <Route path="/dashboard/agents/:id" element={<ProtectedRoute><AgentDetail /></ProtectedRoute>} />
                        <Route path="/dashboard/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
                        <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+                       <Route path="/board" element={<ProtectedRoute><BoardLive /></ProtectedRoute>} />
                        <Route path="/dashboard/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
                        <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
                        <Route path="/dashboard/automation-health" element={<ProtectedRoute requireAdmin><AutomationHealth /></ProtectedRoute>} />

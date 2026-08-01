@@ -32,7 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -455,6 +455,7 @@ export default function HallOfFame() {
       {/* ── Detail dialog ────────────────────────────────────────── */}
       <Dialog open={!!openPlaque} onOpenChange={(o) => !o && setOpenPlaque(null)}>
         <DialogContent className="sm:max-w-lg p-0 overflow-hidden">
+          <DialogTitle className="sr-only">{openPlaque?.badge_label ?? "Plaque detail"}</DialogTitle>
           {openPlaque && <PlaqueDetail plaque={openPlaque} onClose={() => setOpenPlaque(null)} />}
         </DialogContent>
       </Dialog>

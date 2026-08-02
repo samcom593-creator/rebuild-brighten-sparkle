@@ -44,6 +44,7 @@ import { NextStepCard } from "@/components/dashboard/NextStepCard";
 import { RegionPeerCard, UpcomingChargebackCard } from "@/components/dashboard/AgentPeerAndChargebackCards";
 import { LapsesDrilldownModal } from "@/components/dashboard/LapsesDrilldownModal";
 import { RecentActivationsPanel } from "@/components/dashboard/RecentActivationsPanel";
+import { ManagerPostCounter } from "@/components/dashboard/ManagerPostCounter";
 import { MyReferralLinkCard } from "@/components/agent/MyReferralLinkCard";
 // v26 audit fix: AgentLinkBookTruthCard + CarrierBreakdownCard + BookTrendCard
 // imports removed. They lived in the deleted whole-book footer. KPIs now
@@ -1789,6 +1790,8 @@ function AgencyCommandView() {
           </div>
         </div>
       </div>
+
+      <ManagerPostCounter />
 
       {/* Custom-period date inputs appear only when 'custom' picked, as a
           single skinny strip — not a full card. Saves a zone. */}

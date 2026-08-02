@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
+import { ManagerPostCounter } from "@/components/dashboard/ManagerPostCounter";
 
 interface AgentRow {
   id: string;
@@ -156,6 +157,8 @@ export default function ManagerCommandView() {
             : `${downlineIds.length} agents · live production from AgentLink`
         }
               />
+
+      <ManagerPostCounter />
 
       {/* Top tile row — production / top producers / stuck */}
       <div className="grid gap-3 sm:grid-cols-3">

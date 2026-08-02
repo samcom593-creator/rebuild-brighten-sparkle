@@ -106,6 +106,17 @@ module.exports = {
     },
     extend: {
       colors: {
+        // BLACK + GOLD REBRAND — the landing bundle has its own Tailwind config,
+        // so the emerald/teal -> gold remap from tailwind.config.ts must be
+        // mirrored here or the public page keeps rendering the old teal accent.
+        emerald: {
+          50:"#fdf8e7",100:"#faefc4",200:"#f5e08d",300:"#efcd52",400:"#e8bb2b",
+          500:"#d9a41a",600:"#bb7f13",700:"#955c14",800:"#7b4a18",900:"#683e1a",950:"#3d2009",
+        },
+        teal: {
+          50:"#fdf8e7",100:"#faefc4",200:"#f5e08d",300:"#efcd52",400:"#e8bb2b",
+          500:"#d9a41a",600:"#bb7f13",700:"#955c14",800:"#7b4a18",900:"#683e1a",950:"#3d2009",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

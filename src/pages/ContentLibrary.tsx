@@ -55,7 +55,7 @@ const TAG_OPTIONS = ["social", "training", "testimonial", "product", "team", "sc
   "personal-brand", "celebration", "family"];
 
 const AWARD_TEMPLATES = [
-  { id: "deal_closed", label: "💰 Deal Closed", gradient: ["#10b981", "#059669"], subtitle: "CLOSED A DEAL" },
+  { id: "deal_closed", label: "💰 Deal Closed", gradient: ["#d9a41a", "#bb7f13"], subtitle: "CLOSED A DEAL" },
   { id: "weekly_top", label: "🏆 Weekly Top Producer", gradient: ["#f59e0b", "#d97706"], subtitle: "TOP PRODUCER" },
   { id: "streak", label: "🔥 Streak Achievement", gradient: ["#ef4444", "#dc2626"], subtitle: "ON FIRE" },
   { id: "monthly_elite", label: "⭐ Monthly Elite", gradient: ["#8b5cf6", "#7c3aed"], subtitle: "ELITE STATUS" },

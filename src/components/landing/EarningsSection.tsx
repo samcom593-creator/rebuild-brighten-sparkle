@@ -50,7 +50,7 @@ export function EarningsSection() {
                 onClick={() => setSelected(key as keyof typeof earningsData)}
                 className={`px-6 py-3 rounded-lg text-sm font-bold font-display transition-all duration-300 ${
                   selected === key
-                    ? "bg-[#22d3a5] text-[#030712] shadow-lg"
+                    ? "bg-[#e8bb2b] text-[#030712] shadow-lg"
                     : "text-[#94a3b8] hover:text-[#f1f5f9]"
                 }`}
               >
@@ -68,7 +68,7 @@ export function EarningsSection() {
           <div className="p-8 md:p-12 rounded-md bg-white dark:bg-slate-900 border border-[#1e293b] ">
             <div className="text-center mb-8">
               <p className="text-[#94a3b8] mb-2">{data.description}</p>
-              <div className="text-4xl md:text-6xl font-extrabold text-[#22d3a5] text-glow mb-2 font-display">
+              <div className="text-4xl md:text-6xl font-extrabold text-[#e8bb2b] text-glow mb-2 font-display">
                 {data.headline}
               </div>
               <p className="text-xl text-[#94a3b8]">{data.supporting}</p>
@@ -77,7 +77,7 @@ export function EarningsSection() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-[#1e293b] pt-8">
               {data.bullets.map((bullet) => (
                 <div key={bullet} className="text-center">
-                  <div className="text-2xl font-bold text-[#22d3a5] font-display">{bullet}</div>
+                  <div className="text-2xl font-bold text-[#e8bb2b] font-display">{bullet}</div>
                 </div>
               ))}
             </div>
@@ -92,8 +92,8 @@ export function EarningsSection() {
               className="reveal p-4 text-center rounded-md bg-white dark:bg-[#0f172a]/80 border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
               style={{ transitionDelay: `${index * 80}ms` }}
             >
-              <milestone.icon className="h-6 w-6 text-[#22d3a5] mx-auto mb-2" />
-              <div className="text-lg font-bold text-[#22d3a5] font-display">{milestone.value}</div>
+              <milestone.icon className="h-6 w-6 text-[#e8bb2b] mx-auto mb-2" />
+              <div className="text-lg font-bold text-[#e8bb2b] font-display">{milestone.value}</div>
               <div className="text-sm font-bold text-[#f1f5f9] font-display">{milestone.label}</div>
               <div className="text-xs text-[#8395ab] mt-1">{milestone.description}</div>
             </div>

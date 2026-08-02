@@ -13,9 +13,12 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 type DealHighlight = { agent: string; amount: number };
 
 const palette = [
-  "#22d3a5", "#22d3ee", "#f59e0b", "#f43f5e", "#a78bfa",
-  "#22d3a5", "#38bdf8", "#fb923c", "#ec4899", "#2dd4bf",
-  "#84cc16", "#d946ef", "#818cf8",
+  // Black + gold rebrand: the ticker used a rainbow palette (cyan/rose/violet/
+  // lime/fuchsia) that fought the brand. Now a champagne→gold→bronze family so
+  // consecutive names still read as distinct without going off-palette.
+  "#e8bb2b", "#f5e08d", "#d9a41a", "#efcd52", "#bb7f13",
+  "#faefc4", "#e8bb2b", "#c9a961", "#d9a41a", "#f5e08d",
+  "#8a7340", "#efcd52", "#bb7f13",
 ];
 
 const carriers = [
@@ -120,7 +123,7 @@ export function DealsTicker() {
     return (
       <span key={`c-${idx}`} className="inline-flex items-center gap-1.5 px-4 whitespace-nowrap">
         <span className="text-[#8395ab]">Our agents write with</span>
-        <span className="text-[#22d3a5] font-bold font-display">{item.name}</span>
+        <span className="text-[#e8bb2b] font-bold font-display">{item.name}</span>
         <span className="text-[#1e293b] mx-2">|</span>
       </span>
     );

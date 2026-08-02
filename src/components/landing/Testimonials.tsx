@@ -32,7 +32,7 @@ export function Testimonials() {
     <section className="relative py-24 md:py-32 bg-[#0a0f1a] overflow-hidden">
       {/* dark aurora wash — matches the rest of the landing's dark surface */}
       <div aria-hidden className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 80% 50% at 50% 50%, hsl(168 80% 50% / 0.08) 0%, transparent 60%)" }} />
+        style={{ background: "radial-gradient(ellipse 80% 50% at 50% 50%, hsl(45 80% 50% / 0.08) 0%, transparent 60%)" }} />
       <div className="container mx-auto px-4 sm:px-6 relative z-10">
         <div className="text-center mb-16 landing-fade-up">
           <p className="text-[10px] text-muted-foreground mb-3 uppercase tracking-[0.3em] font-display font-semibold">

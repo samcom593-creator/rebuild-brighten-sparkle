@@ -917,15 +917,53 @@ export default function DashboardApplicants() {
 
   const baseApplications = statusFilter === "terminated" ? terminatedApplications : activeApplications;
 
+  // CALL PRIORITY (2026-08-02) — the list used to sort on created_at alone, so a
+  // licensed applicant who was already worked outranked an untouched lead just
+  // because they applied more recently. Sam: "top of the list is truly top of the
+  // list, not some bullshit that's manipulated." Real priority for a dialer is:
+  //   0  never contacted, reachable, fresh (<=3d)
+  //   1  never contacted, reachable, 4-14d
+  //   2  never contacted, reachable, older
+  //   3  already contacted — surfaced oldest-touch-first (due for follow-up)
+  //   4  unreachable (no phone, or phone marked bad) — never at the top
+  // Within a tier we still honour the newest/oldest toggle.
+  const callPriority = useCallback((a: Application) => {
+    const anyA = a as any;
+    const phone = (a.phone || "").replace(/\D+/g, "");
+    const reachable = phone.length >= 10 && !anyA.phone_bad_at;
+    if (!reachable) return 4;
+    // TRUST ONLY last_contacted_at. `contacted_at` is NOT a real contact signal —
+    // it was bulk-stamped (batches of exactly 10 rows at round times like 03:30 /
+    // 04:30 / 06:00 on 2026-07-28), so 382 applicants read as "contacted" who were
+    // never actually called. Using it buried the real never-called pool.
+    const contacted = Boolean(anyA.last_contacted_at);
+    if (contacted) return 3;
+    // Math.max(0, …) clamp: a future-dated created_at would otherwise yield a
+    // negative age and falsely rank the row as the freshest lead on the board.
+    const ageDays = Math.max(0, Date.now() - new Date(a.created_at).getTime()) / 86_400_000;
+    if (ageDays <= 3) return 0;
+    if (ageDays <= 14) return 1;
+    return 2;
+  }, []);
+
   const filteredApplications = useMemo(() =>
     baseApplications
       .filter(applicationMatchesFilters)
       .sort((a, b) => {
+        const pa = callPriority(a);
+        const pb = callPriority(b);
+        if (pa !== pb) return pa - pb;
+        // tier 3 = already contacted: the one waiting longest is the most overdue
+        if (pa === 3) {
+          const ca = new Date((a as any).last_contacted_at || a.created_at).getTime();
+          const cb = new Date((b as any).last_contacted_at || b.created_at).getTime();
+          return ca - cb;
+        }
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
         return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
       }),
-    [baseApplications, applicationMatchesFilters, sortOrder]
+    [baseApplications, applicationMatchesFilters, sortOrder, callPriority]
   );
 
   const needsFollowupCount = useMemo(() => {

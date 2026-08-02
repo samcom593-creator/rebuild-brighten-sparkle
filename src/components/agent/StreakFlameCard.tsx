@@ -77,7 +77,7 @@ export function StreakFlameCard({ agentId }: Props) {
     streak >= 30 ? { label: "UNSTOPPABLE", color: "#ef4444", bg: "from-rose-500/20 to-amber-500/10" }
     : streak >= 10 ? { label: "ON FIRE",     color: "#f59e0b", bg: "from-amber-500/20 to-orange-500/10" }
     : streak >= 5  ? { label: "HEATING UP",  color: "#fb923c", bg: "from-orange-500/15 to-amber-500/5" }
-    : streak >= 1  ? { label: "KEEP IT UP",  color: "#22d3a5", bg: "from-emerald-500/15 to-transparent" }
+    : streak >= 1  ? { label: "KEEP IT UP",  color: "#e8bb2b", bg: "from-emerald-500/15 to-transparent" }
     :                 { label: "START TODAY", color: "#64748b", bg: "from-muted/20 to-transparent" };
 
   return (

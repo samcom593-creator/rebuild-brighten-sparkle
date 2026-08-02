@@ -19,10 +19,10 @@ type CelebrateRow = {
 
 const EVENT_COLORS: Record<string, string[]> = {
   big_deal:         ["#ef4444", "#f59e0b", "#eab308"],
-  first_deal:       ["#10b981", "#34d399", "#6ee7b7"],
+  first_deal:       ["#d9a41a", "#efcd52", "#f5e08d"],
   mtd_milestone:    ["#3b82f6", "#8b5cf6", "#ec4899"],
   streak_7day:      ["#f97316", "#ea580c", "#dc2626"],
-  applicant_contracted: ["#14b8a6", "#06b6d4", "#3b82f6"],
+  applicant_contracted: ["#d9a41a", "#06b6d4", "#3b82f6"],
   default:          ["#6366f1", "#8b5cf6", "#ec4899"],
 };
 

@@ -26,8 +26,8 @@ interface AwardConfig {
 
 const AWARD_CONFIGS: Record<AwardType, AwardConfig> = {
   top_producer:      { emoji: "🏆", label: "TOP PRODUCER",      bg1: "#030712", bg2: "#0f172a", accent: "#f59e0b", textColor: "#f59e0b" },
-  leaderboard:       { emoji: "📊", label: "LEADERBOARD",       bg1: "#030712", bg2: "#0f172a", accent: "#22d3a5", textColor: "#22d3a5" },
-  first_deal:        { emoji: "🎯", label: "FIRST DEAL",        bg1: "#030712", bg2: "#0f172a", accent: "#22d3a5", textColor: "#22d3a5" },
+  leaderboard:       { emoji: "📊", label: "LEADERBOARD",       bg1: "#030712", bg2: "#0f172a", accent: "#e8bb2b", textColor: "#e8bb2b" },
+  first_deal:        { emoji: "🎯", label: "FIRST DEAL",        bg1: "#030712", bg2: "#0f172a", accent: "#e8bb2b", textColor: "#e8bb2b" },
   top_producer_week: { emoji: "🥇", label: "WEEKLY CHAMPION",   bg1: "#030712", bg2: "#0f172a", accent: "#f59e0b", textColor: "#f59e0b" },
   most_hires_week:   { emoji: "👥", label: "HIRING CHAMPION",   bg1: "#030712", bg2: "#0f172a", accent: "#a78bfa", textColor: "#a78bfa" },
   most_hires_month:  { emoji: "🤝", label: "RECRUITER OF MONTH",bg1: "#030712", bg2: "#0f172a", accent: "#a78bfa", textColor: "#a78bfa" },
@@ -36,7 +36,7 @@ const AWARD_CONFIGS: Record<AwardType, AwardConfig> = {
   unstoppable:       { emoji: "⚡", label: "UNSTOPPABLE",       bg1: "#030712", bg2: "#0d0a1a", accent: "#8b5cf6", textColor: "#8b5cf6" },
   diamond_week:      { emoji: "💎", label: "DIAMOND WEEK",      bg1: "#030712", bg2: "#050f1a", accent: "#38bdf8", textColor: "#38bdf8" },
   elite_producer:    { emoji: "👑", label: "ELITE PRODUCER",    bg1: "#030712", bg2: "#0f0a00", accent: "#f59e0b", textColor: "#f59e0b" },
-  comeback:          { emoji: "📈", label: "COMEBACK",          bg1: "#030712", bg2: "#001a0a", accent: "#22d3a5", textColor: "#22d3a5" },
+  comeback:          { emoji: "📈", label: "COMEBACK",          bg1: "#030712", bg2: "#001a0a", accent: "#e8bb2b", textColor: "#e8bb2b" },
 };
 
 export interface GenerateAwardOptions {

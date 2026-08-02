@@ -101,7 +101,7 @@ export default function MyStrikes() {
           particleCount: 120,
           spread: 90,
           origin: { y: 0.45 },
-          colors: ["#22d3a5", "#a78bfa", "#f59e0b", "#fbbf24"],
+          colors: ["#e8bb2b", "#a78bfa", "#f59e0b", "#fbbf24"],
         });
       }, 200);
       toast.success("Board cleared 🎉", { description: "You're back to clear standing." });

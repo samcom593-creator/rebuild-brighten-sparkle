@@ -129,13 +129,13 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
       particleCount: 100,
       spread: 70,
       origin: { x: 0.1, y: 0.6 },
-      colors: ["#10b981", "#14b8a6", "#f59e0b", "#8b5cf6"],
+      colors: ["#d9a41a", "#d9a41a", "#f59e0b", "#8b5cf6"],
     });
     confetti({
       particleCount: 100,
       spread: 70,
       origin: { x: 0.9, y: 0.6 },
-      colors: ["#10b981", "#14b8a6", "#f59e0b", "#8b5cf6"],
+      colors: ["#d9a41a", "#d9a41a", "#f59e0b", "#8b5cf6"],
     });
   };
 

@@ -68,6 +68,23 @@ export default {
         'slow': '240ms',
       },
       colors: {
+        // ── BLACK + GOLD REBRAND ────────────────────────────────────────────
+        // The app shipped with a teal/emerald accent. Rather than rewrite the
+        // ~1,850 hardcoded emerald-*/teal-* utilities across 253 files (huge
+        // diff, huge regression surface), we remap those two Tailwind palettes
+        // onto the APEX gold ramp. Every existing `bg-emerald-400`,
+        // `text-teal-300`, `border-emerald-500/30` etc. becomes gold with zero
+        // component edits, and the change is reversible by deleting this block.
+        // Semantic `green-*` is deliberately left alone so success states stay
+        // readable as success.
+        emerald: {
+          50:"#fdf8e7",100:"#faefc4",200:"#f5e08d",300:"#efcd52",400:"#e8bb2b",
+          500:"#d9a41a",600:"#bb7f13",700:"#955c14",800:"#7b4a18",900:"#683e1a",950:"#3d2009",
+        },
+        teal: {
+          50:"#fdf8e7",100:"#faefc4",200:"#f5e08d",300:"#efcd52",400:"#e8bb2b",
+          500:"#d9a41a",600:"#bb7f13",700:"#955c14",800:"#7b4a18",900:"#683e1a",950:"#3d2009",
+        },
         apex: {
           // v9 wave-0 tokens (single source of truth)
           bg:           "hsl(var(--apex-bg))",

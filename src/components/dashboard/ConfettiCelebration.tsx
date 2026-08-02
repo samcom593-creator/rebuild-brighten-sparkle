@@ -72,7 +72,7 @@ export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebration
     const fire = confettiInstanceRef.current || confetti;
 
     // APEX theme colors - teal, emerald, gold
-    const colors = ["#14b8a6", "#10b981", "#f59e0b", "#06b6d4", "#22d3ee"];
+    const colors = ["#d9a41a", "#d9a41a", "#f59e0b", "#06b6d4", "#22d3ee"];
     
     const defaults = {
       spread: 360,

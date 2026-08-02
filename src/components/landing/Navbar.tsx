@@ -44,10 +44,10 @@ export function Navbar() {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 flex-shrink-0">
             <div className="relative">
-              <Crown className="h-8 w-8 text-[#22d3a5]" />
-              <div className="absolute inset-0 blur-lg bg-[#22d3a5]/30" />
+              <Crown className="h-8 w-8 text-[#e8bb2b]" />
+              <div className="absolute inset-0 blur-lg bg-[#e8bb2b]/30" />
             </div>
-            <span className="text-xl md:text-2xl font-extrabold text-[#22d3a5] font-display">
+            <span className="text-xl md:text-2xl font-extrabold text-[#e8bb2b] font-display">
               APEX Financial
             </span>
           </Link>
@@ -109,12 +109,12 @@ export function Navbar() {
             </div>
 
             <Link to="/login">
-              <button className="px-4 py-2 text-sm font-bold font-display text-[#f1f5f9] hover:text-[#22d3a5] transition-colors">
+              <button className="px-4 py-2 text-sm font-bold font-display text-[#f1f5f9] hover:text-[#e8bb2b] transition-colors">
                 Login
               </button>
             </Link>
             <Link to={applyHref}>
-              <button className="px-6 py-2.5 text-sm font-bold font-display bg-[#22d3a5] text-[#030712] rounded-lg hover:bg-[#1cb88f] hover:shadow-lg transition-all duration-200">
+              <button className="px-6 py-2.5 text-sm font-bold font-display bg-[#e8bb2b] text-[#030712] rounded-lg hover:bg-[#1cb88f] hover:shadow-lg transition-all duration-200">
                 Apply Now
               </button>
             </Link>
@@ -164,12 +164,12 @@ export function Navbar() {
 
             <div className="flex flex-col gap-2 pt-4 border-t border-[#1e293b]">
               <Link to="/login" onClick={() => setIsOpen(false)}>
-                <button className="w-full py-3 text-sm font-bold font-display border-2 border-[#1e293b] text-[#f1f5f9] rounded-lg hover:border-[#22d3a5] transition-colors">
+                <button className="w-full py-3 text-sm font-bold font-display border-2 border-[#1e293b] text-[#f1f5f9] rounded-lg hover:border-[#e8bb2b] transition-colors">
                   Login
                 </button>
               </Link>
               <Link to={applyHref} onClick={() => setIsOpen(false)}>
-                <button className="w-full py-3 text-sm font-bold font-display bg-[#22d3a5] text-[#030712] rounded-lg hover:bg-[#1cb88f] transition-colors shadow-md">
+                <button className="w-full py-3 text-sm font-bold font-display bg-[#e8bb2b] text-[#030712] rounded-lg hover:bg-[#1cb88f] transition-colors shadow-md">
                   Apply Now
                 </button>
               </Link>

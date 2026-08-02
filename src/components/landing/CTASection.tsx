@@ -56,13 +56,13 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="reveal max-w-4xl mx-auto text-center">
-          <span className="landing-scale-in inline-block px-4 py-1.5 rounded-full text-sm font-bold font-display bg-[#22d3a5]/10 text-[#22d3a5] border border-[#22d3a5]/20 mb-6">
+          <span className="landing-scale-in inline-block px-4 py-1.5 rounded-full text-sm font-bold font-display bg-[#e8bb2b]/10 text-[#e8bb2b] border border-[#e8bb2b]/20 mb-6">
             Hold the Standard.
           </span>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 text-[#f1f5f9] font-display">
             Ready to{" "}
-            <span className="text-[#22d3a5] text-glow">Run with the Standard?</span>
+            <span className="text-[#e8bb2b] text-glow">Run with the Standard?</span>
           </h2>
 
           <p className="text-lg md:text-xl text-[#94a3b8] max-w-2xl mx-auto mb-8">
@@ -78,7 +78,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
                 className="reveal flex items-center gap-2 text-sm text-[#94a3b8]"
                 style={{ transitionDelay: `${index * 80}ms` }}
               >
-                <CheckCircle2 className="h-4 w-4 text-[#22d3a5] flex-shrink-0" />
+                <CheckCircle2 className="h-4 w-4 text-[#e8bb2b] flex-shrink-0" />
                 <span>{benefit}</span>
               </div>
             ))}
@@ -87,13 +87,13 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
           {/* Two CTA Buttons Side by Side */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link to={applyHref}>
-              <button className="inline-flex items-center justify-center gap-2 px-10 py-5 text-xl rounded-lg font-bold font-display bg-[#22d3a5] text-[#030712] hover: transition-all duration-200 animate-pulse-glow group">
+              <button className="inline-flex items-center justify-center gap-2 px-10 py-5 text-xl rounded-lg font-bold font-display bg-[#e8bb2b] text-[#030712] hover: transition-all duration-200 animate-pulse-glow group">
                 Start Your Application
                 <ArrowRight className="h-5 w-5 transition-base group-hover:translate-x-1" />
               </button>
             </Link>
             <Link to="/schedule-call">
-              <button className="inline-flex items-center justify-center gap-2 px-10 py-5 text-xl rounded-lg font-bold font-display border-2 border-[#22d3a5] text-[#22d3a5] bg-transparent hover:bg-[#22d3a5]/10 transition-all duration-200">
+              <button className="inline-flex items-center justify-center gap-2 px-10 py-5 text-xl rounded-lg font-bold font-display border-2 border-[#e8bb2b] text-[#e8bb2b] bg-transparent hover:bg-[#e8bb2b]/10 transition-all duration-200">
                 Schedule a Call
               </button>
             </Link>

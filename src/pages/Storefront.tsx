@@ -128,7 +128,7 @@ export default function Storefront() {
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `-${Math.random() * 20 + 10}%`,
-                background: ["#22d3a5", "#a78bfa", "#fbbf24", "#3b82f6"][i % 4],
+                background: ["#e8bb2b", "#a78bfa", "#fbbf24", "#3b82f6"][i % 4],
                 animationDelay: `${Math.random() * 0.6}s`,
                 animationDuration: `${1.4 + Math.random() * 1.6}s`,
               }}

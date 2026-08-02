@@ -137,7 +137,7 @@ export function HeroSection() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse 80% 60% at 50% 20%, hsl(168 80% 50% / 0.10) 0%, transparent 60%)",
+            "radial-gradient(ellipse 80% 60% at 50% 20%, hsl(45 85% 52% / 0.10) 0%, transparent 60%)",
         }}
       />
       {/* Animated SVG mesh ribbons */}
@@ -149,7 +149,7 @@ export function HeroSection() {
       >
         <defs>
           <linearGradient id="meshGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%"  stopColor="hsl(168 80% 55%)" stopOpacity="0.55" />
+            <stop offset="0%"  stopColor="hsl(45 80% 55%)" stopOpacity="0.55" />
             <stop offset="50%" stopColor="hsl(265 80% 65%)" stopOpacity="0.35" />
             <stop offset="100%" stopColor="hsl(38 90% 55%)"  stopOpacity="0.25" />
           </linearGradient>
@@ -211,7 +211,7 @@ export function HeroSection() {
                 return (
                   <>
                     <span className="block text-foreground">Earn 70%–145%</span>
-                    <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(168 80% 50% / 0.45))" }}>
+                    <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(45 85% 52% / 0.45))" }}>
                       selling life insurance
                     </span>
                     <span className="block text-foreground text-[0.55em] mt-3">Warm leads · Paid weekly · $120K/mo agency</span>
@@ -222,7 +222,7 @@ export function HeroSection() {
                 return (
                   <>
                     <span className="block text-foreground">I built a $120K/mo agency</span>
-                    <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(168 80% 50% / 0.45))" }}>
+                    <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(45 85% 52% / 0.45))" }}>
                       from a college dorm.
                     </span>
                     <span className="block text-foreground text-[0.55em] mt-3">The exact system is yours when you join APEX.</span>
@@ -233,7 +233,7 @@ export function HeroSection() {
               return (
                 <>
                   <span className="block text-foreground">Build your</span>
-                  <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(168 80% 50% / 0.45))" }}>
+                  <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(45 85% 52% / 0.45))" }}>
                     Financial Empire
                   </span>
                   <span className="block text-foreground">with APEX</span>
@@ -272,7 +272,7 @@ export function HeroSection() {
                 className="absolute inset-0 rounded-md blur-xl opacity-60 group-hover:opacity-100 transition-opacity duration-300"
                 style={{
                   background:
-                    "linear-gradient(135deg, hsl(168 80% 50%), hsl(265 80% 65%))",
+                    "linear-gradient(135deg, hsl(45 90% 62%), hsl(40 72% 38%))",
                 }}
               />
               <button
@@ -360,7 +360,7 @@ export function HeroSection() {
                 <span
                   aria-hidden
                   className="absolute -top-3 left-1/2 -translate-x-1/2 h-6 w-12 rounded-full opacity-60 blur-md group-hover:opacity-100 transition-opacity"
-                  style={{ background: "hsl(168 80% 50%)" }}
+                  style={{ background: "hsl(45 85% 52%)" }}
                 />
                 <item.icon className={`h-7 w-7 ${item.color} mx-auto mb-2`} />
                 <div className={`text-lg font-bold font-display ${item.color}`}>

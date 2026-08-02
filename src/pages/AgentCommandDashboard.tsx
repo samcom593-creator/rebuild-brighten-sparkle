@@ -2933,7 +2933,7 @@ function CarrierMixPanel({ data, loading }: {
   data: { carriers: Array<{ name: string; ap: number; deals: number }>; otherAp: number; otherDeals: number; totalAp: number; carrierCount: number } | undefined;
   loading: boolean;
 }) {
-  const palette = ["#10b981", "#06b6d4", "#3b82f6", "#a78bfa", "#f59e0b", "#fb7185", "#94a3b8"];
+  const palette = ["#d9a41a", "#06b6d4", "#3b82f6", "#a78bfa", "#f59e0b", "#fb7185", "#94a3b8"];
   const chartData = useMemo(() => {
     if (!data) return [] as Array<{ name: string; value: number; deals: number; pct: number }>;
     const rows = data.carriers.map((c, i) => ({

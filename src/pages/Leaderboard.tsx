@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -35,6 +36,12 @@ type Row = {
   tertiary: number;
   agent_name: string | null;
   avatar_url: string | null;
+  // Production-individual rows only. Estimated earnings are calculated by the
+  // leaderboard_board RPC from each producer's stored carrier contract levels.
+  // The contract percentage itself is intentionally never returned to clients.
+  est_earnings?: number;
+  lead_cost?: number;
+  tenure_label?: string | null;
   // top_legs mode only — number of agents inside the leg
   leg_size?: number;
 };
@@ -102,6 +109,7 @@ export default function Leaderboard() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  const [selectedProductionRow, setSelectedProductionRow] = useState<Row | null>(null);
 
   const bounds = useMemo(() => getBounds(period, customFrom, customTo), [period, customFrom, customTo]);
 
@@ -278,7 +286,7 @@ export default function Leaderboard() {
         //      policy written this week effective next month counts this week.
         //   4. Status — Declined / Not Taken / Withdrawn / Lapse are excluded.
         // Dup identities are canonicalized inside the RPC (v_agent_canonical_map).
-        const { data: rpcRows } = await supabase.rpc("leaderboard_book" as any, {
+        const { data: rpcRows } = await supabase.rpc("leaderboard_board" as any, {
           p_start: bounds.startIso.slice(0, 10),
           p_end: bounds.endIso.slice(0, 10),
         });
@@ -289,6 +297,9 @@ export default function Leaderboard() {
           avatar_url: string | null;
           deals: number | string;
           ap: number | string;
+          est_earnings: number | string;
+          lead_cost: number | string;
+          tenure_label: string | null;
         }>).map((r, index) => ({
           rank: index + 1,
           agent_key: r.agent_key,
@@ -298,6 +309,9 @@ export default function Leaderboard() {
           tertiary: 0,
           agent_name: r.agent_name,
           avatar_url: r.avatar_url,
+          est_earnings: Number(r.est_earnings ?? 0),
+          lead_cost: Number(r.lead_cost ?? 750),
+          tenure_label: r.tenure_label,
         }));
         setRows(built);
         setLastUpdatedAt(new Date().toISOString());
@@ -405,6 +419,17 @@ export default function Leaderboard() {
   const PrimaryIcon = meta.icon;
 
   const sourceHint = `${meta.label} leaderboard · ${meta.source} · America/Chicago business window`;
+
+  const productionFinancials = useMemo(() => {
+    if (board !== "production" || productionMode !== "individuals") return null;
+    const estimatedIncome = rows.reduce((sum, row) => sum + (row.est_earnings ?? 0), 0);
+    const leadSpend = rows.reduce((sum, row) => sum + (row.lead_cost ?? 0), 0);
+    return {
+      estimatedIncome,
+      leadSpend,
+      afterLeadSpend: estimatedIncome - leadSpend,
+    };
+  }, [board, productionMode, rows]);
 
   function primaryValue(row: Row): string {
     if (board === "production") return formatMoney(row.primary);
@@ -621,6 +646,37 @@ export default function Leaderboard() {
           </div>
         </div>
 
+        {productionFinancials && !loading && rows.length > 0 && (
+          <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
+            <GlassCard className="min-w-0 p-3 sm:p-4">
+              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</p>
+              <p className="mt-1 truncate text-lg font-bold tabular-nums text-emerald-600 dark:text-emerald-400 sm:text-2xl">
+                {formatMoney(productionFinancials.estimatedIncome)}
+              </p>
+              <p className="mt-1 hidden text-[11px] text-muted-foreground sm:block">Contract-level estimate</p>
+            </GlassCard>
+            <GlassCard className="min-w-0 p-3 sm:p-4">
+              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</p>
+              <p className="mt-1 truncate text-lg font-bold tabular-nums text-foreground sm:text-2xl">
+                {formatMoney(productionFinancials.leadSpend)}
+              </p>
+              <p className="mt-1 hidden text-[11px] text-muted-foreground sm:block">$750 per producer</p>
+            </GlassCard>
+            <GlassCard className="min-w-0 p-3 sm:p-4">
+              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">After leads</p>
+              <p className={cn(
+                "mt-1 truncate text-lg font-bold tabular-nums sm:text-2xl",
+                productionFinancials.afterLeadSpend >= 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-rose-600 dark:text-rose-400",
+              )}>
+                {formatMoney(productionFinancials.afterLeadSpend)}
+              </p>
+              <p className="mt-1 hidden text-[11px] text-muted-foreground sm:block">Est. income − lead spend</p>
+            </GlassCard>
+          </div>
+        )}
+
         {(["production", "recruiting", "referrals", "activity"] as Board[]).map((tab) => (
           <TabsContent key={tab} value={tab} className="mt-3">
             {loading ? (
@@ -706,33 +762,74 @@ export default function Leaderboard() {
                       <li
                         key={row.agent_key}
                         className={cn(
-                          "flex items-center gap-3 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 transition-colors hover:border-border hover:bg-card",
+                          "flex gap-3 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5 transition-colors hover:border-border hover:bg-card",
+                          tab === "production" && productionMode === "individuals"
+                            ? "flex-col sm:flex-row sm:items-center"
+                            : "items-center",
                           highlight && podiumStyle,
                         )}
                       >
-                        <div className={cn("w-9 shrink-0 text-center text-sm font-bold tabular-nums", rankColor)}>
-                          #{row.rank}
+                        <div className="flex min-w-0 w-full items-center gap-3 sm:flex-1">
+                          <div className={cn("w-9 shrink-0 text-center text-sm font-bold tabular-nums", rankColor)}>
+                            #{row.rank}
+                          </div>
+                          <RankIcon className={cn("h-4 w-4 shrink-0", rankColor)} />
+                          {row.avatar_url ? (
+                            <img src={row.avatar_url} alt="" className={cn("h-8 w-8 shrink-0 rounded-full ring-2", row.rank === 1 ? "ring-amber-500/50" : "ring-border/40")} />
+                          ) : (
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/50 text-[10px] font-bold text-muted-foreground">
+                              {(row.agent_name ?? "?").split(" ").map((part) => part[0]).slice(0, 2).join("")}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            {tab === "production" && productionMode === "individuals" ? (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedProductionRow(row)}
+                                className="max-w-full truncate text-left text-sm font-semibold text-foreground underline-offset-2 decoration-dotted transition-colors hover:text-primary hover:underline"
+                                aria-label={`View income estimate for ${row.agent_name ?? "producer"}`}
+                              >
+                                {row.agent_name ?? "—"}
+                              </button>
+                            ) : (
+                              <div className="truncate text-sm font-medium text-foreground">{row.agent_name ?? "—"}</div>
+                            )}
+                            <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                              {subValue(row)}
+                              {tab === "production" && productionMode === "individuals" && row.tenure_label
+                                ? ` · ${row.tenure_label}`
+                                : ""}
+                            </div>
+                          </div>
                         </div>
-                        <RankIcon className={cn("h-4 w-4 shrink-0", rankColor)} />
-                        {row.avatar_url ? (
-                          <img src={row.avatar_url} alt="" className={cn("h-8 w-8 shrink-0 rounded-full ring-2", row.rank === 1 ? "ring-amber-500/50" : "ring-border/40")} />
+
+                        {tab === "production" && productionMode === "individuals" ? (
+                          <div className="grid w-full grid-cols-3 gap-2 border-t border-border/50 pt-2 sm:w-auto sm:min-w-[320px] sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+                            <div className="min-w-0 sm:text-right">
+                              <div className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Production</div>
+                              <div className="truncate text-sm font-bold tabular-nums text-foreground">{formatMoney(row.primary)}</div>
+                            </div>
+                            <div className="min-w-0 sm:text-right">
+                              <div className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</div>
+                              <div className="truncate text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                                {formatMoney(row.est_earnings ?? 0)}
+                              </div>
+                            </div>
+                            <div className="min-w-0 sm:text-right">
+                              <div className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</div>
+                              <div className="truncate text-sm font-bold tabular-nums text-foreground">{formatMoney(row.lead_cost ?? 750)}</div>
+                            </div>
+                          </div>
                         ) : (
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/50 text-[10px] font-bold text-muted-foreground">
-                            {(row.agent_name ?? "?").split(" ").map((part) => part[0]).slice(0, 2).join("")}
+                          <div className="shrink-0 text-right">
+                            <div className="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                              {primaryValue(row)}
+                            </div>
+                            <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                              {BOARD_META[tab].label}
+                            </div>
                           </div>
                         )}
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-foreground">{row.agent_name ?? "—"}</div>
-                          <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{subValue(row)}</div>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <div className="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                            {primaryValue(row)}
-                          </div>
-                          <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                            {BOARD_META[tab].label}
-                          </div>
-                        </div>
                       </li>
                     );
                   })}
@@ -742,6 +839,57 @@ export default function Leaderboard() {
           </TabsContent>
         ))}
       </Tabs>
+
+      <Dialog
+        open={selectedProductionRow !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedProductionRow(null);
+        }}
+      >
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>{selectedProductionRow?.agent_name ?? "Producer"} · income estimate</DialogTitle>
+            <DialogDescription>
+              Contract-level estimate for the selected {period} production window.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedProductionRow && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Production</p>
+                  <p className="mt-1 text-xl font-bold tabular-nums text-foreground">{formatMoney(selectedProductionRow.primary)}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{selectedProductionRow.secondary} policies</p>
+                </div>
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</p>
+                  <p className="mt-1 text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                    {formatMoney(selectedProductionRow.est_earnings ?? 0)}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Before lead spend</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</p>
+                  <p className="mt-1 text-xl font-bold tabular-nums text-foreground">{formatMoney(selectedProductionRow.lead_cost ?? 750)}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Fixed per producer</p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">After leads</p>
+                  <p className="mt-1 text-xl font-bold tabular-nums text-foreground">
+                    {formatMoney((selectedProductionRow.est_earnings ?? 0) - (selectedProductionRow.lead_cost ?? 750))}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Est. income − $750</p>
+                </div>
+              </div>
+
+              <p className="rounded-lg bg-muted/40 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+                Estimated income uses the producer&rsquo;s saved AgentLink carrier contract levels. It is not confirmed paid commission and does not include chargebacks, advances, or overrides.
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

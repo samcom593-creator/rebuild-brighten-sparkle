@@ -1,7 +1,7 @@
 // MP-264 — Book of Business rebuild (2026-07-09)
-// Sam brief verbatim: Every policy record across the agency. Synced from AgentLink.
-// - Preserves v_agentlink_book_truth as source of truth for authoritative KPIs
-// - Preserves agentlink_deals_snapshot as row source (1,286+ real policies, 30-min sync)
+// Sam brief verbatim: Every policy record across the agency.
+// - Combines AgentLink snapshots with separately imported Ethos carrier policies
+// - Keeps source-specific actions and audit details honest in the UI
 // - Preserves deals-table chargeback join for Chargeback Watch drawer
 // - Consumes existing foundation: apexTokens (tone), AgentNameLink, Sheet, KebabMenu
 // - Never touches Apply.tsx / /apply route
@@ -94,6 +94,12 @@ interface DealRow {
   created_at: string;
   agent_name?: string;
   carrier_name?: string;
+  client_address?: string | null;
+  client_phone?: string | null;
+  client_dob?: string | null;
+  face_amount?: number | null;
+  source_agent_names?: string[];
+  source_file_name?: string | null;
 }
 
 // Full client profile loaded on demand from agentlink_clients via
@@ -251,12 +257,21 @@ function formatCurrency(n: number | null | undefined): string {
   return `$${Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
-function sourceKey(source?: string | null): "apex" | "agent_link" {
+type BookSourceKey = "apex" | "agent_link" | "ethos";
+
+function sourceKey(source?: string | null): BookSourceKey {
+  if (source === "ethos") return "ethos";
   return source === "agent_link" ||
     source === "agentlink" ||
     source === "insuracloud"
     ? "agent_link"
     : "apex";
+}
+
+function sourceLabel(source?: string | null): string {
+  const key = sourceKey(source);
+  if (key === "ethos") return "Ethos";
+  return key === "agent_link" ? "AgentLink" : "APEX";
 }
 
 function pipelineLabel(deal: DealRow): string {
@@ -273,7 +288,8 @@ function pipelineLabel(deal: DealRow): string {
 // so without normalization the Stage <Select> exact-match returned zero rows
 // and status badges fell back to gray "muted" on the primary data source.
 function pipelineStageKey(deal: DealRow): string {
-  return pipelineLabel(deal).toLowerCase().trim().replace(/\s+/g, "_");
+  const key = pipelineLabel(deal).toLowerCase().trim().replace(/\s+/g, "_");
+  return key === "inforce" ? "in_force" : key;
 }
 
 function stageDisplayLabel(deal: DealRow): string {
@@ -327,7 +343,8 @@ function isActivePolicy(deal: DealRow): boolean {
 function pickPostedTs(
   deal: Pick<DealRow, "effective_date" | "posted_at" | "created_at">,
 ): { ts: string | null; isFallback: boolean } {
-  if (deal.effective_date) return { ts: deal.effective_date, isFallback: false };
+  if (deal.effective_date)
+    return { ts: deal.effective_date, isFallback: false };
   const fallback = deal.posted_at ?? deal.created_at ?? null;
   return { ts: fallback, isFallback: Boolean(fallback) };
 }
@@ -351,8 +368,12 @@ export default function BookOfBusiness() {
   // last 30 days regardless of status — 243 of its 252 were HEALTHY active
   // business, and it missed the 62 policies actually signalling lapse.
   const [cbWatch, setCbWatch] = useState<ChargebackWatchRow[] | null>(null);
-  const [persistency, setPersistency] = useState<BookPersistencyRow[] | null>(null);
-  const [concentration, setConcentration] = useState<BookConcentrationRow[] | null>(null);
+  const [persistency, setPersistency] = useState<BookPersistencyRow[] | null>(
+    null,
+  );
+  const [concentration, setConcentration] = useState<
+    BookConcentrationRow[] | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [agentScopeIds, setAgentScopeIds] = useState<string[] | null>(null);
   const [agentLinkScopeUserIds, setAgentLinkScopeUserIds] = useState<
@@ -368,9 +389,7 @@ export default function BookOfBusiness() {
   const [policyFilter, setPolicyFilter] = useState("");
   const [carrierFilter, setCarrierFilter] = useState("");
   const [productFilter, setProductFilter] = useState("");
-  const [sourceFilter, setSource] = useState<"all" | "apex" | "agent_link">(
-    "all",
-  );
+  const [sourceFilter, setSource] = useState<"all" | BookSourceKey>("all");
   const [stageFilter, setStage] = useState<string>("all");
   const [postedSince, setPostedSince] = useState<string>("");
   const [postedUntil, setPostedUntil] = useState<string>("");
@@ -487,12 +506,16 @@ export default function BookOfBusiness() {
 
       const { data: cbRows, error: cbErr } = await supabase
         .from("v_chargeback_watch" as any)
-        .select("deal_key, policy_number, client_name, carrier, agent_name, status, months_in_force, annual_premium, est_clawback_exposure, priority, what_this_means")
+        .select(
+          "deal_key, policy_number, client_name, carrier, agent_name, status, months_in_force, annual_premium, est_clawback_exposure, priority, what_this_means",
+        )
         .order("priority", { ascending: true })
         .order("est_clawback_exposure", { ascending: false })
         .limit(200);
       if (cbErr) {
-        logger.warn("[BookOfBusiness] v_chargeback_watch read failed", { error: cbErr.message });
+        logger.warn("[BookOfBusiness] v_chargeback_watch read failed", {
+          error: cbErr.message,
+        });
         setCbWatch(null);
       } else {
         setCbWatch((cbRows as unknown as ChargebackWatchRow[]) ?? null);
@@ -512,7 +535,9 @@ export default function BookOfBusiness() {
 
       const { data: concRows, error: concErr } = await supabase
         .from("v_book_concentration" as any)
-        .select("dimension, name, in_force_policies, in_force_alp, pct_of_in_force_alp")
+        .select(
+          "dimension, name, in_force_policies, in_force_alp, pct_of_in_force_alp",
+        )
         .eq("dimension", "carrier");
       if (concErr) {
         logger.warn("[BookOfBusiness] v_book_concentration read failed", {
@@ -520,7 +545,9 @@ export default function BookOfBusiness() {
         });
         setConcentration(null);
       } else {
-        setConcentration((concRows as unknown as BookConcentrationRow[]) ?? null);
+        setConcentration(
+          (concRows as unknown as BookConcentrationRow[]) ?? null,
+        );
       }
 
       if (
@@ -544,7 +571,6 @@ export default function BookOfBusiness() {
         .order("effective_date", { ascending: false, nullsFirst: false })
         .limit(AGENTLINK_SNAPSHOT_ROW_CAP);
 
-
       if (!isAdmin && agentLinkScopeUserIds !== null) {
         if (agentLinkScopeUserIds.length === 0) {
           alQuery = alQuery.in("user_id", [-1]);
@@ -553,17 +579,19 @@ export default function BookOfBusiness() {
         }
       }
 
-      const { data: alSnapshot, count: alCount, error: alError } = await alQuery;
+      const {
+        data: alSnapshot,
+        count: alCount,
+        error: alError,
+      } = await alQuery;
       if (alError)
         console.error(
           "[BookOfBusiness] AgentLink snapshot fetch failed:",
           alError,
         );
-      // Persist DB truth (survives .limit cap) so the footer stops lying.
-      setDealsSourceCount(typeof alCount === "number" ? alCount : null);
-
-      const alRawRows = ((alSnapshot ?? []) as Array<Record<string, unknown>>)
-        .filter((r) => r.policy_number);
+      const alRawRows = (
+        (alSnapshot ?? []) as Array<Record<string, unknown>>
+      ).filter((r) => r.policy_number);
 
       const alUserIds = [
         ...new Set(
@@ -590,15 +618,15 @@ export default function BookOfBusiness() {
               .in("al_user_id", alUserIds)
           : Promise.resolve({ data: [] } as any),
         alCarrierIds.length
-          // 2026-07-29: this queried `carriers`, whose id is a UUID, using AgentLink
-          // carrier ids, which are INTEGERS (agentlink_book.carrier_id is integer).
-          // The two key spaces cannot intersect, so the lookup returned nothing and the
-          // Carrier column, the Carrier filter and the "By Carrier" sort were blank across
-          // all 1,629 book rows carrying a carrier_id. agentlink_carriers is the
-          // integer-keyed table and holds the 16 real names.
-          // NOTE: the `carriers` lookups further down are CORRECT and deliberately left
-          // alone — they resolve deals.carrier_id, which really is a uuid.
-          ? supabase
+          ? // 2026-07-29: this queried `carriers`, whose id is a UUID, using AgentLink
+            // carrier ids, which are INTEGERS (agentlink_book.carrier_id is integer).
+            // The two key spaces cannot intersect, so the lookup returned nothing and the
+            // Carrier column, the Carrier filter and the "By Carrier" sort were blank across
+            // all 1,629 book rows carrying a carrier_id. agentlink_carriers is the
+            // integer-keyed table and holds the 16 real names.
+            // NOTE: the `carriers` lookups further down are CORRECT and deliberately left
+            // alone — they resolve deals.carrier_id, which really is a uuid.
+            supabase
               .from("agentlink_carriers")
               .select("id, name")
               .in("id", alCarrierIds)
@@ -606,12 +634,12 @@ export default function BookOfBusiness() {
       ]);
 
       const agentByAlUserId = new Map<number, any>();
-      for (const agent of ((agentsByAl ?? []) as any[])) {
+      for (const agent of (agentsByAl ?? []) as any[]) {
         if (typeof agent.al_user_id === "number")
           agentByAlUserId.set(agent.al_user_id, agent);
       }
       const alCarrierMap: Record<string, string> = {};
-      for (const carrier of ((alCarriers ?? []) as any[]))
+      for (const carrier of (alCarriers ?? []) as any[])
         alCarrierMap[String(carrier.id)] = carrier.name;
 
       const alRows: DealRow[] = alRawRows.map((r) => {
@@ -619,8 +647,7 @@ export default function BookOfBusiness() {
         const mappedAgent = Number.isFinite(agentlinkUserId)
           ? agentByAlUserId.get(agentlinkUserId)
           : null;
-        const carrierId =
-          r.carrier_id != null ? String(r.carrier_id) : null;
+        const carrierId = r.carrier_id != null ? String(r.carrier_id) : null;
         return {
           id: `al-${String(r.id ?? "")}`,
           agent_id: mappedAgent?.id ?? null,
@@ -662,10 +689,98 @@ export default function BookOfBusiness() {
         } as DealRow;
       });
 
-      const rows = alRows;
+      let ethosQuery = supabase
+        .from("ethos_book_policies" as any)
+        .select(
+          "id, owner_agent_id, source_agent_names, client_first_name, client_last_name, client_address, client_phone, client_dob, face_amount, raw_status, effective_date, product_sold, policy_number, monthly_premium, annual_premium, carrier_name, source_file_name, imported_at",
+          { count: "exact" },
+        )
+        .order("effective_date", { ascending: false, nullsFirst: false })
+        .limit(AGENTLINK_SNAPSHOT_ROW_CAP);
+
+      if (!isAdmin && agentScopeIds !== null) {
+        if (agentScopeIds.length === 0) {
+          ethosQuery = ethosQuery.in("owner_agent_id", [
+            "00000000-0000-0000-0000-000000000000",
+          ]);
+        } else {
+          ethosQuery = ethosQuery.in("owner_agent_id", agentScopeIds);
+        }
+      }
+
+      const {
+        data: ethosSnapshot,
+        count: ethosCount,
+        error: ethosError,
+      } = await ethosQuery;
+      if (ethosError) {
+        logger.warn("[BookOfBusiness] Ethos snapshot fetch failed", {
+          error: ethosError.message,
+        });
+      }
+
+      const ethosRows: DealRow[] = (
+        (ethosSnapshot ?? []) as unknown as Array<Record<string, unknown>>
+      ).map((r) => {
+        const sourceAgents = Array.isArray(r.source_agent_names)
+          ? r.source_agent_names.map(String).filter(Boolean)
+          : [];
+        return {
+          id: `ethos-${String(r.id ?? "")}`,
+          agent_id: null,
+          agentlink_user_id: null,
+          application_id: null,
+          client_first_name: String(r.client_first_name ?? ""),
+          client_last_name: String(r.client_last_name ?? ""),
+          client_address: r.client_address ? String(r.client_address) : null,
+          client_phone: r.client_phone ? String(r.client_phone) : null,
+          client_dob: r.client_dob ? String(r.client_dob) : null,
+          face_amount: r.face_amount != null ? Number(r.face_amount) : null,
+          policy_number: String(r.policy_number ?? ""),
+          product_sold: r.product_sold ? String(r.product_sold) : null,
+          monthly_premium:
+            r.monthly_premium != null ? Number(r.monthly_premium) : null,
+          annual_premium:
+            r.annual_premium != null ? Number(r.annual_premium) : null,
+          effective_date: r.effective_date ? String(r.effective_date) : null,
+          posted_at: r.imported_at ? String(r.imported_at) : null,
+          pipeline_stage: null,
+          policy_status_standard: r.raw_status
+            ? String(r.raw_status)
+            : "Inforce",
+          status_updated_at: null,
+          synced_to_insuracloud_at: null,
+          external_deal_id: null,
+          insuracloud_sync_error: null,
+          source: "ethos",
+          status: "active",
+          carrier_id: null,
+          pipeline_client_id: null,
+          created_at: r.imported_at
+            ? String(r.imported_at)
+            : new Date().toISOString(),
+          agent_name:
+            sourceAgents.length > 0
+              ? sourceAgents.join(" · ")
+              : "Unattributed Ethos agent",
+          carrier_name: r.carrier_name ? String(r.carrier_name) : "Prosperity",
+          source_agent_names: sourceAgents,
+          source_file_name: r.source_file_name
+            ? String(r.source_file_name)
+            : null,
+        } as DealRow;
+      });
+
+      const rows = [...alRows, ...ethosRows];
+      setDealsSourceCount(
+        (typeof alCount === "number" ? alCount : alRows.length) +
+          (typeof ethosCount === "number" ? ethosCount : ethosRows.length),
+      );
       logger.info("[BookOfBusiness] loaded deals", {
         agentLinkRows: alRows.length,
         agentLinkSnapshotCount: alCount,
+        ethosRows: ethosRows.length,
+        ethosSnapshotCount: ethosCount,
         totalRows: rows.length,
         scope: isAdmin ? "admin" : "scoped",
       });
@@ -676,9 +791,7 @@ export default function BookOfBusiness() {
       ];
       const carrierIds = [
         ...new Set(
-          rows
-            .map((r) => r.carrier_id)
-            .filter((v): v is string => Boolean(v)),
+          rows.map((r) => r.carrier_id).filter((v): v is string => Boolean(v)),
         ),
       ];
 
@@ -741,6 +854,15 @@ export default function BookOfBusiness() {
           event: "*",
           schema: "public",
           table: "agentlink_deals_snapshot",
+        },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "ethos_book_policies",
         },
         () => load(),
       )
@@ -807,8 +929,7 @@ export default function BookOfBusiness() {
       ]);
       const agentMap: Record<string, string> = {};
       for (const a of (agents ?? []) as any[])
-        agentMap[a.id] =
-          a.profile?.full_name ?? a.display_name ?? "Unmatched";
+        agentMap[a.id] = a.profile?.full_name ?? a.display_name ?? "Unmatched";
       const carrierMap: Record<string, string> = {};
       for (const c of (carriers ?? []) as any[]) carrierMap[c.id] = c.name;
 
@@ -837,13 +958,11 @@ export default function BookOfBusiness() {
   }, [isAdmin, agentScopeIds, loadChargebacks]);
 
   const cbTotalALP = useMemo(
-    () =>
-      chargebacks.reduce((s, c) => s + Number(c.annual_premium ?? 0), 0),
+    () => chargebacks.reduce((s, c) => s + Number(c.annual_premium ?? 0), 0),
     [chargebacks],
   );
   const cbTotalMonthly = useMemo(
-    () =>
-      chargebacks.reduce((s, c) => s + Number(c.monthly_premium ?? 0), 0),
+    () => chargebacks.reduce((s, c) => s + Number(c.monthly_premium ?? 0), 0),
     [chargebacks],
   );
 
@@ -962,7 +1081,9 @@ export default function BookOfBusiness() {
           default: {
             const bt = Date.parse(pickPostedTs(b).ts ?? "");
             const at = Date.parse(pickPostedTs(a).ts ?? "");
-            return (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0);
+            return (
+              (Number.isFinite(bt) ? bt : 0) - (Number.isFinite(at) ? at : 0)
+            );
           }
         }
       });
@@ -985,21 +1106,13 @@ export default function BookOfBusiness() {
   // ─── KPI calcs ───────────────────────────────────────────────────────────
 
   const kpi = useMemo(() => {
-    // Non-admin viewers see a `deals` array scoped to their own agent_ids /
-    // AgentLink user_ids (see the `.in("user_id", agentLinkScopeUserIds)`
-    // branch above). v_agentlink_book_truth is agency-wide with NO viewer
-    // scope, so trusting it here would show one agent's ~40 policies under an
-    // agency-wide "Total Deals 1,558 / Annual Premium $X.XM" headline while
-    // the table beneath renders only their own book. Gate the truth-view
-    // fallback behind isAdmin; scoped viewers derive every KPI from `deals`.
-    const totalDeals =
-      isAdmin && truth?.total_deals != null
-        ? Number(truth.total_deals)
-        : deals.length;
-    const totalALP =
-      isAdmin && truth?.total_annual_premium != null
-        ? Number(truth.total_annual_premium)
-        : deals.reduce((s, d) => s + Number(d.annual_premium ?? 0), 0);
+    // Derive headline KPIs from the exact scoped rows in the table. This keeps
+    // AgentLink + Ethos totals aligned for admins and individual agents.
+    const totalDeals = deals.length;
+    const totalALP = deals.reduce(
+      (s, d) => s + Number(d.annual_premium ?? 0),
+      0,
+    );
     const totalMonthly = deals.reduce(
       (s, d) => s + Number(d.monthly_premium ?? 0),
       0,
@@ -1028,7 +1141,7 @@ export default function BookOfBusiness() {
       chargebackWatch,
       chargebackExposure,
     };
-  }, [deals, truth, isAdmin, cbWatch]);
+  }, [deals, cbWatch]);
 
   // ─── Filter helpers ──────────────────────────────────────────────────────
 
@@ -1116,7 +1229,7 @@ export default function BookOfBusiness() {
           d.posted_at ?? d.created_at ?? "",
           d.effective_date ?? "",
           stageDisplayLabel(d),
-          sourceKey(d.source) === "apex" ? "APEX" : "AgentLink",
+          sourceLabel(d.source),
         ]
           .map(escape)
           .join(","),
@@ -1164,7 +1277,7 @@ export default function BookOfBusiness() {
         eyebrow="Production · Book of Business"
         eyebrowIcon={<Book className="h-3 w-3" />}
         title="Book of Business"
-        subtitle="Every policy record across the agency. Synced from AgentLink."
+        subtitle="Every policy record across the agency. Synced from AgentLink and Ethos."
         actions={
           <>
             <Button
@@ -1178,12 +1291,7 @@ export default function BookOfBusiness() {
               />
               Refresh
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="h-10 sm:h-9"
-            >
+            <Button variant="outline" size="sm" asChild className="h-10 sm:h-9">
               <a
                 href="https://agentlink.insuracloud.ai/book-of-business"
                 target="_blank"
@@ -1328,13 +1436,17 @@ export default function BookOfBusiness() {
                 </span>
               </div>
               <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-                Still in force, of policies that reached a decision — pending and
-                never-issued are excluded because they never had a chance to
+                Still in force, of policies that reached a decision — pending
+                and never-issued are excluded because they never had a chance to
                 lapse.
               </p>
               <ul className="max-h-64 space-y-2 overflow-y-auto">
                 {[...persistency]
-                  .sort((a, b) => Number(a.persistency_pct ?? 0) - Number(b.persistency_pct ?? 0))
+                  .sort(
+                    (a, b) =>
+                      Number(a.persistency_pct ?? 0) -
+                      Number(b.persistency_pct ?? 0),
+                  )
                   .map((row) => {
                     const pct = Number(row.persistency_pct ?? 0);
                     const overall = row.carrier === "__ALL__";
@@ -1358,8 +1470,9 @@ export default function BookOfBusiness() {
                               {overall ? "All carriers" : row.carrier}
                             </div>
                             <div className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
-                              {Number(row.in_force ?? 0).toLocaleString()} in force ·{" "}
-                              {Number(row.lapsed ?? 0).toLocaleString()} lapsed
+                              {Number(row.in_force ?? 0).toLocaleString()} in
+                              force · {Number(row.lapsed ?? 0).toLocaleString()}{" "}
+                              lapsed
                             </div>
                           </div>
                           <div className="shrink-0 text-right">
@@ -1402,7 +1515,10 @@ export default function BookOfBusiness() {
               </p>
               <ul className="max-h-64 space-y-2 overflow-y-auto">
                 {[...concentration]
-                  .sort((a, b) => Number(b.in_force_alp ?? 0) - Number(a.in_force_alp ?? 0))
+                  .sort(
+                    (a, b) =>
+                      Number(b.in_force_alp ?? 0) - Number(a.in_force_alp ?? 0),
+                  )
                   .map((row) => {
                     const pct = Number(row.pct_of_in_force_alp ?? 0);
                     const heavy = pct >= 35;
@@ -1442,7 +1558,9 @@ export default function BookOfBusiness() {
                               "h-full rounded-full",
                               heavy ? "bg-amber-500" : "bg-emerald-500",
                             )}
-                            style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                            style={{
+                              width: `${Math.min(100, Math.max(0, pct))}%`,
+                            }}
                           />
                         </div>
                       </li>
@@ -1463,7 +1581,7 @@ export default function BookOfBusiness() {
           tone="neutral"
           sub={
             truth?.deals_this_month != null
-              ? `${Number(truth.deals_this_month).toLocaleString()} this month`
+              ? `${Number(truth.deals_this_month).toLocaleString()} AgentLink this month`
               : undefined
           }
         />
@@ -1474,7 +1592,7 @@ export default function BookOfBusiness() {
           tone="neutral"
           sub={
             truth?.premium_this_month != null
-              ? `${fmt$(Number(truth.premium_this_month))} this month`
+              ? `${fmt$(Number(truth.premium_this_month))} AgentLink this month`
               : undefined
           }
         />
@@ -1501,7 +1619,11 @@ export default function BookOfBusiness() {
           label="Chargeback Watch"
           value={loading ? "…" : kpi.chargebackWatch.toLocaleString()}
           tone={kpi.chargebackWatch > 0 ? "rose" : "neutral"}
-          sub={cbWatch ? `${fmt$(kpi.chargebackExposure)} est. clawback` : `Within ${CHARGEBACK_WINDOW_DAYS}d window`}
+          sub={
+            cbWatch
+              ? `${fmt$(kpi.chargebackExposure)} est. clawback`
+              : `Within ${CHARGEBACK_WINDOW_DAYS}d window`
+          }
           onClick={() => setChargebackOpen(true)}
         />
       </div>
@@ -1620,6 +1742,7 @@ export default function BookOfBusiness() {
                       <SelectItem value="all">All</SelectItem>
                       <SelectItem value="apex">APEX</SelectItem>
                       <SelectItem value="agent_link">AgentLink</SelectItem>
+                      <SelectItem value="ethos">Ethos</SelectItem>
                     </SelectContent>
                   </Select>
                 </FilterField>
@@ -1723,7 +1846,9 @@ export default function BookOfBusiness() {
                       className="ml-2 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400"
                       title={`Client fetch is capped at ${AGENTLINK_SNAPSHOT_ROW_CAP.toLocaleString()} rows per load. ${(dealsSourceCount - deals.length).toLocaleString()} rows exist in the database but are not in the table below. Narrow filters to see the rest.`}
                     >
-                      · capped ({(dealsSourceCount - deals.length).toLocaleString()} more in DB)
+                      · capped (
+                      {(dealsSourceCount - deals.length).toLocaleString()} more
+                      in DB)
                     </span>
                   )}
               </>
@@ -1950,12 +2075,14 @@ export default function BookOfBusiness() {
                               <Eye className="mr-2 h-4 w-4" />
                               View policy
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => openAgentLink(d)}
-                            >
-                              <ExternalLink className="mr-2 h-4 w-4" />
-                              Open AgentLink
-                            </DropdownMenuItem>
+                            {sourceKey(d.source) !== "ethos" && (
+                              <DropdownMenuItem
+                                onClick={() => openAgentLink(d)}
+                              >
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                Open AgentLink
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => markReviewed(d.id)}
@@ -2135,7 +2262,7 @@ function PolicyDetailDrawer({
         .eq("application_id", deal.application_id)
         .order("logged_at", { ascending: false })
         .limit(50);
-      setTimeline(((data as unknown) as ContactLogRow[] | null) ?? []);
+      setTimeline((data as unknown as ContactLogRow[] | null) ?? []);
       setTimelineLoading(false);
     })();
   }, [deal?.application_id]);
@@ -2149,10 +2276,7 @@ function PolicyDetailDrawer({
     : null;
 
   return (
-    <Sheet
-      open={Boolean(deal)}
-      onOpenChange={(open) => !open && onClose()}
-    >
+    <Sheet open={Boolean(deal)} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="right"
         className="w-full sm:max-w-[560px] overflow-y-auto"
@@ -2194,7 +2318,27 @@ function PolicyDetailDrawer({
               label="Name"
               value={`${deal.client_first_name ?? ""} ${deal.client_last_name ?? ""}`.trim()}
             />
-            <DrawerRow label="Pipeline Client ID" value={deal.pipeline_client_id} />
+            <DrawerRow
+              label="Pipeline Client ID"
+              value={deal.pipeline_client_id}
+            />
+            {sourceKey(deal.source) === "ethos" && (
+              <>
+                <DrawerRow label="Address" value={deal.client_address} />
+                <DrawerRow label="Phone" value={deal.client_phone} />
+                <DrawerRow
+                  label="Date of Birth"
+                  value={
+                    deal.client_dob
+                      ? format(
+                          new Date(`${deal.client_dob}T12:00:00`),
+                          "MMM d, yyyy",
+                        )
+                      : null
+                  }
+                />
+              </>
+            )}
           </DrawerSection>
 
           {/* 2. Agent */}
@@ -2243,7 +2387,10 @@ function PolicyDetailDrawer({
             />
             <DrawerRow
               label="Face Amount"
-              value={formatCurrency((client as any)?.face_amount)}
+              value={formatCurrency(
+                deal.face_amount ??
+                  ((client as any)?.face_amount as number | null),
+              )}
             />
             <DrawerRow
               label="Effective Date"
@@ -2261,10 +2408,10 @@ function PolicyDetailDrawer({
                   : null
               }
             />
-            <DrawerRow
-              label="Source"
-              value={sourceKey(deal.source) === "apex" ? "APEX" : "AgentLink"}
-            />
+            <DrawerRow label="Source" value={sourceLabel(deal.source)} />
+            {sourceKey(deal.source) === "ethos" && deal.source_file_name && (
+              <DrawerRow label="Import File" value={deal.source_file_name} />
+            )}
           </DrawerSection>
 
           {/* 8. Chargeback window */}
@@ -2275,10 +2422,7 @@ function PolicyDetailDrawer({
               </p>
             ) : inCbWindow ? (
               <>
-                <DrawerRow
-                  label="Days in-force"
-                  value={`${daysEff}d`}
-                />
+                <DrawerRow label="Days in-force" value={`${daysEff}d`} />
                 <DrawerRow
                   label="Days until safe"
                   value={
@@ -2386,24 +2530,23 @@ function PolicyDetailDrawer({
             </div>
           )}
 
-          {isAdmin &&
-            (client?.bank_name || client?.bank_account_number) && (
-              <DrawerSection title="Banking · Admin only">
-                <DrawerRow label="Bank Name" value={client?.bank_name as any} />
-                <DrawerRow
-                  label="Account Type"
-                  value={client?.bank_account_type as any}
-                />
-                <DrawerRow
-                  label="Account Number"
-                  value={client?.bank_account_number as any}
-                />
-                <DrawerRow
-                  label="Routing Number"
-                  value={client?.bank_routing_number as any}
-                />
-              </DrawerSection>
-            )}
+          {isAdmin && (client?.bank_name || client?.bank_account_number) && (
+            <DrawerSection title="Banking · Admin only">
+              <DrawerRow label="Bank Name" value={client?.bank_name as any} />
+              <DrawerRow
+                label="Account Type"
+                value={client?.bank_account_type as any}
+              />
+              <DrawerRow
+                label="Account Number"
+                value={client?.bank_account_number as any}
+              />
+              <DrawerRow
+                label="Routing Number"
+                value={client?.bank_routing_number as any}
+              />
+            </DrawerSection>
+          )}
 
           {client && (
             <DrawerSection title="Financial Profile">
@@ -2426,18 +2569,23 @@ function PolicyDetailDrawer({
             </DrawerSection>
           )}
 
-          {/* 11. Open AgentLink CTA */}
+          {/* 11. Source action */}
           <div className="flex gap-2 pt-2">
-            <Button
-              className="h-10 flex-1 sm:h-9"
-              onClick={() => onOpenAgentLink(deal)}
-            >
-              <ExternalLink className="mr-1.5 h-4 w-4" />
-              Open AgentLink
-            </Button>
+            {sourceKey(deal.source) !== "ethos" && (
+              <Button
+                className="h-10 flex-1 sm:h-9"
+                onClick={() => onOpenAgentLink(deal)}
+              >
+                <ExternalLink className="mr-1.5 h-4 w-4" />
+                Open AgentLink
+              </Button>
+            )}
             <Button
               variant="outline"
-              className="h-10 sm:h-9"
+              className={cn(
+                "h-10 sm:h-9",
+                sourceKey(deal.source) === "ethos" && "flex-1",
+              )}
               onClick={onClose}
             >
               Close
@@ -2473,12 +2621,7 @@ function DrawerRow({
   label: string;
   value: React.ReactNode;
 }) {
-  if (
-    value === null ||
-    value === undefined ||
-    value === "" ||
-    value === false
-  )
+  if (value === null || value === undefined || value === "" || value === false)
     return null;
   return (
     <div className="min-w-0 rounded-lg border border-border/60 bg-card/60 px-3 py-2.5">
@@ -2540,7 +2683,8 @@ function ChargebackWatchDrawer({
       .filter((c) => Number(c.priority ?? 9) === 1)
       .sort(
         (a, b) =>
-          Number(b.est_clawback_exposure ?? 0) - Number(a.est_clawback_exposure ?? 0),
+          Number(b.est_clawback_exposure ?? 0) -
+          Number(a.est_clawback_exposure ?? 0),
       );
   }, [cbWatch]);
 
@@ -2574,7 +2718,9 @@ function ChargebackWatchDrawer({
           {/* Active risk window */}
           <div className="space-y-2">
             <h3 className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-              {atRisk ? "Closest to chargeback" : `Active ${CHARGEBACK_WINDOW_DAYS}-day window`}
+              {atRisk
+                ? "Closest to chargeback"
+                : `Active ${CHARGEBACK_WINDOW_DAYS}-day window`}
             </h3>
             <div className="rounded-lg border border-rose-500/35 bg-rose-500/5 p-3 sm:p-4">
               <div className="flex items-start gap-3">
@@ -2584,7 +2730,9 @@ function ChargebackWatchDrawer({
                     {activeWatch.toLocaleString()}
                   </div>
                   <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                    {atRisk ? "Policies signalling lapse" : "Policies still in cliff window"}
+                    {atRisk
+                      ? "Policies signalling lapse"
+                      : "Policies still in cliff window"}
                   </div>
                   {atRisk && exposure > 0 && (
                     <div className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
@@ -2616,7 +2764,8 @@ function ChargebackWatchDrawer({
                           )}
                         </div>
                         <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                          {c.agent_name || "—"} · {c.carrier || "—"} · {c.status || "—"}
+                          {c.agent_name || "—"} · {c.carrier || "—"} ·{" "}
+                          {c.status || "—"}
                         </div>
                       </div>
                       <div className="shrink-0 text-right">
@@ -2634,67 +2783,69 @@ function ChargebackWatchDrawer({
                   <li className="flex items-center gap-2 text-xs leading-relaxed text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="h-4 w-4 shrink-0" />
                     <span className="min-w-0">
-                      Nothing is signalling lapse inside the advance window right now.
+                      Nothing is signalling lapse inside the advance window
+                      right now.
                     </span>
                   </li>
                 )}
               </ul>
             ) : (
-            <ul className="max-h-[240px] space-y-2 overflow-y-auto">
-              {inWindow.slice(0, 50).map((d) => {
-                const daysEff = daysSinceEffective(d);
-                return (
-                  <li
-                    key={d.id}
-                    className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-foreground">
-                          {d.client_first_name} {d.client_last_name}
-                          {d.policy_number && (
-                            <span className="ml-2 font-mono text-[10px] tabular-nums text-muted-foreground">
-                              #{d.policy_number}
-                            </span>
-                          )}
+              <ul className="max-h-[240px] space-y-2 overflow-y-auto">
+                {inWindow.slice(0, 50).map((d) => {
+                  const daysEff = daysSinceEffective(d);
+                  return (
+                    <li
+                      key={d.id}
+                      className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium text-foreground">
+                            {d.client_first_name} {d.client_last_name}
+                            {d.policy_number && (
+                              <span className="ml-2 font-mono text-[10px] tabular-nums text-muted-foreground">
+                                #{d.policy_number}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                            {d.agent_name} · {d.carrier_name || "—"} · Eff{" "}
+                            {d.effective_date
+                              ? format(new Date(d.effective_date), "MMM d")
+                              : "—"}
+                          </div>
                         </div>
-                        <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                          {d.agent_name} · {d.carrier_name || "—"} · Eff{" "}
-                          {d.effective_date
-                            ? format(new Date(d.effective_date), "MMM d")
-                            : "—"}
+                        <div className="shrink-0 text-right">
+                          <div className="text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">
+                            {daysEff}d in
+                          </div>
+                          <div className="text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
+                            {d.annual_premium
+                              ? fmt$(Number(d.annual_premium))
+                              : "—"}{" "}
+                            ALP
+                          </div>
                         </div>
                       </div>
-                      <div className="shrink-0 text-right">
-                        <div className="text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">
-                          {daysEff}d in
-                        </div>
-                        <div className="text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
-                          {d.annual_premium
-                            ? fmt$(Number(d.annual_premium))
-                            : "—"}{" "}
-                          ALP
-                        </div>
-                      </div>
-                    </div>
+                    </li>
+                  );
+                })}
+                {inWindow.length === 0 && (
+                  <li className="flex items-center gap-2 text-xs leading-relaxed text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span className="min-w-0">
+                      No policies in the active chargeback window. Book is
+                      clean.
+                    </span>
                   </li>
-                );
-              })}
-              {inWindow.length === 0 && (
-                <li className="flex items-center gap-2 text-xs leading-relaxed text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  <span className="min-w-0">
-                    No policies in the active chargeback window. Book is clean.
-                  </span>
-                </li>
-              )}
-            </ul>
+                )}
+              </ul>
             )}
             {!atRisk && (
               <p className="text-[11px] leading-relaxed text-amber-600 dark:text-amber-400">
-                Showing the effective-date window because the chargeback-watch view did not
-                load. That list counts healthy new business too — treat it as a rough proxy,
-                not the real risk list.
+                Showing the effective-date window because the chargeback-watch
+                view did not load. That list counts healthy new business too —
+                treat it as a rough proxy, not the real risk list.
               </p>
             )}
           </div>

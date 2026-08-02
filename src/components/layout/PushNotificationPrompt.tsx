@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { Bell, BellOff } from "lucide-react";
@@ -8,7 +9,12 @@ import { toast } from "sonner";
 const NOT_NOW_KEY = "push_prompt_not_now_at";
 const RE_PROMPT_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+// Surfaces that exist to be screenshotted/presented — a modal over them ruins
+// the capture, so the prompt never renders there.
+const CAPTURE_SURFACES = ["/board"];
+
 export function PushNotificationPrompt() {
+  const { pathname } = useLocation();
   const { user, isVaManager, isVa } = useAuth();
   const { supported, permission, isSubscribed, subscribe, loading } = usePushNotifications();
   const [visible, setVisible] = useState(false);
@@ -17,6 +23,12 @@ export function PushNotificationPrompt() {
     // VA managers + VAs are back-office operators — the lead/deal/production
     // push prompt is irrelevant to them, so we never block their portal with it.
     if (!user || !supported || isVaManager || isVa) return;
+    // Never cover a capture surface (the live production board gets posted).
+    // Actively close it too, in case it was already open before navigating here.
+    if (CAPTURE_SURFACES.some((r) => pathname.startsWith(r))) {
+      setVisible(false);
+      return;
+    }
     // Already granted/denied or subscribed — don't show
     if (permission === "granted" && isSubscribed) return;
     if (permission === "denied") return;
@@ -31,7 +43,7 @@ export function PushNotificationPrompt() {
     // Show immediately (small delay for page load)
     const timer = setTimeout(() => setVisible(true), 1500);
     return () => clearTimeout(timer);
-  }, [user, supported, permission, isSubscribed, isVaManager, isVa]);
+  }, [user, supported, permission, isSubscribed, isVaManager, isVa, pathname]);
 
   const handleEnable = async () => {
     localStorage.removeItem(NOT_NOW_KEY);

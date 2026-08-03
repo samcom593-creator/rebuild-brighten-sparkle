@@ -45,7 +45,7 @@ import { QuickQualifyStep } from "@/pages/apply/QuickQualifyStep";
 import { getRefSlug, clearRefSlug } from "@/lib/refSlug";
 import { isDialablePhone, normalizePhoneForDial } from "@/lib/phone";
 
-const applicationSchema = z.object({
+const applicationBaseSchema = z.object({
   // Step 1: Personal Info
   firstName: z.string().min(2, "First name is required").max(50),
   lastName: z.string().min(2, "Last name is required").max(50),
@@ -91,7 +91,21 @@ const applicationSchema = z.object({
   emailConsent: z.boolean().default(false),
 });
 
-const quickQualifySchema = applicationSchema.pick({
+// Require an NPN when the applicant claims they're licensed. Without this the
+// "licensed" flag is an unprovable self-claim (107 of 132 licensed applicants had
+// no NPN), which made the whole applicant list untrustworthy for calling. The NPN
+// is public and every licensed producer has it, so this is low-friction proof.
+const applicationSchema = applicationBaseSchema.superRefine((data, ctx) => {
+  if (data.licenseStatus === "licensed" && !data.niprNumber?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["niprNumber"],
+      message: "Your NPN (National Producer Number) is required to confirm your license",
+    });
+  }
+});
+
+const quickQualifySchema = applicationBaseSchema.pick({
   firstName: true,
   email: true,
   phone: true,
@@ -455,7 +469,7 @@ export default function Apply() {
         fieldsToValidate = ["hasInsuranceExperience"];
         break;
       case 3:
-        fieldsToValidate = ["licenseStatus"];
+        fieldsToValidate = ["licenseStatus", "niprNumber"];
         break;
       case 4:
         // v26 audit fix: smsConsent removed from validation — schema makes
@@ -1090,13 +1104,17 @@ export default function Apply() {
                           className="space-y-4"
                         >
                           <div className="space-y-2">
-                            <Label htmlFor="niprNumber">NIPR Number (optional)</Label>
+                            <Label htmlFor="niprNumber">NPN / NIPR Number <span className="text-rose-400">*</span></Label>
                             <Input
                               id="niprNumber"
                               {...register("niprNumber")}
-                              placeholder="Your NIPR number"
+                              placeholder="Your National Producer Number"
                               className="bg-input"
                             />
+                            {errors.niprNumber && (
+                              <p className="text-xs text-rose-400">{errors.niprNumber.message as string}</p>
+                            )}
+                            <p className="text-[11px] text-muted-foreground">Required to confirm your license. Look it up free at nipr.com if you don&rsquo;t have it handy.</p>
                           </div>
 
                           <div className="space-y-2">

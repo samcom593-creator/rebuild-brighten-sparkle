@@ -833,7 +833,11 @@ export default function DashboardApplicants() {
       (statusFilter === "rejected" && CARD_PREDICATES.rejected(app)) ||
       (statusFilter === "hired" && CARD_PREDICATES.hired(app)) ||
       appStatus === statusFilter;
-    const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
+    const matchesLicense =
+      licenseFilter === "all" ? true
+      : licenseFilter === "licensed_unverified"
+        ? (app.license_status === "licensed" && app.nipr_verified !== true) // claimed licensed but not NIPR-verified
+        : app.license_status === licenseFilter;
     const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
     const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
     const matchesDuplicates = showDuplicates || !app.is_duplicate;
@@ -1391,6 +1395,7 @@ export default function DashboardApplicants() {
           <SelectContent>
             <SelectItem value="all">All Licenses</SelectItem>
             <SelectItem value="licensed">Licensed</SelectItem>
+            <SelectItem value="licensed_unverified">Licensed · unverified (no proof)</SelectItem>
             <SelectItem value="unlicensed">Unlicensed</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
           </SelectContent>

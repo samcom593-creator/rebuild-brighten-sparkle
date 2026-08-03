@@ -220,11 +220,13 @@ function computeMetrics(leads: Lead[]) {
   let licensedDaysSum = 0, licensedWithContact = 0;
 
   for (const l of leads) {
-    if (l.last_contacted_at || l.contacted_at) contacted++;
+    // last_contacted_at only — contacted_at is the fake bulk-stamped column that
+    // inflated Contact Rate to 94% when the real rate is ~42%.
+    if (l.last_contacted_at) contacted++;
     if (l.license_progress === "licensed") {
       licensed++;
-      if (l.contacted_at) {
-        licensedDaysSum += differenceInDays(new Date(l.contacted_at), new Date(l.created_at));
+      if (l.last_contacted_at) {
+        licensedDaysSum += differenceInDays(new Date(l.last_contacted_at), new Date(l.created_at));
         licensedWithContact++;
       }
     }

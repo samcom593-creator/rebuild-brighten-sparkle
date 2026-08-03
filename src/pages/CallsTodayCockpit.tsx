@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { openGoogleVoice } from "@/lib/phone";
 import { Phone, Clock, MapPin, ExternalLink, ArrowRight, CalendarCheck, PhoneCall, CheckCircle2, Timer, CalendarPlus } from "lucide-react";
 import { format, formatDistanceToNowStrict, isToday, isTomorrow, isThisWeek } from "date-fns";
 
@@ -52,7 +53,6 @@ const CALL_TYPE_TINT: Record<string, string> = {
 
 export default function CallsTodayCockpit() {
   usePageTitle("Calls Today · APEX");
-  const navigate = useNavigate();
 
   const callsQ = useQuery({
     queryKey: ["upcoming-calls"],
@@ -85,16 +85,22 @@ export default function CallsTodayCockpit() {
   }, [callsQ.data]);
 
   const startCall = (call: ScheduledCall) => {
-    const params = new URLSearchParams();
-    if (call.prospect_name) {
-      const [first, ...rest] = call.prospect_name.split(" ");
-      params.set("first_name", first);
-      if (rest.length) params.set("last_name", rest.join(" "));
+    // Actually place the call. The old target (/dashboard/inbound-leads) was
+    // retired to a redirect and nothing consumes the params, so this button did
+    // nothing. Dial the prospect via Google Voice (works on desktop, keeps GV
+    // caller-ID); fall back to tel: and clipboard if the number isn't dialable.
+    const phone = call.prospect_phone;
+    if (!phone) {
+      toast.error("No phone number on this call");
+      return;
     }
-    if (call.prospect_phone) params.set("phone", call.prospect_phone);
-    if (call.summary) params.set("source", call.summary);
-    params.set("scheduled_call_id", String(call.id));
-    navigate(`/dashboard/inbound-leads?${params.toString()}`);
+    if (openGoogleVoice(phone)) {
+      toast.success("Opening Google Voice", { description: `Dialing ${call.prospect_name || phone}` });
+    } else {
+      navigator.clipboard?.writeText(phone).catch(() => { /* empty-catch-allow:clipboard blocked; toast still shows the number */ });
+      window.open(`tel:${phone}`, "_self");
+      toast.success(`${phone} copied — paste into your dialer`);
+    }
   };
 
   return (

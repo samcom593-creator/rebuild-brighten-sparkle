@@ -74,7 +74,7 @@ export default function RecruitCommandCenter() {
         supabase.from("applications")
           .select("id, first_name, last_name, email, phone, state, city, lead_score, license_status, license_progress, contacted_at, last_contacted_at, created_at, status")
           .is("terminated_at", null).is("contracted_at", null).is("closed_at", null)
-          .order("created_at", { ascending: false }).limit(400),
+          .order("created_at", { ascending: false }).limit(1500), // was 400 — capped the ~681-row live pipeline stat
         supabase.from("applications").select("id", { count: "exact", head: true })
           .gte("contracted_at", sinceWeek).is("terminated_at", null),
       ]);
@@ -246,7 +246,7 @@ export default function RecruitCommandCenter() {
               )}>
                 <div className="flex items-start gap-3 flex-wrap">
                   <div className="shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center font-bold text-sm text-white">
+                    <div className="h-10 w-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center font-bold text-sm text-slate-900 dark:text-white">
                       {a.first_name?.[0]}{a.last_name?.[0]}
                     </div>
                   </div>

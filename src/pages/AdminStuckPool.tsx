@@ -186,7 +186,7 @@ export default function AdminStuckPool() {
                   {filtered.slice(0, 200).map((row) => {
                     const id = row.application_id ?? row.agent_id;
                     const href = row.application_id
-                      ? `/dashboard/applicants?focus=${row.application_id}`
+                      ? `/dashboard/applicants?id=${row.application_id}` // DashboardApplicants reads ?id=, not ?focus=
                       : `/dashboard/agents/${row.agent_id}`;
                     return (
                       <tr key={id} className="border-b border-border/30 hover:bg-muted/30 transition-colors">

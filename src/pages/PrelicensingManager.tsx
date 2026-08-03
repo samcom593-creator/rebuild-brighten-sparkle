@@ -95,7 +95,7 @@ export default function PrelicensingManager() {
         .is("terminated_at", null)
         .neq("license_status", "licensed")
         .order("updated_at", { ascending: false })
-        .limit(500);
+        .limit(1500); // was 500 — capped the ~640-row pipeline, undercounting the total + stage tiles
 
       if (!isAdmin && isManager) {
         if (!currentAgentId) return [];

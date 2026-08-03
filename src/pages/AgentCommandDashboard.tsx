@@ -860,41 +860,40 @@ function AgencyCommandView() {
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_ceo_command_center" as any).select("as_of,ap_30d,chargebacks_30d,lapses_30d,ref_30d,ref_won,total_applications,paid_mtd,apps_wtd,uncontacted_24h,stale_new_3d,unassigned_open")
+        .from("v_ceo_command_center" as any).select("as_of,active_agents,ap_30d,chargebacks_30d,lapses_30d,ref_30d,ref_won,total_applications,paid_mtd,apps_wtd,uncontacted_24h,stale_new_3d,unassigned_open")
         .maybeSingle();
       if (error) throw error;
       return data as unknown as CeoRow | null;
     },
   });
 
-  // ── v13 Wave C (2026-06-10): swapped from stale `deals` table to
-  // agentlink_deals_snapshot. Dev verify proved legacy was undercounting:
-  //   TODAY:  legacy=0   truth=9 deals/$16,975
-  //   WEEK:   legacy=24  truth=112 deals/$133,797
-  //   MONTH:  legacy=86  truth=239 deals/$284,452
-  // The snapshot refreshes every 30 min via launchd; effective_date is the
-  // canonical period bucket. Maps result into the same shape the rest of
-  // the file consumes (id, annual_premium, posted_at, agent_id, agent).
+  // Source = agentlink_book by POSTED_DATE (dead-excluded) — the exact truth the
+  // public leaderboard/hero render. Previously this read agentlink_deals_snapshot
+  // filtered by EFFECTIVE_DATE, which buckets July-written policies into the month
+  // their coverage starts, inflating "this month" ~68x at a month rollover
+  // ($76,927/56 vs the real $1,134/1 on 2026-08-03). book.user_id maps to
+  // agents.al_user_id exactly like the snapshot did, so the downstream mapping is
+  // unchanged; only the table + date column move.
   const periodDeals = useQuery({
     queryKey: ["agency-period-deals-truth", periodBounds.startIso, periodBounds.endIso],
     refetchInterval: 60_000,
     staleTime: 55_000,
     queryFn: async () => {
-      // Convert period bounds to YYYY-MM-DD for effective_date comparison
       const startDate = periodBounds.startIso.slice(0, 10);
       const endDate = periodBounds.endIso.slice(0, 10);
 
       const { data, error } = await supabase
-        .from("agentlink_deals_snapshot" as any)
-        .select("id, annual_premium, effective_date, user_id")
-        .gte("effective_date", startDate)
-        .lte("effective_date", endDate);
+        .from("agentlink_book" as any)
+        .select("id, annual_premium, posted_date, user_id, is_dead")
+        .not("is_dead", "is", true)
+        .gte("posted_date", startDate)
+        .lt("posted_date", endDate);
       if (error) throw error;
 
       const dealRows = (data ?? []) as Array<{
         id: string | number;
         annual_premium: number | string | null;
-        effective_date: string | null;
+        posted_date: string | null;
         user_id: number | null;
       }>;
 
@@ -904,8 +903,8 @@ function AgencyCommandView() {
         return dealRows.map((row) => ({
           id: String(row.id),
           annual_premium: row.annual_premium,
-          posted_at: row.effective_date,
-          created_at: row.effective_date,
+          posted_at: row.posted_date,
+          created_at: row.posted_date,
           agent_id: null,
           agent: null,
         }));
@@ -945,8 +944,8 @@ function AgencyCommandView() {
         return {
           id: String(row.id),
           annual_premium: row.annual_premium,
-          posted_at: row.effective_date,
-          created_at: row.effective_date,
+          posted_at: row.posted_date,
+          created_at: row.posted_date,
           agent_id: agent?.id ?? null,
           agent: agent
             ? { ...agent, manager: agent.manager_id ? managerById.get(agent.manager_id) ?? null : null }
@@ -966,10 +965,11 @@ function AgencyCommandView() {
       const startDate = periodBounds.startIso.slice(0, 10);
       const endDate = periodBounds.endIso.slice(0, 10);
       const { data, error } = await supabase
-        .from("agentlink_deals_snapshot" as any)
+        .from("agentlink_book" as any)
         .select("annual_premium")
-        .gte("effective_date", startDate)
-        .lte("effective_date", endDate);
+        .not("is_dead", "is", true)
+        .gte("posted_date", startDate)
+        .lt("posted_date", endDate);
       if (error) throw error;
       const rows = (data ?? []) as Array<{ annual_premium: number | string | null }>;
       const totalAp = rows.reduce((s: number, r) => s + Number(r.annual_premium ?? 0), 0);

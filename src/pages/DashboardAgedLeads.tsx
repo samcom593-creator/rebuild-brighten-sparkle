@@ -518,7 +518,10 @@ export default function DashboardAgedLeads() {
     for (const l of leads) {
       if (l.status === "new") newL++; else processed++;
       if (l.status === "hired" || l.status === "contracted") hired++;
-      if (l.licenseStatus === "licensed") licensed++; else unlicensed++;
+      // Exact-match so the badge equals the "Unlicensed" call-mode filter — the
+      // old else-branch also swept in ~525 unknown-status leads (showed 848 vs 323).
+      if (l.licenseStatus === "licensed") licensed++;
+      else if (l.licenseStatus === "unlicensed") unlicensed++;
     }
     return { totalLeads: leads.length, newLeads: newL, processedLeads: processed, hiredLeads: hired, licensedLeads: licensed, unlicensedLeads: unlicensed };
   }, [leads]);
@@ -893,16 +896,17 @@ export default function DashboardAgedLeads() {
                     variant="outline"
                     className="h-8 text-xs"
                     onClick={async () => {
+                      // Every row on this page is an aged_leads record (the type key
+                      // is `leadSource`, not `source`), so the old source-gated
+                      // branches never matched and the button did nothing. Write the
+                      // selected ids directly.
                       const ids = Array.from(selectedIds);
+                      if (ids.length === 0) return;
                       const now = new Date().toISOString();
-                      const appLeads = filteredLeads.filter(l => selectedIds.has(l.id) && (l as any).source === "applications");
-                      const agedLeadsSel = filteredLeads.filter(l => selectedIds.has(l.id) && (l as any).source === "aged_leads");
-                      if (appLeads.length) {
-                        await supabase.from("applications").update({ last_contacted_at: now, contacted_at: now } as any).in("id", appLeads.map(l => l.id));
-                      }
-                      if (agedLeadsSel.length) {
-                        await supabase.from("aged_leads").update({ last_contacted_at: now, status: "contacted" } as any).in("id", agedLeadsSel.map(l => l.id));
-                      }
+                      const { error } = await supabase.from("aged_leads")
+                        .update({ last_contacted_at: now, status: "contacted" } as any)
+                        .in("id", ids);
+                      if (error) { toast.error("Couldn't mark contacted"); return; }
                       toast.success(`${ids.length} marked contacted`);
                       setSelectedIds(new Set());
                       fetchLeads();

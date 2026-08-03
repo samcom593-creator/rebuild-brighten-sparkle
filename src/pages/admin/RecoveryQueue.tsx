@@ -538,13 +538,18 @@ function useManagerProfiles(ids: string[]) {
     enabled: ids.length > 0,
     staleTime: 5 * 60_000,
     queryFn: async () => {
+      // ids here are assigned_agent_id values (agent ids), and the manager's
+      // name lives on agents.display_name — the old query hit profiles (wrong id
+      // space + missing columns), so every manager rendered blank.
       const { data, error } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, display_name, avatar_url")
+        .from("agents")
+        .select("id, display_name")
         .in("id", ids);
       if (error) throw error;
       const map: Record<string, Profile> = {};
-      (data ?? []).forEach((p: any) => { map[p.id] = p; });
+      (data ?? []).forEach((a: any) => {
+        map[a.id] = { id: a.id, first_name: null, last_name: null, display_name: a.display_name ?? null, avatar_url: null };
+      });
       return map;
     },
   });

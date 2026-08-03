@@ -710,7 +710,10 @@ export default function DashboardCRM() {
       // Widened status filter so "new" and "reviewing" apps also show up —
       // agents were complaining their own application wasn't visible at all.
       let appQuery = supabase.from("applications")
-        .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier, user_id, assigned_agent_id, referral_manager_id, recruiter_id, hiring_manager_user_id, created_at")
+        // NOTE: applications has no user_id column — selecting it 400'd the whole
+        // query (error swallowed), so every unlicensed applicant was silently
+        // invisible on the CRM (~627 rows). Removed here and from the OR clause below.
+        .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier, assigned_agent_id, referral_manager_id, recruiter_id, hiring_manager_user_id, created_at")
         .is("terminated_at", null).neq("license_status", "licensed");
       if (!isAdmin) {
         // Visibility OR — applicant is the user themselves, OR I am the
@@ -721,7 +724,6 @@ export default function DashboardCRM() {
         // invisible on the CRM even though they showed up on other pages.
         const clauses: string[] = [];
         if (user?.id) {
-          clauses.push(`user_id.eq.${user.id}`);
           clauses.push(`hiring_manager_user_id.eq.${user.id}`);
         }
         if (currentAgent?.id) {

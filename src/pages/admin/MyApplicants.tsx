@@ -40,6 +40,7 @@ type Row = {
   license_status: string | null;
   created_at: string;
   contacted_at: string | null;
+  last_contacted_at: string | null;
   course_purchased_at: string | null;
   license_approved_at: string | null;
   next_step_stage_key: string | null;
@@ -95,7 +96,7 @@ export default function MyApplicants() {
       const { data, error } = await supabase
         .from("applications")
         .select(
-          "id, first_name, last_name, phone, email, state, license_status, created_at, contacted_at, course_purchased_at, license_approved_at, next_step_stage_key",
+          "id, first_name, last_name, phone, email, state, license_status, created_at, contacted_at, last_contacted_at, course_purchased_at, license_approved_at, next_step_stage_key",
         )
         .eq("referral_manager_id", myAgent!.id)
         .order("created_at", { ascending: false });
@@ -128,7 +129,7 @@ export default function MyApplicants() {
       )
     : list;
 
-  const uncontacted = list.filter((r) => !r.contacted_at).length;
+  const uncontacted = list.filter((r) => !r.last_contacted_at).length; // real signal, not fake contacted_at
   const inPrelicensing = list.filter(
     (r) => r.course_purchased_at && !r.license_approved_at,
   ).length;
@@ -216,7 +217,7 @@ export default function MyApplicants() {
                 <tbody>
                   {filtered.map((r) => {
                     const hrs = hoursSince(r.created_at);
-                    const overdue = !r.contacted_at && hrs >= 24;
+                    const overdue = !r.last_contacted_at && hrs >= 24;
                     const stage = r.next_step_stage_key ?? "applied";
                     return (
                       <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30">
@@ -253,10 +254,10 @@ export default function MyApplicants() {
                           {hrs}h ago
                         </td>
                         <td className="p-3 text-right tabular-nums text-xs text-muted-foreground hidden sm:table-cell">
-                          {r.contacted_at ? (
+                          {r.last_contacted_at ? (
                             <span className="text-emerald-300">
                               <CheckCircle2 className="inline h-3 w-3 mr-1" />
-                              {hoursSince(r.contacted_at)}h
+                              {hoursSince(r.last_contacted_at)}h
                             </span>
                           ) : (
                             <span className="text-rose-300">

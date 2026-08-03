@@ -128,9 +128,15 @@ export default function DashboardAccounts() {
         profileMap.set(p.user_id, { full_name: p.full_name, email: p.email });
       }
 
+      // A user can hold multiple roles (e.g. manager + agent). Keep the HIGHEST,
+      // not whichever row PostgREST returned last — otherwise a manager's agent row
+      // could win by physical order and 4 real managers rendered (and were counted)
+      // as plain agents on the very page used to manage roles.
+      const ROLE_RANK: Record<string, number> = { admin: 5, va_manager: 4, manager: 3, va: 2, agent: 1 };
       const roleMap = new Map<string, string>();
       for (const r of rolesResult.data || []) {
-        roleMap.set(r.user_id, r.role);
+        const cur = roleMap.get(r.user_id);
+        if (!cur || (ROLE_RANK[r.role] ?? 0) > (ROLE_RANK[cur] ?? 0)) roleMap.set(r.user_id, r.role);
       }
 
       let managersCount = 0;

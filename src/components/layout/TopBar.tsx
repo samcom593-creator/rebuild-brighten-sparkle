@@ -20,7 +20,6 @@ const LABEL_MAP: Record<string, string> = {
   conduct: "Conduct",
   strikes: "Agent Strikes",
   "my-strikes": "My Strikes",
-  "charges-audit": "Charges Audit",
   applicants: "Applicants",
   command: "Command Center",
   recruiter: "Recruiter",

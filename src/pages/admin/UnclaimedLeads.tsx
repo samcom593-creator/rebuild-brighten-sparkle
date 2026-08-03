@@ -27,6 +27,7 @@ type AppRow = {
   state: string | null;
   created_at: string;
   contacted_at: string | null;
+  last_contacted_at: string | null;
   status: string;
   assigned_agent_id: string | null;
   referral_source: string | null;
@@ -46,7 +47,7 @@ export default function UnclaimedLeads() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("applications")
-        .select("id, first_name, last_name, email, phone, state, created_at, contacted_at, status, assigned_agent_id, referral_source, notes")
+        .select("id, first_name, last_name, email, phone, state, created_at, contacted_at, last_contacted_at, status, assigned_agent_id, referral_source, notes")
         .eq("status", "new")
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -75,7 +76,7 @@ export default function UnclaimedLeads() {
     const rows = apps ?? [];
     let f = rows;
     if (filter === "kj") f = f.filter(r => r.assigned_agent_id === kjId);
-    else if (filter === "no_contact") f = f.filter(r => !r.contacted_at);
+    else if (filter === "no_contact") f = f.filter(r => !r.last_contacted_at); // real signal, not fake contacted_at
     else if (filter === "unassigned") f = f.filter(r => !r.assigned_agent_id);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
@@ -111,7 +112,7 @@ export default function UnclaimedLeads() {
     return {
       total: rows.length,
       kj: rows.filter(r => r.assigned_agent_id === kjId).length,
-      no_contact: rows.filter(r => !r.contacted_at).length,
+      no_contact: rows.filter(r => !r.last_contacted_at).length,
       over_72h: rows.filter(r => ageDays(r.created_at) >= 3).length,
     };
   }, [apps, kjId]);
@@ -236,7 +237,7 @@ export default function UnclaimedLeads() {
                           <span className={cn(isKJ && "text-amber-400 font-medium")}>{assigned}</span>
                         </td>
                         <td className="p-3 text-xs text-slate-600 dark:text-slate-300">
-                          {row.contacted_at ? formatDistanceToNow(new Date(row.contacted_at), { addSuffix: true }) : <span className="text-rose-400">never</span>}
+                          {row.last_contacted_at ? formatDistanceToNow(new Date(row.last_contacted_at), { addSuffix: true }) : <span className="text-rose-400">never</span>}
                         </td>
                         <td className="p-3">
                           {row.assigned_agent_id !== SAM_DEFAULT_AGENT_ID && (

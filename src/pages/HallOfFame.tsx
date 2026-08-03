@@ -12,7 +12,7 @@
 //   5. Plaque wall — grid with click-to-detail dialog
 //   6. Plaque detail dialog — full-size, share, story
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {

@@ -1413,8 +1413,8 @@ function ProducerRiskTable({
           <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
             <th className="px-2 py-2 text-left">Producer</th>
             <th className="px-2 py-2 text-left">Manager</th>
-            <th className="px-2 py-2 text-right">This Week</th>
-            <th className="px-2 py-2 text-right">Prev Week</th>
+            <th className="px-2 py-2 text-right">Latest Week</th>
+            <th className="px-2 py-2 text-right">Prior Week</th>
             <th className="px-2 py-2 text-left">3-Week Trend</th>
             <th className="px-2 py-2 text-right">Policies</th>
             <th className="px-2 py-2 text-left">Stage</th>

@@ -184,6 +184,16 @@ export default function BookReconciliation() {
     },
   });
 
+  // The list above is capped at .limit(200); the headline stat must show the TRUE
+  // total, not the truncated page length.
+  const ghostCount = useQuery({
+    queryKey: ["book-recon-ghost-count"],
+    queryFn: async () => {
+      const { count } = await supabase.from("v_ghost_deals" as any).select("*", { count: "exact", head: true }).eq("flag_ghost", true);
+      return count ?? 0;
+    },
+  });
+
   const falloff = useQuery({
     queryKey: ["book-recon-falloff"],
     queryFn: async () => {
@@ -285,7 +295,7 @@ export default function BookReconciliation() {
         <BigStat
           icon={ShieldAlert}
           label="Ghost deals (no policy #)"
-          value={fmtNum(ghosts.data?.length ?? 0)}
+          value={fmtNum(ghostCount.data ?? ghosts.data?.length ?? 0)}
           sub={`${fmtNum(s?.missing_policy_num)} carrier-side · automatic red flag`}
           color="text-amber-500 dark:text-amber-400"
           loading={ghosts.isLoading}

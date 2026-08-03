@@ -557,7 +557,7 @@ function LeaksSection() {
 
   const tiles = [
     { label: "Unclaimed applicants", value: leaks?.unclaimed ?? "—", href: "/dashboard/applicants?filter=unclaimed", color: "text-amber-400" },
-    { label: "Policies missing premium", value: leaks?.premium_gap ?? "—", href: "/dashboard/admin/charges-audit", color: "text-red-400" },
+    { label: "Policies missing premium", value: leaks?.premium_gap ?? "—", href: "/dashboard/book-quality", color: "text-red-400" },
     { label: "Unreconciled commissions", value: leaks?.ghost_ap ?? "—", href: "/dashboard/admin/book-quality", color: "text-red-400" },
     // The health view's status is a full sentence ('🔴 AUTH DEAD — no successful
     // sync in 2+ days…') that overflowed the tile. Collapse to a short badge.

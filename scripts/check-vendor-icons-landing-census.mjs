@@ -78,8 +78,6 @@ const LANDING_FILES = [
   "src/components/landing/BenefitsSection.tsx",
   "src/components/landing/EarningsSection.tsx",
   "src/components/landing/CareerPathwaySection.tsx",
-  "src/components/landing/ApexLeadsSection.tsx",
-  "src/components/landing/InstagramGrowthSection.tsx",
   "src/components/landing/RecruitFAQ.tsx",
   "src/components/landing/CTASection.tsx",
   "src/components/landing/Footer.tsx",

@@ -24,6 +24,11 @@ const TRACKED_FILES = [
   "src/components/landing/HeroSection.tsx",
   "src/components/landing/RecentHiresTicker.tsx",
   "src/pages/Landing.tsx",
+  // 2026-08-02: Apply.tsx is the highest-intent conversion page and was the ONE
+  // public surface missing here — it shipped a stale `?? 104` active-agent floor
+  // while the DB said 41, and this guard never saw it. Track it.
+  "src/pages/Apply.tsx",
+  "src/pages/SeminarPage.tsx",
 ];
 
 // Ceiling = max allowed `?? N` fallback per key. Truth as of 2026-06-19:

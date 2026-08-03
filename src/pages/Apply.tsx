@@ -381,7 +381,11 @@ export default function Apply() {
     refetchInterval: 5 * 60_000,
   });
   // wave-88 (2026-06-13): truth-floor sync with LiveStatsCounterStrip (95 → 104).
-  const liveActiveAgents = liveStats?.active_agents ?? 104;
+  // 104 was a stale hardcode that outlived the data — landing_live_stats() returns 41.
+  // LiveStatsCounterStrip already fixed this exact lie; Apply.tsx was missed because it
+  // is absent from check-landing-truth-floor TRACKED_FILES. Floor matches the other
+  // public surfaces (40) so the highest-intent page can never overstate the roster.
+  const liveActiveAgents = liveStats?.active_agents ?? 40;
   const liveCarriers = liveStats?.carriers_partnered ?? 22;
 
   // Fetch only active MANAGERS for referral selection via edge function (bypasses RLS for public access)

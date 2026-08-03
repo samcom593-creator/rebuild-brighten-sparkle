@@ -44,8 +44,12 @@ function nextSeminarSlots(): { date: string; label: string; clockLabel: string }
     const d = new Date(now);
     d.setDate(now.getDate() + add);
     const dow = d.getDay();
-    if (dow !== 3 && dow !== 6) continue;
-    const clockLabel = dow === 3 ? "7:00 PM CT" : "10:00 AM CT";
+    // Real schedule is system_settings.seminar_schedule_cron =
+    // 'Wed,Fri,Sun @ 19:00 America/Chicago'. This used to emit Wed + SAT, so
+    // prospects booked a Saturday 10am session that does not run and never saw
+    // the Fri/Sun sessions that do.
+    if (dow !== 3 && dow !== 5 && dow !== 0) continue;
+    const clockLabel = "7:00 PM CT";
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");

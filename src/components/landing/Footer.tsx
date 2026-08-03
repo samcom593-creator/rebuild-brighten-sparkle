@@ -40,7 +40,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
             <ul className="space-y-2 text-sm text-[#94a3b8]">
               <li><a href="#benefits" className="hover:text-[#e8bb2b] transition-colors">Benefits</a></li>
               <li><a href="#earnings" className="hover:text-[#e8bb2b] transition-colors">Earnings</a></li>
-              <li><a href="#testimonials" className="hover:text-[#e8bb2b] transition-colors">Receipts</a></li>
+              <li><a href="#benefits" className="hover:text-[#e8bb2b] transition-colors">Receipts</a></li>
               <li><Link to={applyHref} className="hover:text-[#e8bb2b] transition-colors">Apply Now</Link></li>
             </ul>
           </div>

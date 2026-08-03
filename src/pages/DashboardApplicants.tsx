@@ -94,6 +94,8 @@ interface Application {
   state: string | null;
   license_status: "licensed" | "unlicensed" | "pending";
   license_progress: "unlicensed" | "course_purchased" | "passed_test" | "waiting_on_license" | "licensed" | null;
+  nipr_number: string | null;
+  nipr_verified: boolean | null;
   status: string;
   instagram_handle: string | null;
   contacted_at: string | null;
@@ -146,7 +148,7 @@ const APPLICATION_SELECT =
   // getApplicationStatus(), the rejected/disqualified filter, and the Rejected metric
   // card, which therefore showed 0 while 19 applications were actually rejected or
   // disqualified. TypeScript could not catch it: the select string is a plain literal.
-  "id, first_name, last_name, email, phone, city, state, status, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contacted_at, next_step_due_at, referral_source, phone_bad_at, phone_bad_reason, couldnt_reach_email_sent_at";
+  "id, first_name, last_name, email, phone, city, state, status, license_status, license_progress, started_training, contacted_at, contracted_at, closed_at, terminated_at, created_at, assigned_agent_id, recruiter_id, referral_manager_id, notes, previous_company, years_experience, has_insurance_experience, instagram_handle, lead_score, ai_score_tier, termination_reason, is_ghosted, is_duplicate, course_purchased_at, course_started_at, exam_scheduled_at, exam_passed_at, licensed_at, ica_paid, ica_paid_at, first_deal_at, next_action, next_action_due_at, last_contacted_at, next_step_due_at, referral_source, phone_bad_at, phone_bad_reason, couldnt_reach_email_sent_at, nipr_number, nipr_verified";
 
 // MP-268 pipeline ladder. Sam asked for one filter per recruiting stage:
 // applied · course · passed test · fingerprints · onboarding · carrier appointments · first sale.
@@ -200,6 +202,23 @@ const licenseColors: Record<string, string> = {
   unlicensed: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   pending: "border-border bg-muted/50 text-muted-foreground",
 };
+
+// License TRUST — "licensed" on an application is self-reported on the apply form
+// and is NOT proof. There is no live NIPR verification (no API key), so a claim of
+// "licensed" means one of three very different things. Surface which, so a caller
+// knows whether to trust it instead of dialing a "licensed" lead who never proved it.
+type LicenseTrust = { level: "verified" | "claimed_npn" | "claimed_bare" | "failed" | "none"; label: string; tint: string; title: string };
+function licenseTrust(app: Application): LicenseTrust {
+  if (app.license_status !== "licensed") return { level: "none", label: "", tint: "", title: "" };
+  const npn = (app.nipr_number ?? "").trim();
+  if (app.nipr_verified === true)
+    return { level: "verified", label: "✓ verified", tint: "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", title: "License verified against NIPR" };
+  if (app.nipr_verified === false)
+    return { level: "failed", label: "✗ unverified", tint: "border-rose-500/40 bg-rose-500/15 text-rose-600 dark:text-rose-400", title: "NIPR check did not find an active license — treat as unlicensed until proven" };
+  if (npn)
+    return { level: "claimed_npn", label: "NPN on file · unchecked", tint: "border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400", title: `Self-reported licensed and gave NPN ${npn}, but it was never checked against NIPR` };
+  return { level: "claimed_bare", label: "self-reported · no proof", tint: "border-rose-500/40 bg-rose-500/15 text-rose-600 dark:text-rose-400", title: "Self-reported licensed with NO NPN and no document — lowest trust, verify before relying on it" };
+}
 
 export default function DashboardApplicants() {
   const { user, isAdmin, isManager, isVaManager, isVa } = useAuth();
@@ -1784,9 +1803,20 @@ export default function DashboardApplicants() {
                                 onProgressUpdated={fetchApplications}
                               />
                             ) : (
-                              <Badge variant="outline" className={cn("text-[10px] capitalize", licenseColors[app.license_status])}>
-                                {app.license_status}
-                              </Badge>
+                              <div className="flex flex-col items-start gap-0.5">
+                                <Badge variant="outline" className={cn("text-[10px] capitalize", licenseColors[app.license_status])}>
+                                  {app.license_status}
+                                </Badge>
+                                {(() => {
+                                  const t = licenseTrust(app);
+                                  if (t.level === "none" || t.level === "verified") return null;
+                                  return (
+                                    <span title={t.title} className={cn("rounded px-1 py-0.5 text-[8px] font-semibold leading-none border", t.tint)}>
+                                      {t.label}
+                                    </span>
+                                  );
+                                })()}
+                              </div>
                             )}
                           </td>
                           <td className="max-w-[160px] px-2 py-2 align-middle text-[11px] text-muted-foreground">

@@ -420,16 +420,28 @@ export default function Leaderboard() {
 
   const sourceHint = `${meta.label} leaderboard · ${meta.source} · America/Chicago business window`;
 
+  // Lead spend scales with the selected window at Sam's real rate of
+  // $250/producer/week. Previously it was a flat $750/producer regardless of
+  // window, which made "After leads" nonsensical on daily/weekly views and
+  // deeply negative at the very start of a month (before income posts) — the
+  // "minus makes no sense" bug. Now: daily ≈ $36, weekly = $250, monthly ≈ $1,075.
+  const leadCostPerProducer = useMemo(() => {
+    // relative-time-guard-allow: duration between two fixed window bounds, not a now-relative age
+    const windowDays = Math.max(1, Math.round((bounds.end.getTime() - bounds.start.getTime()) / 86_400_000));
+    return Math.round((250 * windowDays) / 7);
+  }, [bounds.start, bounds.end]);
+
   const productionFinancials = useMemo(() => {
     if (board !== "production" || productionMode !== "individuals") return null;
     const estimatedIncome = rows.reduce((sum, row) => sum + (row.est_earnings ?? 0), 0);
-    const leadSpend = rows.reduce((sum, row) => sum + (row.lead_cost ?? 0), 0);
+    const leadSpend = rows.length * leadCostPerProducer;
     return {
       estimatedIncome,
       leadSpend,
+      leadCostPerProducer,
       afterLeadSpend: estimatedIncome - leadSpend,
     };
-  }, [board, productionMode, rows]);
+  }, [board, productionMode, rows, leadCostPerProducer]);
 
   function primaryValue(row: Row): string {
     if (board === "production") return formatMoney(row.primary);
@@ -546,29 +558,51 @@ export default function Leaderboard() {
             </p>
           </div>
 
-          <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
-            <div className="mb-1.5 flex items-center gap-2">
-              {(heroData.data?.paceDelta ?? 0) >= 0 ? (
-                <TrendingUp className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-              ) : (
-                <TrendingDown className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
-              )}
-              <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Pace vs prior mo</p>
-            </div>
-            <p className={cn(
-              "truncate text-2xl font-bold leading-none tabular-nums",
-              (heroData.data?.paceDelta ?? 0) >= 0
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-rose-600 dark:text-rose-400",
-            )}>
-              {heroData.isLoading
-                ? "—"
-                : `${(heroData.data?.paceDelta ?? 0) >= 0 ? "+" : ""}${(heroData.data?.paceDelta ?? 0).toFixed(0)}%`}
-            </p>
-            <p className="mt-1.5 truncate text-[11px] tabular-nums text-muted-foreground">
-              proj {formatMoney(heroData.data?.projected ?? 0)} · prior {formatMoney(heroData.data?.priorAp ?? 0)}
-            </p>
-          </div>
+          {(() => {
+            // A projection from the first few days of a month is statistically
+            // meaningless — 1 deal on day 3 would render "Pace −96%" in alarm-red
+            // and make the whole board look broken at every month rollover. Below
+            // day 6 we suppress the pace % and just show last month's final number
+            // as the anchor, so the tile reads as "new month building" not "crashed".
+            const day = heroData.data?.dayOfMonth ?? 0;
+            const tooEarly = day > 0 && day < 6;
+            const pace = heroData.data?.paceDelta ?? 0;
+            return (
+              <div className="min-w-0 rounded-lg border border-border bg-card p-3 sm:p-4">
+                <div className="mb-1.5 flex items-center gap-2">
+                  {tooEarly ? (
+                    <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  ) : pace >= 0 ? (
+                    <TrendingUp className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                  )}
+                  <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                    {tooEarly ? "Last month" : "Pace vs prior mo"}
+                  </p>
+                </div>
+                <p className={cn(
+                  "truncate text-2xl font-bold leading-none tabular-nums",
+                  tooEarly
+                    ? "text-foreground"
+                    : pace >= 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-rose-600 dark:text-rose-400",
+                )}>
+                  {heroData.isLoading
+                    ? "—"
+                    : tooEarly
+                      ? formatMoney(heroData.data?.priorAp ?? 0)
+                      : `${pace >= 0 ? "+" : ""}${pace.toFixed(0)}%`}
+                </p>
+                <p className="mt-1.5 truncate text-[11px] tabular-nums text-muted-foreground">
+                  {tooEarly
+                    ? `day ${day} — building`
+                    : `proj ${formatMoney(heroData.data?.projected ?? 0)} · prior ${formatMoney(heroData.data?.priorAp ?? 0)}`}
+                </p>
+              </div>
+            );
+          })()}
         </div>
       </GlassCard>
 
@@ -660,7 +694,7 @@ export default function Leaderboard() {
               <p className="mt-1 truncate text-lg font-bold tabular-nums text-foreground sm:text-2xl">
                 {formatMoney(productionFinancials.leadSpend)}
               </p>
-              <p className="mt-1 hidden text-[11px] text-muted-foreground sm:block">$750 per producer</p>
+              <p className="mt-1 hidden text-[11px] text-muted-foreground sm:block">{formatMoney(productionFinancials.leadCostPerProducer)}/producer · $250/wk</p>
             </GlassCard>
             <GlassCard className="min-w-0 p-3 sm:p-4">
               <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">After leads</p>
@@ -817,7 +851,7 @@ export default function Leaderboard() {
                             </div>
                             <div className="min-w-0 sm:text-right">
                               <div className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</div>
-                              <div className="truncate text-sm font-bold tabular-nums text-foreground">{formatMoney(row.lead_cost ?? 750)}</div>
+                              <div className="truncate text-sm font-bold tabular-nums text-foreground">{formatMoney(leadCostPerProducer)}</div>
                             </div>
                           </div>
                         ) : (
@@ -871,15 +905,20 @@ export default function Leaderboard() {
                 </div>
                 <div className="rounded-lg border border-border bg-card p-3">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</p>
-                  <p className="mt-1 text-xl font-bold tabular-nums text-foreground">{formatMoney(selectedProductionRow.lead_cost ?? 750)}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Fixed per producer</p>
+                  <p className="mt-1 text-xl font-bold tabular-nums text-foreground">{formatMoney(leadCostPerProducer)}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">$250/wk this window</p>
                 </div>
                 <div className="rounded-lg border border-border bg-card p-3">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">After leads</p>
-                  <p className="mt-1 text-xl font-bold tabular-nums text-foreground">
-                    {formatMoney((selectedProductionRow.est_earnings ?? 0) - (selectedProductionRow.lead_cost ?? 750))}
+                  <p className={cn(
+                    "mt-1 text-xl font-bold tabular-nums",
+                    (selectedProductionRow.est_earnings ?? 0) - leadCostPerProducer >= 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-rose-600 dark:text-rose-400",
+                  )}>
+                    {formatMoney((selectedProductionRow.est_earnings ?? 0) - leadCostPerProducer)}
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Est. income − $750</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Est. income − lead spend</p>
                 </div>
               </div>
 

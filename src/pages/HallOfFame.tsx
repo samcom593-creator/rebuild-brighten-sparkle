@@ -317,7 +317,7 @@ export default function HallOfFame() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05 * idx, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                   className={cn(
-                    "relative rounded-md border border-border/60 p-5 text-center  to-transparent overflow-hidden",
+                    "relative rounded-md border border-border/60 p-5 text-center overflow-hidden",
                     medal.bg,
                     isFirst && "sm:scale-[1.04] shadow-[0_8px_40px_hsl(45_95%_55%/0.25)] border-amber-500/50",
                   )}
@@ -642,7 +642,7 @@ function PlaqueDetail({ plaque, onClose }: PlaqueDetailProps) {
         )}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 h-9 w-9 rounded-full bg-white dark:bg-black/50  text-white flex items-center justify-center hover:bg-white dark:bg-black/70 transition-colors"
+          className="absolute top-3 right-3 h-9 w-9 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
         >
           <X className="h-4 w-4" />
         </button>

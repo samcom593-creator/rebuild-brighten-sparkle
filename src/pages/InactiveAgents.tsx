@@ -80,11 +80,12 @@ export default function InactiveAgents() {
   const canAccess = isAdmin || isManager;
 
   const { data: entries = [], isLoading } = useQuery({
-    queryKey: ["inactive-queue", statusFilter, severityFilter],
+    queryKey: ["inactive-queue", statusFilter],
     queryFn: async (): Promise<InactiveEntry[]> => {
       let q = supabase.from("inactive_agent_queue" as any).select("*");
       if (statusFilter !== "all") q = q.eq("status", statusFilter);
-      if (severityFilter !== "all") q = q.eq("severity", severityFilter);
+      // severity is filtered client-side (below) so the stat tiles stay stable
+      // instead of collapsing to the filtered subset.
       const { data, error } = await q.order("days_inactive", { ascending: false });
       if (error) {
         console.error(error);
@@ -170,6 +171,9 @@ export default function InactiveAgents() {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return entries.filter((e) => {
+      // severity filter (moved here from the query so the stat tiles stay stable).
+      if (severityFilter !== "all" && (e as any).severity !== severityFilter) return false;
+
       // PL-063: segment filter first.
       const dealN = dealCounts[e.agent_id] ?? 0;
       if (segment === "never_sold" && dealN !== 0) return false;
@@ -185,7 +189,7 @@ export default function InactiveAgents() {
         a.phone?.includes(q)
       );
     });
-  }, [entries, search, agentMap, segment, dealCounts]);
+  }, [entries, search, agentMap, segment, dealCounts, severityFilter]);
 
   const stats = useMemo(() => {
     const result = { warning: 0, critical: 0, abandoned: 0, total: entries.length };

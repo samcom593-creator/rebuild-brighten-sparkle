@@ -1043,7 +1043,6 @@ export default function DashboardCRM() {
       <TableHead className="w-[110px] px-2">Stage</TableHead>
       <TableHead className="w-[100px] px-2">License</TableHead>
       <TableHead className="w-[80px] px-2 text-center">Present</TableHead>
-      <TableHead className="w-[80px] px-2 text-center">Homework</TableHead>
       <TableHead className="w-[100px] px-2 text-right">Week ALP</TableHead>
       <TableHead className="w-[100px] px-2 text-right">Month ALP</TableHead>
       <TableHead className="w-[110px] px-2">Last Activity</TableHead>
@@ -1247,13 +1246,6 @@ export default function DashboardCRM() {
               />
             )}
           </button>
-        </TableCell>
-        <TableCell className="px-2 py-2 text-center">
-          {isTrainee ? (
-            <Circle className="mx-auto h-4 w-4 text-muted-foreground/30" />
-          ) : (
-            <span className="text-[11px] text-muted-foreground">—</span>
-          )}
         </TableCell>
         <TableCell className="px-2 py-2 text-right">
           <span className={cn(

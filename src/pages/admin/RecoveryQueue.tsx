@@ -719,7 +719,8 @@ export default function RecoveryQueue() {
         list.sort((a, b) => (b.days_since_touch ?? 0) - (a.days_since_touch ?? 0));
         break;
       case "recent":
-        list.sort((a, b) => (a.days_since_touch ?? 0) - (b.days_since_touch ?? 0));
+        // Labeled "Least recently contacted" → most days_since_touch first (desc).
+        list.sort((a, b) => (b.days_since_touch ?? 0) - (a.days_since_touch ?? 0));
         break;
       case "newest":
         list.sort((a, b) => (a.days_since_touch ?? 0) - (b.days_since_touch ?? 0));

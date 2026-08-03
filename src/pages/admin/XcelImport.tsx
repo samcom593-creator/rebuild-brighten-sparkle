@@ -266,12 +266,19 @@ export default function XcelImport() {
       });
       if (error) throw error;
       const res = (data ?? {}) as IngestResult;
+      // The edge fn returns `invalid` as an ARRAY of {row_index, reason}, not a
+      // number — assigning it straight to the numeric tile rendered blank/garbage.
+      // Coerce to a count and surface the reasons in the errors list.
+      const rawInvalid = (res as any).invalid;
+      const invalidArr = Array.isArray(rawInvalid) ? rawInvalid : [];
       setResult({
         inserted: res.inserted ?? 0,
         updated: res.updated ?? 0,
-        invalid: res.invalid ?? 0,
+        invalid: Array.isArray(rawInvalid) ? rawInvalid.length : (rawInvalid ?? 0),
         applications_upgraded: res.applications_upgraded ?? 0,
-        errors: res.errors ?? [],
+        errors: (res.errors && res.errors.length
+          ? res.errors
+          : invalidArr.map((v: any) => (v?.reason ? `Row ${v.row_index ?? "?"}: ${v.reason}` : String(v)))).slice(0, 50),
       });
       toast.success(
         `Imported ${res.inserted ?? 0} new · updated ${res.updated ?? 0} · upgraded ${res.applications_upgraded ?? 0}`

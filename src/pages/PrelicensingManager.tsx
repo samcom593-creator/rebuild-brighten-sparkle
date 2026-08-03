@@ -196,9 +196,20 @@ export default function PrelicensingManager() {
     if (selected.size === 0) return;
     const picks = apps.filter((a: any) => selected.has(a.id) && a.email);
     if (picks.length === 0) { toast.error("No emails in selection"); return; }
+    // Prefill the licensing-instructions template so the button does what its
+    // label says instead of opening a blank compose window. Recipients go on BCC
+    // so they don't see each other's addresses.
     const emails = picks.map((a: any) => a.email).join(",");
-    window.location.href = `mailto:${emails}`;
-    toast.success(`Opening email for ${picks.length}`);
+    const subject = encodeURIComponent("Your APEX pre-licensing next steps");
+    const body = encodeURIComponent(
+      "Hey,\n\nTo move forward with APEX you need your life insurance license. Here's the path:\n\n" +
+      "1. Start your pre-licensing course (we'll send the link).\n" +
+      "2. Finish the course and pass the state exam.\n" +
+      "3. Book your onboarding call once you're licensed.\n\n" +
+      "Reply here if you're stuck on any step and we'll help.\n\nAPEX Financial"
+    );
+    window.location.href = `mailto:?bcc=${emails}&subject=${subject}&body=${body}`;
+    toast.success(`Opening licensing email for ${picks.length}`);
   }
 
   async function bulkSetStage(stage: StageKey) {

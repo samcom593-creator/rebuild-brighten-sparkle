@@ -157,15 +157,17 @@ export default function AdminStrikes() {
     );
   }, [strikes, search]);
 
+  // Derive the headline tiles from the UNFILTERED per-agent summary, not the
+  // status/severity-filtered `strikes` list — otherwise "Total on file" shrank to
+  // whatever the table filter happened to show.
   const stats = useMemo(() => {
-    const active = strikes.filter((s) => s.status === "active");
     return {
-      total: strikes.length,
-      active: active.length,
-      major: active.filter((s) => s.severity === "major" || s.severity === "terminal").length,
+      total: summary.reduce((n, s) => n + (s.total_count ?? 0), 0),
+      active: summary.reduce((n, s) => n + (s.active_count ?? 0), 0),
+      major: summary.reduce((n, s) => n + (s.active_major ?? 0) + (s.active_terminal ?? 0), 0),
       flaggedAgents: summary.filter((s) => s.standing !== "clear").length,
     };
-  }, [strikes, summary]);
+  }, [summary]);
 
   async function handleResolve() {
     if (!resolveStrikeId) return;

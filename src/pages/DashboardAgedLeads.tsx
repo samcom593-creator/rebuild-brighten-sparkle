@@ -1061,8 +1061,8 @@ export default function DashboardAgedLeads() {
                           </div>
                         </div>
                       </div>
-                      <Badge variant="outline" className={cn("text-[9px] h-5 px-1.5 shrink-0", ageColor.badge)}>
-                        {ageDays}d
+                      <Badge variant="outline" title="Days in our system since import (original lead date not available)" className={cn("text-[9px] h-5 px-1.5 shrink-0", ageColor.badge)}>
+                        {ageDays}d held
                       </Badge>
                     </div>
                     <div className="space-y-1 mb-3 text-xs">

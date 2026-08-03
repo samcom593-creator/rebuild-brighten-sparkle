@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ScheduledCall {
-  id: number;
+  id: string | number;
   prospect_name: string | null;
   prospect_phone: string | null;
   prospect_email: string | null;
@@ -55,14 +55,36 @@ export default function CallsTodayCockpit() {
   usePageTitle("Calls Today · APEX");
 
   const callsQ = useQuery({
-    queryKey: ["upcoming-calls"],
+    queryKey: ["calls-today-interview-events"],
     staleTime: 30_000,
     queryFn: async (): Promise<ScheduledCall[]> => {
+      // v_upcoming_calls is built on apex_scheduled_calls, frozen since spring, and
+      // upcoming-only so CONNECTED/BOOKED could never populate. interview_events is
+      // the live Calendly booking table; its outcome column is dispositioned via the
+      // Interview Command Center, so today's real calls + real stats show here.
       const { data, error } = await supabase
-        .from("v_upcoming_calls")
-        .select("*");
+        .from("interview_events" as any)
+        .select("id, invitee_name, invitee_phone, invitee_email, call_track, event_type_name, scheduled_at, ended_at, outcome, canceled_at, confirmed_at, application_id")
+        .is("canceled_at", null)
+        .gte("scheduled_at", new Date(Date.now() - 2 * 86_400_000).toISOString())
+        .order("scheduled_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as ScheduledCall[];
+      const trackToType: Record<string, string> = { licensed: "licensed_prospect", leader: "agent_oneonone" };
+      return ((data ?? []) as any[]).map((r) => ({
+        id: r.id,
+        prospect_name: r.invitee_name ?? null,
+        prospect_phone: r.invitee_phone ?? null,
+        prospect_email: r.invitee_email ?? null,
+        summary: r.call_track ?? r.event_type_name ?? null,
+        location: null,
+        start_at: r.scheduled_at,
+        end_at: r.ended_at ?? null,
+        duration_minutes: null,
+        call_type: trackToType[String(r.call_track)] ?? "unknown",
+        status: r.outcome ? "completed" : r.confirmed_at ? "confirmed" : "scheduled",
+        outcome: r.outcome ?? null,
+        inbound_lead_id: r.application_id ?? null,
+      } as ScheduledCall));
     },
   });
 
@@ -132,7 +154,7 @@ export default function CallsTodayCockpit() {
             <EmptyState
               icon={<CalendarCheck className="h-6 w-6" />}
               title="Inbox zero. Dial something new."
-              description="When your assistant adds a Licensed Prospect Call or 1:1 to your Google Calendar, it'll appear here within 5 minutes. Until then — go hunt."
+              description="Booked calls from Calendly (Licensed Prospect Calls and Leader Calls) show up here automatically. Nothing on the books right now — go hunt."
             />
           </CardContent>
         </Card>

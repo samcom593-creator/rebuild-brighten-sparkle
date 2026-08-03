@@ -78,14 +78,16 @@ export default function AdminFunnelHealth() {
     };
   }, [funnel, msgStats]);
 
-  // Identify the biggest leak: highest in_stage * (1 - conversion_to_next_pct/100), excluding terminal
+  // Biggest leak = the stage with the most STALLED people (the same signal the
+  // table shows). Previously this used in_stage - next_stage_count, which mixes
+  // two non-sequential cohorts and disagreed with the table's Stalled column.
   const biggestLeak = useMemo(() => {
     let best: { row: FunnelRow; loss: number } | null = null;
     for (const r of funnel) {
       if (!r.order_index || r.order_index >= 18 || r.in_stage === 0) continue;
-      const stuck = r.in_stage - (r.next_stage_count ?? 0);
-      if (stuck <= 0) continue;
-      if (!best || stuck > best.loss) best = { row: r, loss: stuck };
+      const stalled = r.stalled ?? 0;
+      if (stalled <= 0) continue;
+      if (!best || stalled > best.loss) best = { row: r, loss: stalled };
     }
     return best;
   }, [funnel]);
@@ -120,12 +122,10 @@ export default function AdminFunnelHealth() {
               <div className="min-w-0">
                 <div className="text-[10px] uppercase tracking-[0.18em] text-rose-400/80">Biggest concentrated leak</div>
                 <div className="text-lg font-bold mt-0.5">
-                  {biggestLeak.loss} people stuck at "{biggestLeak.row.display_name}"
+                  {biggestLeak.loss} people stalled at "{biggestLeak.row.display_name}"
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {biggestLeak.row.conversion_to_next_pct != null
-                    ? `Only ${biggestLeak.row.conversion_to_next_pct}% advance to the next stage.`
-                    : "Few or no people are advancing to the next stage."} Median time in this stage is {biggestLeak.row.median_days ?? "—"}d.
+                  These have sat in this stage past the expected window. Median time in stage is {biggestLeak.row.median_days ?? "—"}d.
                 </p>
                 <Link
                   to={`/admin/next-step/stuck?stage=${biggestLeak.row.stage_key}`}

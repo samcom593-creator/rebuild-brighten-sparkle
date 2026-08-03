@@ -116,7 +116,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // 2026-07-27 ratchet drop 236 → 234. Measured twice on a cold build (deleted
 // *.tsbuildinfo first — a stale incremental artifact reports phantom counts in
 // both directions and burned an hour earlier in this session).
-const BASELINE = 234;
+const BASELINE = 233; // 2026-08-03: dropped from 234 after CallsTodayCockpit rewire to interview_events
 
 let stdout = "";
 let stderr = "";

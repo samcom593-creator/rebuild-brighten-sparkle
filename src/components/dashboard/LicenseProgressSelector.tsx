@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, ChevronRight, Loader2, GraduationCap, BookOpen, BookCheck, CalendarClock, FileCheck, Fingerprint, Clock, Award, CalendarIcon } from "lucide-react";
+import { Check, ChevronRight, Loader2, GraduationCap, BookOpen, BookCheck, CalendarClock, FileCheck, Fingerprint, Clock, Award, CalendarIcon, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type LicenseProgress = "unlicensed" | "course_purchased" | "finished_course" | "test_scheduled" | "passed_test" | "fingerprints_done" | "waiting_on_license" | "licensed";
+type LicenseProgress = "unlicensed" | "course_purchased" | "finished_course" | "test_scheduled" | "failed_test" | "passed_test" | "fingerprints_done" | "waiting_on_license" | "licensed";
 
 interface LicenseProgressSelectorProps {
   applicationId: string;
@@ -33,6 +33,7 @@ const progressSteps: { value: LicenseProgress; label: string; icon: React.Elemen
   { value: "course_purchased", label: "Course Started", icon: BookOpen, color: "text-blue-400" },
   { value: "finished_course", label: "Finished Course", icon: BookCheck, color: "text-indigo-400" },
   { value: "test_scheduled", label: "Test Scheduled", icon: CalendarClock, color: "text-purple-400" },
+  { value: "failed_test", label: "Failed Test · Retake", icon: RotateCcw, color: "text-rose-400" },
   { value: "passed_test", label: "Passed Test", icon: FileCheck, color: "text-primary" },
   { value: "fingerprints_done", label: "Fingerprints", icon: Fingerprint, color: "text-teal-400" },
   { value: "waiting_on_license", label: "Waiting on License", icon: Clock, color: "text-amber-500" },
@@ -44,6 +45,7 @@ const progressColors: Record<LicenseProgress, string> = {
   course_purchased: "bg-blue-500/20 text-blue-400 border-blue-500/30",
   finished_course: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30",
   test_scheduled: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  failed_test: "bg-rose-500/20 text-rose-400 border-rose-500/30",
   passed_test: "bg-violet-500/20 text-primary border-violet-500/30",
   fingerprints_done: "bg-teal-500/20 text-teal-400 border-teal-500/30",
   waiting_on_license: "bg-rose-500/20 text-amber-500 border-rose-500/30",

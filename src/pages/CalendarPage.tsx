@@ -153,12 +153,37 @@ export default function CalendarPage() {
   const { data: interviews, isLoading } = useQuery({
     queryKey: ["calendar-interviews", user?.id],
     queryFn: async () => {
+      // interview_events is the live booking truth table (Calendly-fed) — the old
+      // scheduled_interviews table has been dead since May, so the calendar showed
+      // 2 stale interviews and hid every real upcoming booked call. Pull the real
+      // events (recent + upcoming) and map them into the InterviewRow shape.
       const { data, error } = await supabase
-        .from("scheduled_interviews")
-        .select("id, interview_date, interview_type, meeting_link, notes, status, application_id, applications!inner(first_name, last_name, email)")
-        .order("interview_date", { ascending: true });
+        .from("interview_events" as any)
+        .select("id, scheduled_at, call_track, event_type_name, calendly_event_uri, notes, canceled_at, confirmed_at, outcome, application_id, invitee_name, invitee_email")
+        .gte("scheduled_at", new Date(Date.now() - 60 * 86_400_000).toISOString())
+        .order("scheduled_at", { ascending: true });
       if (error) throw error;
-      return (data || []) as unknown as InterviewRow[];
+      return ((data || []) as any[]).map((r) => {
+        const parts = String(r.invitee_name ?? "").trim().split(/\s+/);
+        const status = r.canceled_at ? "cancelled"
+          : r.outcome ? String(r.outcome)
+          : r.confirmed_at ? "confirmed"
+          : "scheduled";
+        return {
+          id: r.id,
+          interview_date: r.scheduled_at,
+          interview_type: r.call_track || r.event_type_name || "interview",
+          meeting_link: r.calendly_event_uri ?? null,
+          notes: r.notes ?? null,
+          status,
+          application_id: r.application_id ?? "",
+          applications: {
+            first_name: parts[0] || r.invitee_email || "Applicant",
+            last_name: parts.slice(1).join(" "),
+            email: r.invitee_email ?? "",
+          },
+        } as InterviewRow;
+      });
     },
     enabled: !!user,
     staleTime: 60_000,
@@ -360,7 +385,8 @@ export default function CalendarPage() {
   };
 
   const handleNoShow = async (iv: InterviewRow) => {
-    await supabase.from("scheduled_interviews").update({ status: "no_show" }).eq("id", iv.id);
+    // iv.id is now an interview_events id — record the no-show as an outcome there.
+    await supabase.from("interview_events" as any).update({ outcome: "no_show", outcome_at: new Date().toISOString() } as any).eq("id", iv.id);
     try {
       const { logLeadActivity } = await import("@/lib/logLeadActivity");
       logLeadActivity({

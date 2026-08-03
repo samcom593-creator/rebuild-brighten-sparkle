@@ -18,6 +18,7 @@ import { CalendarPlus, Rocket } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getNextBestAction } from "@/lib/nextBestAction";
 import { priorityBadgeClasses } from "@/lib/priority";
+import { openGoogleVoice } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import {
   CallCenterFilters,
@@ -756,6 +757,24 @@ export default function CallCenter() {
     });
   }, [currentLead, logContactAttempt]);
 
+  // Google Voice variation: place the call from voice.google.com in a new tab.
+  // Works on desktop (where tel: is a dead click) and keeps caller-ID on the GV
+  // number. Same funnel logging as a normal dial.
+  const handleGoogleVoiceCall = useCallback(() => {
+    if (!currentLead?.phone) return;
+    if (currentLead.source === "applications") {
+      logContactAttempt(currentLead.id, "initiated", "call");
+    }
+    const ok = openGoogleVoice(currentLead.phone);
+    if (ok) {
+      toast.success("Opening Google Voice", {
+        description: `Dialing ${`${currentLead.firstName ?? ""} ${currentLead.lastName ?? ""}`.trim() || "this lead"} — click Call in the tab`,
+      });
+    } else {
+      toast.error("That number isn't dialable");
+    }
+  }, [currentLead, logContactAttempt]);
+
   const handleStageChange = useCallback(async (stage: LicensingStage) => {
     if (!currentLead || processing) return;
 
@@ -1073,14 +1092,26 @@ export default function CallCenter() {
                     </div>
                   </div>
                   {currentLead?.phone && (
-                    <Button
-                      onClick={handleCall}
-                      aria-label={`Call ${currentLead.firstName} now`}
-                      className="h-10 w-full shrink-0 sm:h-9 sm:w-auto"
-                    >
-                      <PhoneCall className="mr-1.5 h-4 w-4" />
-                      Call Now
-                    </Button>
+                    <div className="flex w-full shrink-0 gap-2 sm:w-auto">
+                      <Button
+                        onClick={handleCall}
+                        aria-label={`Call ${currentLead.firstName} now`}
+                        className="h-10 flex-1 sm:h-9 sm:w-auto sm:flex-none"
+                      >
+                        <PhoneCall className="mr-1.5 h-4 w-4" />
+                        Call Now
+                      </Button>
+                      <Button
+                        onClick={handleGoogleVoiceCall}
+                        variant="outline"
+                        aria-label={`Call ${currentLead.firstName} via Google Voice`}
+                        title="Call via Google Voice"
+                        className="h-10 shrink-0 sm:h-9"
+                      >
+                        <Phone className="mr-1.5 h-4 w-4" />
+                        Voice
+                      </Button>
+                    </div>
                   )}
                 </div>
               </GlassCard>

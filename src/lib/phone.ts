@@ -49,3 +49,21 @@ export function smsHref(value: string | null | undefined): string | null {
   const normalized = normalizePhoneForDial(value);
   return normalized ? `sms:${normalized}` : null;
 }
+
+/**
+ * Google Voice click-to-call. Opens voice.google.com with the number staged in
+ * the dialer so the rep places the call from their browser (works on desktop,
+ * where `tel:` is a dead click, and keeps caller-ID on the GV number instead of
+ * the rep's cell). The `a=nc,<E.164>` param is GV's "new call" deep link.
+ */
+export function googleVoiceHref(value: string | null | undefined): string | null {
+  const normalized = normalizePhoneForDial(value);
+  return normalized ? `https://voice.google.com/u/0/calls?a=nc,${encodeURIComponent(normalized)}` : null;
+}
+
+export function openGoogleVoice(value: string | null | undefined): boolean {
+  const href = googleVoiceHref(value);
+  if (!href) return false;
+  window.open(href, "_blank", "noopener");
+  return true;
+}

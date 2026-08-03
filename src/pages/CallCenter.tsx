@@ -733,7 +733,27 @@ export default function CallCenter() {
     if (currentLead.source === "applications") {
       logContactAttempt(currentLead.id, "initiated", "call");
     }
-    window.open(`tel:${currentLead.phone}`, "_self");
+    // `tel:` opens the dialer on a phone, but on a desktop with no softphone
+    // registered the browser silently swallows it — the agent clicks Call and
+    // NOTHING happens, which is exactly what the floor reported. So we always
+    // put the number on the clipboard and surface it, giving a usable action on
+    // every device instead of a dead button.
+    const num = currentLead.phone;
+    navigator.clipboard?.writeText(num).catch(() => { // empty-catch-allow:clipboard blocked in insecure context; the toast still shows the number
+      /* no-op */
+    });
+    const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.open(`tel:${num}`, "_self");
+      return;
+    }
+    // Desktop: still try the handler (works when a softphone IS registered),
+    // then tell the agent the number is copied so they can paste it into the
+    // dialer either way.
+    window.open(`tel:${num}`, "_self");
+    toast.success(`${num} copied — paste into your dialer`, {
+      description: `Calling ${`${currentLead.firstName ?? ""} ${currentLead.lastName ?? ""}`.trim() || "this lead"}`,
+    });
   }, [currentLead, logContactAttempt]);
 
   const handleStageChange = useCallback(async (stage: LicensingStage) => {

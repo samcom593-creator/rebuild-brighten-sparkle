@@ -134,50 +134,58 @@ export default function Finances() {
     refetchInterval: 5 * 60_000,
   });
 
+  // These three CFO views each return ONE aggregate row whose detail lives in a
+  // JSON array column (anomalies / stuck_list / idle_agents). They were being read
+  // as if they were row-lists, so the Anomalies tab rendered blank junk. Pull the
+  // single row and hand back its array.
   const dups = useQuery({
     queryKey: ["cfo-dup-charges"],
     queryFn: async () => {
-      const { data } = await supabase.from("v_cfo_dup_charge_watch" as any).select("*").limit(20);
-      return (data ?? []) as unknown as DupCharge[];
+      const { data } = await supabase.from("v_cfo_dup_charge_watch" as any).select("anomalies").maybeSingle();
+      return (((data as any)?.anomalies ?? []) as any[]);
     },
   });
 
   const stuck = useQuery({
     queryKey: ["cfo-stuck-paid"],
     queryFn: async () => {
-      const { data } = await supabase.from("v_cfo_ica_paid_stuck" as any).select("*").limit(50);
-      return (data ?? []) as unknown as StuckPaid[];
+      const { data } = await supabase.from("v_cfo_ica_paid_stuck" as any).select("stuck_list").maybeSingle();
+      return (((data as any)?.stuck_list ?? []) as any[]);
     },
   });
 
   const idle = useQuery({
     queryKey: ["cfo-idle-agents"],
     queryFn: async () => {
-      const { data } = await supabase.from("v_cfo_agent_activation_watch" as any).select("*").limit(50);
-      return (data ?? []) as unknown as IdleAgent[];
+      const { data } = await supabase.from("v_cfo_agent_activation_watch" as any).select("idle_agents").maybeSingle();
+      return (((data as any)?.idle_agents ?? []) as any[]);
     },
   });
 
   const commissions = useQuery({
     queryKey: ["commission-recent"],
     queryFn: async () => {
+      // `product` does not exist on commission_ledger — selecting it 400'd the whole
+      // query and silently hid every commission row.
       const { data } = await supabase.from("commission_ledger" as any)
-        .select("id, agent_id, amount, carrier_id, product, created_at, status")
+        .select("id, agent_id, amount, carrier_id, annual_premium, rate_source, created_at, status")
         .order("created_at", { ascending: false })
         .limit(50);
-      return (data ?? []) as unknown as CommissionRow[];
+      return (data ?? []) as any[];
     },
   });
 
   const approvals = useQuery({
     queryKey: ["cfo-approvals"],
     queryFn: async () => {
+      // Real columns are subject/body/amount_cents (not title/description/amount) —
+      // the old select 400'd and left the tab permanently empty.
       const { data } = await supabase.from("cfo_approval_requests" as any)
-        .select("id, title, description, status, amount, created_at")
+        .select("id, subject, body, amount_cents, status, created_at")
         .eq("status", "pending")
         .order("created_at", { ascending: false })
         .limit(20);
-      return (data ?? []) as unknown as ApprovalReq[];
+      return (data ?? []) as any[];
     },
   });
 
@@ -273,9 +281,9 @@ export default function Finances() {
               <h4 className="text-13 font-bold mb-2 flex items-center gap-1.5"><ShieldAlert className="h-3.5 w-3.5 text-amber-500" /> Duplicate Charges ({dups.data?.length ?? 0})</h4>
               <div className="space-y-1.5 max-h-72 overflow-auto">
                 {(dups.data ?? []).slice(0, 20).map((d, i) => (
-                  <div key={`${d.applicant_name ?? "?"}|${d.first_charge_at ?? d.total_charge ?? i}`} className="text-12 flex justify-between border-b border-border/40 py-1">
-                    <span className="truncate">{d.applicant_name ?? "—"}</span>
-                    <span className="tabular-nums text-amber-700">{fmtUsd(d.total_charge)}</span>
+                  <div key={d.stripe_charge_id ?? `dup|${d.customer ?? "?"}|${i}`} className="text-12 flex justify-between border-b border-border/40 py-1">
+                    <span className="truncate">{d.customer ?? d.email ?? "—"}</span>
+                    <span className="tabular-nums text-amber-700">{fmtUsd(d.amount_usd)}</span>
                   </div>
                 ))}
                 {(dups.data ?? []).length === 0 && <p className="text-12 text-muted-foreground">No duplicate-charge anomalies.</p>}
@@ -287,9 +295,9 @@ export default function Finances() {
               <h4 className="text-13 font-bold mb-2 flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-rose-500" /> Course Bought · Stuck ({stuck.data?.length ?? 0})</h4>
               <div className="space-y-1.5 max-h-72 overflow-auto">
                 {(stuck.data ?? []).slice(0, 50).map((s, i) => (
-                  <div key={s.application_id ?? `stuck|${s.applicant_name ?? "?"}|${s.days_stuck ?? i}`} className="text-12 flex justify-between border-b border-border/40 py-1">
-                    <span className="truncate">{s.applicant_name ?? "—"}</span>
-                    <span className="tabular-nums text-rose-700">{s.days_stuck ?? "—"}d</span>
+                  <div key={`stuck|${s.email ?? s.name ?? "?"}|${i}`} className="text-12 flex justify-between border-b border-border/40 py-1">
+                    <span className="truncate">{s.name ?? "—"}</span>
+                    <span className="tabular-nums text-rose-700">{s.status ?? "—"}</span>
                   </div>
                 ))}
                 {(stuck.data ?? []).length === 0 && <p className="text-12 text-muted-foreground">No stuck-paid apps.</p>}
@@ -301,9 +309,9 @@ export default function Finances() {
               <h4 className="text-13 font-bold mb-2 flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-amber-500" /> Idle Active Agents ({idle.data?.length ?? 0})</h4>
               <div className="space-y-1.5 max-h-72 overflow-auto">
                 {(idle.data ?? []).slice(0, 50).map((a, i) => (
-                  <div key={a.agent_id ?? `idle|${a.agent_name ?? "?"}|${a.days_idle ?? i}`} className="text-12 flex justify-between border-b border-border/40 py-1">
-                    <span className="truncate">{a.agent_name ?? "—"}</span>
-                    <span className="tabular-nums text-amber-700">{a.days_idle ?? "—"}d</span>
+                  <div key={a.agent_id ?? `idle|${a.name ?? "?"}|${i}`} className="text-12 flex justify-between border-b border-border/40 py-1">
+                    <span className="truncate">{a.name ?? "—"}</span>
+                    <span className="tabular-nums text-muted-foreground text-11">{a.agent_code ?? ""}</span>
                   </div>
                 ))}
                 {(idle.data ?? []).length === 0 && <p className="text-12 text-muted-foreground">No idle agents.</p>}
@@ -324,7 +332,7 @@ export default function Finances() {
                   <div key={c.id} className="px-4 py-2.5 flex items-center gap-3 text-13">
                     <DollarSign className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{c.product ?? "—"}</p>
+                      <p className="font-medium truncate">{c.annual_premium ? `${fmtUsd(c.annual_premium)} AP` : "Commission"}{c.rate_source ? ` · ${c.rate_source}` : ""}</p>
                       <p className="text-11 text-muted-foreground">{relativeTime(c.created_at)} · {c.status ?? "—"}</p>
                     </div>
                     <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{fmtUsd(c.amount)}</span>
@@ -347,10 +355,10 @@ export default function Finances() {
                 {(approvals.data ?? []).map((a) => (
                   <div key={a.id} className="px-4 py-3">
                     <div className="flex items-center justify-between gap-3 mb-1">
-                      <p className="text-13 font-bold truncate">{a.title ?? "—"}</p>
-                      {a.amount && <span className="text-13 tabular-nums text-amber-700 dark:text-amber-300">{fmtUsd(a.amount)}</span>}
+                      <p className="text-13 font-bold truncate">{a.subject ?? "—"}</p>
+                      {a.amount_cents != null && <span className="text-13 tabular-nums text-amber-700 dark:text-amber-300">{fmtUsd(a.amount_cents / 100)}</span>}
                     </div>
-                    {a.description && <p className="text-12 text-muted-foreground line-clamp-2">{a.description}</p>}
+                    {a.body && <p className="text-12 text-muted-foreground line-clamp-2">{a.body}</p>}
                     <p className="text-11 text-muted-foreground mt-1">{relativeTime(a.created_at)}</p>
                   </div>
                 ))}

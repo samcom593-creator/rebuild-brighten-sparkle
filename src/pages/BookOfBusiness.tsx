@@ -322,17 +322,14 @@ function chargebackRisk(deal: DealRow): number {
   return proximity * premium;
 }
 
+// Whitelist, not blacklist. The old blacklist counted everything that wasn't
+// explicitly dead as "active" — which swept in 1,235 Unknown-status manual-paste
+// rows, 130 never-issued, and 62 Lapse Pending, inflating "Active Policies" to
+// 3,062 while the strict "In force" tile on the same page read 131. Only stages
+// that represent a real in-force/issued policy count now.
+const ACTIVE_STAGES = new Set(["active", "approved", "in_force", "issued", "paid"]);
 function isActivePolicy(deal: DealRow): boolean {
-  const stage = pipelineStageKey(deal);
-  if (
-    stage === "cancelled" ||
-    stage === "lapsed" ||
-    stage === "charged_back" ||
-    stage === "draft" ||
-    stage === "submitted"
-  )
-    return false;
-  return true;
+  return ACTIVE_STAGES.has(pipelineStageKey(deal));
 }
 
 // AgentLink snapshot rows set posted_at = snapshot_at (sync clock), so every

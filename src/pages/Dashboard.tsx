@@ -406,13 +406,19 @@ async function loadDashboardSnapshot(
   const manualCounter = parseCount((leadCounterRows as any[])[0]?.count);
   const manualCounterUpdatedAt = (leadCounterRows as any[])[0]?.updated_at ?? null;
 
-  const syncAt = (agentLinkRow as any)?.finished_at ?? (agentLinkRow as any)?.started_at ?? null;
+  // sync_health_summary() returns { as_of, sources:[{source, last_status,
+  // is_stale, last_success_at, action_required, ...}] } — NOT flat columns. Reading
+  // top-level .status/.finished_at made it always undefined, so the card painted a
+  // false "critical/broken" even when AgentLink had synced minutes ago. Pluck the
+  // agentlink source and trust its own threshold-aware is_stale flag.
+  const agentLink = (agentLinkRow as any)?.sources?.find((s: any) => s.source === "agentlink") ?? null;
+  const syncAt = agentLink?.last_success_at ?? agentLink?.last_attempt_at ?? null;
   const syncAge = minutesSince(syncAt);
-  const agentLinkState: IntegrationState = !(agentLinkRow as any)
+  const agentLinkState: IntegrationState = !agentLink
     ? "unavailable"
-    : (agentLinkRow as any).status !== "ok"
+    : (agentLink.action_required || agentLink.last_status !== "ok")
       ? "critical"
-      : syncAge !== null && syncAge > 6 * 60
+      : agentLink.is_stale
         ? "warning"
         : "ok";
 
@@ -499,12 +505,12 @@ async function loadDashboardSnapshot(
       state: readyCount === null ? (manualCounter === null ? "unavailable" : "warning") : "ok",
     },
     agentLink: {
-      status: (agentLinkRow as any)?.status ?? null,
+      status: agentLink?.last_status ?? null,
       lastSyncAt: syncAt,
-      policiesSeen: Number((agentLinkRow as any)?.policies_seen ?? 0),
-      dealsInserted: Number((agentLinkRow as any)?.deals_inserted ?? 0),
-      dealsUpdated: Number((agentLinkRow as any)?.deals_updated ?? 0),
-      error: (agentLinkRow as any)?.error_message ?? null,
+      policiesSeen: 0,
+      dealsInserted: 0,
+      dealsUpdated: 0,
+      error: agentLink?.last_error ?? null,
       state: agentLinkState,
     },
     system: {

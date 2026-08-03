@@ -160,6 +160,12 @@ function TodaySection({ today }: { today: string }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {(tasks ?? []).length === 0 && (
+          <p className="text-sm text-slate-400">
+            No tasks set for today yet — hit <span className="text-amber-300 font-medium">add</span> under
+            MUST/SHOULD/COULD to plan your day. (This checklist is empty, not broken.)
+          </p>
+        )}
         {(["MUST", "SHOULD", "COULD"] as Bucket[]).map(bucket => (
           <div key={bucket} className={cn("rounded-lg border p-3", BUCKET_META[bucket].color)}>
             <div className="flex items-center justify-between mb-2">
@@ -533,7 +539,10 @@ function LeaksSection() {
       const [unclaimed, premiumGap, ghostAP, ica] = await Promise.all([
         supabase.from("v_unclaimed_new_apps").select("*", { count: "exact", head: true }),
         supabase.from("v_carrier_premium_data_gap").select("*", { count: "exact", head: true }),
-        supabase.from("v_carrier_reconciliation").select("*", { count: "exact", head: true }).eq("status", "unreconciled"),
+        // v_carrier_reconciliation status is emoji-prefixed ('🔴 BLIND' / '🟠 MOSTLY
+        // BLIND' / '🟢 RECONCILED') — there is no literal 'unreconciled', so the old
+        // filter always counted 0. Count everything that is not fully reconciled.
+        supabase.from("v_carrier_reconciliation").select("*", { count: "exact", head: true }).neq("status", "🟢 RECONCILED"),
         supabase.from("v_insuracloud_auth_health").select("status").limit(1),
       ]);
       return {
@@ -550,7 +559,9 @@ function LeaksSection() {
     { label: "Unclaimed applicants", value: leaks?.unclaimed ?? "—", href: "/dashboard/applicants?filter=unclaimed", color: "text-amber-400" },
     { label: "Policies missing premium", value: leaks?.premium_gap ?? "—", href: "/dashboard/admin/charges-audit", color: "text-red-400" },
     { label: "Unreconciled commissions", value: leaks?.ghost_ap ?? "—", href: "/dashboard/admin/book-quality", color: "text-red-400" },
-    { label: "InsuraCloud auth", value: (leaks?.ica_health as { status?: string } | null)?.status ?? "—", href: "/dashboard/system-health", color: "text-slate-600 dark:text-slate-300" },
+    // The health view's status is a full sentence ('🔴 AUTH DEAD — no successful
+    // sync in 2+ days…') that overflowed the tile. Collapse to a short badge.
+    { label: "InsuraCloud auth", value: (() => { const s = (leaks?.ica_health as { status?: string } | null)?.status ?? ""; if (!s) return "—"; return s.startsWith("🔴") ? "🔴 DEAD" : s.startsWith("🟠") ? "🟠 STALE" : s.startsWith("🟢") ? "🟢 OK" : s.slice(0, 16); })(), href: "/dashboard/system-health", color: "text-slate-600 dark:text-slate-300" },
   ];
 
   return (

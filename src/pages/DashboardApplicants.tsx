@@ -518,7 +518,7 @@ export default function DashboardApplicants() {
     if (app.terminated_at) return "terminated";
     if (app.contracted_at) return "contracted";
     if (app.closed_at) return "hired";
-    if (app.contacted_at) return "contacted";
+    if ((app as any).last_contacted_at) return "contacted"; // real signal, not fake contacted_at
     return "new";
   };
 
@@ -839,13 +839,15 @@ export default function DashboardApplicants() {
     let matchesNeedsFollowup = true;
     if (needsFollowupOnly) {
       const ageMs = Date.now() - new Date(app.created_at).getTime();
-      const hasContact = Boolean(app.contacted_at) || Boolean((app as any).last_contacted_at);
+      // last_contacted_at only — contacted_at is the fake bulk-stamped column
+      // (see needsFollowupCount). Keeps the filter in sync with the card count.
+      const hasContact = Boolean((app as any).last_contacted_at);
       matchesNeedsFollowup = ageMs > 48 * 60 * 60 * 1000 && !hasContact;
     }
 
     const matchesContacted =
       contactedParam === "untouched"
-        ? !app.contacted_at && !(app as any).last_contacted_at
+        ? !(app as any).last_contacted_at
         : contactedParam === "recent"
         ? (app as any).last_contacted_at && new Date((app as any).last_contacted_at).getTime() > Date.now() - 86_400_000
         : true;
@@ -970,7 +972,12 @@ export default function DashboardApplicants() {
     let n = 0;
     for (const a of activeApplications) {
       const ageMs = Date.now() - new Date(a.created_at).getTime();
-      const hasContact = Boolean(a.contacted_at) || Boolean((a as any).last_contacted_at);
+      // Trust ONLY last_contacted_at. contacted_at was bulk-stamped fake (batches
+      // of 10 at round times on 2026-07-28), so including it made this read ~1
+      // when 384 applicants are genuinely 48h+ with zero real contact — the exact
+      // "the data isn't real" problem. Mirror callPriority(), which already
+      // ignores contacted_at.
+      const hasContact = Boolean((a as any).last_contacted_at);
       if (ageMs > 48 * 60 * 60 * 1000 && !hasContact) n++;
     }
     return n;

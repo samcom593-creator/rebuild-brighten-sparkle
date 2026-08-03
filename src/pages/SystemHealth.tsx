@@ -99,6 +99,16 @@ const DQ_LABELS: Record<string, { label: string; href?: string }> = {
   applications_assigned_to_missing_agent: { label: "Applications assigned to a missing agent" },
   applications_no_owner_no_nextaction: { label: "Applications with no owner and no next action" },
   book_unattributed_inforce: { label: "In-force book rows with no agent" },
+  // Keys the v_data_quality_dashboard view emits that had no human label (rendered
+  // as raw snake_case before).
+  agent_status_contradicts_production: { label: "Agents whose status contradicts their production" },
+  agents_orphaned_no_manager: { label: "Agents with no manager", href: "/dashboard/agents" },
+  agents_sharing_agentlink_id: { label: "Agents sharing one AgentLink id", href: "/admin/missing-al-link" },
+  book_effective_date_implausible: { label: "Book rows with an implausible effective date" },
+  book_rows_unattributed: { label: "Book rows with no agent (invisible to rollups)" },
+  duplicate_active_agent_names: { label: "Active agents with duplicate names" },
+  milestone_columns_bulk_backfilled: { label: "Applicants with bulk-backfilled milestone dates" },
+  rls_overbroad_write_policies: { label: "Tables with overly broad write access" },
 };
 
 // Severity tokens — three levels only, always the -600 dark:-400 pair so they

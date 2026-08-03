@@ -49,6 +49,7 @@ interface LicensedRow {
   state: string | null;
   city: string | null;
   license_status: string;
+  nipr_verified: boolean | null;
   status: string | null;
   created_at: string;
 }
@@ -76,7 +77,7 @@ export default function LicensedInbox() {
       const { data, error } = await supabase
         .from("applications")
         .select(
-          "id, first_name, last_name, email, phone, state, city, license_status, status, created_at",
+          "id, first_name, last_name, email, phone, state, city, license_status, nipr_verified, status, created_at",
         )
         .eq("license_status", "licensed")
         // wave-p1k: exclude terminal dispositions so the inbox actually drains.
@@ -103,7 +104,7 @@ export default function LicensedInbox() {
         // and the page can say the list is MISSING rather than empty.
         throw error;
       }
-      return (data ?? []) as LicensedRow[];
+      return (data ?? []) as unknown as LicensedRow[];
     },
     staleTime: 15_000,
   });
@@ -310,9 +311,15 @@ export default function LicensedInbox() {
                       <span className="truncate text-sm font-medium text-foreground">
                         {name}
                       </span>
-                      <span className="shrink-0 rounded-sm border border-emerald-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-                        Licensed
-                      </span>
+                      {r.nipr_verified === true ? (
+                        <span className="shrink-0 rounded-sm border border-emerald-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                          Licensed ✓
+                        </span>
+                      ) : (
+                        <span title="Self-reported on the apply form — not verified against NIPR" className="shrink-0 rounded-sm border border-amber-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                          Self-reported
+                        </span>
+                      )}
                       {r.state && (
                         <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                           {r.state}

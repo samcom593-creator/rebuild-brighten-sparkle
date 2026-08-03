@@ -3898,7 +3898,7 @@ function RecruiterContactSlaPanel() {
             <Badge variant="outline" className="text-[10px] uppercase tracking-widest border-rose-400/40 bg-rose-400/10 text-rose-200">
               {d?.totalStale48 ?? 0} stale 48h+
             </Badge>
-            <Link to="/admin/recruiting-inbox" className="text-[10px] text-rose-200/80 hover:text-rose-100 uppercase tracking-widest font-bold">
+            <Link to="/dashboard/applicants" className="text-[10px] text-rose-200/80 hover:text-rose-100 uppercase tracking-widest font-bold">
               Inbox →
             </Link>
           </div>

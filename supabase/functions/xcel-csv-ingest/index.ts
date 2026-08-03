@@ -156,10 +156,14 @@ Deno.serve(async (req) => {
     if (r?.email && r?.sku) existing.add(`${String(r.email).toLowerCase()}|${r.sku}`);
   }
 
+  // Measure the licensed-application delta the xcel trigger actually produces.
+  // It flips matched applications to license_status='licensed' — the old counter
+  // watched pre_licensing_started_at, which the trigger never touches, so
+  // "Upgraded → licensed" was permanently 0.
   const preInsertedApp = await sb
     .from("applications")
     .select("id", { count: "exact", head: true })
-    .not("pre_licensing_started_at", "is", null);
+    .eq("license_status", "licensed");
   const preCount = preInsertedApp.count ?? 0;
 
   // Phase 3 — upsert. onConflict matches the (email, sku) partial unique index.
@@ -186,7 +190,7 @@ Deno.serve(async (req) => {
   const postInsertedApp = await sb
     .from("applications")
     .select("id", { count: "exact", head: true })
-    .not("pre_licensing_started_at", "is", null);
+    .eq("license_status", "licensed");
   const postCount = postInsertedApp.count ?? preCount;
   const applications_upgraded = Math.max(0, postCount - preCount);
 

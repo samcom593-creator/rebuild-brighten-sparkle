@@ -30,7 +30,22 @@ function release(): void {
   }
 }
 
+// Auth + realtime + storage must NEVER be throttled. Token refresh in
+// particular has to win against a data-request burst — if it queues behind 6
+// dashboard queries and stalls, the session can expire/break and the user gets
+// bounced to login. Only /rest/v1 (PostgREST) data queries — the bursty ones —
+// go through the semaphore.
+function isThrottleable(input: RequestInfo | URL): boolean {
+  let url = "";
+  if (typeof input === "string") url = input;
+  else if (input instanceof URL) url = input.href;
+  else if (input instanceof Request) url = input.url;
+  return url.includes("/rest/v1/");
+}
+
 export const boundedFetch: typeof fetch = async (input, init) => {
+  // Auth/realtime/storage/functions bypass the cap entirely.
+  if (!isThrottleable(input)) return fetch(input, init);
   // Already-aborted requests skip the queue entirely.
   if (init?.signal?.aborted) return fetch(input, init);
   await acquire();

@@ -77,7 +77,20 @@ function useGlobalSessionRefresh() {
     let cancelled = false;
     const refresh = async (label: string) => {
       try {
-        const { data, error } = await supabase.auth.refreshSession();
+        // CRITICAL: never call refreshSession() blindly. On a page reload it
+        // races the client's own init/auto-refresh, and the refresh-token
+        // rotation collision throws "Auth session missing", invalidates the
+        // session, and bounces the user to /login on every reload. Read the
+        // session first (safe, no network, no rotation) and only refresh when
+        // the token is actually near expiry — supabase autoRefreshToken already
+        // covers the steady state.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled) return;
+        if (!session) return; // nothing to refresh — do NOT wipe/sign out
+        const secondsLeft = (session.expires_at ?? 0) - Math.floor(Date.now() / 1000);
+        if (secondsLeft > 15 * 60) return; // still fresh; skip to avoid the race
+        // Pass the explicit session so refresh can never throw "session missing".
+        const { data, error } = await supabase.auth.refreshSession(session);
         if (cancelled) return;
         if (error || !data?.session) {
           console.warn(`[GlobalSessionRefresh:${label}] failed:`, error);

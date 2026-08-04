@@ -24,13 +24,15 @@
       (function() {
         var BUMP_VERSION = "2026-07-27-application-phone-actions-E2VJ1v85IRE";
         try {
-          var staleKeys = [];
-          for (var i = 0; i < localStorage.length; i++) {
-            var k = localStorage.key(i);
-            if (k && k.indexOf('xrzweoneiieddzxogewk') !== -1) staleKeys.push(k);
-          }
+          // ⚠️ NEVER touch the Supabase auth token here. This block used to
+          // collect EVERY localStorage key containing the project ref
+          // ('xrzweoneiieddzxogewk') as "stale" — which includes the LIVE
+          // 'sb-...-auth-token' — and delete them whenever any were present on a
+          // fresh tab (`hadStaleAuth`). That logged every signed-in agent out on
+          // their first reload/navigation and bounced them to /login. The fresh
+          // bundle never required a fresh session. Now we ONLY evict the service
+          // worker + caches on an actual build-version change, and leave auth alone.
           var seenBump = localStorage.getItem('apex_bump_version');
-          var hadStaleAuth = staleKeys.length > 0 && !sessionStorage.getItem('apex_cache_busted');
           // A first-time visitor has no cache to evict. Reloading that visitor
           // doubled the initial document request and made the site feel slow
           // before React even started. Only reload an existing installation
@@ -40,10 +42,10 @@
           if (!isExistingInstall) {
             localStorage.setItem('apex_bump_version', BUMP_VERSION);
           }
-          if (hadStaleAuth || needsBump) {
+          if (needsBump && !sessionStorage.getItem('apex_cache_busted')) {
             sessionStorage.setItem('apex_cache_busted', '1');
             localStorage.setItem('apex_bump_version', BUMP_VERSION);
-            staleKeys.forEach(function(k) { localStorage.removeItem(k); });
+            // Evict the stale bundle only — NOT the session.
             if ('serviceWorker' in navigator) {
               navigator.serviceWorker.getRegistrations().then(function(regs) {
                 regs.forEach(function(r) { r.unregister(); });
@@ -54,18 +56,11 @@
                 keys.forEach(function(k) { caches.delete(k); });
               });
             }
-            // 2026-06-15 v7.13 · ALWAYS auto-reload on BUMP_VERSION change.
-            // Was: only reloaded on hadStaleAuth (migration case). That left
-            // bump-only updates stranded — the SW + caches got nuked but
-            // the page stayed on the old bundle until next navigation. Sam
-            // was refreshing /dashboard/applicants over and over; the page
-            // never updated because the reload never fired. Now: any
-            // version mismatch triggers an immediate reload with a
-            // cache-busting query param. Fresh content lands within 1
-            // page load · no manual action required.
-            if (hadStaleAuth || needsBump) {
-              location.replace(location.pathname + (location.search ? location.search + '&' : '?') + '_freshv=' + Date.now());
-            }
+            // 2026-06-15 v7.13 · auto-reload on BUMP_VERSION change so the fresh
+            // bundle lands within one page load — the SW + caches were nuked
+            // above, so without a reload the page would keep serving the old
+            // bundle until the next navigation. Signed-in users stay signed in.
+            location.replace(location.pathname + (location.search ? location.search + '&' : '?') + '_freshv=' + Date.now());
           }
         } catch (e) { /* swallow — never block page on cache-bust */ }
       })();

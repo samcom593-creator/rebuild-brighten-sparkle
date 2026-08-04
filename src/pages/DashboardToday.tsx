@@ -228,22 +228,16 @@ export default function DashboardToday() {
     staleTime: 60_000,
     refetchInterval: 60_000,
     queryFn: async (): Promise<number> => {
-      // NOT EXISTS-style filter — do it in a single RPC-ish call by asking the
-      // v_unlicensed_all view for aged_leads that also carry the "no matching
-      // application" flag surfaced by the view. Falls back to a raw count if
-      // the view is unavailable so the tile never crashes the page.
+      // Count aged (purchased) leads that have never been worked. The old query
+      // hit a view (v_aged_leads_unmatched) and a fallback column
+      // (aged_leads.matched_application_id) that BOTH do not exist in prod, so the
+      // tile errored. last_contacted_at IS NULL = the real "still to call" signal.
       const { count, error } = await (supabase as any)
-        .from("v_aged_leads_unmatched")
-        .select("*", { count: "exact", head: true });
-      if (!error) return count ?? 0;
-      // Fallback: count aged_leads rows where the email doesn't appear in the
-      // unlicensed_all "applied" bucket for the same email.
-      const { count: fallback, error: err2 } = await (supabase as any)
         .from("aged_leads")
         .select("*", { count: "exact", head: true })
-        .is("matched_application_id", null);
-      if (err2) throw err2;
-      return fallback ?? 0;
+        .is("last_contacted_at", null);
+      if (error) throw error;
+      return count ?? 0;
     },
   });
 

@@ -664,9 +664,9 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
         <MetricCard label="Stuck applicants" value={fmtInt(summary.stuck)} sub="Overdue, ghosted, or stalled licensing" icon={PhoneCall} />
         <MetricCard label="Coursework completion" value={fmtPct(summary.courseworkRate)} sub={`Activation ${fmtPct(summary.activationRate)}`} icon={ShieldCheck} />
         <MetricCard label="Monthly production" value={fmtMoney(topBuilder?.monthly_production)} sub={topBuilder ? `Top leg: ${topBuilder.builder_name}` : "Insufficient data"} icon={BarChart3} />
-        <MetricCard label="Month growth" value={fastestGrowing ? fmtPct(fastestGrowing.growth_rate) : "Insufficient data"} sub={fastestGrowing?.builder_name ?? "Needs production history"} icon={TrendingUp} />
+        <MetricCard label="Month growth" value={fastestGrowing && new Date().getDate() > 7 ? fmtPct(fastestGrowing.growth_rate) : "Building"} sub={new Date().getDate() > 7 ? (fastestGrowing?.builder_name ?? "Needs production history") : "Month just started"} icon={TrendingUp} />
         <MetricCard label="Top builder" value={topBuilder?.builder_name ?? "Insufficient data"} sub={topBuilder ? topBuilder.action_needed : "No builder data"} icon={Crown} />
-        <MetricCard label="Fastest growing" value={fastestGrowing?.builder_name ?? "Insufficient data"} sub={fastestGrowing ? fmtPct(fastestGrowing.growth_rate) : "No growth baseline"} icon={ArrowRight} />
+        <MetricCard label="Fastest growing" value={fastestGrowing?.builder_name ?? "Insufficient data"} sub={fastestGrowing && new Date().getDate() > 7 ? fmtPct(fastestGrowing.growth_rate) : "Growth vs last month · from day 8"} icon={ArrowRight} />
       </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">

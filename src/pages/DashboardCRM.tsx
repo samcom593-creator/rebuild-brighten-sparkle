@@ -441,14 +441,19 @@ export default function DashboardCRM() {
 
   const fetchAgentsQuery = useCallback(async () => {
     try {
+      // These early exits must NOT return from the whole function — the agent
+      // roster fetch below has to run regardless of whether the manager dropdown
+      // populates. (A bare `return` here left the CRM roster empty.)
       const { data: managerRoles } = await supabase.from("user_roles").select("user_id").eq("role", "manager");
-      if (!managerRoles?.length) return;
-      const managerUserIds = managerRoles.map(r => r.user_id);
-      const { data: managerAgents } = await supabase.from("agents").select("id, user_id").in("user_id", managerUserIds).eq("status", "active");
-      if (!managerAgents?.length) return;
-      const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", managerUserIds);
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
-      setManagers(managerAgents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "—" })));
+      const managerUserIds = (managerRoles ?? []).map(r => r.user_id);
+      if (managerUserIds.length) {
+        const { data: managerAgents } = await supabase.from("agents").select("id, user_id").in("user_id", managerUserIds).eq("status", "active");
+        const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", managerUserIds);
+        const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
+        setManagers((managerAgents ?? []).map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "—" })));
+      } else {
+        setManagers([]);
+      }
     } catch (error) { console.error("Error fetching managers:", error); }
     try {
       const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).maybeSingle();

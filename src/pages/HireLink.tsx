@@ -162,8 +162,11 @@ export default function HireLink() {
       }
       toast.success("You're in. Welcome to APEX.");
       const redirect = (data as { redirect_url?: string })?.redirect_url;
+      // /agent-hub does not exist — a just-hired agent was landing on the
+      // NotFound catch-all right after "You're in." Send them to the real
+      // agent home (or /agent-login if the session isn't established yet).
       if (redirect) nav(redirect);
-      else nav("/agent-hub?welcome=1");
+      else nav("/agent-portal?welcome=1");
     } catch (err) {
       console.error("consume-invite-token failed", err);
       toast.error("Network hiccup. Try again in a moment.");

@@ -98,9 +98,9 @@ export default function ManagerCommandView() {
       const since = new Date(Date.now() - 7 * 86400000).toISOString();
       const { data } = await supabase
         .from("applications")
-        .select("id, first_name, last_name, last_contact_at")
+        .select("id, first_name, last_name, last_contacted_at")
         .in("assigned_agent_id", downlineIds)
-        .or(`last_contact_at.lt.${since},last_contact_at.is.null`)
+        .or(`last_contacted_at.lt.${since},last_contacted_at.is.null`)
         .limit(20);
       return data ?? [];
     },

@@ -67,6 +67,7 @@ export default function Login() {
         const isAdmin = roles?.some(r => r.role === "admin");
         const isManager = roles?.some(r => r.role === "manager");
         const isVaManager = roles?.some(r => (r.role as string) === "va_manager");
+        const isVa = roles?.some(r => (r.role as string) === "va");
 
         // Force password change if default password
         const { data: agent } = await supabase
@@ -88,6 +89,9 @@ export default function Login() {
           navigate("/va-team");
         } else if (isAdmin || isManager) {
           navigate("/dashboard");
+        } else if (isVa) {
+          // Sub-VAs work the calling/recovery queue, not the agent portal.
+          navigate("/admin/recovery-queue");
         } else {
           navigate("/agent-portal");
         }

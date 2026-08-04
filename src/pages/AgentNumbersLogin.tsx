@@ -69,9 +69,19 @@ export default function AgentNumbersLogin() {
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate("/agent-portal", { replace: true });
-      }
+      if (!session) return;
+      // Route by role — an already-authenticated admin/manager/VA who hits the
+      // agent-login page must NOT be dumped on the agent portal (a va_manager in
+      // particular would land on an empty AgentCommandDashboard).
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id);
+      const has = (r: string) => (roles ?? []).some((x: any) => x.role === r);
+      if (has("va_manager")) navigate("/va-team", { replace: true });
+      else if (has("admin") || has("manager")) navigate("/dashboard", { replace: true });
+      else if (has("va")) navigate("/admin/recovery-queue", { replace: true });
+      else navigate("/agent-portal", { replace: true });
     };
     checkSession();
   }, [navigate]);

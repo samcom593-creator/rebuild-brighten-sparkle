@@ -27,6 +27,12 @@ async function logClientError(scope: "query" | "mutation", key: string, error: u
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
     const { supabase } = await import("@/integrations/supabase/client");
+    // function_errors is not anon-writable (RLS). On public pages (hall-of-fame,
+    // apply, leaderboard) an anonymous visitor's query error would fire an INSERT
+    // that 403s — pure network noise with zero observability gain (the write
+    // fails anyway). Only log when there's a session.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
     await supabase.from("function_errors").insert({
       function_name: `client:${scope}:${key}`,
       error_message: message,

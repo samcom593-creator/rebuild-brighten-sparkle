@@ -200,19 +200,28 @@ export const BulkLeadAssignment = forwardRef<HTMLDivElement>(function BulkLeadAs
 
       const managerId = selectedAgentId === "unassigned" ? null : selectedAgentId;
 
-      if (applicationIds.length > 0) {
+      // Chunk the id lists at 100 — a single ~200-id `.in()` builds a URL long
+      // enough to 400 the whole update (thrown as a toast error = broken bulk
+      // assign). Same threshold this codebase already learned to chunk at.
+      const chunk = <T,>(arr: T[], n = 100): T[][] => {
+        const out: T[][] = [];
+        for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+        return out;
+      };
+
+      for (const batch of chunk(applicationIds)) {
         const { error } = await supabase
           .from("applications")
           .update({ assigned_agent_id: managerId })
-          .in("id", applicationIds);
+          .in("id", batch);
         if (error) throw error;
       }
 
-      if (agedLeadIds.length > 0) {
+      for (const batch of chunk(agedLeadIds)) {
         const { error } = await supabase
           .from("aged_leads")
           .update({ assigned_manager_id: managerId })
-          .in("id", agedLeadIds);
+          .in("id", batch);
         if (error) throw error;
       }
 

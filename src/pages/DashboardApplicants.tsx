@@ -270,7 +270,18 @@ export default function DashboardApplicants() {
     let cancelled = false;
     (async () => {
       try {
-        const { data, error } = await supabase.auth.refreshSession();
+        // Never call refreshSession() bare — it races the client's init/auto-
+        // refresh and throws "Auth session missing", which cascades to a forced
+        // logout. Read the session first, only refresh when actually near expiry,
+        // and pass the explicit session so it can't throw.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled || !session) return;
+        const secondsLeft = (session.expires_at ?? 0) - Math.floor(Date.now() / 1000);
+        if (secondsLeft > 15 * 60) {
+          queryClient.invalidateQueries({ queryKey: ["applicants"] });
+          return;
+        }
+        const { data, error } = await supabase.auth.refreshSession(session);
         if (cancelled) return;
         if (error || !data?.session) {
           console.warn("[DashboardApplicants] session refresh failed:", error);
@@ -511,15 +522,21 @@ export default function DashboardApplicants() {
     if (applications.length > 0) return;
 
     autoHealedRef.current = true;
-    console.warn("[DashboardApplicants] auto-heal: 0 apps fetched · refreshing session + retrying");
+    console.warn("[DashboardApplicants] auto-heal: 0 apps fetched · checking session");
     (async () => {
       try {
-        const { data, error } = await supabase.auth.refreshSession();
+        // 0 apps is NOT proof of an expired session — new agents, empty
+        // downlines and filtered views legitimately have zero. NEVER force a
+        // sign-out here (that logged real users out). Only nudge a refresh if
+        // the token is genuinely near expiry (the RLS-returns-0-on-expired-JWT
+        // case), guarded so it can't throw "session missing".
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return; // genuinely signed out — ProtectedRoute handles it
+        const secondsLeft = (session.expires_at ?? 0) - Math.floor(Date.now() / 1000);
+        if (secondsLeft > 15 * 60) return; // fresh token — 0 apps is real
+        const { data, error } = await supabase.auth.refreshSession(session);
         if (error || !data?.session) {
           console.warn("[auto-heal] session refresh failed:", error);
-          toast.error("Session expired · signing you out for fresh login");
-          await supabase.auth.signOut();
-          setTimeout(() => { navigate("/login"); }, 400);
           return;
         }
         toast.success("Session refreshed · reloading applications");

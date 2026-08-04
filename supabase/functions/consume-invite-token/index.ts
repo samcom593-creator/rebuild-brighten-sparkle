@@ -41,6 +41,7 @@ interface ConsumeBody {
   email: string;
   state?: string;
   licensed?: boolean;
+  nipr_number?: string;
 }
 
 function json(body: unknown, status = 200) {
@@ -82,6 +83,7 @@ serve(async (req) => {
   const full_name = (body.full_name || "").trim();
   const phone_digits = digitsOnly(body.phone || "");
   const email = (body.email || "").trim().toLowerCase();
+  const nipr_number = (body.nipr_number || "").trim() || null;
 
   if (!token || token.length < 8) {
     return json({ ok: false, error: "invalid_token" }, 400);
@@ -152,6 +154,7 @@ serve(async (req) => {
         phone: phone_digits,
         state,
         license_status: licensedJoin ? "licensed" : "unlicensed",
+        nipr_number,
         status: "new",
         referral_source: `magic_join_link:${(tokenRow.created_by ?? "unknown").toString().slice(0, 8)}`,
       })
@@ -273,6 +276,7 @@ serve(async (req) => {
         display_name: full_name,
         manager_id: tokenRow.target_manager_id ?? null,
         start_date: new Date().toISOString().slice(0, 10),
+        ...(nipr_number ? { nipr_number } : {}),
       })
       .eq("id", agentId);
     if (updErr) {
@@ -294,6 +298,7 @@ serve(async (req) => {
         display_name: full_name,
         manager_id: tokenRow.target_manager_id ?? null,
         start_date: new Date().toISOString().slice(0, 10),
+        ...(nipr_number ? { nipr_number } : {}),
       })
       .select("id")
       .single();

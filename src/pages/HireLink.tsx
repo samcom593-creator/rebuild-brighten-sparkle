@@ -34,6 +34,7 @@ interface PrefillResponse {
   ok: boolean;
   reason?: string;
   kind?: string;
+  target_role?: string;
   expires_at?: string;
   prefill?: Prefill;
 }
@@ -57,6 +58,8 @@ export default function HireLink() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [nipr, setNipr] = useState("");
+  const [licensedHire, setLicensedHire] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -87,6 +90,7 @@ export default function HireLink() {
         if (pf.full_name) setFullName(pf.full_name);
         if (pf.phone) setPhone(maskPhone(pf.phone));
         if (pf.email) setEmail(pf.email);
+        if (resp.target_role === "hired_licensed") setLicensedHire(true);
         if (resp.expires_at) setExpiresAt(resp.expires_at);
         setLoadingPrefill(false);
       } catch {
@@ -106,9 +110,11 @@ export default function HireLink() {
     return (
       fullName.trim().split(/\s+/).filter(Boolean).length >= 2 &&
       phone.replace(/\D+/g, "").length >= 10 &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
+      // Licensed producers must give their NPN — it's the proof of licensure.
+      (!licensedHire || nipr.replace(/\D+/g, "").length >= 4)
     );
-  }, [fullName, phone, email]);
+  }, [fullName, phone, email, licensedHire, nipr]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -123,6 +129,7 @@ export default function HireLink() {
             full_name: fullName.trim(),
             phone: phone.replace(/\D+/g, ""),
             email: email.trim().toLowerCase(),
+            nipr_number: nipr.trim() || undefined,
           },
         },
       );
@@ -240,6 +247,23 @@ export default function HireLink() {
                 placeholder="you@example.com"
                 className="mt-1 h-11 text-base"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="hire-npn" className="text-xs uppercase tracking-wide">
+                NPN {licensedHire ? <span className="text-rose-400">*</span> : <span className="normal-case text-muted-foreground">(if you&rsquo;re licensed)</span>}
+              </Label>
+              <Input
+                id="hire-npn"
+                inputMode="numeric"
+                value={nipr}
+                onChange={(e) => setNipr(e.target.value)}
+                placeholder="National Producer Number"
+                className="mt-1 h-11 text-base"
+              />
+              {licensedHire && (
+                <p className="mt-1 text-[11px] text-muted-foreground">Required — this confirms your license. Look it up free at nipr.com.</p>
+              )}
             </div>
 
             <GradientButton

@@ -41,6 +41,7 @@ export default function UnclaimedLeads() {
   const askConfirm = useConfirm();
   const [filter, setFilter] = useState<"all" | "kj" | "no_contact" | "unassigned">("all");
   const [search, setSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const { data: apps, isLoading } = useQuery({
     queryKey: ["admin_unclaimed_apps"],
@@ -218,7 +219,7 @@ export default function UnclaimedLeads() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(row => {
+                  {filtered.slice(0, visibleCount).map(row => {
                     const days = ageDays(row.created_at);
                     const isKJ = row.assigned_agent_id === kjId;
                     const assigned = row.assigned_agent_id ? (agentMap.get(row.assigned_agent_id) ?? "—") : "(none)";
@@ -257,6 +258,13 @@ export default function UnclaimedLeads() {
                   })}
                 </tbody>
               </table>
+              {filtered.length > visibleCount && (
+                <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+                  <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {filtered.length.toLocaleString()}</span>
+                  <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filtered.length - visibleCount).toLocaleString()} hidden)</button>
+                  <button type="button" onClick={() => setVisibleCount(filtered.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

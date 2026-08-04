@@ -143,6 +143,7 @@ export default function OnboardingLadder() {
 
   const [rungFilter, setRungFilter] = useState<number | null>(null);
   const [managerFilter, setManagerFilter] = useState<string>("all");
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const ladder = useQuery<LadderRow[]>({
     queryKey: ["v_onboarding_sequence"],
@@ -497,8 +498,9 @@ export default function OnboardingLadder() {
                 }
               />
             ) : (
+              <>
               <ul className="space-y-2">
-                {visible.map((row) => {
+                {visible.slice(0, visibleCount).map((row) => {
                   const rung = stuckRung(row);
                   const days = daysStalled(row);
                   return (
@@ -558,6 +560,14 @@ export default function OnboardingLadder() {
                   );
                 })}
               </ul>
+              {visible.length > visibleCount && (
+                <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+                  <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {visible.length.toLocaleString()}</span>
+                  <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(visible.length - visibleCount).toLocaleString()} hidden)</button>
+                  <button type="button" onClick={() => setVisibleCount(visible.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+                </div>
+              )}
+              </>
             )}
           </GlassCard>
         </>

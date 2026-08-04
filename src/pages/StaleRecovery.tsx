@@ -368,6 +368,7 @@ export default function StaleRecovery() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<"all" | "stale" | "icy" | "cold">("all");
   const [segment, setSegment] = useState<RowGroup>("working");
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const { data: rows, isLoading, isError: staleFailed } = useQuery<StaleRow[]>({
     queryKey: ["stale-applicants"],
@@ -753,11 +754,20 @@ export default function StaleRecovery() {
             }
           />
         ) : (
-          <ul className="space-y-2">
-            {filtered.map((r) => (
-              <RecoveryRowCard key={r.id} row={r} onAction={callAction} />
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-2">
+              {filtered.slice(0, visibleCount).map((r) => (
+                <RecoveryRowCard key={r.id} row={r} onAction={callAction} />
+              ))}
+            </ul>
+            {filtered.length > visibleCount && (
+              <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+                <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {filtered.length.toLocaleString()}</span>
+                <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filtered.length - visibleCount).toLocaleString()} hidden)</button>
+                <button type="button" onClick={() => setVisibleCount(filtered.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+              </div>
+            )}
+          </>
         )}
       </GlassCard>
     </div>

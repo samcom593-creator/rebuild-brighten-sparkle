@@ -63,6 +63,7 @@ export default function RecruitCommandCenter() {
   const [bucket, setBucket] = useState<Bucket | "all">("hot");
   const [contractedWeek, setContractedWeek] = useState(0);
   const [marking, setMarking] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const load = async () => {
     setLoading(true);
@@ -237,7 +238,7 @@ export default function RecruitCommandCenter() {
         </GlassCard>
       ) : (
         <div className="space-y-2">
-          {bucketed.map(({ a, b }) => {
+          {bucketed.slice(0, visibleCount).map(({ a, b }) => {
             const meta = BUCKET_META[b];
             return (
               <GlassCard key={a.id} className={cn(
@@ -317,6 +318,13 @@ export default function RecruitCommandCenter() {
               </GlassCard>
             );
           })}
+          {bucketed.length > visibleCount && (
+            <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+              <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {bucketed.length.toLocaleString()}</span>
+              <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(bucketed.length - visibleCount).toLocaleString()} hidden)</button>
+              <button type="button" onClick={() => setVisibleCount(bucketed.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+            </div>
+          )}
         </div>
       )}
     </div>

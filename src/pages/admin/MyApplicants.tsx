@@ -72,6 +72,7 @@ export default function MyApplicants() {
   usePageTitle("My Applicants · APEX Financial");
   const { user } = useAuth();
   const [search, setSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(100);
 
   // First resolve the current user's agent id
   const { data: myAgent } = useQuery({
@@ -215,7 +216,7 @@ export default function MyApplicants() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((r) => {
+                  {filtered.slice(0, visibleCount).map((r) => {
                     const hrs = hoursSince(r.created_at);
                     const overdue = !r.last_contacted_at && hrs >= 24;
                     const stage = r.next_step_stage_key ?? "applied";
@@ -278,6 +279,13 @@ export default function MyApplicants() {
                 </tbody>
               </table>
             </div>
+            {filtered.length > visibleCount && (
+              <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+                <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {filtered.length.toLocaleString()}</span>
+                <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filtered.length - visibleCount).toLocaleString()} hidden)</button>
+                <button type="button" onClick={() => setVisibleCount(filtered.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

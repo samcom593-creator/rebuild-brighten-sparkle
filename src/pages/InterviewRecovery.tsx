@@ -246,6 +246,7 @@ export default function InterviewRecovery() {
   // 0 = no follow-up scheduled. Days from now, applied on the next disposition.
   const [followupDays, setFollowupDays] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const pipeline = useQuery({
     queryKey: ["interview-pipeline"],
@@ -1031,7 +1032,7 @@ export default function InterviewRecovery() {
             />
           ) : (
             <ul className="space-y-2">
-              {filtered.map((r) => (
+              {filtered.slice(0, visibleCount).map((r) => (
                 <InterviewRow
                   key={r.id}
                   row={r}
@@ -1051,6 +1052,13 @@ export default function InterviewRecovery() {
                 />
               ))}
             </ul>
+          )}
+          {filtered.length > visibleCount && (
+            <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+              <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {filtered.length.toLocaleString()}</span>
+              <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filtered.length - visibleCount).toLocaleString()} hidden)</button>
+              <button type="button" onClick={() => setVisibleCount(filtered.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+            </div>
           )}
         </GlassCard>
       )}

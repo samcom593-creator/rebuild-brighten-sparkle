@@ -78,6 +78,8 @@ function KanbanTab() {
     onError: (e) => toast.error(`Failed: ${String(e)}`),
   });
 
+  const [visibleCount, setVisibleCount] = useState(100);
+
   const byStage = useMemo(() => {
     const map: Record<Stage, StudentRow[]> = {
       enrolled: [], not_responding: [], waiting_to_schedule: [], calendar_sent: [],
@@ -104,7 +106,7 @@ function KanbanTab() {
               </CardHeader>
               <CardContent className="p-2 space-y-1.5 max-h-[60vh] overflow-y-auto">
                 {students.length === 0 && <div className="text-xs text-slate-600 dark:text-slate-300 italic p-2">—</div>}
-                {students.map(st => (
+                {students.slice(0, visibleCount).map(st => (
                   <div key={st.id} className="rounded-md border border-white/10 bg-white/[0.03] p-2.5 text-xs">
                     <div className="font-medium">{[st.first_name, st.last_name].filter(Boolean).join(" ") || "—"}</div>
                     <div className="text-slate-600 dark:text-slate-300 mt-0.5">{st.state ?? "—"} · {Math.round(st.days_in_stage)}d in stage</div>
@@ -121,6 +123,13 @@ function KanbanTab() {
                   </div>
                 ))}
               </CardContent>
+              {students.length > visibleCount && (
+                <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+                  <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {students.length.toLocaleString()}</span>
+                  <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(students.length - visibleCount).toLocaleString()} hidden)</button>
+                  <button type="button" onClick={() => setVisibleCount(students.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+                </div>
+              )}
             </Card>
           );
         })}

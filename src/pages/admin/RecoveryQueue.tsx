@@ -589,6 +589,9 @@ export default function RecoveryQueue() {
   const [bulkStageOpen, setBulkStageOpen] = useState(false);
   const [bulkRunning, setBulkRunning] = useState(false);
   const filteredRef = useRef<Row[]>([]);
+  // Render window — this queue can be 1,000+ rows. Mount the first N; the
+  // Power-Hour effect below guarantees the active row is always in-window.
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const { data: rows = [], isLoading, isError, refetch, isFetching } = useQuery<Row[]>({
     queryKey: ["v_hot_licensing_prospects"],
@@ -735,6 +738,15 @@ export default function RecoveryQueue() {
   // ---------- Power Hour ----------
   // keep a ref of the filtered array so keyboard handlers always see fresh data
   useEffect(() => { filteredRef.current = filtered; }, [filtered]);
+
+  // Keep the active Power-Hour / open row inside the render window so it's always
+  // mounted (highlight + scroll-into-view work) even past the first page.
+  useEffect(() => {
+    const activeId = phSession?.current_id ?? openId;
+    if (!activeId) return;
+    const idx = filtered.findIndex((r) => r.application_id === activeId);
+    if (idx >= 0 && idx >= visibleCount) setVisibleCount(idx + 50);
+  }, [phSession?.current_id, openId, filtered, visibleCount]);
 
   // On mount, look for a resumable session
   useEffect(() => {
@@ -1305,7 +1317,7 @@ export default function RecoveryQueue() {
 
         {!isLoading && !isError && filtered.length > 0 && (
           <div className="space-y-2">
-            {filtered.map((r) => {
+            {filtered.slice(0, visibleCount).map((r) => {
               const cohort = r.cohort as CohortKey;
               const meta = COHORT_META[cohort];
               const priority = derivePriority(r);
@@ -1408,6 +1420,13 @@ export default function RecoveryQueue() {
                 </div>
               );
             })}
+            {filtered.length > visibleCount && (
+              <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+                <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {filtered.length.toLocaleString()}</span>
+                <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filtered.length - visibleCount).toLocaleString()} hidden)</button>
+                <button type="button" onClick={() => setVisibleCount(filtered.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+              </div>
+            )}
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Clipboard, RefreshCw, Search, Wallet } from "lucide-react";
@@ -91,6 +91,8 @@ export default function CommissionRecovery() {
     };
   }, [agents]);
 
+  const [visibleCount, setVisibleCount] = useState(100);
+
   const refetchAll = () => {
     refetchAgents();
     refetchPolicies();
@@ -135,7 +137,7 @@ export default function CommissionRecovery() {
           <CardContent className="space-y-2">
             {loadingAgents ? <Skeleton className="h-64 w-full" /> : (agents ?? []).length === 0 ? (
               <div className="text-sm text-slate-600 dark:text-slate-300">No recovery rows loaded. Source checked: v_commission_recovery_by_agent.</div>
-            ) : (agents ?? []).map((row) => (
+            ) : (agents ?? []).slice(0, visibleCount).map((row) => (
               <div key={`${row.agent_display}-${row.agent_id ?? "null"}`} className="rounded-md border border-white/10 bg-white/[0.025] p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="font-medium truncate">{row.agent_display}</div>
@@ -148,6 +150,13 @@ export default function CommissionRecovery() {
                 </div>
               </div>
             ))}
+            {(agents ?? []).length > visibleCount && (
+              <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+                <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {(agents ?? []).length.toLocaleString()}</span>
+                <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({((agents ?? []).length - visibleCount).toLocaleString()} hidden)</button>
+                <button type="button" onClick={() => setVisibleCount((agents ?? []).length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -70,6 +70,7 @@ export default function PrelicensingManager() {
   const [stageFilter, setStageFilter] = useState<"all" | StageKey>("all");
   const [stuckOnly, setStuckOnly] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const { data: currentAgentId, isLoading: currentAgentLoading } = useQuery({
     queryKey: ["prelicensing-current-agent", user?.id],
@@ -366,7 +367,7 @@ export default function PrelicensingManager() {
             </span>
           </div>
           <div className="divide-y divide-border/30">
-            {filtered.map((a: any) => {
+            {filtered.slice(0, visibleCount).map((a: any) => {
               const stageKey = (a.license_progress || "unlicensed") as StageKey;
               const stage = STAGES.find(s => s.key === stageKey) || STAGES[0];
               const daysSinceUpdate = differenceInDays(
@@ -485,6 +486,13 @@ export default function PrelicensingManager() {
               );
             })}
           </div>
+          {filtered.length > visibleCount && (
+            <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+              <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {filtered.length.toLocaleString()}</span>
+              <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filtered.length - visibleCount).toLocaleString()} hidden)</button>
+              <button type="button" onClick={() => setVisibleCount(filtered.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+            </div>
+          )}
         </GlassCard>
       )}
     </div>

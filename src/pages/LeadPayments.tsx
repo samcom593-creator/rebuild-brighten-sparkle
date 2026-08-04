@@ -152,6 +152,7 @@ export default function LeadPayments() {
   const [search, setSearch] = useState("");
   const [leadTypeFilter, setLeadTypeFilter] = useState<"all" | LeadType>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | PaymentStatus>("all");
+  const [visibleCount, setVisibleCount] = useState(100);
   const [form, setForm] = useState({
     agentId: "",
     leadType: "A" as LeadType,
@@ -487,7 +488,7 @@ export default function LeadPayments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((row) => {
+                  {filtered.slice(0, visibleCount).map((row) => {
                     const agent = agentMap.get(row.agent_id);
                     const type = rowLeadType(row);
                     const status = rowStatus(row);
@@ -533,6 +534,13 @@ export default function LeadPayments() {
                   })}
                 </TableBody>
               </Table>
+            )}
+            {filtered.length > visibleCount && (
+              <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+                <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {filtered.length.toLocaleString()}</span>
+                <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filtered.length - visibleCount).toLocaleString()} hidden)</button>
+                <button type="button" onClick={() => setVisibleCount(filtered.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+              </div>
             )}
           </CardContent>
         </Card>

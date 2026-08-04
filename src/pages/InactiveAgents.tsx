@@ -76,6 +76,7 @@ export default function InactiveAgents() {
   // PL-063: CRM-grade segmentation — never sold, sold at least one,
   // sold exactly one. Each group needs different outreach pressure.
   const [segment, setSegment] = useState<ProducerSegment>("all");
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const canAccess = isAdmin || isManager;
 
@@ -471,7 +472,7 @@ export default function InactiveAgents() {
             </CardContent>
           </Card>
         )}
-        {filtered.map((e) => {
+        {filtered.slice(0, visibleCount).map((e) => {
           const agent = agentMap.get(e.agent_id);
           if (!agent) return null;
           const sev = SEVERITY_META[e.severity] || SEVERITY_META.warning;
@@ -609,6 +610,13 @@ export default function InactiveAgents() {
           );
         })}
       </div>
+      {filtered.length > visibleCount && (
+        <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+          <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {filtered.length.toLocaleString()}</span>
+          <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filtered.length - visibleCount).toLocaleString()} hidden)</button>
+          <button type="button" onClick={() => setVisibleCount(filtered.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+        </div>
+      )}
     </div>
   );
 }

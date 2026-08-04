@@ -168,6 +168,7 @@ export default function DashboardCommandCenter() {
   
   // Stat card popup state
   const [statPopup, setStatPopup] = useState<{ type: StatType; open: boolean }>({ type: "totalAlp", open: false });
+  const [visibleCount, setVisibleCount] = useState(100);
 
   // Fetch managers list for reassignment sub-menu
   const { data: managersList } = useQuery({
@@ -862,7 +863,7 @@ export default function DashboardCommandCenter() {
                   </div>
                 ) : (
                   <div className="space-y-2 overflow-y-auto scrollbar-custom px-6 pb-6 max-h-none lg:max-h-[70vh]">
-                    {filteredAgents.map((agent, index) => (
+                    {filteredAgents.slice(0, visibleCount).map((agent, index) => (
                       <motion.div
                         key={agent.id}
                         whileHover={{ y: -2 }}
@@ -1089,6 +1090,13 @@ export default function DashboardCommandCenter() {
                         </div>
                       </motion.div>
                     ))}
+                    {filteredAgents.length > visibleCount && (
+                      <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+                        <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {filteredAgents.length.toLocaleString()}</span>
+                        <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filteredAgents.length - visibleCount).toLocaleString()} hidden)</button>
+                        <button type="button" onClick={() => setVisibleCount(filteredAgents.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

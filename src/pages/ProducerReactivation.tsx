@@ -74,6 +74,7 @@ export default function ProducerReactivation() {
   usePageTitle("Producer Reactivation");
   const [tier, setTier] = useState<Tier | "all">("hot_winback");
   const [search, setSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const q = useQuery({
     queryKey: ["producer-reactivation"],
@@ -226,8 +227,9 @@ export default function ProducerReactivation() {
             }
           />
         ) : (
+          <>
           <ul className="space-y-2">
-            {filtered.map((r) => {
+            {filtered.slice(0, visibleCount).map((r) => {
               const meta = TIERS.find((t) => t.key === r.reactivation_tier);
               return (
                 <li
@@ -307,6 +309,14 @@ export default function ProducerReactivation() {
               );
             })}
           </ul>
+          {filtered.length > visibleCount && (
+            <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+              <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {filtered.length.toLocaleString()}</span>
+              <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filtered.length - visibleCount).toLocaleString()} hidden)</button>
+              <button type="button" onClick={() => setVisibleCount(filtered.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+            </div>
+          )}
+          </>
         )}
       </GlassCard>
     </div>

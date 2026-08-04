@@ -526,9 +526,11 @@ function BoardView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
   onToggleSelect: (id: string) => void;
   onQuickEdit: (id: string) => void;
 }) {
+  const [visibleCount, setVisibleCount] = useState(100);
   return (
+    <>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-      {rows.map(r => {
+      {rows.slice(0, visibleCount).map(r => {
         const hs = healthStyle[r.health];
         const isSelected = selectedIds.has(r.id);
         return (
@@ -626,6 +628,14 @@ function BoardView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
         );
       })}
     </div>
+    {rows.length > visibleCount && (
+      <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+        <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {rows.length.toLocaleString()}</span>
+        <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(rows.length - visibleCount).toLocaleString()} hidden)</button>
+        <button type="button" onClick={() => setVisibleCount(rows.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -634,6 +644,7 @@ function TableView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
   onToggleSelect: (id: string) => void;
   onQuickEdit: (id: string) => void;
 }) {
+  const [visibleCount, setVisibleCount] = useState(100);
   return (
     <div className="rounded-md border border-border overflow-hidden">
       <div className="overflow-x-auto">
@@ -652,7 +663,7 @@ function TableView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {rows.map(r => {
+            {rows.slice(0, visibleCount).map(r => {
               const hs = healthStyle[r.health];
               const isSelected = selectedIds.has(r.id);
               return (
@@ -693,6 +704,13 @@ function TableView({ rows, selectedIds, onToggleSelect, onQuickEdit }: {
           </tbody>
         </table>
       </div>
+      {rows.length > visibleCount && (
+        <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+          <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {rows.length.toLocaleString()}</span>
+          <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(rows.length - visibleCount).toLocaleString()} hidden)</button>
+          <button type="button" onClick={() => setVisibleCount(rows.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+        </div>
+      )}
     </div>
   );
 }

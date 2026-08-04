@@ -30,6 +30,7 @@ export default function MyCommissions() {
   const [agentId, setAgentId] = useState<string | null>(null);
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(100);
 
   useEffect(() => {
     let cancelled = false;
@@ -230,7 +231,7 @@ export default function MyCommissions() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(r => (
+                {rows.slice(0, visibleCount).map(r => (
                   <tr key={r.id} className="border-t border-border/20">
                     <td className="px-3 py-1.5 font-medium">{r.client_name ?? "—"}</td>
                     <td className="px-3 py-1.5 text-muted-foreground">{r.carrier_name ?? "—"}</td>
@@ -255,6 +256,13 @@ export default function MyCommissions() {
                 ))}
               </tbody>
             </table>
+            {rows.length > visibleCount && (
+              <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+                <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {rows.length.toLocaleString()}</span>
+                <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(rows.length - visibleCount).toLocaleString()} hidden)</button>
+                <button type="button" onClick={() => setVisibleCount(rows.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+              </div>
+            )}
           </GlassCard>
         </>
       )}

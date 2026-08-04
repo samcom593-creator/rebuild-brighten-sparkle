@@ -70,6 +70,7 @@ export default function DeletedLeadsVault() {
   const [filterSource, setFilterSource] = useState<string>("all");
   const [restoring, setRestoring] = useState<string | null>(null);
   const [permanentlyDeleting, setPermanentlyDeleting] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(100);
   const { playSound } = useSoundEffects();
 
   const fetchDeletedLeads = async () => {
@@ -280,7 +281,7 @@ export default function DeletedLeadsVault() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLeads.map((lead) => (
+                {filteredLeads.slice(0, visibleCount).map((lead) => (
                   <TableRow key={lead.id}>
                     <TableCell className="font-medium">
                       {lead.first_name} {lead.last_name || ""}
@@ -370,6 +371,13 @@ export default function DeletedLeadsVault() {
                 ))}
               </TableBody>
             </Table>
+            {filteredLeads.length > visibleCount && (
+              <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+                <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {filteredLeads.length.toLocaleString()}</span>
+                <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filteredLeads.length - visibleCount).toLocaleString()} hidden)</button>
+                <button type="button" onClick={() => setVisibleCount(filteredLeads.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+              </div>
+            )}
           </div>
         )}
         <div className="mt-4 text-sm text-muted-foreground text-center">

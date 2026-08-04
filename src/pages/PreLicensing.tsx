@@ -133,6 +133,7 @@ export default function PreLicensing() {
   // PL-061: custom date-enrolled range. Empty strings = no bound.
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const reportQ = useQuery({
     queryKey: ["xcel-report-latest"],
@@ -424,7 +425,7 @@ export default function PreLicensing() {
         // are visually separable, alternate row tint, and color the Progress
         // bar by health bucket so back-to-back greens become a varied stripe.
         <div className="space-y-3">
-          {filtered.map((s, i) => {
+          {filtered.slice(0, visibleCount).map((s, i) => {
             const section = SECTION_META[s.course_section] ?? { label: s.course_section, color: "bg-muted" };
             const health = HEALTH_META[s.health_bucket];
             const HealthIcon = health.icon;
@@ -536,6 +537,13 @@ export default function PreLicensing() {
               </motion.div>
             );
           })}
+          {filtered.length > visibleCount && (
+            <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+              <span className="text-muted-foreground">Showing {visibleCount.toLocaleString()} of {filtered.length.toLocaleString()}</span>
+              <button type="button" onClick={() => setVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filtered.length - visibleCount).toLocaleString()} hidden)</button>
+              <button type="button" onClick={() => setVisibleCount(filtered.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+            </div>
+          )}
         </div>
       )}
     </div>

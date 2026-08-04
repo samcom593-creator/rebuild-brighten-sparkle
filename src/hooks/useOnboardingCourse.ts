@@ -123,13 +123,15 @@ export function useOnboardingCourse(agentId: string | null) {
       }
     } else {
       // This is the first progress entry - agent is starting the course!
+      // upsert (not insert) so a race with initializeProgress/another tab can't
+      // 409 on the (agent_id, module_id) unique key and silently drop progress.
       const { data, error } = await supabase
         .from("onboarding_progress")
-        .insert({
+        .upsert({
           agent_id: agentId,
           module_id: moduleId,
           video_watched_percent: percent
-        })
+        }, { onConflict: "agent_id,module_id" })
         .select()
         .single();
 
@@ -190,14 +192,16 @@ export function useOnboardingCourse(agentId: string | null) {
         return false;
       }
     } else {
+      // upsert (not insert) — a race on the (agent_id, module_id) unique key
+      // otherwise 409s and shows the agent a false "Error saving quiz results".
       const { error } = await supabase
         .from("onboarding_progress")
-        .insert({
+        .upsert({
           agent_id: agentId,
           module_id: moduleId,
           video_watched_percent: 100,
           ...updateData
-        });
+        }, { onConflict: "agent_id,module_id" });
 
       if (error) {
         toast({ title: "Error saving quiz results", variant: "destructive" });
@@ -273,22 +277,28 @@ export function useOnboardingCourse(agentId: string | null) {
   const initializeProgress = useCallback(async (moduleId: string) => {
     if (!agentId || progress[moduleId]) return;
     
+    // upsert with ignoreDuplicates so re-viewing a module never 409s on the
+    // (agent_id, module_id) unique key — if a row already exists, leave it be
+    // (don't reset video_watched_percent to 0).
+    // Plain array select (not .single/.maybeSingle) so a skipped duplicate
+    // returns an empty 200 array — .single would send an object-accept header
+    // that 406s on the 0 rows a DO-NOTHING upsert returns.
     const { data, error } = await supabase
       .from("onboarding_progress")
-      .insert({
+      .upsert({
         agent_id: agentId,
         module_id: moduleId,
         video_watched_percent: 0
-      })
-      .select()
-      .single();
+      }, { onConflict: "agent_id,module_id", ignoreDuplicates: true })
+      .select();
 
-    if (!error && data) {
+    const row = data?.[0];
+    if (!error && row) {
       setProgress(prev => ({
         ...prev,
         [moduleId]: {
-          ...data,
-          answers: data.answers as number[] | null
+          ...row,
+          answers: row.answers as number[] | null
         }
       }));
 

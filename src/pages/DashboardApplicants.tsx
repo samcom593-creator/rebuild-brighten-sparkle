@@ -211,13 +211,15 @@ type LicenseTrust = { level: "verified" | "claimed_npn" | "claimed_bare" | "fail
 function licenseTrust(app: Application): LicenseTrust {
   if (app.license_status !== "licensed") return { level: "none", label: "", tint: "", title: "" };
   const npn = (app.nipr_number ?? "").trim();
+  // Subtle, non-alarming indicators — the detail lives in the hover title, not as
+  // loud red "no proof" clutter across every row.
   if (app.nipr_verified === true)
-    return { level: "verified", label: "✓ verified", tint: "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", title: "License verified against NIPR" };
+    return { level: "verified", label: "✓", tint: "text-emerald-500", title: "License verified against NIPR" };
   if (app.nipr_verified === false)
-    return { level: "failed", label: "✗ unverified", tint: "border-rose-500/40 bg-rose-500/15 text-rose-600 dark:text-rose-400", title: "NIPR check did not find an active license — treat as unlicensed until proven" };
+    return { level: "failed", label: "unverified", tint: "text-muted-foreground", title: "NIPR check did not find an active license — verify before relying on it" };
   if (npn)
-    return { level: "claimed_npn", label: "NPN on file · unchecked", tint: "border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400", title: `Self-reported licensed and gave NPN ${npn}, but it was never checked against NIPR` };
-  return { level: "claimed_bare", label: "self-reported · no proof", tint: "border-rose-500/40 bg-rose-500/15 text-rose-600 dark:text-rose-400", title: "Self-reported licensed with NO NPN and no document — lowest trust, verify before relying on it" };
+    return { level: "claimed_npn", label: "unverified", tint: "text-muted-foreground", title: `Self-reported licensed and gave NPN ${npn}, not yet checked against NIPR` };
+  return { level: "claimed_bare", label: "unverified", tint: "text-muted-foreground", title: "Self-reported licensed — no NPN on file yet. Hover/verify before relying on it." };
 }
 
 export default function DashboardApplicants() {
@@ -1816,7 +1818,7 @@ export default function DashboardApplicants() {
                                   const t = licenseTrust(app);
                                   if (t.level === "none" || t.level === "verified") return null;
                                   return (
-                                    <span title={t.title} className={cn("rounded px-1 py-0.5 text-[8px] font-semibold leading-none border", t.tint)}>
+                                    <span title={t.title} className={cn("text-[9px] leading-none", t.tint)}>
                                       {t.label}
                                     </span>
                                   );

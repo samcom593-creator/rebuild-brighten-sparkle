@@ -48,6 +48,9 @@ const FORBIDDEN = [
   ["50+ carriers", "marketing inflation — canonical carrier count is landing_live_stats().carriers_partnered (22). Interpolate the variable."],
   ["over 50 carriers", "marketing inflation — canonical carrier count is landing_live_stats().carriers_partnered (22). Interpolate the variable."],
   ["50 carrier partners", "marketing inflation — canonical carrier count is landing_live_stats().carriers_partnered (22). Interpolate the variable."],
+  ["unlock personalized", "AI-tell — say what actually shows up on the dashboard, not 'personalized X'"],
+  ["accurate projections", "AI-tell — either name the metric that gets projected or drop the promise"],
+  ["coaching insights", "AI-tell — say the actual coaching advice, not 'insights'"],
 ];
 
 const TEXT_EXTS = new Set([".tsx", ".ts", ".jsx", ".js", ".md", ".html"]);

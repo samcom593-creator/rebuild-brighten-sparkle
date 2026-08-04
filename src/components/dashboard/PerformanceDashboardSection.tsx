@@ -150,7 +150,7 @@ export function PerformanceDashboardSection({
             className="mt-6 p-4 rounded-md bg-primary/5 border border-primary/10 text-center"
           >
             <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-primary">Pro Tip:</span> Log your numbers daily to unlock personalized income projections and coaching insights
+              <span className="font-semibold text-primary">Pro Tip:</span> Log every day. Your income pace and weak spots surface here — the days you skip are the days you're guessing.
             </p>
           </motion.div>
         </div>

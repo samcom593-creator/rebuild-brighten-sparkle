@@ -221,7 +221,7 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
               </div>
               <h4 className="font-semibold text-lg mb-2">Goal Calculator Locked</h4>
               <p className="text-muted-foreground text-sm max-w-sm mx-auto mb-4">
-                Log {daysRemaining} more day{daysRemaining !== 1 ? "s" : ""} of production to unlock personalized goal tracking with accurate projections.
+                Log {daysRemaining} more day{daysRemaining !== 1 ? "s" : ""} of production. Once your 7-day baseline is set, your monthly pace locks in — no more guessing what you're on track to hit.
               </p>
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                 <Calendar className="h-4 w-4" />

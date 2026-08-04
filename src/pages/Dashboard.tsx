@@ -28,6 +28,10 @@ import {
 // AgentCommandDashboard, so everything below moves into its own lazy chunk
 // per route condition.
 const AgentCommandDashboard = lazy(() => import("@/pages/AgentCommandDashboard"));
+// The default admin landing is the clean APEX Today (the ONE canonical dashboard per
+// spec) instead of the sprawling command view. The full command view is still at
+// /agent-dashboard, and the "Admin View" preview toggle still shows ExecutiveDashboard.
+const DashboardToday = lazy(() => import("@/pages/DashboardToday"));
 const ManagerCommandView = lazy(() => import("@/pages/ManagerCommandView"));
 const VaOpsCommandCenter = lazy(() => import("@/pages/VaOpsCommandCenter"));
 const UnclaimedLeadsCommandCard = lazy(() =>
@@ -999,7 +1003,7 @@ export default function Dashboard() {
   if (shouldRenderDefaultAdminCommand) {
     return (
       <Suspense fallback={<PageLoadingSkeleton />}>
-        <AgentCommandDashboard />
+        <DashboardToday />
       </Suspense>
     );
   }

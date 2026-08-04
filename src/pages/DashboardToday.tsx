@@ -110,12 +110,14 @@ export default function DashboardToday() {
   const revenue = useQuery({
     queryKey: ["apex-today-revenue", today], refetchInterval: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("daily_production")
-        .select("aop,deals_closed").eq("production_date", today);
+      // Source from agentlink_book (posted_date) — the SAME truth the leaderboard uses.
+      // daily_production was inflated ~2.2x vs the book, so the dashboard revenue
+      // disagreed with the leaderboard. One source of truth.
+      const { data, error } = await (supabase as any).from("agentlink_book")
+        .select("annual_premium").eq("posted_date", today).not("is_dead", "is", true);
       if (error) throw error;
-      return (data ?? []).reduce((acc, row) => ({
-        aop: acc.aop + Number(row.aop ?? 0), deals: acc.deals + Number(row.deals_closed ?? 0),
-      }), { aop: 0, deals: 0 });
+      const rows = (data ?? []) as Array<{ annual_premium: number | string | null }>;
+      return { aop: rows.reduce((s, r) => s + Number(r.annual_premium ?? 0), 0), deals: rows.length };
     },
   });
 

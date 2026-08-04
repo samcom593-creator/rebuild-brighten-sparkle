@@ -667,20 +667,27 @@ export default function HiringPipeline() {
                     No applicants here. Drop a card to update this stage.
                   </div>
                 ) : (
-                  items.map((a: any) => (
-                    <ApplicantCard
-                      key={a.id}
-                      app={a}
-                      dragging={dragId === a.id}
-                      onDragStart={() => setDragId(a.id)}
-                      onDragEnd={() => setDragId(null)}
-                      onMoveToStage={(s) => moveToStage(a.id, s)}
-                      onMarkContacted={() => markContacted(a.id)}
-                      onReject={(reason) => rejectApplicant(a.id, reason)}
-                      onMarkFailed={() => markFailedTest(a.id)}
-                      onLogCall={(outcome) => logCallOutcome(a.id, outcome)}
-                    />
-                  ))
+                  <>
+                    {items.slice(0, 100).map((a: any) => (
+                      <ApplicantCard
+                        key={a.id}
+                        app={a}
+                        dragging={dragId === a.id}
+                        onDragStart={() => setDragId(a.id)}
+                        onDragEnd={() => setDragId(null)}
+                        onMoveToStage={(s) => moveToStage(a.id, s)}
+                        onMarkContacted={() => markContacted(a.id)}
+                        onReject={(reason) => rejectApplicant(a.id, reason)}
+                        onMarkFailed={() => markFailedTest(a.id)}
+                        onLogCall={(outcome) => logCallOutcome(a.id, outcome)}
+                      />
+                    ))}
+                    {items.length > 100 && (
+                      <div className="px-3 py-2 text-center text-xs text-muted-foreground">
+                        +{items.length - 100} more in this stage — narrow with search or filters
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

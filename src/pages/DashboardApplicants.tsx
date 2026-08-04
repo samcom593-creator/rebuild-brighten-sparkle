@@ -256,6 +256,10 @@ export default function DashboardApplicants() {
   const [isTerminating, setIsTerminating] = useState(false);
 
   const [viewMode, setViewMode] = useState<"list" | "kanban" | "pipeline">("list");
+  // Render window for the default list view — this is the busiest recruiter page
+  // and filteredApplications can be many hundreds of rows. Kanban/pipeline views
+  // already cap per-column at 100.
+  const [listVisibleCount, setListVisibleCount] = useState(100);
   const [metricFilter, setMetricFilter] = useState<string>("total");
   // MP-268: null = no stage constraint ("All stages" chip).
   const [pipelineStage, setPipelineStage] = useState<PipelineStageKey | null>(null);
@@ -1672,7 +1676,7 @@ export default function DashboardApplicants() {
                     </tr>
                   </thead>
                   <tbody className="[&_tr:last-child]:border-0">
-                    {filteredApplications.map((app) => {
+                    {filteredApplications.slice(0, listVisibleCount).map((app) => {
                       const status = getApplicationStatus(app);
                       const isTerminated = statusFilter === "terminated";
                       const isHighlighted = highlightedLeadId === app.id;
@@ -2104,6 +2108,13 @@ export default function DashboardApplicants() {
                     })}
                   </tbody>
                 </table>
+                {filteredApplications.length > listVisibleCount && (
+                  <div className="flex flex-wrap items-center justify-center gap-3 py-4 text-sm">
+                    <span className="text-muted-foreground">Showing {listVisibleCount.toLocaleString()} of {filteredApplications.length.toLocaleString()}</span>
+                    <button type="button" onClick={() => setListVisibleCount((n) => n + 200)} className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted">Show more ({(filteredApplications.length - listVisibleCount).toLocaleString()} hidden)</button>
+                    <button type="button" onClick={() => setListVisibleCount(filteredApplications.length)} className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline">Show all</button>
+                  </div>
+                )}
               </div>
             ) : (
               <EmptyState

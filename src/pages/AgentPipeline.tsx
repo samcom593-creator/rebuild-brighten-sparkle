@@ -811,7 +811,14 @@ export default function AgentPipeline() {
                                 No recruits in this stage
                               </div>
                             ) : (
-                              apps.map((app) => renderAppRow(app))
+                              <>
+                                {apps.slice(0, 100).map((app) => renderAppRow(app))}
+                                {apps.length > 100 && (
+                                  <div className="py-2 text-center text-xs text-muted-foreground">
+                                    +{apps.length - 100} more in this stage — narrow with search or filters
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                         </motion.div>

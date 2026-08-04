@@ -362,7 +362,11 @@ export default function BusinessAnalytics() {
                 {fmtNum(challenges.data?.length ?? 0)}
               </p>
               <p className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">
-                {ins ? `${ins.streak_days}/${ins.days_in_month_elapsed} day streak` : "auto-targeted"}
+                {ins
+                  ? `${ins.streak_days}/${ins.days_in_month_elapsed} day streak`
+                  : insights.isError
+                    ? <button onClick={() => insights.refetch()} className="text-amber-500 hover:underline">couldn’t load — retry</button>
+                    : insights.isLoading ? "…" : "no streak data"}
               </p>
             </div>
 

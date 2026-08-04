@@ -326,7 +326,9 @@ export default function AgentCommandDashboard() {
   }
 
   const displayName = stats?.display_name ?? stats?.full_name ?? user.email ?? "Agent";
-  const isStrong = (stats?.rank_agency_mtd ?? 999) <= 10;
+  // Only celebrate a real rank. On a new month 97 agents tie at rank 7 with $0 MTD;
+  // without the ap_mtd>0 gate they all render "Top 10 · #7" despite zero production.
+  const isStrong = Number(stats?.ap_mtd ?? 0) > 0 && (stats?.rank_agency_mtd ?? 999) <= 10;
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
@@ -402,7 +404,7 @@ export default function AgentCommandDashboard() {
         <KpiTile
           icon={Crown}
           label="Agency rank · MTD"
-          value={stats?.rank_agency_mtd ? `#${stats.rank_agency_mtd}` : "—"}
+          value={Number(stats?.ap_mtd ?? 0) > 0 && stats?.rank_agency_mtd ? `#${stats.rank_agency_mtd}` : "—"}
           subValue={`Team: ${stats?.rank_team_mtd ? `#${stats.rank_team_mtd}` : "—"} · Close: ${fmtPct(closeRate, 0)}`}
           color="text-primary"
           loading={cc.isLoading}
@@ -553,8 +555,8 @@ export default function AgentCommandDashboard() {
             <Trophy className="h-5 w-5 text-muted-foreground" />
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <RankCell label="Agency MTD" rank={stats?.rank_agency_mtd ?? null} />
-            <RankCell label="Agency WTD" rank={stats?.rank_agency_wtd ?? null} />
+            <RankCell label="Agency MTD" rank={Number(stats?.ap_mtd ?? 0) > 0 ? (stats?.rank_agency_mtd ?? null) : null} />
+            <RankCell label="Agency WTD" rank={Number(stats?.ap_wtd ?? 0) > 0 ? (stats?.rank_agency_wtd ?? null) : null} />
             <RankCell label="Team MTD" rank={stats?.rank_team_mtd ?? null} />
           </div>
           <div className="mt-4 pt-3 border-t border-border/40 space-y-2">

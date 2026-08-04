@@ -45,7 +45,7 @@ Commission flows:
 • Renewal (Y2+): paid on policies that stay in force
 • Chargebacks: if a policy lapses in months 1-12, the carrier claws back your commission. Avoid by writing realistic budgets + checking in at 30/60/90.
 
-See /dashboard/commission-grids for every product's FY%, renewal%, and advance schedule. See /dashboard/finances for your live ledger.`,
+See /dashboard/my-commissions for every product's FY%, renewal%, and advance schedule. See /dashboard/finances for your live ledger.`,
   },
   {
     key: "selling", title: "How We Sell", icon: Phone,
@@ -93,7 +93,7 @@ If your license lapses, your contracts go inactive. You can't write business. We
   },
   {
     key: "strikes", title: "Strikes + Termination", icon: AlertTriangle,
-    body: `We use a 3-strike system for serious conduct issues. Strikes are issued by leadership and recorded on /dashboard/strikes-review.
+    body: `We use a 3-strike system for serious conduct issues. Strikes are issued by leadership and recorded on /dashboard/my-strikes.
 
 Examples of strike-worthy conduct:
 • Misrepresenting carrier/product to a client

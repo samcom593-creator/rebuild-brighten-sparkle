@@ -426,9 +426,22 @@ export default function ClientPipeline() {
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" /> AgentLink sync live
-            </Badge>
+            {(() => {
+              // Bind to real freshness — this badge used to hardcode "sync live"
+              // while the agentlink_clients mirror was 48 days stale.
+              const maxTs = rows.reduce((m, r) => { const t = r.updated_at ? Date.parse(r.updated_at) : 0; return t > m ? t : m; }, 0);
+              // relative-time-guard-allow: staleness badge, days since last mirror update
+              const days = maxTs ? Math.floor((Date.now() - maxTs) / 86_400_000) : null;
+              const fresh = days !== null && days <= 2;
+              return (
+                <Badge variant="outline" className={fresh
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/40"
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/40"}>
+                  <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${fresh ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
+                  {fresh ? "AgentLink sync live" : days === null ? "AgentLink · no data" : `AgentLink ${days}d stale`}
+                </Badge>
+              );
+            })()}
           </div>
         }
       />

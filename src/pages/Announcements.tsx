@@ -67,9 +67,8 @@ function fmtUsd(n: number | null | undefined): string {
 
 export default function Announcements() {
   usePageTitle("Announcements + News Feed · APEX");
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
-  const isAdmin = (user as any)?.role === "admin" || (user as any)?.app_metadata?.role === "admin";
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", body: "", priority: "normal", pinned: false });
@@ -80,9 +79,11 @@ export default function Announcements() {
     queryKey: ["my-agent-id", (user as any)?.id],
     enabled: !!(user as any)?.id,
     queryFn: async () => {
+      // agents has no full_name/avatar_url — selecting them 400'd the query, so
+      // myAgent was always null and 'Post a Deal' was dead for all 160 agents.
       const { data } = await supabase
         .from("agents" as any)
-        .select("id, full_name, display_name, avatar_url")
+        .select("id, display_name")
         .eq("user_id", (user as any).id)
         .maybeSingle();
       return data as any;

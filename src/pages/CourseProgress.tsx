@@ -189,7 +189,7 @@ export default function CourseProgress() {
 
       const { data: progress } = await supabase
         .from("onboarding_progress")
-        .select("agent_id, module_id, passed, completed_at, video_watched_percent, score")
+        .select("agent_id, module_id, passed, completed_at, video_watched_percent, score, started_at")
         .in("agent_id", agentIds);
 
       const { data: allModules } = await supabase

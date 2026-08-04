@@ -123,6 +123,22 @@ export default function ProducerProfile() {
   const userEmail: string | null = (profile.data?.email ?? null) || ((user as any)?.email ?? null);
   const agentId: string | null = (agent.data?.id ?? null) || null;
 
+  // agents.total_premium/total_earnings/total_policies are dead columns (always
+  // null → $0). Compute the real lifetime rollup from agentlink_book (the source
+  // the leaderboard/hero use). Earnings is a contract-level estimate (no paid-
+  // commission feed exists), same 63% basis as the board.
+  const bookRollup = useQuery({
+    queryKey: ["producer-book-rollup", agentId],
+    enabled: !!agentId,
+    queryFn: async () => {
+      const { data } = await supabase.from("agentlink_book" as any)
+        .select("annual_premium").eq("agent_id", agentId).not("is_dead", "is", true);
+      const rows = (data ?? []) as Array<{ annual_premium: number | string | null }>;
+      const premium = rows.reduce((s, r) => s + Number(r.annual_premium ?? 0), 0);
+      return { premium, policies: rows.length, estEarnings: Math.round(premium * 0.63) };
+    },
+  });
+
   const course = useQuery<CourseAccessSnapshot>({
     queryKey: ["producer-course-access", agentId, userEmail],
     enabled: !!userId,
@@ -283,13 +299,13 @@ export default function ProducerProfile() {
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PREMIUM</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmtUsd(ag?.total_premium ?? 0)}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">total written</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmtUsd(bookRollup.data?.premium ?? 0)}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">{bookRollup.data?.policies ?? 0} policies written</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">EARNINGS</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmtUsd(ag?.total_earnings ?? 0)}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">lifetime</p>
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">EST. EARNINGS</p>
+              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmtUsd(bookRollup.data?.estEarnings ?? 0)}</p>
+              <p className="text-[10px] text-white/40 tabular-nums">contract estimate</p>
             </div>
           </div>
         </div>

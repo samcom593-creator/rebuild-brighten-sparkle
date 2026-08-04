@@ -886,14 +886,16 @@ function AgencyCommandView() {
 
       const { data, error } = await supabase
         .from("agentlink_book" as any)
-        .select("id, annual_premium, posted_date, user_id, is_dead")
+        // agentlink_book's key is deal_key, NOT id — selecting id 400'd the query
+        // ("column agentlink_book.id does not exist") so Annual Premium fell to $0.
+        .select("deal_key, annual_premium, posted_date, user_id, is_dead")
         .not("is_dead", "is", true)
         .gte("posted_date", startDate)
         .lt("posted_date", endDate);
       if (error) throw error;
 
       const dealRows = (data ?? []) as Array<{
-        id: string | number;
+        deal_key: string | number;
         annual_premium: number | string | null;
         posted_date: string | null;
         user_id: number | null;
@@ -903,7 +905,7 @@ function AgencyCommandView() {
       if (alUserIds.length === 0) {
         // Map empty result into the legacy shape so downstream consumers don't crash
         return dealRows.map((row) => ({
-          id: String(row.id),
+          id: String(row.deal_key),
           annual_premium: row.annual_premium,
           posted_at: row.posted_date,
           created_at: row.posted_date,
@@ -944,7 +946,7 @@ function AgencyCommandView() {
       return dealRows.map((row) => {
         const agent = row.user_id != null ? agentByAlId.get(row.user_id) ?? null : null;
         return {
-          id: String(row.id),
+          id: String(row.deal_key),
           annual_premium: row.annual_premium,
           posted_at: row.posted_date,
           created_at: row.posted_date,

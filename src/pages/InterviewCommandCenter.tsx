@@ -238,19 +238,33 @@ export default function InterviewCommandCenter() {
     queryKey: ["interviews-enrichment", applicationIds.join(",")],
     queryFn: async () => {
       if (!applicationIds.length) return {} as Record<string, ApplicationEnrichment>;
-      const { data, error } = await (supabase as any)
-        .from("applications")
-        .select("id, status, license_status, license_progress, next_action_due_at")
-        .in("id", applicationIds);
-      if (error) throw error;
+      // Chunk the id list so the request URL never crosses the gateway's length
+      // cap (a single ~317-id `.in()` = ~13KB URL that silently dropped badges).
+      const CHUNK = 100;
+      const batches: string[][] = [];
+      for (let i = 0; i < applicationIds.length; i += CHUNK) {
+        batches.push(applicationIds.slice(i, i + CHUNK));
+      }
+      const results = await Promise.all(
+        batches.map((batch) =>
+          (supabase as any)
+            .from("applications")
+            .select("id, status, license_status, license_progress, next_action_due_at")
+            .in("id", batch),
+        ),
+      );
+      const firstError = results.find((r) => r.error)?.error;
+      if (firstError) throw firstError;
       const map: Record<string, ApplicationEnrichment> = {};
-      for (const r of data as any[]) {
-        map[r.id] = {
-          status: r.status,
-          license_status: r.license_status,
-          license_progress: r.license_progress,
-          next_action_due_at: r.next_action_due_at,
-        };
+      for (const res of results) {
+        for (const r of (res.data ?? []) as any[]) {
+          map[r.id] = {
+            status: r.status,
+            license_status: r.license_status,
+            license_progress: r.license_progress,
+            next_action_due_at: r.next_action_due_at,
+          };
+        }
       }
       return map;
     },

@@ -312,9 +312,12 @@ async function loadDashboardSnapshot(
       .filter(Boolean),
   );
 
+  // interview_events is the live table; scheduled_interviews is dead (held 2 rows
+  // vs ~185 real bookings). Derive status downstream from outcome/canceled_at.
   const interviewQuery = role === "admin" || applicationIds.size > 0
-    ? q.from("scheduled_interviews").select("status, application_id, interview_date")
-        .gte("interview_date", week.startIso)
+    ? q.from("interview_events").select("outcome, canceled_at, application_id, scheduled_at")
+        .gte("scheduled_at", week.startIso)
+        .is("canceled_at", null)
         .limit(2_000)
     : null;
 
@@ -480,7 +483,12 @@ async function loadDashboardSnapshot(
     recruiting: {
       applicants: applications.length,
       contacted: applications.filter((app) => app.contacted_at || app.last_contacted_at || app.first_contact_attempt_at).length,
-      booked: (scheduledInterviews as any[]).filter((row) => !["cancelled", "no_show"].includes(String(row.status ?? "").toLowerCase())).length,
+      booked: (scheduledInterviews as any[]).filter((row) => {
+        // interview_events shape: canceled_at is already null-filtered upstream;
+        // exclude no_show via outcome. A live row with no outcome = "scheduled".
+        const status = row.canceled_at ? "cancelled" : String(row.outcome ?? "scheduled");
+        return !["cancelled", "no_show"].includes(status.toLowerCase());
+      }).length,
       seminarAttended: (seminarRows as any[]).filter((row) => row.attended === true).length,
       noShow: (seminarRows as any[]).filter((row) => row.attended === false).length,
       advanced: applications.filter(isAdvancedApplication).length,

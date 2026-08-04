@@ -12,6 +12,8 @@ import { toast } from "@/hooks/use-toast";
 function smartRetry(failureCount: number, error: unknown): boolean {
   if (failureCount >= 2) return false;
   const status = (error as any)?.status ?? (error as any)?.statusCode;
+  // 429 (rate-limited) is transient — retry it instead of blanking a KPI.
+  if (status === 429) return true;
   if (typeof status === "number" && status >= 400 && status < 500) return false;
   return true;
 }

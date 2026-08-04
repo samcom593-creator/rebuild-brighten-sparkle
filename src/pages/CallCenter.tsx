@@ -740,20 +740,30 @@ export default function CallCenter() {
     // put the number on the clipboard and surface it, giving a usable action on
     // every device instead of a dead button.
     const num = currentLead.phone;
-    navigator.clipboard?.writeText(num).catch(() => { // empty-catch-allow:clipboard blocked in insecure context; the toast still shows the number
-      /* no-op */
-    });
+    const who =
+      `${currentLead.firstName ?? ""} ${currentLead.lastName ?? ""}`.trim() ||
+      "this lead";
     const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
     if (isMobile) {
+      // Phone: native dialer actually rings.
       window.open(`tel:${num}`, "_self");
       return;
     }
-    // Desktop: still try the handler (works when a softphone IS registered),
-    // then tell the agent the number is copied so they can paste it into the
-    // dialer either way.
-    window.open(`tel:${num}`, "_self");
+    // Desktop: `tel:` is a dead click with no softphone registered — the exact
+    // "I click Call and nothing happens" the floor reported. Open Google Voice
+    // so the call actually places from the browser (caller-ID on the GV number).
+    if (openGoogleVoice(num)) {
+      toast.success("Opening Google Voice", {
+        description: `Dialing ${who} — click Call in the tab`,
+      });
+      return;
+    }
+    // Only if GV can't dial the number: copy it so the rep can paste into ReadyMode.
+    navigator.clipboard?.writeText(num).catch(() => { // empty-catch-allow:clipboard blocked in insecure context; the toast still shows the number
+      /* no-op */
+    });
     toast.success(`${num} copied — paste into your dialer`, {
-      description: `Calling ${`${currentLead.firstName ?? ""} ${currentLead.lastName ?? ""}`.trim() || "this lead"}`,
+      description: `Calling ${who}`,
     });
   }, [currentLead, logContactAttempt]);
 

@@ -422,18 +422,26 @@ export default function DashboardApplicants() {
     }
 
     const interviewMap = new Map<string, string>();
-    const allAppIds = allFetchedApps.map(a => a.id);
-    if (allAppIds.length > 0) {
-      const { data: interviewRows, error: interviewErr } = await supabase
-        .from("scheduled_interviews")
-        .select("application_id, status")
-        .in("application_id", allAppIds);
+    const allAppIds = new Set(allFetchedApps.map((a) => a.id));
+    if (allAppIds.size > 0) {
+      // interview_events is the live table (~185 rows, RLS-scoped). Pull the
+      // small set whole and join in memory — the old scheduled_interviews table
+      // is dead, and its 781-id `.in()` produced a ~29KB URL that 400'd.
+      // NOTE: interview_events has no `status` column (42703) — a live,
+      // non-cancelled row simply means "scheduled".
+      const { data: interviewRows, error: interviewErr } = await (supabase as any)
+        .from("interview_events")
+        .select("application_id, scheduled_at, canceled_at")
+        .is("canceled_at", null)
+        .not("scheduled_at", "is", null);
       if (interviewErr) {
         // Don't fail the page over an interview lookup. Log + continue.
-        console.warn("[DashboardApplicants] scheduled_interviews lookup failed:", interviewErr);
+        console.warn("[DashboardApplicants] interview_events lookup failed:", interviewErr);
       } else {
         (interviewRows || []).forEach((row: any) => {
-          if (row.application_id) interviewMap.set(row.application_id, row.status ?? "scheduled");
+          if (row.application_id && allAppIds.has(row.application_id)) {
+            interviewMap.set(row.application_id, "scheduled");
+          }
         });
       }
     }

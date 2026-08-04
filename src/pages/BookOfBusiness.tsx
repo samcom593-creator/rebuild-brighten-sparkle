@@ -398,6 +398,12 @@ export default function BookOfBusiness() {
   // Sort
   const [sortMode, setSortMode] = useState<SortMode>("newest_posted");
 
+  // Render window — mount only the first N rows of ~2,000 so the table isn't a
+  // ~119,000px DOM wall. KPIs (read `deals`) and CSV export (read full `filtered`)
+  // are unaffected; this is purely how many <tr> are painted.
+  const ROW_PAGE = 200;
+  const [visibleCount, setVisibleCount] = useState(100);
+
   // Chargeback Watch drawer
   const [chargebackOpen, setChargebackOpen] = useState(false);
   const [cbSince, setCbSince] = useState<string>(() =>
@@ -793,9 +799,19 @@ export default function BookOfBusiness() {
       const agentIds = [
         ...new Set(rows.map((r) => r.agent_id).filter(Boolean)),
       ];
+      // Only real uuids may hit the uuid-keyed `carriers` table. agentlink_book
+      // carrier_ids are INTEGERS and already resolved to a name upstream
+      // (alCarrierMap), so gate them out here — feeding an integer into a uuid
+      // `.in` filter is what 400'd this request. Rows already carrying a
+      // carrier_name never need the lookup at all.
+      const UUID_RE =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const carrierIds = [
         ...new Set(
-          rows.map((r) => r.carrier_id).filter((v): v is string => Boolean(v)),
+          rows
+            .filter((r) => !r.carrier_name)
+            .map((r) => r.carrier_id)
+            .filter((v): v is string => Boolean(v) && UUID_RE.test(String(v))),
         ),
       ];
 
@@ -1093,6 +1109,24 @@ export default function BookOfBusiness() {
       });
   }, [
     deals,
+    search,
+    agentFilter,
+    clientFilter,
+    policyFilter,
+    carrierFilter,
+    productFilter,
+    sourceFilter,
+    stageFilter,
+    postedSince,
+    postedUntil,
+    premiumRange,
+    sortMode,
+  ]);
+
+  // Any filter/sort change resets the render window back to the first page.
+  useEffect(() => {
+    setVisibleCount(100);
+  }, [
     search,
     agentFilter,
     clientFilter,
@@ -1945,7 +1979,7 @@ export default function BookOfBusiness() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((d) => {
+                filtered.slice(0, visibleCount).map((d) => {
                   const inCbWindow = isInChargebackWindow(d);
                   const daysEff = daysSinceEffective(d);
                   const isReviewed = reviewedIds.has(d.id);
@@ -2105,6 +2139,29 @@ export default function BookOfBusiness() {
             </tbody>
           </table>
         </div>
+        {!loading && filtered.length > visibleCount && (
+          <div className="flex flex-wrap items-center justify-center gap-3 border-t border-border/40 px-4 py-4 text-sm">
+            <span className="text-muted-foreground">
+              Showing {visibleCount.toLocaleString()} of{" "}
+              {filtered.length.toLocaleString()} policies
+            </span>
+            <button
+              type="button"
+              onClick={() => setVisibleCount((n) => n + ROW_PAGE)}
+              className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted"
+            >
+              Show more ({(filtered.length - visibleCount).toLocaleString()}{" "}
+              hidden)
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibleCount(filtered.length)}
+              className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline"
+            >
+              Show all
+            </button>
+          </div>
+        )}
       </GlassCard>
 
       {/* Right-side PolicyDetailDrawer */}

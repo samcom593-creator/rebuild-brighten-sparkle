@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 const NOT_NOW_KEY = "push_prompt_not_now_at";
-const RE_PROMPT_MS = 24 * 60 * 60 * 1000; // 24 hours
+const RE_PROMPT_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — don't nag
 
 // Surfaces that exist to be screenshotted/presented — a modal over them ruins
 // the capture, so the prompt never renders there.
@@ -40,8 +40,8 @@ export function PushNotificationPrompt() {
       if (elapsed < RE_PROMPT_MS) return; // Still within 24h cooldown
     }
 
-    // Show immediately (small delay for page load)
-    const timer = setTimeout(() => setVisible(true), 1500);
+    // Show after the page has settled (not an instant blocking pop).
+    const timer = setTimeout(() => setVisible(true), 4000);
     return () => clearTimeout(timer);
   }, [user, supported, permission, isSubscribed, isVaManager, isVa, pathname]);
 
@@ -64,8 +64,10 @@ export function PushNotificationPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="animate-fade-in fixed inset-0 z-[9999] flex items-center justify-center bg-white dark:bg-black/70 ">
-      <div className="landing-scale-in mx-4 w-full max-w-md rounded-md border border-primary/30 bg-card shadow-2xl">
+    // Non-blocking corner card — does NOT cover the dashboard. Was a full-screen
+    // inset-0 overlay that blocked the whole page on every load.
+    <div className="animate-fade-in fixed bottom-4 right-4 z-[60] w-full max-w-sm">
+      <div className="landing-scale-in w-full rounded-md border border-primary/30 bg-card shadow-2xl">
         {/* Header */}
         <div className="flex flex-col items-center gap-3 p-6 pb-2 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">

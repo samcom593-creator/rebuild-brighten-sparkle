@@ -95,10 +95,10 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
     --glass-shadow: 0 4px 24px hsl(220 15% 35% / 0.04);
 
     /* Gradients - softer, warmer */
-    --gradient-primary: linear-gradient(135deg, hsl(168 70% 38%), hsl(160 70% 38%));
+    --gradient-primary: linear-gradient(135deg, hsl(45 85% 52%), hsl(38 88% 46%));
     --gradient-hero: linear-gradient(180deg, hsl(220 14% 89%) 0%, hsl(220 12% 87%) 100%);
     --gradient-card: linear-gradient(145deg, hsl(45 20% 96%) 0%, hsl(45 16% 94%) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsl(168 70% 38% / 0.04) 0%, transparent 70%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(45 70% 45% / 0.05) 0%, transparent 70%);
 
     /* Sidebar - soft warm gray */
     --sidebar-background: 220 12% 91%;
@@ -190,25 +190,27 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
     --input: 40 6% 14%;
     --ring: 45 85% 52%;
 
-    --sidebar-background: 224 18% 5%;
-    --sidebar-foreground: 210 18% 92%;
-    --sidebar-primary: 164 72% 48%;
-    --sidebar-primary-foreground: 224 20% 6%;
-    --sidebar-accent: 224 12% 12%;
-    --sidebar-accent-foreground: 210 18% 94%;
-    --sidebar-border: 224 12% 14%;
-    --sidebar-ring: 164 72% 48%;
+    /* Warm black + gold — kills the last cool blue-gray/teal remnants so the
+     * left rail matches the gold brand instead of fighting it. */
+    --sidebar-background: 40 12% 4%;
+    --sidebar-foreground: 42 14% 88%;
+    --sidebar-primary: 45 85% 52%;
+    --sidebar-primary-foreground: 40 30% 8%;
+    --sidebar-accent: 42 10% 11%;
+    --sidebar-accent-foreground: 45 40% 94%;
+    --sidebar-border: 45 16% 13%;
+    --sidebar-ring: 45 85% 52%;
 
-    /* Glass morphism - dark mode */
-    --glass-bg: hsl(224 15% 9% / 0.86);
-    --glass-border: hsl(224 12% 20% / 0.6);
-    --glass-shadow: 0 8px 32px hsl(224 30% 2% / 0.5);
+    /* Glass morphism - dark mode (warm-tinted) */
+    --glass-bg: hsl(40 12% 8% / 0.88);
+    --glass-border: hsl(45 22% 18% / 0.55);
+    --glass-shadow: 0 8px 32px hsl(40 40% 1% / 0.6);
 
-    /* Elevation scale (dark mode — deeper shadows) */
-    --elev-1: 0 1px 2px hsl(222 47% 0% / 0.4);
-    --elev-2: 0 2px 8px hsl(222 47% 0% / 0.5), 0 1px 2px hsl(222 47% 0% / 0.4);
-    --elev-3: 0 8px 24px hsl(222 47% 0% / 0.55), 0 2px 6px hsl(222 47% 0% / 0.45);
-    --elev-4: 0 16px 48px hsl(222 47% 0% / 0.6), 0 4px 12px hsl(222 47% 0% / 0.5);
+    /* Elevation scale (dark mode — warm deep shadows) */
+    --elev-1: 0 1px 2px hsl(40 40% 0% / 0.45);
+    --elev-2: 0 2px 8px hsl(40 40% 0% / 0.55), 0 1px 2px hsl(40 40% 0% / 0.45);
+    --elev-3: 0 8px 24px hsl(40 40% 0% / 0.6), 0 2px 6px hsl(40 40% 0% / 0.5);
+    --elev-4: 0 16px 48px hsl(40 40% 0% / 0.65), 0 4px 12px hsl(40 40% 0% / 0.55);
   }
 }
 
@@ -288,24 +290,24 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
   }
 
   .light .stat-card:hover {
-    box-shadow: 0 3px 16px hsl(168 70% 42% / 0.08), 0 1px 4px hsl(40 20% 35% / 0.03);
+    box-shadow: 0 3px 16px hsl(45 80% 48% / 0.10), 0 1px 4px hsl(40 20% 35% / 0.03);
   }
 
   /* Glow effects */
   .glow-teal {
-    box-shadow: 0 0 20px hsl(168 84% 42% / 0.3), 
-                0 0 40px hsl(168 84% 42% / 0.1);
+    box-shadow: 0 0 20px hsl(45 85% 52% / 0.3), 
+                0 0 40px hsl(45 85% 52% / 0.1);
   }
 
   .glow-teal-strong {
-    box-shadow: 0 0 30px hsl(168 84% 42% / 0.4), 
-                0 0 60px hsl(168 84% 42% / 0.2),
-                0 0 100px hsl(168 84% 42% / 0.1);
+    box-shadow: 0 0 30px hsl(45 85% 52% / 0.4), 
+                0 0 60px hsl(45 85% 52% / 0.2),
+                0 0 100px hsl(45 85% 52% / 0.1);
   }
 
   .text-glow {
-    text-shadow: 0 0 20px hsl(168 84% 42% / 0.5),
-                 0 0 40px hsl(168 84% 42% / 0.3);
+    text-shadow: 0 0 20px hsl(45 85% 52% / 0.5),
+                 0 0 40px hsl(45 85% 52% / 0.3);
   }
 
   /* Carbon fiber texture */
@@ -324,7 +326,7 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
     background-image:
       linear-gradient(hsl(222 47% 10% / 0.22) 1px, transparent 1px),
       linear-gradient(90deg, hsl(222 47% 10% / 0.18) 1px, transparent 1px),
-      radial-gradient(circle at 50% 0%, hsl(164 72% 48% / 0.055), transparent 34rem);
+      radial-gradient(circle at 50% 0%, hsl(45 85% 52% / 0.055), transparent 34rem);
     background-size: 28px 28px, 28px 28px, 100% 100%;
     background-attachment: scroll;
   }
@@ -375,7 +377,7 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
 
   /* Gradient text */
   .gradient-text {
-    background: linear-gradient(135deg, hsl(168 84% 50%), hsl(160 84% 45%), hsl(168 84% 55%));
+    background: linear-gradient(135deg, hsl(45 92% 60%), hsl(40 90% 50%), hsl(48 95% 62%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -393,7 +395,7 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
     position: absolute;
     inset: -1px;
     border-radius: inherit;
-    background: linear-gradient(135deg, hsl(168 84% 42%), hsl(160 84% 39%), hsl(168 84% 42%));
+    background: linear-gradient(135deg, hsl(45 88% 52%), hsl(40 85% 46%), hsl(48 90% 54%));
     z-index: -1;
     opacity: 0.5;
   }
@@ -442,10 +444,10 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
 /* Animation keyframes */
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 20px hsl(168 84% 42% / 0.3);
+    box-shadow: 0 0 20px hsl(45 85% 52% / 0.3);
   }
   50% {
-    box-shadow: 0 0 40px hsl(168 84% 42% / 0.5);
+    box-shadow: 0 0 40px hsl(45 85% 52% / 0.5);
   }
 }
 
@@ -620,8 +622,8 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
 
 /* Input focus pulse animation */
 @keyframes input-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 hsl(168 84% 42% / 0); }
-  50% { box-shadow: 0 0 0 6px hsl(168 84% 42% / 0.15); }
+  0%, 100% { box-shadow: 0 0 0 0 hsl(45 85% 52% / 0); }
+  50% { box-shadow: 0 0 0 6px hsl(45 85% 52% / 0.15); }
 }
 
 @keyframes rank-glow {
@@ -654,8 +656,8 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
 
 /* Focus glow for inputs */
 .input-focus-glow:focus {
-  box-shadow: 0 0 0 3px hsl(168 84% 42% / 0.2), 0 0 20px hsl(168 84% 42% / 0.15);
-  border-color: hsl(168 84% 42%);
+  box-shadow: 0 0 0 3px hsl(45 85% 52% / 0.2), 0 0 20px hsl(45 85% 52% / 0.15);
+  border-color: hsl(45 85% 52%);
 }
 
 /* Mobile number input improvements */
@@ -914,12 +916,12 @@ main {
 }
 
 .dark .glass-card {
-  background: linear-gradient(145deg, hsl(222 47% 6%) 0%, hsl(222 47% 4%) 100%);
-  border-color: hsl(222 30% 15%);
+  background: linear-gradient(145deg, hsl(42 12% 9%) 0%, hsl(40 12% 6%) 100%);
+  border-color: hsl(45 18% 15%);
 }
 .dark .glass-card:hover {
   border-color: hsl(var(--primary) / 0.4);
-  box-shadow: 0 0 20px hsl(var(--primary) / 0.15), 0 8px 30px hsl(222 47% 2% / 0.5);
+  box-shadow: 0 0 20px hsl(var(--primary) / 0.15), 0 8px 30px hsl(40 40% 1% / 0.5);
 }
 
 /* Universal hover transition for all interactive elements */
@@ -930,7 +932,7 @@ a, button, [role="button"], .cursor-pointer {
 /* Primary button luxury style */
 .btn-primary-luxury {
   @apply relative overflow-hidden;
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(160 70% 38%));
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(38 88% 46%));
   box-shadow: 0 4px 15px hsl(var(--primary) / 0.3);
 }
 .btn-primary-luxury:hover {
@@ -969,7 +971,7 @@ html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body { text-rendering: optimizeLegibility; }
 
 /* Emerald selection — anywhere the user highlights text */
-::selection { background: hsl(168 70% 45% / 0.35); color: #f8fafc; }
+::selection { background: hsl(45 85% 52% / 0.35); color: #f8fafc; }
 
 /* Sleek scrollbar — matches sidebar style, applied globally */
 *::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -1199,7 +1201,7 @@ input:focus, textarea:focus, select:focus {
   background: linear-gradient(90deg,
     hsl(var(--primary) / 0.35) 0%,
     hsl(var(--primary) / 0.9) 45%,
-    hsl(168 90% 68% / 1) 50%,
+    hsl(48 95% 72% / 1) 50%,
     hsl(var(--primary) / 0.9) 55%,
     hsl(var(--primary) / 0.35) 100%);
   background-size: 200% 100%;
@@ -1499,11 +1501,12 @@ main::before {
 }
 
 /* ── Buttons — visible upgrade (gradient depth on primary) ────────── */
+/* Gold → warm amber (was gold → green, which fought the black+gold brand). */
 button.bg-primary, [role="button"].bg-primary {
   background: linear-gradient(135deg,
-    hsl(var(--primary)) 0%,
+    hsl(45 90% 58%) 0%,
     hsl(var(--primary)) 50%,
-    hsl(160 75% 38%) 100%);
+    hsl(38 92% 46%) 100%);
 }
 
 /* ── Card click feedback ──────────────────────────────────────────── */
@@ -1598,7 +1601,7 @@ aside a:hover {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  border: 2px solid hsl(168 80% 55%);
+  border: 2px solid hsl(45 85% 55%);
   animation: live-ring 1.8s ease-out infinite;
 }
 @keyframes live-ring {
@@ -1618,16 +1621,16 @@ header[class*="bg-gradient-to-br"] > div > div > .inline-flex {
 .dark [class*="GlassCard"],
 .dark .glass-card {
   box-shadow:
-    inset 0 1px 0 hsl(168 80% 70% / 0.05),
-    0 8px 30px hsl(222 47% 0% / 0.45),
-    0 0 0 1px hsl(168 60% 50% / 0.08);
+    inset 0 1px 0 hsl(45 90% 70% / 0.06),
+    0 8px 30px hsl(40 40% 0% / 0.45),
+    0 0 0 1px hsl(45 60% 50% / 0.08);
 }
 .dark [class*="GlassCard"]:hover,
 .dark .glass-card:hover {
   box-shadow:
-    inset 0 1px 0 hsl(168 80% 70% / 0.08),
-    0 14px 40px hsl(168 80% 50% / 0.18),
-    0 0 0 1px hsl(168 80% 50% / 0.35);
+    inset 0 1px 0 hsl(45 90% 70% / 0.10),
+    0 14px 40px hsl(45 85% 50% / 0.16),
+    0 0 0 1px hsl(45 85% 52% / 0.35);
 }
 
 /* ── New: input/textarea floating focus ring (more visible) ─────── */
@@ -1639,15 +1642,15 @@ input:focus, textarea:focus, select:focus {
 
 /* ── New: bold scrollbar in dark mode ───────────────────────────── */
 .dark *::-webkit-scrollbar-thumb {
-  background: hsl(168 70% 50% / 0.35);
+  background: hsl(45 80% 50% / 0.35);
 }
 .dark *::-webkit-scrollbar-thumb:hover {
-  background: hsl(168 70% 50% / 0.6);
+  background: hsl(45 80% 52% / 0.6);
 }
 
 /* ── Sidebar pulse dot — bigger glow ────────────────────────────── */
 aside[style*="emerald"] {
-  filter: drop-shadow(0 0 8px hsl(168 80% 50% / 0.6));
+  filter: drop-shadow(0 0 8px hsl(45 85% 52% / 0.6));
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
@@ -1657,10 +1660,10 @@ aside[style*="emerald"] {
 /* PageHeader h1 — keep crisp solid color in light mode; gradient only in dark */
 .dark header[class*="bg-gradient-to-br"] h1 {
   background: linear-gradient(135deg,
-    hsl(168 80% 65%) 0%,
-    hsl(180 85% 75%) 35%,
-    hsl(265 70% 75%) 70%,
-    hsl(38 85% 65%) 100%) !important;
+    hsl(48 95% 72%) 0%,
+    hsl(45 90% 60%) 40%,
+    hsl(40 88% 54%) 72%,
+    hsl(38 90% 62%) 100%) !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
@@ -1712,7 +1715,7 @@ button[class*="border-emerald"]:hover {
   border-radius: 14px !important;
   box-shadow:
     0 0 0 1px hsl(var(--primary) / 0.2),
-    0 16px 48px hsl(222 60% 0% / 0.45) !important;
+    0 16px 48px hsl(40 50% 0% / 0.45) !important;
 }
 
 /* ── Badge live-indicator wrap: emit ring ────────────────────────── */
@@ -1730,8 +1733,8 @@ button[class*="border-emerald"]:hover {
 /* ── Active sidebar item: glow shadow ────────────────────────────── */
 .nav-item-active {
   box-shadow:
-    inset 3px 0 0 hsl(168 80% 55%),
-    inset 0 0 40px hsl(168 80% 55% / 0.06);
+    inset 3px 0 0 hsl(45 85% 52%),
+    inset 0 0 40px hsl(45 85% 52% / 0.07);
 }
 
 /* ── Readable minimum: bump any tiny arbitrary text-[Xpx] to 10px floor.
@@ -1833,7 +1836,7 @@ button[class*="border-emerald"]:hover {
 
 .dark .apex-app-shell {
   background:
-    linear-gradient(180deg, hsl(222 60% 2%) 0%, hsl(222 44% 5%) 50%, hsl(220 32% 7%) 100%);
+    linear-gradient(180deg, hsl(40 14% 3%) 0%, hsl(40 12% 5%) 50%, hsl(42 12% 7%) 100%);
 }
 
 .apex-main-canvas {
@@ -1876,9 +1879,9 @@ button[class*="border-emerald"]:hover {
 
 .dark .apex-page-header::before {
   background:
-    linear-gradient(120deg, hsl(168 70% 48% / 0.18), transparent 28%),
-    linear-gradient(90deg, hsl(38 90% 55% / 0.12), transparent 40%),
-    linear-gradient(180deg, hsl(222 36% 11% / 0.98), hsl(222 42% 7% / 0.98));
+    linear-gradient(120deg, hsl(45 85% 52% / 0.20), transparent 30%),
+    linear-gradient(90deg, hsl(38 90% 55% / 0.10), transparent 42%),
+    linear-gradient(180deg, hsl(42 14% 10% / 0.98), hsl(40 14% 6% / 0.98));
 }
 
 .apex-page-header::after {
@@ -1926,8 +1929,8 @@ h1,
 
 .dark .apex-card:hover {
   box-shadow:
-    0 14px 38px hsl(222 70% 0% / 0.48),
-    0 0 0 1px hsl(168 72% 48% / 0.32);
+    0 14px 38px hsl(40 50% 0% / 0.48),
+    0 0 0 1px hsl(45 85% 52% / 0.32);
 }
 
 .apex-op-panel {

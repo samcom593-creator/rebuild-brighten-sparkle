@@ -114,7 +114,7 @@ export function PushNotificationPrompt() {
             className="w-full text-muted-foreground hover:text-foreground"
           >
             <BellOff className="mr-2 h-4 w-4" />
-            Not Now (ask again in 24h)
+            Not Now
           </Button>
         </div>
       </div>

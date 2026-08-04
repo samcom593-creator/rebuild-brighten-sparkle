@@ -1003,7 +1003,7 @@ export default function Dashboard() {
   if (shouldRenderDefaultAdminCommand) {
     return (
       <Suspense fallback={<PageLoadingSkeleton />}>
-        <DashboardToday />
+        <AgentCommandDashboard />
       </Suspense>
     );
   }

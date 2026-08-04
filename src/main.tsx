@@ -4,6 +4,14 @@ import "./index.css";
 import { initWebVitals } from "./shared/lib/webVitals";
 import { installRippleOrigin, installRevealObserver } from "./lib/gameFx";
 import { bootAnalytics } from "./lib/analyticsBoot";
+import { captureAttribution } from "./lib/attribution";
+
+// FIRST thing on boot, before React mounts and before the router can swallow
+// the query string. A visitor landing on /?utm_source=google&gclid=... then
+// clicking through to /apply loses every param on that client-side route
+// change — which is why 776 of 783 applications recorded utm_source = NULL.
+// This persists the landing signals so the submit path can still read them.
+captureAttribution();
 
 initWebVitals();
 installRippleOrigin();

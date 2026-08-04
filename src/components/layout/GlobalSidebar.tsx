@@ -610,7 +610,12 @@ export function GlobalSidebar({
                           <button
                             type="button"
                             onClick={() => {
-                              // 2026-06-17 Sam: search → drawer / applicant detail.
+                              // BUG-2 trace: when search→tap doesn't open the drawer, this
+                              // line proves the click fired + which id was passed. Pair with
+                              // AgentProfileDrawer's [AgentProfileDrawer] logs to isolate
+                              // click-vs-store-vs-query as the failing step.
+
+                              console.info("[GlobalSidebar] search result click", { kind: result.kind, id: result.id, name: result.name }); // console-in-prod-allow:BUG-2 diagnostic breadcrumb — needed in prod so Sam's next click yields a trace
                               setSearchQuery("");
                               setSearchResults([]);
                               setShowSearch(false);

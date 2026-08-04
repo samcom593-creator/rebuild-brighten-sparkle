@@ -791,13 +791,18 @@ export default function DashboardCRM() {
     if (!agents.length) return;
     const fetchAttendance = async () => {
       const agentIds = agents.map(a => a.id);
-      const { data } = await supabase.from("agent_attendance")
-        .select("agent_id, status")
-        .in("agent_id", agentIds)
-        .eq("attendance_date", todayStr)
-        .eq("attendance_type", "agency_meeting" as any);
+      // Chunk the id list — a single ~200-id `.in()` built a URL long enough to
+      // 400 the gateway, which silently dropped every attendance badge.
+      const CHUNK = 100;
       const map = new Map<string, "present" | "absent" | "unmarked">();
-      data?.forEach(r => map.set(r.agent_id, r.status as any));
+      for (let i = 0; i < agentIds.length; i += CHUNK) {
+        const { data } = await supabase.from("agent_attendance")
+          .select("agent_id, status")
+          .in("agent_id", agentIds.slice(i, i + CHUNK))
+          .eq("attendance_date", todayStr)
+          .eq("attendance_type", "agency_meeting" as any);
+        data?.forEach(r => map.set(r.agent_id, r.status as any));
+      }
       setMeetingAttendance(map);
     };
     fetchAttendance();

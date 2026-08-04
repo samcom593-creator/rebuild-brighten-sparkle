@@ -177,6 +177,9 @@ export default function UnlicensedAll() {
   const [bulkFollowUp, setBulkFollowUp] = useState<Date | undefined>(undefined);
   const [bulkVaId, setBulkVaId] = useState<string>("");
   const [bulkRunning, setBulkRunning] = useState(false);
+  // Render window — this list can be 1,000+ rows (~122,000px DOM wall). Mount
+  // the first N; "Show more" reveals the rest. Selection/batch still use `filtered`.
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const { data: rows = [], isLoading } = useQuery<UnlicensedRow[]>({
     queryKey: ["v_unlicensed_all"],
@@ -211,19 +214,28 @@ export default function UnlicensedAll() {
         .select("user_id, role")
         .in("role", ["manager", "va"] as any);
       if (error) throw error;
-      const ids = Array.from(new Set((roleRows ?? []).map((r: any) => r.user_id)));
+      // Drop null user_ids — a null in a uuid `.in()` filter 400s the request.
+      const ids = Array.from(new Set((roleRows ?? []).map((r: any) => r.user_id).filter(Boolean)));
       if (ids.length === 0) return [];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, email, display_name, full_name")
-        .in("id", ids);
+      // Chunk the id list — the full manager+va set built a URL long enough to
+      // 400 the gateway, dropping every name/email on the recovery queue.
       const profMap = new Map<string, { email: string | null; display_name: string | null }>();
-      (profiles ?? []).forEach((p: any) => {
-        profMap.set(p.id, {
-          email: p.email ?? null,
-          display_name: p.display_name ?? p.full_name ?? null,
+      const CHUNK = 100;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        // profiles has NO `display_name` column (verified 400) — selecting it
+        // 400'd the whole request and left this map empty every time. email +
+        // full_name are real; use full_name as the display name.
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, email, full_name")
+          .in("id", ids.slice(i, i + CHUNK));
+        (profiles ?? []).forEach((p: any) => {
+          profMap.set(p.id, {
+            email: p.email ?? null,
+            display_name: p.full_name ?? null,
+          });
         });
-      });
+      }
       return (roleRows ?? []).map((r: any) => ({
         user_id: r.user_id,
         role: r.role,
@@ -417,6 +429,11 @@ export default function UnlicensedAll() {
     }
     return out;
   }, [mergedRows, filter, stageFilter, sort]);
+
+  // Reset the render window when the filter/sort changes.
+  useEffect(() => {
+    setVisibleCount(100);
+  }, [filter, stageFilter, sort]);
 
   // Clear stale selections whenever the filtered list shrinks.
   useEffect(() => {
@@ -810,7 +827,7 @@ export default function UnlicensedAll() {
         )}
 
         <ul className="space-y-2">
-          {filtered.map((r) => {
+          {filtered.slice(0, visibleCount).map((r) => {
             const days = r.days_since_touch ?? 0;
             const tone = ghostTone(days);
             const stg = stageMeta(r.license_progress);
@@ -1071,6 +1088,27 @@ export default function UnlicensedAll() {
             );
           })}
         </ul>
+        {filtered.length > visibleCount && (
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-4 text-sm">
+            <span className="text-muted-foreground">
+              Showing {visibleCount.toLocaleString()} of {filtered.length.toLocaleString()}
+            </span>
+            <button
+              type="button"
+              onClick={() => setVisibleCount((n) => n + 200)}
+              className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted"
+            >
+              Show more ({(filtered.length - visibleCount).toLocaleString()} hidden)
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibleCount(filtered.length)}
+              className="rounded-md px-3 py-1.5 font-medium text-primary transition hover:underline"
+            >
+              Show all
+            </button>
+          </div>
+        )}
       </GlassCard>
 
       <RecoveryBatchDrawer

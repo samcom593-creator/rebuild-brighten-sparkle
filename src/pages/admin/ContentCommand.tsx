@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
@@ -249,6 +249,8 @@ export default function ContentCommand() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("active");
   const [platformFilter, setPlatformFilter] = useState("all");
+  // Render window — the draft list can be 1,000+ (~152,000px DOM wall).
+  const [visibleCount, setVisibleCount] = useState(60);
   const [editing, setEditing] = useState<Draft | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editHook, setEditHook] = useState("");
@@ -371,6 +373,11 @@ export default function ContentCommand() {
       return true;
     });
   }, [drafts, platformFilter, statusFilter]);
+
+  // Reset the render window when the filter changes.
+  useEffect(() => {
+    setVisibleCount(60);
+  }, [platformFilter, statusFilter]);
 
   const ranked = useMemo(
     () => (drafts ?? [])
@@ -632,7 +639,7 @@ export default function ContentCommand() {
                       Select all {filtered.length.toLocaleString()} in this filter
                     </label>
                   </div>
-                  {filtered.map((d) => (
+                  {filtered.slice(0, visibleCount).map((d) => (
                     <div key={d.id} className="flex items-start gap-2">
                       <input
                         type="checkbox"
@@ -659,6 +666,20 @@ export default function ContentCommand() {
                       </div>
                     </div>
                   ))}
+                  {filtered.length > visibleCount && (
+                    <div className="flex flex-wrap items-center justify-center gap-3 pt-3 text-sm">
+                      <span className="text-muted-foreground">
+                        Showing {visibleCount.toLocaleString()} of {filtered.length.toLocaleString()}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setVisibleCount((n) => n + 120)}
+                        className="rounded-md border border-border bg-muted/40 px-4 py-1.5 font-medium text-foreground transition hover:bg-muted"
+                      >
+                        Show more ({(filtered.length - visibleCount).toLocaleString()} hidden)
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </CardContent>

@@ -640,8 +640,8 @@ export default function ReadyModeIntegration() {
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-2xl font-bold tabular-nums text-primary">{a.hours_called}h</p>
-                      <p className="text-[10px] uppercase text-muted-foreground">dialed</p>
+                      <p className="text-2xl font-bold tabular-nums text-primary">{a.hours_called}</p>
+                      <p className="text-[10px] uppercase text-muted-foreground">pages called</p>
                     </div>
                   </GlassCard>
                 </motion.div>

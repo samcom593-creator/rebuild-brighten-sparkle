@@ -491,8 +491,8 @@ export default function AgentCommandDashboard() {
             <Activity className="h-5 w-5 text-muted-foreground" />
           </div>
           <div className="space-y-3">
-            <StatRow label="Hours dialed · MTD" value={`${hoursMtd.toFixed(1)}h`} />
-            <StatRow label="Hours dialed · WTD" value={`${hoursWtd.toFixed(1)}h`} />
+            <StatRow label="Pages Called · MTD" value={`${hoursMtd.toFixed(0)}`} />
+            <StatRow label="Pages Called · WTD" value={`${hoursWtd.toFixed(0)}`} />
             <StatRow label="Presentations · MTD" value={fmtNum(stats?.presentations_mtd ?? 0)} />
             <StatRow label="Presentations · WTD" value={fmtNum(stats?.presentations_wtd ?? 0)} />
             <StatRow label="Last production day" value={

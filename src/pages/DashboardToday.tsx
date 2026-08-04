@@ -1,890 +1,231 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  CheckCircle2, Circle, DollarSign, Phone, Plus, Sparkles,
-  Flame, ChevronRight, CalendarCheck, Timer, Star, Video,
-  FileSpreadsheet, GraduationCap, UserPlus,
-} from "lucide-react";
 import { format, isToday } from "date-fns";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  AlertTriangle, CalendarCheck, CheckCircle2, ChevronRight, Circle,
+  DollarSign, Flame, PlayCircle, WalletCards,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/hooks/useAuth";
-import { PageHeader } from "@/components/ui/page-header";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-/* ------------------------------------------------------------------ */
-/*  MP239 · /dashboard/today
-    Sam directive 2026-07-05: "One simple todo list to mark income-
-    producing tasks with auto-populating calendar appointments."
-
-    Three surfaces, one page, one-tap complete on each:
-      1. Today's income-producing tasks (today_tasks WHERE is_income_producing)
-      2. Today's scheduled appointments (v_upcoming_calls → today only)
-      3. Recovery Queue top 5 hot prospects (v_hot_licensing_prospects LIMIT 5)
-
-    Extends the today_tasks table with is_income_producing + scheduled_call_id
-    columns (migration 20260705140000_today_tasks_income_producing.sql).
------------------------------------------------------------------- */
-
-interface TaskRow {
+interface Task {
   id: string;
-  owner_agent_id: string;
   title: string;
   notes: string | null;
   due_at: string | null;
   completed_at: string | null;
   priority: "low" | "med" | "high";
-  source: string;
   is_income_producing: boolean;
-  scheduled_call_id: number | null;
-  created_at: string;
 }
 
-interface ScheduledCall {
+interface Call {
   id: number;
   prospect_name: string | null;
-  prospect_phone: string | null;
-  prospect_email: string | null;
   summary: string | null;
   location: string | null;
   start_at: string;
   end_at: string | null;
-  duration_minutes: number | null;
   call_type: string;
   status: string;
   outcome: string | null;
 }
 
-interface HotProspect {
-  application_id: string;
-  name: string;
-  phone: string | null;
-  email: string | null;
-  state: string | null;
-  cohort: string;
-  days_since_touch: number | null;
+interface ContentItem {
+  id: number;
+  title: string | null;
+  hook: string | null;
+  platform: string | null;
+  status: string;
 }
 
-function telHref(raw: string | null): string {
-  if (!raw) return "#";
-  const digits = raw.replace(/\D/g, "");
-  if (!digits) return "#";
-  return `tel:${digits.startsWith("1") ? "+" : "+1"}${digits}`;
+interface Blocker {
+  id: number;
+  title: string | null;
+  description: string | null;
+  severity: string | null;
+  dollar_impact: number | null;
 }
 
-/**
- * MP239b — extract a join-URL from an appointment's location field.
- * Calendly + Google Calendar stash the Zoom/Meet/Teams link in `location`
- * (sometimes as a bare URL, sometimes "Zoom · https://...").
- * Returns null when no https:// URL is present so the UI can hide the CTA.
- */
-function extractJoinUrl(location: string | null): string | null {
-  if (!location) return null;
-  const m = location.match(/https?:\/\/[^\s"'<>]+/i);
-  if (!m) return null;
-  const url = m[0];
-  // Anchor the button to real meeting hosts we know Sam uses. Anything
-  // else is likely a stray link and we don't want a misleading "Join" CTA.
-  if (/(zoom\.us|meet\.google\.com|teams\.microsoft\.com|meet\.jit\.si|whereby\.com|webex\.com)/i.test(url)) {
-    return url;
-  }
-  return null;
+interface FinanceSnapshot {
+  ghost_ap_at_risk: number | string;
+  dup_charges_open: number;
+  ica_paid_stuck: number;
+  as_of: string;
 }
 
-function joinLabel(url: string): string {
-  if (/zoom\.us/i.test(url)) return "Zoom";
-  if (/meet\.google\.com/i.test(url)) return "Meet";
-  if (/teams\.microsoft\.com/i.test(url)) return "Teams";
-  return "Join";
-}
-
-function formatPhone(raw: string | null): string {
-  if (!raw) return "";
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length === 11 && digits.startsWith("1")) {
-    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
-  }
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  return raw;
-}
+const money = (value: number | string | null | undefined) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
+    .format(Number(value ?? 0));
 
 export default function DashboardToday() {
-  usePageTitle("Today · APEX");
-  const { user, isAdmin } = useAuth();
+  usePageTitle("APEX Today");
+  const { user } = useAuth();
   const qc = useQueryClient();
+  const today = format(new Date(), "yyyy-MM-dd");
 
-  /* ---------- agent_id lookup so we can insert new tasks ---------- */
-  const agentQ = useQuery({
-    queryKey: ["today-owner-agent", user?.id],
-    enabled: !!user?.id,
-    staleTime: 5 * 60_000,
+  const agent = useQuery({
+    queryKey: ["today-agent", user?.id], enabled: !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("agents")
-        .select("id, display_name")
-        .eq("user_id", user!.id)
-        .maybeSingle();
+      const { data, error } = await supabase.from("agents").select("id").eq("user_id", user!.id).maybeSingle();
       if (error) throw error;
-      return data as { id: string; display_name: string | null } | null;
+      return data as { id: string } | null;
     },
   });
-  const ownerAgentId = agentQ.data?.id ?? null;
 
-  /* ---------- tasks ---------- */
-  const tasksQ = useQuery({
-    queryKey: ["today-tasks", ownerAgentId, isAdmin],
-    enabled: !!user?.id,
-    staleTime: 15_000,
+  const tasks = useQuery({
+    queryKey: ["apex-today-tasks", agent.data?.id], enabled: !!agent.data?.id,
     refetchInterval: 60_000,
-    queryFn: async (): Promise<TaskRow[]> => {
-      // MP239 columns is_income_producing + scheduled_call_id are not yet in
-      // src/integrations/supabase/types.ts (types regen ships separately) —
-      // narrow the cast to `any` on this table until the next types pull.
-      let q: any = (supabase as any)
-        .from("today_tasks")
-        .select("id, owner_agent_id, title, notes, due_at, completed_at, priority, source, is_income_producing, scheduled_call_id, created_at")
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("today_tasks")
+        .select("id,title,notes,due_at,completed_at,priority,is_income_producing")
+        .eq("owner_agent_id", agent.data!.id)
         .order("is_income_producing", { ascending: false })
         .order("completed_at", { ascending: true, nullsFirst: true })
-        .order("priority", { ascending: false })
-        .order("created_at", { ascending: true })
-        .limit(100);
-      // Non-admins get RLS-scoped automatically; admins get their own by default
-      // (they can hit /admin/SamHQ for the full leadership view).
-      if (ownerAgentId) q = q.eq("owner_agent_id", ownerAgentId);
-      const { data, error } = await q;
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as TaskRow[];
+      return (data ?? []) as Task[];
     },
   });
 
-  /* ---------- today's calls ---------- */
-  const callsQ = useQuery({
-    queryKey: ["today-page-calls"],
-    staleTime: 30_000,
-    refetchInterval: 2 * 60_000,
-    queryFn: async (): Promise<ScheduledCall[]> => {
-      // MP239b — apex_scheduled_calls is the source of truth (Calendly + Google
-      // Calendar webhooks land here). v_upcoming_calls is a thin projection.
-      // Server-side sort so first-call-of-the-day is always at the top even if
-      // the query returns >100 rows across days. Client-side isToday() uses the
-      // browser tz which, on Sam's Mac (America/Chicago), matches the daemon.
-      const { data, error } = await supabase
-        .from("v_upcoming_calls")
-        .select("id, prospect_name, prospect_phone, prospect_email, summary, location, start_at, end_at, duration_minutes, call_type, status, outcome")
+  const calls = useQuery({
+    queryKey: ["apex-today-calls", today], refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("v_upcoming_calls")
+        .select("id,prospect_name,summary,location,start_at,end_at,call_type,status,outcome")
         .order("start_at", { ascending: true });
       if (error) throw error;
-      return ((data ?? []) as ScheduledCall[]).filter((c) => isToday(new Date(c.start_at)));
+      return ((data ?? []) as Call[]).filter((call) => isToday(new Date(call.start_at)));
     },
   });
 
-  /* ---------- MP-250 top-of-page KPIs ----------
-     Sam directive 2026-07-07: three glanceable counts pinned above the fold
-     so Sam sees the recovery-funnel pressure before he opens any queue.
-       1. Stale unlicensed (v_unlicensed_all, days_since_touch >= 30)
-       2. XCEL passed-test with a stage gap (v_xcel_stage_gaps)
-       3. Aged leads not yet linked to any application row
-     60s auto-refresh via react-query. WoW delta placeholder until the daily
-     snapshot table lands — shows "—" instead of a fake number. */
-  const kpiStaleQ = useQuery({
-    queryKey: ["today-kpi-stale-unlicensed"],
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    queryFn: async (): Promise<number> => {
-      const { count, error } = await (supabase as any)
-        .from("v_unlicensed_all")
-        .select("*", { count: "exact", head: true })
-        .gte("days_since_touch", 30);
+  const revenue = useQuery({
+    queryKey: ["apex-today-revenue", today], refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("daily_production")
+        .select("aop,deals_closed").eq("production_date", today);
       if (error) throw error;
-      return count ?? 0;
+      return (data ?? []).reduce((acc, row) => ({
+        aop: acc.aop + Number(row.aop ?? 0), deals: acc.deals + Number(row.deals_closed ?? 0),
+      }), { aop: 0, deals: 0 });
     },
   });
 
-  const kpiPassedTestQ = useQuery({
-    queryKey: ["today-kpi-xcel-passed"],
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    queryFn: async (): Promise<number> => {
-      const { count, error } = await (supabase as any)
-        .from("v_xcel_stage_gaps")
-        .select("*", { count: "exact", head: true })
-        .eq("derived_progress", "passed_test");
+  const content = useQuery({
+    queryKey: ["apex-today-content"], refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("social_bot_drafts")
+        .select("id,title,hook,platform,status")
+        .in("status", ["approved", "pending", "awaiting_approval"])
+        .order("created_at", { ascending: false }).limit(20);
       if (error) throw error;
-      return count ?? 0;
+      const rows = (data ?? []) as ContentItem[];
+      return rows.find((row) => row.status === "approved") ?? rows[0] ?? null;
     },
   });
 
-  const kpiUnmatchedLeadsQ = useQuery({
-    queryKey: ["today-kpi-unmatched-aged-leads"],
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    queryFn: async (): Promise<number> => {
-      // Count aged (purchased) leads that have never been worked. The old query
-      // hit a view (v_aged_leads_unmatched) and a fallback column
-      // (aged_leads.matched_application_id) that BOTH do not exist in prod, so the
-      // tile errored. last_contacted_at IS NULL = the real "still to call" signal.
-      const { count, error } = await (supabase as any)
-        .from("aged_leads")
-        .select("*", { count: "exact", head: true })
-        .is("last_contacted_at", null);
+  const blockers = useQuery({
+    queryKey: ["apex-today-blockers"], refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("social_bot_blockers")
+        .select("id,title,description,severity,dollar_impact")
+        .eq("status", "open").order("dollar_impact", { ascending: false }).limit(3);
       if (error) throw error;
-      return count ?? 0;
+      return (data ?? []) as Blocker[];
     },
   });
 
-  /* ---------- top 5 hot prospects ---------- */
-  const hotQ = useQuery({
-    queryKey: ["today-hot-prospects"],
-    staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
-    queryFn: async (): Promise<HotProspect[]> => {
-      const { data, error } = await supabase
-        .from("v_hot_licensing_prospects" as any)
-        .select("application_id, name, phone, email, state, cohort, days_since_touch")
-        .order("days_since_touch", { ascending: false })
-        .limit(5);
+  const finances = useQuery({
+    queryKey: ["apex-today-finances"], refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("v_cfo_snapshot")
+        .select("ghost_ap_at_risk,dup_charges_open,ica_paid_stuck,as_of").maybeSingle();
       if (error) throw error;
-      return ((data as unknown) as HotProspect[]) ?? [];
+      return data as FinanceSnapshot | null;
     },
   });
 
-  /* ---------- mutations ---------- */
-  const toggleDone = useMutation({
-    mutationFn: async (t: TaskRow) => {
-      const nextCompleted = t.completed_at ? null : new Date().toISOString();
-      const { error } = await (supabase as any)
-        .from("today_tasks")
-        .update({ completed_at: nextCompleted })
-        .eq("id", t.id);
+  const toggleTask = useMutation({
+    mutationFn: async (task: Task) => {
+      const { error } = await (supabase as any).from("today_tasks")
+        .update({ completed_at: task.completed_at ? null : new Date().toISOString() }).eq("id", task.id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["today-tasks"] }),
-    onError: (e: any) => toast.error(e?.message ?? "Could not update task"),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["apex-today-tasks"] }),
+    onError: (error: any) => toast.error(error?.message ?? "Task update failed"),
   });
 
-  const toggleIncome = useMutation({
-    mutationFn: async (t: TaskRow) => {
-      const { error } = await (supabase as any)
-        .from("today_tasks")
-        .update({ is_income_producing: !t.is_income_producing })
-        .eq("id", t.id);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["today-tasks"] }),
-    onError: (e: any) => toast.error(e?.message ?? "Could not tag task"),
-  });
-
-  const addTask = useMutation({
-    mutationFn: async (payload: { title: string; income: boolean }) => {
-      if (!ownerAgentId) throw new Error("No agent row for current user");
-      const { error } = await (supabase as any)
-        .from("today_tasks")
-        .insert({
-          owner_agent_id: ownerAgentId,
-          title: payload.title,
-          is_income_producing: payload.income,
-          priority: payload.income ? "high" : "med",
-          source: "dashboard-today",
-        });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["today-tasks"] });
-      toast.success("Task added");
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Could not add task"),
-  });
-
-  const markCallDone = useMutation({
-    mutationFn: async (call: ScheduledCall) => {
-      // 1. Flip the source appointment status.
-      const { error: e1 } = await (supabase as any)
-        .from("apex_scheduled_calls")
-        .update({ status: "completed" })
-        .eq("id", call.id);
-      if (e1) throw e1;
-      // 2. If a mirror task exists, complete it too.
-      const { error: e2 } = await (supabase as any)
-        .from("today_tasks")
-        .update({ completed_at: new Date().toISOString() })
-        .eq("scheduled_call_id", call.id)
-        .is("completed_at", null);
-      if (e2 && e2.code !== "PGRST116") throw e2;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["today-page-calls"] });
-      qc.invalidateQueries({ queryKey: ["today-tasks"] });
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Could not mark call done"),
-  });
-
-  /* ---------- new-task input ---------- */
-  const [draft, setDraft] = useState("");
-  const [draftIsIncome, setDraftIsIncome] = useState(true);
-
-  /* ---------- derived: auto-mirror today's appointments into task list ----------
-     Purely a UI convenience — surfaced inline so Sam does not need to
-     round-trip via a background job. Not persisted unless he taps + on one. */
-  const tasks = tasksQ.data ?? [];
-  const income = tasks.filter((t) => t.is_income_producing && !t.completed_at);
-  const other = tasks.filter((t) => !t.is_income_producing && !t.completed_at);
-  const done = tasks.filter((t) => t.completed_at);
-
-  const doneCount = done.length;
-  const openCount = tasks.length - doneCount;
-  const incomeOpen = income.length;
-
-  const heroDate = format(new Date(), "EEEE · MMM d");
+  const openTasks = useMemo(() => (tasks.data ?? []).filter((task) => !task.completed_at), [tasks.data]);
+  const top3 = openTasks.slice(0, 3);
+  const done = useMemo(() => (tasks.data ?? []).filter((task) => task.completed_at && isToday(new Date(task.completed_at))), [tasks.data]);
+  const nextMeeting = (calls.data ?? []).find((call) => new Date(call.end_at ?? call.start_at) > new Date()) ?? null;
+  const nowTask = top3[0] ?? null;
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5 max-w-4xl mx-auto">
-      <PageHeader
-        eyebrow={heroDate}
-        eyebrowIcon={<CalendarCheck className="h-3 w-3" />}
-        title="Today"
-        subtitle="One list. Income-producing tasks pinned to the top. Appointments and hottest prospects one tap away. Tap a circle to mark it done."
-      />
+      <PageHeader eyebrow={format(new Date(), "EEEE · MMM d")} title="APEX Today" subtitle="One screen. Every item leads to an action." />
 
-      {/* ---------------- MP-250 top-of-page KPIs ---------------- */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <KpiCard
-          icon={<GraduationCap className="h-5 w-5" />}
-          label="Stale unlicensed (30d+)"
-          value={kpiStaleQ.data}
-          loading={kpiStaleQ.isLoading}
-          error={kpiStaleQ.isError}
-          delta={null}
-          href="/admin/unlicensed-all?filter=ghosted_30"
-          accent="rose"
-        />
-        <KpiCard
-          icon={<FileSpreadsheet className="h-5 w-5" />}
-          label="XCEL passed test · stage gap"
-          value={kpiPassedTestQ.data}
-          loading={kpiPassedTestQ.isLoading}
-          error={kpiPassedTestQ.isError}
-          delta={null}
-          href="/admin/unlicensed-all?filter=by_stage&stage=passed_test"
-          accent="amber"
-        />
-        <KpiCard
-          icon={<UserPlus className="h-5 w-5" />}
-          label="Aged leads · no app"
-          value={kpiUnmatchedLeadsQ.data}
-          loading={kpiUnmatchedLeadsQ.isLoading}
-          error={kpiUnmatchedLeadsQ.isError}
-          delta={null}
-          href="/admin/xcel-import"
-          accent="emerald"
-        />
-      </div>
+      <Section title="NOW" icon={<PlayCircle className="h-4 w-4 text-emerald-500" />}>
+        {nowTask ? <TaskCard task={nowTask} onToggle={() => toggleTask.mutate(nowTask)} /> : <Empty text="No open task. Use the next meeting or content action below." />}
+      </Section>
 
-      {/* ---------------- hero band ---------------- */}
-      <TodayHero
-        incomeOpen={incomeOpen}
-        openCount={openCount}
-        doneCount={doneCount}
-        callsToday={callsQ.data?.length ?? 0}
-        hotProspects={hotQ.data?.length ?? 0}
-      />
+      <Section title="TOP 3" icon={<Flame className="h-4 w-4 text-rose-500" />} badge={`${top3.length}/3`}>
+        {tasks.isLoading ? <Skeleton className="h-20" /> : top3.length ? top3.map((task) => <TaskCard key={task.id} task={task} onToggle={() => toggleTask.mutate(task)} />) : <Empty text="Top 3 cleared." />}
+      </Section>
 
-      {/* ---------------- add-task row ---------------- */}
-      <Card>
-        <CardContent className="p-3 flex items-center gap-2">
-          <Input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && draft.trim()) {
-                addTask.mutate({ title: draft.trim(), income: draftIsIncome });
-                setDraft("");
-              }
-            }}
-            placeholder="Add a task and press Enter…"
-            className="flex-1"
-            disabled={!ownerAgentId}
-          />
-          <Button
-            type="button"
-            variant={draftIsIncome ? "default" : "outline"}
-            size="sm"
-            onClick={() => setDraftIsIncome((v) => !v)}
-            className={cn(
-              "shrink-0",
-              draftIsIncome && "bg-emerald-600 hover:bg-emerald-700 text-white",
-            )}
-            title="Toggle income-producing"
-          >
-            <DollarSign className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline ml-1">Income</span>
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => {
-              if (!draft.trim()) return;
-              addTask.mutate({ title: draft.trim(), income: draftIsIncome });
-              setDraft("");
-            }}
-            disabled={!draft.trim() || !ownerAgentId || addTask.isPending}
-            className="shrink-0"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
-        </CardContent>
-      </Card>
+      <Section title="NEXT MEETING" icon={<CalendarCheck className="h-4 w-4 text-amber-500" />}>
+        {nextMeeting ? <MeetingCard call={nextMeeting} /> : <Empty text="No remaining meeting today." />}
+      </Section>
 
-      {!ownerAgentId && !agentQ.isLoading && (
-        <p className="text-xs text-amber-500 px-1">
-          No agent profile linked to your login yet — task edits are disabled until an admin links one.
-        </p>
-      )}
+      <Section title="REVENUE" icon={<DollarSign className="h-4 w-4 text-emerald-500" />}>
+        <ActionCard href="/dashboard/leaderboard" title={`${money(revenue.data?.aop)} ALP`} detail={`${revenue.data?.deals ?? 0} deals today`} />
+      </Section>
 
-      {/* ---------------- section 1: income-producing tasks ---------------- */}
-      <SectionHeader
-        icon={<DollarSign className="h-4 w-4 text-emerald-500" />}
-        title="Income-producing today"
-        count={incomeOpen}
-        subtitle="These move money. Do these first."
-      />
-      {tasksQ.isLoading ? (
-        <Skeleton className="h-16 w-full" />
-      ) : income.length === 0 ? (
-        <EmptyLine>
-          Nothing tagged as income yet. Tap the dollar-sign on any task below to pin it here.
-        </EmptyLine>
-      ) : (
-        <div className="space-y-2">
-          {income.map((t) => (
-            <TaskRowCard
-              key={t.id}
-              task={t}
-              onToggleDone={() => toggleDone.mutate(t)}
-              onToggleIncome={() => toggleIncome.mutate(t)}
-            />
-          ))}
-        </div>
-      )}
+      <Section title="CONTENT" icon={<PlayCircle className="h-4 w-4 text-violet-500" />}>
+        {content.data ? <ActionCard href="/dashboard/admin/content-command" title={content.data.title || content.data.hook || "Publish next approved piece"} detail={`${content.data.platform ?? "platform"} · ${content.data.status}`} /> : <Empty text="No ready content. Open Content Command to stage one piece." href="/dashboard/admin/content-command" />}
+      </Section>
 
-      {/* ---------------- section 2: today's appointments ---------------- */}
-      <SectionHeader
-        icon={<CalendarCheck className="h-4 w-4 text-amber-500" />}
-        title="Appointments today"
-        count={callsQ.data?.length ?? 0}
-        subtitle="Auto-populated from your calendar. Tap the circle to mark done."
-      />
-      {callsQ.isLoading ? (
-        <Skeleton className="h-16 w-full" />
-      ) : (callsQ.data ?? []).length === 0 ? (
-        <EmptyLine>No calls on the books for today. Book one, or work the hot prospects below.</EmptyLine>
-      ) : (
-        <div className="space-y-2">
-          {(callsQ.data ?? []).map((c) => (
-            <CallRowCard
-              key={c.id}
-              call={c}
-              onMarkDone={() => markCallDone.mutate(c)}
-            />
-          ))}
-        </div>
-      )}
+      <Section title="BLOCKED" icon={<AlertTriangle className="h-4 w-4 text-rose-500" />} badge={String(blockers.data?.length ?? 0)}>
+        {(blockers.data ?? []).length ? blockers.data!.map((blocker) => <ActionCard key={blocker.id} href="/dashboard/admin/content-command" title={blocker.title || blocker.description || "Open blocker"} detail={`${blocker.severity ?? "open"}${Number(blocker.dollar_impact ?? 0) ? ` · ${money(blocker.dollar_impact)} impact` : ""}`} />) : <Empty text="No open blockers." />}
+      </Section>
 
-      {/* ---------------- section 3: hot prospects ---------------- */}
-      <SectionHeader
-        icon={<Flame className="h-4 w-4 text-rose-500" />}
-        title="Hot recovery queue"
-        count={hotQ.data?.length ?? 0}
-        subtitle="Top 5 closest-to-licensed prospects. One tap dials."
-        rightSlot={
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/admin/recovery-queue" className="text-xs">
-              Full queue <ChevronRight className="h-3 w-3 ml-1" />
-            </Link>
-          </Button>
-        }
-      />
-      {hotQ.isLoading ? (
-        <Skeleton className="h-16 w-full" />
-      ) : (hotQ.data ?? []).length === 0 ? (
-        <EmptyLine>Nothing hot right now. Fresh applicants will surface here as they enter the pipeline.</EmptyLine>
-      ) : (
-        <div className="space-y-2">
-          {(hotQ.data ?? []).map((p) => (
-            <ProspectRowCard key={p.application_id} p={p} />
-          ))}
-        </div>
-      )}
+      <Section title="FINANCES" icon={<WalletCards className="h-4 w-4 text-amber-500" />}>
+        <ActionCard href="/dashboard/finances" title={`${money(finances.data?.ghost_ap_at_risk)} at risk`} detail={`${finances.data?.dup_charges_open ?? 0} duplicate-charge flags · ${finances.data?.ica_paid_stuck ?? 0} paid-and-stuck`} />
+      </Section>
 
-      {/* ---------------- other open tasks (unpinned) ---------------- */}
-      {other.length > 0 && (
-        <>
-          <SectionHeader
-            icon={<Sparkles className="h-4 w-4 text-slate-400" />}
-            title="Other open tasks"
-            count={other.length}
-            subtitle="Not tagged as income-producing yet."
-          />
-          <div className="space-y-2">
-            {other.map((t) => (
-              <TaskRowCard
-                key={t.id}
-                task={t}
-                onToggleDone={() => toggleDone.mutate(t)}
-                onToggleIncome={() => toggleIncome.mutate(t)}
-              />
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* ---------------- done today (collapsed footer) ---------------- */}
-      {doneCount > 0 && (
-        <>
-          <SectionHeader
-            icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-            title="Cleared today"
-            count={doneCount}
-            subtitle="Nice."
-          />
-          <div className="space-y-2 opacity-60">
-            {done.slice(0, 20).map((t) => (
-              <TaskRowCard
-                key={t.id}
-                task={t}
-                onToggleDone={() => toggleDone.mutate(t)}
-                onToggleIncome={() => toggleIncome.mutate(t)}
-              />
-            ))}
-          </div>
-        </>
-      )}
-
-      {tasksQ.isError && (
-        <Card className="border-rose-500/40 bg-rose-500/5">
-          <CardContent className="p-4 text-sm text-rose-600 dark:text-rose-400">
-            Task list failed to load: {(tasksQ.error as any)?.message ?? "unknown error"}
-          </CardContent>
-        </Card>
-      )}
+      <Section title="DONE" icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />} badge={String(done.length)}>
+        {done.length ? done.map((task) => <TaskCard key={task.id} task={task} onToggle={() => toggleTask.mutate(task)} />) : <Empty text="Nothing completed yet." />}
+      </Section>
     </div>
   );
 }
 
-/* -------------------- small pieces -------------------- */
-
-function SectionHeader({
-  icon, title, count, subtitle, rightSlot,
-}: {
-  icon: React.ReactNode; title: string; count: number; subtitle?: string; rightSlot?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-2 pt-2">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        {icon}
-        <h2 className="text-sm font-bold uppercase tracking-wide truncate">{title}</h2>
-        <Badge variant="outline" className="text-[10px]">{count}</Badge>
-      </div>
-      {rightSlot}
-      {subtitle && !rightSlot && (
-        <p className="text-[11px] text-muted-foreground hidden sm:block truncate">{subtitle}</p>
-      )}
-    </div>
-  );
+function Section({ title, icon, badge, children }: { title: string; icon: React.ReactNode; badge?: string; children: React.ReactNode }) {
+  return <section className="space-y-2"><div className="flex items-center gap-2">{icon}<h2 className="text-sm font-black tracking-[0.16em]">{title}</h2>{badge && <Badge variant="outline" className="text-[10px]">{badge}</Badge>}</div>{children}</section>;
 }
 
-function EmptyLine({ children }: { children: React.ReactNode }) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <EmptyState
-          icon={<Circle className="h-5 w-5" />}
-          title="Nothing here yet"
-          description={String(children)}
-        />
-      </CardContent>
-    </Card>
-  );
+function TaskCard({ task, onToggle }: { task: Task; onToggle: () => void }) {
+  return <Card className={cn(task.completed_at ? "opacity-60" : task.is_income_producing && "border-emerald-500/40 bg-emerald-500/5")}><CardContent className="p-3 flex items-center gap-3"><button onClick={onToggle} aria-label={task.completed_at ? "Reopen task" : "Complete task"}>{task.completed_at ? <CheckCircle2 className="h-6 w-6 text-emerald-500" /> : <Circle className="h-6 w-6 text-muted-foreground" />}</button><div className="min-w-0 flex-1"><p className={cn("text-sm font-semibold", task.completed_at && "line-through")}>{task.title}</p>{task.notes && <p className="text-xs text-muted-foreground truncate">{task.notes}</p>}</div>{task.is_income_producing && <DollarSign className="h-4 w-4 text-emerald-500" />}</CardContent></Card>;
 }
 
-function TaskRowCard({
-  task, onToggleDone, onToggleIncome,
-}: {
-  task: TaskRow;
-  onToggleDone: () => void;
-  onToggleIncome: () => void;
-}) {
-  const done = !!task.completed_at;
-  return (
-    <Card className={cn(
-      task.is_income_producing && !done && "border-emerald-500/40 bg-emerald-500/5",
-      done && "border-slate-200 dark:border-slate-800",
-    )}>
-      <CardContent className="p-3 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onToggleDone}
-          aria-label={done ? "Mark not done" : "Mark done"}
-          className="shrink-0"
-        >
-          {done ? (
-            <CheckCircle2 className="h-6 w-6 text-emerald-500" />
-          ) : (
-            <Circle className="h-6 w-6 text-slate-400 hover:text-emerald-500 transition-colors" />
-          )}
-        </button>
-        <div className="flex-1 min-w-0">
-          <p className={cn(
-            "text-sm font-medium truncate",
-            done && "line-through text-muted-foreground",
-          )}>
-            {task.title}
-          </p>
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
-            {task.priority === "high" && !done && (
-              <Badge variant="outline" className="text-[10px] border-rose-500/40 text-rose-500">
-                high
-              </Badge>
-            )}
-            {task.scheduled_call_id && (
-              <span className="flex items-center gap-1">
-                <CalendarCheck className="h-3 w-3" /> from calendar
-              </span>
-            )}
-            {task.source && task.source !== "manual" && task.source !== "dashboard-today" && (
-              <span className="truncate">{task.source}</span>
-            )}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onToggleIncome}
-          aria-label={task.is_income_producing ? "Unmark income-producing" : "Mark income-producing"}
-          className="shrink-0 p-1"
-        >
-          <Star
-            className={cn(
-              "h-5 w-5 transition-colors",
-              task.is_income_producing
-                ? "fill-emerald-500 text-emerald-500"
-                : "text-slate-400 hover:text-emerald-500",
-            )}
-          />
-        </button>
-      </CardContent>
-    </Card>
-  );
+function MeetingCard({ call }: { call: Call }) {
+  const label = call.prospect_name || call.summary || "Meeting";
+  return <Card className="border-amber-500/30 bg-amber-500/5"><CardContent className="p-4 flex items-center gap-3"><div className="w-16 text-center"><p className="font-black tabular-nums">{format(new Date(call.start_at), "h:mm")}</p><p className="text-[10px] text-muted-foreground">{format(new Date(call.start_at), "a")}</p></div><div className="min-w-0 flex-1"><p className="text-sm font-semibold truncate">{label}</p><p className="text-xs text-muted-foreground">{call.call_type}</p></div>{call.location?.startsWith("http") && <Button asChild size="sm"><a href={call.location} target="_blank" rel="noopener noreferrer">Join</a></Button>}</CardContent></Card>;
 }
 
-function CallRowCard({
-  call, onMarkDone,
-}: {
-  call: ScheduledCall; onMarkDone: () => void;
-}) {
-  const start = new Date(call.start_at);
-  const isDone =
-    (call.status ?? "").toLowerCase() === "completed" ||
-    (call.outcome ?? "").toLowerCase() === "connected" ||
-    (call.outcome ?? "").toLowerCase() === "booked";
-  const label = call.prospect_name || call.summary || "Untitled call";
-
-  return (
-    <Card className={cn(
-      "border",
-      isDone
-        ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500/30"
-        : "border-amber-500/20 bg-amber-500/5",
-    )}>
-      <CardContent className="p-3 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onMarkDone}
-          aria-label={isDone ? "Already completed" : "Mark call done"}
-          className="shrink-0"
-          disabled={isDone}
-        >
-          {isDone ? (
-            <CheckCircle2 className="h-6 w-6 text-emerald-500" />
-          ) : (
-            <Circle className="h-6 w-6 text-slate-400 hover:text-emerald-500 transition-colors" />
-          )}
-        </button>
-        <div className="text-center w-14 shrink-0">
-          <p className="text-14 font-bold tabular-nums leading-none">{format(start, "h:mm")}</p>
-          <p className="text-[10px] text-muted-foreground uppercase">{format(start, "a")}</p>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate">{label}</p>
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            {call.duration_minutes && (
-              <span className="flex items-center gap-1">
-                <Timer className="h-3 w-3" /> {call.duration_minutes}m
-              </span>
-            )}
-            {call.call_type && (
-              <Badge variant="outline" className="text-[10px]">{call.call_type}</Badge>
-            )}
-          </div>
-        </div>
-        {(() => {
-          const joinUrl = extractJoinUrl(call.location);
-          return joinUrl ? (
-            <Button asChild size="sm" className="shrink-0 bg-sky-600 hover:bg-sky-700 text-white">
-              <a href={joinUrl} target="_blank" rel="noopener noreferrer">
-                <Video className="h-3.5 w-3.5 mr-1" /> {joinLabel(joinUrl)}
-              </a>
-            </Button>
-          ) : null;
-        })()}
-        {call.prospect_phone && (
-          <Button asChild size="sm" variant="outline" className="shrink-0">
-            <a href={telHref(call.prospect_phone)}>
-              <Phone className="h-3.5 w-3.5 mr-1" /> Call
-            </a>
-          </Button>
-        )}
-      </CardContent>
-    </Card>
-  );
+function ActionCard({ href, title, detail }: { href: string; title: string; detail: string }) {
+  return <Link to={href}><Card className="hover:border-emerald-500/40 transition-colors"><CardContent className="p-4 flex items-center gap-3"><div className="min-w-0 flex-1"><p className="text-sm font-semibold truncate">{title}</p><p className="text-xs text-muted-foreground">{detail}</p></div><ChevronRight className="h-4 w-4 text-muted-foreground" /></CardContent></Card></Link>;
 }
 
-function ProspectRowCard({ p }: { p: HotProspect }) {
-  return (
-    <Card className="border-rose-500/25 bg-rose-500/5">
-      <CardContent className="p-3 flex items-center gap-3">
-        <Flame className="h-5 w-5 text-rose-500 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate">{p.name}</p>
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
-            {p.state && <span>{p.state}</span>}
-            {p.days_since_touch !== null && (
-              <span className="text-amber-500">{p.days_since_touch}d stale</span>
-            )}
-            {p.cohort && <Badge variant="outline" className="text-[10px]">{p.cohort.replace(/^[A-G]_/, "")}</Badge>}
-          </div>
-        </div>
-        {p.phone && (
-          <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0">
-            <a href={telHref(p.phone)}>
-              <Phone className="h-3.5 w-3.5 mr-1" />
-              <span className="hidden sm:inline">{formatPhone(p.phone)}</span>
-              <span className="sm:hidden">Call</span>
-            </a>
-          </Button>
-        )}
-        <Button asChild variant="ghost" size="sm" className="shrink-0 h-8 w-8 p-0">
-          <Link to={`/dashboard/applicants?id=${p.application_id}`} aria-label="Open applicant">
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-/* -------------------- MP-250 KPI card -------------------- */
-
-const KPI_ACCENT: Record<"rose" | "amber" | "emerald", { border: string; text: string; bg: string }> = {
-  rose:    { border: "border-rose-500/30",    text: "text-rose-500",    bg: "bg-rose-500/5" },
-  amber:   { border: "border-amber-500/30",   text: "text-amber-500",   bg: "bg-amber-500/5" },
-  emerald: { border: "border-emerald-500/30", text: "text-emerald-500", bg: "bg-emerald-500/5" },
-};
-
-function KpiCard({
-  icon, label, value, loading, error, delta, href, accent,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number | undefined;
-  loading: boolean;
-  error: boolean;
-  delta: number | null;
-  href: string;
-  accent: keyof typeof KPI_ACCENT;
-}) {
-  const a = KPI_ACCENT[accent];
-  const deltaLabel = delta === null || delta === undefined ? "—" : (delta > 0 ? `+${delta}` : `${delta}`);
-  return (
-    <Link
-      to={href}
-      className={cn(
-        "rounded-xl border transition-colors hover:brightness-105 group",
-        a.border, a.bg,
-      )}
-    >
-      <div className="p-3 flex items-center gap-3">
-        <div className={cn("shrink-0", a.text)}>{icon}</div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground truncate">
-            {label}
-          </p>
-          {loading ? (
-            <Skeleton className="h-7 w-16 mt-1" />
-          ) : error ? (
-            <p className="text-lg font-black leading-none mt-1 text-muted-foreground">—</p>
-          ) : (
-            <p className={cn("text-2xl sm:text-3xl font-black leading-none tabular-nums mt-1", a.text)}>
-              {value ?? 0}
-            </p>
-          )}
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">WoW</p>
-          <p className="text-xs font-bold tabular-nums text-muted-foreground">{deltaLabel}</p>
-        </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 group-hover:translate-x-0.5 transition-transform" />
-      </div>
-    </Link>
-  );
-}
-
-/* -------------------- hero -------------------- */
-
-function TodayHero({
-  incomeOpen, openCount, doneCount, callsToday, hotProspects,
-}: {
-  incomeOpen: number; openCount: number; doneCount: number; callsToday: number; hotProspects: number;
-}) {
-  const total = openCount + doneCount;
-  const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
-
-  return (
-    <div className="rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white overflow-hidden relative">
-      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
-      <div className="relative p-5 sm:p-6">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          </span>
-          <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">TODAY · LIVE</p>
-          <p className="text-[11px] text-white/50 ml-auto tabular-nums">{pct}% cleared</p>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <HeroTile label="INCOME OPEN" value={incomeOpen} accent="text-emerald-300" />
-          <HeroTile label="APPOINTMENTS" value={callsToday} accent="text-amber-300" />
-          <HeroTile label="HOT PROSPECTS" value={hotProspects} accent="text-rose-300" />
-          <HeroTile label="DONE / TOTAL" value={`${doneCount}/${total}`} accent="text-white" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function HeroTile({ label, value, accent }: { label: string; value: number | string; accent: string }) {
-  return (
-    <div>
-      <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold mb-1">{label}</p>
-      <p className={cn("text-[32px] sm:text-[36px] leading-none font-black tabular-nums", accent)}>{value}</p>
-    </div>
-  );
+function Empty({ text, href }: { text: string; href?: string }) {
+  const body = <Card><CardContent className="p-4 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">{text}</p>{href && <ChevronRight className="h-4 w-4" />}</CardContent></Card>;
+  return href ? <Link to={href}>{body}</Link> : body;
 }

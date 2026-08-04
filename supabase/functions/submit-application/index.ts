@@ -106,6 +106,106 @@ const ConsentSchema = z.object({
   formVersion: z.string().max(50).optional().nullable(),
 });
 
+/**
+ * First-touch attribution fields (2026-08-04).
+ *
+ * Shared by the full-submit and quick-qualify schemas so the two paths can
+ * never drift. All optional + nullable: the client is the only producer, and
+ * a browser running a cached bundle from before this ship must keep working.
+ *
+ * Why this exists: Apply.tsx read utm_* off the /apply URL at submit time, so
+ * anyone who landed on /?utm_source=...&gclid=... and clicked through lost the
+ * params on the client-side route change. 776 of 783 applications recorded
+ * utm_source = NULL, and gclid was never stored at all — which blocked Google
+ * Ads offline conversion import entirely.
+ *
+ * Click-id max lengths are generous (gclid/gbraid/wbraid can run long) but
+ * still bounded; attributionJson is an audit blob of the first/last/current
+ * snapshots, capped client-side at 4 KB.
+ */
+const FirstTouchAttributionShape = {
+  gclid: z.string().max(500).optional().nullable(),
+  gbraid: z.string().max(500).optional().nullable(),
+  wbraid: z.string().max(500).optional().nullable(),
+  fbclid: z.string().max(500).optional().nullable(),
+  ttclid: z.string().max(500).optional().nullable(),
+  msclkid: z.string().max(500).optional().nullable(),
+  firstTouchAt: z.string().max(64).optional().nullable(),
+  firstLandingUrl: z.string().max(500).optional().nullable(),
+  firstReferrer: z.string().max(500).optional().nullable(),
+  attributionJson: z.record(z.unknown()).optional().nullable(),
+};
+
+/**
+ * Map the validated first-touch fields onto applications columns. Returns a
+ * plain object that is spread into the insert/update payloads — additive only,
+ * so nothing existing changes shape.
+ *
+ * firstTouchAt is written to a timestamptz column, so a non-ISO string is
+ * dropped rather than risking a 22007 on the whole insert.
+ */
+function firstTouchColumns(data: {
+  gclid?: string | null;
+  gbraid?: string | null;
+  wbraid?: string | null;
+  fbclid?: string | null;
+  ttclid?: string | null;
+  msclkid?: string | null;
+  firstTouchAt?: string | null;
+  firstLandingUrl?: string | null;
+  firstReferrer?: string | null;
+  attributionJson?: Record<string, unknown> | null;
+}): Record<string, unknown> {
+  let firstTouchAt: string | null = null;
+  if (data.firstTouchAt) {
+    const parsed = new Date(data.firstTouchAt);
+    if (!Number.isNaN(parsed.getTime())) firstTouchAt = parsed.toISOString();
+  }
+  return {
+    gclid: data.gclid ?? null,
+    gbraid: data.gbraid ?? null,
+    wbraid: data.wbraid ?? null,
+    fbclid: data.fbclid ?? null,
+    ttclid: data.ttclid ?? null,
+    msclkid: data.msclkid ?? null,
+    first_touch_at: firstTouchAt,
+    first_landing_url: data.firstLandingUrl ?? null,
+    first_referrer: data.firstReferrer ?? null,
+    attribution_json: data.attributionJson ?? null,
+  };
+}
+
+const FIRST_TOUCH_COLUMN_KEYS = [
+  "gclid",
+  "gbraid",
+  "wbraid",
+  "fbclid",
+  "ttclid",
+  "msclkid",
+  "first_touch_at",
+  "first_landing_url",
+  "first_referrer",
+  "attribution_json",
+] as const;
+
+/**
+ * Drop null first-touch keys from an UPDATE payload.
+ *
+ * First-touch is write-once by definition. On any update path (quick-qualify
+ * re-submit, quick→full upgrade) the row may already hold a good gclid from an
+ * earlier submit while this request carries none — the visitor cleared storage,
+ * switched browsers, or came back through a different device. Sending null
+ * there would erase real attribution. Inserts still write the full column set
+ * (nulls included) because there is nothing to erase.
+ */
+function stripNullFirstTouch(payload: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...payload };
+  for (const key of FIRST_TOUCH_COLUMN_KEYS) {
+    if (out[key] === null || out[key] === undefined) delete out[key];
+  }
+  return out;
+}
+
 const FullSubmitApplicationSchema = z.object({
   quickQualifiedApplicationId: z.string().uuid().optional().nullable(),
   firstName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
@@ -146,6 +246,11 @@ const FullSubmitApplicationSchema = z.object({
   utmContent: z.string().max(200).optional().nullable(),
   utmTerm: z.string().max(200).optional().nullable(),
   landingUrl: z.string().max(500).optional().nullable(),
+  // First-touch attribution (2026-08-04). See src/lib/attribution.ts — the
+  // client now persists the landing campaign so it survives the SPA route
+  // change to /apply. Every field is optional so older clients (and any
+  // cached bundle still in a user's browser) keep submitting successfully.
+  ...FirstTouchAttributionShape,
 });
 
 const QuickQualifySchema = z.object({
@@ -164,6 +269,7 @@ const QuickQualifySchema = z.object({
   utmContent: z.string().max(200).optional().nullable(),
   utmTerm: z.string().max(200).optional().nullable(),
   landingUrl: z.string().max(500).optional().nullable(),
+  ...FirstTouchAttributionShape,
 });
 
 type SubmitApplicationRequest = z.infer<typeof FullSubmitApplicationSchema>;
@@ -1111,6 +1217,7 @@ async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): 
     update.utm_content = data.utmContent ?? null;
     update.utm_term = data.utmTerm ?? null;
     update.landing_url = data.landingUrl ?? consent?.sourceUrl ?? null;
+    Object.assign(update, stripNullFirstTouch(firstTouchColumns(data)));
 
     await supabaseAdmin.from("applications").update(update).eq("id", existingApp.id);
 
@@ -1140,6 +1247,7 @@ async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): 
     utm_content: data.utmContent ?? null,
     utm_term: data.utmTerm ?? null,
     landing_url: data.landingUrl ?? consent?.sourceUrl ?? null,
+    ...firstTouchColumns(data),
     notes: "Quick-qualified paid-social lead; full application pending.",
     assigned_agent_id: resolvedAssigned,
     recruiter_id: resolvedRecruiter,
@@ -1329,6 +1437,7 @@ const handler = async (req: Request): Promise<Response> => {
       utm_content: data.utmContent ?? null,
       utm_term: data.utmTerm ?? null,
       landing_url: data.landingUrl ?? consent?.sourceUrl ?? null,
+      ...firstTouchColumns(data),
       notes: manualReferralNote,
 
       // Assign to the selected referral agent. PL-082: when no referrer is
@@ -1395,7 +1504,10 @@ const handler = async (req: Request): Promise<Response> => {
         .maybeSingle();
 
       if (existingApp.status === "quick_qualified") {
-        const updatePayload = buildApplicationPayload(false);
+        // stripNullFirstTouch: the quick-qualify insert may already have stored
+        // a gclid/first_touch_at. If this full submit carries none (storage
+        // cleared, different device), leave the earlier values alone.
+        const updatePayload = stripNullFirstTouch(buildApplicationPayload(false));
         const { error: upgradeError } = await supabaseAdmin
           .from("applications")
           .update({

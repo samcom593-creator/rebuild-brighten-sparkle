@@ -43,6 +43,7 @@ import { QuickQualifyStep } from "@/pages/apply/QuickQualifyStep";
 // mount. Cleared on successful submit so it doesn't leak into a second
 // application from the same browser.
 import { getRefSlug, clearRefSlug } from "@/lib/refSlug";
+import { getAttribution } from "@/lib/attribution";
 import { isDialablePhone, normalizePhoneForDial } from "@/lib/phone";
 
 const applicationBaseSchema = z.object({
@@ -285,7 +286,10 @@ export default function Apply() {
   const savePartialApplication = async (stepCompleted: number, quickIdOverride?: string | null) => {
     try {
       const values = getValues();
-      
+      // Same first-touch source as the real submit — see getTrafficPayload
+      // below. Partial rows used to inherit the identical NULL-utm bug.
+      const attribution = getAttribution();
+
       // Only save if we have at least email or phone
       if (!values.email && !values.phone) return;
 
@@ -306,13 +310,18 @@ export default function Apply() {
           instagramHandle: values.instagramHandle,
           availability: values.availability,
           quickQualifiedApplicationId: quickIdOverride ?? quickApplicationId ?? null,
-          source: searchParams.get("source") || null,
-          utmSource: searchParams.get("utm_source") || null,
-          utmMedium: searchParams.get("utm_medium") || null,
-          utmCampaign: searchParams.get("utm_campaign") || null,
-          utmContent: searchParams.get("utm_content") || null,
-          utmTerm: searchParams.get("utm_term") || null,
-          landingUrl: window.location.pathname,
+          source: attribution.source,
+          utmSource: attribution.utmSource,
+          utmMedium: attribution.utmMedium,
+          utmCampaign: attribution.utmCampaign,
+          utmContent: attribution.utmContent,
+          utmTerm: attribution.utmTerm,
+          gclid: attribution.gclid,
+          fbclid: attribution.fbclid,
+          firstTouchAt: attribution.firstTouchAt,
+          firstLandingUrl: attribution.firstLandingUrl,
+          firstReferrer: attribution.firstReferrer,
+          landingUrl: attribution.landingUrl,
         },
         user_agent: navigator.userAgent,
       };
@@ -481,15 +490,41 @@ export default function Apply() {
     return await trigger(fieldsToValidate);
   };
 
-  const getTrafficPayload = () => ({
-    source: searchParams.get("source") || null,
-    utmSource: searchParams.get("utm_source") || null,
-    utmMedium: searchParams.get("utm_medium") || null,
-    utmCampaign: searchParams.get("utm_campaign") || null,
-    utmContent: searchParams.get("utm_content") || null,
-    utmTerm: searchParams.get("utm_term") || null,
-    landingUrl: window.location.pathname,
-  });
+  // 2026-08-04 first-touch attribution fix.
+  //
+  // This used to read every field off `searchParams`, i.e. the /apply URL at
+  // submit time. Anyone who landed on /?utm_source=google&gclid=... and then
+  // clicked through to /apply lost the whole query string on that client-side
+  // route change, so the application recorded utm_source = NULL. That was 776
+  // of 783 rows in production (99.1%), and gclid was never captured anywhere,
+  // which made Google Ads offline conversion import impossible.
+  //
+  // getAttribution() reads the first-touch snapshot captured at app entry
+  // (src/lib/attribution.ts, called from main.tsx before React mounts) and
+  // falls back to the live URL only when nothing is stored — so a direct
+  // /apply?utm_* link keeps working exactly as it did.
+  const getTrafficPayload = () => {
+    const attribution = getAttribution();
+    return {
+      source: attribution.source,
+      utmSource: attribution.utmSource,
+      utmMedium: attribution.utmMedium,
+      utmCampaign: attribution.utmCampaign,
+      utmContent: attribution.utmContent,
+      utmTerm: attribution.utmTerm,
+      gclid: attribution.gclid,
+      gbraid: attribution.gbraid,
+      wbraid: attribution.wbraid,
+      fbclid: attribution.fbclid,
+      ttclid: attribution.ttclid,
+      msclkid: attribution.msclkid,
+      firstTouchAt: attribution.firstTouchAt,
+      firstLandingUrl: attribution.firstLandingUrl,
+      firstReferrer: attribution.firstReferrer,
+      attributionJson: attribution.attributionJson,
+      landingUrl: attribution.landingUrl,
+    };
+  };
 
   const submitQuickQualify = async () => {
     const values = getValues();

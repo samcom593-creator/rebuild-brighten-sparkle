@@ -501,21 +501,28 @@ export default function BookOfBusiness() {
         setSegments((segRows as unknown as BookSegmentRow[]) ?? null);
       }
 
-      const { data: cbRows, error: cbErr } = await supabase
-        .from("v_chargeback_watch" as any)
-        .select(
-          "deal_key, policy_number, client_name, carrier, agent_name, status, months_in_force, annual_premium, est_clawback_exposure, priority, what_this_means",
-        )
-        .order("priority", { ascending: true })
-        .order("est_clawback_exposure", { ascending: false })
-        .limit(200);
-      if (cbErr) {
-        logger.warn("[BookOfBusiness] v_chargeback_watch read failed", {
-          error: cbErr.message,
-        });
-        setCbWatch(null);
+      // v_chargeback_watch is agency-wide (keyed on agent_name, no id to scope by),
+      // so it's an admin/manager oversight tool. A plain agent must NOT see the whole
+      // agency's chargeback exposure — gate the fetch to admins/managers.
+      if (isAdmin || isManager) {
+        const { data: cbRows, error: cbErr } = await supabase
+          .from("v_chargeback_watch" as any)
+          .select(
+            "deal_key, policy_number, client_name, carrier, agent_name, status, months_in_force, annual_premium, est_clawback_exposure, priority, what_this_means",
+          )
+          .order("priority", { ascending: true })
+          .order("est_clawback_exposure", { ascending: false })
+          .limit(200);
+        if (cbErr) {
+          logger.warn("[BookOfBusiness] v_chargeback_watch read failed", {
+            error: cbErr.message,
+          });
+          setCbWatch(null);
+        } else {
+          setCbWatch((cbRows as unknown as ChargebackWatchRow[]) ?? null);
+        }
       } else {
-        setCbWatch((cbRows as unknown as ChargebackWatchRow[]) ?? null);
+        setCbWatch([]);
       }
 
       const { data: persRows, error: persErr } = await supabase

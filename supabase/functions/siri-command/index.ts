@@ -92,7 +92,7 @@ function parseIntent(command: string): Intent {
     const parsed = whenRaw ? parseWhen(whenRaw) : { when: undefined, whenRaw: undefined };
     return {
       kind: "schedule",
-      title: `Call with ${whoRaw || "TBD"}`,
+      title: whoRaw ? `Call with ${whoRaw}` : `Call`,
       whoRaw,
       whenRaw: parsed.whenRaw ?? whenRaw,
       when:   parsed.when,

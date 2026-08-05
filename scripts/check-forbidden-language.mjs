@@ -51,6 +51,23 @@ const FORBIDDEN = [
   ["unlock personalized", "AI-tell — say what actually shows up on the dashboard, not 'personalized X'"],
   ["accurate projections", "AI-tell — either name the metric that gets projected or drop the promise"],
   ["coaching insights", "AI-tell — say the actual coaching advice, not 'insights'"],
+  // wave-placeholder-guard (2026-08-05, Website Integrity Bot Check 5):
+  // extra substring markers for placeholder content that must never ship.
+  // These 3 are proven-zero false-positive outside SKIP_FILES/SKIP_LINE_REGEX
+  // (both John/Jane Doe hits live in JSX placeholder="…" attrs that are
+  // already skipped; 'lorem' has zero substring hits in English UI copy).
+  ["lorem", "placeholder marker must never ship (partner to 'lorem ipsum'; catches split placeholder text)"],
+  ["john doe", "fake-name placeholder must never ship as visible copy (safe as <Input placeholder=> hint — that context is auto-skipped)"],
+  ["jane doe", "fake-name placeholder must never ship as visible copy (safe as <Input placeholder=> hint — that context is auto-skipped)"],
+];
+
+// wave-placeholder-guard (2026-08-05): word-boundary / case-sensitive markers
+// that would trip on innocent English substrings if added to FORBIDDEN. Each
+// entry is [RegExp, reason]. Same SKIP_FILES + SKIP_LINE_REGEX apply.
+const FORBIDDEN_REGEX = [
+  [/\bTBD\b/, "TBD placeholder must never ship as visible copy (case-sensitive: covers 'TBD' but not 'outbid' etc)"],
+  [/\bREPLACE[_ ]?ME\b/i, "REPLACE_ME / 'replace me' placeholder must never ship (word-bounded: 'replacement' is safe)"],
+  [/\[placeholder\]/i, "bracketed [placeholder] annotation must never ship in user-facing copy"],
 ];
 
 const TEXT_EXTS = new Set([".tsx", ".ts", ".jsx", ".js", ".md", ".html"]);
@@ -104,6 +121,18 @@ for (const file of files) {
           file: path.relative(repoRoot, file),
           line: i + 1,
           term,
+          reason,
+          snippet: line.trim().slice(0, 140),
+        });
+      }
+    }
+    for (const [pattern, reason] of FORBIDDEN_REGEX) {
+      const m = line.match(pattern);
+      if (m) {
+        violations.push({
+          file: path.relative(repoRoot, file),
+          line: i + 1,
+          term: m[0],
           reason,
           snippet: line.trim().slice(0, 140),
         });

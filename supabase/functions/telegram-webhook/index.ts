@@ -626,11 +626,11 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
       break;
     case "/seminar": {
       const { data: setting } = await sb.from("system_settings").select("value").eq("key", "next_seminar_at").maybeSingle();
-      const next = (setting as any)?.value || "Schedule TBD — Sam drops the next date here.";
-      await tgSend({
-        chat_id,
-        text: `Next seminar:\n\n${next}\n\nRSVP confirms your seat. Reminders fire T-24h and T-1h.`,
-      });
+      const next = (setting as any)?.value;
+      const text = next
+        ? `Next seminar:\n\n${next}\n\nRSVP confirms your seat. Reminders fire T-24h and T-1h.`
+        : `Next seminar isn't posted yet. Sam drops the date here as soon as it's locked. Reply /seminar again in a day, or ping Sam directly.`;
+      await tgSend({ chat_id, text });
       break;
     }
     case "/training": {

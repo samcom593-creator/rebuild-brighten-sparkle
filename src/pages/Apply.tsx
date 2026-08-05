@@ -449,8 +449,6 @@ export default function Apply() {
               ? `Referred by ${payload.display_name} — we'll credit them.`
               : "Referral link detected!",
           );
-        } else {
-
         }
       } catch (err) {
         console.error("[Apply] ref_slug resolve failed:", err);

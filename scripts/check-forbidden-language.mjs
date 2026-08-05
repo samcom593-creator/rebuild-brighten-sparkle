@@ -58,6 +58,13 @@ const SKIP_DIRS = new Set([
   "node_modules", ".git", "dist", "build", ".next", ".turbo",
   "scripts", // this file lives here — exempt to avoid self-trigger
 ]);
+// Receipts + banner logs describe the banned terms by name (that's the whole
+// point of the fix-record). Same exemption pattern as check-external-link-noopener
+// already applies to these files. Add sparingly — the goal is user-facing copy.
+const SKIP_FILES = new Set([
+  "src/data/shipped-data.ts",
+  "src/components/dashboard/WhatShippedTodayBanner.tsx",
+]);
 
 // Lines matching any of these get skipped (legitimate use of a flagged term).
 const SKIP_LINE_REGEX = [
@@ -83,6 +90,8 @@ const files = walk(repoRoot);
 const violations = [];
 
 for (const file of files) {
+  const rel = path.relative(repoRoot, file);
+  if (SKIP_FILES.has(rel)) continue;
   const content = fs.readFileSync(file, "utf8");
   const lines = content.split("\n");
   for (let i = 0; i < lines.length; i++) {

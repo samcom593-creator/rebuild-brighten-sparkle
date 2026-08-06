@@ -71,6 +71,15 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const [phone, setPhone] = useState("");
   const [managerId, setManagerId] = useState("");
   const [licenseStatus, setLicenseStatus] = useState<"licensed" | "unlicensed">("unlicensed");
+  // Sam 2026-08-06: capture the NPN at add time. agents.nipr_number has existed
+  // since the original schema but no UI ever wrote to it — 0 of 178 agent rows
+  // had an NPN. Same discipline as Apply.tsx / HireLink.tsx: an agent marked
+  // "licensed" with no NPN is an unprovable self-claim, so the NPN is required
+  // whenever the licensed option is picked.
+  const [npn, setNpn] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [licenseStates, setLicenseStates] = useState("");
+  const [licenseExpiresAt, setLicenseExpiresAt] = useState("");
   const [builderTrack, setBuilderTrack] = useState<BuilderTrack>("agent");
   // Sam-feedback 2026-06-03: Transfer needed = ON → collect carriers,
   // writing numbers, previous upline. Otherwise skip those entirely.
@@ -168,6 +177,13 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
       return;
     }
 
+    // Licensed => NPN required. Mirrors HireLink's >= 4-digit rule so the same
+    // producer can't be added with proof on one surface and none on the other.
+    if (licenseStatus === "licensed" && npn.replace(/\D+/g, "").length < 4) {
+      toast.error("NPN is required for a licensed agent — look it up free at nipr.com");
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("add-agent", {
@@ -178,6 +194,14 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           phone,
           managerId,
           licenseStatus,
+          niprNumber: npn.trim() || undefined,
+          licenseNumber: licenseNumber.trim() || undefined,
+          // "TX, LA, MS" -> ["TX","LA","MS"] for the agents.license_states text[].
+          licenseStates: licenseStates
+            .split(",")
+            .map((s) => s.trim().toUpperCase())
+            .filter(Boolean),
+          licenseExpiresAt: licenseExpiresAt || undefined,
           // P0 fix: the "Unlicensed (sends XCEL course link)" option promises a
           // course email, but the add-agent edge fn gates send-course-enrollment-
           // email on hasTrainingCourse (default false). Without this flag every
@@ -277,6 +301,10 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     setPhone("");
     setManagerId("");
     setLicenseStatus("unlicensed");
+    setNpn("");
+    setLicenseNumber("");
+    setLicenseStates("");
+    setLicenseExpiresAt("");
     setBuilderTrack("agent");
     setTransferNeeded(false);
     setCarriers("");
@@ -442,6 +470,65 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                 <SelectItem value="unlicensed">📚 Unlicensed (sends XCEL course link)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* License details. NPN is the only field that gates submit, and only
+              when "Licensed" is picked — everything else is optional so an
+              unlicensed add stays a 5-field form. */}
+          <div className="space-y-3 rounded-lg border border-border/40 bg-muted/20 p-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="agent-npn">
+                NPN{" "}
+                {licenseStatus === "licensed" ? (
+                  <span className="text-rose-400">*</span>
+                ) : (
+                  <span className="text-xs font-normal text-muted-foreground">(if they already have one)</span>
+                )}
+              </Label>
+              <Input
+                id="agent-npn"
+                inputMode="numeric"
+                value={npn}
+                onChange={(e) => setNpn(e.target.value)}
+                placeholder="National Producer Number"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {licenseStatus === "licensed"
+                  ? "Required — this is the proof of licensure. Free lookup at nipr.com."
+                  : "Optional now. Add it when their license comes back and Sam gets the alert."}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="agent-license-number">License #</Label>
+                <Input
+                  id="agent-license-number"
+                  value={licenseNumber}
+                  onChange={(e) => setLicenseNumber(e.target.value)}
+                  placeholder="State license number"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="agent-license-expires">License expires</Label>
+                <Input
+                  id="agent-license-expires"
+                  type="date"
+                  value={licenseExpiresAt}
+                  onChange={(e) => setLicenseExpiresAt(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="agent-license-states">Licensed states</Label>
+              <Input
+                id="agent-license-states"
+                value={licenseStates}
+                onChange={(e) => setLicenseStates(e.target.value)}
+                placeholder="TX, LA, MS"
+              />
+            </div>
           </div>
 
           {isAdmin ? (

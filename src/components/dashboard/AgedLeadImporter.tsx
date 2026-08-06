@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, forwardRef } from "react";
+import { useState, useCallback, useMemo, forwardRef, lazy, Suspense } from "react";
 import {
   Upload,
   FileText,
@@ -31,7 +31,17 @@ import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { AgedLeadEmailPreview } from "./AgedLeadEmailPreview";
+// perf/site-wide-optimization (2026-08-06): AgedLeadEmailPreview statically
+// imported `sanitize-html`, which drags htmlparser2 + the `entities` package
+// (a ~32 KB base64 trie that barely gzips) into the DashboardAgedLeads route
+// chunk — measured 281.76 KB raw / 105.69 KB gz, the heaviest real route on
+// the site and a 2.67:1 compression ratio vs the ~3.5:1 norm. The preview is
+// a modal gated behind `showEmailPreview`, so almost nobody who opens the
+// importer ever pays for it. lazy() moves sanitize-html into its own chunk
+// fetched on first open only.
+const AgedLeadEmailPreview = lazy(() =>
+  import("./AgedLeadEmailPreview").then((m) => ({ default: m.AgedLeadEmailPreview }))
+);
 
 interface Manager {
   id: string;
@@ -705,17 +715,22 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
             </Button>
           </DialogFooter>
 
-          {/* Email Preview Modal */}
-          <AgedLeadEmailPreview
-            isOpen={showEmailPreview}
-            onClose={() => setShowEmailPreview(false)}
-            sampleFirstName={validLeads[0]?.first_name || "there"}
-            onApprove={() => {
-              setShowEmailPreview(false);
-              handleImport();
-            }}
-            isLoading={importing}
-          />
+          {/* Email Preview Modal — mounted only once opened so the
+              sanitize-html chunk is never fetched on the common path. */}
+          {showEmailPreview && (
+            <Suspense fallback={null}>
+              <AgedLeadEmailPreview
+                isOpen={showEmailPreview}
+                onClose={() => setShowEmailPreview(false)}
+                sampleFirstName={validLeads[0]?.first_name || "there"}
+                onApprove={() => {
+                  setShowEmailPreview(false);
+                  handleImport();
+                }}
+                isLoading={importing}
+              />
+            </Suspense>
+          )}
         </DialogContent>
       </Dialog>
     );

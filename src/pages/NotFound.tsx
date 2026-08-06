@@ -9,8 +9,42 @@ const suggestions: Array<{ label: string; to: string; kicker: string }> = [
   { label: "Get licensed", to: "/get-licensed", kicker: "Course path" },
 ];
 
+/**
+ * perf/site-wide-optimization (2026-08-06): three paths reach this catch-all
+ * often enough to deserve a real answer instead of "that path doesn't exist".
+ *
+ * The alternative — registering a route for each — was rejected on purpose:
+ *   - /mentorship has ZERO inbound links anywhere in src/, no page component,
+ *     and the real mentorship page is deployed on a DIFFERENT property
+ *     (samueljameshq.vercel.app). Adding a route here would mean inventing a
+ *     sales surface inside the business dashboard and creating an orphan page
+ *     that check:orphan-pages would then have to whitelist.
+ *   - bare /status cannot resolve without an application id, and the only way
+ *     to look one up would be a by-email RPC, which is an email-enumeration
+ *     hole on an anon-callable endpoint. Not worth it for a path nothing links.
+ *   - /leaderboard IS a real route, just behind ProtectedRoute — an unauth'd
+ *     visitor bounces and previously landed on a bare 404 that told them
+ *     nothing about why.
+ *
+ * So: keep the honest 404, make it explain itself. No orphan pages added.
+ */
+function explain(pathname: string): string | null {
+  const p = pathname.toLowerCase().replace(/\/+$/, "");
+  if (p === "/status") {
+    return "Application status pages are personal. Open the status link from your confirmation email or text — it looks like /status/your-application-id.";
+  }
+  if (p === "/mentorship" || p.startsWith("/mentorship/")) {
+    return "Mentorship isn't hosted on this site. Ask your manager for the current enrollment link.";
+  }
+  if (p === "/leaderboard" || p === "/dashboard/leaderboard") {
+    return "The leaderboard is for signed-in agents. Sign in and it will load.";
+  }
+  return null;
+}
+
 const NotFound = () => {
   const location = useLocation();
+  const hint = explain(location.pathname);
 
   useEffect(() => {
     logger.info("[404] unknown route", { path: location.pathname });
@@ -32,6 +66,11 @@ const NotFound = () => {
           <p className="text-sm text-muted-foreground font-mono break-all">
             {location.pathname}
           </p>
+          {hint && (
+            <p className="mt-4 text-sm text-foreground/80 leading-relaxed border-t border-border pt-4">
+              {hint}
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">

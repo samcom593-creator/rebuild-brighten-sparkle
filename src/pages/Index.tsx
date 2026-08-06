@@ -33,8 +33,27 @@ const StickyMobileCTA = lazy(() => import("@/components/landing/StickyMobileCTA"
 function SectionFallback() {
   // Dark glass placeholder while lazy chunks load. Was `bg-white/[0.03]` —
   // technically a 3% tint but read as "white shimmer" on slow connections.
+  //
+  // perf/site-wide-optimization (2026-08-06): this was a single h-24 (96px) bar
+  // standing in for SIX full sections (Testimonials → CTASection) that expand to
+  // several thousand pixels once their chunk lands. On a slow mobile connection
+  // the footer and sticky CTA paint right under the hero, then get shoved down
+  // the page — a large, avoidable layout shift on the highest-traffic public
+  // surface. Reserving roughly a viewport of height keeps the shift bounded
+  // without leaving an absurd gap on fast connections, and three stacked bars
+  // read as "sections loading" instead of one orphaned strip.
   return (
-    <div className="mx-auto h-24 max-w-5xl rounded-md border border-primary/15 bg-white dark:bg-slate-900 animate-pulse" />
+    <div
+      className="mx-auto w-full max-w-5xl space-y-4 px-4 min-h-[60vh]"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div className="h-40 rounded-md border border-primary/15 bg-white dark:bg-slate-900 motion-safe:animate-pulse" />
+      <div className="h-40 rounded-md border border-primary/15 bg-white dark:bg-slate-900 motion-safe:animate-pulse" />
+      <div className="h-24 rounded-md border border-primary/15 bg-white dark:bg-slate-900 motion-safe:animate-pulse" />
+      <span className="sr-only">Loading page sections…</span>
+    </div>
   );
 }
 
@@ -54,9 +73,18 @@ const Index = () => {
   if (!isLoading && user) return <Navigate to="/dashboard" replace />;
   return (
     <div className="min-h-screen overflow-x-hidden w-full max-w-full relative">
+      {/* Skip link — pure markup, zero JS cost on the cold-landing path. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-foreground focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-primary"
+      >
+        Skip to main content
+      </a>
       <DealsTicker />
       <Navbar />
-      <main>
+      {/* pb-24 md:pb-0 reserves the height of the fixed StickyMobileCTA so the
+          last section (CTASection) is not permanently covered on phones. */}
+      <main id="main-content" tabIndex={-1} className="pb-24 md:pb-0">
         <HeroSection />
         <Suspense fallback={<SectionFallback />}>
           <LazyQueryRoot>

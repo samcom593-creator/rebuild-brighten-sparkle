@@ -135,9 +135,21 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
         />
       </div>
 
+      {/* Skip link — keyboard users otherwise have to tab through the entire
+          sidebar nav on every single route change before reaching content.
+          Visually hidden until focused, then pinned top-left above the sidebar. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-foreground focus:shadow-lg focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-primary"
+      >
+        Skip to main content
+      </a>
+
       {/* Main Content - CSS transitions only, no framer-motion */}
       <ScrollProgress />
       <main
+        id="main-content"
+        tabIndex={-1}
         className={cn(
           // Mobile header = p-4 (16+16) + h-10 icon row (40) = 72px base (4.5rem),
           // plus env(safe-area-inset-top) on notched iPhones. Reserving the real

@@ -442,6 +442,20 @@ export default defineConfig(({ mode }) => ({
               priority: 70,
               test: "[\\\\/]node_modules[\\\\/]date-fns[\\\\/]",
             },
+            // perf/site-wide-optimization (2026-08-06): sanitize-html had NO
+            // group, so rolldown inlined it — plus its htmlparser2 + `entities`
+            // transitive deps — straight into whichever route chunk imported
+            // it. The `entities` package ships its decode trie as a ~32 KB
+            // base64 string literal that gzips at roughly 1:1, which is why
+            // DashboardAgedLeads measured 281.76 KB raw but only compressed to
+            // 105.69 KB gz (2.67:1 vs the ~3.5:1 norm elsewhere in this build).
+            // A named group pins it to one cacheable chunk so any future
+            // consumer shares it instead of re-inlining a second copy.
+            {
+              name: "vendor-sanitize",
+              priority: 70,
+              test: "[\\\\/]node_modules[\\\\/](sanitize-html|htmlparser2|entities|domhandler|domutils|dom-serializer|parse-srcset|postcss)[\\\\/]",
+            },
             {
               name: "vendor-radix",
               priority: 60,

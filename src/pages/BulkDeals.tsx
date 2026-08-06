@@ -126,6 +126,18 @@ export default function BulkDeals() {
           carrier_id,
           client_first_name: first,
           client_last_name:  last,
+          // 2026-08-06: deals.client_phone and deals.client_dob are NOT NULL
+          // with no default, and this row object never supplied either — so
+          // EVERY paste from this page failed with 23502, for admins too, not
+          // just the managers blocked by the missing RLS policy. Fixing RLS
+          // alone would have shipped a page that still could not insert a row.
+          // The paste format (client / carrier / product / policy line / agent)
+          // carries no phone or DOB, so nothing real can be filled in here.
+          // These are the exact "not captured" sentinels already carried by the
+          // 114 rows of the 2026-06-16 bulk import, not fabricated contact data
+          // — same reasoning as face_amount: 0 below.
+          client_phone:      "",
+          client_dob:        "1900-01-01",
           product_sold:      d.product,
           policy_number:     d.policyNumber || `AUTO-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
           monthly_premium:   d.monthly,

@@ -26,6 +26,7 @@ import {
   sumAnnualPremium,
 } from "@/lib/metricTruth";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 interface Props {
   agentId?: string;
@@ -125,17 +126,17 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
             .in("status", DEAL_TRUTH_STATUS_FILTER),
           supabase
             .from("applications")
-            .select("id", { count: "exact", head: true })
+            .select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
             .is("terminated_at", null)
             .is("closed_at", null),
           supabase
             .from("applications")
-            .select("id", { count: "exact", head: true })
+            .select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
             .is("terminated_at", null)
             .eq("license_status", "licensed"),
           supabase
             .from("applications")
-            .select("id", { count: "exact", head: true })
+            .select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
             .is("terminated_at", null)
             .not("contracted_at", "is", null),
           supabase

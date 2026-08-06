@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 /**
  * VaOpsCommandCenter — /dashboard home for va_manager + va roles.
@@ -126,7 +127,7 @@ export default function VaOpsCommandCenter() {
         countOf(
           supabase
             .from("applications")
-            .select("*", { count: "exact", head: true })
+            .select("*", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
             .eq("license_status", "licensed")
             .not("status", "in", "(contracting,rejected)"),
         ),
@@ -149,7 +150,7 @@ export default function VaOpsCommandCenter() {
         countOf(
           supabase
             .from("applications")
-            .select("*", { count: "exact", head: true })
+            .select("*", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
             .is("terminated_at", null),
         ),
     },

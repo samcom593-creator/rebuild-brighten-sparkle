@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { CalendarRange, ChevronDown, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 // PL-020: Licensed-hires tile is no longer a single fixed all-time count.
 // Sam can flip the period (this-month / last-30d / this-quarter / this-year /
@@ -70,14 +71,14 @@ export function LicensedHiresRange() {
       // for legacy rows that pre-date the licensed_at column.
       let q = supabase
         .from("applications")
-        .select("id", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
         .or("licensed_at.not.is.null,license_progress.eq.licensed");
       if (range.start) q = q.gte("licensed_at", range.start + "T00:00:00Z");
       if (range.end)   q = q.lte("licensed_at", range.end + "T23:59:59Z");
       const { count, error } = await q;
       if (error) {
         // Fallback: if the partial-or filter rejects, retry the simpler version.
-        const fb = supabase.from("applications").select("id", { count: "exact", head: true }).not("licensed_at", "is", null);
+        const fb = supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE).not("licensed_at", "is", null);
         const r = await (range.start ? fb.gte("licensed_at", range.start + "T00:00:00Z") : fb);
         if (r.error) throw r.error;
         return r.count ?? 0;

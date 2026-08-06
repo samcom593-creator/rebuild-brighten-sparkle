@@ -83,6 +83,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { phoneHref, smsHref } from "@/lib/phone";
 import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 interface Application {
   id: string;
@@ -336,7 +337,7 @@ export default function DashboardApplicants() {
     const fetchScopedApplications = async (includeTerminated: boolean) => {
       let query = supabase
         .from("applications")
-        .select(APPLICATION_SELECT, { count: "exact" });
+        .select(APPLICATION_SELECT, { count: "exact" }).eq("record_type", APPLICATION_RECORD_TYPE);
 
       query = includeTerminated
         ? query.not("terminated_at", "is", null)

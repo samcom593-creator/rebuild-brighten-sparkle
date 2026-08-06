@@ -23,6 +23,7 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { cn } from "@/lib/utils";
 import { filterActionableNotifications } from "@/lib/notificationFilters";
 import confetti from "canvas-confetti";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 // ─── Summary Stats ───
 function NotificationStats({ logs, onFilterChannel }: { logs: any[]; onFilterChannel: (ch: string) => void }) {
@@ -1098,7 +1099,7 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
     queryFn: async () => {
       const { count: appCount } = await supabase
         .from("applications")
-        .select("*", { count: "exact", head: true })
+        .select("*", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
         .is("terminated_at", null);
       const { count: agedCount } = await supabase
         .from("aged_leads")

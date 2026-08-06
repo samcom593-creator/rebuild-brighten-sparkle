@@ -1436,12 +1436,16 @@ export type Database = {
           is_deactivated: boolean | null
           is_inactive: boolean | null
           is_presenting: boolean
+          license_number: string | null
           license_states: string[] | null
           license_status: Database["public"]["Enums"]["license_status"]
+          licensed_at: string | null
           manager_id: string | null
           max_recruits: number | null
           metadata: Json | null
           nipr_number: string | null
+          nipr_verified: boolean
+          nipr_verified_at: string | null
           onboarding_completed_at: string | null
           onboarding_stage:
             | Database["public"]["Enums"]["onboarding_stage"]
@@ -1500,12 +1504,16 @@ export type Database = {
           is_deactivated?: boolean | null
           is_inactive?: boolean | null
           is_presenting?: boolean
+          license_number?: string | null
           license_states?: string[] | null
           license_status?: Database["public"]["Enums"]["license_status"]
+          licensed_at?: string | null
           manager_id?: string | null
           max_recruits?: number | null
           metadata?: Json | null
           nipr_number?: string | null
+          nipr_verified?: boolean
+          nipr_verified_at?: string | null
           onboarding_completed_at?: string | null
           onboarding_stage?:
             | Database["public"]["Enums"]["onboarding_stage"]
@@ -1564,12 +1572,16 @@ export type Database = {
           is_deactivated?: boolean | null
           is_inactive?: boolean | null
           is_presenting?: boolean
+          license_number?: string | null
           license_states?: string[] | null
           license_status?: Database["public"]["Enums"]["license_status"]
+          licensed_at?: string | null
           manager_id?: string | null
           max_recruits?: number | null
           metadata?: Json | null
           nipr_number?: string | null
+          nipr_verified?: boolean
+          nipr_verified_at?: string | null
           onboarding_completed_at?: string | null
           onboarding_stage?:
             | Database["public"]["Enums"]["onboarding_stage"]

@@ -1446,6 +1446,7 @@ export type Database = {
           nipr_number: string | null
           nipr_verified: boolean
           nipr_verified_at: string | null
+          notes: string | null
           onboarding_completed_at: string | null
           onboarding_stage:
             | Database["public"]["Enums"]["onboarding_stage"]
@@ -1514,6 +1515,7 @@ export type Database = {
           nipr_number?: string | null
           nipr_verified?: boolean
           nipr_verified_at?: string | null
+          notes?: string | null
           onboarding_completed_at?: string | null
           onboarding_stage?:
             | Database["public"]["Enums"]["onboarding_stage"]
@@ -1582,6 +1584,7 @@ export type Database = {
           nipr_number?: string | null
           nipr_verified?: boolean
           nipr_verified_at?: string | null
+          notes?: string | null
           onboarding_completed_at?: string | null
           onboarding_stage?:
             | Database["public"]["Enums"]["onboarding_stage"]

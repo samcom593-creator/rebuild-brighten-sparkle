@@ -326,6 +326,14 @@ const handler = async (req: Request): Promise<Response> => {
     const tCarriers = (body as any).transferCarriers as string | undefined;
     const tWriting = (body as any).transferWritingNumbers as string | undefined;
     const tUpline = (body as any).transferPreviousUpline as string | undefined;
+    // 2026-08-06 audit: both writes below were bare `await` with no error
+    // destructuring. The agents.notes stamp targeted a column that did not
+    // exist, so PostgREST returned PGRST204 into a value nobody read and the
+    // caller still saw "Agent added successfully" — the 465-fake-success-row
+    // disease in miniature. Column added in 20260806143000_agents_notes_column;
+    // both writes now report failure into the existing sideEffects contract.
+    let transferNoteError: string | null = null;
+    let transferStampError: string | null = null;
     if (transferNeeded && newAgent) {
       const nowIso = new Date().toISOString();
       const blockLines = [
@@ -340,16 +348,27 @@ const handler = async (req: Request): Promise<Response> => {
         `Writing numbers: ${tWriting ?? "(not provided)"}`,
         `Previous upline: ${tUpline ?? "(not provided)"}`,
       ].join("\n");
-      await supabaseAdmin.from("agent_notes").insert({
+      const { error: transferNoteErr } = await supabaseAdmin.from("agent_notes").insert({
         agent_id: newAgent.id,
         note: blockLines,
         created_by: requestingUserId,
       });
-      // Stamp the agent row so dashboards can flag transfer agents
-      await supabaseAdmin.from("agents").update({
+      if (transferNoteErr) {
+        transferNoteError = transferNoteErr.message ?? String(transferNoteErr);
+        console.error("[add-agent] transfer agent_notes insert failed:", transferNoteErr);
+      }
+      // Stamp the agent row so rosters/drawers can flag transfer agents without
+      // joining agent_notes. agent_notes above stays the system of record.
+      const { error: transferStampErr } = await supabaseAdmin.from("agents").update({
         notes: `[NEEDS TRANSFER] owner=${managerId} created=${nowIso} next=Confirm carrier releases ${tCarriers ?? ""}`.slice(0, 500),
       }).eq("id", newAgent.id);
-      console.log(`Added transfer block note for agent ${newAgent.id}`);
+      if (transferStampErr) {
+        transferStampError = transferStampErr.message ?? String(transferStampErr);
+        console.error("[add-agent] transfer stamp on agents.notes failed:", transferStampErr);
+      }
+      if (!transferNoteError && !transferStampError) {
+        console.log(`Added transfer block note for agent ${newAgent.id}`);
+      }
     }
 
     // Fetch contracting link from manager's saved links
@@ -410,9 +429,16 @@ const handler = async (req: Request): Promise<Response> => {
         })
       : { ok: true, skipped: true };
 
+    const transferStatus: SideEffectStatus = !transferNeeded
+      ? { ok: true, skipped: true }
+      : transferNoteError || transferStampError
+        ? { ok: false, error: [transferNoteError, transferStampError].filter(Boolean).join("; ") }
+        : { ok: true };
+
     const sideEffectFailures: string[] = [];
     if (!welcomeEmailStatus.ok) sideEffectFailures.push("welcome email");
     if (!courseEmailStatus.ok) sideEffectFailures.push("course enrollment email");
+    if (!transferStatus.ok) sideEffectFailures.push("transfer note");
 
     const message = sideEffectFailures.length
       ? `Agent ${firstName} ${lastName} added, but ${sideEffectFailures.join(" and ")} failed — resend manually.`
@@ -428,6 +454,7 @@ const handler = async (req: Request): Promise<Response> => {
         sideEffects: {
           welcomeEmail: welcomeEmailStatus,
           courseEmail: courseEmailStatus,
+          transferBlock: transferStatus,
         },
         partial: sideEffectFailures.length > 0,
       }),

@@ -93,6 +93,10 @@ interface AgentRow {
   onboarding_stage: string | null;
   first_deal_at: string | null;
   contracted_at: string | null;
+  /** Row-level operational stamp written by the add-agent edge function
+   *  (e.g. "[NEEDS TRANSFER] owner=… next=Confirm carrier releases …").
+   *  Full structured detail lives in agent_notes — this is the flag. */
+  notes: string | null;
   profile: { full_name: string | null; email: string | null; phone: string | null; avatar_url: string | null } | null;
   manager: { id: string; profile: { full_name: string | null } | null } | null;
 }
@@ -243,7 +247,7 @@ export function AgentProfileDrawer() {
           `id, user_id, agent_code, status, license_status, start_date,
            total_policies, total_premium, total_earnings, manager_id,
            display_name, is_deactivated, is_inactive, onboarding_stage,
-           first_deal_at, contracted_at,
+           first_deal_at, contracted_at, notes,
            profile:profiles!agents_profile_id_fkey(full_name, email, phone, avatar_url),
            manager:agents!manager_id(id, profile:profiles(full_name))`,
         )
@@ -679,6 +683,20 @@ const qnum = (v: number | string | null | undefined): number | null => {
                   )}
                   {agent.is_deactivated && (
                     <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">deactivated</Badge>
+                  )}
+                  {/* 2026-08-06: the add-agent transfer block stamps
+                      agents.notes with "[NEEDS TRANSFER] …". Until now the
+                      column did not exist and nothing rendered it, so an agent
+                      needing carrier releases looked identical to one who
+                      didn't. Full detail sits in the Notes tab (agent_notes). */}
+                  {agent.notes?.startsWith("[NEEDS TRANSFER]") && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                      title={agent.notes}
+                    >
+                      needs transfer
+                    </Badge>
                   )}
                 </div>
               </div>

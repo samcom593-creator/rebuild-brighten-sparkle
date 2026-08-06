@@ -51,6 +51,7 @@ import { MyReferralLinkCard } from "@/components/agent/MyReferralLinkCard";
 // truth-sourced from agentlink_deals_snapshot, so the redundant footer was
 // just visual debt.
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, getDealTruthTimestamp } from "@/lib/dealTruth";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 // ─── Formatters ─────────────────────────────────────────────────────────────
 function fmtUsd(n: number, compact = false): string {
@@ -1156,11 +1157,11 @@ function AgencyCommandView() {
         // every agent row IS a licensed hire by definition. Sam said the count
         // was inaccurate; this returns 8 vs the old 0.
         supabase.from("agents").select("id", { count: "exact", head: true }).gte("created_at", periodBounds.startIso).lte("created_at", periodBounds.endIso),
-        supabase.from("applications").select("id", { count: "exact", head: true }).gte("contracted_at", periodBounds.startIso).lte("contracted_at", periodBounds.endIso).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE).gte("contracted_at", periodBounds.startIso).lte("contracted_at", periodBounds.endIso).is("terminated_at", null),
         // Pre-licensing education (PLE) pipeline — from license_progress
-        supabase.from("applications").select("id", { count: "exact", head: true }).eq("license_progress", "course_purchased").is("terminated_at", null),
-        supabase.from("applications").select("id", { count: "exact", head: true }).eq("license_progress", "finished_course").is("terminated_at", null),
-        supabase.from("applications").select("id", { count: "exact", head: true }).eq("license_progress", "test_scheduled").is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE).eq("license_progress", "course_purchased").is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE).eq("license_progress", "finished_course").is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE).eq("license_progress", "test_scheduled").is("terminated_at", null),
       ]);
       const ids = new Set<string>();
       for (const r of (dealAgents.data ?? []) as Array<{ agent_id: string | null }>) {
@@ -1281,18 +1282,18 @@ function AgencyCommandView() {
       const cutoff48h = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
 
       const [appsMtdRes, hiresMtdRes, apps7dRes, uncTotalRes, unc48hRes] = await Promise.all([
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .gte("created_at", monthStart).is("terminated_at", null),
         // 2026-06-15 v6.8 fix: applications.licensed_at is barely populated
         // (audit found 2/523). Real hire-count = agents.created_at because
         // every agent row IS a licensed hire. Sam: "should be counted obviously".
         supabase.from("agents").select("id", { count: "exact", head: true })
           .gte("created_at", monthStart),
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .gte("created_at", weekAgo).is("terminated_at", null),
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .is("contacted_at", null).is("terminated_at", null),
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .is("contacted_at", null).is("terminated_at", null).lt("created_at", cutoff48h),
       ]);
 
@@ -1420,15 +1421,15 @@ function AgencyCommandView() {
     queryFn: async () => {
       const since = new Date(Date.now() - 90 * 86_400_000).toISOString();
       const [createdRes, contactedRes, courseRes, examRes, licensedRes] = await Promise.all([
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .gte("created_at", since).is("terminated_at", null),
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .gte("created_at", since).is("terminated_at", null).not("contacted_at", "is", null),
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .gte("created_at", since).is("terminated_at", null).not("course_purchased_at", "is", null),
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .gte("created_at", since).is("terminated_at", null).not("exam_passed_at", "is", null),
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .gte("created_at", since).is("terminated_at", null).not("licensed_at", "is", null),
       ]);
       return {
@@ -1490,7 +1491,7 @@ function AgencyCommandView() {
       const since = new Date(Date.now() - 180 * 86_400_000).toISOString();
       const { data, error } = await supabase
         .from("applications")
-        .select("source, course_purchased_at, licensed_at")
+        .select("source, course_purchased_at, licensed_at").eq("record_type", APPLICATION_RECORD_TYPE)
         .gte("created_at", since)
         .is("terminated_at", null);
       if (error) throw error;

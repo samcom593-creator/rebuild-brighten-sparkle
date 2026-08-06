@@ -84,6 +84,7 @@ import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@
 import { getCloseRate, getLiveAgentCutoffIso, LIVE_AGENT_DEAL_WINDOW_DAYS, sumAnnualPremium } from "@/lib/metricTruth";
 import { cn } from "@/lib/utils";
 import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 type IntegrationState = "ok" | "warning" | "critical" | "unavailable";
 
@@ -251,7 +252,7 @@ function isContractedApplication(app: any): boolean {
 async function loadApplications(role: RolePreview, userId: string, scopedAgentIds: string[]): Promise<any[]> {
   const q: any = supabase;
   if (role === "admin") {
-    return getRows(q.from("applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").is("terminated_at", null).limit(2_000), "applications-admin");
+    return getRows(q.from("applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").eq("record_type", APPLICATION_RECORD_TYPE).is("terminated_at", null).limit(2_000), "applications-admin");
   }
 
   const visibleViaView = await getRows(
@@ -269,7 +270,7 @@ async function loadApplications(role: RolePreview, userId: string, scopedAgentId
   filters.push(`hiring_manager_user_id.eq.${userId}`);
 
   return getRows(
-    q.from("applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").is("terminated_at", null).or(filters.join(",")).limit(2_000),
+    q.from("applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").eq("record_type", APPLICATION_RECORD_TYPE).is("terminated_at", null).or(filters.join(",")).limit(2_000),
     "applications-scoped-fallback",
   );
 }

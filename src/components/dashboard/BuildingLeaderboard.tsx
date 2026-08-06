@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
 import { getTodayPST, getDateDaysAgoPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 import { useDebouncedRefetch } from "@/hooks/useDebouncedRefetch";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 interface BuildingLeaderboardProps {
   currentAgentId?: string;
@@ -120,7 +121,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
       // Get current period applications - include apps created OR contracted in the period
       let currentQuery = supabase
         .from("applications")
-        .select("assigned_agent_id, status, contracted_at, created_at");
+        .select("assigned_agent_id, status, contracted_at, created_at").eq("record_type", APPLICATION_RECORD_TYPE);
       
       if (period !== "custom") {
         // OR filter: created_at in period OR contracted_at in period
@@ -133,7 +134,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
       // Also use OR to capture apps contracted in the previous period
       const { data: previousApplications } = await supabase
         .from("applications")
-        .select("assigned_agent_id, status, contracted_at, created_at")
+        .select("assigned_agent_id, status, contracted_at, created_at").eq("record_type", APPLICATION_RECORD_TYPE)
         .or(`and(created_at.gte.${previousStartDate},created_at.lt.${previousEndDate}),and(contracted_at.gte.${previousStartDate},contracted_at.lt.${previousEndDate})`);
 
       // Calculate stats per agent

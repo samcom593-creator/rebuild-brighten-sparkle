@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { format, subDays } from "date-fns";
 import { DEAL_TRUTH_STATUS_FILTER, liveDealWindowOr } from "@/lib/dealTruth";
 import { getLiveAgentCutoffIso } from "@/lib/metricTruth";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 export function AISummaryReport() {
   const [open, setOpen] = useState(true);
@@ -55,17 +56,17 @@ export function AISummaryReport() {
         { count: testPhase },
         { count: overdueCount },
       ] = await Promise.all([
-        supabase.from("applications").select("id", { count: "exact", head: true }).is("terminated_at", null),
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE).is("terminated_at", null),
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .gte("created_at", new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString())
           .is("terminated_at", null),
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .eq("license_progress", "licensed").is("terminated_at", null),
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .in("license_progress", ["course_purchased", "finished_course"]).is("terminated_at", null),
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .in("license_progress", ["test_scheduled", "passed_test"]).is("terminated_at", null),
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .is("terminated_at", null).or(`last_contacted_at.lt.${cutoff},last_contacted_at.is.null`),
       ]);
 

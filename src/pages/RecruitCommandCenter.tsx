@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { coinRain, screenFlash, levelUpBanner } from "@/lib/gameFx";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 interface Applicant {
   id: string;
@@ -73,10 +74,10 @@ export default function RecruitCommandCenter() {
         // Exclude hired (closed_at) too — Sam: hired people kept appearing
         // in the recruit funnel even after being marked through.
         supabase.from("applications")
-          .select("id, first_name, last_name, email, phone, state, city, lead_score, license_status, license_progress, contacted_at, last_contacted_at, created_at, status")
+          .select("id, first_name, last_name, email, phone, state, city, lead_score, license_status, license_progress, contacted_at, last_contacted_at, created_at, status").eq("record_type", APPLICATION_RECORD_TYPE)
           .is("terminated_at", null).is("contracted_at", null).is("closed_at", null)
           .order("created_at", { ascending: false }).limit(1500), // was 400 — capped the ~681-row live pipeline stat
-        supabase.from("applications").select("id", { count: "exact", head: true })
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
           .gte("contracted_at", sinceWeek).is("terminated_at", null),
       ]);
       setApps((list ?? []) as Applicant[]);

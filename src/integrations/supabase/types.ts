@@ -2143,6 +2143,7 @@ export type Database = {
           previous_company: string | null
           previous_production: number | null
           qualified_at: string | null
+          record_type: string
           recruiter_id: string | null
           referral_manager_id: string | null
           referral_source: string | null
@@ -2228,6 +2229,7 @@ export type Database = {
           previous_company?: string | null
           previous_production?: number | null
           qualified_at?: string | null
+          record_type?: string
           recruiter_id?: string | null
           referral_manager_id?: string | null
           referral_source?: string | null
@@ -2313,6 +2315,7 @@ export type Database = {
           previous_company?: string | null
           previous_production?: number | null
           qualified_at?: string | null
+          record_type?: string
           recruiter_id?: string | null
           referral_manager_id?: string | null
           referral_source?: string | null

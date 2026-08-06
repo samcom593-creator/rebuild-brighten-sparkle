@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useConfirm } from "@/hooks/useConfirm";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 /* ---------------- types ---------------- */
 type Bucket = "MUST" | "SHOULD" | "COULD";
@@ -487,7 +488,7 @@ function NextActionsSection() {
       const [drafts, groups, unclaimed] = await Promise.all([
         (supabase as any).from("social_bot_drafts").select("id", { count: "exact", head: true }).in("status", ["pending", "awaiting_approval"]),
         supabase.from("telegram_groups").select("chat_id", { count: "exact" }).in("type", ["onboarding", "licensing_reference", "daily_movement", "seminar_reminders", "ask_apex_ai"]),
-        supabase.from("applications").select("id", { count: "exact", head: true }).eq("status", "new"),
+        supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE).eq("status", "new"),
       ]);
       const pendingTelegram = ((groups.data ?? []) as Array<{ chat_id: number }>).filter((g) => Number(g.chat_id) > -1000 && Number(g.chat_id) < 0).length;
       return {

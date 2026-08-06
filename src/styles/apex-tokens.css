@@ -59,8 +59,24 @@
   --apex-shadow-3: 0 20px 25px hsl(220 30% 30% / 0.10),
                    0 8px 10px hsl(220 30% 30% / 0.04);
 
-  /* Focus / hover rings (AgentLink pattern) */
-  --apex-focus-ring: 0 0 0 3px hsl(var(--apex-accent) / 0.15);
+  /* Focus / hover rings (AgentLink pattern)
+     perf/site-wide-optimization (2026-08-06): the focus ring was
+     `hsl(var(--apex-accent) / 0.15)`. Two problems, one line:
+       1. a11y — 15% alpha is not a visible focus indicator on the dark shell
+          the app force-locks (index.html sets `class="dark"`). Because
+          button.tsx pairs this token with `focus-visible:outline-none`, it
+          also cancels the good 2px global outline at src/index.css:988. Net
+          effect: keyboard focus on the single most-used interactive primitive
+          in the app was effectively invisible, failing WCAG 2.4.11 / 1.4.11.
+       2. brand — --apex-accent is still emerald (160 84% 36%) from before the
+          black+gold rebrand, so the ring that did render rendered green.
+     Fixed by pinning the ring to --primary (gold, 45 85% 52%) and raising the
+     alpha to a perceptible level, plus a thin solid inner ring so the
+     indicator holds up against both the gold buttons and the near-black
+     canvas. --apex-hover-ring is left on --apex-accent deliberately: it is a
+     hover affordance, not an accessibility-critical indicator, and retargeting
+     the --apex-accent token itself is a brand decision outside this pass. */
+  --apex-focus-ring: 0 0 0 1px hsl(var(--background)), 0 0 0 4px hsl(var(--primary) / 0.85);
   --apex-hover-ring: 0 0 0 3px hsl(var(--apex-accent) / 0.40);
 }
 

@@ -35,7 +35,10 @@ const RecentApplicantsTicker = lazy(() =>
 function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
   const [loaded, setLoaded] = useState(false);
   return (
-    <div className="relative aspect-video rounded-md overflow-hidden border border-border/60 shadow-[0_8px_40px_hsl(168_80%_50%/0.2)] bg-white dark:bg-black group">
+    // perf/site-wide-optimization (2026-08-06): glow was a hardcoded
+    // hsl(168 80% 50%) teal-green left over from before the black+gold
+    // rebrand — retargeted to the --primary gold token.
+    <div className="relative aspect-video rounded-md overflow-hidden border border-border/60 shadow-[0_8px_40px_hsl(var(--primary)/0.2)] bg-white dark:bg-black group">
       {loaded ? (
         <iframe
           src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
@@ -280,7 +283,7 @@ export function HeroSection() {
                   relative inline-flex items-center justify-center gap-2
                   px-10 py-5 text-lg sm:text-xl rounded-md font-bold font-display
                   bg-primary text-primary-foreground
-                  shadow-[0_10px_40px_hsl(168_80%_50%/0.4)]
+                  shadow-[0_10px_40px_hsl(var(--primary)/0.4)]
                   group-hover:bg-primary/90 transition-base
                 "
               >

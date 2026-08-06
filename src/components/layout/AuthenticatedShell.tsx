@@ -27,15 +27,40 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 // (Sam's daily driver) — freezes the tab, no keyboard focus, silently
 // swallowable by extensions. See check-blocking-modal.mjs wave-23 guard.
 import { ConfirmProvider } from "@/hooks/useConfirm";
+// perf/site-wide-optimization (2026-08-06): the two global
+// `@media (prefers-reduced-motion: reduce)` blocks in src/index.css only
+// neutralise CSS animations/transitions. framer-motion animates via inline
+// transform/opacity driven by rAF, so those blocks never touched it — and
+// framer-motion is imported by 117 files across the dashboard. Result: users
+// who asked their OS for reduced motion still got every slide, spring and
+// stagger at full amplitude. MotionConfig reducedMotion="user" makes the whole
+// subtree honour the OS setting (transform/layout animations are dropped,
+// opacity/colour crossfades are kept, which is the accessible behaviour).
+// Mounted HERE and not in App.tsx on purpose: App.tsx is the cold-landing
+// critical path and the landing tree deliberately contains no framer-motion
+// (verified: only ApplicationConfirmationV2, itself lazy). Importing it at the
+// App root would drag the ~117 KB raw / ~39 KB gz framer-motion chunk onto
+// first paint and undo the wave-39/46/51 landing work. AuthenticatedShell is
+// already lazy and every route under it pulls framer-motion anyway.
+import { MotionConfig } from "framer-motion";
 
 function InnerPageLoader() {
   return (
-    <div className="flex items-center justify-center p-8 w-full min-h-[50vh]">
+    // Every Skeleton bar is aria-hidden, so without a labelled container a
+    // screen reader hears nothing at all during a route transition. role=status
+    // + aria-live=polite announces the wait without interrupting.
+    <div
+      className="flex items-center justify-center p-8 w-full min-h-[50vh]"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
       <div className="w-full max-w-md space-y-4">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-48 w-full rounded-md" />
         <Skeleton className="h-10 w-full" />
       </div>
+      <span className="sr-only">Loading page…</span>
     </div>
   );
 }
@@ -125,7 +150,8 @@ export function AuthenticatedShell() {
   useGlobalSessionRefresh();
   return (
     <ProtectedRoute>
-      <TooltipProvider>
+      <MotionConfig reducedMotion="user">
+        <TooltipProvider>
         <ConfirmProvider>
           <SidebarLayout showPhoneBanner={true}>
             <CelebrationProvider />
@@ -144,7 +170,8 @@ export function AuthenticatedShell() {
             </Suspense>
           </SidebarLayout>
         </ConfirmProvider>
-      </TooltipProvider>
+        </TooltipProvider>
+      </MotionConfig>
     </ProtectedRoute>
   );
 }

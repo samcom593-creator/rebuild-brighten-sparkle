@@ -24,6 +24,25 @@ interface CallSummary {
   briefSummary: string;
 }
 
+// BUG-1 fix (2026-08-06): pick the first MIME type MediaRecorder will actually
+// use. Chrome/Edge prefer opus-in-webm; iOS Safari only speaks audio/mp4.
+// Falling through to '' lets the browser pick its default rather than throw.
+const AUDIO_MIME_CANDIDATES = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/mp4",
+  "audio/mpeg",
+];
+function pickAudioMime(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  for (const mime of AUDIO_MIME_CANDIDATES) {
+    try {
+      if (MediaRecorder.isTypeSupported(mime)) return mime;
+    } catch { /* empty-catch-allow:isTypeSupported-throws-on-old-safari */ }
+  }
+  return "";
+}
+
 export function InterviewRecorder({
   applicationId,
   agentId,
@@ -32,11 +51,16 @@ export function InterviewRecorder({
   onTranscriptionSaved,
 }: InterviewRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
-  const [isSupported, setIsSupported] = useState(true);
+  // BUG-1: split the two capabilities. Audio capture (MediaRecorder) works on
+  // iOS Safari; live transcription (SpeechRecognition) does not. Old code
+  // conflated them so iOS users saw "not supported" and no recording happened.
+  const [isMediaRecorderAvailable, setIsMediaRecorderAvailable] = useState(true);
+  const [isSpeechAvailable, setIsSpeechAvailable] = useState(true);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [callSummary, setCallSummary] = useState<CallSummary | null>(null);
   const [showFullTranscript, setShowFullTranscript] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
@@ -45,6 +69,9 @@ export function InterviewRecorder({
   const [showCalendarInput, setShowCalendarInput] = useState(false);
   const [calendarLink, setCalendarLink] = useState("");
   const [duration, setDuration] = useState(0);
+  const [audioStoragePath, setAudioStoragePath] = useState<string | null>(null);
+  const [audioBytes, setAudioBytes] = useState<number | null>(null);
+  const [audioMime, setAudioMime] = useState<string | null>(null);
 
   const recognitionRef = useRef<any>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -53,11 +80,21 @@ export function InterviewRecorder({
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const uploadedThisSessionRef = useRef(false);
 
   useEffect(() => {
+    // BUG-1: probe SpeechRecognition and MediaRecorder INDEPENDENTLY.
+    if (typeof MediaRecorder === "undefined") {
+      console.warn("[InterviewRecorder] MediaRecorder unavailable in this browser");
+      setIsMediaRecorderAvailable(false);
+    }
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setIsSupported(false);
+      console.warn("[InterviewRecorder] SpeechRecognition unavailable — audio still records, transcript disabled");
+      setIsSpeechAvailable(false);
       return;
     }
 
@@ -84,14 +121,22 @@ export function InterviewRecorder({
     };
 
     recognition.onerror = (event: any) => {
-      console.error("Speech recognition error:", event.error);
-      if (event.error === "not-allowed") setIsSupported(false);
+      console.error("[InterviewRecorder] SpeechRecognition error:", event.error);
+      if (event.error === "not-allowed") {
+        // mic permission denied → both features are dead
+        setIsSpeechAvailable(false);
+        toast.error("Microphone permission denied. Enable it in browser settings and reload.");
+      } else if (event.error === "no-speech") {
+        // benign; keep going
+      } else {
+        toast.error(`Speech recognition error: ${event.error}`);
+      }
     };
 
     recognition.onend = () => {
       // Auto-restart if still recording
       if (recognitionRef.current && document.querySelector('[data-recording="true"]')) {
-        try { recognition.start(); } catch {} // empty-catch-allow:media-api-optional
+        try { recognition.start(); } catch { /* recognition start failed · swallow */ } // empty-catch-allow:media-api-optional
       }
     };
 
@@ -103,6 +148,7 @@ export function InterviewRecorder({
       streamRef.current?.getTracks().forEach((t) => t.stop());
       audioContextRef.current?.close();
       if (timerRef.current) clearInterval(timerRef.current);
+      try { mediaRecorderRef.current?.stop(); } catch { /* MediaRecorder unavailable */ } // empty-catch-allow:media-api-optional
     };
   }, []);
 
@@ -166,7 +212,47 @@ export function InterviewRecorder({
     }
   };
 
+  const uploadAudioBlob = useCallback(async (blob: Blob, mime: string) => {
+    // BUG-1: upload to storage.call-recordings so an actual audio artifact
+    // exists alongside the transcript.
+    if (!blob || blob.size === 0) {
+      console.warn("[InterviewRecorder] blob empty — nothing to upload");
+      return;
+    }
+    const ext = mime.includes("mp4") ? "m4a" : mime.includes("mpeg") ? "mp3" : "webm";
+    const uid = (typeof crypto !== "undefined" && "randomUUID" in crypto)
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const path = `interviews/${applicationId}/${stamp}-${uid}.${ext}`;
+    if (import.meta.env.DEV) console.log(`[InterviewRecorder] uploading ${blob.size}b (${mime}) → call-recordings/${path}`);
+    setIsUploadingAudio(true);
+    try {
+      const { error } = await supabase.storage.from("call-recordings").upload(path, blob, {
+        contentType: mime || "application/octet-stream",
+        upsert: false,
+      });
+      if (error) {
+        console.error("[InterviewRecorder] upload failed:", error);
+        toast.error(`Audio upload failed: ${error.message}`);
+        return;
+      }
+      setAudioStoragePath(path);
+      setAudioBytes(blob.size);
+      setAudioMime(mime || null);
+      uploadedThisSessionRef.current = true;
+      if (import.meta.env.DEV) console.log(`[InterviewRecorder] upload OK → ${path}`);
+      toast.success(`Audio saved (${(blob.size / 1024).toFixed(0)} KB)`);
+    } catch (e: any) {
+      console.error("[InterviewRecorder] upload threw:", e);
+      toast.error(`Audio upload error: ${e?.message ?? "unknown"}`);
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  }, [applicationId]);
+
   const startRecording = async () => {
+    if (import.meta.env.DEV) console.log("[InterviewRecorder] startRecording() invoked");
     try {
       setCallSummary(null);
       setTranscript("");
@@ -175,32 +261,96 @@ export function InterviewRecorder({
       setShowFullTranscript(false);
       setDuration(0);
       setFollowUpSent(false);
+      setAudioStoragePath(null);
+      setAudioBytes(null);
+      setAudioMime(null);
+      audioChunksRef.current = [];
+      uploadedThisSessionRef.current = false;
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (mediaErr: any) {
+        console.error("[InterviewRecorder] getUserMedia failed:", mediaErr);
+        const name = mediaErr?.name || "";
+        if (name === "NotAllowedError" || name === "SecurityError") {
+          toast.error("Microphone blocked. Allow mic access in your browser and try again.");
+        } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+          toast.error("No microphone found. Plug one in and reload.");
+        } else if (name === "NotReadableError") {
+          toast.error("Microphone is in use by another app. Close it and try again.");
+        } else {
+          toast.error(`Cannot start recording: ${mediaErr?.message ?? name ?? "unknown error"}`);
+        }
+        return;
+      }
+      if (import.meta.env.DEV) console.log("[InterviewRecorder] getUserMedia resolved");
       streamRef.current = stream;
-      audioContextRef.current = new AudioContext();
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      const analyser = audioContextRef.current.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      analyserRef.current = analyser;
 
-      recognitionRef.current?.start();
+      try {
+        audioContextRef.current = new AudioContext();
+        const source = audioContextRef.current.createMediaStreamSource(stream);
+        const analyser = audioContextRef.current.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        analyserRef.current = analyser;
+      } catch (audioCtxErr) {
+        console.warn("[InterviewRecorder] AudioContext setup failed (waveform disabled):", audioCtxErr);
+      }
+
+      // BUG-1: wire MediaRecorder alongside the transcript so audio is captured.
+      if (typeof MediaRecorder !== "undefined") {
+        const mime = pickAudioMime();
+        try {
+          const mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+          const effectiveMime = mime || mr.mimeType || "audio/webm";
+          if (import.meta.env.DEV) console.log(`[InterviewRecorder] MediaRecorder mime=${effectiveMime}`);
+          mr.ondataavailable = (evt) => {
+            if (evt.data && evt.data.size > 0) {
+              audioChunksRef.current.push(evt.data);
+              if (import.meta.env.DEV) console.log(`[InterviewRecorder] chunk +${evt.data.size}b (total ${audioChunksRef.current.length})`);
+            }
+          };
+          mr.onerror = (evt: any) => {
+            console.error("[InterviewRecorder] MediaRecorder error:", evt);
+            toast.error(`Recorder error: ${evt?.error?.message ?? "unknown"}`);
+          };
+          mr.onstop = async () => {
+            const blob = new Blob(audioChunksRef.current, { type: effectiveMime });
+            if (import.meta.env.DEV) console.log(`[InterviewRecorder] recorder stopped, blob=${blob.size}b`);
+            await uploadAudioBlob(blob, effectiveMime);
+          };
+          mr.start(1000);
+          mediaRecorderRef.current = mr;
+        } catch (mrErr: any) {
+          console.error("[InterviewRecorder] MediaRecorder construction failed:", mrErr);
+          toast.error(`Audio capture disabled: ${mrErr?.message ?? "MediaRecorder error"}`);
+        }
+      } else {
+        toast.warning("This browser cannot capture audio blobs. Transcript will still save if supported.");
+      }
+
+      if (isSpeechAvailable) {
+        try { recognitionRef.current?.start(); } catch (recErr) { console.warn("[InterviewRecorder] recognition start failed:", recErr); }
+      }
       setIsRecording(true);
       timerRef.current = setInterval(() => setDuration((d) => d + 1), 1000);
       drawWaveform();
-      toast.success("Recording started");
-    } catch {
-      setIsSupported(false);
+      toast.success(isSpeechAvailable ? "Recording started" : "Recording (audio only — transcript not supported on this browser)");
+    } catch (outer: any) {
+      console.error("[InterviewRecorder] startRecording outer failure:", outer);
+      toast.error(`Failed to start recording: ${outer?.message ?? "unknown"}`);
     }
   };
 
   const stopRecording = () => {
+    if (import.meta.env.DEV) console.log("[InterviewRecorder] stopRecording() invoked");
     const fullTranscript = transcript + interimTranscript;
-    recognitionRef.current?.stop();
+    try { recognitionRef.current?.stop(); } catch (e) { console.warn("[InterviewRecorder] recognition stop failed:", e); }
+    try { mediaRecorderRef.current?.stop(); } catch (e) { console.warn("[InterviewRecorder] recorder stop failed:", e); }
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     streamRef.current?.getTracks().forEach((t) => t.stop());
-    audioContextRef.current?.close();
+    try { audioContextRef.current?.close(); } catch { /* AudioContext close failed */ } // empty-catch-allow:media-api-optional
     if (timerRef.current) clearInterval(timerRef.current);
 
     setIsRecording(false);
@@ -218,7 +368,12 @@ export function InterviewRecorder({
 
   const handleSave = async () => {
     const finalTranscript = transcript.trim();
-    if (!finalTranscript) { toast.error("No transcription to save"); return; }
+    // BUG-1: an audio recording alone (no transcript) is still a save-worthy
+    // artifact — e.g. iOS Safari where SpeechRecognition is missing.
+    if (!finalTranscript && !audioStoragePath) {
+      toast.error("Nothing to save yet — record audio or type a note first");
+      return;
+    }
     setIsSaving(true);
 
     const { error } = await supabase.from("interview_recordings").insert({
@@ -227,13 +382,16 @@ export function InterviewRecorder({
       transcription: finalTranscript,
       duration_seconds: duration,
       summary: callSummary as any,
-    });
+      audio_url: audioStoragePath,
+      audio_bytes: audioBytes,
+      audio_mime: audioMime,
+    } as any);
 
     if (error) {
-      console.error("Save error:", error);
-      toast.error("Failed to save");
+      console.error("[InterviewRecorder] save error:", error);
+      toast.error(`Failed to save: ${error.message}`);
     } else {
-      toast.success("Interview saved with AI summary!");
+      toast.success(audioStoragePath ? "Interview saved with audio + summary" : "Interview saved");
       onTranscriptionSaved();
       onClose();
     }
@@ -269,7 +427,9 @@ export function InterviewRecorder({
   const getSentimentEmoji = (s: string) => s === "positive" ? "😊" : s === "negative" ? "😟" : "😐";
   const getSentimentColor = (s: string) => s === "positive" ? "text-green-400" : s === "negative" ? "text-red-400" : "text-amber-500";
 
-  if (!isSupported) {
+  // BUG-1: only fully bail if the browser can neither transcribe NOR capture
+  // audio. iOS Safari falls back to audio-only capture with a banner.
+  if (!isSpeechAvailable && !isMediaRecorderAvailable) {
     return (
       <AnimatePresence>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -277,8 +437,8 @@ export function InterviewRecorder({
           <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="w-full max-w-md">
             <GlassCard className="p-6 text-center">
               <MicOff className="h-12 w-12 text-destructive mx-auto mb-4" />
-              <h2 className="text-lg font-semibold mb-2">Speech Recognition Not Supported</h2>
-              <p className="text-muted-foreground mb-4">Please use Chrome, Edge, or Safari.</p>
+              <h2 className="text-lg font-semibold mb-2">Audio Recording Not Supported</h2>
+              <p className="text-muted-foreground mb-4">Please use Chrome, Edge, or Safari on a modern desktop or iPhone.</p>
               <Button onClick={onClose}>Close</Button>
             </GlassCard>
           </motion.div>
@@ -482,8 +642,10 @@ export function InterviewRecorder({
             {/* Actions */}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={onClose}>Cancel</Button>
-              <Button onClick={handleSave} disabled={isSaving || !transcript.trim() || isRecording}>
-                {isSaving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</> : "Save Interview"}
+              <Button onClick={handleSave} disabled={isSaving || isUploadingAudio || isRecording || (!transcript.trim() && !audioStoragePath)}>
+                {isSaving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                  : isUploadingAudio ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading audio...</>
+                  : "Save Interview"}
               </Button>
             </div>
           </GlassCard>

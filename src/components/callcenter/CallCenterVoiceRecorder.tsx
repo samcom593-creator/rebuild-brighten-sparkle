@@ -3,10 +3,30 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, Loader2, ChevronDown, ChevronUp, Sparkles, AlertCircle, Mail, Check, CalendarDays } from "lucide-react";
 // Input import removed - no longer needed for calendar link
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { SCHEDULING_LINKS } from "@/lib/apexConfig";
+
+// BUG-1 fix (2026-08-06): pick a MediaRecorder MIME the browser actually
+// supports. Chrome/Edge = webm/opus, iOS Safari = mp4. Empty string means
+// let the browser pick a default rather than throwing.
+const AUDIO_MIME_CANDIDATES = [
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/mp4",
+  "audio/mpeg",
+];
+function pickAudioMime(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  for (const mime of AUDIO_MIME_CANDIDATES) {
+    try {
+      if (MediaRecorder.isTypeSupported(mime)) return mime;
+    } catch { /* empty-catch-allow:isTypeSupported-throws-on-old-safari */ }
+  }
+  return "";
+}
 
 interface CallSummary {
   keyPoints: string[];
@@ -35,7 +55,10 @@ export function CallCenterVoiceRecorder({
   className,
 }: CallCenterVoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
-  const [isSupported, setIsSupported] = useState(true);
+  // BUG-1: split the two capabilities. MediaRecorder works on iOS Safari,
+  // SpeechRecognition doesn't. Old code hid the record button on iOS.
+  const [isMediaRecorderAvailable, setIsMediaRecorderAvailable] = useState(true);
+  const [isSpeechAvailable, setIsSpeechAvailable] = useState(true);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -44,18 +67,31 @@ export function CallCenterVoiceRecorder({
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [sendingFollowUp, setSendingFollowUp] = useState(false);
   const [followUpSent, setFollowUpSent] = useState<"licensed" | "unlicensed" | false>(false);
-  
+  const [duration, setDuration] = useState(0);
+  const [audioStoragePath, setAudioStoragePath] = useState<string | null>(null);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+
   const recognitionRef = useRef<any>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
+    // BUG-1: probe both APIs independently.
+    if (typeof MediaRecorder === "undefined") {
+      console.warn("[CallCenterVoiceRecorder] MediaRecorder unavailable in this browser");
+      setIsMediaRecorderAvailable(false);
+    }
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setIsSupported(false);
+      console.warn("[CallCenterVoiceRecorder] SpeechRecognition unavailable — audio still records, transcript disabled");
+      setIsSpeechAvailable(false);
       return;
     }
 
@@ -88,9 +124,14 @@ export function CallCenterVoiceRecorder({
     };
 
     recognition.onerror = (event: any) => {
-      console.error("Speech recognition error:", event.error);
+      console.error("[CallCenterVoiceRecorder] SpeechRecognition error:", event.error);
       if (event.error === "not-allowed") {
-        setIsSupported(false);
+        setIsSpeechAvailable(false);
+        toast.error("Microphone permission denied. Enable it in browser settings and reload.");
+      } else if (event.error === "no-speech") {
+        // benign; keep going
+      } else {
+        toast.error(`Speech recognition error: ${event.error}`);
       }
     };
 
@@ -119,6 +160,8 @@ export function CallCenterVoiceRecorder({
       if (audioContextRef.current) {
         audioContextRef.current.close();
       }
+      if (timerRef.current) clearInterval(timerRef.current);
+      try { mediaRecorderRef.current?.stop(); } catch { /* MediaRecorder unavailable */ } // empty-catch-allow:media-api-optional
     };
   }, []);
 
@@ -210,7 +253,44 @@ export function CallCenterVoiceRecorder({
     }
   };
 
+  const uploadAudioBlob = useCallback(async (blob: Blob, mime: string) => {
+    if (!blob || blob.size === 0) {
+      console.warn("[CallCenterVoiceRecorder] blob empty — nothing to upload");
+      return;
+    }
+    const ext = mime.includes("mp4") ? "m4a" : mime.includes("mpeg") ? "mp3" : "webm";
+    const uid = (typeof crypto !== "undefined" && "randomUUID" in crypto)
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    // callcenter/YYYY-MM-DD/timestamp-uuid.ext — bucket-listable per day.
+    const day = stamp.slice(0, 10);
+    const path = `callcenter/${day}/${stamp}-${uid}.${ext}`;
+    if (import.meta.env.DEV) console.log(`[CallCenterVoiceRecorder] uploading ${blob.size}b (${mime}) → call-recordings/${path}`);
+    setIsUploadingAudio(true);
+    try {
+      const { error } = await supabase.storage.from("call-recordings").upload(path, blob, {
+        contentType: mime || "application/octet-stream",
+        upsert: false,
+      });
+      if (error) {
+        console.error("[CallCenterVoiceRecorder] upload failed:", error);
+        toast.error(`Audio upload failed: ${error.message}`);
+        return;
+      }
+      setAudioStoragePath(path);
+      if (import.meta.env.DEV) console.log(`[CallCenterVoiceRecorder] upload OK → ${path}`);
+      toast.success(`Audio saved (${(blob.size / 1024).toFixed(0)} KB) → ${path}`);
+    } catch (e: any) {
+      console.error("[CallCenterVoiceRecorder] upload threw:", e);
+      toast.error(`Audio upload error: ${e?.message ?? "unknown"}`);
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  }, []);
+
   const startRecording = async () => {
+    if (import.meta.env.DEV) console.log("[CallCenterVoiceRecorder] startRecording() invoked");
     try {
       // Reset previous summary and transcript
       setCallSummary(null);
@@ -218,33 +298,93 @@ export function CallCenterVoiceRecorder({
       setInterimTranscript("");
       setAnalyzeError(null);
       setShowFullTranscript(false);
+      setDuration(0);
+      setAudioStoragePath(null);
+      audioChunksRef.current = [];
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (mediaErr: any) {
+        console.error("[CallCenterVoiceRecorder] getUserMedia failed:", mediaErr);
+        const name = mediaErr?.name || "";
+        if (name === "NotAllowedError" || name === "SecurityError") {
+          toast.error("Microphone blocked. Allow mic access in your browser and try again.");
+        } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+          toast.error("No microphone found. Plug one in and reload.");
+        } else if (name === "NotReadableError") {
+          toast.error("Microphone is in use by another app. Close it and try again.");
+        } else {
+          toast.error(`Cannot start recording: ${mediaErr?.message ?? name ?? "unknown error"}`);
+        }
+        return;
+      }
+      if (import.meta.env.DEV) console.log("[CallCenterVoiceRecorder] getUserMedia resolved");
       streamRef.current = stream;
 
-      audioContextRef.current = new AudioContext();
-      const source = audioContextRef.current.createMediaStreamSource(stream);
-      const analyser = audioContextRef.current.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      analyserRef.current = analyser;
+      try {
+        audioContextRef.current = new AudioContext();
+        const source = audioContextRef.current.createMediaStreamSource(stream);
+        const analyser = audioContextRef.current.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        analyserRef.current = analyser;
+      } catch (audioCtxErr) {
+        console.warn("[CallCenterVoiceRecorder] AudioContext setup failed:", audioCtxErr);
+      }
 
-      recognitionRef.current?.start();
+      // BUG-1: wire MediaRecorder alongside the transcript so audio is captured.
+      if (typeof MediaRecorder !== "undefined") {
+        const mime = pickAudioMime();
+        try {
+          const mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+          const effectiveMime = mime || mr.mimeType || "audio/webm";
+          if (import.meta.env.DEV) console.log(`[CallCenterVoiceRecorder] MediaRecorder mime=${effectiveMime}`);
+          mr.ondataavailable = (evt) => {
+            if (evt.data && evt.data.size > 0) {
+              audioChunksRef.current.push(evt.data);
+              if (import.meta.env.DEV) console.log(`[CallCenterVoiceRecorder] chunk +${evt.data.size}b (total ${audioChunksRef.current.length})`);
+            }
+          };
+          mr.onerror = (evt: any) => {
+            console.error("[CallCenterVoiceRecorder] MediaRecorder error:", evt);
+            toast.error(`Recorder error: ${evt?.error?.message ?? "unknown"}`);
+          };
+          mr.onstop = async () => {
+            const blob = new Blob(audioChunksRef.current, { type: effectiveMime });
+            if (import.meta.env.DEV) console.log(`[CallCenterVoiceRecorder] recorder stopped, blob=${blob.size}b`);
+            await uploadAudioBlob(blob, effectiveMime);
+          };
+          mr.start(1000);
+          mediaRecorderRef.current = mr;
+        } catch (mrErr: any) {
+          console.error("[CallCenterVoiceRecorder] MediaRecorder construction failed:", mrErr);
+          toast.error(`Audio capture disabled: ${mrErr?.message ?? "MediaRecorder error"}`);
+        }
+      } else {
+        toast.warning("This browser cannot capture audio blobs.");
+      }
+
+      if (isSpeechAvailable) {
+        try { recognitionRef.current?.start(); } catch (recErr) { console.warn("[CallCenterVoiceRecorder] recognition start failed:", recErr); }
+      }
       setIsRecording(true);
       onRecordingStateChange?.(true);
+      timerRef.current = setInterval(() => setDuration((d) => d + 1), 1000);
       drawWaveform();
-    } catch (error) {
-      console.error("Error starting recording:", error);
-      setIsSupported(false);
+      toast.success(isSpeechAvailable ? "Recording started" : "Recording (audio only — transcript not supported)");
+    } catch (outer: any) {
+      console.error("[CallCenterVoiceRecorder] startRecording outer failure:", outer);
+      toast.error(`Failed to start recording: ${outer?.message ?? "unknown"}`);
     }
   };
 
   const stopRecording = () => {
+    if (import.meta.env.DEV) console.log("[CallCenterVoiceRecorder] stopRecording() invoked");
     const fullTranscript = transcript + interimTranscript;
 
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
+    try { recognitionRef.current?.stop(); } catch (e) { console.warn("[CallCenterVoiceRecorder] recognition stop failed:", e); }
+    try { mediaRecorderRef.current?.stop(); } catch (e) { console.warn("[CallCenterVoiceRecorder] recorder stop failed:", e); }
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
@@ -252,8 +392,9 @@ export function CallCenterVoiceRecorder({
       streamRef.current.getTracks().forEach((track) => track.stop());
     }
     if (audioContextRef.current) {
-      audioContextRef.current.close();
+      try { audioContextRef.current.close(); } catch { /* AudioContext close failed */ } // empty-catch-allow:media-api-optional
     }
+    if (timerRef.current) clearInterval(timerRef.current);
 
     setIsRecording(false);
     onRecordingStateChange?.(false);
@@ -270,6 +411,13 @@ export function CallCenterVoiceRecorder({
     if (fullTranscript.trim()) {
       analyzeTranscript(fullTranscript);
     }
+    toast.success("Recording stopped");
+  };
+
+  const formatDuration = (s: number) => {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const toggleRecording = () => {
@@ -296,10 +444,12 @@ export function CallCenterVoiceRecorder({
     }
   };
 
-  if (!isSupported) {
+  // BUG-1: only hide the recorder if the browser can neither transcribe NOR
+  // capture audio. iOS Safari falls back to audio-only with a banner.
+  if (!isSpeechAvailable && !isMediaRecorderAvailable) {
     return (
       <div className={cn("text-sm text-muted-foreground text-center p-4", className)}>
-        Voice recording not supported in this browser.
+        Voice recording not supported in this browser. Try Chrome, Edge, or Safari.
       </div>
     );
   }
@@ -347,10 +497,32 @@ export function CallCenterVoiceRecorder({
           <motion.span
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-sm text-muted-foreground flex items-center gap-2"
+            className="text-sm text-muted-foreground flex items-center gap-2 font-mono tabular-nums"
           >
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            Recording...
+            {formatDuration(duration)}
+          </motion.span>
+        )}
+
+        {isUploadingAudio && !isRecording && (
+          <motion.span
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-sm text-muted-foreground flex items-center gap-2"
+          >
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Uploading audio…
+          </motion.span>
+        )}
+
+        {audioStoragePath && !isUploadingAudio && !isRecording && (
+          <motion.span
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-xs text-green-500 flex items-center gap-1"
+            title={audioStoragePath}
+          >
+            <Check className="h-3 w-3" /> Audio saved
           </motion.span>
         )}
 

@@ -49,6 +49,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { RecoveryBatchDrawer, type RecoveryBatchRow } from "@/components/unlicensed/RecoveryBatchDrawer";
 import { SuppressionDialog, type SuppressionTarget } from "@/components/unlicensed/SuppressionDialog";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 // Row from v_unlicensed_all — now UNION of applications + aged_leads
 interface UnlicensedRow {
@@ -366,13 +367,13 @@ export default function UnlicensedAll() {
 
       const { count: recoveredCount } = await supabase
         .from("applications")
-        .select("id", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
         .eq("license_status", "licensed")
         .gte("licensed_at", sevenDaysAgo);
 
       const { count: appSuppressed } = await supabase
         .from("applications")
-        .select("id", { count: "exact", head: true })
+        .select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE)
         .not("terminated_at", "is", null)
         .gte("terminated_at", sevenDaysAgo);
 

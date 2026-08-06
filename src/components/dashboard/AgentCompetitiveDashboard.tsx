@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 interface Props {
   agentId: string;
@@ -100,7 +101,7 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
       // ── Recruiting rank (applications referred this week) ──
       const { data: recruits } = await supabase
         .from("applications")
-        .select("referral_manager_id")
+        .select("referral_manager_id").eq("record_type", APPLICATION_RECORD_TYPE)
         .gte("created_at", weekBounds.startIso)
         .lt("created_at", weekBounds.endIso)
         .not("referral_manager_id", "is", null);

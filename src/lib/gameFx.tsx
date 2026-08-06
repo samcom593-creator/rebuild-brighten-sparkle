@@ -52,7 +52,10 @@ export function levelUpBanner(text: string, durationMs = 4000): void {
 export function screenFlash(color: "emerald" | "gold" | "rose" = "emerald", durationMs = 500): void {
   if (typeof document === "undefined" || reducedMotion()) return;
   const palette: Record<string, string> = {
-    emerald: "hsl(168 70% 50% / 0.22)",
+    // 2026-08-06: the "emerald" key kept its pre-rebrand teal flash. The name
+    // is load-bearing (callers pass the string) so it stays; the colour is now
+    // brand gold like every other celebratory surface.
+    emerald: "hsl(var(--primary) / 0.22)",
     gold:    "hsl(42 95% 55% / 0.22)",
     rose:    "hsl(350 75% 55% / 0.22)",
   };

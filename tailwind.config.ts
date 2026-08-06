@@ -228,12 +228,20 @@ export default {
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-        "apex-gradient": "linear-gradient(135deg, hsl(168 84% 42%), hsl(160 84% 39%))",
-        "apex-gradient-soft": "linear-gradient(135deg, hsl(168 84% 42% / 0.2), hsl(160 84% 39% / 0.2))",
+        // 2026-08-06: these four were still teal→emerald and the emerald→gold
+        // palette remap above does NOT reach them — they are literal hsl in the
+        // config, not palette lookups. `bg-apex-gradient shadow-apex-glow` is
+        // the Login "Sign In" button, so the primary CTA of the whole app was
+        // rendering bright green with a green halo long after the rebrand.
+        // Caught by screenshotting the rendered page, not by grepping src/.
+        // Stops match --gradient-primary (src/index.css:98) exactly, and the
+        // pairing with text-primary-foreground measures 9.9:1.
+        "apex-gradient": "linear-gradient(135deg, hsl(45 85% 52%), hsl(38 88% 46%))",
+        "apex-gradient-soft": "linear-gradient(135deg, hsl(45 85% 52% / 0.2), hsl(38 88% 46% / 0.2))",
       },
       boxShadow: {
-        "apex-glow": "0 0 20px hsl(168 84% 42% / 0.3), 0 0 40px hsl(168 84% 42% / 0.1)",
-        "apex-glow-strong": "0 0 30px hsl(168 84% 42% / 0.4), 0 0 60px hsl(168 84% 42% / 0.2)",
+        "apex-glow": "0 0 20px hsl(45 85% 52% / 0.3), 0 0 40px hsl(45 85% 52% / 0.1)",
+        "apex-glow-strong": "0 0 30px hsl(45 85% 52% / 0.4), 0 0 60px hsl(45 85% 52% / 0.2)",
         glass: "0 8px 32px hsl(222 47% 3% / 0.5)",
       },
     },

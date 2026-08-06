@@ -54,14 +54,20 @@ export function CallCenterProgressRing({
       <svg width={size} height={size} className="transform -rotate-90">
         {/* Background circle with subtle gradient */}
         <defs>
+          {/* 2026-08-06: in-progress ring was emerald→teal→emerald from before
+              the black+gold rebrand; now the brand gold. completeGradient stays
+              GREEN on purpose — that is the semantic success state, the same
+              reason tailwind.config.ts remaps emerald/teal to gold but leaves
+              green-* alone. Only its teal end-stop moved, so the success ring
+              is now green→green instead of green→teal. */}
           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="hsl(160, 84%, 39%)" />
-            <stop offset="50%" stopColor="hsl(172, 66%, 50%)" />
-            <stop offset="100%" stopColor="hsl(160, 84%, 39%)" />
+            <stop offset="0%" stopColor="hsl(var(--primary))" />
+            <stop offset="50%" stopColor="hsl(45, 90%, 66%)" />
+            <stop offset="100%" stopColor="hsl(var(--primary))" />
           </linearGradient>
           <linearGradient id="completeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="hsl(142, 76%, 36%)" />
-            <stop offset="100%" stopColor="hsl(172, 66%, 50%)" />
+            <stop offset="100%" stopColor="hsl(142, 70%, 52%)" />
           </linearGradient>
         </defs>
 

@@ -144,9 +144,11 @@ export function CallCenterVoiceRecorder({
 
       ctx.lineWidth = 2;
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-      gradient.addColorStop(0, "hsl(160, 84%, 39%)");
-      gradient.addColorStop(0.5, "hsl(172, 66%, 50%)");
-      gradient.addColorStop(1, "hsl(160, 84%, 39%)");
+      // 2026-08-06: twin of InterviewRecorder — emerald→teal→emerald replaced
+      // with the literal --primary gold ramp (canvas can't read CSS vars).
+      gradient.addColorStop(0, "hsl(45, 85%, 45%)");
+      gradient.addColorStop(0.5, "hsl(45, 90%, 62%)");
+      gradient.addColorStop(1, "hsl(45, 85%, 45%)");
       ctx.strokeStyle = gradient;
 
       ctx.beginPath();

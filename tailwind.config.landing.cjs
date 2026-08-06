@@ -235,16 +235,20 @@ module.exports = {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic":
           "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
+        // 2026-08-06: kept byte-identical to tailwind.config.ts. The landing
+        // config is a separate build and a rebrand that touches only one of the
+        // two configs ships a half-green site — the documented failure mode
+        // from the 2026-08-02 green→gold pass.
         "apex-gradient":
-          "linear-gradient(135deg, hsl(168 84% 42%), hsl(160 84% 39%))",
+          "linear-gradient(135deg, hsl(45 85% 52%), hsl(38 88% 46%))",
         "apex-gradient-soft":
-          "linear-gradient(135deg, hsl(168 84% 42% / 0.2), hsl(160 84% 39% / 0.2))",
+          "linear-gradient(135deg, hsl(45 85% 52% / 0.2), hsl(38 88% 46% / 0.2))",
       },
       boxShadow: {
         "apex-glow":
-          "0 0 20px hsl(168 84% 42% / 0.3), 0 0 40px hsl(168 84% 42% / 0.1)",
+          "0 0 20px hsl(45 85% 52% / 0.3), 0 0 40px hsl(45 85% 52% / 0.1)",
         "apex-glow-strong":
-          "0 0 30px hsl(168 84% 42% / 0.4), 0 0 60px hsl(168 84% 42% / 0.2)",
+          "0 0 30px hsl(45 85% 52% / 0.4), 0 0 60px hsl(45 85% 52% / 0.2)",
         glass: "0 8px 32px hsl(222 47% 3% / 0.5)",
       },
     },

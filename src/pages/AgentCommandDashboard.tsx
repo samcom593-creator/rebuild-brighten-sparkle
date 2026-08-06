@@ -437,8 +437,8 @@ export default function AgentCommandDashboard() {
               <AreaChart data={sparkline}>
                 <defs>
                   <linearGradient id="apGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"  stopColor="hsl(168 70% 45%)" stopOpacity={0.6} />
-                    <stop offset="100%" stopColor="hsl(168 70% 45%)" stopOpacity={0} />
+                    <stop offset="0%"  stopColor="hsl(var(--primary))" stopOpacity={0.6} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.4)" />
@@ -449,7 +449,7 @@ export default function AgentCommandDashboard() {
                   labelFormatter={(d) => format(new Date(d), "PPP")}
                   formatter={(v: number) => fmtUsd(v)}
                 />
-                <Area type="monotone" dataKey="ap" stroke="hsl(168 70% 45%)" fill="url(#apGrad)" name="AP" />
+                <Area type="monotone" dataKey="ap" stroke="hsl(var(--primary))" fill="url(#apGrad)" name="AP" />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -648,7 +648,7 @@ export default function AgentCommandDashboard() {
                   labelFormatter={(d) => format(new Date(d), "PPP")}
                   formatter={(v: number) => [fmtNum(v), "Deals"]}
                 />
-                <Bar dataKey="deals" fill="hsl(168 70% 45%)" name="Deals" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="deals" fill="hsl(var(--primary))" name="Deals" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -2329,20 +2329,20 @@ function AgencyCommandView() {
                 <AreaChart data={trend.data}>
                   <defs>
                     <linearGradient id="ceoApGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(168 70% 50%)" stopOpacity={0.75} />
-                      <stop offset="100%" stopColor="hsl(168 70% 50%)" stopOpacity={0} />
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.75} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis dataKey="day" tickFormatter={(d) => format(new Date(d), "MMM d")} fontSize={10} stroke="rgba(255,255,255,0.4)" />
                   <YAxis fontSize={10} stroke="rgba(255,255,255,0.4)" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
                   <Tooltip
-                    contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(168 70% 45% / 0.4)", borderRadius: 12, color: "#fff" }}
-                    labelStyle={{ color: "hsl(168 70% 70%)" }}
+                    contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(var(--primary) / 0.4)", borderRadius: 12, color: "#fff" }}
+                    labelStyle={{ color: "hsl(var(--primary))" }}
                     labelFormatter={(d) => format(new Date(d), "PPP")}
                     formatter={(v: number, name: string) => name === "ap" ? fmtUsd(v) : v}
                   />
-                  <Area type="monotone" dataKey="ap" stroke="hsl(168 70% 60%)" strokeWidth={2} fill="url(#ceoApGrad)" name="ap" />
+                  <Area type="monotone" dataKey="ap" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#ceoApGrad)" name="ap" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -3796,18 +3796,18 @@ function WeekOverWeekPanel() {
             <AreaChart data={d.chart}>
               <defs>
                 <linearGradient id="wowThisWk" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(168 70% 55%)" stopOpacity={0.55} />
-                  <stop offset="100%" stopColor="hsl(168 70% 55%)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.55} />
+                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="dayLabel" fontSize={10} stroke="rgba(255,255,255,0.4)" />
               <YAxis fontSize={10} stroke="rgba(255,255,255,0.4)" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
               <Tooltip
-                contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(168 70% 45% / 0.4)", borderRadius: 12, color: "#fff", fontSize: 11 }}
+                contentStyle={{ background: "hsl(220 40% 8%)", border: "1px solid hsl(var(--primary) / 0.4)", borderRadius: 12, color: "#fff", fontSize: 11 }}
                 formatter={(v: number, name: string) => [fmtUsd(v), name === "thisWeek" ? "This week" : "Last week"]}
               />
-              <Area type="monotone" dataKey="thisWeek" stroke="hsl(168 70% 60%)" strokeWidth={2} fill="url(#wowThisWk)" />
+              <Area type="monotone" dataKey="thisWeek" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#wowThisWk)" />
               <Area type="monotone" dataKey="lastWeek" stroke="rgba(255,255,255,0.4)" strokeWidth={1.5} strokeDasharray="4 4" fill="none" />
             </AreaChart>
           </ResponsiveContainer>

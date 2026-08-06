@@ -337,8 +337,10 @@ export default function BookReconciliation() {
                   formatter={(v: number, _n: string, p: any) => [fmtUsd(v), p?.payload?.supported ? "Supported" : "UNSUPPORTED"]}
                 />
                 <Bar dataKey="live_premium" radius={[0, 4, 4, 0]}>
+                  {/* 2026-08-06: supported slice was hsl(168 70% 45%) teal; the
+                      unsupported slice stays red because that is semantic. */}
                   {carrierMix.map((c) => (
-                    <Cell key={c.carrier_name} fill={c.supported ? "hsl(168 70% 45%)" : "hsl(0 70% 55%)"} />
+                    <Cell key={c.carrier_name} fill={c.supported ? "hsl(var(--primary))" : "hsl(0 70% 55%)"} />
                   ))}
                 </Bar>
               </BarChart>

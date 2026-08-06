@@ -41,10 +41,15 @@ export function ScrollProgress() {
         className="h-full transition-[width] duration-100 ease-out"
         style={{
           width: `${pct}%`,
+          // 2026-08-06: was a teal → purple → amber rainbow, the last of the
+          // pre-rebrand three-hue gradients and flagged as outstanding in the
+          // perf/site-wide-optimization receipt. Now a gold ramp: --primary
+          // into the deeper gold that --gradient-primary already ends on, so
+          // the scrubber reads as one brand colour gaining intensity.
           background:
-            "linear-gradient(90deg, hsl(168 90% 55%) 0%, hsl(265 90% 65%) 50%, hsl(38 95% 60%) 100%)",
+            "linear-gradient(90deg, hsl(var(--primary) / 0.55) 0%, hsl(var(--primary)) 55%, hsl(38 88% 46%) 100%)",
           boxShadow:
-            "0 0 12px hsl(168 80% 55% / 0.6), 0 0 24px hsl(265 80% 65% / 0.4)",
+            "0 0 12px hsl(var(--primary) / 0.6), 0 0 24px hsl(var(--primary) / 0.3)",
         }}
       />
     </div>

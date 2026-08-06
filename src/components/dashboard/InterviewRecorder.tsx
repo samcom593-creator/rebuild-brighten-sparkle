@@ -123,9 +123,12 @@ export function InterviewRecorder({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.lineWidth = 2;
       const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-      gradient.addColorStop(0, "hsl(160, 84%, 39%)");
-      gradient.addColorStop(0.5, "hsl(172, 66%, 50%)");
-      gradient.addColorStop(1, "hsl(160, 84%, 39%)");
+      // 2026-08-06: was emerald→teal→emerald. Canvas cannot resolve CSS vars,
+      // so these are the literal --primary gold (45 85% 52%) and a lighter
+      // gold for the mid-stop.
+      gradient.addColorStop(0, "hsl(45, 85%, 45%)");
+      gradient.addColorStop(0.5, "hsl(45, 90%, 62%)");
+      gradient.addColorStop(1, "hsl(45, 85%, 45%)");
       ctx.strokeStyle = gradient;
       ctx.beginPath();
       const sliceWidth = canvas.width / bufferLength;

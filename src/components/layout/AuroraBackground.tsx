@@ -14,8 +14,9 @@ function AuroraBackgroundImpl() {
       style={{
         contain: "strict",
         background: [
-          // Whisper-quiet emerald hint, top-left only
-          "radial-gradient(ellipse 50% 35% at 10% 5%, hsl(168 50% 30% / 0.08) 0%, transparent 65%)",
+          // Whisper-quiet gold hint, top-left only. Was hsl(168 50% 30%) teal
+          // left over from before the black+gold rebrand (2026-08-06).
+          "radial-gradient(ellipse 50% 35% at 10% 5%, hsl(var(--primary) / 0.08) 0%, transparent 65%)",
           // Vignette toward center
           "radial-gradient(ellipse 100% 80% at center, transparent 50%, hsl(222 60% 2% / 0.55) 100%)",
         ].join(", "),

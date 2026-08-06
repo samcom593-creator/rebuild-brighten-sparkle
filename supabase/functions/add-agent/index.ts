@@ -23,6 +23,13 @@ interface AddAgentRequest {
   crmSetupLink?: string;
   licenseProgress?: string;
   hasTrainingCourse?: boolean;
+  // Sam 2026-08-06: NPN + license detail capture at add time. agents.nipr_number
+  // existed since the original schema but nothing ever wrote to it (0 of 178
+  // rows populated), so every "licensed" agent was an unprovable self-claim.
+  niprNumber?: string;
+  licenseNumber?: string;
+  licenseStates?: string[];
+  licenseExpiresAt?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -91,7 +98,13 @@ const handler = async (req: Request): Promise<Response> => {
       crmSetupLink,
       licenseProgress,
       hasTrainingCourse = false,
+      niprNumber,
+      licenseNumber,
+      licenseStates,
+      licenseExpiresAt,
     } = body;
+
+    const normalizedNpn = (niprNumber ?? "").replace(/\D+/g, "");
 
     const allowedBuilderTracks = new Set(["agent", "manager_track", "agency_owner_track"]);
     if (!allowedBuilderTracks.has(requestedBuilderTrack)) {
@@ -114,6 +127,16 @@ const handler = async (req: Request): Promise<Response> => {
     if (!firstName || !lastName || !email || !phone || !managerId) {
       return new Response(
         JSON.stringify({ error: "Missing required fields: firstName, lastName, email, phone, managerId" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Server-side mirror of the modal's rule. The modal can be bypassed (this
+    // fn is callable directly), so the "licensed needs an NPN" invariant has to
+    // hold here too or the untrusted-license problem just moves one layer down.
+    if (licenseStatus === "licensed" && normalizedNpn.length < 4) {
+      return new Response(
+        JSON.stringify({ error: "NPN is required for a licensed agent. Look it up free at nipr.com." }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -245,6 +268,25 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (crmSetupLink) {
       agentInsert.crm_setup_link = crmSetupLink;
+    }
+
+    // License detail. nipr_verified is deliberately left at its false default —
+    // an NPN typed into a form is self-reported, not verified. Only a real NIPR
+    // lookup may flip it, otherwise the trust chip would claim proof we don't
+    // have (the same lie as the 465 fake-success InsuraCloud sync rows).
+    if (normalizedNpn) {
+      agentInsert.nipr_number = normalizedNpn;
+    }
+    if (licenseNumber?.trim()) {
+      agentInsert.license_number = licenseNumber.trim();
+    }
+    if (Array.isArray(licenseStates) && licenseStates.length) {
+      agentInsert.license_states = licenseStates
+        .map((s) => String(s).trim().toUpperCase())
+        .filter(Boolean);
+    }
+    if (licenseExpiresAt) {
+      agentInsert.license_expires_at = licenseExpiresAt;
     }
 
     const { data: newAgent, error: agentError } = await supabaseAdmin

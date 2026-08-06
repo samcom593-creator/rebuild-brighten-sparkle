@@ -258,7 +258,10 @@ export default function Login() {
           </Link>
           <motion.h1
             className="font-extrabold mb-3 brand-gradient leading-tight tracking-tight max-w-full text-balance"
-            style={{ fontSize: "clamp(2rem, 8vw, 3.5rem)", filter: "drop-shadow(0 0 30px hsl(168 80% 50% / 0.35))" }}
+            // 2026-08-06: glow was hsl(168 80% 50%) teal behind a gold
+            // brand-gradient wordmark — same leftover as the StickyMobileCTA
+            // and HeroSection glows already retargeted to --primary.
+            style={{ fontSize: "clamp(2rem, 8vw, 3.5rem)", filter: "drop-shadow(0 0 30px hsl(var(--primary) / 0.35))" }}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}

@@ -26,10 +26,20 @@
   --apex-text-mute:      220 12% 40%;       /* mid for body */
   --apex-text-dim:       220 10% 55%;       /* low for captions */
 
-  /* Accent — emerald, slightly deeper for white-bg contrast */
-  --apex-accent:         160 84% 36%;
-  --apex-accent-soft:    160 84% 36% / 0.10;
-  --apex-accent-strong:  160 84% 28%;
+  /* Accent — APEX gold. Hue/sat match --apex-gold / --primary / --ring
+     (45 85% 52%, src/index.css:85) and the emerald→gold Tailwind ramp remap
+     in tailwind.config.ts, so there is exactly one gold in the app rather
+     than a fourth near-miss shade.
+
+     Lightness is 28%, NOT the 52% used on dark. --apex-accent renders as TEXT
+     (RecruitFAQ chevron + question, GlobalSidebar hover) and as a fill behind
+     --apex-bg ink (the RecruitFAQ index pill), and gold at 52% on a white card
+     is 1.8:1 — invisible. At 28% it measures 5.4:1 on --apex-card white and
+     4.8:1 against --apex-bg ink, so both directions clear WCAG AA. The prior
+     emerald 36% was 3.0:1 and 2.7:1 — it never passed either. */
+  --apex-accent:         45 85% 28%;
+  --apex-accent-soft:    45 85% 28% / 0.10;
+  --apex-accent-strong:  45 85% 22%;
 
   /* Status — darkened for white-bg contrast */
   --apex-success:        150 70% 36%;
@@ -73,9 +83,11 @@
      Fixed by pinning the ring to --primary (gold, 45 85% 52%) and raising the
      alpha to a perceptible level, plus a thin solid inner ring so the
      indicator holds up against both the gold buttons and the near-black
-     canvas. --apex-hover-ring is left on --apex-accent deliberately: it is a
-     hover affordance, not an accessibility-critical indicator, and retargeting
-     the --apex-accent token itself is a brand decision outside this pass. */
+     canvas.
+     2026-08-06 follow-up: --apex-accent itself has now been retargeted to the
+     same gold, so --apex-hover-ring below (which deliberately stayed on
+     --apex-accent as a non-a11y-critical hover affordance) is gold too and the
+     two rings finally agree. */
   --apex-focus-ring: 0 0 0 1px hsl(var(--background)), 0 0 0 4px hsl(var(--primary) / 0.85);
   --apex-hover-ring: 0 0 0 3px hsl(var(--apex-accent) / 0.40);
 }
@@ -94,9 +106,14 @@
   --apex-text-mute:      220 10% 65%;
   --apex-text-dim:       220 8%  45%;
 
-  --apex-accent:         160 84% 45%;
-  --apex-accent-soft:    160 84% 45% / 0.08;
-  --apex-accent-strong:  160 84% 38%;
+  /* Dark shell is what the app force-locks (index.html sets class="dark"), so
+     this is the value that actually ships. 52% is the canonical --apex-gold,
+     unmodified: gold text on the near-black card measures 9.2:1, and the
+     RecruitFAQ index pill (gold fill + --apex-bg ink) measures 10.5:1 — the
+     same gold-fill/dark-ink pairing StickyMobileCTA was corrected to. */
+  --apex-accent:         45 85% 52%;
+  --apex-accent-soft:    45 85% 52% / 0.08;
+  --apex-accent-strong:  45 85% 42%;
 
   --apex-success:        150 70% 50%;
   --apex-warning:        38  92% 55%;

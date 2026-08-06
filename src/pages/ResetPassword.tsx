@@ -82,7 +82,8 @@ export default function ResetPassword() {
           </div>
           <h1
             className="font-extrabold mb-3 brand-gradient leading-tight tracking-tight"
-            style={{ fontSize: "clamp(2rem, 7vw, 3.5rem)", filter: "drop-shadow(0 0 30px hsl(168 80% 50% / 0.35))" }}
+            // 2026-08-06: teal glow behind the gold wordmark, twin of Login.tsx.
+            style={{ fontSize: "clamp(2rem, 7vw, 3.5rem)", filter: "drop-shadow(0 0 30px hsl(var(--primary) / 0.35))" }}
           >
             Set new password
           </h1>

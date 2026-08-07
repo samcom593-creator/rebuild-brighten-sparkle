@@ -39,6 +39,7 @@ import {
   Search,
   Settings,
   Sparkles,
+  GitMerge,
   TrendingDown,
   TrendingUp,
   UserCog,
@@ -274,6 +275,9 @@ export function GlobalSidebar({
         // 2026-07-01 Sam: producer weekly trend + 3-week drop alarm (Daniel use case).
         { icon: TrendingDown, label: "Producer Trends", href: "/admin/producer-trends", special: true },
         // MP-230 (2026-07-01): AgentLink Backfill sidebar entry removed per Sam directive.
+        // 2026-08-07: two agent rows sharing one AgentLink id split that person's
+        // production across both. One click here collapses them onto the canonical.
+        { icon: GitMerge, label: "Agent Duplicates", href: "/admin/agent-duplicates", special: true },
         { icon: Settings, label: "Admin", href: "/dashboard/command" },
       );
       oldApplicants.push(

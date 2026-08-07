@@ -203,6 +203,7 @@ const Setup = lazy(() => import("./pages/admin/Setup"));
 const SamHQ = lazy(() => import("./pages/admin/SamHQ"));
 const SamTodo = lazy(() => import("./pages/SamTodo"));
 const UnclaimedLeads = lazy(() => import("./pages/admin/UnclaimedLeads"));
+const AgentDuplicates = lazy(() => import("./pages/admin/AgentDuplicates"));
 const ManagerDashboard = lazy(() => import("./pages/admin/ManagerDashboard"));
 const LicensingTracker = lazy(() => import("./pages/admin/LicensingTracker"));
 const CommissionRecovery = lazy(() => import("./pages/admin/CommissionRecovery"));
@@ -462,8 +463,11 @@ const App = () => (
                     <Route path="/admin/invite-links" element={<ProtectedRoute requireAdmin allowManagers><InviteLinksAdmin /></ProtectedRoute>} />
                     {/* PL-SAM-2026-06-03-001: uncontacted-first recruiting queue. v_recruiting_inbox is SECURITY INVOKER so RLS scopes rows per role. */}
                     <Route path="/admin/recruiting-inbox" element={<Navigate to="/dashboard/command" replace />} />
-                    {/* wave-100: Sam-adjudication for unresolved same-display_name agent dup pairs. */}
-                    <Route path="/admin/agent-duplicates" element={<Navigate to="/dashboard/crm" replace />} />
+                    {/* Sam-adjudication for unresolved agent identity dup pairs (same AgentLink /
+                        InsuraCloud id, or same name). The CRM-consolidation wave turned this into a
+                        redirect, but apex-doctor Check #14 still mails Sam this URL weekly and CRM
+                        has no merge action — so the page is back on its own route. */}
+                    <Route path="/admin/agent-duplicates" element={<ProtectedRoute requireAdmin><AgentDuplicates /></ProtectedRoute>} />
                     {/* Stale-recovery panel — admins/managers only. v_stale_applicants
                         feeds it. Additive: doesn't touch DashboardApplicants. */}
                     <Route path="/dashboard/stale-recovery" element={<ProtectedRoute requireAdmin allowManagers><StaleRecovery /></ProtectedRoute>} />

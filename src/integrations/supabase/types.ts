@@ -7813,6 +7813,32 @@ export type Database = {
         Args: { p_key: string; p_value: string }
         Returns: Json
       }
+      phc_admin_leads: {
+        Args: never
+        Returns: {
+          lead_code: string
+          created_at: string
+          first_name: string
+          phone_e164: string
+          email: string
+          state: string | null
+          help_category: string
+          callback_time: string | null
+          current_carrier: string | null
+          utm_source: string | null
+          utm_campaign: string | null
+          gclid: string | null
+          status: string
+        }[]
+      }
+      phc_admin_lead_stats: {
+        Args: never
+        Returns: {
+          total: number
+          today: number
+          uncalled: number
+        }[]
+      }
       agentlink_award_top_producers: {
         Args: never
         Returns: {

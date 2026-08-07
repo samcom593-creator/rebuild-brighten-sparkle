@@ -106,6 +106,7 @@ const ManagerNextStepBoard = lazy(() => import("./pages/ManagerNextStepBoard"));
 const AdminStuckPool = lazy(() => import("./pages/AdminStuckPool"));
 const AdminFunnelHealth = lazy(() => import("./pages/AdminFunnelHealth"));
 const AdminEmailGaps = lazy(() => import("./pages/AdminEmailGaps"));
+const AdminPolicyLeads = lazy(() => import("./pages/AdminPolicyLeads"));
 const AdminMissingAlLink = lazy(() => import("./pages/AdminMissingAlLink"));
 const DashboardToday = lazy(() => import("./pages/DashboardToday"));
 const OnboardingLadder = lazy(() => import("./pages/OnboardingLadder"));
@@ -490,6 +491,7 @@ const App = () => (
                     <Route path="/admin/next-step/funnel-health" element={<ProtectedRoute requireAdmin><AdminFunnelHealth /></ProtectedRoute>} />
                     {/* 2026-06-17 Sam: surface every licensed agent missing course email + bulk send */}
                     <Route path="/admin/email-gaps" element={<ProtectedRoute requireAdmin><AdminEmailGaps /></ProtectedRoute>} />
+                    <Route path="/admin/policy-leads" element={<ProtectedRoute requireAdmin><AdminPolicyLeads /></ProtectedRoute>} />
                     {/* 2026-07-05: agents missing insuracloud_user_id (AL user id) — accept suggestion or paste id */}
                     <Route path="/admin/missing-al-link" element={<ProtectedRoute requireAdmin><AdminMissingAlLink /></ProtectedRoute>} />
                     {/* 2026-07-25: month-agnostic replacement for the deleted June Hires Punch List.

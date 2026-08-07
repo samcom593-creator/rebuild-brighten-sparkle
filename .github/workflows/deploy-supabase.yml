@@ -88,28 +88,12 @@ jobs:
         with:
           version: latest
 
-      - name: Link project
-        # NO continue-on-error. It used to carry it, and that is exactly how
-        # this workflow lied for 8 days: `supabase link` needs the db password
-        # to link non-interactively, failed without it, and continue-on-error
-        # rewrote the step conclusion to "success". The failure only surfaced
-        # 4 steps later as `db push` → "Cannot find project ref. Have you run
-        # supabase link?" — so migrations silently never applied while the
-        # summary still printed a SHA. Link failure must be loud and fatal.
-        run: |
-          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
-            echo "::error::SUPABASE_DB_PASSWORD missing — link cannot authenticate"
-            exit 1
-          fi
-          supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
-          # Prove the link actually took. `link` exiting 0 is not proof; the
-          # ref file is. Without this, a future CLI change that soft-fails
-          # would re-open the same silent hole.
-          if [ ! -s supabase/.temp/project-ref ]; then
-            echo "::error::supabase link reported success but wrote no project-ref — refusing to continue"
-            exit 1
-          fi
-          echo "linked → $(cat supabase/.temp/project-ref)"
+      # `supabase link` is deliberately GONE. History of this step: it failed
+      # silently for 8 days behind continue-on-error (no db password), then the
+      # hard-gated version died on a CLI SchemaError parsing this project's
+      # api-keys timestamps (2026-08-07, CLI "latest"). Nothing here actually
+      # needs link: function deploys use --project-ref + access token, and
+      # db push below connects straight to the pooler via --db-url.
 
       - name: Sync rotated automation credential
         run: |
@@ -202,7 +186,12 @@ jobs:
             echo "### Migrations: FAILED — SUPABASE_DB_PASSWORD missing" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
-          if supabase db push --password "$SUPABASE_DB_PASSWORD" --include-all 2>&1 | tee /tmp/dbpush.log; then
+          # Direct pooler connection — no `supabase link` required (see note at
+          # the removed Link step). Password is URL-encoded because it lands in
+          # a connection string.
+          ENC_PW=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
+          DB_URL="postgresql://postgres.${PROJECT_REF}:${ENC_PW}@aws-0-us-west-2.pooler.supabase.com:5432/postgres"
+          if supabase db push --db-url "$DB_URL" --include-all 2>&1 | tee /tmp/dbpush.log; then
             {
               echo "### Migrations"
               echo "- Applied (or no pending)"

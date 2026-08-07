@@ -444,13 +444,13 @@ async function loadDashboardSnapshot(
   // refreshed every 30 min by com.samjames.apex.agentlink-sync launchd.
   const { data: alTruth } = await q
     .from("v_agentlink_book_truth")
-    .select("deals_today, premium_today, deals_this_week, premium_this_week, deals_this_month, premium_this_month")
+    .select("deals_today, premium_today, deals_this_week, premium_this_week, deals_this_month, premium_this_month, deals_prior_week, premium_prior_week")
     .maybeSingle();
   // MP237 invariant fix: source-mixing between AgentLink truth view and legacy
   // deals-table fallback broke Month>=Week>=Today when one bucket was
   // legitimately zero (e.g. no deals yet today) but others were not.
   // Decide the source ONCE per snapshot: if the truth row exists, use it for
-  // all six buckets (including legitimate zeros). Only fall back to the
+  // all seven buckets (including legitimate zeros). Only fall back to the
   // legacy deals-table sum when the view returned no row at all.
   const alTruthAvailable = alTruth != null;
   const alTodayAlp = Number(alTruth?.premium_today ?? 0);
@@ -459,6 +459,14 @@ async function loadDashboardSnapshot(
   const alWeekDeals = Number(alTruth?.deals_this_week ?? 0);
   const alMonthAlp = Number(alTruth?.premium_this_month ?? 0);
   const alMonthDeals = Number(alTruth?.deals_this_month ?? 0);
+  // wave-wow-source-mismatch 2026-08-07: the "Vs prior matched week" tile used to
+  // divide alWeekAlp (truth view) by the legacy deals-table prior week. Two sources,
+  // one percentage. On 2026-08-07 that rendered -1.66% ("flat") while the same-source
+  // comparison was -26.79% — the legacy table was missing 11 deals / $15,980 of the
+  // baseline, so a real 27% production drop read as noise on Sam's landing surface.
+  // v_agentlink_book_truth now carries its own matched prior week (same weekday span
+  // shifted -7d, same Phoenix dates), so both operands share a source and a timezone.
+  const alPriorWeekAlp = Number(alTruth?.premium_prior_week ?? 0);
   const legacyTodayAlp = sumAnnualPremium(todayDeals);
   const legacyMonthAlp = sumAnnualPremium(monthDeals);
 
@@ -475,7 +483,9 @@ async function loadDashboardSnapshot(
       weekDeals: alTruthAvailable ? alWeekDeals : weekDeals.length,
       monthAlp: alTruthAvailable ? alMonthAlp : legacyMonthAlp,
       monthDeals: alTruthAvailable ? alMonthDeals : monthDeals.length,
-      previousWeekAlp: sumAnnualPremium(priorWeekDeals),
+      // Must follow weekAlp's source exactly — a % whose numerator and denominator
+      // come from different tables is not a growth rate, it is a coincidence.
+      previousWeekAlp: alTruthAvailable ? alPriorWeekAlp : sumAnnualPremium(priorWeekDeals),
       liveAgents: new Set((liveDeals as any[]).map((row) => row.agent_id).filter(Boolean)).size,
       presentationsWeek: weekProduction.reduce((sum, row) => sum + Number(row.presentations ?? 0), 0),
       hoursWeek: weekProduction.reduce((sum, row) => sum + Number(row.hours_called ?? 0), 0),

@@ -81,6 +81,56 @@ for (const relativePath of criticalRecruitingFiles) {
   }
 }
 
+// wave-wow-source-mismatch 2026-08-07 — class-of-fix ratchet.
+// Every production bucket on the Dashboard snapshot must resolve its source through
+// the SAME `alTruthAvailable` gate. When one bucket silently kept reading the legacy
+// `deals` table while its sibling read v_agentlink_book_truth, the "Vs prior matched
+// week" tile divided a truth numerator by a legacy denominator and rendered -1.66%
+// where the honest same-source figure was -26.79%. A ratio built from two tables is
+// not a growth rate. This blocks any future bucket from being added ungated.
+const SOURCE_GATED_PRODUCTION_KEYS = [
+  "todayAlp",
+  "todayDeals",
+  "weekAlp",
+  "weekDeals",
+  "monthAlp",
+  "monthDeals",
+  "previousWeekAlp",
+];
+function dashboardSnapshotSourceParity() {
+  const relativePath = "src/pages/Dashboard.tsx";
+  const absolutePath = path.join(repoRoot, relativePath);
+  if (!fs.existsSync(absolutePath)) return;
+  const source = fs.readFileSync(absolutePath, "utf8");
+
+  // Scope to the runtime object literal, not the DashboardSnapshot type declaration
+  // above it (which legitimately reads `previousWeekAlp: number;`).
+  const objectStart = source.indexOf("sourceGeneratedAt: new Date().toISOString(),");
+  if (objectStart === -1) {
+    violations.push(
+      `${relativePath}: could not locate the snapshot object literal (anchor \`sourceGeneratedAt: new Date().toISOString(),\`) — update scripts/check-metric-truth.mjs so the source-parity ratchet keeps running`,
+    );
+    return;
+  }
+  const objectSource = source.slice(objectStart);
+
+  for (const key of SOURCE_GATED_PRODUCTION_KEYS) {
+    const match = objectSource.match(new RegExp(`^\\s*${key}:\\s*(.+)$`, "m"));
+    if (!match) {
+      violations.push(
+        `${relativePath}: production bucket \`${key}\` not found — if it was renamed, update SOURCE_GATED_PRODUCTION_KEYS in scripts/check-metric-truth.mjs so it stays source-gated`,
+      );
+      continue;
+    }
+    if (!match[1].includes("alTruthAvailable")) {
+      violations.push(
+        `${relativePath}: production bucket \`${key}\` must resolve its source via \`alTruthAvailable ? … : …\` — mixing v_agentlink_book_truth with the legacy deals table in one snapshot produces false week-over-week percentages`,
+      );
+    }
+  }
+}
+dashboardSnapshotSourceParity();
+
 const appSource = fs.readFileSync(path.join(repoRoot, "src/App.tsx"), "utf8");
 if (!appSource.includes('path="/checkin"') || !appSource.includes('path="/daily-checkin"')) {
   violations.push("src/App.tsx: applicant check-in routes must remain mounted");

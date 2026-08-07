@@ -116,7 +116,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // 2026-07-27 ratchet drop 236 → 234. Measured twice on a cold build (deleted
 // *.tsbuildinfo first — a stale incremental artifact reports phantom counts in
 // both directions and burned an hour earlier in this session).
-const BASELINE = 233; // 2026-08-04: drift-accept from 232 — clean tree at HEAD e67a3f98 already reported 233 before this commit; +1 crept in across ~20 commits since baseline was set (root not identified this iteration). Next commit shipping a real type-fix should knock this back to 232 or below.
+const BASELINE = 230; // 2026-08-07: ratchet drop 233→230 — Headhunter unification wave fixed 3 real type errors (ErrorBoundary/useIdleSession/test mocks) while wiring SSO + chunk recovery.
 
 let stdout = "";
 let stderr = "";

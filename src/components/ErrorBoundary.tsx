@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { isChunkLoadError, recoverFromChunkError } from "@/lib/chunkRecovery";
 // wave-18 (2026-06-04): replaced shadcn <Button> with native <button>. Button
 // imports @radix-ui/react-slot for asChild — that single edge dragged the
 // entire vendor-radix slice (TooltipProvider, popper transitive graph, etc.)
@@ -9,6 +10,7 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  onReload?: () => void;
 }
 
 interface State {
@@ -35,6 +37,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
     // Fire-and-forget error logging
     this.logErrorToDb(error, errorInfo);
+
+    // A normal React retry cannot repair a route chunk whose old content hash
+    // disappeared during a deployment. The global recovery clears the stale
+    // PWA shell and reloads once, preserving the current route and auth state.
+    if (isChunkLoadError(error)) {
+      void recoverFromChunkError(error);
+      return;
+    }
 
     // Auto-retry up to MAX_RETRIES
     if (this.state.retryCount < MAX_RETRIES) {
@@ -64,6 +74,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReload = () => {
+    if (this.props.onReload) {
+      this.props.onReload();
+      return;
+    }
     window.location.reload();
   };
 

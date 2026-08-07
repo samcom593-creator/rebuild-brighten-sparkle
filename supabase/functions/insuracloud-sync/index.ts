@@ -27,11 +27,7 @@ const corsHeaders = {
 const INSURACLOUD_BASE =
   Deno.env.get("INSURACLOUD_BASE_URL") || "https://agentlink.insuracloud.ai/api/v1";
 
-const CLAUDE_PERSISTENT_TOKEN =
-  Deno.env.get("BOT_SQL_PERSISTENT_TOKEN") ||
-  // Same persistent fallback as bot-sql so a single rotation covers both
-  // endpoints. If you rotate, update both functions' env vars together.
-  "37740df6728db61e128392dbbdae34be1dccf862eebe09925ff321182fb30ebd";
+const PERSISTENT_TOKEN = Deno.env.get("BOT_SQL_PERSISTENT_TOKEN")?.trim() ?? "";
 
 interface SyncRequest {
   agent_id?: string;
@@ -106,7 +102,8 @@ const num = (v: any): number => {
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 async function resolveValidTokens(sb: ReturnType<typeof createClient>): Promise<string[]> {
-  const tokens: string[] = [CLAUDE_PERSISTENT_TOKEN];
+  const tokens: string[] = [];
+  if (PERSISTENT_TOKEN.length > 16) tokens.push(PERSISTENT_TOKEN);
   const env = Deno.env.get("APEX_BOT_TOKEN");
   if (env && env.length > 16) tokens.push(env);
   const { data } = await sb.from("system_settings").select("value").eq("key", "apex_bot_token").maybeSingle();

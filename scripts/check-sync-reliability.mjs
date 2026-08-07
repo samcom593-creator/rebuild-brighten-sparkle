@@ -94,22 +94,26 @@ function walk(dir, exts, fn) {
   }
 }
 
-// 3. Hardcoded persistent bot token in supabase/functions/bot-sql/index.ts is
-//    a security liability. The function MUST accept an env override
-//    (BOT_SQL_PERSISTENT_TOKEN) so the literal becomes the LAST-RESORT
-//    fallback that can be revoked by setting the env var and redeploying.
-//    A bare hardcoded constant with no env path is rejected outright.
+// 3. Automation bearer tokens must be environment-backed only. A fallback
+//    literal keeps a leaked credential valid even after the environment is
+//    rotated and is therefore forbidden in every function that accepts it.
 {
-  const botSql = "supabase/functions/bot-sql/index.ts";
-  if (fileExists(botSql)) {
-    const src = read(botSql);
-    const hasLiteral = /CLAUDE_PERSISTENT_TOKEN\s*=[^"]*['"][A-Za-z0-9_-]{20,}['"]/.test(src);
+  const tokenConsumers = [
+    "supabase/functions/bot-sql/index.ts",
+    "supabase/functions/apex-exec/index.ts",
+    "supabase/functions/agentlink-import/index.ts",
+    "supabase/functions/agentlink-cookie-sync/index.ts",
+    "supabase/functions/insuracloud-sync/index.ts",
+  ];
+  for (const file of tokenConsumers) {
+    if (!fileExists(file)) continue;
+    const src = read(file);
     const hasEnvOverride = /Deno\.env\.get\(\s*['"]BOT_SQL_PERSISTENT_TOKEN['"]\s*\)/.test(src);
-    if (hasLiteral && !hasEnvOverride) {
+    const secretLikeLiteral = /['"][A-Fa-f0-9]{48,}['"]/.test(src);
+    if (!hasEnvOverride || secretLikeLiteral) {
       violations.push(
-        `${botSql}: hardcoded CLAUDE_PERSISTENT_TOKEN with no env override. ` +
-        `Wrap in \`Deno.env.get("BOT_SQL_PERSISTENT_TOKEN") || "<literal>"\` so the ` +
-        `secret can be rotated by setting the env var. Bare literal is unrotatable.`,
+        `${file}: BOT_SQL_PERSISTENT_TOKEN must come from Deno.env only; ` +
+        `secret-like fallback literals are forbidden.`,
       );
     }
   }
@@ -251,7 +255,7 @@ function walk(dir, exts, fn) {
 if (violations.length === 0) {
   console.log(
     "Sync-reliability guardrail passed (8 rules checked: deploy fail-loud, " +
-    "cron gap parser, insuracloud cron presence, bot-sql hardcoded token, " +
+    "cron gap parser, insuracloud cron presence, environment-only bot tokens, " +
     "refresh_sync_health grants, dashboard canonical source, insuracloud-sync " +
     "auth gate, insuracloud placeholder client data, ReadyMode hardcoding).",
   );

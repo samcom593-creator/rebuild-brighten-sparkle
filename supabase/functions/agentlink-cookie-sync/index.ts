@@ -25,9 +25,7 @@ const corsHeaders = {
 
 const BASE = "https://agentlink.insuracloud.ai";
 
-const PERSISTENT_BOT_TOKEN =
-  Deno.env.get("BOT_SQL_PERSISTENT_TOKEN") ||
-  "37740df6728db61e128392dbbdae34be1dccf862eebe09925ff321182fb30ebd";
+const PERSISTENT_BOT_TOKEN = Deno.env.get("BOT_SQL_PERSISTENT_TOKEN")?.trim() ?? "";
 
 type AgentRow = {
   id: string;
@@ -114,7 +112,8 @@ function upstreamCarrierId(p: any): number | null {
 }
 
 async function resolveBotTokens(sb: ReturnType<typeof createClient>): Promise<string[]> {
-  const tokens = [PERSISTENT_BOT_TOKEN];
+  const tokens: string[] = [];
+  if (PERSISTENT_BOT_TOKEN.length > 16) tokens.push(PERSISTENT_BOT_TOKEN);
   const env = Deno.env.get("APEX_BOT_TOKEN");
   if (env && env.length > 16) tokens.push(env);
   const { data } = await sb.from("system_settings").select("value").eq("key", "apex_bot_token").maybeSingle();

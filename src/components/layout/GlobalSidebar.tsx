@@ -230,7 +230,7 @@ export function GlobalSidebar({
         // MP-230 (2026-07-01): Headhunters Funnels removed per Sam directive.
         // MP-230 (2026-07-01): Headhunters Tracker removed per Sam directive.
         // Sam 2026-06-16: Headhunters Calendar removed — "remove headhunter's calendar as a whole"
-        { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
+        { icon: PhoneCall, label: "Headhunter", href: "/dashboard/interviews", special: true },
         // MP-264 (2026-07-24): recovery queue for the 105 Calendly bookings the
         // webhook silently dropped. Catch Up mode lives here.
         { icon: Rocket, label: "Interview Recovery", href: "/dashboard/interview-recovery", special: true },
@@ -301,7 +301,7 @@ export function GlobalSidebar({
         // MP-230 (2026-07-01): Headhunters Funnels removed per Sam directive.
         // MP-230 (2026-07-01): Headhunters Tracker removed per Sam directive.
         // Sam 2026-06-16: Headhunters Calendar removed for manager nav too
-        { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
+        { icon: PhoneCall, label: "Headhunter", href: "/dashboard/interviews", special: true },
         // MP-264 (2026-07-24): recovery queue for the 105 Calendly bookings the
         // webhook silently dropped. Catch Up mode lives here.
         { icon: Rocket, label: "Interview Recovery", href: "/dashboard/interview-recovery", special: true },
@@ -326,7 +326,7 @@ export function GlobalSidebar({
       // lockdown — VAs work the pipeline, they don't see the money).
       primary.push(
         { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
-        { icon: PhoneCall, label: "Interviews", href: "/dashboard/interviews", special: true },
+        { icon: PhoneCall, label: "Headhunter", href: "/dashboard/interviews", special: true },
         { icon: Rocket, label: "Interview Recovery", href: "/dashboard/interview-recovery", special: true },
         { icon: GraduationCap, label: "Unlicensed Queue", href: "/admin/unlicensed-all", special: true },
       );

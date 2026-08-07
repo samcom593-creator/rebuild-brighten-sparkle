@@ -17,8 +17,7 @@
  *   ❌ Exponential backoff timing: retry 1 = 500ms, retry 2 = 1000ms
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -36,7 +35,7 @@ function FlakyOnce() {
   return <div>Recovered content</div>;
 }
 
-function AlwaysBomb() {
+function AlwaysBomb(): never {
   throw new Error("permanent");
 }
 
@@ -99,7 +98,7 @@ describe("ErrorBoundary — error state", () => {
 });
 
 describe("ErrorBoundary — auto-retry", () => {
-  it("auto-retries and renders children when error was transient", async () => {
+  it("auto-retries and renders children when error was transient", () => {
     render(
       <ErrorBoundary>
         <FlakyOnce />
@@ -107,12 +106,10 @@ describe("ErrorBoundary — auto-retry", () => {
     );
     // First retry fires at 500ms
     act(() => { vi.advanceTimersByTime(600); });
-    await waitFor(() => {
-      expect(screen.getByText("Recovered content")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Recovered content")).toBeInTheDocument();
   });
 
-  it("stays on fallback after MAX_RETRIES (2) with permanent error", async () => {
+  it("stays on fallback after MAX_RETRIES (2) with permanent error", () => {
     render(
       <ErrorBoundary>
         <AlwaysBomb />
@@ -120,9 +117,7 @@ describe("ErrorBoundary — auto-retry", () => {
     );
     // Retry 1 at 500ms, retry 2 at 1000ms
     act(() => { vi.advanceTimersByTime(2000); });
-    await waitFor(() => {
-      expect(screen.getByText("Something went wrong")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
     // Ensure the error message is stable (no further retries)
     act(() => { vi.advanceTimersByTime(3000); });
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
@@ -144,9 +139,10 @@ describe("ErrorBoundary — error logging", () => {
       </ErrorBoundary>
     );
 
-    // Let the async logErrorToDb call land (it's fire-and-forget via Promise)
+    // Let the dynamic import + async logErrorToDb microtasks land.
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 20));
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
     expect(mockInsert).toHaveBeenCalledWith(
@@ -158,14 +154,9 @@ describe("ErrorBoundary — error logging", () => {
 describe("ErrorBoundary — action buttons", () => {
   it("Refresh Page button calls window.location.reload", async () => {
     const reloadMock = vi.fn();
-    Object.defineProperty(window, "location", {
-      value: { reload: reloadMock, href: "/" },
-      writable: true,
-      configurable: true,
-    });
 
     render(
-      <ErrorBoundary>
+      <ErrorBoundary onReload={reloadMock}>
         <AlwaysBomb />
       </ErrorBoundary>
     );
@@ -174,7 +165,7 @@ describe("ErrorBoundary — action buttons", () => {
     act(() => { vi.advanceTimersByTime(2000); });
 
     const refreshBtn = screen.getByRole("button", { name: /refresh page/i });
-    await userEvent.click(refreshBtn);
+    fireEvent.click(refreshBtn);
     expect(reloadMock).toHaveBeenCalled();
   });
 });

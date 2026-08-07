@@ -35,6 +35,7 @@ export function useIdleSession({
   const [secondsRemaining, setSecondsRemaining] = useState(Math.floor(warningMs / 1000));
 
   const lastActivityRef = useRef<number>(Date.now());
+  const showWarningRef = useRef(false);
   const warningTimerRef = useRef<number | null>(null);
   const logoutTimerRef = useRef<number | null>(null);
   const countdownTimerRef = useRef<number | null>(null);
@@ -55,6 +56,7 @@ export function useIdleSession({
     const warnAfter = Math.max(0, idleTimeoutMs - warningMs);
 
     warningTimerRef.current = window.setTimeout(() => {
+      showWarningRef.current = true;
       setShowWarning(true);
       setSecondsRemaining(Math.floor(warningMs / 1000));
 
@@ -66,6 +68,7 @@ export function useIdleSession({
       // Fire timeout when warning expires
       logoutTimerRef.current = window.setTimeout(() => {
         clearAllTimers();
+        showWarningRef.current = false;
         setShowWarning(false);
         void onTimeoutRef.current();
       }, warningMs);
@@ -74,12 +77,13 @@ export function useIdleSession({
 
   const resetActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
-    if (showWarning) return; // ignore activity once warning is up — user must explicitly extend
+    if (showWarningRef.current) return; // ignore activity once warning is up — user must explicitly extend
     scheduleTimers();
-  }, [scheduleTimers, showWarning]);
+  }, [scheduleTimers]);
 
   /** Called by UI when user clicks "Stay signed in" */
   const extendSession = useCallback(() => {
+    showWarningRef.current = false;
     setShowWarning(false);
     setSecondsRemaining(Math.floor(warningMs / 1000));
     lastActivityRef.current = Date.now();
@@ -89,6 +93,7 @@ export function useIdleSession({
   useEffect(() => {
     if (!enabled) {
       clearAllTimers();
+      showWarningRef.current = false;
       setShowWarning(false);
       return;
     }

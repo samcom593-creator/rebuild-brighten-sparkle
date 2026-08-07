@@ -141,7 +141,7 @@ const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 const LinksPage = lazy(() => import("./pages/LinksPage"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
-const InterviewCommandCenter = lazy(() => import("./pages/InterviewCommandCenter"));
+const HeadhunterGateway = lazy(() => import("./pages/HeadhunterGateway"));
 const InterviewRecovery = lazy(() => import("./pages/InterviewRecovery"));
 const ProducerReactivation = lazy(() => import("./pages/ProducerReactivation"));
 const AdminBoardAccess = lazy(() => import("./pages/AdminBoardAccess"));
@@ -286,7 +286,7 @@ function DeferredToasters() {
       "scroll",
       "touchstart",
     ];
-    const opts = { passive: true } as const;
+    const opts: AddEventListenerOptions = { passive: true };
     const cleanup = () => events.forEach((e) => window.removeEventListener(e, arm, opts));
     events.forEach((e) => window.addEventListener(e, arm, opts));
     const safety = window.setTimeout(arm, 30000);
@@ -568,7 +568,7 @@ const App = () => (
                      <Route path="/dashboard/headhunters-calendar" element={<Navigate to="/dashboard/command" replace />} />
                      {/* MP-264: VAs book every one of these calls — they need to see
                          the queue and the applicant names behind it. */}
-                     <Route path="/dashboard/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><InterviewCommandCenter /></ProtectedRoute>} />
+                     <Route path="/dashboard/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><HeadhunterGateway /></ProtectedRoute>} />
                      <Route path="/dashboard/interview-recovery" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><InterviewRecovery /></ProtectedRoute>} />
                      {/* MP-264: 60% of everyone who has ever produced is dark. */}
                      <Route path="/dashboard/reactivation" element={<ProtectedRoute requireAdmin allowManagers><ProducerReactivation /></ProtectedRoute>} />

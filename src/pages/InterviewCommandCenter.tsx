@@ -1,3 +1,6 @@
+// intentionally-orphan: superseded 2026-08-07 by the Headhunter gateway (wave-headhunter-unification) —
+// /dashboard/interviews now opens Headhunter via SSO, which owns the interview pipeline and imports this
+// page's data sources hourly. Kept unrouted for rollback until Sam confirms the replacement sticks.
 // MP-263 Interview Command Center rebuild — 2026-07-09.
 // Sam directive: 7-KPI grid + 5-tab filter + tap-to-disposition execution
 // with Next Best Action + state-aware primary CTA (Confirm interview /

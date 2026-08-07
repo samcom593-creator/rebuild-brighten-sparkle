@@ -41,21 +41,10 @@ function allow(token: string): boolean {
   return true;
 }
 
-// ─── PERSISTENT FALLBACK — always accepted, survives every rotation ──────
-// Written 2026-04-21. This is the Claude-assistant key so remote SQL work
-// doesn't require token hand-offs on every session.
-//
-// 2026-05-15: env override added so the secret can be rotated without a
-// code change. Behavior: if BOT_SQL_PERSISTENT_TOKEN is set in the
-// function env, that value is used; otherwise we fall back to the
-// hardcoded literal below. To rotate cleanly:
-//   1. supabase secrets set BOT_SQL_PERSISTENT_TOKEN=<new value>
-//   2. Update the APEX_BOT_TOKEN GitHub secret to the same value.
-//   3. Redeploy bot-sql.
-//   4. Optional: delete the literal here in a follow-up commit.
-const CLAUDE_PERSISTENT_TOKEN =
-  Deno.env.get("BOT_SQL_PERSISTENT_TOKEN") ||
-  "37740df6728db61e128392dbbdae34be1dccf862eebe09925ff321182fb30ebd";
+// Persistent access is environment-backed only. A previous fallback embedded
+// a live bearer token in source control, which made rotation incomplete even
+// after the environment secret changed.
+const PERSISTENT_TOKEN = Deno.env.get("BOT_SQL_PERSISTENT_TOKEN")?.trim() ?? "";
 
 // ─── Token resolution — accept env, system_settings, OR persistent fallback ──
 // Env var WAS checked first and caused a drift bug: user rotates via UI
@@ -63,7 +52,8 @@ const CLAUDE_PERSISTENT_TOKEN =
 // Now all three are candidate tokens; caller's bearer is accepted if it
 // matches any one.
 async function resolveBotTokens(sb: ReturnType<typeof createClient>): Promise<string[]> {
-  const tokens: string[] = [CLAUDE_PERSISTENT_TOKEN];
+  const tokens: string[] = [];
+  if (PERSISTENT_TOKEN.length > 16) tokens.push(PERSISTENT_TOKEN);
   const env = Deno.env.get("APEX_BOT_TOKEN");
   if (env && env.length > 16) tokens.push(env);
   const { data } = await sb.from("system_settings").select("value").eq("key", "apex_bot_token").maybeSingle();

@@ -45,6 +45,7 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD:  ${{ secrets.SUPABASE_DB_PASSWORD }}
+      APEX_BOT_TOKEN:        ${{ secrets.APEX_BOT_TOKEN }}
       PROJECT_REF: xrzweoneiieddzxogewk
     steps:
       - uses: actions/checkout@v4
@@ -90,6 +91,17 @@ jobs:
       - name: Link project
         continue-on-error: true
         run: supabase link --project-ref "$PROJECT_REF"
+
+      - name: Sync rotated automation credential
+        run: |
+          if [ -z "$APEX_BOT_TOKEN" ]; then
+            echo "::error::APEX_BOT_TOKEN secret missing — automation credentials cannot be synchronized"
+            exit 1
+          fi
+          supabase secrets set \
+            APEX_BOT_TOKEN="$APEX_BOT_TOKEN" \
+            BOT_SQL_PERSISTENT_TOKEN="$APEX_BOT_TOKEN" \
+            --project-ref "$PROJECT_REF"
 
       - name: Deploy edge functions
         # No blanket --no-verify-jwt. Each function's auth setting is read

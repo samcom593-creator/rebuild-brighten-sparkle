@@ -5,6 +5,7 @@ import { initWebVitals } from "./shared/lib/webVitals";
 import { installRippleOrigin, installRevealObserver } from "./lib/gameFx";
 import { bootAnalytics } from "./lib/analyticsBoot";
 import { captureAttribution } from "./lib/attribution";
+import { installChunkRecovery } from "./lib/chunkRecovery";
 
 // FIRST thing on boot, before React mounts and before the router can swallow
 // the query string. A visitor landing on /?utm_source=google&gclid=... then
@@ -12,6 +13,7 @@ import { captureAttribution } from "./lib/attribution";
 // change — which is why 776 of 783 applications recorded utm_source = NULL.
 // This persists the landing signals so the submit path can still read them.
 captureAttribution();
+installChunkRecovery();
 
 initWebVitals();
 installRippleOrigin();

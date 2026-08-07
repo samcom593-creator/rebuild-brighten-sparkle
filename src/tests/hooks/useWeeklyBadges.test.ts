@@ -339,10 +339,10 @@ describe("useWeeklyBadges — Rising Star badge", () => {
   it("awards Rising Star when agent is top-3 in exactly 2 categories (boundary)", async () => {
     // agent-1: #2 ALP, #3 deals, not in closing rate top-3
     mockSupabaseSequence([
-      { agent_id: "agent-1", aop: 8000, deals_closed: 4, presentations: 5, referrals_caught: 0, closing_rate: null },
+      { agent_id: "agent-1", aop: 8000, deals_closed: 4, presentations: 10, referrals_caught: 0, closing_rate: null },
       { agent_id: "agent-2", aop: 9000, deals_closed: 6, presentations: 8, referrals_caught: 0, closing_rate: null },
       { agent_id: "agent-3", aop: 7000, deals_closed: 5, presentations: 7, referrals_caught: 0, closing_rate: null },
-      { agent_id: "agent-4", aop: 3000, deals_closed: 1, presentations: 4, referrals_caught: 0, closing_rate: null },
+      { agent_id: "agent-4", aop: 3000, deals_closed: 2, presentations: 3, referrals_caught: 0, closing_rate: null },
     ]);
     const { result } = renderHook(() => useWeeklyBadges("agent-1"));
     await waitFor(() => expect(result.current.loading).toBe(false));

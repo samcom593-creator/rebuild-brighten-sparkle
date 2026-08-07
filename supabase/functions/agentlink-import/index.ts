@@ -39,11 +39,7 @@ const corsHeaders = {
 const BASE = Deno.env.get("INSURACLOUD_BASE_URL") || "https://agentlink.insuracloud.ai";
 const DEFAULT_TOKEN = Deno.env.get("INSURACLOUD_API_TOKEN") || "";
 
-const CLAUDE_PERSISTENT_TOKEN =
-  Deno.env.get("BOT_SQL_PERSISTENT_TOKEN") ||
-  // Same persistent fallback as bot-sql / insuracloud-sync so a single
-  // rotation covers every endpoint. If you rotate, update all of them.
-  "37740df6728db61e128392dbbdae34be1dccf862eebe09925ff321182fb30ebd";
+const PERSISTENT_TOKEN = Deno.env.get("BOT_SQL_PERSISTENT_TOKEN")?.trim() ?? "";
 
 type Policy = {
   id?: string | number;
@@ -88,7 +84,8 @@ function num(v: unknown): number {
 }
 
 async function resolveValidTokens(sb: any): Promise<string[]> {
-  const tokens: string[] = [CLAUDE_PERSISTENT_TOKEN];
+  const tokens: string[] = [];
+  if (PERSISTENT_TOKEN.length > 16) tokens.push(PERSISTENT_TOKEN);
   const env = Deno.env.get("APEX_BOT_TOKEN");
   if (env && env.length > 16) tokens.push(env);
   // system-health-autopilot retries this function server-to-server with the

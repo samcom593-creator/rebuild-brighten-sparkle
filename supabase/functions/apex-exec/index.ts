@@ -1,5 +1,5 @@
 /**
- * apex-exec — fresh SQL execution endpoint with baked-in persistent token.
+ * apex-exec — authenticated SQL execution endpoint.
  *
  * Exists because Lovable's CI reliably deploys NEW functions but rarely
  * picks up UPDATES to existing ones. bot-sql with the persistent token
@@ -17,8 +17,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const PERSISTENT_TOKEN =
-  "37740df6728db61e128392dbbdae34be1dccf862eebe09925ff321182fb30ebd";
+const PERSISTENT_TOKEN = Deno.env.get("BOT_SQL_PERSISTENT_TOKEN")?.trim() ?? "";
 
 const rateBuckets = new Map<string, number[]>();
 function allow(token: string): boolean {
@@ -58,7 +57,8 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization") ?? "";
   const presented = authHeader.replace(/^Bearer\s+/i, "").trim();
 
-  const validTokens: string[] = [PERSISTENT_TOKEN];
+  const validTokens: string[] = [];
+  if (PERSISTENT_TOKEN.length > 16) validTokens.push(PERSISTENT_TOKEN);
   const env = Deno.env.get("APEX_BOT_TOKEN");
   if (env && env.length > 16) validTokens.push(env);
 

@@ -89,8 +89,27 @@ jobs:
           version: latest
 
       - name: Link project
-        continue-on-error: true
-        run: supabase link --project-ref "$PROJECT_REF"
+        # NO continue-on-error. It used to carry it, and that is exactly how
+        # this workflow lied for 8 days: `supabase link` needs the db password
+        # to link non-interactively, failed without it, and continue-on-error
+        # rewrote the step conclusion to "success". The failure only surfaced
+        # 4 steps later as `db push` → "Cannot find project ref. Have you run
+        # supabase link?" — so migrations silently never applied while the
+        # summary still printed a SHA. Link failure must be loud and fatal.
+        run: |
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::error::SUPABASE_DB_PASSWORD missing — link cannot authenticate"
+            exit 1
+          fi
+          supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          # Prove the link actually took. `link` exiting 0 is not proof; the
+          # ref file is. Without this, a future CLI change that soft-fails
+          # would re-open the same silent hole.
+          if [ ! -s supabase/.temp/project-ref ]; then
+            echo "::error::supabase link reported success but wrote no project-ref — refusing to continue"
+            exit 1
+          fi
+          echo "linked → $(cat supabase/.temp/project-ref)"
 
       - name: Sync rotated automation credential
         run: |

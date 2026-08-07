@@ -62,6 +62,30 @@ function walk(dir, exts, fn) {
         `Aggregate failures and exit 1 when any function fails.`,
       );
     }
+    // No `continue-on-error: true` on any deploy-critical step. GitHub rewrites
+    // a continue-on-error step's *conclusion* to "success", so the run's own
+    // step list reports green for a command that exited non-zero. That is how
+    // "Link project" lied from 2026-07-30 to 2026-08-07: link failed for want
+    // of a password, was reported success, and the real breakage surfaced 4
+    // steps later as `db push` → "Cannot find project ref". 16 migrations were
+    // applied by hand while CI claimed to own deploys. Only the optional
+    // config.toml sync-back push may tolerate failure (it races Lovable).
+    for (const m of src.matchAll(/- name: (.+)\n(?:\s+id: .+\n)?\s+continue-on-error: true/g)) {
+      const step = m[1].trim();
+      if (/config\.toml sync/i.test(step)) continue;
+      violations.push(
+        `${deployYml}: step "${step}" carries continue-on-error: true. GitHub reports such a ` +
+        `step as SUCCESS even when the command fails, which is exactly how the link/db-push ` +
+        `outage stayed invisible for 8 days. Let deploy-critical steps fail loudly.`,
+      );
+    }
+    // `db push` needs a linked project; the link step must actually authenticate.
+    if (/supabase link --project-ref "\$PROJECT_REF"\s*$/m.test(src)) {
+      violations.push(
+        `${deployYml}: \`supabase link\` runs without --password, which cannot authenticate ` +
+        `non-interactively in CI. Pass --password "$SUPABASE_DB_PASSWORD".`,
+      );
+    }
   }
 }
 
@@ -254,7 +278,8 @@ function walk(dir, exts, fn) {
 
 if (violations.length === 0) {
   console.log(
-    "Sync-reliability guardrail passed (8 rules checked: deploy fail-loud, " +
+    "Sync-reliability guardrail passed (10 rules checked: deploy fail-loud, " +
+    "no continue-on-error masking, link must authenticate, " +
     "cron gap parser, insuracloud cron presence, environment-only bot tokens, " +
     "refresh_sync_health grants, dashboard canonical source, insuracloud-sync " +
     "auth gate, insuracloud placeholder client data, ReadyMode hardcoding).",

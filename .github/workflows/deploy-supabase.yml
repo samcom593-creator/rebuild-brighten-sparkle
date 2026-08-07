@@ -190,7 +190,9 @@ jobs:
           # the removed Link step). Password is URL-encoded because it lands in
           # a connection string.
           ENC_PW=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
-          DB_URL="postgresql://postgres.${PROJECT_REF}:${ENC_PW}@aws-0-us-west-2.pooler.supabase.com:5432/postgres"
+          # aws-1, not aws-0: pooler tenants are sharded per host and this
+          # project's tenant answered "not found" on aws-0 (run 2026-08-07T21:58Z)
+          DB_URL="postgresql://postgres.${PROJECT_REF}:${ENC_PW}@aws-1-us-west-2.pooler.supabase.com:5432/postgres"
           if supabase db push --db-url "$DB_URL" --include-all 2>&1 | tee /tmp/dbpush.log; then
             {
               echo "### Migrations"

@@ -15,9 +15,19 @@ import type { ShippedItem } from "@/data/shipped-data";
  * the panel is opened, so the dashboard ships none of it.
  */
 
-// Counted at split time from shipped-data.ts. Kept as plain numbers so the
-// header can render without pulling in the payload.
-const SHIPPED_TOTAL = 273;
+// Counted at split time from shipped-data.ts. Kept as a plain number so the
+// header can render without pulling in the payload — importing the array to
+// call .length would undo the 710 KB chunk split this file exists to preserve.
+//
+// wave-vault-source-parity 2026-08-07: the tradeoff is that this constant is
+// hand-maintained, and it had silently drifted to 273 against 293 real entries
+// — the banner told Sam "273 platform changes live" while under-reporting his
+// own shipped work by 19. A hardcoded mirror of a number nobody re-derives is
+// the same disease as every other stale metric on this platform, so
+// check-metric-truth.mjs now recounts shipped-data.ts at commit time and fails
+// if this number disagrees. Do not hand-bump it past the real count again;
+// the guard prints the value to use.
+const SHIPPED_TOTAL = 293;
 
 // Newest entries render first; the rest stay behind an explicit action so a
 // long history can never slow the first paint again.

@@ -66,13 +66,31 @@ function matches(haystack: unknown, q: string): boolean {
 // count, and pull Total ALP from v_agentlink_book_truth (the SQL aggregate
 // BookOfBusiness already treats as the authoritative KPI source) so the
 // dollar tile can never be silently capped either.
+//
+// wave-vault-source-parity 2026-08-07: that fix moved the dollar tile to the
+// book but left the two count tiles on the legacy `deals` table, so the
+// financial group described one book out of two populations. Measured live:
+//   Deals (all statuses)   1,740   legacy deals where source='agent_link'
+//   Visible deals          1,550   same table, submitted+active
+//   Total ALP · book truth $1,911,324  agentlink_book, 1,432 live rows
+// A 308-row / 21.5% gap between the tile counting policies and the tile
+// summing their premium. Nothing divides them in code, but they sit adjacent
+// in the same emerald group, so eyeballing avg premium reads $1,098 against a
+// real $1,335. Every other panel on this page (Agents, Clients, Contracts,
+// Binaries, Vault) reads agentlink_*; Overview was the last legacy reader on a
+// page whose own subtitle names the vault pull as its source. Counts now come
+// from agentlink_book under the same `is_dead IS NOT TRUE` predicate the view
+// uses, so the group is internally consistent and the dead rows the ALP
+// excludes are shown as their own tile instead of being silently folded into
+// a "deals" number. Same two-sources-one-surface class as the week-over-week
+// percentage in 48960091.
 function OverviewPanel() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["alvault-overview"],
     queryFn: async () => {
       const [
-        dealsTotal,
-        dealsVisible,
+        bookLive,
+        bookDead,
         clientsTotal,
         contractsTotal,
         contractsActive,
@@ -82,8 +100,11 @@ function OverviewPanel() {
         truth,
         vault,
       ] = await Promise.all([
-        supabase.from("deals").select("*", { count: "exact", head: true }).eq("source", "agent_link"),
-        supabase.from("deals").select("*", { count: "exact", head: true }).eq("source", "agent_link").in("status", ["submitted", "active"]),
+        // `not("is_dead","is",true)` is PostgREST for `is_dead IS NOT TRUE` —
+        // matches false AND null, exactly the predicate v_agentlink_book_truth
+        // uses. `.eq("is_dead", false)` would silently drop the null rows.
+        supabase.from("agentlink_book" as any).select("*", { count: "exact", head: true }).not("is_dead", "is", true),
+        supabase.from("agentlink_book" as any).select("*", { count: "exact", head: true }).is("is_dead", true),
         supabase.from("agentlink_clients" as any).select("*", { count: "exact", head: true }),
         supabase.from("agentlink_contracts" as any).select("*", { count: "exact", head: true }),
         supabase.from("agentlink_contracts" as any).select("*", { count: "exact", head: true }).eq("status", "active"),
@@ -100,8 +121,8 @@ function OverviewPanel() {
       const totalAlpRaw = truthRow?.total_annual_premium;
       const totalAlp = totalAlpRaw == null ? null : Number(totalAlpRaw);
       return {
-        deals_total: dealsTotal.count ?? 0,
-        deals_visible: dealsVisible.count ?? 0,
+        book_live: bookLive.count ?? 0,
+        book_dead: bookDead.count ?? 0,
         total_alp: Number.isFinite(totalAlp as number) ? (totalAlp as number) : null,
         clients: clientsTotal.count ?? 0,
         contracts: contractsTotal.count ?? 0,
@@ -120,13 +141,13 @@ function OverviewPanel() {
   // color spectrum so admin can scan in seconds: financial → emerald,
   // people → blue, agreements → amber, ops → slate.
   const cards: Array<{ label: string; value: string; icon: any; gradient: string; iconColor: string }> = [
-    { label: "Deals (all statuses)", value: data.deals_total.toLocaleString(), icon: FileText,
+    { label: "Policies in book · live", value: data.book_live.toLocaleString(), icon: FileText,
       gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30",
       iconColor: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30" },
-    { label: "Visible deals · submitted + active", value: data.deals_visible.toLocaleString(), icon: FileText,
+    { label: "Dead · excluded from ALP", value: data.book_dead.toLocaleString(), icon: FileText,
       gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30",
       iconColor: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30" },
-    { label: "Total ALP · book truth", value: data.total_alp == null ? "—" : fmtMoney(data.total_alp), icon: Briefcase,
+    { label: "Total ALP · live book", value: data.total_alp == null ? "—" : fmtMoney(data.total_alp), icon: Briefcase,
       gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30",
       iconColor: "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30" },
     { label: "Clients mirrored", value: data.clients.toLocaleString(), icon: Users,

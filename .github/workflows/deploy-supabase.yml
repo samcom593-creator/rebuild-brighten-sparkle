@@ -145,17 +145,32 @@ jobs:
             echo "→ deploying ALL functions"
             shopt -s nullglob
             cd supabase/functions
+            # Bundling pulls imports from esm.sh, which threw 522s for hours on
+            # 2026-08-07 and failed whole runs on single transient fetches.
+            # 3 attempts with backoff per function turns a CDN blip back into
+            # a non-event; a function that fails all 3 still fails the job.
             for dir in */; do
               name="${dir%/}"
               [ "$name" = "_shared" ] && continue
               [ "$name" = "tests" ]   && continue
               echo "── $name ──"
-              if supabase functions deploy "$name" --project-ref "$PROJECT_REF"; then
+              deployed=false
+              for attempt in 1 2 3; do
+                if supabase functions deploy "$name" --project-ref "$PROJECT_REF"; then
+                  deployed=true
+                  break
+                fi
+                if [ "$attempt" -lt 3 ]; then
+                  echo "::warning::$name attempt $attempt failed — retrying in $((attempt*20))s"
+                  sleep $((attempt*20))
+                fi
+              done
+              if [ "$deployed" = true ]; then
                 OK_COUNT=$((OK_COUNT+1))
               else
                 FAIL_COUNT=$((FAIL_COUNT+1))
                 FAILED_FNS+=("$name")
-                echo "::error::function $name failed to deploy"
+                echo "::error::function $name failed to deploy after 3 attempts"
               fi
             done
           fi

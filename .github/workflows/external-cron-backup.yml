@@ -143,10 +143,13 @@ jobs:
           # response; the edge function logs to agentlink_sync_log and routes
           # policy-by-policy via upstream userId -> agents.insuracloud_user_id.
           call_edge "agentlink-cookie-sync" '{}' no || true
-          # InsuraCloud sync — primary upstream pull. Bearer-token auth, no
-          # cookie rotation required. CRITICAL — a failure means dashboards
-          # show stale numbers, so we fail the workflow if this 500s.
-          call_edge "insuracloud-sync" '{"full":false}' yes
+          # InsuraCloud sync — upstream API currently 404s all three endpoints
+          # (/business-analytics, /book-of-business, /team-analytics: "API
+          # endpoint not found"), so this cannot succeed from our side and was
+          # failing every tick as critical. Dashboards actually ride
+          # agentlink-cookie-sync above. Kept non-critical for visibility;
+          # re-promote to critical only when InsuraCloud ships the endpoints.
+          call_edge "insuracloud-sync" '{"full":false}' no || true
           # Deal sync queue (stale deal pushes)
           fire "public.deal_sync_queue_promote_dead()" "deal-sync-queue-promote-dead" no 30 || true
           # Auto-assign newly-arrived applications

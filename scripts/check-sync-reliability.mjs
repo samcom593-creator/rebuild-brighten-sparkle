@@ -103,10 +103,42 @@ function walk(dir, exts, fn) {
         `(e.g. 99999) so stale heartbeats are visible. Don't print "None" and let arithmetic silently truthify.`,
       );
     }
+    // insuracloud-sync must still be *reached for*, but as an hourly revival
+    // probe, not a per-tick sync. Its upstream 404s all three endpoints, so
+    // calling it every tick wrote ~200 error rows a day into
+    // insuracloud_sync_log while agentlink-cookie-sync did the real work.
+    // Keeping the call means we learn the hour the endpoints come back.
     if (!/insuracloud-sync/.test(src)) {
       violations.push(
-        `${cronYml}: must call insuracloud-sync edge function. It's the only auto-syncing ` +
-        `transport (Bearer-token), the only one that works without manual cookie rotation.`,
+        `${cronYml}: must still probe the insuracloud-sync edge function so we detect the hour ` +
+        `its upstream endpoints come back. Keep the hourly probe even while it 404s.`,
+      );
+    }
+    // Every call in "Fire critical jobs" is non-critical and `|| true`, so the
+    // step cannot fail on its own. Run 31323354187 (2026-08-09) had
+    // insuracloud-sync return HTTP 502 with {"ok":false} and still reported
+    // SUCCESS. This workflow is the backup for a pg_cron that dies every 1-2
+    // days, so a green tick that does not prove the pipelines moved is worse
+    // than no workflow at all: when the bot-sql token died on 2026-08-07,
+    // all six calls would have failed and every run would still have been
+    // green. Require an explicit gate that exits non-zero on any failure
+    // outside a named allowlist.
+    if (!/KNOWN_DEGRADED=\(/.test(src) || !/\$\{#UNEXPECTED\[@\]\}"?\s*-gt 0/.test(src)) {
+      violations.push(
+        `${cronYml}: "Fire critical jobs" collects failures into FAILED but never exits non-zero. ` +
+        `Every call is non-critical and \`|| true\`, so the step reports SUCCESS even when every ` +
+        `sync fails — the same fake-success class as the 465 InsuraCloud rows. Declare a ` +
+        `KNOWN_DEGRADED allowlist and \`exit 1\` when any UNEXPECTED failure remains.`,
+      );
+    }
+    // `[ test ] && arr+=(x)` returns non-zero when the test is false. This step
+    // runs under GitHub's default `bash -e`, so the terse form aborts the step
+    // mid-loop — an accidental exit that makes the run's colour meaningless.
+    if (/\[\s*"\$(expected|f)"\s*=\s*"?\$?\{?[a-z]*\}?"?\s*\]\s*&&\s*\w+\+?=/.test(src)) {
+      violations.push(
+        `${cronYml}: uses \`[ test ] && var+=…\` inside the failure-triage loop. Under \`bash -e\` ` +
+        `a false test makes the AND-list return 1 and aborts the step early. Use an explicit ` +
+        `\`if\` block so a non-match is not an error.`,
       );
     }
     if (!/refresh_sync_health/.test(src)) {
@@ -278,9 +310,10 @@ function walk(dir, exts, fn) {
 
 if (violations.length === 0) {
   console.log(
-    "Sync-reliability guardrail passed (10 rules checked: deploy fail-loud, " +
+    "Sync-reliability guardrail passed (12 rules checked: deploy fail-loud, " +
     "no continue-on-error masking, link must authenticate, " +
-    "cron gap parser, insuracloud cron presence, environment-only bot tokens, " +
+    "cron gap parser, insuracloud revival probe, cron tick must fail loud, " +
+    "no errexit-aborting && appends, environment-only bot tokens, " +
     "refresh_sync_health grants, dashboard canonical source, insuracloud-sync " +
     "auth gate, insuracloud placeholder client data, ReadyMode hardcoding).",
   );

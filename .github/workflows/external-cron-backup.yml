@@ -143,13 +143,40 @@ jobs:
           # response; the edge function logs to agentlink_sync_log and routes
           # policy-by-policy via upstream userId -> agents.insuracloud_user_id.
           call_edge "agentlink-cookie-sync" '{}' no || true
-          # InsuraCloud sync — upstream API currently 404s all three endpoints
-          # (/business-analytics, /book-of-business, /team-analytics: "API
-          # endpoint not found"), so this cannot succeed from our side and was
-          # failing every tick as critical. Dashboards actually ride
-          # agentlink-cookie-sync above. Kept non-critical for visibility;
-          # re-promote to critical only when InsuraCloud ships the endpoints.
-          call_edge "insuracloud-sync" '{"full":false}' no || true
+          # InsuraCloud revival probe — deliberately NOT a per-tick sync.
+          # Upstream 404s all three endpoints (/business-analytics,
+          # /book-of-business, /team-analytics: "API endpoint not found"), so
+          # this call cannot succeed from our side; the dashboards actually
+          # ride agentlink-cookie-sync above. Until 2026-08-08 it ran every
+          # tick as critical and painted the run red 71 times a day. The fix
+          # that day demoted it to non-critical, which stopped the red but left
+          # it hammering a dead endpoint 288 times a day and writing ~200 error
+          # rows a day into insuracloud_sync_log — the same table whose 465
+          # fake-success rows are the reason this repo distrusts the colour
+          # green. We still want to know the hour the endpoints come back, so
+          # we keep probing, but hourly, and the failure is allowlisted below
+          # so it can never colour the run. Re-promote it to a per-tick
+          # critical sync only once a probe actually returns ok:true.
+          probe_gap=$(curl -sS -X POST "$BOT_SQL" \
+            -H "Authorization: Bearer $BOT_TOKEN" \
+            -H "content-type: application/json" \
+            --max-time 20 \
+            -d '{"query":"SELECT COALESCE(EXTRACT(EPOCH FROM (now()-max(created_at)))::int, 99999) AS gap FROM insuracloud_sync_log;"}' 2>/dev/null \
+            | jq -r 'if (.ok == true) and (.rows | length > 0) and (.rows[0].gap | type == "number") then .rows[0].gap else 99999 end' 2>/dev/null || echo 99999)
+          case "$probe_gap" in ''|*[!0-9]*) probe_gap=99999 ;; esac
+          if [ "$probe_gap" -ge 3000 ]; then
+            echo "probe: last InsuraCloud attempt ${probe_gap}s ago — probing upstream"
+            call_edge "insuracloud-sync" '{"full":false}' no || true
+            if ! printf '%s\n' ${FAILED[@]+"${FAILED[@]}"} | grep -qx "edge:insuracloud-sync"; then
+              curl -sS -X POST "$NTFY" \
+                -H "Title: InsuraCloud endpoints are BACK" \
+                -H "Priority: 4" \
+                -H "Tags: white_check_mark" \
+                --data-binary "insuracloud-sync just returned OK after months of 404s. Re-promote it to a per-tick critical sync in external-cron-backup.yml." || true
+            fi
+          else
+            echo "── edge:insuracloud-sync ── skipped (probed ${probe_gap}s ago; hourly cadence)"
+          fi
           # Deal sync queue (stale deal pushes)
           fire "public.deal_sync_queue_promote_dead()" "deal-sync-queue-promote-dead" no 30 || true
           # Auto-assign newly-arrived applications
@@ -173,6 +200,41 @@ jobs:
               echo "- See per-step logs above for full HTTP responses"
             fi
           } >> $GITHUB_STEP_SUMMARY
+
+          # Honest green. Every call above is non-critical and `|| true`, so
+          # without this gate the step CANNOT fail: run 31323354187 on
+          # 2026-08-09 had insuracloud-sync return HTTP 502 with {"ok":false}
+          # and still reported SUCCESS. That is the fake-success disease living
+          # inside the very safety net that exists to catch it. The real danger
+          # is not the known-dead upstream — it is that when the bot-sql token
+          # died on 2026-08-07, all six calls would have failed and this
+          # workflow would still have painted itself green while pg_cron was
+          # down and no pipeline moved. A green tick must mean the pipelines
+          # actually moved. Only the known-degraded upstream is exempt, and it
+          # is named explicitly so the exemption cannot quietly widen.
+          # Note the explicit `if` blocks below: `[ test ] && arr+=(x)` returns
+          # non-zero when the test is false, and this step runs under GitHub's
+          # default `bash -e`, so the terse form would abort the step on the
+          # first non-match — the same class of accidental exit that made these
+          # runs' colours meaningless in the first place.
+          KNOWN_DEGRADED=("edge:insuracloud-sync")
+          UNEXPECTED=()
+          for f in ${FAILED[@]+"${FAILED[@]}"}; do
+            expected=no
+            for k in "${KNOWN_DEGRADED[@]}"; do
+              if [ "$f" = "$k" ]; then expected=yes; fi
+            done
+            if [ "$expected" = "no" ]; then UNEXPECTED+=("$f"); fi
+          done
+          if [ "${#UNEXPECTED[@]}" -gt 0 ]; then
+            curl -sS -X POST "$NTFY" \
+              -H "Title: External cron backup FAILED" \
+              -H "Priority: 5" \
+              -H "Tags: rotating_light" \
+              --data-binary "Sync jobs failed this tick: ${UNEXPECTED[*]}. pg_cron's backup is not moving the pipelines." || true
+            echo "::error::Unexpected sync failures: ${UNEXPECTED[*]}"
+            exit 1
+          fi
 
       - name: Summary
         if: always()

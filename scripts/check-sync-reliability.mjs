@@ -147,6 +147,45 @@ function walk(dir, exts, fn) {
         `view has a fresh heartbeat for github_external_cron.`,
       );
     }
+    // The honest-green gate above is only as truthful as the signal it judges.
+    // agentlink-cookie-sync ran under curl's default `--max-time 90` while its
+    // successful runs took a median of 143s and a max of 192s (measured over
+    // 20h on 2026-08-10), so HALF of all SUCCESSFUL syncs were cut off
+    // mid-flight, recorded status=000, and were turned by the new gate into a
+    // red run plus a priority-5 push telling Sam the pipelines were not
+    // moving — while the sync went on to update 1202 deals. That is the
+    // fake-success disease inverted into a fake FAILURE, and it is just as
+    // corrosive: an alarm that cries wolf ~36 times a day trains Sam to ignore
+    // the one channel that is supposed to be loud. A gate nobody believes is
+    // not a gate. The call must be given at least the same 300s that
+    // fn_agentlink_reap_stuck uses to declare a run stuck, so curl and the
+    // reaper cannot disagree about the same run.
+    const cookieCall = src.match(/call_edge\s+"agentlink-cookie-sync"[^\n]*/);
+    if (cookieCall) {
+      const timeoutArg = cookieCall[0].match(/\bno\s+(\d+)/);
+      if (!timeoutArg || Number(timeoutArg[1]) < 300) {
+        violations.push(
+          `${cronYml}: agentlink-cookie-sync must be called with an explicit curl timeout of at ` +
+          `least 300s (fn_agentlink_reap_stuck's own "stuck" threshold). At the default 90s, half ` +
+          `of all SUCCESSFUL syncs (median 143s, max 192s) time out as status=000 and the ` +
+          `honest-green gate reports a real success as a failure — a fake FAILURE, and 36 ` +
+          `false priority-5 pushes a day is how a loud channel gets ignored.`,
+        );
+      }
+    }
+    // …and when curl does give up, the verdict must come from the pipeline's
+    // own record, not from how long curl was willing to wait. Green must mean
+    // "the pipelines moved"; red must mean "they didn't". Both directions are
+    // decided by agentlink_sync_log.
+    if (!/agentlink_sync_log/.test(src) || !/acquit/.test(src)) {
+      violations.push(
+        `${cronYml}: a curl timeout on agentlink-cookie-sync must be reconciled against ` +
+        `agentlink_sync_log before it counts as a failure. Judging the tick on curl's exit code ` +
+        `alone reports slow-but-successful syncs as failures. Query the log's status and only ` +
+        `keep the run red when it is genuinely 'stuck', past the reap threshold, or never ` +
+        `registered at all.`,
+      );
+    }
   }
 }
 

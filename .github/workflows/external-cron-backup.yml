@@ -118,13 +118,14 @@ jobs:
             local fn=$1
             local body_in=$2
             local critical=${3:-no}
+            local timeout=${4:-90}
             echo "── edge:$fn ──"
             local resp status
             resp=$(curl -sS -w "\nHTTPSTATUS:%{http_code}" -X POST \
               "https://xrzweoneiieddzxogewk.supabase.co/functions/v1/$fn" \
               -H "Authorization: Bearer $BOT_TOKEN" \
               -H "content-type: application/json" \
-              --max-time 90 \
+              --max-time "$timeout" \
               -d "$body_in" 2>&1) || true
             status=$(printf '%s' "$resp" | tail -1 | sed 's/HTTPSTATUS://')
             resp=$(printf '%s' "$resp" | sed '$d')
@@ -142,7 +143,62 @@ jobs:
           # The Postgres pg_net path can hang on AgentLink's large /api/deals
           # response; the edge function logs to agentlink_sync_log and routes
           # policy-by-policy via upstream userId -> agents.insuracloud_user_id.
-          call_edge "agentlink-cookie-sync" '{}' no || true
+          #
+          # This call gets 300s, not the default 90s, and its verdict comes
+          # from agentlink_sync_log rather than from curl's exit code.
+          # Measured over 20h on 2026-08-10: successful syncs run a median of
+          # 143s and a max of 192s, so --max-time 90 was cutting HALF of all
+          # SUCCESSFUL runs off mid-flight and recording status=000. Yesterday's
+          # honest-green gate then correctly turned each of those into a red run
+          # and a priority-5 push telling Sam "the pipelines are not moving" —
+          # while the sync it had hung up on went on to finish and update 1202
+          # deals (GH run 31399414256 vs the log row started 14:40:28Z, ok,
+          # 1202 updated). That is the fake-success disease running in reverse:
+          # a fake FAILURE. It is just as corrosive, because an alarm that cries
+          # wolf ~36 times a day trains Sam to ignore the one channel that is
+          # supposed to be loud, and a gate nobody believes is no gate at all.
+          # 300s is not an arbitrary bump — it is exactly the 5-minute threshold
+          # fn_agentlink_reap_stuck already uses to declare a run stuck, so curl
+          # and the reaper now share one definition of "too long" and cannot
+          # disagree about the same run.
+          TICK_START=$(date -u +%s)
+          call_edge "agentlink-cookie-sync" '{}' no 300 || true
+          if printf '%s\n' ${FAILED[@]+"${FAILED[@]}"} | grep -qx "edge:agentlink-cookie-sync"; then
+            # curl gave up. Ask the pipeline's own record who was right.
+            verdict=$(curl -sS -X POST "$BOT_SQL" \
+              -H "Authorization: Bearer $BOT_TOKEN" \
+              -H "content-type: application/json" \
+              --max-time 20 \
+              -d "{\"query\":\"SELECT status, EXTRACT(EPOCH FROM (now()-started_at))::int AS age FROM agentlink_sync_log WHERE started_at >= to_timestamp($TICK_START) ORDER BY started_at DESC LIMIT 1;\"}" 2>/dev/null \
+              | jq -r 'if (.ok == true) and (.rows | length > 0) then "\(.rows[0].status):\(.rows[0].age)" else "unknown:0" end' 2>/dev/null || echo "unknown:0")
+            # An empty body makes jq print nothing and still exit 0, so the
+            # `||` above never fires and verdict lands empty. That already
+            # fails safe (empty status never acquits), but name it so the log
+            # line says "unknown" instead of a blank.
+            if [ -z "$verdict" ]; then verdict="unknown:0"; fi
+            v_status=${verdict%%:*}
+            v_age=${verdict##*:}
+            case "$v_age" in ''|*[!0-9]*) v_age=0 ;; esac
+            echo "agentlink-cookie-sync log verdict: status=$v_status age=${v_age}s"
+            # 'ok' means the pipeline moved. 'running' under the reaper's 300s
+            # threshold means it is still legitimately in flight and the next
+            # tick will judge it once the reaper has ruled. Anything else —
+            # 'stuck', a run already past the reap threshold, or no log row at
+            # all (the function never even registered) — is a real failure.
+            acquit=no
+            if [ "$v_status" = "ok" ]; then acquit=yes; fi
+            if [ "$v_status" = "running" ] && [ "$v_age" -lt 300 ]; then acquit=yes; fi
+            if [ "$acquit" = "yes" ]; then
+              echo "::notice::agentlink-cookie-sync: curl timed out but the log says '$v_status' — pipeline moved, not a failure"
+              REMAINING=()
+              for f in ${FAILED[@]+"${FAILED[@]}"}; do
+                if [ "$f" != "edge:agentlink-cookie-sync" ]; then REMAINING+=("$f"); fi
+              done
+              FAILED=(${REMAINING[@]+"${REMAINING[@]}"})
+            else
+              echo "::warning::agentlink-cookie-sync: log says '$v_status' (age ${v_age}s) — real failure, keeping it red"
+            fi
+          fi
           # InsuraCloud revival probe — deliberately NOT a per-tick sync.
           # Upstream 404s all three endpoints (/business-analytics,
           # /book-of-business, /team-analytics: "API endpoint not found"), so

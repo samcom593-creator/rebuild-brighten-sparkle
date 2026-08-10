@@ -186,6 +186,53 @@ function walk(dir, exts, fn) {
         `registered at all.`,
       );
     }
+    // …and the row it reconciles against must be one the reaper has already
+    // RULED on. 843c6164 judged the row the tick had just created. Supabase's
+    // gateway forces that verdict at its own 150s idle timeout and
+    // fn_agentlink_reap_stuck does not call a run stuck until 300s, so the row
+    // was always 'running', always under the threshold, and always acquitted:
+    // the cookie-sync leg could not go red at all. Run 31413717796 logged
+    // "verdict: status=running age=151s" and reported SUCCESS while the row it
+    // judged (ab407e97) died and was reaped 'stuck' at 485s. A gate that cannot
+    // fail is the 465-fake-success-row disease with the sign flipped.
+    if (/started_at\s*>=\s*to_timestamp/.test(src)) {
+      violations.push(
+        `${cronYml}: the cookie-sync verdict is anchored on the CURRENT tick ` +
+        `(started_at >= to_timestamp(...)). That row is only ~150s old when the gateway forces ` +
+        `the verdict and the reaper needs 300s, so it is always 'running' and always acquitted — ` +
+        `the leg can never go red. Judge the newest row OLDER than the reap threshold instead, ` +
+        `whose status is final.`,
+      );
+    }
+    if (!/make_interval/.test(src) || !/pg_get_functiondef/.test(src)) {
+      violations.push(
+        `${cronYml}: the cookie-sync verdict must select a run older than fn_agentlink_reap_stuck's ` +
+        `own threshold, read live via pg_get_functiondef, so curl and the reaper cannot drift apart ` +
+        `if anyone retunes the reaper. Hardcoding the window re-opens the "too early to tell" gap ` +
+        `that made the gate unable to fail.`,
+      );
+    }
+    // An 'ok' that is never superseded is its own failure mode: if the function
+    // stopped registering rows entirely, the newest settled row stays 'ok' and
+    // acquits forever.
+    if (!/STALE_MAX/.test(src)) {
+      violations.push(
+        `${cronYml}: the cookie-sync verdict must bound how old a settled 'ok' may be (STALE_MAX). ` +
+        `Without it, a pipeline that stops writing rows altogether keeps acquitting on an ancient ` +
+        `success and the gate goes quiet permanently.`,
+      );
+    }
+    // Fail-safe parsing. The old code coerced a non-numeric age to 0, which
+    // ACQUITTED a stale 'ok' — fail-open, in the one place that exists to fail
+    // loud. The pg_cron gap parser above already set the correct precedent:
+    // coerce an unparseable value to "very stale", never to "brand new".
+    if (/case "\$v_age" in ''\|\*\[!0-9\]\*\) v_age=0 ;; esac/.test(src)) {
+      violations.push(
+        `${cronYml}: a non-numeric verdict age coerces to 0, which makes a garbled response ACQUIT. ` +
+        `Coerce it to a very-stale sentinel instead, matching the pg_cron gap parser's 99999 ` +
+        `precedent, so a broken parse fails loud rather than silent.`,
+      );
+    }
   }
 }
 
@@ -349,9 +396,11 @@ function walk(dir, exts, fn) {
 
 if (violations.length === 0) {
   console.log(
-    "Sync-reliability guardrail passed (12 rules checked: deploy fail-loud, " +
+    "Sync-reliability guardrail passed (16 rules checked: deploy fail-loud, " +
     "no continue-on-error masking, link must authenticate, " +
     "cron gap parser, insuracloud revival probe, cron tick must fail loud, " +
+    "cookie-sync verdict must judge a SETTLED run (not the in-flight one), " +
+    "reap threshold read live, stale-ok bound, fail-safe age coercion, " +
     "no errexit-aborting && appends, environment-only bot tokens, " +
     "refresh_sync_health grants, dashboard canonical source, insuracloud-sync " +
     "auth gate, insuracloud placeholder client data, ReadyMode hardcoding).",

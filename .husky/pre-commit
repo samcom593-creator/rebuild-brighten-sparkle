@@ -48,6 +48,17 @@ if match '^(\.github/workflows/(deploy-supabase|external-cron-backup)\.yml$|supa
   node scripts/check-sync-reliability.mjs
 fi
 
+# ---------- check-cron-verdict-states (wave-cookie-sync-red-path) ----------
+# Trigger: the cron-backup workflow (which contains the verdict block that gets
+# executed) or the checker itself. Behavioural, not static: it runs the shipped
+# bash through every verdict state and proves the gate can still go RED. Three
+# waves in three days landed on this one decision — 710b27c3 made it cry wolf
+# 36x/day, 843c6164 made it unable to cry at all.
+if match '^(\.github/workflows/external-cron-backup\.yml$|scripts/check-cron-verdict-states\.mjs$)'; then
+  echo "[pre-commit] Cron-verdict-affecting file staged — running check:cron-verdict-states…"
+  node scripts/check-cron-verdict-states.mjs
+fi
+
 # ---------- check-unsafe-supabase-catch (wave-29) ----------
 # Trigger: any edge function ts/tsx or the script itself.
 if match '^(supabase/functions/.*\.(ts|tsx)$|scripts/check-unsafe-supabase-catch\.mjs$)'; then

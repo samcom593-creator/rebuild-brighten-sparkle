@@ -79,7 +79,6 @@ Deno.serve(async (req) => {
     const aop         = Number(deal.annual_premium ?? monthly * 12);
     const productSold = deal.product_sold ?? "Life Insurance";
     const carrierName = (carrier as any)?.name ?? "";
-    const clientName  = `${deal.client_first_name ?? ""} ${deal.client_last_name ?? ""}`.trim();
     const source      = deal.source ?? "apex";
 
     // ── 2. Discord embed ──
@@ -96,7 +95,11 @@ Deno.serve(async (req) => {
           { name: "📅 Monthly",   value: fmt$(monthly),  inline: true },
           { name: "📦 Product",   value: productSold,    inline: true },
           ...(carrierName ? [{ name: "🏢 Carrier", value: carrierName, inline: true }] : []),
-          ...(clientName  ? [{ name: "👤 Client",  value: clientName,  inline: true }] : []),
+          // NO CLIENT IDENTITY. This embed carried a "👤 Client" field holding the
+          // client's real full name, posted to a Discord channel on every deal —
+          // 243 deals in the 30 days before it was removed, all of them with a name.
+          // A win post is agent + carrier + product + money. Never who bought it.
+          // Guarded by scripts/check-discord-pii.mjs; do not reintroduce.
         ],
         footer: { text: "APEX Financial — Who's next?" },
         timestamp: new Date().toISOString(),

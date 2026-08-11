@@ -15,6 +15,7 @@
     "check:metric-truth": "node scripts/check-metric-truth.mjs",
     "check:sync-reliability": "node scripts/check-sync-reliability.mjs",
     "check:cron-verdict-states": "node scripts/check-cron-verdict-states.mjs",
+    "check:discord-pii": "node scripts/check-discord-pii.mjs",
     "check:forbidden-language": "node scripts/check-forbidden-language.mjs",
     "check:unsafe-supabase-catch": "node scripts/check-unsafe-supabase-catch.mjs",
     "check:vsl-sync": "node scripts/check-vsl-sync.mjs",

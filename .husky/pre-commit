@@ -612,3 +612,13 @@ if match '^(supabase/functions/.*\.(ts|js)$|scripts/check-discarded-email-send\.
   echo "[pre-commit] Edge function staged — running check:discarded-email-send…"
   npm run --silent check:discarded-email-send || exit 1
 fi
+
+# ---------- check-discord-pii (wave-discord-client-pii) ----------
+# Trigger: any staged migration, or the checker itself.
+# The script reads the staged migrations directly (it never scans history), so
+# it cannot go red about the pre-existing repo/live drift. What is already
+# deployed is apex-doctor Check #16's job, not this one's.
+if match '^(supabase/migrations/.*\.sql$|scripts/check-discord-pii\.mjs$)'; then
+  echo "[pre-commit] Migration staged — running check:discord-pii…"
+  node scripts/check-discord-pii.mjs
+fi

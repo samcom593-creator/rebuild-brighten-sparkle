@@ -38,7 +38,7 @@ export function CarrierBreakdownCard() {
         .order("total_premium", { ascending: false, nullsFirst: false })
         .limit(8);
       if (error) throw error;
-      return (data ?? []) as CarrierRow[];
+      return (data ?? []) as unknown as CarrierRow[];
     },
   });
 

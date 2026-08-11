@@ -107,7 +107,7 @@ export default function InviteLinksAdmin() {
       setLoading(false);
       return;
     }
-    setRows((data ?? []) as InviteTokenRow[]);
+    setRows((data ?? []) as unknown as InviteTokenRow[]);
     setLoading(false);
   }, []);
 

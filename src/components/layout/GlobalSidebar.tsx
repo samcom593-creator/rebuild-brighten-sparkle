@@ -251,6 +251,8 @@ export function GlobalSidebar({
         { icon: PenSquare, label: "Content Command", href: "/dashboard/admin/content-command", special: true },
         // Sam 2026-06-16: Scripts removed — "scripts you can also remove those"
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
+        // 2026-08-10: live apex-resources hub (recordings/courses/library) in-app
+        { icon: Library, label: "Training Hub", href: "/dashboard/training-hub", special: true },
         // Admin hub (everything that isn't daily flow)
         // MP-230 (2026-07-01): Agent Duplicates removed per Sam directive.
         // MP-232: licensed applicants bypass Calendly; call now.
@@ -313,6 +315,8 @@ export function GlobalSidebar({
         { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements" },
         // Sam 2026-06-16: Scripts removed for manager nav too
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
+        // 2026-08-10: live apex-resources hub (recordings/courses/library) in-app
+        { icon: Library, label: "Training Hub", href: "/dashboard/training-hub", special: true },
       );
       oldApplicants.push(
         { icon: Archive, label: "Old Managers", href: "/dashboard/old-applicants/managers" },
@@ -361,6 +365,9 @@ export function GlobalSidebar({
         { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
         // Sam 2026-06-16: Scripts removed for agent nav too
         { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
+        // 2026-08-10: live apex-resources hub — the trainings/recordings agents
+        // used to reach via the password-gated external site, now in-app.
+        { icon: Library, label: "Training Hub", href: "/dashboard/training-hub", special: true },
         // 2026-07-29: "Licensing" → /dashboard/pre-licensing removed from the AGENT branch.
         // This item was only ever pushed in the plain-agent else-branch, but App.tsx:659
         // gates that route `requireAdmin allowManagers` — so the single role that could see

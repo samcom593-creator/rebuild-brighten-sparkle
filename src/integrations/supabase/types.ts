@@ -4631,6 +4631,42 @@ export type Database = {
         }
         Relationships: []
       }
+      hub_course_progress: {
+        Row: {
+          completed_at: string
+          course_id: string
+          id: string
+          item_id: string
+          kind: string
+          passed: boolean | null
+          score: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          course_id: string
+          id?: string
+          item_id: string
+          kind?: string
+          passed?: boolean | null
+          score?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          completed_at?: string
+          course_id?: string
+          id?: string
+          item_id?: string
+          kind?: string
+          passed?: boolean | null
+          score?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ics_feed_tokens: {
         Row: {
           created_at: string

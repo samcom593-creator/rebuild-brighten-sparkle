@@ -208,7 +208,7 @@ export default function TelegramBot() {
         .select("key, description, body, version, active, updated_at")
         .order("key", { ascending: true });
       if (error) throw error;
-      return (data as Template[]) ?? [];
+      return (data as unknown as Template[]) ?? [];
     },
   });
 
@@ -239,7 +239,7 @@ export default function TelegramBot() {
         .like("question_pattern", "[PRE-AGENT HQ]%")
         .order("id", { ascending: true });
       if (error) throw error;
-      return (data as PreAgentHqFaq[]) ?? [];
+      return (data as unknown as PreAgentHqFaq[]) ?? [];
     },
   });
 
@@ -265,7 +265,7 @@ export default function TelegramBot() {
       if (users.error) throw users.error;
       if (settings.error) throw settings.error;
 
-      const rows = (recent.data as Array<{ status: string | null; sent_at: string | null; last_error: string | null }> | null) ?? [];
+      const rows = (recent.data as unknown as Array<{ status: string | null; sent_at: string | null; last_error: string | null }> | null) ?? [];
       const lastSent = rows.find((row) => row.sent_at)?.sent_at ?? null;
       const settingsMap = new Map((settings.data ?? []).map((row) => [row.key, row.value]));
       return {
@@ -612,7 +612,7 @@ function BroadcastPanel({ templates }: { templates: Template[] }) {
       if (audience !== "all_active") q = q.eq("stage", audience);
       const { data, error } = await q;
       if (error) throw error;
-      const recipients = (data as Array<{ chat_id: number }>) ?? [];
+      const recipients = (data as unknown as Array<{ chat_id: number }>) ?? [];
       if (recipients.length === 0) {
         toast.warning("Nobody matched — nothing queued.");
         setSending(false);

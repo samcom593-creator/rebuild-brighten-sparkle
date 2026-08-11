@@ -116,7 +116,20 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // 2026-07-27 ratchet drop 236 → 234. Measured twice on a cold build (deleted
 // *.tsbuildinfo first — a stale incremental artifact reports phantom counts in
 // both directions and burned an hour earlier in this session).
-const BASELINE = 230; // 2026-08-07: ratchet drop 233→230 — Headhunter unification wave fixed 3 real type errors (ErrorBoundary/useIdleSession/test mocks) while wiring SSO + chunk recovery.
+// 2026-08-10 wave-training-hub — BASELINE 234 → 233. Adding hub_course_progress
+// to types.ts grew the SelectQueryError union by one entry, which un-masked 15
+// pre-existing unsound `as X[]` casts previously hidden behind TS2589
+// deep-instantiation errors (CarrierBreakdown/CarrierProduction cards,
+// useNextStepData, DashboardToday, InviteLinks, LicensingTracker, SamHQ,
+// TelegramBot). All 15 fixed with the `as unknown as X` intermediate the error
+// itself prescribes; one TS2589 in useNextStepData dissolved outright → net -1.
+// 2026-08-10 wave-training-hub — BASELINE 230 → 229. Adding hub_course_progress
+// to types.ts grew the SelectQueryError union, un-masking 15 pre-existing
+// unsound `as X[]` casts (Carrier* cards, useNextStepData, DashboardToday,
+// InviteLinks, LicensingTracker, SamHQ, TelegramBot) that had been hidden
+// behind TS2589 deep-instantiation noise. All 15 fixed with the `as unknown as`
+// intermediate the error itself prescribes; one TS2589 dissolved outright.
+const BASELINE = 229; // 2026-08-07: ratchet drop 233→230 — Headhunter unification wave fixed 3 real type errors (ErrorBoundary/useIdleSession/test mocks) while wiring SSO + chunk recovery.
 
 let stdout = "";
 let stderr = "";

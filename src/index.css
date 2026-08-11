@@ -2104,3 +2104,29 @@ h1,
     animation: none !important;
   }
 }
+
+/* ── Training Hub certificate print isolation ─────────────────────────────
+   window.print() on /dashboard/training-hub/course/:id previously printed the
+   whole authenticated shell — sidebar, progress bar, module list — and because
+   index.html hardcodes <html class="dark">, browsers drop the dark backgrounds
+   while the light foreground text survives, so the certificate itself printed
+   near-invisible. Isolate the certificate and force legible ink. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #hub-certificate,
+  #hub-certificate * {
+    visibility: visible;
+    color: #000 !important;
+    background: transparent !important;
+  }
+  #hub-certificate {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    max-height: 60vh;
+    background: #fff !important;
+    border-color: #c9a84c !important;
+  }
+}

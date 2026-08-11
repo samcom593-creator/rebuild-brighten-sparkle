@@ -122,6 +122,8 @@ const AgentPortal = lazy(() => import("./pages/AgentPortal"));
 const AgentCommandDashboard = lazy(() => import("./pages/AgentCommandDashboard"));
 const OnboardingCourse = lazy(() => import("./pages/OnboardingCourse"));
 const CourseCatalog = lazy(() => import("./pages/CourseCatalog"));
+const TrainingHub = lazy(() => import("./pages/TrainingHub"));
+const TrainingHubCourse = lazy(() => import("./pages/TrainingHubCourse"));
 const MagicLogin = lazy(() => import("./pages/MagicLogin"));
 const Numbers = lazy(() => import("./pages/Numbers"));
 const Privacy = lazy(() => import("./pages/Privacy"));
@@ -534,6 +536,11 @@ const App = () => (
                     <Route path="/agent-portal/legacy" element={<AgentPortal />} />
                     <Route path="/onboarding-course" element={<OnboardingCourse />} />
                     <Route path="/course-catalog" element={<CourseCatalog />} />
+                    {/* Training Hub — live apex-resources content rendered in-app
+                        (recordings / courses / library). Content API stays the
+                        apex-resources admin portal; progress in hub_course_progress. */}
+                    <Route path="/dashboard/training-hub" element={<TrainingHub />} />
+                    <Route path="/dashboard/training-hub/course/:courseId" element={<TrainingHubCourse />} />
                     <Route path="/course-progress" element={<CourseProgress />} />
                     <Route path="/course-progress/content" element={<CourseContent />} />
                     <Route path="/numbers" element={<Numbers />} />

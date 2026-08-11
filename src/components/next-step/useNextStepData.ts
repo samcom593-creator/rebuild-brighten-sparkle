@@ -154,7 +154,7 @@ export function useMyNextStep(applicationId?: string | null, agentId?: string | 
       else if (agentId) q = q.eq("agent_id", agentId);
       const { data, error } = await q.maybeSingle();
       if (error) return null;
-      return (data as NextStepCandidateRow) ?? null;
+      return (data as unknown as NextStepCandidateRow) ?? null;
     },
     staleTime: 60_000,
     refetchInterval: 2 * 60_000,

@@ -77,7 +77,7 @@ function TodaySection({ today }: { today: string }) {
         .eq("date", today)
         .order("position", { ascending: true });
       if (error) throw error;
-      return data as TaskRow[];
+      return data as unknown as TaskRow[];
     },
     refetchInterval: 60_000, // 60s poll for cross-device sync
   });
@@ -267,7 +267,7 @@ function ThisWeekSection({ today }: { today: string }) {
     queryFn: async () => {
       const { data, error } = await supabase.from("v_sam_week_tasks").select("date,done_count,total_count");
       if (error) throw error;
-      return data as WeekDay[];
+      return data as unknown as WeekDay[];
     },
     refetchInterval: 60_000,
   });
@@ -490,7 +490,7 @@ function NextActionsSection() {
         supabase.from("telegram_groups").select("chat_id", { count: "exact" }).in("type", ["onboarding", "licensing_reference", "daily_movement", "seminar_reminders", "ask_apex_ai"]),
         supabase.from("applications").select("id", { count: "exact", head: true }).eq("record_type", APPLICATION_RECORD_TYPE).eq("status", "new"),
       ]);
-      const pendingTelegram = ((groups.data ?? []) as Array<{ chat_id: number }>).filter((g) => Number(g.chat_id) > -1000 && Number(g.chat_id) < 0).length;
+      const pendingTelegram = ((groups.data ?? []) as unknown as Array<{ chat_id: number }>).filter((g) => Number(g.chat_id) > -1000 && Number(g.chat_id) < 0).length;
       return {
         draftCount: drafts.count ?? 0,
         pendingTelegram,
@@ -707,7 +707,7 @@ function TelegramStatusTile() {
         supabase.from("system_settings").select("key, value").in("key", ["telegram_bot_username", "telegram_bot_dm_url"]),
         supabase.from("telegram_users").select("chat_id", { count: "exact", head: true }),
       ]);
-      const groups = (groupsResp.data ?? []) as Array<{ chat_id: string | number; is_active: boolean }>;
+      const groups = (groupsResp.data ?? []) as unknown as Array<{ chat_id: string | number; is_active: boolean }>;
       const isSentinel = (n: string | number) => {
         const v = Number(n);
         return Number.isFinite(v) && v > -1000 && v < 0;

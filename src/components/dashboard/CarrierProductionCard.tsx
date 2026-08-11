@@ -33,7 +33,7 @@ export function BookTrendCard() {
         .from("v_book_by_month")
         .select("month, deals, premium");
       if (error) throw error;
-      return (data ?? []) as MonthRow[];
+      return (data ?? []) as unknown as MonthRow[];
     },
   });
 

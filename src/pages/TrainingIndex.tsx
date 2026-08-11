@@ -24,16 +24,18 @@ import { Badge } from "@/components/ui/badge";
  * apex-resources.vercel.app hub for real-time updates.
  */
 
-const HUB_URL = "https://apex-resources.vercel.app";
-
 const DESTINATIONS = [
   {
-    title: "Full Training Resources",
-    subtitle: "Courses, PDFs, scripts, recorded presentations — mirrored on-site.",
-    href: "/resources/licensing",
+    // 2026-08-10: the external password-gated apex-resources.vercel.app hub
+    // now renders in-app at /dashboard/training-hub, live from the same
+    // content API — this replaced both the external link and the stale
+    // hand-harvested /resources/licensing highlight.
+    title: "Training Hub (live)",
+    subtitle: "Recorded trainings, courses, scripts, and PDFs — live from the APEX content library, with progress tracking.",
+    href: "/dashboard/training-hub",
     icon: BookOpen,
     highlight: true,
-    badge: "18 recordings · 8 resources",
+    badge: "Courses · Recordings · Library",
     external: false,
   },
   {
@@ -55,13 +57,13 @@ const DESTINATIONS = [
     external: false,
   },
   {
-    title: "APEX Agent Hub (live)",
-    subtitle: "Real-time weekly updates. Same content, admin-managed.",
-    href: HUB_URL,
+    title: "Licensing Resources",
+    subtitle: "Licensing-track mirror — works even when the live library is unreachable.",
+    href: "/resources/licensing",
     icon: ExternalLink,
     highlight: false,
-    badge: "External",
-    external: true,
+    badge: "Offline mirror",
+    external: false,
   },
 ];
 
@@ -69,37 +71,37 @@ const QUICK_PICKS = [
   {
     title: "APEX Script 3.0 — Senior Benefits",
     kind: "Guide",
-    href: "/resources/licensing",
+    href: "/dashboard/training-hub?tab=library",
     icon: FileText,
   },
   {
     title: "APEX Script — Veterans (VA Benefits)",
     kind: "Guide",
-    href: "/resources/licensing",
+    href: "/dashboard/training-hub?tab=library",
     icon: FileText,
   },
   {
     title: "APEX Agent Playbook",
     kind: "PDF",
-    href: "/resources/licensing",
+    href: "/dashboard/training-hub?tab=library",
     icon: FileText,
   },
   {
     title: "Beating the Price Objection — KJ",
     kind: "Recording",
-    href: "/resources/licensing",
+    href: "/dashboard/training-hub?tab=recordings",
     icon: Headphones,
   },
   {
     title: "The Long Game — Residual Income",
     kind: "PDF",
-    href: "/resources/licensing",
+    href: "/dashboard/training-hub?tab=library",
     icon: FileText,
   },
   {
     title: "Needs Analysis Quiz",
     kind: "PDF",
-    href: "/resources/licensing",
+    href: "/dashboard/training-hub?tab=library",
     icon: FileText,
   },
 ];

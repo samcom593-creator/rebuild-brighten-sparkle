@@ -1,0 +1,697 @@
+import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import {
+  BookOpen,
+  CheckCircle2,
+  ExternalLink,
+  FileText,
+  GraduationCap,
+  Headphones,
+  Library,
+  Play,
+  RefreshCw,
+  ScrollText,
+  Search,
+  Settings,
+  Video,
+  X,
+} from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { PageHeader } from "@/components/ui/page-header";
+import { GlassCard } from "@/components/ui/glass-card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+import {
+  HUB_ORIGIN,
+  HubRecording,
+  HubResource,
+  HUB_EMBED_SANDBOX,
+  hubCourseCounts,
+  hubCourseItems,
+  toHubEmbedUrl,
+  useHubData,
+  useHubTranscripts,
+} from "@/lib/apexResourcesHub";
+
+/**
+ * TrainingHub — the apex-resources.vercel.app agent hub, rebuilt inside the
+ * authenticated app. Live content (courses / recordings / library / quick
+ * links) straight from the apex-resources API; course progress lives in
+ * hub_course_progress instead of the legacy site's localStorage-by-typed-email.
+ */
+
+type HubTab = "courses" | "recordings" | "library";
+
+const LIBRARY_FILTERS: { key: string; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "pdf", label: "PDFs" },
+  { key: "guide", label: "Guides" },
+  { key: "video", label: "Videos" },
+  { key: "training", label: "Trainings" },
+];
+
+const TYPE_BADGE: Record<string, { label: string; className: string }> = {
+  pdf: { label: "PDF", className: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
+  guide: { label: "Guide", className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
+  video: { label: "Video", className: "bg-rose-500/15 text-rose-400 border-rose-500/30" },
+  training: { label: "Training", className: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+  course: { label: "Course", className: "bg-purple-500/15 text-purple-400 border-purple-500/30" },
+};
+
+function fmtClock(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function parseHubDate(d: string): number {
+  const t = Date.parse(d);
+  return Number.isNaN(t) ? 0 : t;
+}
+
+export default function TrainingHub() {
+  usePageTitle("Training Hub · APEX Financial");
+  const { user, isAdmin, isManager } = useAuth();
+  const { data, isLoading, isError, refetch, isRefetching } = useHubData();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = (["courses", "recordings", "library"].includes(searchParams.get("tab") || "")
+    ? searchParams.get("tab")
+    : "courses") as HubTab;
+  const setTab = (next: string) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set("tab", next);
+      return p;
+    }, { replace: true });
+  };
+
+  // One query for all of this user's hub course progress — powers the
+  // per-course completion bars on the Courses tab. RLS scopes to auth.uid().
+  const { data: progressRows } = useQuery({
+    queryKey: ["hub-course-progress", user?.id],
+    queryFn: async () => {
+      // Scope to this user explicitly. RLS alone is NOT enough here: the
+      // hub_progress_select_admin policy is OR'ed with select_own, so an
+      // unfiltered select would hand an admin every agent's rows and compute
+      // Sam's own progress from other people's completions.
+      const { data: rows, error } = await supabase
+        .from("hub_course_progress")
+        .select("course_id, item_id, kind, passed")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return rows ?? [];
+    },
+    enabled: !!user?.id,
+    staleTime: 60 * 1000,
+  });
+
+  const courses = useMemo(
+    () => (data?.resources ?? []).filter((r) => r.type === "course" && r.course),
+    [data],
+  );
+  const libraryItems = useMemo(
+    () => (data?.resources ?? []).filter((r) => r.type !== "course"),
+    [data],
+  );
+
+  const courseCompletion = useMemo(() => {
+    const byCourse: Record<string, number> = {};
+    for (const c of courses) {
+      const items = hubCourseItems(c.course!);
+      if (items.length === 0) continue;
+      const doneIds = new Set(
+        (progressRows ?? [])
+          .filter((p) => p.course_id === c.id && (p.kind === "lesson" || p.passed))
+          .map((p) => p.item_id),
+      );
+      const done = items.filter((it) => doneIds.has(it.id)).length;
+      byCourse[c.id] = Math.round((done / items.length) * 100);
+    }
+    return byCourse;
+  }, [courses, progressRows]);
+
+  const quickLinks = useMemo(
+    () =>
+      (data?.quickLinks ?? []).filter(
+        (l) => !/\/admin\/?$/.test(l.href) || isAdmin || isManager,
+      ),
+    [data, isAdmin, isManager],
+  );
+
+  return (
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+      <PageHeader
+        eyebrow="Agent Hub"
+        eyebrowIcon={<Library className="h-3 w-3" />}
+        title="Training Hub"
+        subtitle={
+          data
+            ? `${courses.length} courses · ${data.recordings.length} recorded trainings · ${libraryItems.length} resources — live from the APEX content library.`
+            : "Recordings, courses, scripts, and tools — everything an APEX agent needs, in one place."
+        }
+        accent="amber"
+        actions={
+          (isAdmin || isManager) && (
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <a href={`${HUB_ORIGIN}/admin/`} target="_blank" rel="noopener noreferrer">
+                <Settings className="h-4 w-4" />
+                Manage content
+              </a>
+            </Button>
+          )
+        }
+      />
+
+      {isLoading && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {["a", "b", "c"].map((k) => (
+            <Skeleton key={k} className="h-48 rounded-md" />
+          ))}
+        </div>
+      )}
+
+      {isError && !isLoading && (
+        <GlassCard className="p-8 text-center">
+          <p className="mb-1 text-lg font-bold">Couldn't reach the content library</p>
+          <p className="mb-4 text-sm text-muted-foreground">
+            The live library at apex-resources.vercel.app didn't respond. Retry, or open the
+            legacy hub directly.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button onClick={() => refetch()} disabled={isRefetching} className="gap-2">
+              <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />
+              Retry
+            </Button>
+            <Button asChild variant="outline" className="gap-2">
+              <a href={HUB_ORIGIN} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4" />
+                Open legacy hub
+              </a>
+            </Button>
+          </div>
+        </GlassCard>
+      )}
+
+      {data && (
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="mb-4 w-full justify-start overflow-x-auto">
+            <TabsTrigger value="courses" className="gap-1.5">
+              <GraduationCap className="h-4 w-4" />
+              Courses
+            </TabsTrigger>
+            <TabsTrigger value="recordings" className="gap-1.5">
+              <Headphones className="h-4 w-4" />
+              Recordings
+            </TabsTrigger>
+            <TabsTrigger value="library" className="gap-1.5">
+              <BookOpen className="h-4 w-4" />
+              Library
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="courses">
+            <CoursesTab courses={courses} completion={courseCompletion} />
+          </TabsContent>
+          <TabsContent value="recordings">
+            <RecordingsTab data={data} />
+          </TabsContent>
+          <TabsContent value="library">
+            <LibraryTab items={libraryItems} />
+          </TabsContent>
+        </Tabs>
+      )}
+
+      {data && quickLinks.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              Quick links
+            </span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {quickLinks.map((l) => (
+              <a
+                key={l.id ?? l.href}
+                href={l.href}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <GlassCard hoverEffect className="flex h-full flex-col gap-1 p-4">
+                  <span className="flex items-center justify-between text-sm font-semibold">
+                    {l.label}
+                    <ExternalLink className="h-3.5 w-3.5 text-amber-400" />
+                  </span>
+                  <span className="text-xs text-muted-foreground">{l.sub}</span>
+                </GlassCard>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <p className="pt-4 text-center text-xs text-muted-foreground">
+        APEX Financial Empire · Internal agent resources · Confidential — do not distribute.
+      </p>
+    </div>
+  );
+}
+
+/* ── Courses ────────────────────────────────────────────────────────────── */
+
+function CoursesTab({
+  courses,
+  completion,
+}: {
+  courses: HubResource[];
+  completion: Record<string, number>;
+}) {
+  if (courses.length === 0) {
+    return (
+      <GlassCard className="p-8 text-center">
+        <p className="text-lg font-bold">No courses published yet</p>
+        <p className="text-sm text-muted-foreground">
+          Courses added in the content library will appear here.
+        </p>
+      </GlassCard>
+    );
+  }
+  const ordered = [...courses].sort(
+    (a, b) => Number(b.featured ?? false) - Number(a.featured ?? false),
+  );
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {ordered.map((c) => {
+        const counts = hubCourseCounts(c.course!);
+        const pct = completion[c.id] ?? 0;
+        return (
+          <Link key={c.id} to={`/dashboard/training-hub/course/${c.id}`}>
+            <GlassCard hoverEffect className="flex h-full flex-col gap-3 p-5">
+              <div className="flex items-center justify-between gap-2">
+                <Badge variant="outline" className={TYPE_BADGE.course.className}>
+                  {c.course!.level}
+                </Badge>
+                {c.isNew && (
+                  <Badge className="bg-amber-500 text-black hover:bg-amber-500">New</Badge>
+                )}
+              </div>
+              <div>
+                <h3 className="text-lg font-bold leading-tight">{c.title}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {c.course!.instructor} · {c.course!.instructorRole}
+                </p>
+              </div>
+              <p className="line-clamp-3 flex-1 text-sm text-muted-foreground">{c.desc}</p>
+              <div className="text-xs text-muted-foreground">
+                {counts.lessons} lesson{counts.lessons === 1 ? "" : "s"}
+                {counts.quizzes > 0 &&
+                  ` · ${counts.quizzes} quiz${counts.quizzes === 1 ? "" : "zes"}`}
+                {c.duration ? ` · ${c.duration}` : ""}
+              </div>
+              <div className="flex items-center gap-3 border-t border-border/60 pt-3">
+                <Progress value={pct} className="h-1.5 flex-1" />
+                <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+                  {pct === 100 ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-400">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Done
+                    </span>
+                  ) : (
+                    `${pct}%`
+                  )}
+                </span>
+              </div>
+            </GlassCard>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Recordings ─────────────────────────────────────────────────────────── */
+
+function RecordingsTab({
+  data,
+}: {
+  data: NonNullable<ReturnType<typeof useHubData>["data"]>;
+}) {
+  const [presenterId, setPresenterId] = useState<string>("all");
+  const [active, setActive] = useState<HubRecording | null>(null);
+
+  const counts = useMemo(() => {
+    const byPresenter: Record<string, number> = {};
+    for (const r of data.recordings) {
+      byPresenter[r.presenter] = (byPresenter[r.presenter] ?? 0) + 1;
+    }
+    return byPresenter;
+  }, [data.recordings]);
+
+  const list = useMemo(() => {
+    const filtered =
+      presenterId === "all"
+        ? data.recordings
+        : data.recordings.filter((r) => r.presenter === presenterId);
+    return [...filtered].sort((a, b) => parseHubDate(b.date) - parseHubDate(a.date));
+  }, [data.recordings, presenterId]);
+
+  const activePresenter = active
+    ? data.presenters.find((p) => p.id === active.presenter)
+    : null;
+  // Fails closed: a non-Drive/non-YouTube URL yields null and we render an
+  // "unavailable" state rather than framing an arbitrary origin in-app.
+  const activeEmbed = active?.video ? toHubEmbedUrl(active.video) : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setPresenterId("all")}
+          className={cn(
+            "rounded-md border px-3 py-2 text-sm font-semibold transition-colors",
+            presenterId === "all"
+              ? "border-amber-500/60 bg-amber-500/10 text-amber-400"
+              : "border-border bg-card text-muted-foreground hover:text-foreground",
+          )}
+        >
+          All · {data.recordings.length}
+        </button>
+        {data.presenters.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => setPresenterId(p.id)}
+            className={cn(
+              "flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
+              presenterId === p.id
+                ? "border-amber-500/60 bg-amber-500/10"
+                : "border-border bg-card hover:bg-muted/40",
+            )}
+          >
+            <span
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold",
+                presenterId === p.id
+                  ? "border-amber-500 bg-amber-500 text-black"
+                  : "border-amber-500/40 text-amber-400",
+              )}
+            >
+              {p.initials}
+            </span>
+            <span className="text-left leading-tight">
+              <span className="block font-semibold">{p.name}</span>
+              <span className="block text-[11px] text-muted-foreground">
+                {p.role} · {counts[p.id] ?? 0}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {list.length === 0 ? (
+        <GlassCard className="p-8 text-center">
+          <p className="text-lg font-bold">No recordings yet</p>
+          <p className="text-sm text-muted-foreground">
+            Recordings for this presenter will appear here once they're added.
+          </p>
+        </GlassCard>
+      ) : (
+        <div className="space-y-2">
+          {list.map((rec) => {
+            const presenter = data.presenters.find((p) => p.id === rec.presenter);
+            return (
+              <button
+                key={rec.id}
+                type="button"
+                onClick={() => setActive(rec)}
+                className="flex w-full items-center gap-4 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-amber-500/50 hover:bg-muted/30"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-500/40 bg-amber-500/10">
+                  <Play className="h-4 w-4 text-amber-400" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">{rec.title}</span>
+                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                    <Badge
+                      variant="outline"
+                      className="border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] uppercase tracking-wide text-amber-400"
+                    >
+                      {rec.topic}
+                    </Badge>
+                    {presenter && <span>{presenter.name}</span>}
+                    <span>·</span>
+                    <span>{rec.date}</span>
+                    {rec.duration && (
+                      <>
+                        <span>·</span>
+                        <span className="tabular-nums">{rec.duration}</span>
+                      </>
+                    )}
+                  </span>
+                </span>
+                <Video className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <Dialog open={!!active} onOpenChange={(open) => !open && setActive(null)}>
+        <DialogContent className="max-h-[85dvh] w-[calc(100vw-2rem)] max-w-3xl overflow-y-auto sm:w-full">
+          {active && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="pr-6 text-left">{active.title}</DialogTitle>
+                <DialogDescription className="text-left">
+                  {activePresenter
+                    ? `${activePresenter.name} · ${activePresenter.role} · ${active.date}`
+                    : active.date}
+                  {active.desc ? ` — ${active.desc}` : ""}
+                </DialogDescription>
+              </DialogHeader>
+              {activeEmbed ? (
+                <div className="aspect-video w-full overflow-hidden rounded-md border border-border bg-black">
+                  <iframe
+                    src={activeEmbed}
+                    title={active.title}
+                    className="h-full w-full"
+                    sandbox={HUB_EMBED_SANDBOX}
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {active.video
+                    ? "This recording's media link isn't a Google Drive or YouTube URL, so it can't be played here."
+                    : "No media attached to this recording yet."}
+                </p>
+              )}
+              <TranscriptPanel recId={active.id} />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function TranscriptPanel({ recId }: { recId: string }) {
+  const { data: transcripts, isLoading, isError, refetch } = useHubTranscripts(true);
+  const entry = transcripts?.[recId];
+
+  return (
+    <div className="rounded-md border border-border">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2">
+        <span className="text-xs font-bold uppercase tracking-wide">Transcript</span>
+        <span className="text-xs text-muted-foreground">
+          {isLoading
+            ? "Loading…"
+            : isError
+              ? "Couldn't load"
+              : entry?.status === "completed"
+              ? `${entry.utterances?.length ?? 0} segments · speaker-labeled`
+              : entry?.status === "queued" || entry?.status === "processing"
+                ? "Transcribing…"
+                : "Not available yet"}
+        </span>
+      </div>
+      <div className="max-h-56 overflow-y-auto p-2">
+        {entry?.status === "completed" && (entry.utterances?.length ?? 0) > 0 ? (
+          entry.utterances!.map((u) => (
+            <div
+              key={`${u.startMs}-${u.text.slice(0, 24)}`}
+              className="flex gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/40"
+            >
+              <span className="w-11 shrink-0 pt-0.5 text-xs tabular-nums text-muted-foreground">
+                {fmtClock(u.startMs)}
+              </span>
+              {u.speaker && (
+                <span className="shrink-0 pt-0.5 text-[10px] font-bold uppercase text-amber-400">
+                  {u.speaker}
+                </span>
+              )}
+              <span className="leading-relaxed text-muted-foreground">{u.text}</span>
+            </div>
+          ))
+        ) : entry?.status === "completed" && entry.text ? (
+          <p className="whitespace-pre-wrap p-2 text-sm leading-relaxed text-muted-foreground">
+            {entry.text}
+          </p>
+        ) : isError ? (
+          <div className="p-3 text-center">
+            <p className="mb-2 text-xs text-muted-foreground">
+              Couldn't load transcripts. This is a connection problem, not a missing
+              transcript.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <p className="p-3 text-center text-xs text-muted-foreground">
+            {isLoading
+              ? "Fetching transcripts…"
+              : "The transcript for this recording hasn't been generated yet."}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Library ────────────────────────────────────────────────────────────── */
+
+function LibraryTab({ items }: { items: HubResource[] }) {
+  const [filter, setFilter] = useState("all");
+  const [query, setQuery] = useState("");
+
+  const filterCounts = useMemo(() => {
+    const c: Record<string, number> = { all: items.length };
+    for (const f of LIBRARY_FILTERS) {
+      if (f.key !== "all") c[f.key] = items.filter((r) => r.type === f.key).length;
+    }
+    return c;
+  }, [items]);
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((r) => {
+      if (filter !== "all" && r.type !== filter) return false;
+      if (!q) return true;
+      const hay = `${r.title} ${r.desc} ${(r.tags ?? []).join(" ")}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [items, filter, query]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-1.5">
+          {LIBRARY_FILTERS.filter((f) => f.key === "all" || filterCounts[f.key] > 0).map(
+            (f) => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setFilter(f.key)}
+                className={cn(
+                  "rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors",
+                  filter === f.key
+                    ? "border-amber-500/60 bg-amber-500/10 text-amber-400"
+                    : "border-border bg-card text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {f.label}{" "}
+                <span className="text-xs tabular-nums opacity-70">{filterCounts[f.key]}</span>
+              </button>
+            ),
+          )}
+        </div>
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search resources…"
+            className="pl-8 pr-8"
+          />
+          {query && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={() => setQuery("")}
+              className="absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {visible.length === 0 ? (
+        <GlassCard className="p-8 text-center">
+          <p className="text-lg font-bold">No resources found</p>
+          <p className="text-sm text-muted-foreground">Try a different search or filter.</p>
+        </GlassCard>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {visible.map((r) => {
+            const badge = TYPE_BADGE[r.type] ?? TYPE_BADGE.guide;
+            const card = (
+              <GlassCard hoverEffect className="flex h-full flex-col gap-3 p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <Badge variant="outline" className={badge.className}>
+                    {badge.label}
+                  </Badge>
+                  <span className="flex items-center gap-2">
+                    {r.isNew && (
+                      <Badge className="bg-amber-500 text-black hover:bg-amber-500">New</Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground">{r.date}</span>
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold leading-tight">{r.title}</h3>
+                <p className="line-clamp-3 flex-1 text-sm text-muted-foreground">{r.desc}</p>
+                <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                  <span className="text-xs text-muted-foreground">{r.meta}</span>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-400">
+                    {r.type === "pdf" ? (
+                      <FileText className="h-4 w-4" />
+                    ) : (
+                      <ScrollText className="h-4 w-4" />
+                    )}
+                    {r.cta ?? "Open"}
+                  </span>
+                </div>
+              </GlassCard>
+            );
+            return r.url ? (
+              <a key={r.id} href={r.url} target="_blank" rel="noopener noreferrer">
+                {card}
+              </a>
+            ) : (
+              <div key={r.id}>{card}</div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

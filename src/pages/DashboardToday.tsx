@@ -103,7 +103,7 @@ export default function DashboardToday() {
         .select("id,prospect_name,summary,location,start_at,end_at,call_type,status,outcome")
         .order("start_at", { ascending: true });
       if (error) throw error;
-      return ((data ?? []) as Call[]).filter((call) => isToday(new Date(call.start_at)));
+      return ((data ?? []) as unknown as Call[]).filter((call) => isToday(new Date(call.start_at)));
     },
   });
 

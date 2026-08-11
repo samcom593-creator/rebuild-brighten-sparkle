@@ -631,3 +631,12 @@ if match '^src/.*\.(ts|tsx)$'; then
   echo "[pre-commit] src component staged — running check:rules-of-hooks…"
   npm run --silent check:rules-of-hooks
 fi
+
+# ---------- check-migration-versions (2026-08-11) ----------
+# Trigger: any migration file. Two workers minted 20260811070000 within the same
+# hour; schema_migrations is keyed on version alone, so db push collided on the
+# primary key and the deploy went red on an unrelated commit. <1s.
+if match '^supabase/migrations/'; then
+  echo "[pre-commit] Migration staged — running check:migration-versions…"
+  npm run --silent check:migration-versions
+fi

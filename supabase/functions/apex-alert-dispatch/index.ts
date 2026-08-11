@@ -236,14 +236,35 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
   return { email_id, sent_sms, sms_receipt, sent_discord, sent_whatsapp, sent_ntfy, error: errs.length ? errs.join("; ") : null };
 }
 
-async function flush(): Promise<{ scanned: number; sent: number; held: number }> {
+async function flush(): Promise<{ scanned: number; sent: number; held: number; expired: number }> {
   // Pull standalone-eligible alerts FIRST (celebrate + critical) so a glut of
   // warn/info alerts can never starve the queue. Sam reported 17 celebrate
   // big_deal alerts buried under 185 stuck warns; that's fixed here.
+  //
+  // STALENESS GUARD (2026-08-11). This query had no age bound, and cron
+  // 'apex-alert-dispatch-flush' had not existed for 106 days, so the first tick
+  // after the cron was restored would have fired the entire backlog: 1,533
+  // alerts, 1,407 of them over a week old, including 97 celebrate rows that are
+  // one applicant_newly_licensed backfill batch sharing a single created_at.
+  // Sam would have received 97 separate phone pushes congratulating him about
+  // people licensed days ago. Turning a silent failure into a pager storm is not
+  // a fix — it is the trade the cron gate made four times this week.
+  //
+  // Alerts older than the window are terminal (bot_alerts.expired_at, set by
+  // migration 20260811180000). expired_at NEVER implies delivery: sent_at stays
+  // null and v_bot_alert_delivery_truth reports them as expired_undelivered, a
+  // state of their own. Stamping sent_at instead would have recorded 1,531
+  // deliveries that never happened — the 465-row InsuraCloud disease, inside the
+  // table that exists to report on delivery.
+  const MAX_ALERT_AGE_HOURS = Number(Deno.env.get("ALERT_MAX_AGE_HOURS") ?? 24);
+  const cutoff = new Date(Date.now() - MAX_ALERT_AGE_HOURS * 3600_000).toISOString();
+
   const { data: queue } = await supabase
     .from("bot_alerts")
     .select("*")
     .is("sent_at", null)
+    .is("expired_at", null)
+    .gte("created_at", cutoff)
     .in("severity", ["celebrate", "critical"])
     .order("created_at", { ascending: true })
     .limit(50);
@@ -266,7 +287,26 @@ async function flush(): Promise<{ scanned: number; sent: number; held: number }>
       sent++;
     }
   }
-  return { scanned: queue?.length ?? 0, sent, held };
+
+  // Age out anything that passed the window without being delivered. Without
+  // this the backlog silently regrows into the same 1,533-row pile the guard was
+  // built to drain, and apex-doctor Check #18 goes permanently red again — which
+  // is how a check stops being read. Expiry is recorded as its own terminal
+  // state; it is never dressed up as delivery.
+  const { count: expired } = await supabase
+    .from("bot_alerts")
+    .update(
+      {
+        expired_at: new Date().toISOString(),
+        expired_reason: `undelivered for more than ${MAX_ALERT_AGE_HOURS}h`,
+      },
+      { count: "exact" },
+    )
+    .is("sent_at", null)
+    .is("expired_at", null)
+    .lt("created_at", cutoff);
+
+  return { scanned: queue?.length ?? 0, sent, held, expired: expired ?? 0 };
 }
 
 Deno.serve(async (req) => {

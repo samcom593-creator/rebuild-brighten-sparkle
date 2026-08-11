@@ -19,7 +19,34 @@ name: Verify core checks
 # notifications, so even a `--no-verify` bypass triggers a visible
 # alarm within ~1 minute of push.
 #
-# Total cost: ~50s on warm cache (npm ci ~30s + verify:core ~18s).
+# Total cost: MEASURED 2026-08-11 — 481-640s (median ~595s) across this
+# workflow's last 12 runs. The line here used to claim "~50s on warm cache
+# (npm ci ~30s + verify:core ~18s)", which was wrong by ~12x. The same
+# understatement lived in scripts/check-tsc-error-count.mjs ("~10-15s") and
+# cost a real incident — see the COST note in that file.
+#
+# Nearly all of it is check:tsc-error-count's `tsc -b --noEmit --force` full
+# graph rebuild. That cost is CORRECT to pay here and is deliberately NOT
+# reduced: actions/checkout gives a cold clone with no .tsbuildinfo, so there
+# is no incremental cache that could report a phantom count. This job is the
+# authoritative type-check for the repo.
+#
+# READ THIS BEFORE NARROWING THIS WORKFLOW.
+#
+# On 2026-08-11 check:tsc-error-count was REMOVED from .husky/pre-commit — a
+# 14.7-minute hook firing on 52.5% of commits was training the operator to
+# abandon commits mid-gate, which is how prod and the repo drifted apart that
+# day. Incremental was measured too (past 10 min, still going), so there was no
+# cheap local answer to keep.
+#
+# THIS JOB IS NOW THE ONLY TYPE-CHECK IN THE REPO. The root tsconfig.json has
+# `files: []`, so `npx tsc --noEmit` exits 0 without checking a single file —
+# if this job stops running the check, nothing anywhere goes red and the repo
+# silently stops being type-checked.
+#
+# scripts/check-typecheck-authority.mjs asserts this chain (push+PR triggers →
+# verify:core → check:tsc-error-count → --force) and runs in pre-commit
+# whenever this file, package.json, or either script is touched.
 
 on:
   push:
@@ -54,4 +81,4 @@ jobs:
       - name: Post failure summary
         if: failure()
         run: |
-          echo "::error::verify:core FAILED on ${{ github.sha }}. One of the 5 guardrails (forbidden-language / metric-truth / sync-reliability / unsafe-supabase-catch / vsl-sync) or tsc / build broke on main. The .husky/pre-commit hook would have caught this BEFORE push if it had been active — confirm `core.hooksPath` is set to `.husky` (run `npm install` once after clone to auto-activate via the `prepare` script). Then re-run the failing check locally to see the violation."
+          echo "::error::verify:core FAILED on ${{ github.sha }}. Read WHICH check failed in the log above before assuming a bypass. If it was check:tsc-error-count, pre-commit could NOT have caught it: since 2026-08-11 the type-check runs ONLY here, because locally it costs 881s (measured) and a 15-minute hook was training operators to abandon commits mid-gate. Reproduce it with 'npm run check:tsc-error-count' and budget ~15 minutes. For any OTHER check in the chain, .husky/pre-commit would have caught it before push if active — confirm core.hooksPath is set to .husky (run 'npm install' once after clone to auto-activate via the prepare script), then re-run that check locally."

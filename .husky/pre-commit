@@ -300,19 +300,48 @@ if match '^(src/App\.tsx|src/components/layout/GlobalSidebar\.tsx|src/pages/)'; 
   node scripts/check-sidebar-routes.mjs
 fi
 
-# ---------- check-tsc-error-count (C11 wave-1) ----------
-# Trigger: any *.ts / *.tsx / tsconfig*.json staged file, or the script itself.
-# Walks the project-reference graph via `tsc -b --noEmit --force` and ratchets
-# the total TypeScript-error count at the C11 lock baseline. Cost when fired:
-# ~3-15s depending on cache state. Why this exists: the root tsconfig.json has
-# `files: []` and only project-references, so `npx tsc --noEmit` exits 0
-# silently without checking anything — every "tsc 0 errors" report in recent
-# shipping was a lie at the type-check layer. This gate makes it truthful.
-# Future commits CAN'T raise the count. They CAN (and should) lower it; when
-# they do, drop BASELINE in scripts/check-tsc-error-count.mjs in the same PR.
-if match '^(src/.*\.(tsx?|jsx?)$|tsconfig.*\.json$|scripts/check-tsc-error-count\.mjs$)'; then
-  echo "[pre-commit] TypeScript-affecting file staged — running check:tsc-error-count…"
-  node scripts/check-tsc-error-count.mjs
+# ---------- check-typecheck-authority (2026-08-11) ----------
+# REPLACES the check:tsc-error-count run that used to sit here.
+#
+# The type-check itself is NOT gone — it moved to CI. Why it had to move:
+#
+#   The line here used to claim "~3-15s depending on cache state". MEASURED
+#   2026-08-11 at b7ecc0b5: 881s — 14.7 MINUTES — at 95-100% CPU, for the
+#   ordinary passing case (229/229). That is 59-88x the advertised price, and
+#   it fired on 21 of the last 40 commits (52.5%). The same understatement sat
+#   in verify-core.yml ("~50s" vs a measured 481-640s).
+#
+#   Dropping --force does not rescue it. Measured back to back on the same tree:
+#     tsc -b --noEmit --force  881.5s / 229 errors
+#     tsc -b --noEmit          845.6s / 229 errors  (both .tsbuildinfo warm)
+#   35.9s saved out of 881 — 4.1%. Neither tsconfig sets composite/incremental,
+#   so `tsc -b` has no up-to-date check to short-circuit. There is no cheap
+#   local answer to buy, so none was faked.
+#
+#   And the mispricing already cost a real incident. The MP-274 session budgeted
+#   the documented ~15s, ended while the gate ground on, and left that wave
+#   staged-but-uncommitted for over an hour WHILE its edge function was already
+#   deployed to prod (v47). Prod ran code no commit described, and any worker
+#   redeploying from source would have silently reverted Sam's phone push.
+#
+#   A 15-minute hook on half of all commits is not a guard — it is a standing
+#   invitation to `git commit --no-verify`, which bypasses the ~40 OTHER checks
+#   in this file that all cost under a second each. Keeping it here was costing
+#   more safety than it bought.
+#
+# So: .github/workflows/verify-core.yml is now the sole authority. It runs the
+# full --force rebuild on every push to main and every PR, from a cold
+# actions/checkout where no stale cache can exist. Last 12 runs: 12/12 green.
+# Cost of the trade: a type error surfaces ~10 min after push instead of before
+# the commit. Run `npm run check:tsc-error-count` any time to check locally.
+#
+# What runs here instead asserts that CI authority still exists — triggers,
+# verify:core wiring, and the --force flag, end to end. Sub-second, no compiler.
+# Without it, narrowing verify-core.yml would silently leave the repo with NO
+# type-check at all, and nothing would go red.
+if match '^(\.github/workflows/verify-core\.yml$|package\.json$|scripts/check-tsc-error-count\.mjs$|scripts/check-typecheck-authority\.mjs$)'; then
+  echo "[pre-commit] type-check authority chain touched — running check:typecheck-authority…"
+  node scripts/check-typecheck-authority.mjs
 fi
 
 # ---------- check-landing-truth-floor (2026-06-19) ----------

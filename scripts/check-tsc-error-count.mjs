@@ -29,9 +29,75 @@
 // Raising BASELINE: forbidden. If the count goes up, fix the new errors
 //   before commit. This is the whole point of the gate.
 //
-// Cost when fired: ~10-15s on cold cache, ~3-5s on incremental.
-//   Pre-commit runs only when a tsconfig*.json or *.ts/*.tsx file changes
-//   (filtered in .husky/pre-commit), so unrelated commits skip it.
+// COST — MEASURED 2026-08-11, replacing a claim that was wrong by ~50x.
+//
+//   The line that used to sit here read "~10-15s on cold cache, ~3-5s on
+//   incremental." Measured on Sam's machine at b7ecc0b5: FULL mode takes
+//   ~11-12.5 MINUTES of wall clock at 95-100% CPU. The same lie was in
+//   .github/workflows/verify-core.yml ("~50s"); that job's last 12 runs took
+//   481-640s (median ~595s).
+//
+//   The "~3-5s on incremental" half was never reachable: this script passes
+//   --force, which by definition discards the up-to-date check. The flag
+//   forbade the mode the comment advertised.
+//
+//   AND DROPPING --force BUYS ALMOST NOTHING. Measured back to back on the
+//   same tree, because the obvious repair was to run incremental at commit
+//   time:
+//
+//     tsc -b --noEmit --force   881.5s   229 errors
+//     tsc -b --noEmit           845.6s   229 errors   (both .tsbuildinfo warm)
+//
+//   35.9 seconds saved out of 881 — 4.1%. Incremental is not fast here; it is
+//   the same 14 minutes. Neither tsconfig.app.json nor tsconfig.node.json sets
+//   composite/incremental, so `tsc -b` has no real up-to-date check to
+//   short-circuit. (The counts did agree, so accuracy was never the problem —
+//   speed was, and there is none to buy.)
+//
+//   A "--fast" mode was written, wired into .husky/pre-commit, and then deleted
+//   before commit when that measurement came back. Shipping a mode named "fast"
+//   that is 4% faster, inside the wave whose whole thesis is that this gate
+//   lies about its cost, would have been the fake-success disease reproduced
+//   inside its own cure.
+//
+//   THIS IS NOT A COSMETIC DOC BUG. It cost a real incident on 2026-08-11:
+//   the MP-274 session budgeted the documented ~15s, ended while the gate was
+//   still grinding, and left the wave staged-but-uncommitted for over an hour
+//   WHILE its edge function was already deployed to prod (v47). Prod ran code
+//   no commit described, and any worker redeploying apex-alert-dispatch from
+//   source would have silently reverted Sam's phone push. A gate that costs
+//   50x its advertised price doesn't just waste time — it trains the operator
+//   to abandon commits mid-flight, and abandoned commits are how prod and repo
+//   drift apart. 12 silent minutes is also indistinguishable from a hang.
+//
+//   So: the cost is no longer DOCUMENTED, it is MEASURED AND PRINTED on every
+//   single run (see the elapsed-time line below). A number in a comment rots
+//   the moment the graph grows; a number the script prints cannot.
+//
+// WHERE THIS RUNS, AND WHY IT NO LONGER RUNS AT COMMIT TIME
+//
+//   There is no cheap way to answer this question locally — see above. So the
+//   check was moved off the commit path (2026-08-11) rather than pretended to
+//   be fast. It now runs:
+//     - in `npm run verify:core`, and therefore in
+//       .github/workflows/verify-core.yml on EVERY push to main and EVERY pull
+//       request. That job is a fresh actions/checkout with no .tsbuildinfo, so
+//       --force there is honest and nothing can be stale. THIS IS THE
+//       AUTHORITY.
+//     - on demand: `npm run check:tsc-error-count`.
+//
+//   What was traded: a type error is now caught ~10 min after push instead of
+//   before the commit. What was bought: >half of all commits (measured 21 of
+//   the last 40, 52.5%) stop paying ~15 min, and the operator stops being
+//   trained to abandon commits mid-gate — which is what actually put prod and
+//   the repo out of sync on 2026-08-11. A guard nobody waits for is not a
+//   guard; it is a reason to reach for `git commit --no-verify`, which bypasses
+//   the other ~40 checks in .husky/pre-commit that DO cost under a second.
+//
+//   This trade is sound ONLY while verify-core.yml keeps running --force on
+//   push + PR. scripts/check-typecheck-authority.mjs asserts that chain end to
+//   end and runs in pre-commit in well under a second, so the authority cannot
+//   be removed silently.
 
 import { execSync } from "node:child_process";
 import path from "node:path";
@@ -131,6 +197,20 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // intermediate the error itself prescribes; one TS2589 dissolved outright.
 const BASELINE = 229; // 2026-08-07: ratchet drop 233→230 — Headhunter unification wave fixed 3 real type errors (ErrorBoundary/useIdleSession/test mocks) while wiring SSO + chunk recovery.
 
+const startedAt = Date.now();
+
+// Announce BEFORE blocking. ~15 minutes of total silence is indistinguishable
+// from a hung process, and an operator who believes it hung kills it and walks
+// away from a half-finished commit — see the COST note at the top of this file
+// for the 2026-08-11 incident that did exactly that.
+console.log(
+  "  running `npx tsc -b --noEmit --force` — full project-graph rebuild.",
+);
+console.log(
+  "  MEASURED 881s (~14.7 min) on Sam's machine at b7ecc0b5, 481-640s in CI.",
+);
+console.log("  This is NOT hung. Expect no further output until it finishes.");
+
 let stdout = "";
 let stderr = "";
 try {
@@ -151,6 +231,7 @@ try {
 const combined = `${stdout}\n${stderr}`;
 const errorLines = combined.split("\n").filter((l) => /error TS\d+/.test(l));
 const count = errorLines.length;
+const elapsedSeconds = (Date.now() - startedAt) / 1000;
 
 // Diagnostic: top 5 files contributing to the count, so a CI failure
 // surfaces the worst offenders without dumping all 266 lines.
@@ -165,7 +246,7 @@ const topFiles = [...byFile.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
 
 if (count <= BASELINE) {
   console.log(
-    `✓ check:tsc-error-count — ${count}/${BASELINE} TypeScript errors (tsc -b --noEmit --force)`,
+    `✓ check:tsc-error-count — ${count}/${BASELINE} TypeScript errors in ${elapsedSeconds.toFixed(0)}s`,
   );
   if (count < BASELINE) {
     console.log(
@@ -176,7 +257,7 @@ if (count <= BASELINE) {
 }
 
 console.error(
-  `\n✗ check:tsc-error-count — ${count} TypeScript errors exceeds baseline ${BASELINE} (Δ +${count - BASELINE})\n`,
+  `\n✗ check:tsc-error-count — ${count} TypeScript errors exceeds baseline ${BASELINE} (Δ +${count - BASELINE}) after ${elapsedSeconds.toFixed(0)}s\n`,
 );
 console.error("Run `npm run typecheck` to see the full error list.");
 console.error("Top 5 contributing files:");
@@ -190,7 +271,20 @@ console.error(
   "so `npx tsc --noEmit` exits 0 silently. This gate uses `tsc -b` to",
 );
 console.error("actually check src/ + tests/. Fix the new errors before commit.");
+
+// This used to read "Deeper context: docs/tsc-error-backlog.md (categorized
+// triage)." That file has NEVER existed — `git log --all -- docs/tsc-error-backlog.md`
+// returns nothing across the repo's entire history. So at the one moment this
+// gate blocks someone and they most need help, it sent them to a dead path.
+// Replaced with the command that generates the triage now, against the graph
+// as it actually is, rather than a static doc that would rot the same way the
+// cost comment above it did.
+console.error("\nCategorised triage, generated fresh (no static doc to rot):");
 console.error(
-  "\nDeeper context: docs/tsc-error-backlog.md (categorized triage).",
+  "  npm run --silent typecheck 2>&1 | grep -oE 'error TS[0-9]+' | sort | uniq -c | sort -rn",
+);
+console.error("Full error list, worst files first:");
+console.error(
+  "  npm run --silent typecheck 2>&1 | grep -E 'error TS[0-9]+' | sed 's/(.*//' | sort | uniq -c | sort -rn",
 );
 process.exit(1);

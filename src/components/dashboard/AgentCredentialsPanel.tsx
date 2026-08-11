@@ -60,6 +60,26 @@ export function AgentCredentialsPanel({ agentId, agentName, agentEmail }: AgentC
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
 
+  // This hook must run before the non-admin early return below. It used to sit
+  // after it, so a render as a non-admin ran one fewer hook than a render as an
+  // admin — and `isAdmin` arrives asynchronously from useAuth, so it flips from
+  // false to true on a mounted component and React throws #310 ("Rendered more
+  // hooks than during the previous render").
+  //
+  // `enabled: isAdmin` keeps the security property intact: the hook is now
+  // always declared, but the credential RPC is still never issued for a
+  // non-admin viewer.
+  const metaQuery = useQuery({
+    queryKey: ["agent-credentials", agentId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("agent_credentials_list", { p_agent_id: agentId });
+      if (error) throw error;
+      return (data ?? []) as CredentialMeta[];
+    },
+    enabled: isAdmin,
+    staleTime: 30_000,
+  });
+
   // Non-admin viewers see a polite refusal — never a password.
   if (!isAdmin) {
     return (
@@ -69,16 +89,6 @@ export function AgentCredentialsPanel({ agentId, agentName, agentEmail }: AgentC
       </div>
     );
   }
-
-  const metaQuery = useQuery({
-    queryKey: ["agent-credentials", agentId],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("agent_credentials_list", { p_agent_id: agentId });
-      if (error) throw error;
-      return (data ?? []) as CredentialMeta[];
-    },
-    staleTime: 30_000,
-  });
 
   const metaByService = new Map<ServiceKey, CredentialMeta>(
     (metaQuery.data ?? []).map((m) => [m.service, m]),

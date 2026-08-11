@@ -487,31 +487,16 @@ export default function DashboardAgedLeads() {
   // Block agents (non-admin, non-manager). All hooks above must run on
   // every render — moving this gate later in the function caused a
   // hook-order mismatch when role state flipped mid-session.
-  if (!authLoading && user && !canAccess) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Admin or Manager access required</p>
-      </div>
-    );
-  }
-
+  // These hooks must run before the access-check early return below. They used
+  // to sit after it, so a render for a user without admin/manager access ran two
+  // fewer hooks than a render for one with it — and `canAccess`/`authLoading`
+  // resolve asynchronously, so the count flips on a mounted component and React
+  // throws #310 ("Rendered more hooks than during the previous render").
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
   const paginatedLeads = useMemo(
     () => filteredLeads.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
     [filteredLeads, currentPage]
   );
-
-  const getLeadAgeDays = (lead: AgedLead) => {
-    const dateStr = lead.originalDate || lead.createdAt;
-    if (!dateStr) return 0;
-    return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
-  };
-
-  const getAgeColor = (days: number) => {
-    if (days <= 30) return { border: "border-emerald-500/30", bg: "bg-emerald-500/5", badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" };
-    if (days <= 60) return { border: "border-amber-500/30", bg: "bg-amber-500/5", badge: "bg-amber-500/15 text-amber-400 border-amber-500/20" };
-    return { border: "border-destructive/30", bg: "bg-destructive/5", badge: "bg-destructive/15 text-destructive border-destructive/20" };
-  };
 
   const { totalLeads, newLeads, processedLeads, hiredLeads, licensedLeads, unlicensedLeads } = useMemo(() => {
     let newL = 0, processed = 0, hired = 0, licensed = 0, unlicensed = 0;
@@ -525,6 +510,27 @@ export default function DashboardAgedLeads() {
     }
     return { totalLeads: leads.length, newLeads: newL, processedLeads: processed, hiredLeads: hired, licensedLeads: licensed, unlicensedLeads: unlicensed };
   }, [leads]);
+
+  if (!authLoading && user && !canAccess) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Admin or Manager access required</p>
+      </div>
+    );
+  }
+
+  const getLeadAgeDays = (lead: AgedLead) => {
+    const dateStr = lead.originalDate || lead.createdAt;
+    if (!dateStr) return 0;
+    return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const getAgeColor = (days: number) => {
+    if (days <= 30) return { border: "border-emerald-500/30", bg: "bg-emerald-500/5", badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" };
+    if (days <= 60) return { border: "border-amber-500/30", bg: "bg-amber-500/5", badge: "bg-amber-500/15 text-amber-400 border-amber-500/20" };
+    return { border: "border-destructive/30", bg: "bg-destructive/5", badge: "bg-destructive/15 text-destructive border-destructive/20" };
+  };
+
 
   // Backend-driven dedupe: calls the dedupe-aged-leads edge function
   const handleAutoMergeDuplicates = async () => {

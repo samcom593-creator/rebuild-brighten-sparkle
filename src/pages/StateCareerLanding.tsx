@@ -46,19 +46,79 @@ export default function StateCareerLanding() {
   const { state: slug } = useParams<{ state: string }>();
   const cfg = slug ? VALID_BY_SLUG[slug.toLowerCase()] : undefined;
 
-  if (!slug || !cfg) {
-    return <Navigate to="/" replace />;
-  }
-
   // Posting date pinned to today's UTC midnight so the snippet is stable
   // across SSR/CSR renders but still refreshes daily (Google revisits
   // JobPosting often — stale validThrough kills the rich result).
+  //
+  // These hooks — and the useEffect below — MUST run before the invalid-slug
+  // early return. They used to sit after it, so a render with an unknown slug
+  // ran zero hooks and a render with a known one ran three. React Router reuses
+  // this component instance across /careers/:state, so navigating from a valid
+  // state to an unknown one flips the hook count on a mounted component and
+  // throws #310 ("Rendered more hooks than during the previous render") on a
+  // public SEO landing page. Hooks run unconditionally or not at all.
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const validThrough = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + 60);
     return d.toISOString().slice(0, 10);
   }, []);
+
+
+  // Set page <title>, <meta description>, and canonical URL without
+  // pulling react-helmet as a dependency. Cleaned up on unmount.
+  useEffect(() => {
+    // Runs before the invalid-slug guard below, so it must tolerate no cfg.
+    if (!cfg) return;
+    const prevTitle = document.title;
+    document.title = `Life Insurance Agent Jobs in ${cfg.name} | Remote | Apex Financial`;
+
+    const setMeta = (name: string, content: string, attr: "name" | "property" = "name") => {
+      let el = document.head.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
+      const created = !el;
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attr, name);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+      return { el, created };
+    };
+
+    const setLink = (rel: string, href: string) => {
+      let el = document.head.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
+      const created = !el;
+      if (!el) {
+        el = document.createElement("link");
+        el.setAttribute("rel", rel);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("href", href);
+      return { el, created };
+    };
+
+    const desc = `Hiring licensed and unlicensed life insurance agents in ${cfg.name}. Work from home, A-rated carriers, lead supply, no cold-calling. 1099 contractor, commission only. Top first-year producers have written $120K+ in commissions.`;
+    const url = `https://apex-financial.org/careers/${cfg.slug}`;
+
+    const meta1 = setMeta("description", desc);
+    const meta2 = setMeta("og:title", `Life Insurance Agent Jobs in ${cfg.name} — Apex Financial`, "property");
+    const meta3 = setMeta("og:type", "website", "property");
+    const meta4 = setMeta("og:url", url, "property");
+    const linkCanonical = setLink("canonical", url);
+
+    return () => {
+      document.title = prevTitle;
+      // Only remove tags we created on mount — don't strip pre-existing meta.
+      [meta1, meta2, meta3, meta4].forEach((m) => { if (m.created && m.el.parentNode) m.el.parentNode.removeChild(m.el); });
+      if (linkCanonical.created && linkCanonical.el.parentNode) linkCanonical.el.parentNode.removeChild(linkCanonical.el);
+    };
+  }, [cfg?.name, cfg?.slug]);
+
+  // Every hook above this line runs on every render. Only now is it safe to
+  // bail out — see the note on `today` for why this cannot move back up.
+  if (!slug || !cfg) {
+    return <Navigate to="/" replace />;
+  }
 
   // Google for Jobs JobPosting schema. CONTRACTOR employmentType
   // (these are 1099 commissioned roles, not W-2). baseSalary intentionally
@@ -102,53 +162,6 @@ export default function StateCareerLanding() {
     directApply: false,
     url: `https://apex-financial.org/careers/${cfg.slug}`,
   };
-
-  // Set page <title>, <meta description>, and canonical URL without
-  // pulling react-helmet as a dependency. Cleaned up on unmount.
-  useEffect(() => {
-    const prevTitle = document.title;
-    document.title = `Life Insurance Agent Jobs in ${cfg.name} | Remote | Apex Financial`;
-
-    const setMeta = (name: string, content: string, attr: "name" | "property" = "name") => {
-      let el = document.head.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
-      const created = !el;
-      if (!el) {
-        el = document.createElement("meta");
-        el.setAttribute(attr, name);
-        document.head.appendChild(el);
-      }
-      el.setAttribute("content", content);
-      return { el, created };
-    };
-
-    const setLink = (rel: string, href: string) => {
-      let el = document.head.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
-      const created = !el;
-      if (!el) {
-        el = document.createElement("link");
-        el.setAttribute("rel", rel);
-        document.head.appendChild(el);
-      }
-      el.setAttribute("href", href);
-      return { el, created };
-    };
-
-    const desc = `Hiring licensed and unlicensed life insurance agents in ${cfg.name}. Work from home, A-rated carriers, lead supply, no cold-calling. 1099 contractor, commission only. Top first-year producers have written $120K+ in commissions.`;
-    const url = `https://apex-financial.org/careers/${cfg.slug}`;
-
-    const meta1 = setMeta("description", desc);
-    const meta2 = setMeta("og:title", `Life Insurance Agent Jobs in ${cfg.name} — Apex Financial`, "property");
-    const meta3 = setMeta("og:type", "website", "property");
-    const meta4 = setMeta("og:url", url, "property");
-    const linkCanonical = setLink("canonical", url);
-
-    return () => {
-      document.title = prevTitle;
-      // Only remove tags we created on mount — don't strip pre-existing meta.
-      [meta1, meta2, meta3, meta4].forEach((m) => { if (m.created && m.el.parentNode) m.el.parentNode.removeChild(m.el); });
-      if (linkCanonical.created && linkCanonical.el.parentNode) linkCanonical.el.parentNode.removeChild(linkCanonical.el);
-    };
-  }, [cfg.name, cfg.slug]);
 
   return (
     <div className="min-h-screen bg-background">

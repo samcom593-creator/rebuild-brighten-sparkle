@@ -955,6 +955,32 @@ export default function CallCenter() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [started, processing, showContractedModal, handleAction, handleSkip, handlePrevious]);
 
+  // MP-260 NBA + priority for the current lead. Signals mapped from the
+  // unified lead shape — never invented, always safe fallbacks for missing.
+  //
+  // MUST stay above the `if (!started)` early return below. It used to sit
+  // after it, which meant this hook ran only on renders where a session was
+  // started — so pressing "Start" changed the hook count between renders and
+  // React threw #310 ("Rendered more hooks than during the previous render").
+  // That crash is in error_logs 13 times across 2 real users on
+  // /dashboard/call-center. Hooks run unconditionally or they do not run at all.
+  const currentNba = useMemo(() => {
+    if (!currentLead) return null;
+    const licProgress = currentLead.licenseProgress ?? null;
+    return getNextBestAction({
+      kind: "applicant",
+      is_new_applicant: !currentLead.contactedAt,
+      no_contact_logged: !currentLead.contactedAt,
+      passed_test: licProgress === "passed_test",
+      waiting_on_license: licProgress === "waiting_on_license",
+      course_bought: licProgress === "course_purchased" || licProgress === "course_started",
+      referred_by_active_producer: !!currentLead.referredBy,
+      applicant_name: `${currentLead.firstName} ${currentLead.lastName ?? ""}`.trim(),
+      license_status: currentLead.licenseStatus,
+      license_progress: licProgress ?? undefined,
+    });
+  }, [currentLead]);
+
   // Filter selection UI
   if (!started) {
     return (
@@ -983,24 +1009,6 @@ export default function CallCenter() {
     );
   }
 
-  // MP-260 NBA + priority for the current lead. Signals mapped from the
-  // unified lead shape — never invented, always safe fallbacks for missing.
-  const currentNba = useMemo(() => {
-    if (!currentLead) return null;
-    const licProgress = currentLead.licenseProgress ?? null;
-    return getNextBestAction({
-      kind: "applicant",
-      is_new_applicant: !currentLead.contactedAt,
-      no_contact_logged: !currentLead.contactedAt,
-      passed_test: licProgress === "passed_test",
-      waiting_on_license: licProgress === "waiting_on_license",
-      course_bought: licProgress === "course_purchased" || licProgress === "course_started",
-      referred_by_active_producer: !!currentLead.referredBy,
-      applicant_name: `${currentLead.firstName} ${currentLead.lastName ?? ""}`.trim(),
-      license_status: currentLead.licenseStatus,
-      license_progress: licProgress ?? undefined,
-    });
-  }, [currentLead]);
   const currentBadge = currentNba ? priorityBadgeClasses(currentNba.priority) : null;
 
   // Active calling UI

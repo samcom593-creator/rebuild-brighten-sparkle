@@ -11,7 +11,7 @@
 // block cannot drift from the block under test, because they are the same
 // text.
 //
-// WHY THIS EXISTS — three waves on the same gate in three days:
+// WHY THIS EXISTS — four waves on the same gate in three days:
 //   710b27c3 (08-09) made the tick's green honest. Under live traffic it then
 //            cried wolf 36x/day on syncs that had SUCCEEDED (curl --max-time 90
 //            against a median sync of 143s).
@@ -24,12 +24,22 @@
 //            Proven in production: run 31413717796 logged
 //            "verdict: status=running age=151s" and reported SUCCESS while the
 //            row it judged (ab407e97) died and was reaped 'stuck' at 485s.
-//   this one  judges the newest run the reaper has already RULED on.
+//   a3fa21b4 (08-10) judged the last SETTLED row. Right about the row, wrong
+//            about the system: 9 reds in 39 runs (~39 pages/day) all saying
+//            "the pipelines are not moving" while the book was 3500s and 1235s
+//            fresh at the two moments it paged.
+//   this one  asks whether the BOOK IS FRESH — the question the alert claims to
+//            answer. A stuck row inside a healthy stream is weather.
 //
 // A gate that cannot fail is the same disease as the 465 InsuraCloud
 // fake-success rows. A gate that fails constantly is the same disease wearing
-// its coat inside out. Both end with Sam ignoring the one channel that is
-// supposed to be loud. These states are the proof that neither has returned.
+// its coat inside out. A gate that fires a TRUE red under a FALSE sentence is
+// the third face of it. All three end with Sam ignoring the one channel that
+// is supposed to be loud. These states are the proof that none has returned.
+//
+// The verdict string is "<ok_age>:<last_status>". ok_age decides; last_status
+// is diagnostic and must never change the outcome — several pairs below differ
+// only in last_status precisely to hold that line.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -53,8 +63,8 @@ const raw = fs.readFileSync(abs, "utf8");
 // on the other. Parsed off the raw text so this script needs no YAML
 // dependency of its own.
 const lines = raw.split("\n");
-const start = lines.findIndex((l) => l.includes('if [ -z "$verdict" ]'));
-const anchor = lines.findIndex((l) => l.includes("real failure, keeping it red"));
+const start = lines.findIndex((l) => l.includes('if [ -z "$freshness" ]'));
+const anchor = lines.findIndex((l) => l.includes("The book is stale."));
 let end = -1;
 if (anchor >= 0) {
   for (let i = anchor; i < lines.length; i++) {
@@ -77,33 +87,41 @@ fs.writeFileSync(blockFile, block + "\n");
 // ---- The states -----------------------------------------------------------
 // ACQUIT = the run is allowed to be green. RED = the run must fail and page Sam.
 const CASES = [
-  // Green must mean the pipeline actually moved.
-  ["ok:100", "ACQUIT", "fresh ok"],
-  ["ok:449", "ACQUIT", "live value observed on 2026-08-10 while writing this"],
-  [`ok:${STALE_MAX}`, "ACQUIT", "stale bound is inclusive"],
+  // A fresh book acquits. Green must mean the pipelines actually moved.
+  ["100:ok", "ACQUIT", "just synced"],
+  ["765:ok", "ACQUIT", "p50 of 352 ok-to-ok gaps measured over 7 days"],
+  ["4124:ok", "ACQUIT", "p90 — routine GitHub throttling must never page"],
+  ["11417:ok", "ACQUIT", "p99 — still normal operation, still green"],
+  [`${STALE_MAX}:ok`, "ACQUIT", "stale bound is inclusive"],
 
-  // The 843c6164 hole. Every one of these was acquitted by the previous gate.
-  ["stuck:2723", "RED", "REAL CASE: row ab407e97 as-of the 18:08:18Z tick"],
-  ["stuck:485", "RED", "the same row at the duration it actually died on"],
-  ["running:400", "RED", "running past the reap threshold — the reaper itself is dead"],
-  ["running:100", "RED", "young running row must NOT acquit (843c6164's exact hole)"],
+  // THE HEADLINE: a stuck row inside a fresh stream. Every one of these was a
+  // priority-5 page under a3fa21b4, ~39 times a day, saying "the pipelines are
+  // not moving" while they were moving.
+  ["3500:stuck", "ACQUIT", "REAL: book freshness when runs 31446750097/31443587597 paged"],
+  ["1235:stuck", "ACQUIT", "REAL: book freshness when run 31441868477 paged"],
+  ["4022:stuck", "ACQUIT", "REAL: live value measured 2026-08-11T02:12Z"],
+  ["100:stuck", "ACQUIT", "AgentLink hung on one pull; the book is seconds old"],
 
-  // Every other status agentlink_sync_log has ever held.
-  ["error:500", "RED", "error (2560 rows all-time)"],
-  ["no_cookie:500", "RED", "no_cookie (42 rows all-time)"],
-  ["pending:500", "RED", "pending (1 row all-time)"],
-  ["none:0", "RED", "no settled row at all — the function never registered"],
+  // last_status must never be able to vote. These mirror the acquits above.
+  ["100:error", "ACQUIT", "diagnostic status cannot red a fresh book"],
+  ["100:no_cookie", "ACQUIT", "diagnostic status cannot red a fresh book"],
+  ["100:running", "ACQUIT", "diagnostic status cannot red a fresh book"],
+  ["100:none", "ACQUIT", "no newest row at all, but the book is fresh"],
 
-  // A stale 'ok' that never gets superseded is the acquit-forever hole.
-  [`ok:${STALE_MAX + 1}`, "RED", "one second past STALE_MAX"],
-  ["ok:86400", "RED", "a full day of silence"],
+  // A stale book reds — whatever the newest row claims.
+  [`${STALE_MAX + 1}:ok`, "RED", "one second past STALE_MAX"],
+  ["31913:ok", "RED", "REAL: the 7d max gap, 08-06 15:37 -> 08-07 00:29 (8.9h)"],
+  ["86400:ok", "RED", "a full day without a successful sync"],
+  ["20000:stuck", "RED", "stale AND stuck — the genuinely dead pipeline"],
+  ["99999999:none", "RED", "no successful sync has ever been recorded"],
 
-  // Malformed input must fail safe. The old code coerced a bad age to 0,
-  // which ACQUITTED — fail-open, in the one place whose job is to fail loud.
+  // Unreachable / malformed must fail LOUD. Coercing a bad age to 0 would
+  // acquit — fail-open, in the one place whose entire job is to fail loud.
+  ["99999999:unreachable", "RED", "bot-sql itself did not answer"],
   ["", "RED", "empty verdict (jq printed nothing and still exited 0)"],
-  ["ok:abc", "RED", "non-numeric age on an ok"],
-  ["ok:", "RED", "empty age on an ok"],
-  ["garbage:xyz", "RED", "unparseable status and age"],
+  ["abc:ok", "RED", "non-numeric age"],
+  [":ok", "RED", "empty age"],
+  ["garbage:xyz", "RED", "unparseable age and status"],
 ];
 
 function runState(verdict, extraFailed) {
@@ -111,7 +129,8 @@ function runState(verdict, extraFailed) {
   const script = `
 set -euo pipefail
 STALE_MAX=${STALE_MAX}
-verdict=${JSON.stringify(verdict)}
+STALE_DETAIL=""
+freshness=${JSON.stringify(verdict)}
 FAILED=("edge:agentlink-cookie-sync"${extra})
 . ${JSON.stringify(blockFile)} >/dev/null 2>&1
 printf '%s\\n' \${FAILED[@]+"\${FAILED[@]}"}
@@ -145,7 +164,7 @@ for (const [verdict, expected, label] of CASES) {
 
 // Acquitting cookie-sync must never swallow an unrelated failed job.
 {
-  const res = runState("ok:100", "agentlink-watchdog");
+  const res = runState("100:ok", "agentlink-watchdog");
   if (res.aborted) {
     failures.push(`widening check: the block ABORTED under \`set -e\`. ${res.stderr}`);
   } else if (res.outcome !== "ACQUIT" || !res.remaining.includes("agentlink-watchdog")) {
@@ -159,8 +178,8 @@ for (const [verdict, expected, label] of CASES) {
 if (failures.length === 0) {
   console.log(
     `✓ check:cron-verdict-states — ${CASES.length + 1} verdict states proven against the ` +
-    `shipped block in ${WORKFLOW} (green only on a settled 'ok' inside ${STALE_MAX}s; ` +
-    `stuck / error / no_cookie / pending / over-threshold running / no-row / malformed all stay red).`,
+    `shipped block in ${WORKFLOW} (green only when the book was refreshed within ${STALE_MAX}s, ` +
+    `whatever the newest row says; stale / never-synced / unreachable / malformed all stay red).`,
   );
   process.exit(0);
 }

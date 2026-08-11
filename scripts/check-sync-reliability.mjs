@@ -204,31 +204,56 @@ function walk(dir, exts, fn) {
         `whose status is final.`,
       );
     }
-    if (!/make_interval/.test(src) || !/pg_get_functiondef/.test(src)) {
+    // …and it must be reconciled on the question the ALERT claims to answer:
+    // is the book still being refreshed? a3fa21b4 judged the newest settled
+    // row's status — correct about the row, wrong about the system. It sent 9
+    // reds in 39 runs (~39 priority-5 pages/day) reading "the pipelines are not
+    // moving" while they were moving: at the two moments it paged (runs
+    // 31446750097/31443587597, 31441868477) the book had been refreshed 3500s
+    // and 1235s earlier, and 100 ok syncs in 48h had moved 120,236 deal
+    // updates. Every stuck row carries upstream_status=NULL, policies_seen=0
+    // and dies in the 'deals' phase — AgentLink's API hanging, which Apex
+    // cannot fix and should not be paged about per occurrence. True-but-
+    // misleading at 39/day costs exactly what false at 36/day cost.
+    if (!/WHERE l\.status = 'ok'/.test(src) || !/max\(COALESCE\(l\.finished_at/.test(src)) {
       violations.push(
-        `${cronYml}: the cookie-sync verdict must select a run older than fn_agentlink_reap_stuck's ` +
-        `own threshold, read live via pg_get_functiondef, so curl and the reaper cannot drift apart ` +
-        `if anyone retunes the reaper. Hardcoding the window re-opens the "too early to tell" gap ` +
-        `that made the gate unable to fail.`,
+        `${cronYml}: the cookie-sync verdict must measure how long since the last SUCCESSFUL sync ` +
+        `(max(COALESCE(finished_at, started_at)) over status='ok'), not the status of whichever row ` +
+        `happens to be newest. A single stuck row inside a fresh stream is upstream weather; paging ` +
+        `on it sends a push whose sentence is false as it is being sent.`,
       );
     }
-    // An 'ok' that is never superseded is its own failure mode: if the function
-    // stopped registering rows entirely, the newest settled row stays 'ok' and
-    // acquits forever.
-    if (!/STALE_MAX/.test(src)) {
+    const acquitTest = src.match(/if \[ "\$ok_age" -le "\$STALE_MAX" \][^\n]*/);
+    if (!acquitTest) {
       violations.push(
-        `${cronYml}: the cookie-sync verdict must bound how old a settled 'ok' may be (STALE_MAX). ` +
-        `Without it, a pipeline that stops writing rows altogether keeps acquitting on an ancient ` +
-        `success and the gate goes quiet permanently.`,
+        `${cronYml}: the cookie-sync acquit must be gated on $ok_age vs $STALE_MAX. Without that ` +
+        `bound a pipeline that stops writing rows altogether keeps acquitting on an ancient success ` +
+        `and the gate goes quiet permanently.`,
+      );
+    } else if (/last_status/.test(acquitTest[0])) {
+      violations.push(
+        `${cronYml}: last_status is diagnostic and must never vote in the acquit. Letting the newest ` +
+        `row's status red a fresh book is exactly the a3fa21b4 regression: ~39 true-about-the-row, ` +
+        `false-about-the-system pages a day, which is how Sam learns to ignore the one loud channel.`,
+      );
+    }
+    // The push body must say what is actually wrong. The old text asserted
+    // "pg_cron's backup is not moving the pipelines" on every red, including
+    // the ones where it was moving them.
+    if (!/STALE_DETAIL/.test(src) || /not moving the pipelines/.test(src)) {
+      violations.push(
+        `${cronYml}: the failure push must carry the measured reason (STALE_DETAIL) rather than ` +
+        `asserting "pg_cron's backup is not moving the pipelines" on every red. An alert that ` +
+        `overstates its own finding burns the channel just as fast as a false one.`,
       );
     }
     // Fail-safe parsing. The old code coerced a non-numeric age to 0, which
     // ACQUITTED a stale 'ok' — fail-open, in the one place that exists to fail
     // loud. The pg_cron gap parser above already set the correct precedent:
     // coerce an unparseable value to "very stale", never to "brand new".
-    if (/case "\$v_age" in ''\|\*\[!0-9\]\*\) v_age=0 ;; esac/.test(src)) {
+    if (/case "\$ok_age" in ''\|\*\[!0-9\]\*\) ok_age=0 ;; esac/.test(src)) {
       violations.push(
-        `${cronYml}: a non-numeric verdict age coerces to 0, which makes a garbled response ACQUIT. ` +
+        `${cronYml}: a non-numeric freshness age coerces to 0, which makes a garbled response ACQUIT. ` +
         `Coerce it to a very-stale sentinel instead, matching the pg_cron gap parser's 99999 ` +
         `precedent, so a broken parse fails loud rather than silent.`,
       );
@@ -396,11 +421,12 @@ function walk(dir, exts, fn) {
 
 if (violations.length === 0) {
   console.log(
-    "Sync-reliability guardrail passed (16 rules checked: deploy fail-loud, " +
+    "Sync-reliability guardrail passed (17 rules checked: deploy fail-loud, " +
     "no continue-on-error masking, link must authenticate, " +
     "cron gap parser, insuracloud revival probe, cron tick must fail loud, " +
-    "cookie-sync verdict must judge a SETTLED run (not the in-flight one), " +
-    "reap threshold read live, stale-ok bound, fail-safe age coercion, " +
+    "cookie-sync verdict must not judge the in-flight row, " +
+    "verdict measures book freshness, last_status must not vote, " +
+    "stale bound on ok_age, push carries the measured reason, fail-safe age coercion, " +
     "no errexit-aborting && appends, environment-only bot tokens, " +
     "refresh_sync_health grants, dashboard canonical source, insuracloud-sync " +
     "auth gate, insuracloud placeholder client data, ReadyMode hardcoding).",

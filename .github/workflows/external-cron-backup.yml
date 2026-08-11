@@ -2,10 +2,16 @@ name: External cron backup (pg_cron resilience)
 
 # pg_cron in this Supabase project goes silent every 1-2 days because the
 # bgworker dies and only a project Restart brings it back. This workflow is
-# our independent heartbeat: every 10 minutes from GitHub's infrastructure
-# we hit bot-sql and fire the most critical sync jobs directly. Even if
-# pg_cron is dead for 48 hours, the agent-link / deal / lead pipelines
-# keep moving.
+# our independent heartbeat: we hit bot-sql and fire the most critical sync
+# jobs directly, so that even if pg_cron is dead for 48 hours the agent-link
+# / deal / lead pipelines keep moving.
+#
+# CADENCE, MEASURED — this header used to claim "every 10 minutes". It is not
+# true and the difference is load-bearing for anything that alerts off this
+# heartbeat. Over 120 runs / 22.5h: median gap 2.45min, but p90 40.8min and
+# max 108.2min, with 34 of 119 gaps over 10 minutes. GitHub Actions schedules
+# are best-effort and it drops runs under load. Size staleness bounds against
+# the p90/max, never the median.
 #
 # Required GitHub repo secret:
 #   APEX_BOT_TOKEN — Bearer token accepted by the bot-sql edge function.
@@ -156,75 +162,105 @@ jobs:
           # verdict", not "give curl more time" — reconciliation is the primary
           # path for this job, not a rare fallback.
           #
-          # THE VERDICT: judge the newest run the reaper has ALREADY RULED ON.
+          # THE VERDICT: is the BOOK FRESH? Not: what did the last row do?
           #
-          # 843c6164 judged the row this tick had just created. The gateway
-          # forces that verdict at ~151s and fn_agentlink_reap_stuck does not
-          # call a run stuck until 300s, so the row was ALWAYS 'running',
-          # ALWAYS under the threshold, and ALWAYS acquitted — the cookie-sync
-          # leg could not go red at all. Proven in production, not theorised:
-          # run 31413717796 fired the sync at 17:22:53Z, hit IDLE_TIMEOUT at
-          # 150s, logged "verdict: status=running age=151s" and reported
-          # SUCCESS, while the very row it judged (ab407e97, started
-          # 17:22:54Z) died and was reaped 'stuck' 485s in. Yesterday's gate
-          # cried wolf 36 times a day; that one could not cry at all. Same
-          # disease as the 465 InsuraCloud fake-success rows, worn inside out.
+          # This is the third rewrite of this one decision in three days, and
+          # each previous version was honest about a narrower question than the
+          # alert it fired actually claimed to answer.
           #
-          # Selecting a row OLDER than the reap threshold means its status is
-          # final — the reaper has either left it 'ok' or marked it 'stuck' —
-          # so the verdict can never be "too early to tell". The threshold is
-          # read live out of fn_agentlink_reap_stuck's own body via
-          # pg_get_functiondef, so curl and the reaper cannot drift apart if
-          # anyone retunes the reaper. Detection lags by one tick, and that lag
-          # is not a compromise: it is exactly the 300s the reaper needs before
-          # anyone can honestly call a run dead.
+          #   710b27c3 asked "did curl get a 200?" — 36 false pages/day, because
+          #            curl's patience is not a fact about the pipeline.
+          #   843c6164 asked "what is the row this tick just made?" — the answer
+          #            was always 'running' (gateway forces the verdict at 151s,
+          #            the reaper needs 300s), so the leg could not go red AT
+          #            ALL. Proven in prod: run 31413717796 reported SUCCESS on
+          #            row ab407e97, which ran 485s and was reaped 'stuck'.
+          #   a3fa21b4 asked "what is the last SETTLED row?" — correct about the
+          #            row, and still wrong about the system. It sent 9 reds in
+          #            39 runs over 5.5h (~39 priority-5 pages/day) saying "the
+          #            pipelines are not moving" while the pipelines were
+          #            moving. Measured counterfactual, not asserted: at the two
+          #            moments it paged (runs 31446750097/31443587597 ~23:48Z
+          #            and 31441868477 ~00:14Z) the book had last been refreshed
+          #            3500s and 1235s earlier. 100 ok syncs in 48h moved
+          #            120,236 deal updates. The sentence in the push was false
+          #            as it was being sent.
           #
-          # Only 'ok' acquits. 'stuck', 'error', 'no_cookie', 'pending', a run
-          # still 'running' past the threshold (meaning the reaper itself is
-          # dead) and no row at all are all red.
+          # True-but-misleading at 39 pages/day costs exactly what false at 36
+          # pages/day cost: Sam stops believing the one loud channel. So the
+          # verdict now answers the question the alert actually asks — has the
+          # book stopped being refreshed? A single stuck row inside a healthy
+          # stream is weather, not an outage. Every stuck row carries
+          # upstream_status=NULL and policies_seen=0 and dies in the 'deals'
+          # phase (AgentLink's own /api/deals never returns), and it tracks
+          # AgentLink's business hours: 44.2% stuck in 13-23 UTC vs 24.2% in
+          # 00-12 UTC. Apex cannot fix AgentLink's API. Paging per occurrence is
+          # paging on someone else's weather; the run log still records it.
           #
-          # A stale 'ok' is its own failure: if the function stopped
-          # registering rows entirely, the newest settled row would sit at 'ok'
-          # and acquit forever. Row-to-row gaps measured over 3 days are p50
-          # 574s, p90 1972s, p99 4707s, max 6490s (GitHub throttles this
-          # schedule hard — see the 108-minute hole). STALE_MAX at 14400s is
-          # 2.2x the observed max, so throttling can never trip it while a
-          # pipeline that has gone silent for four hours always does.
+          # THE THRESHOLD, measured over 7 days (352 consecutive ok-to-ok gaps,
+          # not the 48h window the previous wave sized this on):
+          #   p50 765s · p90 4124s · p99 11417s · max 31913s
+          #   42 gaps > 1h · 13 > 2h · 1 > 4h
+          # STALE_MAX=14400 (4h) sits above p99 (3.2h) and under the one gap
+          # that beat it. State that honestly: this bound WILL fire on normal
+          # operation roughly once a week, and the 7d max EXCEEDS it — the
+          # previous wave's claim that 14400 is "above observed-worst so
+          # throttling can never trip it" is false, and was sized on too short a
+          # window. The one 7d event that crossed it (08-06 15:37 -> 08-07 00:29)
+          # deserved to fire: the book went 8.9h without a refresh because
+          # nothing asked it to sync for 7 hours (zero rows between 15:34 and
+          # 22:31). A page for that is the alert working. Tightening to 2h would
+          # buy 13 pages/week of noise for no extra detection.
+          #
+          # Fresh book acquits, whatever the newest row says. Stale book reds,
+          # whatever the newest row says. An unreachable or garbled answer
+          # coerces to very-stale, never to 0 — fail loud, in the one place
+          # whose entire job is to fail loud.
+          #
+          # LIMIT, stated so nobody reads more safety into this than it has:
+          # this gate can only speak on ticks that actually run. GitHub throttles
+          # this schedule hard (measured p90 gap 40.8min, max 108min against a
+          # header that used to promise 10min), and during the 7h hole above it
+          # was not running at all, so it could not have paged until it came
+          # back. A watcher cannot report its own absence.
           STALE_MAX=14400
+          STALE_DETAIL=""
           call_edge "agentlink-cookie-sync" '{}' no 300 || true
           if printf '%s\n' ${FAILED[@]+"${FAILED[@]}"} | grep -qx "edge:agentlink-cookie-sync"; then
-            # curl gave up. Ask the pipeline's own settled record who was right.
-            verdict=$(curl -sS -X POST "$BOT_SQL" \
+            # curl gave up. Ask the book how long since it was last refreshed.
+            # ok_age comes FIRST in the pair on purpose: it is the value that
+            # decides, and `%%:*` stays correct even if a status ever grows a
+            # colon. last_status is carried for the log line only and never
+            # votes.
+            freshness=$(curl -sS -X POST "$BOT_SQL" \
               -H "Authorization: Bearer $BOT_TOKEN" \
               -H "content-type: application/json" \
               --max-time 20 \
-              -d "{\"query\":\"WITH thr AS (SELECT COALESCE((regexp_match(pg_get_functiondef(p.oid), 'INTERVAL ''([0-9]+) minutes'''))[1]::int * 60, 300) AS secs FROM pg_proc p WHERE p.proname = 'fn_agentlink_reap_stuck' LIMIT 1) SELECT l.status, EXTRACT(EPOCH FROM (now() - l.started_at))::int AS age FROM agentlink_sync_log l WHERE l.started_at < now() - make_interval(secs => COALESCE((SELECT secs FROM thr), 300)) ORDER BY l.started_at DESC LIMIT 1;\"}" 2>/dev/null \
-              | jq -r 'if (.ok == true) and (.rows | length > 0) then "\(.rows[0].status):\(.rows[0].age)" else "none:0" end' 2>/dev/null || echo "none:0")
+              -d "{\"query\":\"SELECT COALESCE(EXTRACT(EPOCH FROM (now() - max(COALESCE(l.finished_at, l.started_at))))::int, 99999999) AS ok_age, COALESCE((SELECT n.status FROM agentlink_sync_log n ORDER BY n.started_at DESC LIMIT 1), 'none') AS last_status FROM agentlink_sync_log l WHERE l.status = 'ok';\"}" 2>/dev/null \
+              | jq -r 'if (.ok == true) and (.rows | length > 0) then "\(.rows[0].ok_age):\(.rows[0].last_status)" else "99999999:unreachable" end' 2>/dev/null || echo "99999999:unreachable")
             # An empty body makes jq print nothing and still exit 0, so the
-            # `||` above never fires and verdict lands empty. Name it so the
-            # log line says "none" instead of a blank.
-            if [ -z "$verdict" ]; then verdict="none:0"; fi
-            v_status=${verdict%%:*}
-            v_age=${verdict##*:}
-            # A non-numeric age coerces to "very stale", never to 0. The old
-            # code coerced to 0, which would let a garbled response ACQUIT on a
-            # stale 'ok' — fail-open, in the one place whose entire job is to
-            # fail loud. Same precedent as the pg_cron gap parser above.
-            case "$v_age" in ''|*[!0-9]*) v_age=99999999 ;; esac
-            echo "agentlink-cookie-sync settled-run verdict: status=$v_status age=${v_age}s (reap threshold read live from fn_agentlink_reap_stuck)"
-            acquit=no
-            if [ "$v_status" = "ok" ] && [ "$v_age" -le "$STALE_MAX" ]; then acquit=yes; fi
-            if [ "$acquit" = "yes" ]; then
-              echo "::notice::agentlink-cookie-sync: curl timed out, but the last settled run is 'ok' (${v_age}s ago) — pipeline moved, not a failure"
+            # `||` above never fires and freshness lands empty. Name it so the
+            # log line says "unreachable" instead of a blank — and so the
+            # numeric coercion below has something to reject.
+            if [ -z "$freshness" ]; then freshness="99999999:unreachable"; fi
+            ok_age=${freshness%%:*}
+            last_status=${freshness##*:}
+            # A non-numeric age coerces to "very stale", never to 0. Coercing to
+            # 0 would ACQUIT on a garbled response — fail-open. Same precedent
+            # as the pg_cron gap parser above.
+            case "$ok_age" in ''|*[!0-9]*) ok_age=99999999 ;; esac
+            case "$last_status" in '') last_status=unknown ;; esac
+            echo "agentlink-cookie-sync freshness verdict: last successful sync ${ok_age}s ago, newest row '$last_status' (stale bound ${STALE_MAX}s)"
+            if [ "$ok_age" -le "$STALE_MAX" ]; then
+              echo "::notice::agentlink-cookie-sync: curl timed out and the newest row is '$last_status', but the book was refreshed ${ok_age}s ago — the pipeline is moving"
               REMAINING=()
               for f in ${FAILED[@]+"${FAILED[@]}"}; do
                 if [ "$f" != "edge:agentlink-cookie-sync" ]; then REMAINING+=("$f"); fi
               done
               FAILED=(${REMAINING[@]+"${REMAINING[@]}"})
-            elif [ "$v_status" = "ok" ]; then
-              echo "::warning::agentlink-cookie-sync: last settled run is 'ok' but ${v_age}s old (> ${STALE_MAX}s) — the pipeline has gone silent, keeping it red"
             else
-              echo "::warning::agentlink-cookie-sync: last settled run is '$v_status' (${v_age}s ago) — real failure, keeping it red"
+              STALE_DETAIL="No successful AgentLink sync for ${ok_age}s (bound ${STALE_MAX}s); newest row '$last_status'. The book is stale."
+              echo "::warning::agentlink-cookie-sync: $STALE_DETAIL Keeping it red"
             fi
           fi
           # InsuraCloud revival probe — deliberately NOT a per-tick sync.
@@ -315,7 +351,7 @@ jobs:
               -H "Title: External cron backup FAILED" \
               -H "Priority: 5" \
               -H "Tags: rotating_light" \
-              --data-binary "Sync jobs failed this tick: ${UNEXPECTED[*]}. pg_cron's backup is not moving the pipelines." || true
+              --data-binary "Sync jobs failed this tick: ${UNEXPECTED[*]}. ${STALE_DETAIL:-These bot-sql calls returned non-200 or ok:false on this tick.}" || true
             echo "::error::Unexpected sync failures: ${UNEXPECTED[*]}"
             exit 1
           fi

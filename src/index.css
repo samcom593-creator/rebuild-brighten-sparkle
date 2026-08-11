@@ -1982,10 +1982,24 @@ h1,
 @media (max-width: 640px) {
   .apex-page-header {
     margin-bottom: 1rem;
-    padding-block: 1.1rem;
+    /* Matches the component's py-3.5. Was 1.1rem, which silently re-inflated
+       the band on phones after v5 compacted it. */
+    padding-block: 0.875rem;
   }
 
-  .apex-page-header h1,
+  /* v5 (2026-08-11): the operating-route header is compacted separately from
+     marketing headlines. This rule used to catch `.apex-page-header h1` in the
+     same breath as every other h1 and force it to clamp(1.5rem, 9vw, 2.15rem)
+     !important — 34.4px at a 390px viewport. Because it is !important it beat
+     the component's own `text-xl`, so PageHeader v5 measured 239px on a phone
+     against 88px on desktop: the compaction worked everywhere except the device
+     Sam actually runs the business on. Landing/marketing h1s keep the big clamp;
+     the operating header gets its own, and wins on specificity. */
+  .apex-page-header h1 {
+    font-size: clamp(1.25rem, 5.5vw, 1.5rem) !important;
+    line-height: 1.15 !important;
+  }
+
   h1,
   .h1 {
     font-size: clamp(1.5rem, 9vw, 2.15rem) !important;

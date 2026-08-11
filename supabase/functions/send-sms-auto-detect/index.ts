@@ -1,5 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+// MP-273: this said @2.50.0, and that pin is why the function was DEAD in prod.
+// esm.sh resolves TRANSITIVE deps at request time, so pinning supabase-js pinned
+// nothing underneath it: ws@8.21.3 shipped a build that throws at import
+// ("Cannot destructure property 'URL' of null"), which killed this worker at boot.
+// Every call answered WORKER_ERROR -- before the handler, so not even the honest
+// "skipped" log row was written. Verified by deploying the pre-edit file and
+// invoking it: identical WORKER_ERROR, so the crash predates this wave's changes.
+// @2 boots clean and is the exact specifier ics-feed uses, which is serving 200s.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -87,14 +95,43 @@ const handler = async (req: Request): Promise<Response> => {
     // not known, send nothing and say so, so the caller can fall back to a channel
     // that reports real delivery. Do not guess by broadcasting.
     let knownCarrier: string | null = null;
+    // MP-273: why the carrier lookup lost carriers that were on file.
+    //
+    // This was .maybeSingle(). For a GET, postgrest-js returns the rows as an array
+    // and then, if there is more than one, sets data=null with a PGRST116 error
+    // (PostgrestBuilder.js:101-112). The caller destructured { data } only and threw
+    // the error away, so "two profile rows share this phone" was indistinguishable
+    // from "this phone has no carrier" -- and the second reading is the one that won.
+    //
+    // Sam's own number is the case in point: two profiles rows, BOTH saying tmobile,
+    // so the answer was never ambiguous. Every alert SMS to him took the no-carrier
+    // branch and sent nothing while bot_alerts recorded "sent".
+    //
+    // Resolve across every matching row instead: if the carriers agree, use it; if
+    // they genuinely disagree, say which ones and send nothing. Never discard the error.
+    let carrierLookupError: string | null = null;
+    let carrierConflict: string[] | null = null;
 
-    const { data: profileCarrier } = await supabase
+    const phoneVariants = Array.from(new Set([phone, cleaned].filter(Boolean)));
+    const { data: profileRows, error: profileErr } = await supabase
       .from("profiles")
       .select("carrier")
-      .eq("phone", phone)
-      .not("carrier", "is", null)
-      .maybeSingle();
-    if (profileCarrier?.carrier) knownCarrier = String(profileCarrier.carrier).toLowerCase();
+      .in("phone", phoneVariants)
+      .not("carrier", "is", null);
+
+    if (profileErr) {
+      carrierLookupError = profileErr.message ?? String(profileErr);
+    } else {
+      const distinct = Array.from(
+        new Set(
+          (profileRows ?? [])
+            .map((r: any) => String(r.carrier ?? "").toLowerCase().trim())
+            .filter((c: string) => c.length > 0),
+        ),
+      );
+      if (distinct.length === 1) knownCarrier = distinct[0];
+      else if (distinct.length > 1) carrierConflict = distinct;
+    }
 
     if (!knownCarrier && applicationId) {
       const { data: appCarrier } = await supabase
@@ -105,6 +142,13 @@ const handler = async (req: Request): Promise<Response> => {
         .maybeSingle();
       if (appCarrier?.carrier) knownCarrier = String(appCarrier.carrier).toLowerCase();
     }
+
+    const noCarrierReason = (): string =>
+      carrierConflict
+        ? `conflicting carriers on file (${carrierConflict.join(", ")}) — not guessing`
+        : carrierLookupError
+          ? `carrier lookup failed: ${carrierLookupError}`
+          : "no carrier on file — not broadcasting";
 
     if (knownCarrier && !CARRIER_GATEWAYS[knownCarrier]) {
       results.push({ carrier: knownCarrier, success: false, error: "unrecognized carrier value" });
@@ -134,9 +178,11 @@ const handler = async (req: Request): Promise<Response> => {
         carrierFailures.push(knownCarrier);
       }
     } else {
-      // No carrier on file. Previously this was the 96% case that triggered the
+      // No carrier resolved. Previously this was the 96% case that triggered the
       // 8-gateway broadcast. Report it honestly instead of burning quota on a guess.
-      results.push({ carrier: "unknown", success: false, error: "no carrier on file — not broadcasting" });
+      // MP-273: "we looked and found nothing" and "the lookup itself failed" are
+      // different problems with different fixes, so they no longer share one string.
+      results.push({ carrier: "unknown", success: false, error: noCarrierReason() });
     }
 
     // ONE consolidated notification_log row per outbound SMS.
@@ -158,11 +204,15 @@ const handler = async (req: Request): Promise<Response> => {
         ? null
         : (knownCarrier
             ? `Carrier gateway ${knownCarrier} rejected: ${results[results.length - 1]?.error ?? "unknown"}`
-            : "No carrier on file — SMS not attempted, use another channel"),
+            : `SMS not attempted, use another channel — ${noCarrierReason()}`),
       metadata: {
         trigger: "sms-auto-detect",
         gatewaysAttempted: knownCarrier ? 1 : 0,
         carrierResolved: knownCarrier,
+        // MP-273: keep the reason the carrier could not be resolved, so a future
+        // reader can tell a duplicate-row collision from a genuinely blank field.
+        carrierConflict,
+        carrierLookupError,
         carrierSuccesses,
         carrierFailures,
         attempts: results,

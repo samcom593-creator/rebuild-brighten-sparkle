@@ -141,7 +141,7 @@ async function postNtfy(alert: any): Promise<boolean> {
   }
 }
 
-async function send(alert: any): Promise<{ email_id: string | null; sent_sms: boolean; sent_discord: boolean; sent_whatsapp: boolean; sent_ntfy: boolean; error: string | null }> {
+async function send(alert: any): Promise<{ email_id: string | null; sent_sms: boolean; sms_receipt: string | null; sent_discord: boolean; sent_whatsapp: boolean; sent_ntfy: boolean; error: string | null }> {
   // Default channel set: every standalone alert fans out to ALL channels Sam
   // owns so no notification path silently skips. Discord + ntfy always go;
   // email + sms + whatsapp also when configured.
@@ -149,6 +149,7 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
   const channels = new Set([...requested, "discord", "ntfy"]); // always include
   let email_id: string | null = null;
   let sent_sms = false;
+  let sms_receipt: string | null = null;
   let sent_discord = false;
   let sent_whatsapp = false;
   let sent_ntfy = false;
@@ -170,10 +171,31 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
   }
   if (channels.has("sms") && alert.sms_body) {
     try {
-      await supabase.functions.invoke("send-sms-auto-detect", {
-        body: { phone: SAM_PHONE, message: String(alert.sms_body).slice(0, 90) },
-      });
-      sent_sms = true;
+      // MP-273: this used to set sent_sms=true the instant the round trip finished.
+      // Two reasons that was never a delivery signal:
+      //   1. functions.invoke resolves with { error } on a non-2xx, it does not throw,
+      //      so the catch below could not see a failed call.
+      //   2. send-sms-auto-detect answers 200 with outcome:"skipped" when it sent
+      //      NOTHING, and its own comment asks callers to branch on that rather than
+      //      "treating the person as contacted". This was the only caller that didn't.
+      // Result: 5 of 5 alerts since 2026-07-31 recorded sent_sms_id='sent' while the
+      // SMS log recorded 'skipped — no carrier on file' for the same 5 messages.
+      const { data: smsRes, error: smsErr } = await supabase.functions.invoke(
+        "send-sms-auto-detect",
+        { body: { phone: SAM_PHONE, message: String(alert.sms_body).slice(0, 90) } },
+      );
+      if (smsErr) {
+        errs.push(`sms: invoke failed: ${smsErr.message ?? String(smsErr)}`);
+      } else if (smsRes?.outcome === "sent") {
+        sent_sms = true;
+        // A gateway that accepted the message is the strongest receipt this path can
+        // produce -- carrier delivery is asynchronous and never reports back. Name the
+        // gateway so the column says what actually happened instead of "sent".
+        sms_receipt = `gateway:${smsRes.carrierSelected ?? "unknown"}`;
+      } else {
+        const why = smsRes?.attempts?.[smsRes.attempts.length - 1]?.error ?? "nothing sent";
+        errs.push(`sms: ${smsRes?.outcome ?? "no response"} — ${why}`);
+      }
     } catch (e: any) {
       errs.push(`sms: ${e?.message ?? String(e)}`);
     }
@@ -200,7 +222,7 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
       errs.push(`ntfy: ${e?.message ?? String(e)}`);
     }
   }
-  return { email_id, sent_sms, sent_discord, sent_whatsapp, sent_ntfy, error: errs.length ? errs.join("; ") : null };
+  return { email_id, sent_sms, sms_receipt, sent_discord, sent_whatsapp, sent_ntfy, error: errs.length ? errs.join("; ") : null };
 }
 
 async function flush(): Promise<{ scanned: number; sent: number; held: number }> {
@@ -228,7 +250,7 @@ async function flush(): Promise<{ scanned: number; sent: number; held: number }>
       await supabase.from("bot_alerts").update({
         sent_at: new Date().toISOString(),
         sent_email_id: r.email_id,
-        sent_sms_id: r.sent_sms ? "sent" : null,
+        sent_sms_id: r.sms_receipt,
       }).eq("id", (alert as any).id);
       sent++;
     }
@@ -262,7 +284,7 @@ Deno.serve(async (req) => {
         await supabase.from("bot_alerts").update({
           sent_at: new Date().toISOString(),
           sent_email_id: r.email_id,
-          sent_sms_id: r.sent_sms ? "sent" : null,
+          sent_sms_id: r.sms_receipt,
         }).eq("id", (inserted as any).id);
       }
       return new Response(JSON.stringify({ ok: true, alert_id: (inserted as any)?.id, dispatched: true, ...r }), {

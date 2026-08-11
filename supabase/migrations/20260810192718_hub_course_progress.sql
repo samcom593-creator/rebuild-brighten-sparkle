@@ -19,6 +19,16 @@ create index if not exists idx_hub_course_progress_course on public.hub_course_p
 
 alter table public.hub_course_progress enable row level security;
 
+-- Idempotent: this migration was applied live via MCP before landing in the
+-- repo, and `create policy` (unlike `create table`) has no IF NOT EXISTS form.
+-- Without these drops a re-run — CI replay, fresh branch DB, or the version
+-- renumbering that filed this under the MCP-recorded timestamp — dies on
+-- "policy already exists" and takes the whole deploy red with it.
+drop policy if exists "hub_progress_select_own" on public.hub_course_progress;
+drop policy if exists "hub_progress_insert_own" on public.hub_course_progress;
+drop policy if exists "hub_progress_update_own" on public.hub_course_progress;
+drop policy if exists "hub_progress_select_admin" on public.hub_course_progress;
+
 create policy "hub_progress_select_own" on public.hub_course_progress
   for select using (auth.uid() = user_id);
 create policy "hub_progress_insert_own" on public.hub_course_progress

@@ -181,13 +181,34 @@ if (Array.isArray(nr) && nr.length) {
 // not weaker. And inconclusive is never silent — it prints, and it prints the
 // benchmarkIndex, so the floor below can be corrected from real data.
 //
-// BENCHMARK_MIN is PROVISIONAL and deliberately labelled as such. It is not
-// measured from this repo's CI, because until this commit the script never
-// emitted benchmarkIndex and no run recorded one. 1000 is Lighthouse's own
-// rough boundary for "slow desktop / underpowered" hardware. The next CI run
-// prints the real value; set this from that number rather than leaving a guess
-// in place.
-const BENCHMARK_MIN = Number(process.env.LH_BENCHMARK_MIN ?? 1000);
+// MEASURED, no longer provisional. The first run that emitted this value
+// (b478e477, 2026-08-11) reported benchmarkIndex 1112.5 on the GitHub-hosted
+// runner, against 4448-4585 on the developer Mac — a ~4x slower CPU, which
+// Lighthouse then multiplies by another 4. Identical bytes, identical URL:
+//
+//                    benchmarkIndex   Perf   TBT
+//   dev Mac                   ~4500  79-85     0ms
+//   GitHub-hosted runner      1112.5     50  5551ms
+//
+// The provisional guess of 1000 sat just BELOW the real runner speed, so the
+// guard called 1112.5 "healthy" and hard-failed on a number it should have
+// distrusted. 1300 sits above the observed runner and far below a healthy
+// workstation, so a genuinely fast runner is still held to the full budget.
+//
+// STATE THE CONSEQUENCE PLAINLY rather than let it be discovered later: while CI
+// runs on this runner class, the CPU-bound half of this gate (Perf score, TBT)
+// is effectively advisory — it will report INCONCLUSIVE, not green, and not red.
+// That is deliberate. The alternative was a gate that fires on four different
+// workers' unrelated commits, which this repo has now documented four times as
+// the way a channel gets ignored. What remains hard-gated on every run and every
+// runner: LCP, FCP, CLS, accessibility, best-practices and SEO — none of which
+// collapsed under the slow CPU (a11y/BP/SEO all scored 100 while Perf read 50).
+//
+// To restore real perf enforcement, run this against a faster or self-hosted
+// runner, or on a schedule from a known machine. Do NOT "fix" it by lowering
+// PERF_MIN — the site scores 79-85 on honest hardware; the budget is not the
+// thing that is wrong.
+const BENCHMARK_MIN = Number(process.env.LH_BENCHMARK_MIN ?? 1300);
 const benchmarkIndex = data.environment?.benchmarkIndex ?? null;
 const runnerTooSlow = benchmarkIndex != null && benchmarkIndex < BENCHMARK_MIN;
 

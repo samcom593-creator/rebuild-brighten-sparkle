@@ -61,8 +61,55 @@ async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; in
 
   if (!agent) return { ok: false, error: "Agent record not found" };
 
-  const token = agent.insuracloud_api_token || defaultToken;
-  if (!token) return { ok: false, error: "No InsuraCloud API token configured (agent or default)" };
+  // ATTRIBUTION GUARD (2026-08-11).
+  //
+  // `agent.insuracloud_api_token || defaultToken` was the misattribution bug.
+  // InsuraCloud's POST /api/deals payload carries no producer field — carrierId,
+  // client details, policy number, premiums, externalId, and nothing else — so
+  // the deal is credited to WHOEVER'S SESSION POSTS IT. The default token is
+  // Sam's harvested connect.sid.
+  //
+  // Measured on the live queue: of the 3 push-eligible deals, 2 are Kolade
+  // Ayedun's (insuracloud_user_id 792) and neither he nor Sam has a per-agent
+  // token. Under the old line both would have posted as Sam (user 211),
+  // crediting him with another producer's $1,531.68 inside agentlink_book —
+  // the table commissions and every leaderboard are computed from.
+  //
+  // That never fired only because the stored credential is an unusable al_ API
+  // key. An accident is not a safety property: the moment anyone "fixes the
+  // auth" — which the open backlog explicitly asked the next worker to do — the
+  // fallback silently starts misattributing other people's business.
+  //
+  // So the fallback is now scoped to its owner. A deal belonging to any other
+  // producer needs that producer's own token and fails loudly until it has one.
+  // INSURACLOUD_DEFAULT_TOKEN_AGENT_ID names the agent the shared token
+  // actually belongs to; unset means the shared token is used for nobody.
+  const defaultTokenOwnerId = Deno.env.get("INSURACLOUD_DEFAULT_TOKEN_AGENT_ID") ?? "";
+  const ownToken = agent.insuracloud_api_token;
+  const mayUseDefault = defaultTokenOwnerId !== "" && deal.agent_id === defaultTokenOwnerId;
+  const token = ownToken || (mayUseDefault ? defaultToken : null);
+
+  if (!token) {
+    const who = (agent as { profiles?: { full_name?: string } })?.profiles?.full_name
+      ?? deal.agent_id;
+    // Name the ACTUAL blocker. Three different states used to collapse into one
+    // sentence, and this integration has already lost four months to an error
+    // string that named the wrong fix: 1,058 deals said "No InsuraCloud API
+    // token configured" while the real problem was that the only token anyone
+    // had was a read-only al_ API key. A diagnostic that points at the wrong
+    // repair is worse than no diagnostic, because someone acts on it.
+    let error: string;
+    if (!defaultToken && !ownToken) {
+      error =
+        `No InsuraCloud credential exists anywhere for ${who}: the agent has no insuracloud_api_token and the INSURACLOUD_API_TOKEN secret is unset. Note a connect.sid session is required — an al_ API key cannot POST deals (that endpoint is read-only).`;
+    } else if (!mayUseDefault) {
+      error =
+        `Refusing to push: ${who} has no InsuraCloud token of their own, and the shared session belongs to a different producer. POST /api/deals carries no producer field, so this would credit the deal to whoever's session posts it and corrupt attribution in agentlink_book. Harvest a per-agent token, or set INSURACLOUD_DEFAULT_TOKEN_AGENT_ID if the shared session genuinely belongs to this agent.`;
+    } else {
+      error = "No InsuraCloud API token configured";
+    }
+    return { ok: false, error };
+  }
 
   // Resolve carrier
   let insuracloudCarrierId: number | null = null;

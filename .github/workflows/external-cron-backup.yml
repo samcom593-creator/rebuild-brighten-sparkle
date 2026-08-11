@@ -1,10 +1,36 @@
 name: External cron backup (pg_cron resilience)
 
-# pg_cron in this Supabase project goes silent every 1-2 days because the
-# bgworker dies and only a project Restart brings it back. This workflow is
-# our independent heartbeat: we hit bot-sql and fire the most critical sync
+# WHY THIS EXISTS: pg_cron in this Supabase project was going silent because
+# the bgworker died and only a project Restart brought it back. This workflow
+# is our independent heartbeat: we hit bot-sql and fire the most critical sync
 # jobs directly, so that even if pg_cron is dead for 48 hours the agent-link
 # / deal / lead pipelines keep moving.
+#
+# THAT PREMISE, RE-MEASURED 2026-08-11 — it used to read "goes silent every
+# 1-2 days", present tense, undated. It has not been true for any day we can
+# observe. Over the FULL retention of cron.job_run_details (2026-06-11 →
+# 2026-08-11, 516,985 rows / 50 jobs / 61 days) the five worst gaps between
+# consecutive runs are 70/67/67/67/66s, and over 7d / 51,832 samples the
+# distribution is p50 0s · p90 60s · p99 60s · max 65s with ZERO gaps > 600s.
+# pg_cron has never missed a beat by more than 70 seconds in the observable
+# window. Three consequences worth carrying, none of them "delete this file":
+#   1. The gap > 600 push in "Check pg_cron heartbeat" below has been
+#      unreachable for 61 days — its threshold sits 8.6x above the worst
+#      observed gap. It is correctly SILENT, not broken: the query is
+#      now()-max(start_time), so a dead bgworker inserts no rows, the gap
+#      grows, and it fires. Do not "fix" it by lowering the threshold; 600s
+#      is the right bound for a 60s scheduler.
+#   2. Every tick here fires agentlink-cookie-sync redundantly with a pg_cron
+#      that is already firing it every 60s. That redundancy is the POINT of a
+#      safety net, but it is why this leg's timeout/verdict behaviour has cost
+#      four separate waves — see the Fire-critical-jobs block below.
+#   3. The premise may have been true when written; retention starts
+#      2026-06-11 and cannot see before it. Re-measure before acting on it —
+#      do not inherit this comment's story either. Query:
+#        SELECT EXTRACT(EPOCH FROM (start_time - LAG(start_time)
+#          OVER (ORDER BY start_time))) FROM (SELECT DISTINCT start_time
+#          FROM cron.job_run_details) s;
+# A net you delete is deleted the day before you need it. Keeping it.
 #
 # CADENCE, MEASURED — this header used to claim "every 10 minutes". It is not
 # true and the difference is load-bearing for anything that alerts off this

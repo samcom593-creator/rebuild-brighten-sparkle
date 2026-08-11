@@ -183,6 +183,22 @@ async function processDeal(dealId: string): Promise<{ deal_id: string; ok: boole
     return { deal_id: dealId, ok: true };
   }
 
+  // wave-outbox-direction 2026-08-11: the sweep now reads the eligibility view,
+  // but processDeal is also reachable directly by deal_id from the autopush
+  // trigger and from a manual retry in AutomationHub. Re-check here so no
+  // caller can route an imported or already-present policy to pushOne(). The
+  // trigger carries the same rule, so this is the second of two locks, not the
+  // only one.
+  const { data: eligible } = await supabase
+    .from("v_insuracloud_push_eligible")
+    .select("id")
+    .eq("id", dealId)
+    .maybeSingle();
+
+  if (!eligible) {
+    return { deal_id: dealId, ok: true };
+  }
+
   const result = await pushOne(deal as DealRow);
 
   if (result.ok) {
@@ -204,11 +220,20 @@ async function processDeal(dealId: string): Promise<{ deal_id: string; ok: boole
 }
 
 async function sweepUnsynced(): Promise<{ processed: number; succeeded: number; failed: number }> {
+  // wave-outbox-direction 2026-08-11: this used to select `deals` directly on
+  // (synced_to_insuracloud_at IS NULL AND status <> 'draft') with no dedupe,
+  // which described 1,759 rows. 1,749 of them are source='agent_link' — they
+  // came FROM InsuraCloud via agentlink_book — and 1,667 carry a policy number
+  // the destination is already holding. The only thing standing between that
+  // query and 1,667 duplicate policies in the book Sam's commissions are
+  // computed from was the stored token being an unusable al_ api-key. The
+  // session-cookie branch below works today (verified live against
+  // /api/csrf-token and /api/deals), so that accident is not a safety net.
+  // v_insuracloud_push_eligible applies both rules live. Measured at cutover:
+  // 1,759 -> 10 eligible, $9,104.04 AP.
   const { data: deals } = await supabase
-    .from("deals")
+    .from("v_insuracloud_push_eligible")
     .select("id")
-    .is("synced_to_insuracloud_at", null)
-    .neq("status", "draft")
     .order("created_at", { ascending: true })
     .limit(SWEEP_BATCH_SIZE);
 

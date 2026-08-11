@@ -48,13 +48,62 @@ async function logNotification(supabase: any, data: any) {
   }
 }
 
+type Caller = { service: boolean; userId: string | null; roles: string[] };
+
+async function authenticateCaller(req: Request, supabase: any): Promise<Caller | null> {
+  const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  if (token === serviceRoleKey) return { service: true, userId: null, roles: ["service_role"] };
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return null;
+  const { data: roleRows, error: roleError } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", data.user.id);
+  if (roleError) return null;
+  return {
+    service: false,
+    userId: data.user.id,
+    roles: (roleRows ?? []).map((row: any) => String(row.role)),
+  };
+}
+
+async function callerCanWorkLead(supabase: any, caller: Caller, lead: any): Promise<boolean> {
+  if (caller.service) return true;
+  if (caller.roles.some((role) => ["admin", "super_admin", "owner", "va", "va_manager"].includes(role))) {
+    return true;
+  }
+  if (!caller.userId) return false;
+  if (lead.hiring_manager_user_id === caller.userId) return true;
+  const { data: ownAgents, error } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("user_id", caller.userId);
+  if (error) return false;
+  const ownIds = new Set((ownAgents ?? []).map((agent: any) => String(agent.id)));
+  return [lead.assigned_agent_id, lead.assigned_manager_id, lead.referral_manager_id, lead.recruiter_id]
+    .some((id) => id && ownIds.has(String(id)));
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { phone, message, applicationId, agedLeadId } = await req.json();
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false },
+    });
+    const caller = await authenticateCaller(req, supabase);
+    if (!caller) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+
+    const { phone: requestedPhone, to, message, applicationId, agedLeadId } = await req.json();
+    let phone = requestedPhone || to;
 
     if (!phone || !message) {
       return new Response(
@@ -63,7 +112,68 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const cleaned = cleanPhone(phone);
+    if (typeof message !== "string" || !message.trim() || message.length > 160) {
+      return new Response(
+        JSON.stringify({ success: false, error: "message must contain 1 to 160 characters" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+
+    let scopedLead: any = null;
+    if (applicationId) {
+      const { data, error } = await supabase
+        .from("applications")
+        .select("phone, carrier, phone_bad_at, sms_consent_given, hiring_manager_user_id, assigned_agent_id, referral_manager_id, recruiter_id")
+        .eq("id", applicationId)
+        .single();
+      if (error || !data) {
+        return new Response(JSON.stringify({ success: false, error: "Application not found" }), {
+          status: 404, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      scopedLead = data;
+      if (!(await callerCanWorkLead(supabase, caller, data))) {
+        return new Response(JSON.stringify({ success: false, error: "Forbidden" }), {
+          status: 403, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      if (data.phone_bad_at) {
+        return new Response(JSON.stringify({ success: false, error: "Phone is marked bad" }), {
+          status: 409, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      if (!caller.service && data.sms_consent_given !== true) {
+        return new Response(JSON.stringify({ success: false, error: "SMS consent is not recorded" }), {
+          status: 409, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      phone = data.phone;
+    } else if (agedLeadId) {
+      const { data, error } = await supabase.from("aged_leads").select("*").eq("id", agedLeadId).single();
+      if (error || !data) {
+        return new Response(JSON.stringify({ success: false, error: "Lead not found" }), {
+          status: 404, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      scopedLead = data;
+      if (!(await callerCanWorkLead(supabase, caller, data))) {
+        return new Response(JSON.stringify({ success: false, error: "Forbidden" }), {
+          status: 403, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      if (data.phone_bad_at) {
+        return new Response(JSON.stringify({ success: false, error: "Phone is marked bad" }), {
+          status: 409, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+      phone = data.phone;
+    } else if (!caller.service && !caller.roles.some((role) => ["admin", "super_admin", "owner", "va", "va_manager"].includes(role))) {
+      return new Response(JSON.stringify({ success: false, error: "A scoped lead id is required" }), {
+        status: 403, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const cleaned = cleanPhone(String(phone));
     if (cleaned.length !== 10) {
       return new Response(
         JSON.stringify({ error: "Invalid phone number — must be 10 digits" }),
@@ -71,10 +181,13 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
-    });
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendKey) {
+      return new Response(JSON.stringify({ success: false, error: "SMS provider is not configured" }), {
+        status: 503, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+    const resend = new Resend(resendKey);
 
     const results: { carrier: string; success: boolean; error?: string }[] = [];
     let successCount = 0;
@@ -133,14 +246,8 @@ const handler = async (req: Request): Promise<Response> => {
       else if (distinct.length > 1) carrierConflict = distinct;
     }
 
-    if (!knownCarrier && applicationId) {
-      const { data: appCarrier } = await supabase
-        .from("applications")
-        .select("carrier")
-        .eq("id", applicationId)
-        .not("carrier", "is", null)
-        .maybeSingle();
-      if (appCarrier?.carrier) knownCarrier = String(appCarrier.carrier).toLowerCase();
+    if (!knownCarrier && scopedLead?.carrier) {
+      knownCarrier = String(scopedLead.carrier).toLowerCase();
     }
 
     const noCarrierReason = (): string =>

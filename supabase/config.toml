@@ -77,7 +77,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-outreach-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-aged-lead-email]
 verify_jwt = false
@@ -329,7 +329,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-sms-auto-detect]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-batch-blast]
 verify_jwt = false
@@ -726,3 +726,6 @@ verify_jwt = false
 
 [functions.calendly-backfill]
 verify_jwt = false
+
+[functions.apex-outbox-dispatcher]
+verify_jwt = true

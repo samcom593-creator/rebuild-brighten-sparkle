@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Megaphone, Pin, TrendingUp, RefreshCw, Send, Plus, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { looseSupabase } from "@/lib/looseSupabase";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
@@ -27,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { formatTimeAgo } from "@/lib/dateUtils";
+import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 
 interface Announcement {
   id: string;
@@ -72,29 +74,12 @@ export default function Announcements() {
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: "", body: "", priority: "normal", pinned: false });
-  const [showDealForm, setShowDealForm] = useState(false);
-  const [dealForm, setDealForm] = useState({ premium: "", product: "Final Expense", note: "" });
-
-  const myAgent = useQuery({
-    queryKey: ["my-agent-id", (user as any)?.id],
-    enabled: !!(user as any)?.id,
-    queryFn: async () => {
-      // agents has no full_name/avatar_url — selecting them 400'd the query, so
-      // myAgent was always null and 'Post a Deal' was dead for all 160 agents.
-      const { data } = await supabase
-        .from("agents" as any)
-        .select("id, display_name")
-        .eq("user_id", (user as any).id)
-        .maybeSingle();
-      return data as any;
-    },
-  });
 
   const announcements = useQuery({
     queryKey: ["announcements-active"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("announcements" as any)
+      const { data, error } = await looseSupabase
+        .from<Announcement>("announcements")
         .select("id, title, body, content, category, priority, pinned, is_active, published_at, created_at")
         .eq("is_active", true)
         .order("pinned", { ascending: false })
@@ -109,8 +94,8 @@ export default function Announcements() {
   const feed = useQuery({
     queryKey: ["news-feed"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("v_culture_feed" as any)
+      const { data, error } = await looseSupabase
+        .from<CultureFeedRow>("v_culture_feed")
         .select("id, event_type, created_at, annual_premium, product_sold, agent_name, agent_photo, draft_hook")
         .order("created_at", { ascending: false })
         .limit(50);
@@ -132,7 +117,7 @@ export default function Announcements() {
         is_active: true,
         published_at: new Date().toISOString(),
       };
-      const { error } = await supabase.from("announcements" as any).insert(payload as any);
+      const { error } = await looseSupabase.from<Announcement>("announcements").insert(payload);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -141,29 +126,7 @@ export default function Announcements() {
       setShowForm(false);
       qc.invalidateQueries({ queryKey: ["announcements-active"] });
     },
-    onError: (e: any) => toast.error(e?.message || "Failed to post"),
-  });
-
-  const postDeal = useMutation({
-    mutationFn: async () => {
-      if (!myAgent.data?.id) throw new Error("No agent profile linked to your user · ask admin to link agents.user_id");
-      const premium = parseFloat(dealForm.premium);
-      if (!Number.isFinite(premium) || premium <= 0) throw new Error("Enter a premium > 0");
-      const { error } = await supabase.rpc("fn_post_deal_celebration" as any, {
-        p_agent_id: myAgent.data.id,
-        p_annual_premium: premium,
-        p_product_sold: dealForm.product,
-        p_note: dealForm.note || null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Deal posted to the feed");
-      setDealForm({ premium: "", product: "Final Expense", note: "" });
-      setShowDealForm(false);
-      qc.invalidateQueries({ queryKey: ["news-feed"] });
-    },
-    onError: (e: any) => toast.error(e?.message || "Failed to post deal"),
+    onError: (error: unknown) => toast.error(error instanceof Error ? error.message : "Failed to post"),
   });
 
   // Severity text tone only — the priority word itself is the second channel
@@ -195,16 +158,14 @@ export default function Announcements() {
               <RefreshCw className={cn("mr-1.5 h-4 w-4", announcements.isFetching && "animate-spin")} />
               Refresh
             </Button>
-            <Button
-              size="sm"
-              variant="default"
-              className="h-10 sm:h-9"
-              aria-pressed={showDealForm}
-              onClick={() => setShowDealForm((v) => !v)}
-            >
-              <Trophy className="mr-1.5 h-4 w-4" />
-              Post a Deal
-            </Button>
+            <SubmitDealDialog
+              trigger={
+                <Button size="sm" variant="default" className="h-10 sm:h-9">
+                  <Trophy className="mr-1.5 h-4 w-4" />
+                  Add Deal
+                </Button>
+              }
+            />
             {isAdmin && (
               <Button
                 size="sm"
@@ -289,81 +250,6 @@ export default function Announcements() {
                   Publish
                 </Button>
               </div>
-            </div>
-          </div>
-        </GlassCard>
-      )}
-
-      {/* POST A DEAL FORM */}
-      {showDealForm && (
-        <GlassCard className="p-4">
-          <div className="mb-1 flex items-baseline justify-between gap-2">
-            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-              <Trophy className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="truncate">Post a Deal</span>
-            </h3>
-            {!myAgent.data?.id && (
-              <span className="shrink-0 rounded-sm border border-rose-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-400">
-                No agent linked
-              </span>
-            )}
-          </div>
-          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-            A posted deal lands on the live feed instantly, so the whole floor sees the win while it is still warm.
-          </p>
-
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Input
-                type="number"
-                placeholder="Annual premium ($)"
-                aria-label="Annual premium in dollars"
-                className="h-10 tabular-nums sm:h-9"
-                value={dealForm.premium}
-                onChange={(e) => setDealForm({ ...dealForm, premium: e.target.value })}
-              />
-              <select
-                aria-label="Product sold"
-                className="h-10 rounded-sm border border-border bg-background px-3 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
-                value={dealForm.product}
-                onChange={(e) => setDealForm({ ...dealForm, product: e.target.value })}
-              >
-                <option>Final Expense</option>
-                <option>Whole Life</option>
-                <option>Term Life</option>
-                <option>IUL</option>
-                <option>Annuity</option>
-                <option>Mortgage Protection</option>
-                <option>Children's Whole Life</option>
-                <option>Supplemental Health</option>
-                <option>Other</option>
-              </select>
-            </div>
-            <Textarea
-              placeholder="Brag a little — what made this one yours? (optional)"
-              aria-label="Deal note"
-              value={dealForm.note}
-              onChange={(e) => setDealForm({ ...dealForm, note: e.target.value })}
-              rows={2}
-            />
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-10 flex-1 sm:h-9 sm:flex-none"
-                onClick={() => setShowDealForm(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                className="h-10 flex-1 sm:h-9 sm:flex-none"
-                disabled={!dealForm.premium || postDeal.isPending || !myAgent.data?.id}
-                onClick={() => postDeal.mutate()}
-              >
-                <Trophy className="mr-1.5 h-4 w-4" />
-                {postDeal.isPending ? "Posting…" : "Celebrate It"}
-              </Button>
             </div>
           </div>
         </GlassCard>

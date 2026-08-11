@@ -47,11 +47,13 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { looseSupabase } from "@/lib/looseSupabase";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
+import { QuickAddAgentDialog } from "@/components/onboarding/QuickAddAgentDialog";
+import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -191,203 +193,27 @@ export function GlobalSidebar({
   }, []);
 
   const navSections = useMemo<NavSection[]>(() => {
-    // v24 Phase 7 · AgentLink fidelity sidebar prune
-    // PRIMARY: 6 top-level items (mirrors AgentLink's restraint)
-    // MORE: collapsible group with the long tail
-    // OLD: only renders if there are archive entries
-    const primary: NavItem[] = [
+    const items: NavItem[] = [
       { icon: LayoutDashboard, label: "Command Center", href: "/dashboard", special: true },
-      // 2026-06-17 — Sam directive: "biggest problem is the calendars and the
-      // user what to do list ... I could just tap circles and just mark that
-      // done shit." Native daily flow surface, replaces Todoist dep.
-      // MP-230 (2026-07-01): Today removed per Sam directive.
     ];
-    const more: NavItem[] = [];
-    const oldApplicants: NavItem[] = [];
 
-    if (isAdmin) {
-      // 2026-06-14 LESS-IS-MORE refactor (Sam's directive):
-      // "should probably be less than half · make this practical · use logic
-      //  for a high-level agency · Sam = owner · managers = franchise · agents."
-      //
-      // PRIMARY = daily-flow surfaces (Applications hoisted per Sam: "applications
-      // always should be the highest").
-      // MORE = the franchise+admin tail. ~14 items max. Anything not used daily,
-      // weekly, or as a recurring leak-detection step is GONE.
-      primary.push(
-        { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
-        // MP-230 (2026-07-01): Inbound Leads removed per Sam directive.
-        // Sam 2026-06-17 directive: "I see no call center make sure all is live"
-        { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center", special: true },
-        // Sam 2026-06-16 directive: "CRM, put it way higher up." → CRM hoisted to PRIMARY
-        { icon: Heart, label: "CRM", href: "/dashboard/crm", special: true },
-        { icon: Award, label: "Contracts", href: "/dashboard/contracts", special: true },
-        { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
-      );
-      more.push(
-        // Headhunters (where applications come from → who joins)
-        // MP-230 (2026-07-01): Headhunters Inbox removed per Sam directive.
-        // MP-230 (2026-07-01): Headhunters Funnels removed per Sam directive.
-        // MP-230 (2026-07-01): Headhunters Tracker removed per Sam directive.
-        // Sam 2026-06-16: Headhunters Calendar removed — "remove headhunter's calendar as a whole"
-        { icon: PhoneCall, label: "Headhunter", href: "/dashboard/interviews", special: true },
-        // MP-264 (2026-07-24): recovery queue for the 105 Calendly bookings the
-        // webhook silently dropped. Catch Up mode lives here.
-        { icon: Rocket, label: "Interview Recovery", href: "/dashboard/interview-recovery", special: true },
-        { icon: TrendingUp, label: "Reactivation", href: "/dashboard/reactivation", special: true },
-        // Sam 2026-06-16: Whales removed — "remove whales as a whole"
-        // Production + money
-        { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
-        { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
-        // Sam 2026-06-16: Finances · CFO removed — "remove the finance as CFO"
-        // Franchise mgmt (Sam owns · managers run their own)
-        // MP-230 (2026-07-01): Team Analytics + Hierarchy + Builders + Managers removed per Sam directive.
-        // Culture + comms (drives momentum, low maintenance)
-        { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },
-        // 2026-07-27: /dashboard/admin/content-command was built and routed but reachable
-        // ONLY from Sam HQ — it was in no nav. Meanwhile social_bot_drafts holds 559 drafts
-        // awaiting approval (newest today) against 1 approved ever and 0 shipped. The
-        // content bot has been writing daily into a queue with no front door.
-        { icon: PenSquare, label: "Content Command", href: "/dashboard/admin/content-command", special: true },
-        // Sam 2026-06-16: Scripts removed — "scripts you can also remove those"
-        { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
-        // 2026-08-10: live apex-resources hub (recordings/courses/library) in-app
-        { icon: Library, label: "Training Hub", href: "/dashboard/training-hub", special: true },
-        // Admin hub (everything that isn't daily flow)
-        // MP-230 (2026-07-01): Agent Duplicates removed per Sam directive.
-        // MP-232: licensed applicants bypass Calendly; call now.
-        { icon: Inbox, label: "Licensed Inbox", href: "/admin/licensed-inbox", special: true },
-        // MP-249 (2026-07-06): Sam directive "just integrate both of them and do
-        // both those tasks in one in one spot." Unified /admin/unlicensed-all now
-        // handles applicants + Excel-imported aged_leads via v_unlicensed_all UNION
-        // view; stage picker is tap-to-cycle; License Push cohorts still reachable
-        // via the "By stage" filter. RecoveryQueue kept as a dedicated cohort
-        // grouping for people who like that layout — same underlying data.
-        { icon: GraduationCap, label: "Unlicensed Queue", href: "/admin/unlicensed-all", special: true },
-        // MP-250 (2026-07-07): raw Xcel DataExport CSV upload → seeds aged_leads,
-        // upgrades matched applications to licensed. Sits next to Unlicensed Queue
-        // because that's where Sam looks when he's about to run the import.
-        { icon: FileSpreadsheet, label: "Import XCEL", href: "/admin/xcel-import", special: true },
-        { icon: Flame, label: "License Push (cohorts)", href: "/admin/recovery-queue", special: true },
-        // 2026-07-25: the month-agnostic home the removed June Hires Punch List
-        // needed. Reads the 8-rung onboarding sequence for every active agent, so
-        // no month is ever hard-coded. Rung 2 (AgentLink invite) is the biggest
-        // throughput block and deep-links to /admin/missing-al-link.
-        { icon: UserCog, label: "Onboarding Ladder", href: "/dashboard/onboarding-ladder", special: true },
-        // 2026-07-01 Sam: producer weekly trend + 3-week drop alarm (Daniel use case).
-        { icon: TrendingDown, label: "Producer Trends", href: "/admin/producer-trends", special: true },
-        // MP-230 (2026-07-01): AgentLink Backfill sidebar entry removed per Sam directive.
-        // 2026-08-07: two agent rows sharing one AgentLink id split that person's
-        // production across both. One click here collapses them onto the canonical.
-        { icon: GitMerge, label: "Agent Duplicates", href: "/admin/agent-duplicates", special: true },
-        { icon: Settings, label: "Admin", href: "/dashboard/command" },
-      );
-      oldApplicants.push(
-        { icon: Archive, label: "Old Managers", href: "/dashboard/old-applicants/managers" },
-        { icon: Archive, label: "Old Licensed Recruiters", href: "/dashboard/old-applicants/licensed-recruiters" },
-      );
-    } else if (isManager) {
-      // MANAGER = franchise operator. Their daily flow is recruiting + running
-      // their downline of producing agents. They do NOT need: client marketing,
-      // calling cards, my landing page, training modules. Those are noise.
-      primary.push(
-        { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
-        // MP-230 (2026-07-01): Inbound Leads removed per Sam directive.
-        { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center", special: true },
-        { icon: Heart, label: "CRM", href: "/dashboard/crm", special: true },
-        // MP-230 (2026-07-01): My Team removed per Sam directive.
-        { icon: BarChart3, label: "Production", href: "/dashboard/leaderboard" },
-      );
-      more.push(
-        // MP-230 (2026-07-01): Headhunters Inbox removed per Sam directive.
-        // MP-230 (2026-07-01): Headhunters Funnels removed per Sam directive.
-        // MP-230 (2026-07-01): Headhunters Tracker removed per Sam directive.
-        // Sam 2026-06-16: Headhunters Calendar removed for manager nav too
-        { icon: PhoneCall, label: "Headhunter", href: "/dashboard/interviews", special: true },
-        // MP-264 (2026-07-24): recovery queue for the 105 Calendly bookings the
-        // webhook silently dropped. Catch Up mode lives here.
-        { icon: Rocket, label: "Interview Recovery", href: "/dashboard/interview-recovery", special: true },
-        { icon: TrendingUp, label: "Reactivation", href: "/dashboard/reactivation", special: true },
-        { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
-        // MP-230 (2026-07-01): Hierarchy removed per Sam directive.
-        { icon: TrendingUp, label: "Business Analytics", href: "/dashboard/business-analytics" },
-        { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
-        { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements" },
-        // Sam 2026-06-16: Scripts removed for manager nav too
-        { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
-        // 2026-08-10: live apex-resources hub (recordings/courses/library) in-app
-        { icon: Library, label: "Training Hub", href: "/dashboard/training-hub", special: true },
-      );
-      oldApplicants.push(
-        { icon: Archive, label: "Old Managers", href: "/dashboard/old-applicants/managers" },
-        { icon: Archive, label: "Old Licensed Recruiters", href: "/dashboard/old-applicants/licensed-recruiters" },
-      );
-    } else if (isVaManager || isVa) {
-      // VA OPS (2026-07-27 Sam directive: "this is all milver can see — how
-      // could he possibly work effectively"). VA manager + sub-VAs get the
-      // recruiting-operations work queues. Production/finance surfaces stay
-      // excluded on purpose (matches the 2026-07-26 AgentLink visibility
-      // lockdown — VAs work the pipeline, they don't see the money).
-      primary.push(
-        { icon: Briefcase, label: "Applications", href: "/dashboard/applicants", special: true },
-        { icon: PhoneCall, label: "Headhunter", href: "/dashboard/interviews", special: true },
-        { icon: Rocket, label: "Interview Recovery", href: "/dashboard/interview-recovery", special: true },
-        { icon: GraduationCap, label: "Unlicensed Queue", href: "/admin/unlicensed-all", special: true },
-      );
-      if (isVaManager) {
-        primary.push({ icon: Users, label: "VA Team", href: "/va-team", special: true });
-      }
-      more.push(
-        { icon: Inbox, label: "Licensed Inbox", href: "/admin/licensed-inbox", special: true },
-        { icon: Flame, label: "License Push (cohorts)", href: "/admin/recovery-queue", special: true },
-        { icon: UserCog, label: "Onboarding Ladder", href: "/dashboard/onboarding-ladder", special: true },
-      );
-      if (isVaManager) {
-        // Bulk XCEL ingest writes aged_leads + upgrades applications — manager-tier only.
-        more.push({ icon: FileSpreadsheet, label: "Import XCEL", href: "/admin/xcel-import", special: true });
-      }
-    } else {
-      // AGENT = the daily producer. Their flow: take inbound calls → write apps
-      // → check production → reference scripts/carriers/comp. Anything beyond
-      // that is friction. KILLED: Calling Cards, Client Marketing, My Landing
-      // Page, Annuity Training, Transfer Requests, Calendar (lives in cockpit),
-      // Help Center (footer link), Needs Analysis + Quoter (in-call tools live
-      // in the dialer dock, not nav).
-      primary.push(
-        // MP-230 (2026-07-01): Inbound Leads removed per Sam directive.
-        { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center", special: true },
-        { icon: BarChart3, label: "Production", href: "/numbers" },
-        { icon: Trophy, label: "Business Analytics", href: "/dashboard/business-analytics", special: true },
-        { icon: Megaphone, label: "Announcements", href: "/dashboard/announcements", special: true },
-      );
-      more.push(
-        { icon: Briefcase, label: "Book of Business", href: "/dashboard/book-of-business" },
-        { icon: Award, label: "My Contracts", href: "/dashboard/contracts", special: true },
-        // Sam 2026-06-16: Scripts removed for agent nav too
-        { icon: GraduationCap, label: "Apex Course", href: "/course-catalog" },
-        // 2026-08-10: live apex-resources hub — the trainings/recordings agents
-        // used to reach via the password-gated external site, now in-app.
-        { icon: Library, label: "Training Hub", href: "/dashboard/training-hub", special: true },
-        // 2026-07-29: "Licensing" → /dashboard/pre-licensing removed from the AGENT branch.
-        // This item was only ever pushed in the plain-agent else-branch, but App.tsx:659
-        // gates that route `requireAdmin allowManagers` — so the single role that could see
-        // the link was the one role that could not open it. ProtectedRoute silently
-        // <Navigate>s back to /dashboard: no toast, no explanation. 471 agents had a nav
-        // item that quietly bounced them.
-        //
-        // NOT repointed at /dashboard/prelicensing (App.tsx:628) despite that route being
-        // ungated: PrelicensingManager is a management surface — its own header says
-        // "Managers see their recruits; admins see everyone" — and it UPDATEs applications.
-        // Sending every agent into a tool that writes other people's records would be worse
-        // than the dead link. Agents keep "Apex Course" above, which is theirs.
-      );
+    if (isAdmin || isManager || isVaManager || isVa) {
+      items.push({ icon: Briefcase, label: "Recruiting", href: "/dashboard/recruiting", special: true });
     }
+    items.push({ icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center" });
+    if (isAdmin || isManager || isVaManager || isVa) {
+      items.push({ icon: Users, label: "Team", href: "/dashboard/team" });
+    }
+    items.push(
+      { icon: Award, label: "Contracting", href: "/dashboard/contracting" },
+      { icon: BarChart3, label: "Production", href: "/dashboard/production" },
+      { icon: TrendingUp, label: "Analytics", href: "/dashboard/analytics" },
+      { icon: Megaphone, label: "Community", href: "/dashboard/community" },
+      { icon: Library, label: "Resources", href: "/dashboard/resources" },
+    );
+    if (isAdmin) items.push({ icon: Settings, label: "Admin", href: "/dashboard/admin" });
 
-    return [
-      { label: "PRIMARY", items: primary },
-      ...(more.length ? [{ label: "MORE", items: more }] : []),
-      ...(oldApplicants.length ? [{ label: "OLD APPLICANTS", items: oldApplicants }] : []),
-    ];
+    return [{ label: "WORKSPACES", items: items.slice(0, 10) }];
   }, [isAdmin, isManager, isVaManager, isVa]);
 
   const handleLogout = useCallback(async () => {
@@ -528,21 +354,6 @@ export function GlobalSidebar({
                   <NotificationBell className="h-7 w-7 text-slate-400 hover:text-amber-400" />
                 </ConditionalTooltip>
               )}
-              {!isCollapsed && (isAdmin || isManager) && (
-                <AddAgentModal
-                  trigger={
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-amber-400 hover:bg-amber-400/10"
-                      style={{ touchAction: "manipulation" }}
-                      aria-label="Add agent"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  }
-                />
-              )}
               <ConditionalTooltip label={isCollapsed ? "Expand" : "Collapse"}>
                 <Button
                   variant="ghost"
@@ -556,24 +367,6 @@ export function GlobalSidebar({
               </ConditionalTooltip>
             </div>
           </div>
-
-          {isCollapsed && (isAdmin || isManager) && (
-            <div className="px-2 py-2 border-b border-slate-800">
-              <AddAgentModal
-                trigger={
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-center text-amber-400 hover:bg-amber-400/10"
-                    style={{ touchAction: "manipulation" }}
-                    aria-label="Add agent"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </Button>
-                }
-              />
-            </div>
-          )}
 
           {(isAdmin || isManager) && (
             <div className="px-2 py-2 border-b border-slate-800" ref={searchRef}>
@@ -667,24 +460,30 @@ export function GlobalSidebar({
                               target.setAttribute("data-busy", "1");
                               try {
                                 if (result.kind === "agent") {
-                                  await supabase.from("agent_onboarding_queue" as any).upsert(
+                                  const { error: queueError } = await looseSupabase.from("agent_onboarding_queue").upsert(
                                     [
                                       { agent_id: result.id, email_kind: "course",  target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
                                       { agent_id: result.id, email_kind: "discord", target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
                                     ],
                                     { onConflict: "agent_id,email_kind" },
                                   );
+                                  if (queueError) throw queueError;
                                   await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
                                   toast.success(`Course + Discord sent to ${result.name}`);
                                 } else {
                                   // Applicant: promote → agent → fires onboarding queue automatically.
-                                  const { data: newAgentId } = await (supabase as any).rpc("promote_applicant_to_agent", { p_application_id: result.id });
+                                  const { data: newAgentId, error: promoteError } = await supabase.rpc(
+                                    "promote_applicant_to_agent" as never,
+                                    { p_application_id: result.id } as never,
+                                  );
+                                  if (promoteError) throw promoteError;
                                   await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
                                   toast.success(`Promoted + course sent to ${result.name}`);
                                   if (newAgentId) openAgentProfile(newAgentId);
                                 }
-                              } catch (err: any) {
-                                toast.error(`Send failed: ${err?.message?.slice(0, 80) ?? "unknown"}`);
+                              } catch (error: unknown) {
+                                const message = error instanceof Error ? error.message : "unknown";
+                                toast.error(`Send failed: ${message.slice(0, 80)}`);
                               } finally {
                                 target.removeAttribute("data-busy");
                               }
@@ -763,21 +562,46 @@ export function GlobalSidebar({
           </nav>
 
           <div className="border-t border-slate-800 p-2">
-            {user && !isCollapsed && (isAdmin || isManager) && (
-              <div className="mb-2 px-2">
-                <AddAgentModal
-                  trigger={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start gap-2 border-amber-400/25 bg-amber-400/10 text-amber-400 hover:bg-amber-400/15"
-                      style={{ touchAction: "manipulation" }}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Agent
-                    </Button>
-                  }
-                />
+            {user && (
+              <div className={cn("mb-2 grid gap-1", isCollapsed ? "px-0" : "px-2")} aria-label="Global actions">
+                {(isAdmin || isManager || isVaManager || isVa) && (
+                  <QuickAddAgentDialog
+                    trigger={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "gap-2 border-amber-400/25 bg-amber-400/10 text-amber-400 hover:bg-amber-400/15",
+                          isCollapsed ? "w-full justify-center px-0" : "w-full justify-start",
+                        )}
+                        style={{ touchAction: "manipulation" }}
+                        aria-label="Add Agent"
+                      >
+                        <Plus className="h-4 w-4" />
+                        {!isCollapsed && "Add Agent"}
+                      </Button>
+                    }
+                  />
+                )}
+                {!isVa && !isVaManager && (
+                  <SubmitDealDialog
+                    trigger={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "gap-2 border-teal-400/25 bg-teal-400/10 text-teal-300 hover:bg-teal-400/15",
+                          isCollapsed ? "w-full justify-center px-0" : "w-full justify-start",
+                        )}
+                        style={{ touchAction: "manipulation" }}
+                        aria-label="Add Deal"
+                      >
+                        <Trophy className="h-4 w-4" />
+                        {!isCollapsed && "Add Deal"}
+                      </Button>
+                    }
+                  />
+                )}
               </div>
             )}
 

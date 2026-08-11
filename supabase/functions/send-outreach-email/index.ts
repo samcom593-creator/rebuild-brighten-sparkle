@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
-import { Resend } from "npm:resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +9,40 @@ const corsHeaders = {
 };
 
 const ADMIN_EMAIL = "sam@apex-financial.org";
+
+type Caller = { service: boolean; userId: string | null; roles: string[]; agentIds: string[] };
+
+async function authenticateCaller(req: Request, supabase: any, serviceRoleKey: string): Promise<Caller | null> {
+  const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  if (token === serviceRoleKey) {
+    return { service: true, userId: null, roles: ["service_role"], agentIds: [] };
+  }
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return null;
+  const [{ data: roleRows, error: roleError }, { data: agentRows, error: agentError }] = await Promise.all([
+    supabase.from("user_roles").select("role").eq("user_id", data.user.id),
+    supabase.from("agents").select("id").eq("user_id", data.user.id),
+  ]);
+  if (roleError || agentError) return null;
+  return {
+    service: false,
+    userId: data.user.id,
+    roles: (roleRows ?? []).map((row: any) => String(row.role)),
+    agentIds: (agentRows ?? []).map((row: any) => String(row.id)),
+  };
+}
+
+function callerCanWorkLead(caller: Caller, lead: any): boolean {
+  if (caller.service) return true;
+  if (caller.roles.some((role) => ["admin", "super_admin", "owner", "va", "va_manager"].includes(role))) {
+    return true;
+  }
+  if (caller.userId && lead.hiring_manager_user_id === caller.userId) return true;
+  const ownIds = new Set(caller.agentIds);
+  return [lead.assigned_agent_id, lead.assigned_manager_id, lead.referral_manager_id, lead.recruiter_id]
+    .some((id) => id && ownIds.has(String(id)));
+}
 
 async function getManagerEmailFromAgent(supabase: any, agentId: string): Promise<string | null> {
   try {
@@ -619,17 +653,28 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendApiKey) {
-      throw new Error("RESEND_API_KEY not configured");
-    }
-
-    const resend = new Resend(resendApiKey);
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    const caller = await authenticateCaller(req, supabase, supabaseKey);
+    if (!caller) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
 
-    const { applicationId, agentId, templateType, customSubject, customBody, leadSource } = await req.json() as {
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Email provider is not configured" }),
+        { status: 503, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+
+    const resend = new Resend(resendApiKey);
+
+    const { applicationId, agentId: requestedAgentId, templateType, customSubject, customBody, leadSource } = await req.json() as {
       applicationId: string;
       agentId: string;
       templateType: EmailTemplate;
@@ -642,7 +687,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (!applicationId) missingFields.push("applicationId");
     if (!templateType) missingFields.push("templateType");
     if (missingFields.length > 0) {
-      console.error(`Missing fields: ${missingFields.join(", ")}. Received payload:`, JSON.stringify({ applicationId, agentId, templateType, leadSource }));
+      console.error(`Missing fields: ${missingFields.join(", ")}. Received payload:`, JSON.stringify({ applicationId, templateType, leadSource }));
       return new Response(
         JSON.stringify({ success: false, error: `Missing required fields: ${missingFields.join(", ")}` }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -668,6 +713,39 @@ const handler = async (req: Request): Promise<Response> => {
       console.error(`Lead not found in ${tableName}:`, leadError);
       throw new Error(`Lead not found in ${tableName}`);
     }
+
+    if (!callerCanWorkLead(caller, lead)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Forbidden" }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+    const recipientEmail = String(lead.email ?? "").trim().toLowerCase();
+    if (!recipientEmail || recipientEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Lead has no valid email address" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+    const { data: unsubscribe, error: unsubscribeError } = await supabase
+      .from("email_unsubscribes")
+      .select("id")
+      .eq("email", recipientEmail)
+      .maybeSingle();
+    if (unsubscribeError) throw new Error(`Email preference check failed: ${unsubscribeError.message}`);
+    if (unsubscribe) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Recipient has unsubscribed" }),
+        { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+
+    const callerElevated = caller.service || caller.roles.some((role) =>
+      ["admin", "super_admin", "owner", "va", "va_manager"].includes(role)
+    );
+    const agentId = callerElevated
+      ? requestedAgentId
+      : (caller.agentIds.includes(requestedAgentId) ? requestedAgentId : caller.agentIds[0] ?? null);
 
     // Fetch agent name
     let agentName = "Apex Financial Team";
@@ -710,9 +788,9 @@ const handler = async (req: Request): Promise<Response> => {
     const ccList = [ADMIN_EMAIL, managerEmail].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     // Send email
-    const { error: emailError } = await resend.emails.send({
+    const { data: emailReceipt, error: emailError } = await resend.emails.send({
       from: "APEX Financial <notifications@apex-financial.org>",
-      to: [lead.email],
+      to: [recipientEmail],
       cc: ccList.length > 0 ? ccList : undefined,
       subject,
       html,
@@ -744,10 +822,16 @@ const handler = async (req: Request): Promise<Response> => {
       })
       .eq("id", applicationId);
 
-    console.log(`Email sent successfully: ${templateType} to ${lead.email}`);
+    console.log(`Email provider accepted: ${templateType} for application ${applicationId}`);
 
     return new Response(
-      JSON.stringify({ success: true, template: templateType }),
+      JSON.stringify({
+        success: true,
+        outcome: "provider_accepted",
+        template: templateType,
+        providerMessageId: emailReceipt?.id ?? null,
+        deliveryConfirmed: false,
+      }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {

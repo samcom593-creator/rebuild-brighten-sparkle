@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
     client_last_name,
     posted_at,
     status = "submitted",
-    source = "apex_post_deal",
+    source = "apex",
     notes,
   } = body ?? {};
   if (!annual_premium || Number(annual_premium) <= 0)

@@ -4,6 +4,14 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/healthz",
+      "destination": "/api/healthz"
+    },
+    {
+      "source": "/readiness",
+      "destination": "/api/readiness"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/:path*"
     },

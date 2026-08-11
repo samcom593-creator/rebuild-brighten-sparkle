@@ -6,11 +6,9 @@ import { GlobalSidebar } from "./GlobalSidebar";
 import { TopBar } from "./TopBar";
 import { ScrollProgress } from "./ScrollProgress";
 import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
-import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { RolePreviewBubbles } from "@/components/layout/RolePreviewBubbles";
-import { useAuth } from "@/hooks/useAuth";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigationGuard } from "@/hooks/useNavigationGuard";
@@ -31,7 +29,6 @@ const PageContent = memo(({ children, showPhoneBanner }: { children: ReactNode; 
 
 export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayoutProps) {
   const { isOpen, isFullscreen, toggleSidebar, toggleFullscreen, sidebarWidth } = useSidebarState();
-  const { isAdmin, isManager, isLoading: authLoading } = useAuth();
   const location = useLocation();
   const prevPathRef = useRef(location.pathname);
   const isDesktop = useIsDesktop();
@@ -71,19 +68,16 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
             >
               <Search className="h-5 w-5" />
             </Button>
-            {!authLoading && (isAdmin || isManager) && (
-              <AddAgentModal
-                trigger={
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Add agent"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </Button>
-                }
-              />
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10 gap-1.5 px-2.5"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open Add Agent and Add Deal actions"
+            >
+              <Plus className="h-4 w-4" />
+              Actions
+            </Button>
             <ThemeToggle />
             <Button
               variant="ghost"

@@ -16,12 +16,13 @@ interface LooseQuery<T> {
   order(column: string, options?: Record<string, unknown>): LooseQuery<T>;
   limit(count: number): Promise<LooseResult<T[]>>;
   maybeSingle(): Promise<LooseResult<T | null>>;
-  upsert(payload: Record<string, unknown>, options?: Record<string, unknown>): Promise<LooseResult<T>>;
+  insert(payload: Record<string, unknown> | Record<string, unknown>[]): Promise<LooseResult<T>>;
+  upsert(payload: Record<string, unknown> | Record<string, unknown>[], options?: Record<string, unknown>): Promise<LooseResult<T>>;
   update(payload: Record<string, unknown>): LooseUpdateBuilder<T>;
 }
 
 interface LooseSupabase {
-  from<T extends Record<string, unknown> = Record<string, unknown>>(table: string): LooseQuery<T>;
+  from<T extends object = Record<string, unknown>>(table: string): LooseQuery<T>;
 }
 
 export const looseSupabase = supabase as unknown as LooseSupabase;

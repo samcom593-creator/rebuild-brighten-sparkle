@@ -65,6 +65,8 @@
     "check:page-header-compact": "node scripts/check-page-header-compact.mjs",
     "check:rules-of-hooks": "node scripts/check-rules-of-hooks.mjs",
     "check:migration-versions": "node scripts/check-migration-versions.mjs",
+    "check:contact-actions": "node scripts/check-contact-actions.mjs",
+    "check:native-deals": "node scripts/check-native-deals.mjs",
     "check:typecheck-authority": "node scripts/check-typecheck-authority.mjs"
   },
   "dependencies": {

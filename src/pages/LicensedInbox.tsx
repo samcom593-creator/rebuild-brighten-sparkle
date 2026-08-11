@@ -13,16 +13,27 @@ import {
   MailX,
   AlertTriangle,
   Route,
+  Mail,
+  Send,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { QuickAddAgentDialog } from "@/components/onboarding/QuickAddAgentDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { GlassCard } from "@/components/ui/glass-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -34,8 +45,8 @@ import { formatTimeAgo } from "@/lib/dateUtils";
  *
  * Sam directive: when a *licensed* applicant applies, don't queue Calendly.
  * Call them NOW. This page is a tight, phone-first inbox showing every
- * licensed application sorted newest-first, with tap-to-call, tap-to-text,
- * and 5 fast disposition buttons that write to application_contact_log.
+ * licensed application sorted newest-first, with authorized call/text/email
+ * actions and fast disposition buttons backed by durable audit records.
  *
  * Contract:
  *   - source: applications where license_status='licensed' plus the dedicated
@@ -84,6 +95,29 @@ interface ToolkitInboxClient {
   from<T>(table: string): ToolkitInboxQuery<T>;
 }
 
+interface ContactActionResult {
+  ok: boolean;
+  replayed: boolean;
+  actionId: string;
+  status: "initiated" | "queued" | "processing" | "retrying" | "provider_accepted" | "fallback_required" | "failed" | "dead_letter";
+  channel: "call" | "sms" | "email";
+  recipient: string;
+  provider: string | null;
+  providerMessageId?: string | null;
+  deliveryConfirmed: boolean;
+}
+
+interface ContactComposerState {
+  row: LicensedRow;
+  channel: "sms" | "email";
+  idempotencyKey: string;
+}
+
+interface ContactRpcResult {
+  data: ContactActionResult | null;
+  error: { message: string } | null;
+}
+
 const toolkitInboxClient = supabase as unknown as ToolkitInboxClient;
 
 // MP-264 declutter: local copy of the shared relative-time ladder.
@@ -102,10 +136,14 @@ function licensedRowKey(row: Pick<LicensedRow, "id" | "origin">): string {
 
 export default function LicensedInbox() {
   usePageTitle("Licensed Inbox · Apex Admin");
-  const { user } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState<string | null>(null); // key = `${origin}:${id}:${outcome}`
+  const [composer, setComposer] = useState<ContactComposerState | null>(null);
+  const [contactSubject, setContactSubject] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactError, setContactError] = useState<string | null>(null);
+  const [contactReceipt, setContactReceipt] = useState<string | null>(null);
 
   const { data: rows, isLoading, isError, error } = useQuery<LicensedRow[]>({
     queryKey: ["licensed-inbox"],
@@ -118,7 +156,7 @@ export default function LicensedInbox() {
           )
           .eq("license_status", "licensed")
         // wave-p1k: exclude terminal dispositions so the inbox actually drains.
-        // markHired flips status='contracting', markPassed flips status='rejected'.
+        // The disposition RPC flips hired to contracting and passed to rejected.
         //
         // 2026-07-27: this list also carried 'hired', 'active' and 'terminated', none of
         // which are members of the application_status enum. Those are agent_status values.
@@ -188,87 +226,135 @@ export default function LicensedInbox() {
     });
   }, [rows, search]);
 
-  async function logContact(
+  function openComposer(row: LicensedRow, channel: "sms" | "email") {
+    const firstName = row.first_name?.trim() || "there";
+    setComposer({ row, channel, idempotencyKey: crypto.randomUUID() });
+    setContactSubject(channel === "email" ? "APEX follow-up" : "");
+    setContactMessage(
+      channel === "email"
+        ? `Hi ${firstName},\n\nFollowing up from APEX Financial. What is the best time to connect?\n\n— Sam`
+        : `Hi ${firstName} — Sam at APEX here. What is the best time to connect? Reply STOP to opt out.`,
+    );
+    setContactError(null);
+    setContactReceipt(null);
+  }
+
+  function renewContactAttemptAfterEdit() {
+    if (!contactError && !contactReceipt) return;
+    setComposer((current) => current ? { ...current, idempotencyKey: crypto.randomUUID() } : current);
+    setContactError(null);
+    setContactReceipt(null);
+  }
+
+  async function queueContactAction(
     row: LicensedRow,
-    channel: "call" | "sms" | "email" | "note",
-    outcome: string,
+    channel: "call" | "sms" | "email",
+    idempotencyKey: string,
+    subject?: string,
+    message?: string,
+  ): Promise<ContactActionResult> {
+    const { data, error } = await (supabase.rpc as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => PromiseLike<ContactRpcResult>)("queue_apex_contact_action", {
+      p_subject_kind: row.origin,
+      p_subject_id: row.id,
+      p_channel: channel,
+      p_idempotency_key: idempotencyKey,
+      p_subject: subject || null,
+      p_message: message || null,
+    });
+    if (error || !data?.ok) throw new Error(error?.message || "Contact action could not be queued");
+    return data;
+  }
+
+  async function startCall(row: LicensedRow) {
+    if (!row.phone) return;
+    const key = `${licensedRowKey(row)}:call_started`;
+    setBusy(key);
+    try {
+      await queueContactAction(row, "call", crypto.randomUUID());
+      window.location.href = `tel:${row.phone}`;
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Call could not start";
+      toast.error(message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function sendContactAction() {
+    if (!composer) return;
+    const key = `${licensedRowKey(composer.row)}:${composer.channel}_send`;
+    setBusy(key);
+    setContactError(null);
+    setContactReceipt(null);
+    try {
+      const action = await queueContactAction(
+        composer.row,
+        composer.channel,
+        composer.idempotencyKey,
+        contactSubject,
+        contactMessage,
+      );
+
+      if (action.status === "provider_accepted") {
+        setContactReceipt(`Provider accepted this ${composer.channel}; delivery is not yet confirmed.`);
+        return;
+      }
+
+      if (action.status === "fallback_required") {
+        if (composer.channel === "sms" && composer.row.phone) {
+          setContactReceipt("No verified SMS carrier is configured. Opening your device messaging app; the text is not logged as sent.");
+          window.location.href = `sms:${composer.row.phone}?body=${encodeURIComponent(contactMessage)}`;
+          return;
+        }
+        throw new Error("The configured provider is unavailable for this recipient");
+      }
+
+      const { data, error } = await supabase.functions.invoke("apex-outbox-dispatcher", {
+        body: { contactActionId: action.actionId },
+      });
+      if (error) throw new Error(error.message || "Contact provider could not be reached");
+      const receipt = Array.isArray(data?.receipts) ? data.receipts[0] : null;
+      if (!data?.ok || receipt?.status !== "provider_accepted") {
+        throw new Error(receipt?.error || "The provider did not accept this message. Retry is safe.");
+      }
+      setContactReceipt(
+        `${composer.channel === "email" ? "Email" : "Text"} accepted by ${action.provider ?? "provider"}. Delivery is not yet confirmed. Receipt ${String(receipt.providerMessageId ?? "recorded").slice(0, 32)}.`,
+      );
+      void qc.invalidateQueries({ queryKey: ["licensed-inbox"] });
+    } catch (caught) {
+      setContactError(caught instanceof Error ? caught.message : "Contact action failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function recordDisposition(
+    row: LicensedRow,
+    outcome: "called" | "voicemail" | "hired" | "passed",
   ) {
     const key = `${licensedRowKey(row)}:${outcome}`;
     setBusy(key);
     try {
-      const result = row.origin === "toolkit_agent"
-        ? await toolkitInboxClient
-            .from("apex_toolkit_agent_contact_log")
-            .insert({
-              toolkit_agent_id: row.id,
-              channel,
-              outcome,
-              logged_by: user?.id ?? null,
-            })
-        : await supabase
-            .from("application_contact_log" as never)
-            .insert({
-              application_id: row.id,
-              channel,
-              outcome,
-              logged_by: user?.id ?? null,
-            } as never);
-      const { error } = result;
-      if (error) {
-        console.error("[licensed-inbox] log failed:", error);
-        toast.error(`Log failed: ${error.message.slice(0, 80)}`);
-        return;
-      }
-      toast.success(`Logged: ${outcome.replace(/_/g, " ")}`);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function markHired(row: LicensedRow) {
-    const key = `${licensedRowKey(row)}:hired`;
-    setBusy(key);
-    try {
-      const result = row.origin === "toolkit_agent"
-        ? await toolkitInboxClient.from("apex_toolkit_agents").update({ status: "hired" }).eq("id", row.id)
-        : await supabase.from("applications").update({ status: "contracting" }).eq("id", row.id);
-      const { error } = result;
-      if (error) {
-        console.error("[licensed-inbox] hire flip failed:", error);
-        toast.error(`Hire flip failed: ${error.message.slice(0, 80)}`);
-        return;
-      }
-      await logContact(row, "note", "hired");
-      // wave-p1k: optimistically drop the row so the queue clears immediately;
-      // invalidate afterward to reconcile with the server.
-      qc.setQueryData<LicensedRow[]>(["licensed-inbox"], (prev) =>
-        (prev ?? []).filter((candidate) => licensedRowKey(candidate) !== licensedRowKey(row)),
+      const { data, error } = await (supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => PromiseLike<{ data: { ok?: boolean; terminal?: boolean } | null; error: { message: string } | null }>)(
+        "record_apex_licensed_disposition",
+        { p_subject_kind: row.origin, p_subject_id: row.id, p_outcome: outcome },
       );
-      qc.invalidateQueries({ queryKey: ["licensed-inbox"] });
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function markPassed(row: LicensedRow) {
-    const key = `${licensedRowKey(row)}:passed`;
-    setBusy(key);
-    try {
-      const result = row.origin === "toolkit_agent"
-        ? await toolkitInboxClient.from("apex_toolkit_agents").update({ status: "passed" }).eq("id", row.id)
-        : await supabase.from("applications").update({ status: "rejected" }).eq("id", row.id);
-      const { error } = result;
-      if (error) {
-        console.error("[licensed-inbox] pass flip failed:", error);
-        toast.error(`Pass flip failed: ${error.message.slice(0, 80)}`);
-        return;
+      if (error || !data?.ok) throw new Error(error?.message || "Disposition could not be recorded");
+      toast.success(`Recorded: ${outcome}`);
+      if (data.terminal) {
+        qc.setQueryData<LicensedRow[]>(["licensed-inbox"], (prev) =>
+          (prev ?? []).filter((candidate) => licensedRowKey(candidate) !== licensedRowKey(row)),
+        );
       }
-      await logContact(row, "note", "passed");
-      // wave-p1k: optimistic drop mirroring markHired.
-      qc.setQueryData<LicensedRow[]>(["licensed-inbox"], (prev) =>
-        (prev ?? []).filter((candidate) => licensedRowKey(candidate) !== licensedRowKey(row)),
-      );
-      qc.invalidateQueries({ queryKey: ["licensed-inbox"] });
+      void qc.invalidateQueries({ queryKey: ["licensed-inbox"] });
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Disposition failed");
     } finally {
       setBusy(null);
     }
@@ -439,27 +525,32 @@ export default function LicensedInbox() {
 
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   {r.phone ? (
-                    <a
-                      href={`tel:${r.phone}`}
+                    <button
+                      type="button"
                       className="inline-flex h-10 min-w-0 items-center gap-2 rounded-sm border border-border bg-background px-3 text-sm font-semibold tabular-nums text-foreground transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
                       aria-label={`Call ${name} at ${r.phone}`}
-                      onClick={() => void logContact(r, "call", "call_started")}
+                      disabled={busy === `${licensedRowKey(r)}:call_started`}
+                      onClick={() => void startCall(r)}
                     >
-                      <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      {busy === `${licensedRowKey(r)}:call_started`
+                        ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+                        : <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />}
                       <span className="truncate">{r.phone}</span>
-                    </a>
+                    </button>
                   ) : (
                     <span className="text-[11px] text-muted-foreground">
                       No phone on file
                     </span>
                   )}
                   {r.email && (
-                    <a
-                      href={`mailto:${r.email}`}
-                      className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 truncate text-left text-[11px] text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                      aria-label={`Email ${name} at ${r.email}`}
+                      onClick={() => openComposer(r, "email")}
                     >
                       {r.email}
-                    </a>
+                    </button>
                   )}
                 </div>
 
@@ -472,35 +563,46 @@ export default function LicensedInbox() {
                     icon={Phone}
                     tone="neutral"
                     busy={busy === `${licensedRowKey(r)}:called`}
-                    onClick={() => void logContact(r, "call", "called")}
+                    onClick={() => void recordDisposition(r, "called")}
                   />
                   <DispBtn
                     label="Voicemail"
                     icon={Voicemail}
                     tone="amber"
                     busy={busy === `${licensedRowKey(r)}:voicemail`}
-                    onClick={() => void logContact(r, "call", "voicemail")}
+                    onClick={() => void recordDisposition(r, "voicemail")}
                   />
-                  <DispBtn
-                    label="Text sent"
-                    icon={MessageSquare}
-                    tone="neutral"
-                    busy={busy === `${licensedRowKey(r)}:text_sent`}
-                    onClick={() => void logContact(r, "sms", "text_sent")}
-                  />
+                  {r.phone && (
+                    <DispBtn
+                      label="Text"
+                      icon={MessageSquare}
+                      tone="neutral"
+                      busy={busy === `${licensedRowKey(r)}:sms_send`}
+                      onClick={() => openComposer(r, "sms")}
+                    />
+                  )}
+                  {r.email && (
+                    <DispBtn
+                      label="Email"
+                      icon={Mail}
+                      tone="neutral"
+                      busy={busy === `${licensedRowKey(r)}:email_send`}
+                      onClick={() => openComposer(r, "email")}
+                    />
+                  )}
                   <DispBtn
                     label="Hired"
                     icon={UserCheck}
                     tone="emerald"
                     busy={busy === `${licensedRowKey(r)}:hired`}
-                    onClick={() => void markHired(r)}
+                    onClick={() => void recordDisposition(r, "hired")}
                   />
                   <DispBtn
                     label="Passed"
                     icon={XCircle}
                     tone="rose"
                     busy={busy === `${licensedRowKey(r)}:passed`}
-                    onClick={() => void markPassed(r)}
+                    onClick={() => void recordDisposition(r, "passed")}
                   />
                   <Button
                     asChild
@@ -520,6 +622,108 @@ export default function LicensedInbox() {
           })}
         </ul>
       </GlassCard>
+
+      <Dialog
+        open={composer !== null}
+        onOpenChange={(open) => {
+          if (!open && !busy?.endsWith("_send")) setComposer(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {composer?.channel === "email" ? <Mail className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+              {composer?.channel === "email" ? "Send email" : "Send text"}
+            </DialogTitle>
+            <DialogDescription>
+              Review the exact recipient and content. Sending is idempotent, audited, and permission-checked by the server.
+            </DialogDescription>
+          </DialogHeader>
+
+          {composer && (
+            <div className="space-y-4">
+              <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
+                <p className="font-semibold text-foreground">{fullName(composer.row)}</p>
+                <p className="mt-1 break-all text-xs text-muted-foreground">
+                  {composer.channel === "email" ? composer.row.email : composer.row.phone}
+                </p>
+              </div>
+
+              {composer.channel === "email" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="licensed-contact-subject">Subject</Label>
+                  <Input
+                    id="licensed-contact-subject"
+                    value={contactSubject}
+                    maxLength={200}
+                    onChange={(event) => {
+                      setContactSubject(event.target.value);
+                      renewContactAttemptAfterEdit();
+                    }}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="licensed-contact-message">Message</Label>
+                  <span className={cn(
+                    "text-xs tabular-nums text-muted-foreground",
+                    composer.channel === "sms" && contactMessage.length > 160 && "text-rose-500",
+                  )}>
+                    {contactMessage.length}/{composer.channel === "sms" ? 160 : 4000}
+                  </span>
+                </div>
+                <Textarea
+                  id="licensed-contact-message"
+                  value={contactMessage}
+                  maxLength={composer.channel === "sms" ? 160 : 4000}
+                  rows={composer.channel === "sms" ? 4 : 8}
+                  onChange={(event) => {
+                    setContactMessage(event.target.value);
+                    renewContactAttemptAfterEdit();
+                  }}
+                />
+              </div>
+
+              {contactError && (
+                <div role="alert" className="rounded-md border border-rose-500/35 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300">
+                  {contactError}
+                </div>
+              )}
+              {contactReceipt && (
+                <div role="status" className="rounded-md border border-emerald-500/35 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                  {contactReceipt}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={Boolean(busy?.endsWith("_send"))}
+              onClick={() => setComposer(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={
+                Boolean(busy?.endsWith("_send"))
+                || !contactMessage.trim()
+                || (composer?.channel === "email" && !contactSubject.trim())
+              }
+              onClick={() => void sendContactAction()}
+            >
+              {busy?.endsWith("_send") ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {contactError ? "Retry safely" : "Confirm and send"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -541,7 +745,7 @@ function DispBtn({
 }) {
   // Severity discipline: rose / amber / emerald only, always theme-paired so the
   // hover text stays legible on the white light-theme card. Neutral actions
-  // ("Called", "Text sent") carry no severity colour — the icon distinguishes them.
+  // ("Called", "Text", "Email") carry no severity colour — the icon distinguishes them.
   const toneMap: Record<Tone, string> = {
     neutral: "hover:bg-muted/30",
     amber:

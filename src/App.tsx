@@ -24,7 +24,7 @@ const SonnerToaster = lazy(() =>
 // (2) Index's lower lazy Suspense block, and (3) the App-level `QueryShell` layout
 // route that wraps every non-landing path. The shared singleton queryClient still
 // lives in `@/shared/api/queryClient` so every QCP mount points at the same cache.
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { LazyQueryRoot } from "@/shared/api/LazyQueryRoot";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuroraBackground } from "@/components/layout/AuroraBackground";
@@ -65,6 +65,11 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RecruitingShortLink } from "@/components/RecruitingShortLink";
 
 initTelemetry();
+
+function LegacyWorkspaceRedirect({ to }: { to: string }) {
+  const location = useLocation();
+  return <Navigate to={`${to}${location.search}`} replace state={{ migratedFrom: location.pathname }} />;
+}
 
 // Eagerly loaded pages (critical path) — only the literal landing.
 // Login + Apply moved to lazy so a visitor who only sees the home page
@@ -443,6 +448,16 @@ const App = () => (
                         numbers, and agent/manager/admin views live here.
                         The old command center stays available below. */}
                     <Route path="/dashboard" element={<Dashboard />} />
+                    {/* Unified APEX OS destinations. Legacy URLs below remain
+                        as redirects so bookmarks keep their filters/query. */}
+                    <Route path="/dashboard/recruiting" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardApplicants /></ProtectedRoute>} />
+                    <Route path="/dashboard/team" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardCRM /></ProtectedRoute>} />
+                    <Route path="/dashboard/contracting" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
+                    <Route path="/dashboard/production" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
+                    <Route path="/dashboard/analytics" element={<ProtectedRoute><BusinessAnalytics /></ProtectedRoute>} />
+                    <Route path="/dashboard/community" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
+                    <Route path="/dashboard/resources" element={<ProtectedRoute><TrainingHub /></ProtectedRoute>} />
+                    <Route path="/dashboard/admin" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     {/* VA Manager (Milver) portal — create/monitor/disable sub-VA
                         accounts. Admins + va_manager role only. */}
                     <Route path="/va-team" element={<ProtectedRoute requireAdmin allowRoles={["va_manager"]}><VaManagerPortal /></ProtectedRoute>} />
@@ -457,7 +472,7 @@ const App = () => (
                         (replaces Todoist dep). Tap-circle UI · phone-first. */}
                     {/* MP-239 (2026-07-05, restored 2026-07-06): unified /today — income tasks + appointments + hot prospects */}
                     <Route path="/dashboard/today" element={<ProtectedRoute><DashboardToday /></ProtectedRoute>} />
-                    <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
+                    <Route path="/dashboard/applicants" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting" />} />
                     {/* Manager self-serve: view their referrals + drop new ones (Sam 2026-06-03) */}
                     <Route path="/admin/my-applicants" element={<ProtectedRoute requireAdmin allowManagers><MyApplicants /></ProtectedRoute>} />
                     <Route path="/admin/add-referral" element={<ProtectedRoute requireAdmin allowManagers><AddReferral /></ProtectedRoute>} />
@@ -479,7 +494,6 @@ const App = () => (
                     <Route path="/dashboard/xcel-pipeline" element={<ProtectedRoute requireAdmin><XcelPipeline /></ProtectedRoute>} />
                     <Route path="/dashboard/settings" element={<Settings />} />
                     <Route path="/dashboard/settings/deleted-leads" element={<ProtectedRoute requireAdmin><DeletedLeadsVault /></ProtectedRoute>} />
-                    <Route path="/dashboard/team" element={<Navigate to="/dashboard/crm" replace />} />
                     {/* 2026-06-16 Sam directive: short recruiting links.
                         apex-financial.org/r/sjames01 → /apply?ref=sjames01
                         Resolves via the existing resolve-ref-slug edge fn so
@@ -490,9 +504,9 @@ const App = () => (
                         (the team view at DashboardCRM), NOT the client book of business.
                         Restored direct mount; /dashboard/clients stays for the client pipeline. */}
                     <Route path="/dashboard/clients" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
-                    <Route path="/dashboard/crm" element={<ProtectedRoute requireAdmin allowManagers><DashboardCRM /></ProtectedRoute>} />
+                    <Route path="/dashboard/crm" element={<LegacyWorkspaceRedirect to="/dashboard/team" />} />
                     <Route path="/dashboard/aged-leads" element={<DashboardAgedLeads />} />
-                    <Route path="/dashboard/command" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
+                    <Route path="/dashboard/command" element={<LegacyWorkspaceRedirect to="/dashboard/admin" />} />
                     <Route path="/dashboard/team/next-step" element={<ProtectedRoute requireAdmin allowManagers><ManagerNextStepBoard /></ProtectedRoute>} />
                     <Route path="/admin/next-step/stuck" element={<ProtectedRoute requireAdmin><AdminStuckPool /></ProtectedRoute>} />
                     <Route path="/admin/next-step/funnel-health" element={<ProtectedRoute requireAdmin><AdminFunnelHealth /></ProtectedRoute>} />
@@ -538,12 +552,12 @@ const App = () => (
                     <Route path="/agent-portal" element={<AgentCommandDashboard />} />
                     <Route path="/agent-dashboard" element={<AgentCommandDashboard />} />
                     <Route path="/agent-portal/legacy" element={<AgentPortal />} />
-                    <Route path="/onboarding-course" element={<OnboardingCourse />} />
-                    <Route path="/course-catalog" element={<CourseCatalog />} />
+                    <Route path="/onboarding-course" element={<LegacyWorkspaceRedirect to="/dashboard/resources" />} />
+                    <Route path="/course-catalog" element={<LegacyWorkspaceRedirect to="/dashboard/resources" />} />
                     {/* Training Hub — live apex-resources content rendered in-app
                         (recordings / courses / library). Content API stays the
                         apex-resources admin portal; progress in hub_course_progress. */}
-                    <Route path="/dashboard/training-hub" element={<TrainingHub />} />
+                    <Route path="/dashboard/training-hub" element={<LegacyWorkspaceRedirect to="/dashboard/resources" />} />
                     <Route path="/dashboard/training-hub/course/:courseId" element={<TrainingHubCourse />} />
                     <Route path="/course-progress" element={<CourseProgress />} />
                     <Route path="/course-progress/content" element={<CourseContent />} />
@@ -560,7 +574,7 @@ const App = () => (
                      {/* v18 admin-only whale recruiting tracker */}
                      <Route path="/dashboard/whales" element={<ProtectedRoute requireAdmin><WhaleRecruiting /></ProtectedRoute>} />
                      {/* v22 Wave B: carrier contracts and links hub for every authenticated role. */}
-                     <Route path="/dashboard/contracts" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
+                     <Route path="/dashboard/contracts" element={<LegacyWorkspaceRedirect to="/dashboard/contracting" />} />
                      {/* v22 Wave H: challenges/gamification */}
                      <Route path="/dashboard/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
                      <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
@@ -588,9 +602,9 @@ const App = () => (
                        <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
                        <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
                        <Route path="/dashboard/book-of-business" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />
-                       <Route path="/dashboard/business-analytics" element={<ProtectedRoute><BusinessAnalytics /></ProtectedRoute>} />
+                       <Route path="/dashboard/business-analytics" element={<LegacyWorkspaceRedirect to="/dashboard/analytics" />} />
                        <Route path="/dashboard/carriers" element={<Navigate to="/dashboard/book-of-business" replace />} />
-                       <Route path="/dashboard/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
+                       <Route path="/dashboard/announcements" element={<LegacyWorkspaceRedirect to="/dashboard/community" />} />
                        <Route path="/dashboard/finances" element={<ProtectedRoute requireAdmin><Finances /></ProtectedRoute>} />
                        <Route path="/dashboard/scripts" element={<ProtectedRoute><Scripts /></ProtectedRoute>} />
                        <Route path="/dashboard/profile" element={<ProtectedRoute><ProducerProfile /></ProtectedRoute>} />

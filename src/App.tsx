@@ -112,6 +112,7 @@ const DashboardToday = lazy(() => import("./pages/DashboardToday"));
 const OnboardingLadder = lazy(() => import("./pages/OnboardingLadder"));
 const AdminProducerTrends = lazy(() => import("./pages/AdminProducerTrends"));
 const LicensedInbox = lazy(() => import("./pages/LicensedInbox"));
+const ApexCareerToolkit = lazy(() => import("./pages/ApexCareerToolkit"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const ScheduleCall = lazy(() => import("./pages/ScheduleCall"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -505,6 +506,9 @@ const App = () => (
                     <Route path="/dashboard/onboarding-ladder" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><OnboardingLadder /></ProtectedRoute>} />
                     {/* MP-232 regression restore: licensed applicants need the immediate-call inbox. */}
                     <Route path="/admin/licensed-inbox" element={<ProtectedRoute requireAdmin allowRoles={["va_manager", "va"]}><LicensedInbox /></ProtectedRoute>} />
+                    {/* Executable Welcome Aboard toolkit: persisted licensed/unlicensed paths,
+                        30/60/90-day milestones, and career qualification calculator. */}
+                    <Route path="/admin/apex-toolkit" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><ApexCareerToolkit /></ProtectedRoute>} />
                     {/* 2026-07-05 Sam: unlicensed → licensed recovery queue for assistants. Sorted by cohort proximity to licensed. Tap-to-call. */}
                     <Route path="/admin/recovery-queue" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><RecoveryQueue /></ProtectedRoute>} />
                     {/* 2026-07-05 Sam: full unlicensed roster w/ VA assignment + ghosted-30d+ filter. */}

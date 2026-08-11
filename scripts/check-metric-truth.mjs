@@ -223,6 +223,54 @@ function shippedTotalMatchesData() {
 }
 shippedTotalMatchesData();
 
+// wave-carrier-share-window-parity 2026-08-11 — the existing parity guards all
+// police the SOURCE of two operands (legacy `deals` vs `agentlink_book`). This
+// bug had one source and two WINDOWS, so every one of them passed it.
+//
+// BusinessAnalytics renders a per-carrier Share column. The numerator is
+// v_business_analytics_carriers.total_premium (rolling 30 days). The denominator
+// was `totalPremium` = v_business_analytics_summary.total_premium_mtd
+// (month-to-date). On 2026-08-11 that printed Combined at 220.8% and made the
+// Share column sum to 473.7% — every row inflated ~4.7x.
+//
+// The trap this guard exists to prevent is the FIX, not the bug: an audit
+// diagnosed it as "an aggregate 'Combined' row is being treated as a carrier"
+// and prescribed filtering that row out. Combined is a real carrier holding
+// 46.6% of 30-day premium (the agency's largest). Filtering it would have
+// deleted the top carrier from analytics AND left the column at 253%.
+//
+// So: the denominator must be derived from the same rows being rendered.
+function carrierShareUsesRowDerivedDenominator() {
+  const pagePath = "src/pages/BusinessAnalytics.tsx";
+  const abs = path.join(repoRoot, pagePath);
+  if (!fs.existsSync(abs)) return;
+  const source = fs.readFileSync(abs, "utf8");
+
+  if (!/const carrierTotalPremium\s*=/.test(source)) {
+    violations.push(
+      `${pagePath}: \`carrierTotalPremium\` is gone. The per-carrier Share denominator must be summed from the carrier rows themselves, not taken from an MTD total — see wave-carrier-share-window-parity.`,
+    );
+    return;
+  }
+
+  // The share expression itself must not divide by the MTD figure.
+  const shareLine = source
+    .split("\n")
+    .find((l) => l.includes("Number(c.total_premium)") && l.includes("* 100"));
+  if (!shareLine) {
+    violations.push(
+      `${pagePath}: could not locate the carrier Share computation — update scripts/check-metric-truth.mjs so this ratchet keeps running rather than silently passing.`,
+    );
+    return;
+  }
+  if (/\btotalPremium\b/.test(shareLine) && !/carrierTotalPremium/.test(shareLine)) {
+    violations.push(
+      `${pagePath}: the carrier Share divides a rolling-30d numerator by \`totalPremium\` (month-to-date). Mixing windows is what made this column sum to 473.7%. Divide by \`carrierTotalPremium\`.`,
+    );
+  }
+}
+carrierShareUsesRowDerivedDenominator();
+
 const appSource = fs.readFileSync(path.join(repoRoot, "src/App.tsx"), "utf8");
 if (!appSource.includes('path="/checkin"') || !appSource.includes('path="/daily-checkin"')) {
   violations.push("src/App.tsx: applicant check-in routes must remain mounted");

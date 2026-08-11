@@ -244,6 +244,12 @@ export default function BusinessAnalytics() {
   const growth = Number(s?.growth_pct_mom ?? 0);
   const growthPositive = growth >= 0;
   const totalPremium = Number(s?.total_premium_mtd ?? 0);
+  // Rolling-30d total, summed from the carrier rows themselves so the Share column
+  // cannot disagree with the table it labels. Do NOT swap this for an MTD figure.
+  const carrierTotalPremium = (carriers.data ?? []).reduce(
+    (sum, c) => sum + Number(c.total_premium ?? 0),
+    0,
+  );
 
   // wave-p1g · fake-success gate. The primary v_business_analytics_summary query
   // drives every MTD number in the hero (premium, deals, producers, growth). On
@@ -708,7 +714,11 @@ export default function BusinessAnalytics() {
               </thead>
               <tbody>
                 {carriers.data!.map((c, i) => {
-                  const pct = totalPremium > 0 ? (Number(c.total_premium) / totalPremium) * 100 : 0;
+                  // Denominator must come from these same rows. totalPremium is
+                  // v_business_analytics_summary.total_premium_mtd (month-to-date) while every
+                  // c.total_premium is v_business_analytics_carriers (rolling 30 days), so
+                  // dividing one by the other made the column sum to 473.7% on 2026-08-11.
+                  const pct = carrierTotalPremium > 0 ? (Number(c.total_premium) / carrierTotalPremium) * 100 : 0;
                   return (
                     <tr key={c.carrier_id} className="border-b border-border/60 transition-colors hover:bg-muted/30">
                       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{i + 1}</td>

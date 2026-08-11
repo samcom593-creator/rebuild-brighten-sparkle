@@ -47,7 +47,29 @@ const COLUMN_ENUM = {
   "agents.license_status": "license_status",
 };
 
-const FROM_RX = /supabase\s*\.\s*from\s*\(\s*["'`]([a-z_]+)["'`]/g;
+// 2026-08-11 — two attribution bugs, both found when this guard reported
+// LicensedInbox.tsx:114 `applications.status = "active"`. That filter is not on
+// applications at all: it is on the NEXT chain in the same Promise.all, against
+// apex_toolkit_agents, whose status column is CHECK (status IN
+// ('active','hired','passed')) — i.e. correct code. "Fixing" it would have broken
+// a working query to satisfy a broken guard.
+//
+//   1. The receiver was hardcoded to `supabase`, so any chain built on a typed
+//      wrapper (`toolkitInboxClient.from(...)`) was never scanned — a silent gap,
+//      not a false pass, which is the worse of the two failure modes.
+//   2. Neither this nor NEXT_FROM_RX tolerated a generic parameter, so
+//      `.from<Omit<LicensedRow, "origin">>("apex_toolkit_agents")` did not read as
+//      a chain boundary. The preceding `applications` chain therefore never
+//      terminated and swallowed the following chain's filters.
+//
+// Receiver is now any identifier. That cannot over-match: the table argument must
+// still be a quoted bare identifier AND must own a registered enum column, so
+// Array.from(...) and friends are filtered out before any literal is checked.
+const GENERIC = String.raw`(?:<[^(]*>)?`;
+const FROM_RX = new RegExp(
+  String.raw`[A-Za-z_$][\w$]*\s*\.\s*from\s*${GENERIC}\s*\(\s*["'\`]([a-z_]+)["'\`]`,
+  "g",
+);
 // .eq("col", "val") / .neq(...) / .not("col", "in", "(a,b)") / .in("col", ["a","b"])
 const EQ_RX = /\.\s*(eq|neq)\s*\(\s*["'`]([a-z_]+)["'`]\s*,\s*["'`]([^"'`]*)["'`]/g;
 const NOT_IN_RX = /\.\s*not\s*\(\s*["'`]([a-z_]+)["'`]\s*,\s*["'`]in["'`]\s*,\s*["'`]\(([^)]*)\)["'`]/g;
@@ -65,7 +87,7 @@ const ALLOW_RX = /enum-literal-allow/;
 // filter out of range and the guard silently passed the very bug it exists to catch.
 // Verified by reintroducing that bug and confirming this script now exits 1.
 const CHAIN_WINDOW = 4000;
-const NEXT_FROM_RX = /\.\s*from\s*\(/g;
+const NEXT_FROM_RX = new RegExp(String.raw`\.\s*from\s*${GENERIC}\s*\(`, "g");
 
 // `afterFrom` must point PAST this chain's own `.from(...)` call, otherwise the scan
 // immediately matches the chain's own from() and returns an empty segment — which silently

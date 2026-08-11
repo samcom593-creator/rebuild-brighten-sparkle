@@ -10,6 +10,7 @@
 // Shared-secret auth for ad-hoc alerts via x-alert-dispatch-secret header.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { headerSafe } from "../_shared/header-safe.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
@@ -115,29 +116,36 @@ async function postWhatsapp(alert: any): Promise<boolean> {
   }
 }
 
-async function postNtfy(alert: any): Promise<boolean> {
+export const NTFY_DEFAULT_TOPIC = "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
+
+// Returns a RECEIPT, not a bare boolean: a false with no reason is what let this
+// bug sit undetected. "ok" | "http:<status>" | "error:<message>".
+async function postNtfy(alert: any, topicOverride?: string): Promise<{ ok: boolean; receipt: string }> {
   // ntfy.sh — Sam's primary mobile push. Always available, no creds needed.
-  const { data } = await supabase
-    .from("system_settings")
-    .select("value")
-    .eq("key", "ntfy_topic_url")
-    .maybeSingle();
-  const url = (data as any)?.value || "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
+  let url = topicOverride ?? "";
+  if (!url) {
+    const { data } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "ntfy_topic_url")
+      .maybeSingle();
+    url = (data as any)?.value || NTFY_DEFAULT_TOPIC;
+  }
   try {
     const headers: Record<string, string> = {
-      "Title": String(alert.subject ?? "APEX alert").slice(0, 200),
+      "Title": headerSafe(String(alert.subject ?? "APEX alert").slice(0, 200)),
       "Tags": alert.severity === "critical" ? "rotating_light" : alert.severity === "celebrate" ? "tada,fire" : "bell",
       "Priority": alert.severity === "critical" ? "5" : "4",
     };
-    if (alert.action_link) headers["Click"] = alert.action_link;
+    if (alert.action_link) headers["Click"] = headerSafe(String(alert.action_link));
     const r = await fetch(url, {
       method: "POST",
       headers,
       body: String(alert.sms_body || alert.subject || "").slice(0, 4000),
     });
-    return r.ok;
-  } catch {
-    return false;
+    return { ok: r.ok, receipt: r.ok ? "ok" : `http:${r.status}` };
+  } catch (e: any) {
+    return { ok: false, receipt: `error:${e?.message ?? String(e)}` };
   }
 }
 
@@ -217,7 +225,10 @@ async function send(alert: any): Promise<{ email_id: string | null; sent_sms: bo
   }
   if (channels.has("ntfy")) {
     try {
-      sent_ntfy = await postNtfy(alert);
+      const n = await postNtfy(alert);
+      sent_ntfy = n.ok;
+      // A silent false is how the emoji-header throw survived. Record the reason.
+      if (!n.ok) errs.push(`ntfy: ${n.receipt}`);
     } catch (e: any) {
       errs.push(`ntfy: ${e?.message ?? String(e)}`);
     }
@@ -264,6 +275,20 @@ Deno.serve(async (req) => {
   let body: any = {};
   try { body = await req.json(); } catch { /* empty */ }
 
+  // Live liveness probe for apex-doctor. Exercises the REAL encoder + POST path
+  // in the deployed function, but takes a topic override so the weekly check
+  // never pushes to Sam's phone. Writes no row. Emoji subject is the point:
+  // an unencoded one throws while constructing the Request.
+  if (body.selftest_ntfy) {
+    const n = await postNtfy(
+      { subject: body.subject ?? "🎓 apex-doctor ntfy selftest", sms_body: "selftest", severity: "info" },
+      body.ntfy_topic || undefined,
+    );
+    return new Response(JSON.stringify({ ok: n.ok, selftest: "ntfy", receipt: n.receipt }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   // Ad-hoc alert: inserts + dispatches if severity is standalone
   if (body.event_type) {
     const severity = body.severity ?? "warn";
@@ -280,7 +305,10 @@ Deno.serve(async (req) => {
     const { data: inserted } = await supabase.from("bot_alerts").insert(alert).select("*").single();
     if (STANDALONE.has(severity)) {
       const r = await send(inserted);
-      if (r.email_id || r.sent_sms) {
+      // Same "any channel landed" test flush() uses. This path used to count only
+      // email+sms, so a Discord/ntfy-only delivery stayed sent_at NULL forever and
+      // got re-dispatched by the next flush.
+      if (r.email_id || r.sent_sms || r.sent_discord || r.sent_whatsapp || r.sent_ntfy) {
         await supabase.from("bot_alerts").update({
           sent_at: new Date().toISOString(),
           sent_email_id: r.email_id,

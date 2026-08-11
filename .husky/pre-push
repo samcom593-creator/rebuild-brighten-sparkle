@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# wave-alert-means-what-it-says (2026-08-11): re-check the counting invariants
+# AFTER the rebase, immediately before the push.
+#
+# WHY THIS EXISTS — the pre-commit guard was correct and still shipped drift.
+#
+# c91f82b7 staged five files, including SHIPPED_TOTAL 299 -> 300 to match its
+# new SHIPPED entry. check:metric-truth ran pre-commit against that tree and
+# passed: 300 declared, 300 entries. Then the durable-commit script rebased
+# onto origin/main, where a concurrent worker (bf7af8d3, wave-training-hub)
+# had added its OWN entry and bumped the SAME constant to 300. Git saw an
+# identical banner change and dropped it as a no-op, while the shipped-data.ts
+# entry still applied. Result on main: 301 entries, constant says 300. Sam's
+# dashboard under-reports shipped work, and nothing failed anywhere — the
+# guard had already run, against a tree that no longer existed.
+#
+# A pre-commit hook validates the tree you committed. It cannot speak for the
+# tree you push. In a repo where several workers commit concurrently and each
+# one rebases before pushing, that gap is exactly wide enough for a
+# hand-maintained counter to desync. Same shape as every fake-success bug
+# here: the check was green, and the green described a different moment than
+# the one that mattered.
+#
+# Kept deliberately narrow and fast (~0.2s). This is NOT the place to re-run
+# tsc or the build — pre-commit already owns those, and a slow pre-push hook
+# is a hook people start bypassing. This only re-asserts the invariants that a
+# rebase can silently break.
+set -euo pipefail
+
+echo "[pre-push] re-checking counting invariants against the rebased tree…"
+if ! npm run --silent check:metric-truth; then
+  echo ""
+  echo "[pre-push] BLOCKED: a counting invariant broke between commit and push."
+  echo "[pre-push] This almost always means another worker landed a commit that"
+  echo "[pre-push] touched the same hand-maintained constant, and your identical"
+  echo "[pre-push] change was dropped as a no-op during the rebase."
+  echo "[pre-push] Fix the number, amend or add a commit, then push again."
+  exit 1
+fi

@@ -55,7 +55,7 @@ async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; in
   // Resolve agent → InsuraCloud user id + token
   const { data: agent } = await supabase
     .from("agents")
-    .select("insuracloud_api_token, insuracloud_user_id, profile_id, profiles:profile_id(email, full_name)")
+    .select("insuracloud_api_token, insuracloud_user_id, display_name, profile_id, profiles:profile_id(email, full_name)")
     .eq("id", deal.agent_id)
     .maybeSingle();
 
@@ -90,7 +90,16 @@ async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; in
   const token = ownToken || (mayUseDefault ? defaultToken : null);
 
   if (!token) {
+    // Fall back through BOTH name sources before surrendering to the raw uuid.
+    // profiles.full_name is null for Sam's own agent row, so on 2026-08-12 the
+    // stored error for his deal read "No InsuraCloud credential exists anywhere
+    // for cde14d07-2366-444a-80cc-58a8f7da6f95" while Kolade's read as a name.
+    // That cost a reviewer real time: a uuid reads as a system id, so the row
+    // looked like a foreign producer's deal that must never be pushed, when in
+    // fact it is the one deal here the shared session could legitimately post.
+    // agents.display_name is populated for both of them.
     const who = (agent as { profiles?: { full_name?: string } })?.profiles?.full_name
+      ?? (agent as { display_name?: string })?.display_name
       ?? deal.agent_id;
     // Name the ACTUAL blocker. Three different states used to collapse into one
     // sentence, and this integration has already lost four months to an error

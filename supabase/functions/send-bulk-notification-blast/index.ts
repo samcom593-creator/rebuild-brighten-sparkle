@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { emailPattern } from "../_shared/like-escape.ts";
+import { resolveOne } from "../_shared/resolve-one.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -36,12 +38,14 @@ async function logNotification(supabase: any, data: any) {
 // Try sending push notification for an applicant by looking up their agent record
 async function trySendPush(supabaseUrl: string, serviceRoleKey: string, supabase: any, app: any): Promise<boolean> {
   try {
-    // Find agent linked to this applicant's email
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("user_id")
-      .ilike("email", app.email)
-      .maybeSingle();
+    // Find agent linked to this applicant's email. profiles.email carries no
+    // unique index (8 colliding keys live), and the raw address was being read
+    // as a LIKE pattern — both roads led to null, i.e. "no account, skip".
+    const found = await resolveOne<{ user_id: string }>(
+      supabase.from("profiles").select("user_id").ilike("email", emailPattern(app.email)),
+      { label: `profiles.email=${app.email}` },
+    );
+    const profile = found.row;
 
     if (!profile?.user_id) return false;
 

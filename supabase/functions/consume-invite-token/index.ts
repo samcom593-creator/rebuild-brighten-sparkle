@@ -20,6 +20,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { findAuthUserByEmail } from "../_shared/find-auth-user.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -209,21 +210,23 @@ serve(async (req) => {
 
   // 2. Dedupe by email — if an active agent already owns this email, bail with a clear signal.
   //    We look up the auth user first (canonical), then agents.
-  const { data: existingUsers, error: userListErr } = await admin
-    .auth
-    .admin
-    .listUsers({ page: 1, perPage: 200 });
-  // NOTE: listUsers has no email filter server-side in supabase-js v2 admin; small-N
-  // lookup is fine while we're early. We scan the small page for the email.
-  if (userListErr) {
-    console.error("auth_list_failed", userListErr);
-  }
+  //    listUsers has no server-side email filter, so this pages until it finds
+  //    the address or reaches the end of the table. It used to read one page of
+  //    200 under a comment saying "small-N lookup is fine while we're early" —
+  //    accurate when written, false by 2026-08-12 when auth.users held 531 rows.
+  //    Past row 200 the dedupe silently saw nothing and minted a second account.
+  //    A comment cannot notice that it has expired; the pagination can't expire.
   let authUserId: string | null = null;
-  const existing = (existingUsers?.users ?? []).find(
-    (u: { email?: string | null; id: string }) =>
-      (u.email ?? "").toLowerCase() === email,
-  );
-  if (existing) authUserId = existing.id;
+  try {
+    const lookup = await findAuthUserByEmail(admin, email);
+    if (lookup.user) authUserId = lookup.user.id;
+  } catch (e) {
+    // The old code logged the list failure and carried on with "not found",
+    // which turns a transient auth outage into a duplicate account. A dedupe
+    // check that cannot read is unknown, not negative.
+    console.error("auth_list_failed", e);
+    return json({ ok: false, error: "lookup_failed" }, 500);
+  }
 
   // 3. Create or reuse auth user.
   if (!authUserId) {

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { findAuthUserByEmail } from "../_shared/find-auth-user.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,9 +62,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     // If no user exists, create one
     if (!userId) {
-      // Check if email already exists
-      const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
-      const emailUser = existingUser?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      // Check if email already exists.
+      // This was listUsers() with no arguments — the SDK default page is 50, and
+      // auth.users held 531 rows when that was measured (2026-08-12). So it could
+      // only ever see the first 50 accounts and answered "no such user" for the
+      // other 481, then created a duplicate. Not a future ceiling; already wrong.
+      const emailUser = (await findAuthUserByEmail(supabaseAdmin, email)).user;
 
       if (emailUser) {
         userId = emailUser.id;

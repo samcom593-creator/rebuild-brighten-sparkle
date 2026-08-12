@@ -17,9 +17,11 @@
 //   Fingerprints Submitted  → sets fingerprints_submitted_at
 //   License Issued / License → sets licensed_at + license_progress=licensed
 //
-// Returns: { matched, updated, unmatched, errors, rows_in_csv }
+// Returns: { matched, updated, unmatched, ambiguous, ambiguous_count, errors, rows_in_csv }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { emailPattern } from "../_shared/like-escape.ts";
+import { resolveOne } from "../_shared/resolve-one.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -194,6 +196,10 @@ Deno.serve(async (req) => {
   let updated = 0;
   let unmatched = 0;
   const errors: Array<{ email: string; error: string }> = [];
+  // Reported as its own outcome, never folded into matched or unmatched. An
+  // applicant who exists twice is a data defect for Sam to merge, and a run that
+  // quietly picks one of the two and calls it "matched" hides that.
+  const ambiguous: Array<{ email: string; matched: number }> = [];
 
   for (const r of rows) {
     const email = pickCol(r, "email", "e-mail").toLowerCase();
@@ -202,15 +208,32 @@ Deno.serve(async (req) => {
     const { stage, fields } = inferStage(r);
     const newRank = STAGE_RANK[stage] ?? 0;
 
-    // Look up the applicant
-    const { data: app, error: findErr } = await supabase
-      .from("applications")
-      .select("id, license_progress")
-      .ilike("email", email)
-      .is("terminated_at", null)
-      .maybeSingle();
+    // Look up the applicant.
+    //
+    // The old .ilike(email).maybeSingle() form counted an ambiguous match as
+    // `unmatched`, which is a lie the import then reports as a clean number.
+    // applications.email has no unique index: 45 rows across 17 keys collide,
+    // and 40 rows / 16 keys still collide under this query's own
+    // terminated_at IS NULL filter. Those applicants could never have their
+    // license_progress advanced by an Xcel import, and the run said "unmatched"
+    // rather than "this person is in here twice."
+    let app: { id: string; license_progress: string | null } | null = null;
+    try {
+      const found = await resolveOne<{ id: string; license_progress: string | null }>(
+        supabase
+          .from("applications")
+          .select("id, license_progress")
+          .ilike("email", emailPattern(email))
+          .is("terminated_at", null),
+        { label: `applications.email=${email}` },
+      );
+      if (found.ambiguous) ambiguous.push({ email, matched: found.matched });
+      app = found.row;
+    } catch (e) {
+      errors.push({ email, error: e instanceof Error ? e.message : String(e) });
+      continue;
+    }
 
-    if (findErr) { errors.push({ email, error: findErr.message }); continue; }
     if (!app) { unmatched++; continue; }
 
     matched++;
@@ -241,6 +264,8 @@ Deno.serve(async (req) => {
     matched,
     updated,
     unmatched,
+    ambiguous_count: ambiguous.length,
+    ambiguous: ambiguous.slice(0, 20),
     errors: errors.slice(0, 20),
   }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });

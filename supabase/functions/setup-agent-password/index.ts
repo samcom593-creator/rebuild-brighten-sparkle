@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveOne, preferLiveAgent, AGENT_RANK_COLUMNS } from "../_shared/resolve-one.ts";
+import { findAuthUserByEmail } from "../_shared/find-auth-user.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,15 +49,11 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Email not found in CRM. Please create a new account instead.");
     }
 
-    // 2. Check if auth user already exists for this email
-    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    
-    const existingAuthUser = authUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === normalizedEmail
-    );
+    // 2. Check if auth user already exists for this email. Pages to the end of
+    // the table: a missed hit here does not just skip a branch, it lets someone
+    // who already has an account walk into account creation instead of login.
+    const authLookup = await findAuthUserByEmail(supabaseAdmin, normalizedEmail);
+    const existingAuthUser = authLookup.user;
 
     if (existingAuthUser) {
       throw new Error("An account with this email already exists. Please use the login form or reset your password.");

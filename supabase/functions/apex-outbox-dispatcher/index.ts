@@ -11,6 +11,8 @@ import {
   readSettingFromResult,
   runContractingDelivery,
 } from "../_shared/contracting-delivery.ts";
+import { emailPattern } from "../_shared/like-escape.ts";
+import { resolveOne } from "../_shared/resolve-one.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -237,13 +239,17 @@ async function deliverContact(
   }
 
   if (action.channel === "email") {
-    const { data: unsubscribe, error } = await sb
-      .from("email_unsubscribes")
-      .select("id")
-      .ilike("email", recipient)
-      .maybeSingle();
-    if (error) throw error;
-    if (unsubscribe) throw new Error("Email opt-out recorded");
+    // email_unsubscribes.email IS uniquely indexed, so two opt-out rows for one
+    // address are impossible — the hazard here was purely the pattern match.
+    // Unescaped, an address containing "_" matched a DIFFERENT person's opt-out
+    // and blocked legitimate mail; an address containing "%" matched every row.
+    // Measured 2026-08-12: the table holds 1 row and 0 collisions, so this is a
+    // structural fix with no live impact. Not dressing it up as a CAN-SPAM save.
+    const optOut = await resolveOne<{ id: string }>(
+      sb.from("email_unsubscribes").select("id").ilike("email", emailPattern(recipient)),
+      { label: `email_unsubscribes.email=${recipient}` },
+    );
+    if (optOut.row) throw new Error("Email opt-out recorded");
   }
 
   let providerMessageId: string;

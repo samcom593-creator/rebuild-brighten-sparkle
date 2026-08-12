@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { emailPattern } from "../_shared/like-escape.ts";
+import { resolveOne } from "../_shared/resolve-one.ts";
+import { findAuthUserByEmail } from "../_shared/find-auth-user.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -144,30 +147,38 @@ const handler = async (req: Request): Promise<Response> => {
     const normalizedEmail = email.toLowerCase().trim();
     console.log(`Adding new agent: ${firstName} ${lastName} (${normalizedEmail})`);
 
-    // Check if email already exists in profiles
-    const { data: existingProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("id, user_id, email")
-      .ilike("email", normalizedEmail)
-      .maybeSingle();
+    // Check if email already exists in profiles.
+    //
+    // The 409 below is the whole point of this read, and the old form could not
+    // reach it in the one case that mattered. .ilike("email", normalizedEmail)
+    // treats the caller's own email as a LIKE pattern, and .maybeSingle() nulls
+    // out on a multi-row match — so for an email that ALREADY has two profile
+    // rows, the duplicate check returned "no match" and this function went on to
+    // add a third. profiles.email has no unique index and 8 colliding keys live.
+    const existing = await resolveOne<{ id: string; user_id: string; email: string }>(
+      supabaseAdmin
+        .from("profiles")
+        .select("id, user_id, email")
+        .ilike("email", emailPattern(normalizedEmail)),
+      { label: `profiles.email=${normalizedEmail}` },
+    );
 
-    if (existingProfile) {
-      console.log(`Profile already exists for ${normalizedEmail}`);
+    if (existing.row) {
+      console.log(
+        `Profile already exists for ${normalizedEmail}` +
+          (existing.ambiguous ? ` (${existing.matched} rows — needs a merge)` : ""),
+      );
       return new Response(
         JSON.stringify({ error: `An agent with email ${normalizedEmail} already exists.` }),
         { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Check if auth user already exists
-    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-
-    const existingAuthUser = authUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === normalizedEmail
-    );
+    // Check if auth user already exists. Pages until found or the table ends;
+    // a single page of 1000 was one growth spurt from reading "no account" for
+    // somebody who has one, and then trying to create it again.
+    const authLookup = await findAuthUserByEmail(supabaseAdmin, normalizedEmail);
+    const existingAuthUser = authLookup.user;
 
     let userId: string;
 

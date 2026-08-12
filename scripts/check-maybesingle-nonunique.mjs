@@ -85,11 +85,25 @@ import path from "node:path";
 //   (the MP-275 shape, 4 already converted), 9 plaque_awards (date/week-scoped,
 //   measured at 0 live collisions — marker candidates), 11 profiles/applications
 //   email incl. 7 pattern-match sites, and a long tail of no-filter reads.
+//   2026-08-12 wave-277 -> 74. Two corrections in one commit:
+//     (a) 82 was never real. The scan ran over raw source, so the phrase
+//         ".maybeSingle()" in a CODE COMMENT counted as a call site. Three such
+//         comments existed in HEAD (send-sms-auto-detect:213,
+//         setup-agent-password:117, stripe-webhook-lead-purchase:215) — one
+//         landed in `unsafe` and two in `safe`, so the honest pre-wave figures
+//         were unsafe:81 safe:265, not 82/267. stripComments() fixes it at the
+//         source. Left unfixed this would have compounded: every wave documents
+//         the site it just converted, trading a real violation for a phantom
+//         and leaving the number flat while the codebase genuinely improved.
+//     (b) all 7 pattern-match sites paid down, 81 -> 74, verified as exactly 7
+//         by running the fixed guard against the pre-wave tree.
+//   Remaining 74: 47 agents.user_id, 9 plaque_awards, and a tail of no-filter
+//   reads. No pattern-match (.ilike/.like) sites remain.
 
 const CATALOG = "scripts/data/unique-index-catalog.json";
 const ROOTS = ["src", "supabase/functions"];
 const MARKER = "single-row-allow:";
-const BASELINE = 82;
+const BASELINE = 74;
 
 // The guard itself and the reusable resolver both discuss .maybeSingle() in prose.
 // Narrative files describe history. None are call sites.
@@ -99,6 +113,57 @@ const EXEMPT = new Set([
   "supabase/functions/_shared/resolve-one.test.ts",
   "src/data/shipped-data.ts",
 ]);
+
+// Blank out COMMENTS ONLY, preserving every byte offset and newline so line
+// numbers and lastIndexOf(".from(") arithmetic stay exact.
+//
+// String literals are skipped over (so a "//" inside "https://esm.sh/..." is not
+// mistaken for a comment) but deliberately NOT blanked: the table name in
+// .from("profiles") and the column in .eq("user_id", …) are the guard's entire
+// input. Erasing them would turn every site into "table name is a variable".
+//
+// WHY (found 2026-08-12, MP-277, in this guard's own first pay-down): the scan
+// used to run over raw source, so the phrase ".maybeSingle()" inside a CODE
+// COMMENT counted as a call site. Converting a site and explaining why in the
+// comment above it therefore replaced one real violation with one phantom —
+// the ratchet read 77 where the truth was 75, and two of the "unprovable"
+// entries were prose. Every future wave documents its conversions, so this
+// would have inflated a little more each time and quietly stopped measuring.
+// A guard that counts its own footnotes is not counting the codebase.
+function stripComments(src) {
+  const out = src.split("");
+  let i = 0;
+  const blank = (from, to) => {
+    for (let k = from; k < to && k < out.length; k++) if (out[k] !== "\n") out[k] = " ";
+  };
+  while (i < src.length) {
+    const two = src.slice(i, i + 2);
+    if (two === "//") {
+      let j = src.indexOf("\n", i);
+      if (j === -1) j = src.length;
+      blank(i, j);
+      i = j;
+    } else if (two === "/*") {
+      let j = src.indexOf("*/", i + 2);
+      j = j === -1 ? src.length : j + 2;
+      blank(i, j);
+      i = j;
+    } else if (src[i] === '"' || src[i] === "'" || src[i] === "`") {
+      // Skip the literal without altering it.
+      const quote = src[i];
+      let j = i + 1;
+      while (j < src.length) {
+        if (src[j] === "\\") j += 2;
+        else if (src[j] === quote) break;
+        else j++;
+      }
+      i = Math.min(j + 1, src.length);
+    } else {
+      i++;
+    }
+  }
+  return out.join("");
+}
 
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out;
@@ -130,8 +195,10 @@ let marked = 0;
 for (const file of ROOTS.flatMap((r) => walk(r))) {
   const rel = file.split(path.sep).join("/");
   if (EXEMPT.has(rel)) continue;
-  const src = fs.readFileSync(file, "utf8");
-  const lines = src.split("\n");
+  const raw = fs.readFileSync(file, "utf8");
+  const src = stripComments(raw);
+  // Marker lookups read the RAW text — the opt-out annotation lives in a comment.
+  const lines = raw.split("\n");
   let i = -1;
 
   while ((i = src.indexOf(".maybeSingle()", i + 1)) !== -1) {

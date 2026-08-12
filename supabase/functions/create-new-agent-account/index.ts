@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { emailPattern } from "../_shared/like-escape.ts";
+import { resolveOne } from "../_shared/resolve-one.ts";
+import { findAuthUserByEmail } from "../_shared/find-auth-user.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,12 +31,35 @@ const handler = async (req: Request): Promise<Response> => {
     const normalizedEmail = email.toLowerCase().trim();
     console.log(`Creating new agent account for: ${normalizedEmail}`);
 
-    // Check if email already exists in profiles
-    const { data: existingProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("id, user_id")
-      .ilike("email", normalizedEmail)
-      .maybeSingle();
+    // Check if email already exists in profiles.
+    //
+    // This read is the reason duplicates exist. It used to be
+    // .ilike("email", normalizedEmail).maybeSingle(), which fails in two ways at
+    // once: the raw email is a LIKE pattern (a lookup for j_intwan@yahoo.com
+    // returns j.intwan@yahoo.com — a different person), and .maybeSingle()
+    // returns null when the filter matches more than one row. Both land on
+    // `existingProfile == null`, which this function reads as "nobody has this
+    // email" and answers by creating another account. profiles.email carries no
+    // unique index and has 8 colliding keys / 16 rows live, so the failure was
+    // self-amplifying: every duplicate it created made the next collision likelier.
+    const existing = await resolveOne<{ id: string; user_id: string }>(
+      supabaseAdmin
+        .from("profiles")
+        .select("id, user_id")
+        .ilike("email", emailPattern(normalizedEmail)),
+      { label: `profiles.email=${normalizedEmail}` },
+    );
+    const existingProfile = existing.row;
+
+    // Ambiguity means the person exists at least twice. Returning one of their
+    // ids is right — creating a third row is not. The merge is Sam's call in
+    // /admin/agent-duplicates; this only refuses to make it worse.
+    if (existing.ambiguous) {
+      console.warn(
+        `[create-new-agent-account] ${normalizedEmail} matches ${existing.matched} profiles; ` +
+          `returning the first and NOT creating another. Needs a merge.`,
+      );
+    }
 
     if (existingProfile) {
       // Return existing user_id if profile exists
@@ -48,16 +74,12 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check if auth user already exists
-    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    
-    const existingAuthUser = authUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === normalizedEmail
-    );
-    
+    // Check if auth user already exists. Pages until found or the table ends —
+    // the previous single page of 1000 was 469 rows of headroom away from
+    // silently reporting "no such account" for someone who has one.
+    const authLookup = await findAuthUserByEmail(supabaseAdmin, normalizedEmail);
+    const existingAuthUser = authLookup.user;
+
     if (existingAuthUser) {
       console.log(`Auth user already exists for ${normalizedEmail}`);
       // Create profile and agent for existing auth user

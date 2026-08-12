@@ -8,6 +8,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders, errorResponse, jsonResponse } from "../_shared/cors.ts";
+import { escapeLikePattern } from "../_shared/like-escape.ts";
+import { resolveOne, preferLiveAgent } from "../_shared/resolve-one.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -83,16 +85,23 @@ Deno.serve(async (req: Request) => {
   // Fallback: agent_code (case-insensitive — codes are stored uppercase but
   // Sam pastes lowercase in DMs sometimes).
   if (!data) {
-    const fallback = await supabase
-      .from("agents")
-      .select(SELECT_COLS)
-      .ilike("agent_code", slug)
-      .maybeSingle();
-    if (fallback.error) {
-      console.error("resolve-ref-slug agent_code error", fallback.error);
+    // `slug` arrives from the URL, so before escaping it was a caller-supplied
+    // LIKE pattern against agent_code: "%" matched every agent at once and
+    // collapsed to null through .maybeSingle(), rendering "no such agent" on a
+    // referral link. agents.agent_code IS uniquely indexed, which is exactly why
+    // this was easy to miss — a unique index does not bound a pattern match.
+    // Measured 2026-08-12: 0 live agent_code collisions, so this is a structural
+    // fix, not a leak being closed.
+    try {
+      const fallback = await resolveOne<Record<string, unknown>>(
+        supabase.from("agents").select(SELECT_COLS).ilike("agent_code", escapeLikePattern(slug)),
+        { prefer: preferLiveAgent, label: `agents.agent_code=${slug}` },
+      );
+      data = fallback.row as typeof data;
+    } catch (e) {
+      console.error("resolve-ref-slug agent_code error", e);
       return errorResponse("Lookup failed", 500);
     }
-    data = fallback.data;
   }
 
   if (data?.is_deactivated === true) {

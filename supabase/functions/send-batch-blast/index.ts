@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { emailPattern } from "../_shared/like-escape.ts";
+import { resolveOne } from "../_shared/resolve-one.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -35,11 +37,14 @@ async function logNotification(supabase: any, data: any) {
 
 async function trySendPush(supabaseUrl: string, serviceRoleKey: string, supabase: any, lead: any): Promise<boolean> {
   try {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("user_id")
-      .ilike("email", lead.email)
-      .maybeSingle();
+    // profiles.email is not unique (8 colliding keys live) and the raw email was
+    // being used as a LIKE pattern, so an ambiguous read returned null and this
+    // silently skipped the push for someone who does have an account.
+    const found = await resolveOne<{ user_id: string }>(
+      supabase.from("profiles").select("user_id").ilike("email", emailPattern(lead.email)),
+      { label: `profiles.email=${lead.email}` },
+    );
+    const profile = found.row;
 
     // Skip push entirely for non-auth users — don't log fake failures
     if (!profile?.user_id) return false;

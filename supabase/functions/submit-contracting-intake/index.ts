@@ -16,7 +16,16 @@
 // an email, a Discord post, a workbook sync or an Ethos row happened — at this
 // point none of them have. Those are enqueued and the dispatcher owns them.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+// Pinned to 2.90.1 to match apex-outbox-dispatcher, which is verified alive in
+// production. NOT a cosmetic version bump: this function shipped on 2.50.0 and
+// returned WORKER_ERROR on every request — dead at boot, before the handler ran.
+// esm.sh resolves transitive dependencies at request time, so pinning
+// supabase-js pins nothing underneath it, and the 2.50.0 dependency graph
+// currently fails to boot on this project. Probed live: submit-application
+// (2.90.1) answers 400, applicant-checkin (2.50.0) returns the identical
+// WORKER_ERROR. 41 functions in this repo are still on 2.50.0 — a wider
+// pre-existing outage, tracked separately, not fixed by this release.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { corsHeaders, jsonResponse, errorResponse } from "../_shared/cors.ts";
 import {
   honeypotResponseBody,

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolveOne, preferLiveAgent, AGENT_RANK_COLUMNS } from "../_shared/resolve-one.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,12 +111,16 @@ const handler = async (req: Request): Promise<Response> => {
       // Don't fail - the user can still log in
     }
 
-    // 7. Find and update the agent record
-    const { data: agent, error: agentError } = await supabaseAdmin
-      .from("agents")
-      .select("id")
-      .eq("profile_id", profile.id)
-      .maybeSingle();
+    // 7. Find and update the agent record.
+    // agents.profile_id carries no unique index and had 5 colliding keys as of
+    // 2026-08-12 — one of them an ACTIVE agent (a live row paired with a
+    // terminated one). .maybeSingle() returned null for exactly those people, so
+    // this fell through to the user_id fallback below and stamped
+    // portal_password_set on BOTH rows. Resolve to the live row deliberately.
+    const { row: agent } = await resolveOne<{ id: string }>(
+      supabaseAdmin.from("agents").select(`id, ${AGENT_RANK_COLUMNS}`).eq("profile_id", profile.id),
+      { prefer: preferLiveAgent, label: "agents.by_profile_id" },
+    );
 
     if (agent) {
       const { error: agentUpdateError } = await supabaseAdmin

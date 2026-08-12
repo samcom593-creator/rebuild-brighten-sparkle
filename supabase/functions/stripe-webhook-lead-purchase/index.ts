@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.25.0?target=deno";
+import { resolveOne, preferLiveAgent, AGENT_RANK_COLUMNS } from "../_shared/resolve-one.ts";
 
 // 2026-05-19: expanded to a full Stripe ingest pipeline.
 // Handles: checkout.session.completed, payment_intent.succeeded, charge.refunded,
@@ -208,25 +209,27 @@ async function handlePaymentSuccess(supabase: any, event: Stripe.Event): Promise
     null;
   const customerName = session.customer_details?.name || null;
 
+  // Attribution fallback when the checkout session carried no agent_id in
+  // metadata. profiles.email, agents.user_id and agents.profile_id all lack a
+  // unique index (6, 1 and 5 colliding keys live as of 2026-08-12), so
+  // .maybeSingle() here used to return null on a duplicate and drop the purchase
+  // to agent_id=null at line ~270 — a paid lead credited to nobody, recorded as
+  // if the buyer simply could not be identified.
   if (!agentId && customerEmail) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, user_id")
-      .eq("email", customerEmail)
-      .maybeSingle();
-    if (profile?.user_id) {
-      const { data: agent } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", profile.user_id)
-        .maybeSingle();
-      if (agent?.id) agentId = agent.id;
-    } else if (profile?.id) {
-      const { data: agent } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("profile_id", profile.id)
-        .maybeSingle();
+    const { row: profile } = await resolveOne<{ id: string; user_id: string | null }>(
+      supabase.from("profiles").select("id, user_id").eq("email", customerEmail),
+      { label: "profiles.by_email" },
+    );
+    const agentQuery = profile?.user_id
+      ? supabase.from("agents").select(`id, ${AGENT_RANK_COLUMNS}`).eq("user_id", profile.user_id)
+      : profile?.id
+        ? supabase.from("agents").select(`id, ${AGENT_RANK_COLUMNS}`).eq("profile_id", profile.id)
+        : null;
+    if (agentQuery) {
+      const { row: agent } = await resolveOne<{ id: string }>(agentQuery, {
+        prefer: preferLiveAgent,
+        label: profile?.user_id ? "agents.by_user_id" : "agents.by_profile_id",
+      });
       if (agent?.id) agentId = agent.id;
     }
   }

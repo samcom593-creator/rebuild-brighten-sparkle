@@ -7,8 +7,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global: All buttons use Syne 700 */
-button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weight: 700; }
+/* 2026-08-12: controls use the clean UI face, not the display face.
+   Syne is a display type — forcing it (at 700) onto every button, nav link,
+   badge and label made the whole app read like a wall of marketing headlines
+   instead of a financial operations tool, and it overrode each primitive's own
+   font-medium/font-semibold. Syne is now reserved for real headings and the
+   explicit .font-display opt-in (see the h1..h6 rule below). Controls inherit
+   DM Sans from body and keep the weight their component sets. */
 
 /* APEX Financial Empire Design System
    Dark theme with teal/emerald accents, glass morphism effects
@@ -249,10 +254,10 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
     font-family: 'Syne', system-ui, sans-serif;
   }
 
-  button, .btn, nav a, .badge, label {
-    font-family: 'Syne', system-ui, sans-serif;
-    letter-spacing: 0.3px;
-  }
+  /* Controls deliberately do NOT restate a display font here. They inherit
+     DM Sans from body. Kept as a no-op anchor so the intent is visible: if a
+     future edit wants a control in the display face, it opts in with
+     .font-display on that element, never globally. */
 }
 
 @layer utilities {

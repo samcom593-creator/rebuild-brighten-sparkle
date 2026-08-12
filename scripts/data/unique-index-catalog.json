@@ -1,0 +1,2894 @@
+{
+ "_generated_by": "scripts/refresh-unique-index-catalog.sh (bot_sql -> pg_index)",
+ "_generated_at": "2026-08-12T12:30:00Z",
+ "_project_ref": "xrzweoneiieddzxogewk",
+ "_why": "A repo guard cannot query prod. This is a snapshot of which (table, column-set) combinations Postgres actually enforces as unique, so scripts/check-maybesingle-nonunique.mjs can decide whether an equality filter can match more than one row. Partial unique indexes are recorded SEPARATELY and deliberately NOT treated as uniqueness: they only constrain rows matching their predicate, so an equality filter can still match one in-predicate row and one out. apex-doctor Check #23 re-queries pg_index weekly and goes red when this snapshot drifts from the live catalog.",
+ "relation_kind": {
+  "achievements": "r",
+  "activity_logs": "r",
+  "admin_calendar_blocks": "r",
+  "aged_leads": "r",
+  "aged_leads_daily_snapshot": "r",
+  "agencyhub_ai_conversation": "r",
+  "agencyhub_command_queue": "r",
+  "agent_achievements": "r",
+  "agent_attendance": "r",
+  "agent_attribution_audit": "r",
+  "agent_award_profiles": "r",
+  "agent_carrier_comp": "r",
+  "agent_comp_levels": "r",
+  "agent_credentials": "r",
+  "agent_goals": "r",
+  "agent_inbox": "r",
+  "agent_lead_stats": "r",
+  "agent_license_alerts": "r",
+  "agent_lifetime_production": "v",
+  "agent_metrics": "r",
+  "agent_notes": "r",
+  "agent_onboarding_queue": "r",
+  "agent_ratings": "r",
+  "agent_removal_requests": "r",
+  "agent_revenue_estimate": "v",
+  "agent_strikes": "r",
+  "agent_tasks": "r",
+  "agent_touches": "r",
+  "agentlink_agents": "r",
+  "agentlink_alerts": "r",
+  "agentlink_appointments": "r",
+  "agentlink_beneficiaries": "r",
+  "agentlink_binary_docs": "r",
+  "agentlink_book": "r",
+  "agentlink_book_of_business": "r",
+  "agentlink_carriers": "r",
+  "agentlink_clients": "r",
+  "agentlink_commissions": "r",
+  "agentlink_contracts": "r",
+  "agentlink_deals_snapshot": "r",
+  "agentlink_leads": "r",
+  "agentlink_raw_exports": "r",
+  "agentlink_rewards": "r",
+  "agentlink_sync_log": "r",
+  "agents": "r",
+  "analytics_events": "p",
+  "analytics_events_2026_02": "r",
+  "analytics_events_2026_03": "r",
+  "analytics_events_2026_04": "r",
+  "analytics_events_2026_05": "r",
+  "analytics_events_2026_06": "r",
+  "analytics_events_2026_07": "r",
+  "analytics_events_default": "r",
+  "announcements": "r",
+  "apex_agent_journey_steps": "r",
+  "apex_agent_journeys": "r",
+  "apex_call_reminders": "r",
+  "apex_carrier_contracts": "r",
+  "apex_challenge_unlocks": "r",
+  "apex_challenges": "r",
+  "apex_commands": "r",
+  "apex_contact_actions": "r",
+  "apex_edge_secrets": "r",
+  "apex_manychat_push_log": "r",
+  "apex_scheduled_calls": "r",
+  "apex_schema_meta": "r",
+  "apex_standard_facts": "r",
+  "apex_toolkit_agent_contact_log": "r",
+  "apex_toolkit_agents": "r",
+  "applicant_checkins": "r",
+  "applicant_login_queue": "r",
+  "applicant_touchpoints": "r",
+  "application_contact_log": "r",
+  "applications": "r",
+  "assistant_share_tokens": "r",
+  "audit_log": "p",
+  "audit_log_2026_02": "r",
+  "audit_log_2026_03": "r",
+  "audit_log_2026_04": "r",
+  "audit_log_2026_05": "r",
+  "audit_log_2026_06": "r",
+  "audit_log_2026_07": "r",
+  "audit_log_default": "r",
+  "automation_expectations": "r",
+  "automation_health": "v",
+  "automation_run_log": "r",
+  "automation_runs": "r",
+  "automation_settings": "r",
+  "autoposter_watchdog_log": "r",
+  "availability_blocks": "r",
+  "award_batches": "r",
+  "banned_prospects": "r",
+  "bot_alerts": "r",
+  "bot_audits": "r",
+  "bot_metrics_snapshots": "r",
+  "bot_priorities": "r",
+  "calendar_events": "r",
+  "call_activity": "r",
+  "call_recordings": "r",
+  "call_scores": "r",
+  "call_transcripts": "r",
+  "carrier_policies": "r",
+  "carrier_registry": "r",
+  "carriers": "r",
+  "cfo_approval_requests": "r",
+  "cfo_cron_run_log": "r",
+  "channel_deprovision_queue": "r",
+  "charge_review_actions": "r",
+  "churn_risk_alerts": "r",
+  "client_leads": "r",
+  "client_leads_age_out": "r",
+  "codex_blockers": "r",
+  "commission_audit_log": "r",
+  "commission_ledger": "r",
+  "commission_recovery_attempts": "r",
+  "comp_change_audit": "r",
+  "comp_rate_imports": "r",
+  "comp_rates": "r",
+  "contact_history": "r",
+  "content_library": "r",
+  "contract_sends": "r",
+  "contract_templates": "r",
+  "contracting_links": "r",
+  "critical_loss_events": "r",
+  "cron_health_probe": "r",
+  "culture_events": "r",
+  "culture_manager_credits": "r",
+  "customer_portal_tokens": "r",
+  "cw_challenge_logs": "r",
+  "cw_challenges": "r",
+  "cw_competitor_obs": "r",
+  "cw_competitors": "r",
+  "cw_demand_mines": "r",
+  "cw_dogmas": "r",
+  "cw_formats": "r",
+  "cw_hooks": "r",
+  "cw_ideas": "r",
+  "cw_kpi_snapshots": "r",
+  "cw_outliers": "r",
+  "cw_outreach_log": "r",
+  "cw_pillars": "r",
+  "cw_posts": "r",
+  "cw_productions": "r",
+  "cw_recruiting_contacts": "r",
+  "cw_smb_post_links": "r",
+  "cw_split_tests": "r",
+  "cw_weekly_reviews": "r",
+  "daily_brief_log": "r",
+  "daily_production": "r",
+  "data_deletion_requests": "r",
+  "dead_letter_events": "r",
+  "deal_attachments": "r",
+  "deal_drafts": "r",
+  "deal_status_history": "r",
+  "deal_sync_log": "r",
+  "deal_sync_queue": "r",
+  "deals": "r",
+  "deleted_leads": "r",
+  "delivery_attempts": "r",
+  "dialer_weekly_payments": "r",
+  "discord_event_log": "r",
+  "discord_post_audits": "r",
+  "discord_rate_limit": "r",
+  "duplicate_agent_flags": "r",
+  "elite_circle_waitlist": "r",
+  "email_delivery_log": "r",
+  "email_tracking": "r",
+  "email_unsubscribes": "r",
+  "error_logs": "r",
+  "ethos_book_policies": "r",
+  "external_identities": "r",
+  "field_checkins": "r",
+  "function_errors": "r",
+  "getting_started_progress": "r",
+  "health_check_log": "r",
+  "hh_activity": "r",
+  "hh_applicants": "r",
+  "hh_import_log": "r",
+  "hh_login_tokens": "r",
+  "hh_rate_limits": "r",
+  "hh_user_prefs": "r",
+  "hh_users": "r",
+  "hiring_manager_assignments": "r",
+  "hub_course_progress": "r",
+  "ics_feed_tokens": "r",
+  "idempotency_keys": "r",
+  "ig_reels_cache": "r",
+  "inactive_agent_queue": "r",
+  "inbound_leads": "r",
+  "inbox_messages": "r",
+  "instagram_connections": "r",
+  "instagram_dm_templates": "r",
+  "instagram_dm_threads": "r",
+  "instagram_events": "r",
+  "instagram_subscriptions": "r",
+  "insuracloud_backfill_log": "r",
+  "insuracloud_downline": "r",
+  "insuracloud_payouts": "r",
+  "insuracloud_policies": "r",
+  "insuracloud_snapshots": "r",
+  "insuracloud_sync_log": "r",
+  "integration_accounts": "r",
+  "integration_capabilities": "r",
+  "integration_events": "r",
+  "interview_events": "r",
+  "interview_recordings": "r",
+  "invitation_seen": "r",
+  "invite_tokens": "r",
+  "job_runs": "r",
+  "lead_activity": "r",
+  "lead_counter": "r",
+  "lead_payment_tracking": "r",
+  "lead_purchase_requests": "r",
+  "lead_purchases": "r",
+  "lead_purchases_dedup_archive": "r",
+  "leaderboard_snapshots": "r",
+  "license_milestone_outbox": "r",
+  "license_milestone_templates": "r",
+  "license_renewal_alerts": "r",
+  "licensing_courses": "r",
+  "licensing_delegates": "r",
+  "licensing_nudges": "r",
+  "licensing_stage_backfill_20260807": "r",
+  "licensing_students": "r",
+  "magic_login_tokens": "r",
+  "manager_alerts": "r",
+  "manager_board_grants": "r",
+  "manager_growth_stats": "r",
+  "manager_hierarchy": "r",
+  "manager_invite_links": "r",
+  "manager_signup_tokens": "r",
+  "manager_social_posts": "r",
+  "manager_touches": "r",
+  "manual_interview_entries": "r",
+  "mentorship_leads": "r",
+  "mercury_subscriptions": "r",
+  "metric_definitions": "r",
+  "next_step_events": "r",
+  "next_step_messages": "r",
+  "next_step_progress": "r",
+  "next_step_stages": "r",
+  "notification_log": "r",
+  "notification_prefs": "r",
+  "notifications": "r",
+  "onboarding_modules": "r",
+  "onboarding_progress": "r",
+  "onboarding_questions": "r",
+  "outbox_events": "r",
+  "outreach_queue": "r",
+  "outreach_templates": "r",
+  "partial_applications": "r",
+  "people": "r",
+  "pg_cron_emulator_state": "r",
+  "phc_delivery_queue": "r",
+  "phc_leads": "r",
+  "pipeline_metrics": "r",
+  "plaque_awards": "r",
+  "poke_queue": "r",
+  "policy_quality_flags": "r",
+  "production_ledger": "r",
+  "profiles": "r",
+  "push_subscriptions": "r",
+  "qe_build_charts": "r",
+  "qe_carriers": "r",
+  "qe_commission_schedules": "r",
+  "qe_conditions": "r",
+  "qe_graded_routing_rules": "r",
+  "qe_medications": "r",
+  "qe_modal_factors": "r",
+  "qe_payment_methods": "r",
+  "qe_product_badges": "r",
+  "qe_product_states": "r",
+  "qe_products": "r",
+  "qe_quote_logs": "r",
+  "qe_rate_tables": "r",
+  "qe_scoring_weights": "r",
+  "qe_source_documents": "r",
+  "qe_underwriting_knockouts": "r",
+  "rate_limits": "r",
+  "readymode_bot_state": "r",
+  "readymode_call_analysis": "r",
+  "readymode_call_transcripts": "r",
+  "readymode_dialer_calls": "r",
+  "readymode_recordings": "r",
+  "readymode_sync_log": "r",
+  "recurring_calendar_blocks": "r",
+  "referrals": "r",
+  "resources": "r",
+  "sales_scripts": "r",
+  "sam_daily_tasks": "r",
+  "sam_todo_dismissed": "r",
+  "sam_todo_manual_items": "r",
+  "sam_todo_push_log": "r",
+  "sam_todo_snoozed": "r",
+  "sandcastles_queue": "r",
+  "scheduled_interviews": "r",
+  "scheduled_tasks": "r",
+  "security_change_log": "r",
+  "seminar_registrations": "r",
+  "sms_fallback_queue": "r",
+  "sms_send_guard": "r",
+  "social_bot_analytics_snapshots": "r",
+  "social_bot_blockers": "r",
+  "social_bot_drafts": "r",
+  "social_bot_goals": "r",
+  "social_bot_hooks": "r",
+  "social_bot_inbound": "r",
+  "social_bot_runs": "r",
+  "social_bot_scoreboard": "r",
+  "social_snapshots": "r",
+  "strike_templates": "r",
+  "stripe_disputes": "r",
+  "stripe_events_log": "r",
+  "stripe_failed_payments": "r",
+  "stripe_subscription_events": "r",
+  "supported_carriers": "r",
+  "system_health_events": "r",
+  "system_health_logs": "r",
+  "system_settings": "r",
+  "team_chat_messages": "r",
+  "team_memberships": "r",
+  "telegram_broadcast_log": "r",
+  "telegram_escalations": "r",
+  "telegram_faq": "r",
+  "telegram_groups": "r",
+  "telegram_messages": "r",
+  "telegram_scheduled_messages": "r",
+  "telegram_templates": "r",
+  "telegram_users": "r",
+  "today_tasks": "r",
+  "transfer_requests": "r",
+  "user_dashboard_prefs": "r",
+  "user_roles": "r",
+  "v_admin_applicant_overview": "v",
+  "v_agent_20k_target_leaderboard": "v",
+  "v_agent_canonical_map": "v",
+  "v_agent_carrier_mix": "v",
+  "v_agent_charge_rollup": "v",
+  "v_agent_command_center": "v",
+  "v_agent_crm_active": "v",
+  "v_agent_deal_quality": "v",
+  "v_agent_duplicate_candidates": "v",
+  "v_agent_duplicates": "v",
+  "v_agent_license_alert_health": "v",
+  "v_agent_monthly_production": "v",
+  "v_agent_production_quality": "v",
+  "v_agent_quality_score": "v",
+  "v_agent_reactivation_queue": "v",
+  "v_agent_referrals": "v",
+  "v_agent_status_contradictions": "v",
+  "v_agent_strikes": "v",
+  "v_agent_training_stage": "v",
+  "v_agent_weekly_production": "v",
+  "v_agent_with_downline_production": "v",
+  "v_agentlink_auth_health": "v",
+  "v_agentlink_book_freshness": "v",
+  "v_agentlink_book_truth": "v",
+  "v_agentlink_sync_health": "v",
+  "v_agents_learn_from": "v",
+  "v_agents_missing_al_link": "v",
+  "v_agents_missing_al_user_id": "v",
+  "v_agents_needs_attention": "v",
+  "v_agents_onboarding_status": "v",
+  "v_agents_status_deac_mismatch": "v",
+  "v_alert_sms_truth": "v",
+  "v_apex_contracts_summary": "v",
+  "v_application_conversion_funnel": "v",
+  "v_applications_real": "v",
+  "v_applications_record_type_leak": "v",
+  "v_blacklisted_carrier_deals": "v",
+  "v_book_by_month": "v",
+  "v_book_concentration": "v",
+  "v_book_persistency": "v",
+  "v_book_status_segments": "v",
+  "v_bot_alert_delivery_summary": "v",
+  "v_bot_alert_delivery_truth": "v",
+  "v_builder_operating_dashboard": "v",
+  "v_bulk_backfilled_timestamps": "v",
+  "v_business_analytics_carriers": "v",
+  "v_business_analytics_insights": "v",
+  "v_business_analytics_summary": "v",
+  "v_call_winners": "v",
+  "v_carrier_book_recon": "v",
+  "v_carrier_book_summary": "v",
+  "v_carrier_dormancy_watch": "v",
+  "v_carrier_money_leak": "v",
+  "v_carrier_premium_data_gap": "v",
+  "v_carrier_production": "v",
+  "v_carrier_reconciliation": "v",
+  "v_carrier_reroute_plan": "v",
+  "v_ceo_command_center": "v",
+  "v_cfo_agent_activation_watch": "v",
+  "v_cfo_cron_health": "v",
+  "v_cfo_dup_charge_watch": "v",
+  "v_cfo_ica_paid_stuck": "v",
+  "v_cfo_snapshot": "v",
+  "v_cfo_sync_health_watch": "v",
+  "v_channel_deprovision_needed": "v",
+  "v_charge_anomalies": "v",
+  "v_charge_anomalies_unresolved": "v",
+  "v_charge_trend": "v",
+  "v_chargeback_watch": "v",
+  "v_chargebacks_30d": "v",
+  "v_client_error_summary": "v",
+  "v_command_center_queue": "v",
+  "v_commission_grid": "v",
+  "v_commission_recovery_by_agent": "v",
+  "v_commission_recovery_status": "v",
+  "v_conduct_command_center": "v",
+  "v_content_utm_analytics": "v",
+  "v_contract_send_health": "v",
+  "v_critical_losses_open": "v",
+  "v_culture_feed": "v",
+  "v_cw_active_challenge": "v",
+  "v_cw_active_outliers": "v",
+  "v_cw_audience_split": "v",
+  "v_cw_kpi_7d": "v",
+  "v_cw_posts_today": "v",
+  "v_cw_quota_streak": "v",
+  "v_cw_recruiting_pipeline": "v",
+  "v_cw_shot_vs_posted": "v",
+  "v_cw_smb_bridge": "v",
+  "v_data_quality_dashboard": "v",
+  "v_deals_leaderboard": "v",
+  "v_deals_needing_real_policy": "v",
+  "v_dormant_dialer_seats": "v",
+  "v_dunning_classification": "v",
+  "v_duplicate_active_subs": "v",
+  "v_duplicate_policies": "v",
+  "v_earnings_estimate": "v",
+  "v_ethos_agent_link_health": "v",
+  "v_falloff_watch": "v",
+  "v_funnel_by_source": "v",
+  "v_ghost_deals": "v",
+  "v_hired_licensed_missing_course": "v",
+  "v_hot_licensing_prospects": "v",
+  "v_ica_paid_missing_data": "v",
+  "v_identity_collision_verdict": "v",
+  "v_inactive_agents_summary": "v",
+  "v_insuracloud_auth_health": "v",
+  "v_insuracloud_outbox_root_causes": "v",
+  "v_insuracloud_outbox_truth": "v",
+  "v_insuracloud_outbox_verdict": "v",
+  "v_insuracloud_push_blocked": "v",
+  "v_insuracloud_push_eligible": "v",
+  "v_insuracloud_sync_health": "v",
+  "v_interview_capture_health": "v",
+  "v_interview_capture_reconciliation": "v",
+  "v_interview_conflicts": "v",
+  "v_interview_match_candidates": "v",
+  "v_interview_pipeline": "v",
+  "v_interviews_unified": "v",
+  "v_june_hires_needs_attention": "v",
+  "v_kj_seminar_control": "v",
+  "v_lapsed_recovery": "v",
+  "v_lapses_30d_detail": "v",
+  "v_launch_readiness": "v",
+  "v_lead_purchases_today": "v",
+  "v_leads_book_fallout": "v",
+  "v_leads_do_not_dial": "v",
+  "v_leads_orphan_rewrite": "v",
+  "v_leads_quality_flags": "v",
+  "v_leads_sold_already": "v",
+  "v_leads_state_coverage": "v",
+  "v_leads_suppression_all": "v",
+  "v_leads_va_equity": "v",
+  "v_leads_veteran_fe_priority": "v",
+  "v_licensed_booking_mismatch": "v",
+  "v_licensing_kanban": "v",
+  "v_licensing_stage_canonical": "v",
+  "v_licensing_stage_counts": "v",
+  "v_licensing_stage_drift": "v",
+  "v_licensing_stalled": "v",
+  "v_manager_command_center": "v",
+  "v_manager_culture_credits": "v",
+  "v_manager_departure_orphan_risk": "v",
+  "v_manager_hierarchy_mtd": "v",
+  "v_manager_roster": "v",
+  "v_manager_scorecard": "v",
+  "v_manager_social_leaderboard": "v",
+  "v_mentorship_by_tier": "v",
+  "v_mentorship_payment_links": "v",
+  "v_mentorship_pipeline": "v",
+  "v_mercury_subscription_summary": "v",
+  "v_missed_opportunity_ledger": "v",
+  "v_my_applications": "v",
+  "v_my_carrier_contracts": "v",
+  "v_new_hires_activation": "v",
+  "v_next_step_candidate": "v",
+  "v_next_step_current": "v",
+  "v_next_step_funnel_health": "v",
+  "v_next_step_manager_board": "v",
+  "v_next_step_stuck_pool": "v",
+  "v_notification_log_with_role": "v",
+  "v_offboarding_preservation": "v",
+  "v_old_licensed_applicants": "v",
+  "v_old_manager_applicants": "v",
+  "v_onboarding_sequence": "v",
+  "v_outreach_daily_cap_check": "v",
+  "v_paid_applicants": "v",
+  "v_phantom_lead_purchases": "v",
+  "v_pre_licensing_tracker": "v",
+  "v_producer_reactivation": "v",
+  "v_producer_trend_alert": "v",
+  "v_prospect_review_queue": "v",
+  "v_queue_active_no_first_sale": "v",
+  "v_queue_hired_no_onboarding": "v",
+  "v_queue_interviews_no_outcome": "v",
+  "v_queue_licensed_inactive": "v",
+  "v_queue_stalled_applications": "v",
+  "v_readymode_agent_today": "v",
+  "v_readymode_coaching_queue": "v",
+  "v_readymode_ingest_health": "v",
+  "v_readymode_lead_source_roi": "v",
+  "v_readymode_off_script": "v",
+  "v_readymode_pipeline_status": "v",
+  "v_readymode_today": "v",
+  "v_readymode_viral": "v",
+  "v_recent_activations_alp": "v",
+  "v_recent_conduct_events": "v",
+  "v_recent_hires": "v",
+  "v_reclaimable_dialer_seats": "v",
+  "v_recovery_queue": "v",
+  "v_recruiter_pipeline": "v",
+  "v_recruiting_inbox": "v",
+  "v_recruiting_inbox_summary": "v",
+  "v_recruiting_leaderboard": "v",
+  "v_referral_earnings_pending": "v",
+  "v_referral_pipeline": "v",
+  "v_rls_audit": "v",
+  "v_rls_overbroad_write_policies": "v",
+  "v_sales_challenges": "v",
+  "v_sam_builders_dashboard": "v",
+  "v_sam_inbox": "v",
+  "v_sam_today_tasks": "v",
+  "v_sam_todo": "v",
+  "v_sam_todo_blocker_source": "v",
+  "v_sam_todo_manual_source": "v",
+  "v_sam_week_tasks": "v",
+  "v_schedule_auto_events": "v",
+  "v_seminar_dashboard": "v",
+  "v_seminar_next_slots": "v",
+  "v_smb_cw_bridge": "v",
+  "v_social_bot_dashboard": "v",
+  "v_social_latest": "v",
+  "v_stale_applicants": "v",
+  "v_stale_submitted_action": "v",
+  "v_stale_submitted_by_carrier": "v",
+  "v_strike_summary": "v",
+  "v_strike_trend": "v",
+  "v_stripe_dunning_early_warning": "v",
+  "v_stripe_dunning_watch": "v",
+  "v_stripe_event_health": "v",
+  "v_stripe_ingest_freshness": "v",
+  "v_stripe_refund_watch": "v",
+  "v_stripe_subscription_status": "v",
+  "v_sync_health": "v",
+  "v_sync_pipeline_health": "v",
+  "v_team_analytics_producers": "v",
+  "v_team_daily_numbers": "v",
+  "v_team_hierarchy": "v",
+  "v_telegram_application_link": "v",
+  "v_telegram_dashboard": "v",
+  "v_telegram_funnel": "v",
+  "v_telegram_stuck_users": "v",
+  "v_today_dashboard": "v",
+  "v_top_legs_excl_sam": "v",
+  "v_top_producers_mtd": "v",
+  "v_transfer_requests": "v",
+  "v_trophy_cabinet": "v",
+  "v_unclaimed_new_apps": "v",
+  "v_unlicensed_all": "v",
+  "v_upcoming_calls": "v",
+  "v_va_call_queue": "v",
+  "v_xcel_latest": "v",
+  "v_xcel_person_progress": "v",
+  "v_xcel_pipeline": "v",
+  "v_xcel_stage_gaps": "v",
+  "xcel_events": "r",
+  "xcel_pre_licensing_reports": "r",
+  "xcel_pre_licensing_students": "r",
+  "xcel_progress": "r"
+ },
+ "full_unique": {
+  "achievements": [
+   [
+    "id"
+   ]
+  ],
+  "activity_logs": [
+   [
+    "id"
+   ]
+  ],
+  "admin_calendar_blocks": [
+   [
+    "id"
+   ]
+  ],
+  "aged_leads": [
+   [
+    "id"
+   ]
+  ],
+  "aged_leads_daily_snapshot": [
+   [
+    "id",
+    "snapshot_date"
+   ]
+  ],
+  "agencyhub_ai_conversation": [
+   [
+    "id"
+   ]
+  ],
+  "agencyhub_command_queue": [
+   [
+    "id"
+   ]
+  ],
+  "agent_achievements": [
+   [
+    "agent_id",
+    "achievement_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agent_attendance": [
+   [
+    "agent_id",
+    "attendance_date",
+    "attendance_type"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agent_attribution_audit": [
+   [
+    "id"
+   ]
+  ],
+  "agent_award_profiles": [
+   [
+    "agent_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agent_carrier_comp": [
+   [
+    "agent_id",
+    "carrier_name"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agent_comp_levels": [
+   [
+    "agent_name"
+   ]
+  ],
+  "agent_credentials": [
+   [
+    "agent_id",
+    "service"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agent_goals": [
+   [
+    "agent_id",
+    "month_year"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agent_inbox": [
+   [
+    "id"
+   ]
+  ],
+  "agent_lead_stats": [
+   [
+    "agent_id",
+    "period_date",
+    "period_type"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agent_license_alerts": [
+   [
+    "agent_id",
+    "milestone"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agent_metrics": [
+   [
+    "id"
+   ]
+  ],
+  "agent_notes": [
+   [
+    "id"
+   ]
+  ],
+  "agent_onboarding_queue": [
+   [
+    "agent_id",
+    "email_kind"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agent_ratings": [
+   [
+    "agent_id",
+    "rated_by"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agent_removal_requests": [
+   [
+    "id"
+   ]
+  ],
+  "agent_strikes": [
+   [
+    "id"
+   ]
+  ],
+  "agent_tasks": [
+   [
+    "id"
+   ]
+  ],
+  "agent_touches": [
+   [
+    "id"
+   ]
+  ],
+  "agentlink_agents": [
+   [
+    "id"
+   ],
+   [
+    "insuracloud_user_id"
+   ]
+  ],
+  "agentlink_alerts": [
+   [
+    "id"
+   ]
+  ],
+  "agentlink_appointments": [
+   [
+    "external_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agentlink_beneficiaries": [
+   [
+    "id"
+   ],
+   [
+    "insuracloud_beneficiary_id"
+   ]
+  ],
+  "agentlink_binary_docs": [
+   [
+    "id"
+   ]
+  ],
+  "agentlink_book": [
+   [
+    "deal_key"
+   ]
+  ],
+  "agentlink_book_of_business": [
+   [
+    "external_policy_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agentlink_carriers": [
+   [
+    "id"
+   ]
+  ],
+  "agentlink_clients": [
+   [
+    "id"
+   ],
+   [
+    "insuracloud_pipeline_client_id"
+   ]
+  ],
+  "agentlink_commissions": [
+   [
+    "external_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agentlink_contracts": [
+   [
+    "id"
+   ],
+   [
+    "insuracloud_contract_id"
+   ]
+  ],
+  "agentlink_deals_snapshot": [
+   [
+    "id"
+   ]
+  ],
+  "agentlink_leads": [
+   [
+    "external_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agentlink_raw_exports": [
+   [
+    "id"
+   ]
+  ],
+  "agentlink_rewards": [
+   [
+    "agent_id",
+    "period",
+    "period_key",
+    "rank"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "agentlink_sync_log": [
+   [
+    "id"
+   ]
+  ],
+  "agents": [
+   [
+    "agent_code"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "analytics_events_2026_02": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "analytics_events_2026_03": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "analytics_events_2026_04": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "analytics_events_2026_05": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "analytics_events_2026_06": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "analytics_events_2026_07": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "analytics_events_default": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "announcements": [
+   [
+    "id"
+   ]
+  ],
+  "apex_agent_journey_steps": [
+   [
+    "journey_id",
+    "step_key"
+   ]
+  ],
+  "apex_agent_journeys": [
+   [
+    "id"
+   ]
+  ],
+  "apex_call_reminders": [
+   [
+    "id"
+   ],
+   [
+    "scheduled_call_id",
+    "reminder_kind"
+   ]
+  ],
+  "apex_carrier_contracts": [
+   [
+    "agentlink_contract_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "apex_challenge_unlocks": [
+   [
+    "agent_id",
+    "challenge_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "apex_challenges": [
+   [
+    "id"
+   ],
+   [
+    "slug"
+   ]
+  ],
+  "apex_commands": [
+   [
+    "id"
+   ]
+  ],
+  "apex_contact_actions": [
+   [
+    "id"
+   ],
+   [
+    "idempotency_key",
+    "requested_by"
+   ]
+  ],
+  "apex_edge_secrets": [
+   [
+    "key"
+   ]
+  ],
+  "apex_manychat_push_log": [
+   [
+    "application_id",
+    "message_sha256"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "apex_scheduled_calls": [
+   [
+    "gcal_event_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "apex_schema_meta": [
+   [
+    "version"
+   ]
+  ],
+  "apex_standard_facts": [
+   [
+    "id"
+   ]
+  ],
+  "apex_toolkit_agent_contact_log": [
+   [
+    "id"
+   ]
+  ],
+  "apex_toolkit_agents": [
+   [
+    "id"
+   ]
+  ],
+  "applicant_checkins": [
+   [
+    "application_id",
+    "checkin_date"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "applicant_login_queue": [
+   [
+    "id"
+   ]
+  ],
+  "applicant_touchpoints": [
+   [
+    "application_id",
+    "touch_type"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "application_contact_log": [
+   [
+    "id"
+   ]
+  ],
+  "applications": [
+   [
+    "id"
+   ]
+  ],
+  "assistant_share_tokens": [
+   [
+    "id"
+   ],
+   [
+    "token"
+   ]
+  ],
+  "audit_log_2026_02": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "audit_log_2026_03": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "audit_log_2026_04": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "audit_log_2026_05": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "audit_log_2026_06": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "audit_log_2026_07": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "audit_log_default": [
+   [
+    "id",
+    "created_at"
+   ]
+  ],
+  "automation_expectations": [
+   [
+    "automation_name"
+   ]
+  ],
+  "automation_run_log": [
+   [
+    "id"
+   ]
+  ],
+  "automation_runs": [
+   [
+    "id"
+   ]
+  ],
+  "automation_settings": [
+   [
+    "id"
+   ],
+   [
+    "name"
+   ]
+  ],
+  "autoposter_watchdog_log": [
+   [
+    "id"
+   ]
+  ],
+  "availability_blocks": [
+   [
+    "id"
+   ]
+  ],
+  "award_batches": [
+   [
+    "id"
+   ]
+  ],
+  "banned_prospects": [
+   [
+    "id"
+   ]
+  ],
+  "bot_alerts": [
+   [
+    "id"
+   ]
+  ],
+  "bot_audits": [
+   [
+    "id"
+   ]
+  ],
+  "bot_metrics_snapshots": [
+   [
+    "id"
+   ],
+   [
+    "snapshot_date",
+    "metric_key"
+   ]
+  ],
+  "bot_priorities": [
+   [
+    "for_date",
+    "rank"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "calendar_events": [
+   [
+    "id"
+   ]
+  ],
+  "call_activity": [
+   [
+    "id"
+   ]
+  ],
+  "call_recordings": [
+   [
+    "cdr_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "call_scores": [
+   [
+    "id"
+   ]
+  ],
+  "call_transcripts": [
+   [
+    "id"
+   ]
+  ],
+  "carrier_policies": [
+   [
+    "id"
+   ]
+  ],
+  "carrier_registry": [
+   [
+    "carrier"
+   ]
+  ],
+  "carriers": [
+   [
+    "id"
+   ],
+   [
+    "insuracloud_carrier_id"
+   ],
+   [
+    "name"
+   ]
+  ],
+  "cfo_approval_requests": [
+   [
+    "id"
+   ],
+   [
+    "token"
+   ]
+  ],
+  "cfo_cron_run_log": [
+   [
+    "id"
+   ]
+  ],
+  "channel_deprovision_queue": [
+   [
+    "id"
+   ]
+  ],
+  "charge_review_actions": [
+   [
+    "id"
+   ]
+  ],
+  "churn_risk_alerts": [
+   [
+    "id"
+   ]
+  ],
+  "client_leads": [
+   [
+    "id"
+   ]
+  ],
+  "client_leads_age_out": [
+   [
+    "id"
+   ]
+  ],
+  "codex_blockers": [
+   [
+    "id"
+   ]
+  ],
+  "commission_audit_log": [
+   [
+    "id"
+   ]
+  ],
+  "commission_ledger": [
+   [
+    "deal_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "commission_recovery_attempts": [
+   [
+    "id"
+   ]
+  ],
+  "comp_change_audit": [
+   [
+    "id"
+   ]
+  ],
+  "comp_rate_imports": [
+   [
+    "id"
+   ],
+   [
+    "source_version"
+   ]
+  ],
+  "comp_rates": [
+   [
+    "change_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "contact_history": [
+   [
+    "id"
+   ]
+  ],
+  "content_library": [
+   [
+    "id"
+   ]
+  ],
+  "contract_sends": [
+   [
+    "id"
+   ]
+  ],
+  "contract_templates": [
+   [
+    "carrier",
+    "role_required"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "contracting_links": [
+   [
+    "id"
+   ]
+  ],
+  "critical_loss_events": [
+   [
+    "id"
+   ]
+  ],
+  "cron_health_probe": [
+   [
+    "id"
+   ]
+  ],
+  "culture_events": [
+   [
+    "deal_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "culture_manager_credits": [
+   [
+    "culture_event_id",
+    "manager_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "customer_portal_tokens": [
+   [
+    "token"
+   ]
+  ],
+  "cw_challenge_logs": [
+   [
+    "id"
+   ]
+  ],
+  "cw_challenges": [
+   [
+    "id"
+   ]
+  ],
+  "cw_competitor_obs": [
+   [
+    "id"
+   ]
+  ],
+  "cw_competitors": [
+   [
+    "handle",
+    "platform"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "cw_demand_mines": [
+   [
+    "id"
+   ]
+  ],
+  "cw_dogmas": [
+   [
+    "id"
+   ],
+   [
+    "number"
+   ]
+  ],
+  "cw_formats": [
+   [
+    "id"
+   ],
+   [
+    "name"
+   ]
+  ],
+  "cw_hooks": [
+   [
+    "id"
+   ]
+  ],
+  "cw_ideas": [
+   [
+    "id"
+   ]
+  ],
+  "cw_kpi_snapshots": [
+   [
+    "id"
+   ]
+  ],
+  "cw_outliers": [
+   [
+    "id"
+   ],
+   [
+    "post_id"
+   ]
+  ],
+  "cw_outreach_log": [
+   [
+    "id"
+   ]
+  ],
+  "cw_pillars": [
+   [
+    "code"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "cw_posts": [
+   [
+    "id"
+   ]
+  ],
+  "cw_productions": [
+   [
+    "id"
+   ]
+  ],
+  "cw_recruiting_contacts": [
+   [
+    "id"
+   ]
+  ],
+  "cw_smb_post_links": [
+   [
+    "id"
+   ],
+   [
+    "smb_draft_id"
+   ]
+  ],
+  "cw_split_tests": [
+   [
+    "id"
+   ]
+  ],
+  "cw_weekly_reviews": [
+   [
+    "id"
+   ],
+   [
+    "week_start"
+   ]
+  ],
+  "daily_brief_log": [
+   [
+    "id"
+   ]
+  ],
+  "daily_production": [
+   [
+    "agent_id",
+    "production_date"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "data_deletion_requests": [
+   [
+    "id"
+   ]
+  ],
+  "dead_letter_events": [
+   [
+    "id"
+   ],
+   [
+    "outbox_event_id"
+   ]
+  ],
+  "deal_attachments": [
+   [
+    "id"
+   ],
+   [
+    "object_path"
+   ]
+  ],
+  "deal_drafts": [
+   [
+    "id"
+   ],
+   [
+    "owner_user_id",
+    "idempotency_key"
+   ]
+  ],
+  "deal_status_history": [
+   [
+    "deal_id",
+    "deal_version"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "deal_sync_log": [
+   [
+    "id"
+   ]
+  ],
+  "deal_sync_queue": [
+   [
+    "id"
+   ]
+  ],
+  "deals": [
+   [
+    "external_deal_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "deleted_leads": [
+   [
+    "id"
+   ]
+  ],
+  "delivery_attempts": [
+   [
+    "id"
+   ],
+   [
+    "outbox_event_id",
+    "attempt_number"
+   ]
+  ],
+  "dialer_weekly_payments": [
+   [
+    "agent_id",
+    "week_start"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "discord_event_log": [
+   [
+    "id"
+   ]
+  ],
+  "discord_post_audits": [
+   [
+    "id"
+   ]
+  ],
+  "discord_rate_limit": [
+   [
+    "bucket_start",
+    "category"
+   ]
+  ],
+  "duplicate_agent_flags": [
+   [
+    "id"
+   ]
+  ],
+  "elite_circle_waitlist": [
+   [
+    "id"
+   ]
+  ],
+  "email_delivery_log": [
+   [
+    "id"
+   ]
+  ],
+  "email_tracking": [
+   [
+    "id"
+   ]
+  ],
+  "email_unsubscribes": [
+   [
+    "email"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "error_logs": [
+   [
+    "id"
+   ]
+  ],
+  "ethos_book_policies": [
+   [
+    "id"
+   ],
+   [
+    "owner_agent_id",
+    "policy_number"
+   ]
+  ],
+  "external_identities": [
+   [
+    "id"
+   ],
+   [
+    "provider",
+    "external_id"
+   ]
+  ],
+  "field_checkins": [
+   [
+    "id"
+   ]
+  ],
+  "function_errors": [
+   [
+    "id"
+   ]
+  ],
+  "getting_started_progress": [
+   [
+    "agent_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "health_check_log": [
+   [
+    "id"
+   ]
+  ],
+  "hh_activity": [
+   [
+    "id"
+   ]
+  ],
+  "hh_applicants": [
+   [
+    "id"
+   ],
+   [
+    "import_key"
+   ]
+  ],
+  "hh_import_log": [
+   [
+    "id"
+   ]
+  ],
+  "hh_login_tokens": [
+   [
+    "id"
+   ],
+   [
+    "token_hash"
+   ]
+  ],
+  "hh_rate_limits": [
+   [
+    "bucket"
+   ]
+  ],
+  "hh_user_prefs": [
+   [
+    "user_id"
+   ]
+  ],
+  "hh_users": [
+   [
+    "email"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "hiring_manager_assignments": [
+   [
+    "id"
+   ],
+   [
+    "manager_user_id",
+    "scope"
+   ]
+  ],
+  "hub_course_progress": [
+   [
+    "id"
+   ],
+   [
+    "user_id",
+    "course_id",
+    "item_id"
+   ]
+  ],
+  "ics_feed_tokens": [
+   [
+    "token"
+   ],
+   [
+    "user_id"
+   ]
+  ],
+  "idempotency_keys": [
+   [
+    "id"
+   ],
+   [
+    "idempotency_key"
+   ]
+  ],
+  "ig_reels_cache": [
+   [
+    "handle",
+    "shortcode"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "inactive_agent_queue": [
+   [
+    "agent_id",
+    "status"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "inbound_leads": [
+   [
+    "id"
+   ]
+  ],
+  "inbox_messages": [
+   [
+    "id"
+   ]
+  ],
+  "instagram_connections": [
+   [
+    "id"
+   ],
+   [
+    "user_id",
+    "instagram_user_id"
+   ]
+  ],
+  "instagram_dm_templates": [
+   [
+    "id"
+   ]
+  ],
+  "instagram_dm_threads": [
+   [
+    "id"
+   ],
+   [
+    "user_id",
+    "ig_user_id"
+   ]
+  ],
+  "instagram_events": [
+   [
+    "id"
+   ]
+  ],
+  "instagram_subscriptions": [
+   [
+    "agent_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "insuracloud_backfill_log": [
+   [
+    "id"
+   ]
+  ],
+  "insuracloud_downline": [
+   [
+    "agent_id",
+    "downline_name",
+    "period_start"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "insuracloud_payouts": [
+   [
+    "agent_id",
+    "payout_date"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "insuracloud_policies": [
+   [
+    "agent_id",
+    "policy_number"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "insuracloud_snapshots": [
+   [
+    "agent_id",
+    "snapshot_date"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "insuracloud_sync_log": [
+   [
+    "id"
+   ]
+  ],
+  "integration_accounts": [
+   [
+    "id"
+   ],
+   [
+    "provider",
+    "environment",
+    "display_name"
+   ]
+  ],
+  "integration_capabilities": [
+   [
+    "id"
+   ],
+   [
+    "integration_account_id",
+    "capability"
+   ]
+  ],
+  "integration_events": [
+   [
+    "id"
+   ],
+   [
+    "integration_account_id",
+    "provider_event_id",
+    "payload_hash"
+   ]
+  ],
+  "interview_events": [
+   [
+    "calendly_event_uri"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "interview_recordings": [
+   [
+    "id"
+   ]
+  ],
+  "invitation_seen": [
+   [
+    "id"
+   ],
+   [
+    "viewer_user_id",
+    "agent_id"
+   ]
+  ],
+  "invite_tokens": [
+   [
+    "id"
+   ],
+   [
+    "token"
+   ]
+  ],
+  "job_runs": [
+   [
+    "id"
+   ]
+  ],
+  "lead_activity": [
+   [
+    "id"
+   ]
+  ],
+  "lead_counter": [
+   [
+    "id"
+   ]
+  ],
+  "lead_payment_tracking": [
+   [
+    "agent_id",
+    "week_start",
+    "tier"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "lead_purchase_requests": [
+   [
+    "id"
+   ]
+  ],
+  "lead_purchases": [
+   [
+    "id"
+   ],
+   [
+    "stripe_charge_id"
+   ]
+  ],
+  "lead_purchases_dedup_archive": [
+   [
+    "id"
+   ]
+  ],
+  "leaderboard_snapshots": [
+   [
+    "id"
+   ],
+   [
+    "snapshot_date",
+    "period",
+    "rank"
+   ]
+  ],
+  "license_milestone_outbox": [
+   [
+    "id"
+   ]
+  ],
+  "license_milestone_templates": [
+   [
+    "template_key"
+   ]
+  ],
+  "license_renewal_alerts": [
+   [
+    "agent_id",
+    "days_out"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "licensing_courses": [
+   [
+    "id"
+   ],
+   [
+    "state",
+    "line",
+    "provider"
+   ]
+  ],
+  "licensing_delegates": [
+   [
+    "application_id",
+    "delegate_user_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "licensing_nudges": [
+   [
+    "application_id",
+    "nudge_type",
+    "day_number",
+    "channel"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "licensing_stage_backfill_20260807": [
+   [
+    "application_id"
+   ]
+  ],
+  "licensing_students": [
+   [
+    "application_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "magic_login_tokens": [
+   [
+    "id"
+   ],
+   [
+    "token"
+   ]
+  ],
+  "manager_alerts": [
+   [
+    "id"
+   ]
+  ],
+  "manager_board_grants": [
+   [
+    "id"
+   ],
+   [
+    "manager_user_id",
+    "board_key"
+   ]
+  ],
+  "manager_growth_stats": [
+   [
+    "agent_id",
+    "stat_date"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "manager_hierarchy": [
+   [
+    "id"
+   ],
+   [
+    "manager_person_id",
+    "downline_person_id",
+    "effective_from"
+   ]
+  ],
+  "manager_invite_links": [
+   [
+    "id"
+   ],
+   [
+    "invite_code"
+   ]
+  ],
+  "manager_signup_tokens": [
+   [
+    "id"
+   ],
+   [
+    "token"
+   ]
+  ],
+  "manager_social_posts": [
+   [
+    "agent_id",
+    "post_date"
+   ]
+  ],
+  "manager_touches": [
+   [
+    "agent_id",
+    "source_run"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "manual_interview_entries": [
+   [
+    "id"
+   ]
+  ],
+  "mentorship_leads": [
+   [
+    "id"
+   ]
+  ],
+  "mercury_subscriptions": [
+   [
+    "id"
+   ],
+   [
+    "vendor_normalized"
+   ]
+  ],
+  "metric_definitions": [
+   [
+    "id"
+   ]
+  ],
+  "next_step_events": [
+   [
+    "id"
+   ]
+  ],
+  "next_step_messages": [
+   [
+    "id"
+   ]
+  ],
+  "next_step_progress": [
+   [
+    "id"
+   ]
+  ],
+  "next_step_stages": [
+   [
+    "order_index"
+   ],
+   [
+    "stage_key"
+   ]
+  ],
+  "notification_log": [
+   [
+    "id"
+   ]
+  ],
+  "notification_prefs": [
+   [
+    "user_id"
+   ]
+  ],
+  "notifications": [
+   [
+    "id"
+   ]
+  ],
+  "onboarding_modules": [
+   [
+    "id"
+   ]
+  ],
+  "onboarding_progress": [
+   [
+    "agent_id",
+    "module_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "onboarding_questions": [
+   [
+    "id"
+   ]
+  ],
+  "outbox_events": [
+   [
+    "id"
+   ],
+   [
+    "idempotency_key"
+   ]
+  ],
+  "outreach_queue": [
+   [
+    "application_id",
+    "channel",
+    "template_key",
+    "source_run"
+   ],
+   [
+    "id"
+   ],
+   [
+    "idempotency_key"
+   ],
+   [
+    "lead_id",
+    "channel",
+    "template_key",
+    "source_run"
+   ]
+  ],
+  "outreach_templates": [
+   [
+    "template_key",
+    "channel"
+   ]
+  ],
+  "partial_applications": [
+   [
+    "id"
+   ],
+   [
+    "session_id"
+   ]
+  ],
+  "people": [
+   [
+    "auth_user_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "pg_cron_emulator_state": [
+   [
+    "jobid"
+   ]
+  ],
+  "phc_delivery_queue": [
+   [
+    "id"
+   ]
+  ],
+  "phc_leads": [
+   [
+    "id"
+   ],
+   [
+    "lead_code"
+   ]
+  ],
+  "pipeline_metrics": [
+   [
+    "id"
+   ]
+  ],
+  "plaque_awards": [
+   [
+    "agent_id",
+    "milestone_type",
+    "milestone_date"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "poke_queue": [
+   [
+    "id"
+   ]
+  ],
+  "policy_quality_flags": [
+   [
+    "id"
+   ],
+   [
+    "source_deal_id",
+    "current_status"
+   ]
+  ],
+  "production_ledger": [
+   [
+    "deal_id",
+    "entry_type"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "profiles": [
+   [
+    "id"
+   ],
+   [
+    "user_id"
+   ]
+  ],
+  "push_subscriptions": [
+   [
+    "id"
+   ],
+   [
+    "user_id",
+    "endpoint"
+   ]
+  ],
+  "qe_build_charts": [
+   [
+    "id"
+   ]
+  ],
+  "qe_carriers": [
+   [
+    "id"
+   ]
+  ],
+  "qe_commission_schedules": [
+   [
+    "id"
+   ]
+  ],
+  "qe_conditions": [
+   [
+    "id"
+   ]
+  ],
+  "qe_graded_routing_rules": [
+   [
+    "id"
+   ]
+  ],
+  "qe_medications": [
+   [
+    "id"
+   ]
+  ],
+  "qe_modal_factors": [
+   [
+    "id"
+   ],
+   [
+    "product_id",
+    "mode"
+   ]
+  ],
+  "qe_payment_methods": [
+   [
+    "id"
+   ],
+   [
+    "product_id",
+    "method"
+   ]
+  ],
+  "qe_product_badges": [
+   [
+    "id"
+   ],
+   [
+    "product_id",
+    "badge_code"
+   ]
+  ],
+  "qe_product_states": [
+   [
+    "id"
+   ],
+   [
+    "product_id",
+    "state_code"
+   ]
+  ],
+  "qe_products": [
+   [
+    "id"
+   ]
+  ],
+  "qe_quote_logs": [
+   [
+    "id"
+   ]
+  ],
+  "qe_rate_tables": [
+   [
+    "id"
+   ]
+  ],
+  "qe_scoring_weights": [
+   [
+    "id"
+   ]
+  ],
+  "qe_source_documents": [
+   [
+    "id"
+   ]
+  ],
+  "qe_underwriting_knockouts": [
+   [
+    "id"
+   ]
+  ],
+  "rate_limits": [
+   [
+    "bucket_key",
+    "window_start"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "readymode_bot_state": [
+   [
+    "id"
+   ]
+  ],
+  "readymode_call_analysis": [
+   [
+    "id"
+   ],
+   [
+    "transcript_id",
+    "model"
+   ]
+  ],
+  "readymode_call_transcripts": [
+   [
+    "id"
+   ],
+   [
+    "recording_id",
+    "engine"
+   ]
+  ],
+  "readymode_dialer_calls": [
+   [
+    "external_call_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "readymode_recordings": [
+   [
+    "id"
+   ],
+   [
+    "sha256"
+   ]
+  ],
+  "readymode_sync_log": [
+   [
+    "id"
+   ]
+  ],
+  "recurring_calendar_blocks": [
+   [
+    "id"
+   ]
+  ],
+  "referrals": [
+   [
+    "id"
+   ]
+  ],
+  "resources": [
+   [
+    "id"
+   ]
+  ],
+  "sales_scripts": [
+   [
+    "id"
+   ]
+  ],
+  "sam_daily_tasks": [
+   [
+    "id"
+   ]
+  ],
+  "sam_todo_dismissed": [
+   [
+    "source",
+    "source_id"
+   ]
+  ],
+  "sam_todo_manual_items": [
+   [
+    "id"
+   ]
+  ],
+  "sam_todo_push_log": [
+   [
+    "source",
+    "source_id"
+   ]
+  ],
+  "sam_todo_snoozed": [
+   [
+    "source",
+    "source_id"
+   ]
+  ],
+  "sandcastles_queue": [
+   [
+    "id"
+   ]
+  ],
+  "scheduled_interviews": [
+   [
+    "id"
+   ]
+  ],
+  "scheduled_tasks": [
+   [
+    "id"
+   ]
+  ],
+  "security_change_log": [
+   [
+    "id"
+   ]
+  ],
+  "seminar_registrations": [
+   [
+    "id"
+   ]
+  ],
+  "sms_fallback_queue": [
+   [
+    "id"
+   ]
+  ],
+  "sms_send_guard": [
+   [
+    "phone_e164"
+   ]
+  ],
+  "social_bot_analytics_snapshots": [
+   [
+    "id"
+   ]
+  ],
+  "social_bot_blockers": [
+   [
+    "id"
+   ]
+  ],
+  "social_bot_drafts": [
+   [
+    "id"
+   ]
+  ],
+  "social_bot_goals": [
+   [
+    "goal_key"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "social_bot_hooks": [
+   [
+    "id"
+   ]
+  ],
+  "social_bot_inbound": [
+   [
+    "id"
+   ]
+  ],
+  "social_bot_runs": [
+   [
+    "id"
+   ]
+  ],
+  "social_bot_scoreboard": [
+   [
+    "id"
+   ],
+   [
+    "week_of"
+   ]
+  ],
+  "social_snapshots": [
+   [
+    "id"
+   ]
+  ],
+  "strike_templates": [
+   [
+    "id"
+   ],
+   [
+    "slug"
+   ]
+  ],
+  "stripe_disputes": [
+   [
+    "dispute_id"
+   ]
+  ],
+  "stripe_events_log": [
+   [
+    "event_id"
+   ]
+  ],
+  "stripe_failed_payments": [
+   [
+    "id"
+   ]
+  ],
+  "stripe_subscription_events": [
+   [
+    "id"
+   ]
+  ],
+  "supported_carriers": [
+   [
+    "carrier_name"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "system_health_events": [
+   [
+    "id"
+   ]
+  ],
+  "system_health_logs": [
+   [
+    "id"
+   ]
+  ],
+  "system_settings": [
+   [
+    "key"
+   ]
+  ],
+  "team_chat_messages": [
+   [
+    "id"
+   ]
+  ],
+  "team_memberships": [
+   [
+    "agent_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "telegram_broadcast_log": [
+   [
+    "id"
+   ]
+  ],
+  "telegram_escalations": [
+   [
+    "id"
+   ]
+  ],
+  "telegram_faq": [
+   [
+    "id"
+   ]
+  ],
+  "telegram_groups": [
+   [
+    "chat_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "telegram_messages": [
+   [
+    "id"
+   ]
+  ],
+  "telegram_scheduled_messages": [
+   [
+    "id"
+   ]
+  ],
+  "telegram_templates": [
+   [
+    "key"
+   ]
+  ],
+  "telegram_users": [
+   [
+    "chat_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "today_tasks": [
+   [
+    "id"
+   ]
+  ],
+  "transfer_requests": [
+   [
+    "id"
+   ]
+  ],
+  "user_dashboard_prefs": [
+   [
+    "id"
+   ],
+   [
+    "user_id"
+   ]
+  ],
+  "user_roles": [
+   [
+    "id"
+   ],
+   [
+    "user_id",
+    "role"
+   ]
+  ],
+  "xcel_events": [
+   [
+    "gmail_thread_id"
+   ],
+   [
+    "id"
+   ]
+  ],
+  "xcel_pre_licensing_reports": [
+   [
+    "id"
+   ],
+   [
+    "report_date"
+   ]
+  ],
+  "xcel_pre_licensing_students": [
+   [
+    "id"
+   ]
+  ],
+  "xcel_progress": [
+   [
+    "id"
+   ],
+   [
+    "student_email"
+   ]
+  ]
+ },
+ "partial_unique_NOT_a_guarantee": {
+  "agent_inbox": [
+   [
+    "user_id",
+    "local_id"
+   ],
+   [
+    "user_id",
+    "reminder_external_id"
+   ]
+  ],
+  "agent_touches": [
+   [
+    "subject_application_id",
+    "manager_id",
+    "touch_type"
+   ]
+  ],
+  "agents": [
+   [
+    "ref_slug"
+   ]
+  ],
+  "apex_agent_journeys": [
+   [
+    "application_id"
+   ],
+   [
+    "toolkit_agent_id"
+   ]
+  ],
+  "apex_toolkit_agent_contact_log": [
+   [
+    "contact_action_id"
+   ]
+  ],
+  "application_contact_log": [
+   [
+    "contact_action_id"
+   ]
+  ],
+  "calendar_events": [
+   [
+    "source",
+    "external_id"
+   ]
+  ],
+  "carrier_policies": [
+   [
+    "carrier_name",
+    "policy_number"
+   ]
+  ],
+  "channel_deprovision_queue": [
+   [
+    "agent_id"
+   ]
+  ],
+  "client_leads": [
+   [
+    "phone_digits"
+   ]
+  ],
+  "client_leads_age_out": [
+   [
+    "phone_digits"
+   ]
+  ],
+  "deals": [
+   [
+    "idempotency_key",
+    "submitted_by_user_id"
+   ]
+  ],
+  "hh_applicants": [
+   [
+    "calendar_event_id"
+   ]
+  ],
+  "manual_interview_entries": [
+   [
+    "source_application_id"
+   ]
+  ],
+  "next_step_messages": [
+   [
+    "dedupe_key"
+   ],
+   [
+    "dedupe_key"
+   ]
+  ],
+  "next_step_progress": [
+   [
+    "agent_id"
+   ],
+   [
+    "application_id"
+   ]
+  ],
+  "people": [
+   [
+    "email_normalized"
+   ]
+  ],
+  "plaque_awards": [
+   [
+    "share_slug"
+   ]
+  ],
+  "social_bot_inbound": [
+   [
+    "platform",
+    "comment_pk"
+   ]
+  ],
+  "telegram_scheduled_messages": [
+   [
+    "chat_id",
+    "dedupe_key"
+   ]
+  ],
+  "xcel_events": [
+   [
+    "email",
+    "sku"
+   ]
+  ]
+ }
+}

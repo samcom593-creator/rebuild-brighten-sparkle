@@ -243,6 +243,11 @@ matrixLines.push(
   ""
 );
 
+// Create the output dir if it is absent. docs/audits/ is git-untracked, so on a
+// fresh CI checkout it does not exist and writeFileSync threw ENOENT — which is
+// how this guard reddened verify:core for the whole team on 2944f477. A guard
+// must not depend on an untracked directory happening to be present.
+fs.mkdirSync(path.dirname(MATRIX_OUTPUT), { recursive: true });
 fs.writeFileSync(MATRIX_OUTPUT, matrixLines.join("\n"), "utf8");
 console.log(`Generated ${MATRIX_OUTPUT}`);
 

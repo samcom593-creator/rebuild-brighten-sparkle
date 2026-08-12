@@ -12,6 +12,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
+import { ContractingIntakeAdmin } from "@/components/contracting/ContractingIntakeAdmin";
 
 /**
  * CarrierContracts · Section 3 fix · 2026-06-15
@@ -317,6 +318,25 @@ export default function CarrierContracts() {
         subtitle="One grid for every link Sam shares · copy + open in two taps"
       />
 
+      {/* Start Contracting is the ONE action on this page, so it renders first
+          and it renders whether or not the link grid below has loaded. Burying
+          it under five link sections is what made the old Contracting section
+          look empty: it only ever listed agentlink_carriers rows whose
+          contract_invite_url is NULL, so it could show nothing at all. */}
+      <StartContractingCard
+        masterInvite={asLinkObject(
+          (settingsQ.data ?? {}).agentlink_master_invite,
+          "AgentLink master invite",
+        )}
+        copyLink={copyLink}
+        copiedId={copiedId}
+      />
+
+      {/* Staff-only. v_contracting_intake_status is security_invoker, so a
+          non-staff viewer gets zero rows from the database and this renders
+          nothing at all — the gate is RLS, not a client-side role check. */}
+      <ContractingIntakeAdmin />
+
       {isLoading ? (
         /* Loading — shaped like the real sections: header, description, rows. */
         <div className="space-y-5">
@@ -384,6 +404,81 @@ export default function CarrierContracts() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The single prominent contracting action.
+ *
+ * The APEX intake is the primary path: five fields, shareable with a producer
+ * who has no APEX login. The AgentLink master invite is offered alongside it
+ * because that is where contracting actually continues, and it is sourced only
+ * from system_settings.agentlink_master_invite — never from a per-carrier row.
+ */
+function StartContractingCard({
+  masterInvite,
+  copyLink,
+  copiedId,
+}: {
+  masterInvite: LinkItem | null;
+  copyLink: (id: string, url: string) => Promise<void>;
+  copiedId: string | null;
+}) {
+  const intakeUrl =
+    (typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org") +
+    "/start-contracting";
+
+  return (
+    <GlassCard className="border-primary/30 p-4 sm:p-5">
+      <div className="flex items-start gap-3">
+        <FileSignature className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold">Start Contracting</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Send a producer one link. Five fields — name, email, phone, NPN — and APEX
+            takes it from there.
+          </p>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button asChild size="sm">
+              <a href="/start-contracting">Open the intake</a>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => copyLink("start-contracting-link", intakeUrl)}
+            >
+              {copiedId === "start-contracting-link" ? (
+                <>
+                  <Check className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                  Copy shareable link
+                </>
+              )}
+            </Button>
+            {masterInvite && (
+              <Button asChild size="sm" variant="ghost">
+                <a href={masterInvite.url} target="_blank" rel="noopener noreferrer">
+                  AgentLink invite
+                  <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden />
+                </a>
+              </Button>
+            )}
+          </div>
+
+          {!masterInvite && (
+            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+              No AgentLink master invite is configured, so only the APEX intake is
+              available. Set system_settings.agentlink_master_invite.
+            </p>
+          )}
+        </div>
+      </div>
+    </GlassCard>
   );
 }
 

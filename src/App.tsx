@@ -206,6 +206,7 @@ const CallsTodayCockpit = lazy(() => import("./pages/CallsTodayCockpit"));
 // two parallel chunks for the same module without losing the role-routed render.
 const WhaleRecruiting = lazy(() => import("./pages/WhaleRecruiting"));
 const CarrierContracts = lazy(() => import("./pages/CarrierContracts"));
+const StartContracting = lazy(() => import("./pages/StartContracting"));
 const Challenges = lazy(() => import("./pages/Challenges"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
 const SamHQ = lazy(() => import("./pages/admin/SamHQ"));
@@ -378,6 +379,9 @@ const App = () => (
                 <Route element={<QueryShell />}>
                 <Route path="/careers/:state" element={<StateCareerLanding />} />
                   <Route path="/apply" element={<Apply />} />
+                  {/* Public, shareable contracting intake. Unauthenticated on purpose:
+                      producers who have no APEX login use this link. */}
+                  <Route path="/start-contracting" element={<StartContracting />} />
                   <Route path="/apply/success" element={<ApplySuccess />} />
                   <Route path="/apply/success/licensed" element={<ApplySuccessLicensed />} />
                   <Route path="/apply/success/unlicensed" element={<ApplySuccessUnlicensed />} />

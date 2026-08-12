@@ -6,6 +6,11 @@
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
+import {
+  FAILURE_OVERWRITABLE_STATES,
+  readSettingFromResult,
+  runContractingDelivery,
+} from "../_shared/contracting-delivery.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -339,7 +344,95 @@ type DispatchResult = {
   deliveryConfirmed?: boolean;
 };
 
+// ── Contracting intake destinations ──────────────────────────────────────────
+//
+// The decisions live in _shared/contracting-delivery.ts so the vitest suite can
+// drive the SAME functions against stubbed providers. This wrapper supplies the
+// real database and network dependencies and records the settled verdict.
+
+async function readSetting(sb: any, key: string): Promise<string | null> {
+  // Throws on a query error. A swallowed error here would report a database
+  // outage as "no webhook configured", and not_configured is terminal.
+  const result = await sb.from("system_settings").select("value").eq("key", key).maybeSingle();
+  return readSettingFromResult(result, key);
+}
+
+async function deliverContractingIntake(sb: any, event: any): Promise<DispatchResult> {
+  const intakeId = event.aggregate_id;
+  const destination = event.destination;
+
+  const patchDelivery = async (patch: Record<string, unknown>) => {
+    const { error } = await sb
+      .from("contracting_intake_deliveries")
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("intake_id", intakeId)
+      .eq("destination", destination);
+    if (error) throw error;
+  };
+
+  const result = await runContractingDelivery(destination, intakeId, {
+    readSetting: (key) => readSetting(sb, key),
+    loadIntake: async (id) => {
+      const { data, error } = await sb
+        .from("contracting_intakes")
+        .select("id, first_name, last_name, email, phone_e164, npn, status")
+        .eq("id", id)
+        .single();
+      if (error || !data) throw new Error(error?.message ?? "Contracting intake no longer exists");
+      return data;
+    },
+    sendEmail: (payload, idempotencyKey) =>
+      resendEmail({ from: CONTACT_FROM, ...payload }, idempotencyKey),
+    fetchImpl: fetch,
+    googleCredential: Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON") || null,
+    now: () => Date.now(),
+
+    currentState: async () => {
+      const { data, error } = await sb
+        .from("contracting_intake_deliveries")
+        .select("state")
+        .eq("intake_id", intakeId)
+        .eq("destination", destination)
+        .maybeSingle();
+      if (error) throw error;
+      return String(data?.state ?? "queued");
+    },
+    markAttempting: () => patchDelivery({ state: "attempting", last_error_redacted: null }),
+    clearAttempting: () => patchDelivery({ state: "queued" }),
+    markUnknownOutcome: (note) => patchDelivery({ state: "unknown_outcome", last_error_redacted: note }),
+    settle: async (outcome) => {
+      const patch: Record<string, unknown> = {
+        state: outcome.state,
+        last_error_redacted: outcome.note,
+      };
+      if (outcome.state === "accepted") {
+        patch.receipt = outcome.receipt;
+        patch.accepted_at = new Date().toISOString();
+      }
+      if (outcome.state === "delivered") {
+        patch.receipt = outcome.receipt;
+        patch.delivered_at = new Date().toISOString();
+      }
+      await patchDelivery(patch);
+    },
+  });
+
+  // manual_action_required covers not_configured, manual_review and
+  // unknown_outcome. All three are terminal on purpose: none of them is a
+  // failure the machine can fix by trying again, and unknown_outcome
+  // specifically must never be auto-retried.
+  if (result.verdict === "manual_action_required") return { state: "manual_action_required" };
+  return {
+    state: "delivered",
+    providerMessageId: result.providerMessageId,
+    deliveryConfirmed: result.state === "delivered",
+  };
+}
+
 async function dispatch(sb: any, event: any): Promise<DispatchResult> {
+  if (event.aggregate_type === "contracting_intake") {
+    return await deliverContractingIntake(sb, event);
+  }
   if (event.destination === "review") return { state: "delivered" };
   if (event.destination === "discord") {
     await deliverDiscord(sb, event);
@@ -488,6 +581,27 @@ Deno.serve(async (req) => {
         last_error_redacted: message,
       }).eq("id", event.id);
       if (outboxFailureError) persistenceErrors.push(redactError(outboxFailureError));
+      if (event.aggregate_type === "contracting_intake") {
+        // Keep the per-destination verdict in step with the outbox. Without
+        // this the delivery row would sit at 'queued' forever while the outbox
+        // dead-lettered, and the contracting page would show a producer as
+        // waiting when in fact nothing is coming.
+        // Scoped to states this handler is allowed to overwrite. 'attempting'
+        // and 'unknown_outcome' are excluded: overwriting either with 'failed'
+        // would erase the marker that stops a non-idempotent destination being
+        // posted twice, and the next tick would repost.
+        const { error: contractingFailureError } = await sb
+          .from("contracting_intake_deliveries")
+          .update({
+            state: exhausted ? "dead_letter" : "failed",
+            last_error_redacted: message,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("intake_id", event.aggregate_id)
+          .eq("destination", event.destination)
+          .in("state", [...FAILURE_OVERWRITABLE_STATES]);
+        if (contractingFailureError) persistenceErrors.push(redactError(contractingFailureError));
+      }
       if (event.aggregate_type === "contact_action") {
         const { error: actionFailureError } = await sb.from("apex_contact_actions").update({
           status: exhausted ? "dead_letter" : "retrying",

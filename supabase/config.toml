@@ -729,3 +729,10 @@ verify_jwt = false
 
 [functions.apex-outbox-dispatcher]
 verify_jwt = true
+
+# Public on purpose: Sam shares this link with producers who have no APEX login.
+# Authorization is in-code — a five-field allowlist, per-IP rate limiting that
+# fails closed, and a honeypot — and every write goes through
+# submit_contracting_intake(), which is service-role only.
+[functions.submit-contracting-intake]
+verify_jwt = false

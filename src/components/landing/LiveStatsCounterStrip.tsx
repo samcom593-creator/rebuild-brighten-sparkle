@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { Users, FileText, Building2 } from "lucide-react";
+import { FileText, Building2 } from "lucide-react";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { useInteractionGate } from "@/shared/hooks/useInteractionGate";
 
@@ -102,7 +102,6 @@ export function LiveStatsCounterStrip() {
     }
   }, [data]);
 
-  const agents = pick(data?.active_agents, cached?.active_agents, HARDCODED_FLOOR.active_agents);
   const apps30d = pick(data?.applications_30d, cached?.applications_30d, HARDCODED_FLOOR.applications_30d);
   const carriers = pick(data?.carriers_partnered, cached?.carriers_partnered, HARDCODED_FLOOR.carriers_partnered);
 
@@ -111,13 +110,11 @@ export function LiveStatsCounterStrip() {
       <p className="text-[10px] text-muted-foreground text-center mb-3 uppercase tracking-[0.3em] font-display font-semibold">
         Live · pulled from the operating system
       </p>
-      <div className="grid grid-cols-3 gap-3 sm:gap-5">
-        <CounterCard
-          icon={Users}
-          value={agents}
-          label="Active agents"
-          color="emerald"
-        />
+      {/* 2026-08-13 Sam: "just remove that number." The Active agents counter is
+          gone from the public strip — 56 (loose def) vs 6 (Skool-gated) was a
+          number that could only mislead a recruit, so it is not shown at all
+          rather than shown wrong. Applications · 30d and Carrier partners remain. */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-5">
         <CounterCard
           icon={FileText}
           value={apps30d}

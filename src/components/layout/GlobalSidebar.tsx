@@ -549,7 +549,12 @@ export function GlobalSidebar({
                       {section.items.map((item) => {
                         const isActive = item.href === "/dashboard"
                           ? location.pathname === item.href
-                          : location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
+                          : location.pathname === item.href
+                            || location.pathname.startsWith(`${item.href}/`)
+                            // Interview recovery is part of the Interviews
+                            // workflow but lives on a sibling path.
+                            || (item.href === "/dashboard/interviews"
+                              && location.pathname === "/dashboard/interview-recovery");
                         return <NavItemComponent key={item.href} item={item} isActive={isActive} />;
                       })}
                     </div>

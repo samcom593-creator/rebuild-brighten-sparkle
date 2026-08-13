@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -59,6 +59,10 @@ export function QuickAddAgentDialog({
 }: QuickAddAgentDialogProps) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  // setSaving is async (React batches state), so two submits in the same tick
+  // both see saving === false. The ref flips synchronously and is the guard;
+  // `saving` remains only the render state for the button spinner.
+  const submitInFlightRef = useRef(false);
   const [form, setForm] = useState<QuickAddAgentInput>(EMPTY_FORM);
   const [errors, setErrors] = useState<FieldErrors>({});
 
@@ -77,6 +81,7 @@ export function QuickAddAgentDialog({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submitInFlightRef.current) return;
     const parsed = quickAddAgentSchema.safeParse(form);
     if (!parsed.success) {
       const nextErrors: FieldErrors = {};
@@ -89,6 +94,7 @@ export function QuickAddAgentDialog({
     }
 
     const normalized = normalizeQuickAddAgent(parsed.data);
+    submitInFlightRef.current = true;
     setSaving(true);
     try {
       const { data, error } = await toolkitRpc("create_apex_toolkit_agent", {
@@ -116,6 +122,7 @@ export function QuickAddAgentDialog({
           : "Agent could not be added.";
       toast.error(message);
     } finally {
+      submitInFlightRef.current = false;
       setSaving(false);
     }
   };

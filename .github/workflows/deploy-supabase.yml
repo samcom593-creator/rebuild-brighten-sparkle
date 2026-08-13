@@ -1,8 +1,9 @@
 name: Deploy Supabase (functions + migrations)
 
-# Bypasses Lovable's unreliable update pipeline. Every push to main
-# deploys every edge function + applies pending migrations directly via
-# the Supabase CLI in ~60 seconds.
+# Bypasses Lovable's unreliable update pipeline. Pushes deploy only the Edge
+# Functions changed by that commit and apply migrations only when migration
+# files changed. A manual dispatch with no only_function remains the explicit
+# operator-controlled way to redeploy every function.
 #
 # Required secrets (add once at github.com/<repo>/settings/secrets/actions):
 #   SUPABASE_ACCESS_TOKEN   — personal access token for the account that owns
@@ -84,9 +85,90 @@ jobs:
           git pull --rebase origin main || true
           git push || echo "::warning::config.toml sync-back push failed — will retry next run"
 
+      - name: Determine deployment scope
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REQUESTED_FUNCTION: ${{ inputs.only_function }}
+          SKIP_MIGRATIONS: ${{ inputs.skip_migrations }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ -n "$REQUESTED_FUNCTION" ]; then
+              if [[ ! "$REQUESTED_FUNCTION" =~ ^[a-z0-9][a-z0-9_-]*$ ]]; then
+                echo "::error::only_function contains unsupported characters"
+                exit 1
+              fi
+              echo "functions=$REQUESTED_FUNCTION" >> "$GITHUB_OUTPUT"
+              echo "deploy_all=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "functions=" >> "$GITHUB_OUTPUT"
+              echo "deploy_all=true" >> "$GITHUB_OUTPUT"
+            fi
+            echo "functions_changed=true" >> "$GITHUB_OUTPUT"
+            if [ "$SKIP_MIGRATIONS" = "true" ]; then
+              echo "migrations_changed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
+            fi
+            echo "deploy_needed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            base_sha="$PR_BASE_SHA"
+            head_sha="$PR_HEAD_SHA"
+          else
+            base_sha="$BEFORE_SHA"
+            head_sha="$GITHUB_SHA"
+          fi
+          if [ -z "$base_sha" ] || [[ "$base_sha" =~ ^0+$ ]] || ! git cat-file -e "$base_sha^{commit}" 2>/dev/null; then
+            base_sha=$(git rev-parse "$head_sha^")
+          fi
+
+          changed_files=$(git diff --name-only "$base_sha" "$head_sha")
+          changed_functions=$(printf '%s\n' "$changed_files" \
+            | awk -F/ '$1 == "supabase" && $2 == "functions" && NF >= 4 && $3 != "_shared" && $3 != "tests" { print $3 }' \
+            | sort -u \
+            | tr '\n' ' ' \
+            | sed 's/[[:space:]]*$//')
+
+          deploy_all=false
+          if printf '%s\n' "$changed_files" | grep -qE '^supabase/functions/_shared/|^supabase/config\.toml$'; then
+            # A shared dependency or global function config can affect every
+            # bundle. This is the only automatic blanket-deploy case.
+            deploy_all=true
+          fi
+          migrations_changed=false
+          if printf '%s\n' "$changed_files" | grep -q '^supabase/migrations/'; then
+            migrations_changed=true
+          fi
+          functions_changed=false
+          if [ "$deploy_all" = "true" ] || [ -n "$changed_functions" ]; then
+            functions_changed=true
+          fi
+          deploy_needed=false
+          if [ "$functions_changed" = "true" ] || [ "$migrations_changed" = "true" ]; then
+            deploy_needed=true
+          fi
+
+          echo "functions=$changed_functions" >> "$GITHUB_OUTPUT"
+          echo "deploy_all=$deploy_all" >> "$GITHUB_OUTPUT"
+          echo "functions_changed=$functions_changed" >> "$GITHUB_OUTPUT"
+          echo "migrations_changed=$migrations_changed" >> "$GITHUB_OUTPUT"
+          echo "deploy_needed=$deploy_needed" >> "$GITHUB_OUTPUT"
+          echo "Functions: ${changed_functions:-none}; all=$deploy_all; migrations=$migrations_changed"
+
       - uses: supabase/setup-cli@v1
+        if: steps.scope.outputs.deploy_needed == 'true'
         with:
-          version: latest
+          # Pinning avoids setup-cli's unauthenticated "resolve latest" GitHub
+          # API request, which hit the release rate limit on 2026-08-12.
+          version: 2.105.0
 
       # `supabase link` is deliberately GONE. History of this step: it failed
       # silently for 8 days behind continue-on-error (no db password), then the
@@ -96,6 +178,7 @@ jobs:
       # db push below connects straight to the pooler via --db-url.
 
       - name: Sync rotated automation credential
+        if: steps.scope.outputs.functions_changed == 'true'
         run: |
           if [ -z "$APEX_BOT_TOKEN" ]; then
             echo "::error::APEX_BOT_TOKEN secret missing — automation credentials cannot be synchronized"
@@ -107,6 +190,9 @@ jobs:
             --project-ref "$PROJECT_REF"
 
       - name: Deploy edge functions
+        if: steps.scope.outputs.functions_changed == 'true'
+        env:
+          CHANGED_FUNCTIONS: ${{ steps.scope.outputs.functions }}
         # No blanket --no-verify-jwt. Each function's auth setting is read
         # from supabase/config.toml (where seminar-reminder-tick et al are
         # explicitly verify_jwt=true). If ANY function fails to deploy, the
@@ -117,15 +203,7 @@ jobs:
           FAIL_COUNT=0
           OK_COUNT=0
           FAILED_FNS=()
-          if [ -n "${{ inputs.only_function }}" ]; then
-            echo "→ single function: ${{ inputs.only_function }}"
-            if supabase functions deploy "${{ inputs.only_function }}" --project-ref "$PROJECT_REF"; then
-              OK_COUNT=1
-            else
-              FAIL_COUNT=1
-              FAILED_FNS+=("${{ inputs.only_function }}")
-            fi
-          else
+          if [ "${{ steps.scope.outputs.deploy_all }}" = "true" ]; then
             echo "→ deploying ALL functions"
             shopt -s nullglob
             cd supabase/functions
@@ -137,6 +215,29 @@ jobs:
               name="${dir%/}"
               [ "$name" = "_shared" ] && continue
               [ "$name" = "tests" ]   && continue
+              echo "── $name ──"
+              deployed=false
+              for attempt in 1 2 3; do
+                if supabase functions deploy "$name" --project-ref "$PROJECT_REF"; then
+                  deployed=true
+                  break
+                fi
+                if [ "$attempt" -lt 3 ]; then
+                  echo "::warning::$name attempt $attempt failed — retrying in $((attempt*20))s"
+                  sleep $((attempt*20))
+                fi
+              done
+              if [ "$deployed" = true ]; then
+                OK_COUNT=$((OK_COUNT+1))
+              else
+                FAIL_COUNT=$((FAIL_COUNT+1))
+                FAILED_FNS+=("$name")
+                echo "::error::function $name failed to deploy after 3 attempts"
+              fi
+            done
+          else
+            echo "→ deploying changed functions: $CHANGED_FUNCTIONS"
+            for name in $CHANGED_FUNCTIONS; do
               echo "── $name ──"
               deployed=false
               for attempt in 1 2 3; do
@@ -176,7 +277,7 @@ jobs:
         # explicitly true (manual override), we skip with a notice. If
         # SUPABASE_DB_PASSWORD is missing the job FAILS so the green-but-
         # didn't-actually-apply mode Sam reported is dead.
-        if: ${{ !inputs.skip_migrations }}
+        if: steps.scope.outputs.migrations_changed == 'true'
         run: |
           set -uo pipefail
           if [ -z "$SUPABASE_DB_PASSWORD" ]; then

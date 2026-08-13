@@ -37,6 +37,18 @@ for (const [label, p] of [
 const sidebarSrc = fs.readFileSync(sidebarAbs, "utf8");
 const appSrc = fs.readFileSync(appAbs, "utf8");
 
+// A runtime cap is equivalent to deleting authorized links, but it evades the
+// href-vs-route check below because the href literal still exists in source.
+// Adding Interviews once made Admin the 11th item and `items.slice(0, 10)`
+// silently hid it. Role checks decide visibility; list position never should.
+if (/return\s+\[\{\s*label:\s*["']WORKSPACES["']\s*,\s*items:\s*items\.slice\(/.test(sidebarSrc)) {
+  console.error(
+    "check:sidebar-routes — WORKSPACES truncates its authorized items with slice(). " +
+    "Remove the positional cap; each item is already role-gated.",
+  );
+  process.exit(1);
+}
+
 // Extract every literal `href: "/..."` value from the sidebar. Only
 // internal paths (leading /) are checked; external URLs are skipped.
 const HREF_PATTERN = /href\s*:\s*["']([^"']+)["']/g;

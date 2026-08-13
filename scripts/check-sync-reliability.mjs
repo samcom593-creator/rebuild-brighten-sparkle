@@ -48,6 +48,19 @@ function walk(dir, exts, fn) {
         `Remove it so config.toml's per-function verify_jwt setting is respected.`,
       );
     }
+    if (/uses:\s*supabase\/setup-cli@v1[\s\S]{0,120}version:\s*latest/.test(src)) {
+      violations.push(
+        `${deployYml}: setup-cli resolves "latest" through GitHub's unauthenticated releases API. ` +
+        `That rate-limited a production deploy on 2026-08-12. Pin the verified CLI version.`,
+      );
+    }
+    if (!/name:\s*Determine deployment scope/.test(src)
+        || !/if:\s*steps\.scope\.outputs\.functions_changed == 'true'/.test(src)) {
+      violations.push(
+        `${deployYml}: pushes must detect changed Edge Functions and gate the deploy step on ` +
+        `functions_changed. Migration-only pushes must never redeploy every old function.`,
+      );
+    }
     // Migration step must not silently exit 0 when SUPABASE_DB_PASSWORD is missing.
     if (/SUPABASE_DB_PASSWORD[^\n]*\n[^\n]*skipping db push[\s\S]{0,80}exit 0/.test(src)) {
       violations.push(

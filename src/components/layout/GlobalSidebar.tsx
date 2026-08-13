@@ -214,7 +214,10 @@ export function GlobalSidebar({
     );
     if (isAdmin) items.push({ icon: Settings, label: "Admin", href: "/dashboard/admin" });
 
-    return [{ label: "WORKSPACES", items: items.slice(0, 10) }];
+    // No slice cap: a cap of 10 silently dropped the Admin entry for admins
+    // the moment Interviews became the 11th item (2026-08-13). Every item
+    // pushed above is role-gated already; truncation is not a role gate.
+    return [{ label: "WORKSPACES", items }];
   }, [isAdmin, isManager, isVaManager, isVa]);
 
   const handleLogout = useCallback(async () => {

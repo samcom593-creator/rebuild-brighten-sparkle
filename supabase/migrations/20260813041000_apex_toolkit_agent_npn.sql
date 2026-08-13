@@ -153,3 +153,5 @@ $fn$;
 revoke all on function public.create_apex_toolkit_agent(text, text, text, text, text, text) from public;
 revoke all on function public.create_apex_toolkit_agent(text, text, text, text, text, text) from anon;
 grant execute on function public.create_apex_toolkit_agent(text, text, text, text, text, text) to authenticated;
+
+notify pgrst, 'reload schema';

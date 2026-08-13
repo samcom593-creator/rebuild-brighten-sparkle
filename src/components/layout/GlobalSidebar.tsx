@@ -199,6 +199,7 @@ export function GlobalSidebar({
 
     if (isAdmin || isManager || isVaManager || isVa) {
       items.push({ icon: Briefcase, label: "Recruiting", href: "/dashboard/recruiting", special: true });
+      items.push({ icon: CalendarDays, label: "Interviews", href: "/dashboard/interviews" });
     }
     items.push({ icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center" });
     if (isAdmin || isManager || isVaManager || isVa) {

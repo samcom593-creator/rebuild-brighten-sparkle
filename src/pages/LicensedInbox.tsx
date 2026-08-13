@@ -68,6 +68,7 @@ interface LicensedRow {
   city: string | null;
   license_status: string;
   nipr_verified: boolean | null;
+  npn: string | null;
   pa_number: string | null;
   status: string | null;
   created_at: string;
@@ -152,7 +153,7 @@ export default function LicensedInbox() {
         supabase
           .from("applications")
           .select(
-            "id, first_name, last_name, email, phone, state, city, license_status, nipr_verified, status, created_at",
+            "id, first_name, last_name, email, phone, state, city, license_status, nipr_number, nipr_verified, status, created_at",
           )
           .eq("license_status", "licensed")
         // wave-p1k: exclude terminal dispositions so the inbox actually drains.
@@ -174,7 +175,7 @@ export default function LicensedInbox() {
           .limit(500),
         toolkitInboxClient
           .from<Omit<LicensedRow, "origin" | "state" | "city" | "nipr_verified">>("apex_toolkit_agents")
-          .select("id,first_name,last_name,email,phone,pa_number,license_status,status,created_at")
+          .select("id,first_name,last_name,email,phone,npn,pa_number,license_status,status,created_at")
           .eq("license_status", "licensed")
           .eq("status", "active")
           .order("created_at", { ascending: false })
@@ -192,10 +193,11 @@ export default function LicensedInbox() {
         throw manualAgentResult.error;
       }
       const applications = ((applicationResult.data ?? []) as unknown as Array<
-        Omit<LicensedRow, "origin" | "pa_number">
-      >).map((row) => ({
+        Omit<LicensedRow, "origin" | "npn" | "pa_number"> & { nipr_number: string | null }
+      >).map(({ nipr_number, ...row }) => ({
         ...row,
         origin: "application" as const,
+        npn: nipr_number,
         pa_number: null,
       }));
       const manualAgents = (manualAgentResult.data ?? []).map((row) => ({
@@ -221,6 +223,7 @@ export default function LicensedInbox() {
         (r.email ?? "").toLowerCase().includes(q) ||
         (r.phone ?? "").toLowerCase().includes(q) ||
         (r.state ?? "").toLowerCase().includes(q) ||
+        (r.npn ?? "").toLowerCase().includes(q) ||
         (r.pa_number ?? "").toLowerCase().includes(q)
       );
     });
@@ -410,7 +413,7 @@ export default function LicensedInbox() {
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search name / email / phone / state / PA number"
+              placeholder="Search name / email / phone / state / NPN"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Search the licensed call queue"
@@ -489,7 +492,7 @@ export default function LicensedInbox() {
                         {name}
                       </span>
                       {r.origin === "toolkit_agent" ? (
-                        <span title="Added by APEX staff; PA number recorded separately from NIPR verification" className="shrink-0 rounded-sm border border-sky-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-600 dark:text-sky-400">
+                        <span title="Added by APEX staff; NPN is self-reported until verified against NIPR" className="shrink-0 rounded-sm border border-sky-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-600 dark:text-sky-400">
                           Added agent
                         </span>
                       ) : r.nipr_verified === true ? (
@@ -506,9 +509,14 @@ export default function LicensedInbox() {
                           {r.state}
                         </span>
                       )}
-                      {r.pa_number && (
+                      {r.npn && (
                         <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                          {r.pa_number}
+                          NPN {r.npn}
+                        </span>
+                      )}
+                      {!r.npn && r.pa_number && (
+                        <span title="Legacy identifier retained during the NPN migration" className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                          Legacy PA {r.pa_number}
                         </span>
                       )}
                     </div>

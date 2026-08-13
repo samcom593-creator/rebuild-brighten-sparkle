@@ -179,9 +179,9 @@ export const quickAddAgentSchema = z.object({
     (value) => normalizePhoneForDial(value) !== null,
     "Enter a valid US or international phone number",
   ),
-  paNumber: z.string().trim().min(2, "PA number is required").max(32).regex(
-    /^[A-Za-z0-9][A-Za-z0-9 -]*$/,
-    "PA number may contain letters, numbers, spaces, and hyphens",
+  npn: z.string().trim().min(1, "NPN is required").max(32).refine(
+    (value) => /^[0-9]{5,10}$/.test(value.replace(/[^0-9]/g, "")),
+    "NPN must be 5 to 10 digits",
   ),
 });
 
@@ -193,7 +193,7 @@ export function normalizeQuickAddAgent(input: QuickAddAgentInput): QuickAddAgent
     ...parsed,
     email: parsed.email.toLowerCase(),
     phone: normalizePhoneForDial(parsed.phone)!,
-    paNumber: parsed.paNumber.toUpperCase().replace(/\s+/g, " "),
+    npn: parsed.npn.replace(/[^0-9]/g, ""),
   };
 }
 

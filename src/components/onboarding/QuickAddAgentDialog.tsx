@@ -43,7 +43,7 @@ const EMPTY_FORM: QuickAddAgentInput = {
   lastName: "",
   email: "",
   phone: "",
-  paNumber: "",
+  npn: "",
 };
 
 function responseAgentId(value: unknown): string | null {
@@ -96,7 +96,7 @@ export function QuickAddAgentDialog({
         p_last_name: normalized.lastName,
         p_email: normalized.email,
         p_phone: normalized.phone,
-        p_pa_number: normalized.paNumber,
+        p_npn: normalized.npn,
       });
       if (error) throw error;
 
@@ -179,13 +179,14 @@ export function QuickAddAgentDialog({
             onChange={(value) => updateField("phone", value)}
           />
           <Field
-            id="quick-agent-pa-number"
-            label="PA number"
-            value={form.paNumber}
-            error={errors.paNumber}
+            id="quick-agent-npn"
+            label="NPN"
+            value={form.npn}
+            error={errors.npn}
             autoComplete="off"
-            placeholder="PA 2048"
-            onChange={(value) => updateField("paNumber", value)}
+            inputMode="numeric"
+            placeholder="21346366"
+            onChange={(value) => updateField("npn", value)}
           />
 
           <DialogFooter>

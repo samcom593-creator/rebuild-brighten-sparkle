@@ -14,30 +14,43 @@ describe("quickAddAgentSchema", () => {
       lastName: " James ",
       email: " AVERY@EXAMPLE.COM ",
       phone: "(602) 555-0123",
-      paNumber: " pa 2048 ",
+      npn: " NPN 21-346-999 ",
     })).toEqual({
       firstName: "Avery",
       lastName: "James",
       email: "avery@example.com",
       phone: "+16025550123",
-      paNumber: "PA 2048",
+      npn: "21346999",
     });
   });
 
-  it("rejects malformed email, phone, and PA values", () => {
+  it("rejects malformed email, phone, and NPN values", () => {
     const result = quickAddAgentSchema.safeParse({
       firstName: "Avery",
       lastName: "James",
       email: "not-an-email",
       phone: "555",
-      paNumber: "#",
+      npn: "#",
     });
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.issues.map((issue) => issue.path[0])).toEqual(
-        expect.arrayContaining(["email", "phone", "paNumber"]),
+        expect.arrayContaining(["email", "phone", "npn"]),
       );
     }
+  });
+
+  it("enforces the NPN 5-to-10-digit boundary", () => {
+    const base = {
+      firstName: "Avery",
+      lastName: "James",
+      email: "avery@example.com",
+      phone: "6025550123",
+    };
+    expect(quickAddAgentSchema.safeParse({ ...base, npn: "1234" }).success).toBe(false);
+    expect(quickAddAgentSchema.safeParse({ ...base, npn: "12345" }).success).toBe(true);
+    expect(quickAddAgentSchema.safeParse({ ...base, npn: "1234567890" }).success).toBe(true);
+    expect(quickAddAgentSchema.safeParse({ ...base, npn: "12345678901" }).success).toBe(false);
   });
 });
 

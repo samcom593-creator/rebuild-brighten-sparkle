@@ -47,6 +47,7 @@ interface ToolkitAgent {
   last_name: string;
   email: string;
   phone: string | null;
+  npn: string | null;
   pa_number: string | null;
   license_status: string;
   license_progress: string | null;
@@ -136,15 +137,15 @@ export default function ApexCareerToolkit() {
     queryFn: async () => {
       const [applicationsResult, toolkitAgentsResult, journeysResult, stepsResult] = await Promise.all([
         toolkitClient
-          .from<Omit<ToolkitAgent, "subject_type" | "pa_number">>("applications")
-          .select("id,first_name,last_name,email,phone,license_status,license_progress,status,record_type,created_at")
+          .from<Omit<ToolkitAgent, "subject_type" | "npn" | "pa_number"> & { nipr_number: string | null }>("applications")
+          .select("id,first_name,last_name,email,phone,nipr_number,license_status,license_progress,status,record_type,created_at")
           .in("record_type", ["application"])
           .is("terminated_at", null)
           .order("created_at", { ascending: false })
           .limit(1000),
         toolkitClient
           .from<Omit<ToolkitAgent, "subject_type" | "license_progress" | "record_type">>("apex_toolkit_agents")
-          .select("id,first_name,last_name,email,phone,pa_number,license_status,status,created_at")
+          .select("id,first_name,last_name,email,phone,npn,pa_number,license_status,status,created_at")
           .order("created_at", { ascending: false })
           .limit(1000),
         toolkitClient
@@ -163,9 +164,10 @@ export default function ApexCareerToolkit() {
       if (stepsResult.error) throw stepsResult.error;
       return {
         agents: [
-          ...(applicationsResult.data ?? []).map((agent) => ({
+          ...(applicationsResult.data ?? []).map(({ nipr_number, ...agent }) => ({
             ...agent,
             subject_type: "application" as const,
+            npn: nipr_number,
             pa_number: null,
           })),
           ...(toolkitAgentsResult.data ?? []).map((agent) => ({
@@ -227,7 +229,7 @@ export default function ApexCareerToolkit() {
     const query = agentSearch.trim().toLowerCase();
     if (!query) return agents.slice(0, 150);
     return agents.filter((agent) => {
-      const haystack = `${fullName(agent)} ${agent.email} ${agent.phone ?? ""} ${agent.pa_number ?? ""}`.toLowerCase();
+      const haystack = `${fullName(agent)} ${agent.email} ${agent.phone ?? ""} ${agent.npn ?? ""} ${agent.pa_number ?? ""}`.toLowerCase();
       return haystack.includes(query);
     }).slice(0, 150);
   }, [agentSearch, agents]);
@@ -338,7 +340,7 @@ export default function ApexCareerToolkit() {
                 id="toolkit-agent-search"
                 value={agentSearch}
                 onChange={(event) => setAgentSearch(event.target.value)}
-                placeholder="Name, email, phone, or PA number"
+                placeholder="Name, email, phone, or NPN"
                 className="h-11 pl-9 sm:h-10"
               />
             </div>
@@ -354,7 +356,8 @@ export default function ApexCareerToolkit() {
               <SelectContent>
                 {matchingAgents.map((agent) => (
                   <SelectItem key={subjectKey(agent)} value={subjectKey(agent)}>
-                    {fullName(agent)}{agent.pa_number ? ` · ${agent.pa_number}` : ""}
+                    {fullName(agent)}
+                    {agent.npn ? ` · NPN ${agent.npn}` : agent.pa_number ? ` · Legacy PA ${agent.pa_number}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -387,7 +390,11 @@ export default function ApexCareerToolkit() {
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {selectedAgent.email}
-                    {selectedAgent.pa_number ? ` · PA ${selectedAgent.pa_number.replace(/^PA[ -]?/i, "")}` : " · PA number not recorded"}
+                    {selectedAgent.npn
+                      ? ` · NPN ${selectedAgent.npn}`
+                      : selectedAgent.pa_number
+                        ? ` · Legacy PA ${selectedAgent.pa_number}`
+                        : " · NPN not recorded"}
                   </p>
                 </div>
                 <div className="shrink-0 text-left sm:text-right">

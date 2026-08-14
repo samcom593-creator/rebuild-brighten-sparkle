@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+// 2026-08-14: dead at boot on 2.50.0 — esm.sh resolves transitive deps at
+// request time so the pin pinned nothing underneath; same WORKER_ERROR class
+// and same fix as submit-contracting-intake (63fcf739).
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -39,19 +42,12 @@ const handler = async (req: Request): Promise<Response> => {
       auth: { persistSession: false },
     });
 
-    // Discord invite gate: license_status MUST equal 'licensed' before we can
-    // include the Discord CTA in ANY outbound email. This matches the guard in
-    // send-agent-onboarding-email (email_kind='discord' → licensed only).
-    let isLicensed = false;
-    if (agentId) {
-      const { data: licenseRow } = await supabase
-        .from("agents")
-        .select("license_status")
-        .eq("id", agentId)
-        .maybeSingle();
-      const licenseStatus = (licenseRow?.license_status ?? "").toString().toLowerCase();
-      isLicensed = licenseStatus === "licensed";
-    }
+    // 2026-08-14 Sam: every added agent joins the team Discord — the
+    // licensed-only gate meant unlicensed adds got NO invite anywhere, which
+    // surfaced as "putting them in the Discord isn't working". Invite is now
+    // unconditional in the welcome email. (send-agent-onboarding-email keeps
+    // its own gate for its drip; this is the front door.)
+    const isLicensed = true;
 
     // Look up manager email for CC
     let managerEmail: string | null = null;

@@ -446,10 +446,65 @@ const handler = async (req: Request): Promise<Response> => {
         ? { ok: false, error: [transferNoteError, transferStampError].filter(Boolean).join("; ") }
         : { ok: true };
 
+    // ── Contracting channel post (Discord) + Ethos paste-row ────────────────
+    // 2026-08-14 Sam: added agents were reaching neither the team Discord nor
+    // the Ethos contracting sheet. The Ethos sheet is a third party's private
+    // Google Sheet (no service credential exists, export returns 401), so an
+    // unattended API write is impossible today. What CAN run unattended: post
+    // every new agent into the contracting channel with the EXACT tab-separated
+    // row the Ethos sheet takes in columns A–I (format proven by the 2026-07-16
+    // 188-agent fill: First, Last, NPN, agent# [unknown at add-time, blank],
+    // Phone, Email, blank, "6 Month Advance", "Apex Financial Empire") so
+    // placement is one paste with zero re-typing. Webhook key is
+    // discord_webhook_url_contracting — RAW text, never JSON-quoted (that
+    // exact bug killed Discord automation on 2026-07-31), and per the standing
+    // rule this NEVER falls back to another channel: unset = honest
+    // not_configured, not a post somewhere else.
+    let contractingPostStatus: SideEffectStatus;
+    try {
+      const { data: whRow } = await supabaseAdmin
+        .from("system_settings")
+        .select("value")
+        .eq("key", "discord_webhook_url_contracting")
+        .maybeSingle();
+      const webhook = (whRow?.value ?? "").toString().trim();
+      if (!webhook.startsWith("https://discord.com/api/webhooks/")) {
+        contractingPostStatus = { ok: false, error: "not_configured: system_settings.discord_webhook_url_contracting is empty — create a webhook in the contracting channel and store its URL (raw text)" };
+      } else {
+        const ethosRow = [firstName, lastName, normalizedNpn || "", "", phone ?? "", normalizedEmail, "", "6 Month Advance", "Apex Financial Empire"].join("\t");
+        const res = await fetch(webhook, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            embeds: [{
+              title: `🆕 New agent: ${firstName} ${lastName}`,
+              description: [
+                `NPN: **${normalizedNpn || "—"}**`,
+                `Phone: ${phone ?? "—"} · Email: ${normalizedEmail}`,
+                "",
+                "**Ethos sheet — copy the line below, click the last row of the Agents tab, paste:**",
+                "```", ethosRow, "```",
+                "[Open Ethos sheet](https://docs.google.com/spreadsheets/d/1R5ZEjfDai0dFp1z8xbfpaFGbOAEiXzPc0F1KxnWPSMY/edit?gid=517020732#gid=517020732)",
+              ].join("\n"),
+              color: 0xf5a623,
+              footer: { text: "APEX · add-agent → contracting" },
+              timestamp: new Date().toISOString(),
+            }],
+          }),
+        });
+        contractingPostStatus = (res.status === 204 || res.ok)
+          ? { ok: true }
+          : { ok: false, error: `discord webhook HTTP ${res.status}` };
+      }
+    } catch (e) {
+      contractingPostStatus = { ok: false, error: `contracting post: ${e instanceof Error ? e.message : String(e)}` };
+    }
+
     const sideEffectFailures: string[] = [];
     if (!welcomeEmailStatus.ok) sideEffectFailures.push("welcome email");
     if (!courseEmailStatus.ok) sideEffectFailures.push("course enrollment email");
     if (!transferStatus.ok) sideEffectFailures.push("transfer note");
+    if (!contractingPostStatus.ok) sideEffectFailures.push("contracting channel post");
 
     const message = sideEffectFailures.length
       ? `Agent ${firstName} ${lastName} added, but ${sideEffectFailures.join(" and ")} failed — resend manually.`
@@ -466,6 +521,7 @@ const handler = async (req: Request): Promise<Response> => {
           welcomeEmail: welcomeEmailStatus,
           courseEmail: courseEmailStatus,
           transferBlock: transferStatus,
+          contractingPost: contractingPostStatus,
         },
         partial: sideEffectFailures.length > 0,
       }),

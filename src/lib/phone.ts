@@ -40,14 +40,39 @@ export function isDialablePhone(value: string | null | undefined): boolean {
   return normalizePhoneForDial(value) !== null;
 }
 
+// 2026-08-16: these returned tel:/sms:, which are DEAD CLICKS on a desktop with
+// no phone/SMS app — which is every APEX VA. Result: "the buttons just don't
+// work at all for her." They now route through Google Voice's web app, which
+// works in a browser, keeps caller-ID on the GV number, and needs no paid
+// provider. On a phone (coarse pointer) tel:/sms: still win, so mobile keeps
+// native dialing — see phoneHref/smsHref below.
+function isTouchDevice(): boolean {
+  return typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(pointer: coarse)").matches;
+}
+
 export function phoneHref(value: string | null | undefined): string | null {
   const normalized = normalizePhoneForDial(value);
-  return normalized ? `tel:${normalized}` : null;
+  if (!normalized) return null;
+  return isTouchDevice() ? `tel:${normalized}` : googleVoiceHref(normalized);
 }
 
 export function smsHref(value: string | null | undefined): string | null {
   const normalized = normalizePhoneForDial(value);
-  return normalized ? `sms:${normalized}` : null;
+  if (!normalized) return null;
+  return isTouchDevice() ? `sms:${normalized}` : googleVoiceSmsHref(normalized);
+}
+
+/**
+ * Google Voice message deep link — opens the GV conversation with this number
+ * staged, so a desktop rep can text without a phone or a paid SMS provider.
+ */
+export function googleVoiceSmsHref(value: string | null | undefined): string | null {
+  const normalized = normalizePhoneForDial(value);
+  return normalized
+    ? `https://voice.google.com/u/0/messages?itemId=t.${encodeURIComponent(normalized)}`
+    : null;
 }
 
 /**

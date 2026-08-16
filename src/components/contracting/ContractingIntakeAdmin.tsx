@@ -14,6 +14,8 @@ import {
 } from "@/lib/contractingIntake";
 import {
   buildContractingCsv,
+  buildEthosCsv,
+  ethosCsvFilename,
   contractingCsvFilename,
   type ContractingExportRow,
 } from "@/lib/contractingExport";
@@ -98,7 +100,7 @@ export function ContractingIntakeAdmin() {
     return [...byIntake.values()];
   }, [statusQ.data]);
 
-  const onExport = () => {
+  const onExport = (variant: "workbook" | "ethos" = "workbook") => {
     setExporting(true);
     try {
       const seen = new Set<string>();
@@ -117,11 +119,15 @@ export function ContractingIntakeAdmin() {
           created_at: head.created_at,
         });
       }
-      const blob = new Blob([buildContractingCsv(rows)], { type: "text/csv;charset=utf-8" });
+      // 2026-08-16: same rows, two sheets. Sam keeps an Ethos signup sheet AND
+      // his own contract workbook, with different column orders; exporting only
+      // the workbook meant the Ethos half was always retyped by hand.
+      const useEthos = variant === "ethos";
+      const blob = new Blob([(useEthos ? buildEthosCsv : buildContractingCsv)(rows)], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = contractingCsvFilename(new Date());
+      a.download = (useEthos ? ethosCsvFilename : contractingCsvFilename)(new Date());
       a.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -147,9 +153,13 @@ export function ContractingIntakeAdmin() {
             <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", statusQ.isFetching && "animate-spin")} aria-hidden />
             Refresh
           </Button>
-          <Button size="sm" variant="outline" onClick={onExport} disabled={exporting || intakes.length === 0}>
+          <Button size="sm" variant="outline" onClick={() => onExport("workbook")} disabled={exporting || intakes.length === 0}>
             <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-            Export CSV
+            Contract workbook
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => onExport("ethos")} disabled={exporting || intakes.length === 0}>
+            <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+            Ethos sheet
           </Button>
         </div>
       </div>

@@ -76,3 +76,50 @@ export function contractingCsvFilename(now: Date): string {
   const stamp = now.toISOString().slice(0, 10);
   return `apex-contracting-intakes-${stamp}.csv`;
 }
+
+/**
+ * The Ethos Agent Portal signup sheet's column order (A–I).
+ *
+ * Proven by the 2026-07-16 fill of 188 agents into that sheet: First, Last, NPN,
+ * agent number (unknown at intake time — the carrier issues it later, so it stays
+ * blank), Phone, Email, a blank column, advance option, organization.
+ *
+ * Ethos is a third party's private Google Sheet and no service credential exists,
+ * so nothing can write to it over an API today. This produces a file whose
+ * columns line up with the sheet exactly, so the row pastes in without retyping
+ * or re-ordering. Sam's own contract workbook uses buildContractingCsv above —
+ * different sheet, different columns, deliberately not shared.
+ */
+export const ETHOS_COLUMNS = [
+  "First Name",
+  "Last Name",
+  "NPN",
+  "Agent Number",
+  "Phone",
+  "Email",
+  "",
+  "Advance",
+  "Organization",
+] as const;
+
+export function buildEthosCsv(rows: ContractingExportRow[]): string {
+  const lines = [ETHOS_COLUMNS.map(csvField).join(",")];
+  for (const row of rows) {
+    lines.push([
+      row.first_name,
+      row.last_name,
+      row.npn,
+      "",
+      formatPhoneForWorkbook(row.phone_e164),
+      row.email,
+      "",
+      "6 Month Advance",
+      "Apex Financial Empire",
+    ].map(csvField).join(","));
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+export function ethosCsvFilename(now: Date): string {
+  return `apex-ethos-signup-${now.toISOString().slice(0, 10)}.csv`;
+}

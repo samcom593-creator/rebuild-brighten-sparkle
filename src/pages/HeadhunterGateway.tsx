@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 const HEADHUNTER_ORIGIN = (
   import.meta.env.VITE_HEADHUNTER_URL || "https://headhunter-sand.vercel.app"
@@ -42,64 +43,42 @@ export default function HeadhunterGateway() {
         <input type="hidden" name="access_token" value={session?.access_token ?? ""} />
       </form>
 
-      <section className="mx-auto flex max-w-2xl flex-col overflow-hidden rounded-3xl border border-primary/25 bg-card/90 shadow-lg backdrop-blur">
-        <div className="border-b border-border/70 bg-gradient-to-br from-primary/15 via-background to-background px-6 py-8 sm:px-9">
-          <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-            <Users className="h-6 w-6" />
-          </div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-            APEX recruiting
-          </p>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Opening Headhunter
-          </h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
-            One interview pipeline for appointments, outcomes, follow-ups, and hires. Your APEX identity signs you in automatically.
-          </p>
+      {/* 2026-08-16: was a rounded-3xl / backdrop-blur / gradient card — glassmorphism
+          the rest of the app dropped long ago, and it is the first thing Sam sees every
+          time he clicks Interviews. Flattened to the standard surface: 1px border,
+          rounded-md, no blur, no gradient, and the two filler "feature" tiles removed
+          since this screen exists only to hand off in ~450ms. */}
+      <section className="mx-auto flex max-w-lg flex-col rounded-md border border-border bg-card p-6 shadow-sm sm:p-8">
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
+          <Users className="h-5 w-5" />
+        </div>
+        <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
+          Opening Headhunter
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Your interview pipeline — appointments, outcomes, follow-ups and hires. You are
+          signed in automatically with your APEX identity.
+        </p>
+
+        <div
+          aria-live="polite"
+          className="mt-5 flex items-center gap-2.5 rounded-md border border-border/70 bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground"
+        >
+          <span className={`h-2 w-2 shrink-0 rounded-full ${launching ? "animate-pulse bg-primary" : "bg-amber-400"}`} />
+          {launching
+            ? `Signing in${user?.email ? ` as ${user.email}` : ""}…`
+            : "Automatic sign-in didn’t start — use the button below."}
         </div>
 
-        <div className="space-y-5 px-6 py-7 sm:px-9">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="flex gap-3 rounded-2xl border border-border/70 bg-background/60 p-4">
-              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Secure handoff</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">The session is sent by encrypted POST, never placed in the URL.</p>
-              </div>
-            </div>
-            <div className="flex gap-3 rounded-2xl border border-border/70 bg-background/60 p-4">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">Same live workflow</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">Existing applicant history and permissions stay intact.</p>
-              </div>
-            </div>
-          </div>
-
-          <div aria-live="polite" className="flex items-center gap-3 rounded-2xl bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
-            <span className={`h-2.5 w-2.5 rounded-full ${launching ? "animate-pulse bg-primary" : "bg-amber-400"}`} />
-            {launching ? `Signing in${user?.email ? ` as ${user.email}` : ""}…` : "Automatic sign-in is ready to retry."}
-          </div>
-
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
-            <button
-              type="button"
-              onClick={() => navigate("/dashboard")}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to dashboard
-            </button>
-            <button
-              type="button"
-              onClick={launch}
-              disabled={!session?.access_token || launching}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {launching ? "Opening…" : "Open Headhunter"}
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+          <Button variant="outline" onClick={() => navigate("/dashboard")} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to dashboard
+          </Button>
+          <Button onClick={launch} disabled={!session?.access_token || launching} className="gap-2">
+            {launching ? "Opening…" : "Open Headhunter"}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
         </div>
       </section>
     </main>

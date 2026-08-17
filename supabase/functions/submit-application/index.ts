@@ -48,6 +48,41 @@ function checkRateLimit(ip: string): boolean {
 const uuidRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+async function retainActiveReferralAgents(
+  selectedReferralAgentId?: string | null,
+  recruiterId?: string | null,
+): Promise<{ selectedReferralAgentId: string | null; recruiterId: string | null }> {
+  const ids = [...new Set([selectedReferralAgentId, recruiterId].filter((id): id is string => !!id))];
+  if (ids.length === 0) return { selectedReferralAgentId: null, recruiterId: null };
+
+  const { data, error } = await supabaseAdmin
+    .from("agents")
+    .select("id, status, is_inactive, is_deactivated")
+    .in("id", ids);
+
+  if (error) {
+    console.error("active referral validation failed", error);
+    return { selectedReferralAgentId: null, recruiterId: null };
+  }
+
+  const activeIds = new Set(
+    (data ?? [])
+      .filter((agent: any) =>
+        agent.is_inactive !== true &&
+        agent.is_deactivated !== true &&
+        !["inactive", "terminated"].includes(String(agent.status ?? "").toLowerCase())
+      )
+      .map((agent: any) => agent.id),
+  );
+
+  return {
+    selectedReferralAgentId: selectedReferralAgentId && activeIds.has(selectedReferralAgentId)
+      ? selectedReferralAgentId
+      : null,
+    recruiterId: recruiterId && activeIds.has(recruiterId) ? recruiterId : null,
+  };
+}
+
 const NumOptional = (min: number, max: number) =>
   z.preprocess(
     (v) => {
@@ -1117,6 +1152,13 @@ function dispatchFullSubmissionSideEffects(data: SubmitApplicationRequest, appli
 }
 
 async function handleQuickQualify(data: QuickQualifyRequest, clientIP: string): Promise<Response> {
+  const activeReferral = await retainActiveReferralAgents(
+    data.selectedReferralAgentId,
+    data.recruiterId,
+  );
+  data.selectedReferralAgentId = activeReferral.selectedReferralAgentId;
+  data.recruiterId = activeReferral.recruiterId;
+
   const normalizedEmail = data.email.toLowerCase().trim();
   const normalizedPhone = data.phone.replace(/\D/g, "").slice(-10);
 
@@ -1344,6 +1386,12 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const data: SubmitApplicationRequest = parsed.data;
+    const activeReferral = await retainActiveReferralAgents(
+      data.selectedReferralAgentId,
+      data.recruiterId,
+    );
+    data.selectedReferralAgentId = activeReferral.selectedReferralAgentId;
+    data.recruiterId = activeReferral.recruiterId;
     const customReferrer = (data.customReferrer ?? "").trim();
     const manualReferralNote = customReferrer ? `Referred by: ${customReferrer}` : null;
 

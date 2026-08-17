@@ -587,7 +587,7 @@ export default function GetLicensed() {
         </GlassCard>
 
         {/* Full training resources — kept from prior page so existing deep
-            links (samueljameshq.com, KJ notes) still land somewhere. */}
+            links and recorded training notes still land somewhere. */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -605,8 +605,8 @@ export default function GetLicensed() {
                     Full training resources
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Scripts, playbooks, PDFs, and recorded closes from KJ, Obi,
-                    Sam, Moody, Aisha, and Chudi.
+                    Scripts, playbooks, PDFs, and recorded closes from the APEX
+                    training team.
                   </p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-primary group-hover:translate-x-1 transition-transform shrink-0" />

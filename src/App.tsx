@@ -540,8 +540,8 @@ const App = () => (
                     {/* MP-230 (2026-07-01): AgentLink Backfill UI removed per Sam directive; keep redirect for old bookmarks. */}
                     <Route path="/admin/agentlink-backfill" element={<Navigate to="/dashboard/book-of-business" replace />} />
                     <Route path="/dashboard/clients/:clientId" element={<ProtectedRoute><ClientDetail /></ProtectedRoute>} />
-                    {/* Seminar control: admins, managers, and flagged presenters
-                        such as KJ (agents.is_presenting=true). */}
+                    {/* Seminar control: admins, managers, and active presenters
+                        explicitly flagged with agents.is_presenting=true. */}
                     <Route path="/dashboard/seminar" element={<ProtectedRoute requireAdmin allowManagers allowPresenters><SeminarControl /></ProtectedRoute>} />
                     <Route path="/dashboard/seminar-control" element={<ProtectedRoute requireAdmin allowManagers allowPresenters><SeminarControl /></ProtectedRoute>} />
                     <Route path="/dashboard/my-inbox" element={<ProtectedRoute requireAdmin><SamInbox /></ProtectedRoute>} />

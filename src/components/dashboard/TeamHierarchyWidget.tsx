@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Loader2, Users, GitBranch, Search } from "lucide-react";
 
-// Sam-feedback 2026-06-01: track who recruited who. When Sam hires under KJ,
-// surface that hierarchy + KJ's downline production. Reads from
+// Sam-feedback 2026-06-01: track who recruited who. When Sam hires under a manager,
+// surface that hierarchy + the manager's downline production. Reads from
 // v_agent_with_downline_production.
 
 type Row = {
@@ -93,7 +93,7 @@ export function TeamHierarchyWidget() {
         <div className="relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Filter by name (e.g. KJ, Sam, Moody...)"
+            placeholder="Filter by name (e.g. Sam, Moody, Obi...)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 h-9"

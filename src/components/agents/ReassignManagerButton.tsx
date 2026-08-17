@@ -61,7 +61,7 @@ export function ReassignManagerButton({
     enabled: open,
     queryFn: async () => {
       // Anyone who manages at least one active agent OR who is the canonical
-      // Sam / KJ + any flagged manager_track row.
+      // Sam + any active flagged manager_track row.
       const { data: managersWithReports } = await (supabase as any)
         .from("agents")
         .select("manager_id")

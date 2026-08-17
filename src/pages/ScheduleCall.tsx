@@ -8,7 +8,6 @@ import { Link } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import {
   SCHEDULING_LINKS,
-  resolveLicensedScheduling,
   getCalendlyHostName,
 } from "@/lib/apexConfig";
 
@@ -98,17 +97,17 @@ export default function ScheduleCall() {
                 <div className="h-16 w-16 mx-auto rounded-full bg-white dark:bg-slate-900 flex items-center justify-center mb-4 animate-pulse-glow">
                   <Calendar className="h-8 w-8 text-primary-foreground" />
                 </div>
-                <h1 className="text-2xl font-bold mb-3">Who are we booking you with?</h1>
+                <h1 className="text-2xl font-bold mb-3">Choose your call type</h1>
                 <p className="text-muted-foreground mb-6">
-                  Samuel James calls are reserved for licensed leaders with at
-                  least five agents or $50,000+ in monthly production.
+                  Pick the lane that matches where you are now. Both calls route
+                  to the active APEX calendar.
                 </p>
                 <div className="grid gap-3">
                   <Button size="lg" className="w-full gap-2 btn-press" onClick={() => setLeaderQualified(true)}>
-                    Yes, I meet that threshold <CheckCircle2 className="h-5 w-5" />
+                    Leadership strategy call <CheckCircle2 className="h-5 w-5" />
                   </Button>
                   <Button size="lg" variant="outline" className="w-full gap-2 btn-press" onClick={() => setLeaderQualified(false)}>
-                    Not yet
+                    Licensed agent onboarding call
                   </Button>
                 </div>
               </GlassCard>
@@ -120,12 +119,10 @@ export default function ScheduleCall() {
   }
 
   if (hasLicense === true) {
-    // v9 wave-C: KJ's URL is still placeholder → resolver returns Sam's link
-    // and fires the idempotent Telegram nag. Once Sam pastes KJ's real URL
-    // into SCHEDULING_LINKS.kjLicensed the resolver routes there automatically.
-    const resolved = leaderQualified
-      ? { url: SAMUEL_JAMES_CALENDLY, hostName: getCalendlyHostName(SAMUEL_JAMES_CALENDLY), fallback: false }
-      : resolveLicensedScheduling(true);
+    const resolved = {
+      url: SAMUEL_JAMES_CALENDLY,
+      hostName: getCalendlyHostName(SAMUEL_JAMES_CALENDLY),
+    };
     const calendlyUrl = resolved.url;
     return (
       <div className="min-h-screen bg-background">

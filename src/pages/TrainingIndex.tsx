@@ -87,7 +87,7 @@ const QUICK_PICKS = [
     icon: FileText,
   },
   {
-    title: "Beating the Price Objection — KJ",
+    title: "Beating the Price Objection — Recorded Training",
     kind: "Recording",
     href: "/dashboard/training-hub?tab=recordings",
     icon: Headphones,

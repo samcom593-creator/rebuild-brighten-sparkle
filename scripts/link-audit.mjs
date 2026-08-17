@@ -52,7 +52,7 @@ const staticSeeds = [
   "/admin/email-gaps",
   "/admin/agent-duplicates",
   "/admin/recruiting-inbox",
-  "/r/KJV01",
+  "/r/SJAMES01",
 ];
 
 function recordBroken(row) {

@@ -15,7 +15,7 @@ interface ProtectedRouteProps {
   allowManagers?: boolean;
   /**
    * If true and the page is requireAdmin, also let users with agents.is_presenting
-   * through. Used for seminar presenters such as KJ who need candidate visibility
+   * through. Used for active seminar presenters who need candidate visibility
    * without granting broader manager/admin access.
    */
   allowPresenters?: boolean;

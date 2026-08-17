@@ -34,12 +34,18 @@ type AppRow = {
   notes: string | null;
 };
 
-type AgentLite = { id: string; display_name: string | null };
+type AgentLite = {
+  id: string;
+  display_name: string | null;
+  status: string | null;
+  is_inactive: boolean | null;
+  is_deactivated: boolean | null;
+};
 
 export default function UnclaimedLeads() {
   const qc = useQueryClient();
   const askConfirm = useConfirm();
-  const [filter, setFilter] = useState<"all" | "kj" | "no_contact" | "unassigned">("all");
+  const [filter, setFilter] = useState<"all" | "inactive_assignee" | "no_contact" | "unassigned">("all");
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(100);
 
@@ -62,7 +68,7 @@ export default function UnclaimedLeads() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agents")
-        .select("id, display_name")
+        .select("id, display_name, status, is_inactive, is_deactivated")
         .order("display_name");
       if (error) throw error;
       return data as AgentLite[];
@@ -71,12 +77,23 @@ export default function UnclaimedLeads() {
   });
 
   const agentMap = useMemo(() => new Map((agents ?? []).map(a => [a.id, a.display_name])), [agents]);
-  const kjId = (agents ?? []).find(a => (a.display_name ?? "").toLowerCase().includes("kj"))?.id;
+  const inactiveAgentIds = useMemo(
+    () => new Set(
+      (agents ?? [])
+        .filter(a =>
+          a.is_inactive === true ||
+          a.is_deactivated === true ||
+          ["inactive", "terminated"].includes((a.status ?? "").toLowerCase())
+        )
+        .map(a => a.id)
+    ),
+    [agents]
+  );
 
   const filtered = useMemo(() => {
     const rows = apps ?? [];
     let f = rows;
-    if (filter === "kj") f = f.filter(r => r.assigned_agent_id === kjId);
+    if (filter === "inactive_assignee") f = f.filter(r => !!r.assigned_agent_id && inactiveAgentIds.has(r.assigned_agent_id));
     else if (filter === "no_contact") f = f.filter(r => !r.last_contacted_at); // real signal, not fake contacted_at
     else if (filter === "unassigned") f = f.filter(r => !r.assigned_agent_id);
     if (search.trim()) {
@@ -89,14 +106,14 @@ export default function UnclaimedLeads() {
       );
     }
     return f;
-  }, [apps, filter, kjId, search]);
+  }, [apps, filter, inactiveAgentIds, search]);
 
   const reassign = useMutation({
     mutationFn: async ({ appId, toAgentId }: { appId: string; toAgentId: string }) => {
-      const { error } = await supabase
-        .from("applications")
-        .update({ assigned_agent_id: toAgentId, recruiter_id: toAgentId, referral_manager_id: toAgentId })
-        .eq("id", appId);
+      const { error } = await (supabase as any).rpc("admin_reassign_application_owner", {
+        p_application_id: appId,
+        p_new_agent_id: toAgentId,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -112,11 +129,11 @@ export default function UnclaimedLeads() {
     const rows = apps ?? [];
     return {
       total: rows.length,
-      kj: rows.filter(r => r.assigned_agent_id === kjId).length,
+      inactive_assignee: rows.filter(r => !!r.assigned_agent_id && inactiveAgentIds.has(r.assigned_agent_id)).length,
       no_contact: rows.filter(r => !r.last_contacted_at).length,
       over_72h: rows.filter(r => ageDays(r.created_at) >= 3).length,
     };
-  }, [apps, kjId]);
+  }, [apps, inactiveAgentIds]);
 
   return (
     <div className="min-h-screen p-4 lg:p-6 max-w-7xl mx-auto space-y-4 ops-surface ops-fade-in">
@@ -131,7 +148,7 @@ export default function UnclaimedLeads() {
       {/* Stat strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTile label="Total stage=new" value={stats.total} color="text-rose-300" />
-        <StatTile label="Currently → KJ" value={stats.kj} color="text-amber-300" />
+        <StatTile label="Departed/inactive owner" value={stats.inactive_assignee} color="text-amber-300" />
         <StatTile label="No contact yet" value={stats.no_contact} color="text-rose-300" />
         <StatTile label="≥ 72h cold" value={stats.over_72h} color="text-rose-400" />
       </div>
@@ -149,7 +166,7 @@ export default function UnclaimedLeads() {
             <SelectTrigger className="md:max-w-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All stage=new</SelectItem>
-              <SelectItem value="kj">Currently routed to KJ</SelectItem>
+              <SelectItem value="inactive_assignee">Departed/inactive assignee</SelectItem>
               <SelectItem value="no_contact">No contact yet</SelectItem>
               <SelectItem value="unassigned">No assignee at all</SelectItem>
             </SelectContent>

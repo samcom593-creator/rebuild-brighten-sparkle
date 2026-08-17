@@ -105,7 +105,7 @@ export default function SeminarControl() {
 
   // Component-level guard. Admins and managers always allowed. Other users
   // (plain agents) are admitted only when their agent row is flagged
-  // is_presenting — e.g. KJ. Defense-in-depth on top of the route's
+  // is_presenting — active presenters only. Defense-in-depth on top of the route's
   // ProtectedRoute(requireAdmin allowManagers) gate.
   const presenterQuery = useQuery({
     queryKey: ["am-i-presenter", user?.id],

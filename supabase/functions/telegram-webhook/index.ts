@@ -702,7 +702,7 @@ async function handleCommand(chat_id: number, fromUser: any, command: string, ar
           chat_id,
           text:
             `Usage: /register <type>\n\n` +
-            `• pipeline — THE manager-only group. Sam + KJ + Obi + Chewy + Moody. ` +
+            `• pipeline — THE manager-only group. Sam + active assigned managers. ` +
             `Bot posts every new applicant + milestone here, tagged with the owner manager. ` +
             `APPLICANTS ARE NOT IN THIS CHAT. They only get private 1:1 DMs.\n` +
             `• onboarding — alias for pipeline (backward compat).\n` +

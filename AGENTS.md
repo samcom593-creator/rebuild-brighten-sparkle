@@ -52,7 +52,7 @@ Before any large analysis task, Claude pauses and drafts a copy-paste Codex prom
 - bot-sql Edge Function: POST `https://xrzweoneiieddzxogewk.supabase.co/functions/v1/bot-sql` with `{"query": "..."}` body. Bearer token at `~/.config/apex-creds/bot-sql.token` (Sam's machine). Runs as `postgres` role.
 - Production numbers source: `agentlink.insuracloud.ai` — but the dashboards read from the local Supabase mirror.
 - Two Sam auth accounts: `71826bba` (sam.com593@gmail.com, **canonical**) and `811fc5f4` (info@kingofsales.net).
-- KJ Vaughn: auth `75b17131-...`, agent `431dff0d-...`, email kjvaughns13@gmail.com, agent_code KJV01, is_presenting=true. Has 38 apps assigned after 2026-05-14 routing fix.
+- KJ Vaughn departed APEX on 2026-08-17. Auth `75b17131-...` is banned; agent `431dff0d-...` is deactivated/terminated and must never receive live routing, manager access, calendar traffic, queues, or alerts. Preserve historical production and recruiting attribution only.
 
 ### Important Notes
 - **`apex-financial.org`** — this domain points to the SAME Vercel deployment as the OS now; AGENTS.md previously said "separate minimal page" — that's stale. Verify before relying on this.

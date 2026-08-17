@@ -734,13 +734,13 @@ const handler = async (req: Request): Promise<Response> => {
         await resend.emails.send({
           from: "Apex Financial <notifications@apex-financial.org>",
           to: [testEmail],
-          subject: "[TEST] 🏆 KJ Vaughns Scored Another Recruit!",
+          subject: "[TEST] 🏆 APEX Manager Scored Another Recruit!",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); border-radius: 16px 16px 0 0; padding: 30px; text-align: center;">
                 <div style="font-size: 48px; margin-bottom: 10px;">🏆</div>
                 <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">
-                  KJ Vaughns just landed a new recruit!
+                  An APEX manager just landed a new recruit!
                 </h1>
               </div>
 
@@ -764,7 +764,7 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
                   <p style="margin: 0; color: #92400e; font-size: 14px;">Referred by</p>
-                  <p style="margin: 5px 0 0 0; color: #78350f; font-size: 20px; font-weight: 700;">⭐ KJ Vaughns</p>
+                  <p style="margin: 5px 0 0 0; color: #78350f; font-size: 20px; font-weight: 700;">⭐ APEX Manager</p>
                 </div>
 
                 <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e2e8f0;">

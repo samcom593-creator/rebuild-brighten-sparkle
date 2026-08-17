@@ -25,21 +25,38 @@ export function SidebarProvider({ children }: SidebarProviderProps) {
     return true;
   });
 
-  const [isFullscreen, setIsFullscreen] = useState(() => {
+  // 2026-08-17: fullscreen NO LONGER PERSISTS. It used to be restored from
+  // localStorage on every load, and fullscreen hides the sidebar (width 0) and
+  // the top bar with the search field — so one accidental toggle left the app
+  // permanently chrome-less across every reload, on every device sharing that
+  // profile, with no visible way back. Sam hit exactly this ("stuck in
+  // fullscreen, can't see the search bar or tabs"). It is now a per-session
+  // view mode that always starts OFF, and the stale key is cleared on boot so
+  // anyone already trapped is released without clearing site data.
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("sidebar-fullscreen");
-      return saved === "true";
+      localStorage.removeItem("sidebar-fullscreen");
     }
-    return false;
-  });
+  }, []);
 
   // Persist states
   useEffect(() => {
     localStorage.setItem("sidebar-open", String(isOpen));
   }, [isOpen]);
 
+  // Deliberately NOT persisted — see the note above.
+
+  // Escape always leaves fullscreen. A hidden-chrome mode needs an exit that
+  // does not depend on finding the control that is currently hidden.
   useEffect(() => {
-    localStorage.setItem("sidebar-fullscreen", String(isFullscreen));
+    if (!isFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsFullscreen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [isFullscreen]);
 
   const toggleSidebar = () => setIsOpen((prev) => !prev);

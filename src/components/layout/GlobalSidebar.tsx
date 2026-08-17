@@ -651,30 +651,13 @@ export function GlobalSidebar({
               </Button>
             </ConditionalTooltip>
 
-            <ConditionalTooltip label={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onFullscreenToggle}
-                className={cn(
-                  "w-full mb-1 text-slate-400 hover:text-slate-300 hover:bg-white/[0.03]",
-                  isCollapsed ? "justify-center" : "justify-start px-3",
-                )}
-                style={{ touchAction: "manipulation" }}
-              >
-                {isFullscreen ? (
-                  <>
-                    <Minimize2 className="h-4 w-4" />
-                    {!isCollapsed && <span className="text-sm ml-2">Exit Fullscreen</span>}
-                  </>
-                ) : (
-                  <>
-                    <Maximize2 className="h-4 w-4" />
-                    {!isCollapsed && <span className="text-sm ml-2">Fullscreen</span>}
-                  </>
-                )}
-              </Button>
-            </ConditionalTooltip>
+            {/* 2026-08-17: Fullscreen control removed. It set the sidebar to
+                width 0 and hid the top bar with the search field, so the only
+                way out was the button it had just hidden. Sam hit this
+                repeatedly ("stuck in fullscreen, can't see the search bar or
+                tabs") and it survived reloads while it was still persisted.
+                The prop and state remain so nothing else breaks; nothing in the
+                UI can turn it on any more. */}
 
             <ConditionalTooltip label="Sign Out">
               <Button

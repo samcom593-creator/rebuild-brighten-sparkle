@@ -669,3 +669,10 @@ if match '^supabase/migrations/'; then
   echo "[pre-commit] Migration staged — running check:migration-versions…"
   npm run --silent check:migration-versions
 fi
+
+# Brand-literal ratchet: hardcoded APEX strings are white-label blockers
+# (directive section 11). Baseline may fall, never rise.
+if git diff --cached --name-only | grep -qE '^(src/.*\.tsx?|scripts/check-brand-literals\.mjs)$'; then
+  echo "[pre-commit] src/ file staged — running check:brand-literals…"
+  npm run --silent check:brand-literals || exit 1
+fi

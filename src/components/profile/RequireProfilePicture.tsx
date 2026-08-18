@@ -5,9 +5,17 @@
 //
 // Flow:
 //   1. On mount, check profiles.avatar_url for the current user
-//   2. If missing, open a non-dismissible dialog with an upload input
+//   2. If missing, open a dismissible prompt with an upload input
 //   3. Upload to Supabase storage → write profiles.avatar_url → close
-//   4. Until they upload, they can't interact with the dashboard
+//   4. "Later" snoozes it for 7 days; it never blocks access to the app
+//
+// 2026-08-18: this dialog used to be a HARD LOCK — the X was hidden, Escape and
+// outside-click were preventDefault'd, and onOpenChange was a no-op, so the only
+// exit was uploading a photo. Measured against production: 302 of 597 profiles
+// (50.6%) have no avatar, so more than half of all users were shut out of every
+// protected route in the product until they found a photo. A nudge to improve a
+// Discord thumbnail is not worth locking an agent out of their own pipeline mid
+// shift. It now asks, and takes no for an answer.
 //
 // Mount in AuthenticatedShell once so every protected page enforces it.
 
@@ -33,17 +41,41 @@ export function RequireProfilePicture() {
     if (!user?.id || isVaManager || isVa) return;
     let cancelled = false;
     (async () => {
+      // .limit(1) not .maybeSingle(): PostgREST returns data=null when a filter
+      // matches MORE than one row, and profiles is not unique on user_id. A user
+      // with duplicate rows would read as "no avatar" and — under the old hard
+      // lock — be shut out of the product permanently, with an avatar on file.
       const { data } = await supabase
         .from("profiles")
         .select("avatar_url")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .limit(1);
       if (cancelled) return;
-      const url = (data as any)?.avatar_url;
-      if (!url || url.length < 10) setNeedsPicture(true);
+      const url = (data as any)?.[0]?.avatar_url;
+      if (url && url.length >= 10) return;
+
+      // Respect a previous "Later" for 7 days so this is a nudge, not a nag.
+      try {
+        const until = Number(localStorage.getItem(`avatar-prompt-snooze:${user.id}`) ?? 0);
+        if (Number.isFinite(until) && until > Date.now()) return;
+      } catch { /* empty-catch-allow:storage-read-optional — blocked storage must not decide whether the prompt shows */ }
+      setNeedsPicture(true);
     })();
     return () => { cancelled = true; };
   }, [user?.id, isVaManager, isVa]);
+
+  // Snooze for 7 days. Stored per user so a shared machine does not silence the
+  // prompt for someone else.
+  const dismiss = () => {
+    setNeedsPicture(false);
+    if (!user?.id) return;
+    try {
+      localStorage.setItem(
+        `avatar-prompt-snooze:${user.id}`,
+        String(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      );
+    } catch { /* empty-catch-allow:storage-write-optional — dismissal already applied in state; only persistence is lost */ }
+  };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -89,12 +121,8 @@ export function RequireProfilePicture() {
   };
 
   return (
-    <Dialog open={needsPicture} onOpenChange={() => { /* non-dismissible */ }}>
-      <DialogContent
-        className="sm:max-w-md [&>button]:hidden"  // hide the X; they must upload
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
-      >
+    <Dialog open={needsPicture} onOpenChange={(next) => { if (!next) dismiss(); }}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Camera className="h-5 w-5 text-primary" />
@@ -138,6 +166,16 @@ export function RequireProfilePicture() {
               className="hidden"
             />
           </label>
+
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={uploading}
+            className="w-full text-muted-foreground"
+            onClick={dismiss}
+          >
+            Later
+          </Button>
 
           <p className="text-xs text-muted-foreground text-center">
             JPEG or PNG, up to 8 MB. You can change it later in Settings.

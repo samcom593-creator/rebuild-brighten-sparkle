@@ -1,4 +1,5 @@
 import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { track } from "@/lib/analytics";
 // S11 fix (2026-06-15): relay ?ref= through the sticky mobile CTA so the
@@ -8,7 +9,25 @@ import { applyHrefWithRef } from "@/lib/refSlug";
 export function StickyMobileCTA() {
   const loc = useLocation();
   const [searchParams] = useSearchParams();
+
+  // 2026-08-18: this bar had NO visibility logic — it rendered permanently, so
+  // on the landing page it sat directly on top of the hero's own "Start My
+  // Application" button. A 390px screenshot showed the hero CTA half-hidden
+  // behind it: two identical primary CTAs competing, which section 22 of the UI
+  // directive names explicitly ("avoid multiple competing conversion paths").
+  // It now appears only once the hero CTA has scrolled away, so exactly one
+  // primary conversion path is on screen at any time. Passive listener; the
+  // initial call covers a restored scroll position on back-navigation.
+  const [past, setPast] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setPast(window.scrollY > window.innerHeight * 0.85);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   if (loc.pathname.startsWith("/apply")) return null;
+  if (!past) return null;
   return (
     // perf/site-wide-optimization (2026-08-06): three real bugs on the single
     // highest-traffic conversion element on the site (phone-first funnel).

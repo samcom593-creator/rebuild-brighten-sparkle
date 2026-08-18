@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
-import { ArrowRight, Shield, TrendingUp, Users, Sparkles, Play } from "lucide-react";
+import { ArrowRight, Shield, TrendingUp, Users, Play } from "lucide-react";
 import { track, getVariant } from "@/lib/analytics";
 // S11 fix (2026-06-15): build the CTA href with ?ref= when the slug is
 // present so the landing -> /apply hop relays the referral via the URL
@@ -191,7 +191,6 @@ export function HeroSection() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
             </span>
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs sm:text-sm text-foreground tracking-wide">
               <span className="brand-gradient font-bold">Licensed & unlicensed</span>
               <span className="text-muted-foreground"> paths open · new agents onboarding now</span>
@@ -201,8 +200,8 @@ export function HeroSection() {
           {/* Headline — massive, parallax, gradient */}
           <h1
             ref={titleRef}
-            className="landing-scale-in landing-delay-100 font-display font-extrabold leading-[0.95] mb-6 tracking-tight"
-            style={{ fontSize: "clamp(2.5rem, 9vw, 6.5rem)" }}
+            className="landing-scale-in landing-delay-100 font-display font-extrabold leading-[1.02] mb-5 tracking-tight"
+            style={{ fontSize: "clamp(2.25rem, 5.5vw, 4rem)" }}
           >
             {/* Variant-driven hero. PostHog flag `hero_variant` swaps copy
                 when set (control / number / story). Control keeps the
@@ -214,7 +213,7 @@ export function HeroSection() {
                 return (
                   <>
                     <span className="block text-foreground">Earn 70%–145%</span>
-                    <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(45 85% 52% / 0.45))" }}>
+                    <span className="block brand-gradient">
                       selling life insurance
                     </span>
                     <span className="block text-foreground text-[0.55em] mt-3">Warm leads · Paid weekly · $120K/mo agency</span>
@@ -225,7 +224,7 @@ export function HeroSection() {
                 return (
                   <>
                     <span className="block text-foreground">I built a $120K/mo agency</span>
-                    <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(45 85% 52% / 0.45))" }}>
+                    <span className="block brand-gradient">
                       from a college dorm.
                     </span>
                     <span className="block text-foreground text-[0.55em] mt-3">The exact system is yours when you join APEX.</span>
@@ -236,7 +235,7 @@ export function HeroSection() {
               return (
                 <>
                   <span className="block text-foreground">Build your</span>
-                  <span className="block brand-gradient" style={{ filter: "drop-shadow(0 0 40px hsl(45 85% 52% / 0.45))" }}>
+                  <span className="block brand-gradient">
                     Financial Empire
                   </span>
                   <span className="block text-foreground">with APEX</span>

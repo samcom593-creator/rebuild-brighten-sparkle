@@ -375,7 +375,13 @@ APEX Financial · ${SAM_PHONE_DISPLAY}`,
         const smsBody = sanitized.licenseStatus === 'licensed'
           ? `APEX: ${sanitized.firstName}, you're in. Call Sam now at ${SAM_PHONE_DISPLAY} — let's get you contracted today.`
           : `APEX: ${sanitized.firstName}, start your license: ${XCEL_URL} · Questions? Text/call Sam ${SAM_PHONE_DISPLAY}`;
-        const supabaseAdmin = (await import("https://esm.sh/@supabase/supabase-js@2.50.0")).createClient(
+// 2026-08-17: bumped off supabase-js@2.50.0 — esm.sh resolves transitive deps at
+// request time, so that pin pinned nothing underneath it and now fails to resolve
+// ws's optional native deps (bufferutil / utf-8-validate). The function died at
+// BOOT, before the handler, so every call 500d and nothing recorded a reason.
+// Measured 2026-08-17: send-notification 903/903 failures in 24h, poke-pusher
+// 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
+        const supabaseAdmin = (await import("https://esm.sh/@supabase/supabase-js@2.90.1")).createClient(
           Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
           { auth: { persistSession: false } });
         await supabaseAdmin.rpc("queue_sms", { p_phone: sanitized.phone, p_body: smsBody, p_carrier: null });

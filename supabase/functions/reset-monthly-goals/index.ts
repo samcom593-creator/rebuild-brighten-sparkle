@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+// 2026-08-17: bumped off supabase-js@2.50.0 — esm.sh resolves transitive deps at
+// request time, so that pin pinned nothing underneath it and now fails to resolve
+// ws's optional native deps (bufferutil / utf-8-validate). The function died at
+// BOOT, before the handler, so every call 500d and nothing recorded a reason.
+// Measured 2026-08-17: send-notification 903/903 failures in 24h, poke-pusher
+// 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

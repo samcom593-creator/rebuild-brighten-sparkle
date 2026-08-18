@@ -18,7 +18,13 @@
 //   - from/to as YYYYMMDD or YYYY-MM-DD → 400 "Validation failure"
 //   - Working format: from/to as YYYY-MM-DDTHH:MM:SS (ISO datetime)
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+// 2026-08-17: bumped off supabase-js@2.50.0 — esm.sh resolves transitive deps at
+// request time, so that pin pinned nothing underneath it and now fails to resolve
+// ws's optional native deps (bufferutil / utf-8-validate). The function died at
+// BOOT, before the handler, so every call 500d and nothing recorded a reason.
+// Measured 2026-08-17: send-notification 903/903 failures in 24h, poke-pusher
+// 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

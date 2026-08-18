@@ -58,9 +58,38 @@ literals. That regex had no word boundaries and scanned comments, so it counted
 silently absorbs real regressions, which is the failure this guard exists to
 prevent — so it would have been the bug inside its own cure.
 
+## Slice 2 — UI directive Phase 1 + accessibility — **DONE**
+
+- `docs/UI_AUDIT.md`, `docs/DESIGN_SYSTEM.md` — measured, not assumed.
+- **The design system largely already exists**: 117 CSS custom properties, ONE
+  icon library (lucide-react, 393 files), shared `Button` in 259 files, 1
+  duplicate component, 92% semantic colour. §34 phases 2–3 are ~80% done.
+- **WCAG fix:** 47 of 105 icon-only buttons had no accessible name. All labelled
+  with the ACTION. Guard `check-icon-button-labels` at baseline 0.
+- **Decorative cleanup:** `AgentCommandDashboard` fully cleared (22 gradients,
+  glow shadows, `rounded-3xl` → 0), verified live in the deployed chunk.
+
+**CORRECTION — the interviews page is Headhunter.** `InterviewCommandCenter` was
+cleaned of 17 gradients on the assumption it was the interviews page Sam called
+rough. It was dead code: zero imports, zero JSX usages, never bundled. Deleted
+(1,737 lines, commit `c79c2463`). `/dashboard/interviews` → `HeadhunterGateway` →
+the separate Headhunter app at `headhunter-sand.vercel.app`.
+**Interviews UI work must happen in the Headhunter repo — nothing in this repo
+can improve that page.**
+
+**Five measurement corrections this session, four from same-line greps:**
+
+| Claim | Reality |
+|---|---|
+| 760 brand literals | **540** (no word boundaries + counted comments) |
+| 93 unlabelled buttons | **47** (JSX spans lines) |
+| 9 images missing alt | **0** |
+| `sidebar.tsx` inaccessible | already fine (scanned tag, not body) |
+| "fixed the interviews page" | fixed a file nobody renders |
+
 ## Exact next task
 
-**Slice 2 — migrate call sites to `resolveBrand()` in waves**, dropping the 540
+**Slice 3 — migrate call sites to `resolveBrand()` in waves**, dropping the 540
 baseline each wave. Highest leverage first: shared layout, nav, auth screens,
 email templates, document/PDF export.
 

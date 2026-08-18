@@ -54,7 +54,7 @@ nested in cards, a card wrapping one line of text, icon-only controls with no na
   an `sr-only` child. **Guarded** by `check-icon-button-labels.mjs` at baseline 0.
 - A tooltip is **not** an accessible name — Radix sets `aria-describedby`.
 - Labels describe the **action**, not the glyph: "Call lead", not "Phone".
-- Images need `alt`. 9 of 35 currently lack it.
+- Images need `alt`. All 35 currently have it.
 
 ## Guards
 

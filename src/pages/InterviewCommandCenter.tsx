@@ -863,7 +863,7 @@ export default function InterviewCommandCenter() {
 
       {bulkMode && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-40 border-t border-violet-500/30 bg-card/95 backdrop-blur-md shadow-2xl"
+          className="fixed bottom-0 left-0 right-0 z-40 border-t border-violet-500/30 bg-card shadow-lg"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
           <div className="mx-auto max-w-5xl flex flex-wrap items-center gap-2 px-3 py-3 sm:px-6">
@@ -1091,7 +1091,6 @@ function InterviewCard({
         isBulkSelected && "ring-2 ring-violet-500 ring-offset-2 ring-offset-background",
       )}
     >
-      <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-white/[0.02] to-transparent" />
       {bulkMode && (
         <div className={cn(
           "absolute top-3 right-3 z-10 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors",
@@ -1107,7 +1106,7 @@ function InterviewCard({
         <div className="min-w-0 flex items-start gap-3 flex-1">
           <div className={cn(
             "shrink-0 h-11 w-11 rounded-full ring-2 ring-background flex items-center justify-center font-black tabular-nums text-base select-none",
-            tone.avatarBg ?? "bg-gradient-to-br from-slate-700 to-slate-800 text-slate-100",
+            tone.avatarBg ?? "bg-slate-700 text-slate-100",
           )}>
             {initials || "—"}
           </div>
@@ -1557,57 +1556,57 @@ function AddInterviewDialog({
 function rowTone(row: UnifiedInterview) {
   if (row.no_show_at) {
     return {
-      card: "border-rose-500/40 bg-gradient-to-br from-rose-500/10 to-rose-500/5",
+      card: "border-rose-500/40 bg-rose-500/10",
       title: "text-rose-100",
-      avatarBg: "bg-gradient-to-br from-rose-500 to-rose-700 text-white shadow-rose-500/40 shadow-md",
+      avatarBg: "bg-rose-500 text-white",
     };
   }
   if (row.passed_at) {
     return {
       card: "border-slate-500/25 bg-slate-500/5 opacity-75",
       title: "text-slate-200",
-      avatarBg: "bg-gradient-to-br from-slate-600 to-slate-800 text-slate-200",
+      avatarBg: "bg-slate-600 text-slate-200",
     };
   }
   if (row.contracted_at) {
     return {
-      card: "border-emerald-500/55 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5",
+      card: "border-emerald-500/55 bg-emerald-500/15",
       title: "text-emerald-50",
-      avatarBg: "bg-gradient-to-br from-emerald-400 to-emerald-700 text-white shadow-emerald-500/40 shadow-md",
+      avatarBg: "bg-emerald-400 text-white",
     };
   }
   if (row.hired_at) {
     return {
-      card: "border-amber-500/45 bg-gradient-to-br from-amber-500/10 to-amber-500/5",
+      card: "border-amber-500/45 bg-amber-500/10",
       title: "text-amber-100",
-      avatarBg: "bg-gradient-to-br from-amber-400 to-amber-700 text-white shadow-amber-500/40 shadow-md",
+      avatarBg: "bg-amber-400 text-white",
     };
   }
   if (row.rescheduled_at && !row.called_at) {
     return {
-      card: "border-violet-500/40 bg-gradient-to-br from-violet-500/10 to-violet-500/5",
+      card: "border-violet-500/40 bg-violet-500/10",
       title: "text-violet-100",
-      avatarBg: "bg-gradient-to-br from-violet-500 to-violet-700 text-white",
+      avatarBg: "bg-violet-500 text-white",
     };
   }
   if (row.called_at) {
     return {
-      card: "border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5",
+      card: "border-emerald-500/40 bg-emerald-500/10",
       title: "text-emerald-100",
-      avatarBg: "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white",
+      avatarBg: "bg-emerald-500 text-white",
     };
   }
   if (row.contacted_at) {
     return {
-      card: "border-sky-500/40 bg-gradient-to-br from-sky-500/10 to-sky-500/5",
+      card: "border-sky-500/40 bg-sky-500/10",
       title: "text-sky-100",
-      avatarBg: "bg-gradient-to-br from-sky-500 to-sky-700 text-white",
+      avatarBg: "bg-sky-500 text-white",
     };
   }
   return {
-    card: "border-border bg-gradient-to-br from-card/80 to-card/40",
+    card: "border-border bg-card",
     title: "text-foreground",
-    avatarBg: "bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 text-amber-950 shadow-md shadow-amber-500/30",
+    avatarBg: "bg-amber-400 text-amber-950 shadow-md shadow-amber-500/30",
   };
 }
 

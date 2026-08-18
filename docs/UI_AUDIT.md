@@ -43,14 +43,23 @@ tag for `sr-only`, flagging shadcn's already-accessible `SidebarTrigger`. 93 →
 
 ### 2. Legacy decorative styling — 197 violations of §12/§25
 
-| Pattern | Count | Directive |
-|---|---|---|
-| `bg-gradient-to-*` | 76 | §25 "no rotating gradients", §2 not a crypto platform |
-| `rounded-2xl` / `rounded-3xl` | 62 | §12 "avoid excessive rounded corners" |
-| `backdrop-blur` | 36 | §12 "no glass panels" |
-| `shadow-xl` / `shadow-2xl` | 23 | §12 "no heavy shadows" |
+| Pattern | Before | After | Directive |
+|---|---|---|---|
+| `bg-gradient-to-*` | 76 | **37** | §25 "no rotating gradients", §2 not a crypto platform |
+| `rounded-3xl` | 32+ | **32** | §12 "avoid excessive rounded corners" |
+| `backdrop-blur` | 36 | **35** | §12 "no glass panels" |
+| `shadow-2xl` | 23 | **10** | §12 "no heavy shadows" |
 
-Bounded and mechanical — the single largest visual-consistency win available.
+Cleared in `InterviewCommandCenter` (17 gradients, all blur, all `shadow-2xl` → 0)
+and `AgentCommandDashboard` (22 gradients, all glow shadows, all `rounded-3xl` → 0).
+
+**OPEN AND DELIBERATELY NOT REGEX-FIXED — `AgentCommandDashboard` is dark-only.**
+Its panels hardcode `text-white` on `slate-950`, and child text uses
+`text-slate-300`, `text-white/60` etc. Converting the surfaces to light/dark
+tokens with a substitution would leave that child text unreadable in light mode —
+worse than the gradients. The gradients and glows were removed while keeping the
+dark ground the children assume. Making this page genuinely theme-aware (§18) is
+a real redesign of the page's colour contract, not a mechanical change.
 
 ### 3. State coverage incomplete (§30), across 158 pages
 

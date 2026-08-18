@@ -1935,7 +1935,7 @@ function AgencyCommandView() {
       {/* MP-255 · retired: oversized decorative HERO band. Executive KPI strip
           above owns the 6 canonical KPIs; the gradient hero was scope debt. */}
       <div className="hidden">
-      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_64px_-12px_hsl(168_70%_45%/0.35)]">
+      <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
         {/* glow accents */}
         <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
@@ -2077,7 +2077,7 @@ function AgencyCommandView() {
           // UNCONTACTED gets an urgent pulse — Sam: "make uncontacted more animated"
           const isUrgent = tone === "rose" && count > 0;
           return (
-            <div className={`relative rounded-2xl border ${t.border} ${t.bg} p-4 ${isUrgent ? "shadow-[0_0_24px_-8px_hsl(0_70%_60%/0.4)]" : ""}`}>
+            <div className={`relative rounded-2xl border ${t.border} ${t.bg} p-4 ${isUrgent ? "shadow-sm" : ""}`}>
               {isUrgent && (
                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
                   <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
@@ -2204,7 +2204,7 @@ function AgencyCommandView() {
       </div>
 
       {/* §C · LEAKS · PREMIUM GLASS BAND (Sam: 'make leaks way better, way more appealing, more understandable') */}
-      <div className="relative overflow-hidden rounded-3xl border border-rose-500/25 bg-gradient-to-br from-slate-950 via-rose-950/40 to-slate-950 text-white shadow-[0_0_48px_-12px_hsl(0_70%_50%/0.25)]">
+      <div className="relative overflow-hidden rounded-lg border border-rose-500/25 bg-slate-950 text-white shadow-sm">
         <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
 
@@ -2284,7 +2284,7 @@ function AgencyCommandView() {
             Now wrapped in the canonical gradient hero pattern (slate→emerald)
             with glow rim shadow, 2 soft-blur accents, animate-ping LIVE dot,
             4 inner glass tiles above the chart for context. */}
-        <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)] lg:col-span-2">
+        <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm lg:col-span-2">
           <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
           <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
 
@@ -2377,7 +2377,7 @@ function AgencyCommandView() {
         </div>
 
         {/* Leaderboard promoted to amber-gradient glass to match the new Daily AP card */}
-        <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.20)]">
+        <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
           <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
 
@@ -2404,7 +2404,7 @@ function AgencyCommandView() {
                     key={a.agent_id}
                     className={`flex items-center gap-3 rounded-xl px-2.5 py-2 border transition-all ${
                       i === 0
-                        ? "border-amber-400/40 bg-amber-400/[0.06] shadow-[0_0_16px_-4px_hsl(45_85%_55%/0.3)]"
+                        ? "border-amber-400/40 bg-amber-400/[0.06] shadow-sm"
                         : "border-white/[0.06] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
                     }`}
                   >
@@ -2955,7 +2955,7 @@ function CarrierMixPanel({ data, loading }: {
   const topConcentration = chartData[0];
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3045,7 +3045,7 @@ function TopMoversPanel({ data, loading }: {
   loading: boolean;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.25)]">
+    <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3135,7 +3135,7 @@ function ConversionFunnelPanel({ data, loading }: {
   }, [data]);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-rose-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950 text-white shadow-[0_0_48px_-12px_hsl(355_75%_55%/0.25)]">
+    <div className="relative overflow-hidden rounded-lg border border-rose-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3181,7 +3181,7 @@ function ConversionFunnelPanel({ data, loading }: {
                   </div>
                   <div className="h-2 rounded-full bg-white/5 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-500 transition-all"
+                      className="h-full rounded-full bg-emerald-500 transition-all"
                       style={{ width: `${Math.max(2, s.pctOfTop)}%` }}
                     />
                   </div>
@@ -3205,7 +3205,7 @@ function ActivityFeedPanel({ data, loading }: {
   loading: boolean;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3276,7 +3276,7 @@ function SourceRoiPanel({ data, loading }: {
   );
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.25)]">
+    <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3310,7 +3310,7 @@ function SourceRoiPanel({ data, loading }: {
                   <div className="col-span-3 truncate text-white/80 font-medium">{TITLE_CASE(r.source)}</div>
                   <div className="col-span-5 h-2 rounded-full bg-white/5 overflow-hidden">
                     <div
-                      className={`h-full rounded-full ${isWinner ? "bg-gradient-to-r from-emerald-400 to-amber-400" : "bg-amber-500/60"}`}
+                      className={`h-full rounded-full ${isWinner ? "bg-emerald-400" : "bg-amber-500/60"}`}
                       style={{ width: `${Math.max(3, widthPct)}%` }}
                     />
                   </div>
@@ -3341,7 +3341,7 @@ function MoneyFlowPanel({ data, loading }: {
   loading: boolean;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3570,7 +3570,7 @@ function PersonalPacePanel() {
   const dealsDelta = p ? p.mtdDeals - p.lmtdSameDayDeals : 0;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3668,7 +3668,7 @@ function ProductMixPanel() {
   const max = data?.list[0]?.ap ?? 0;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3761,7 +3761,7 @@ function WeekOverWeekPanel() {
   const d = wow.data;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3887,7 +3887,7 @@ function RecruiterContactSlaPanel() {
   const d = sla.data;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-rose-500/25 bg-gradient-to-br from-slate-950 via-rose-950/40 to-slate-950 text-white shadow-[0_0_48px_-12px_hsl(0_70%_50%/0.25)] lg:col-span-2">
+    <div className="relative overflow-hidden rounded-lg border border-rose-500/25 bg-slate-950 text-white shadow-sm lg:col-span-2">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -4036,7 +4036,7 @@ function StateProductionPanel() {
   const max = d?.list[0]?.ap ?? 0;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -4126,7 +4126,7 @@ function TimeOfDayProductionPanel() {
   const h = heat.data;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.20)]">
+    <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -4245,7 +4245,7 @@ function CommissionProjectionPanel() {
   const p = proj.data;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
+    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -4349,7 +4349,7 @@ function HirePace12WPanel() {
   const d = pace.data;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.20)]">
+    <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -4453,7 +4453,7 @@ function AgedLeadsPanel() {
   const d = leads.data;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(45_85%_55%/0.20)]">
+    <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -4613,7 +4613,7 @@ function LowProducersPanel() {
   const d = low.data;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-rose-500/30 bg-gradient-to-br from-slate-950 via-rose-950/50 to-slate-950 text-white shadow-[0_0_48px_-12px_hsl(0_70%_50%/0.30)]">
+    <div className="relative overflow-hidden rounded-lg border border-rose-500/30 bg-slate-950 text-white shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-rose-500/20 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">

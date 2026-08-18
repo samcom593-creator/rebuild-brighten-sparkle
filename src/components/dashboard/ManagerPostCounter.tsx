@@ -159,9 +159,9 @@ export function ManagerPostCounter({ className }: { className?: string }) {
 
       {/* ── My counter + the big button ────────────────────────── */}
       {me ? (
-        <div className="mb-4">
-          <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-5xl font-bold tabular-nums leading-none">{todayCount}</span>
+        <div className="mb-3">
+          <div className="flex items-baseline gap-2 mb-1.5">
+            <span className="text-3xl font-bold tabular-nums leading-none">{todayCount}</span>
             <span className="text-sm text-muted-foreground">
               post{todayCount === 1 ? "" : "s"} today
             </span>
@@ -177,13 +177,13 @@ export function ManagerPostCounter({ className }: { className?: string }) {
               disabled={bump.isPending}
               aria-label="Log one social post for today"
               className={cn(
-                "flex-1 h-16 rounded-md bg-primary text-primary-foreground",
-                "flex items-center justify-center gap-2 text-xl font-bold",
+                "flex-1 h-11 rounded-md bg-primary text-primary-foreground",
+                "flex items-center justify-center gap-2 text-base font-bold",
                 "transition-transform duration-150 active:scale-[0.98] touch-manipulation",
                 "disabled:opacity-60",
               )}
             >
-              <Plus className="h-6 w-6" aria-hidden="true" />
+              <Plus className="h-5 w-5" aria-hidden="true" />
               1 Post
             </button>
             <button
@@ -192,7 +192,7 @@ export function ManagerPostCounter({ className }: { className?: string }) {
               disabled={!canUndo}
               aria-label="Remove one post from today"
               className={cn(
-                "w-16 h-16 rounded-md border border-border text-muted-foreground",
+                "w-11 h-11 rounded-md border border-border text-muted-foreground",
                 "flex items-center justify-center",
                 "transition-transform duration-150 active:scale-[0.98] touch-manipulation",
                 "disabled:opacity-40",

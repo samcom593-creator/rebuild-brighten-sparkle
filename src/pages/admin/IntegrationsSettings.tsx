@@ -558,6 +558,7 @@ export default function IntegrationsSettings() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Copy value"
               className="absolute top-2 right-2 h-6 w-6"
               onClick={() => {
                 navigator.clipboard.writeText(SETUP_SQL);

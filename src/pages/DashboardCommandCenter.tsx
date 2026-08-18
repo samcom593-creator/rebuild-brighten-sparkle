@@ -947,7 +947,8 @@ export default function DashboardCommandCenter() {
                             <DropdownMenuTrigger asChild>
                               <Button 
                                 variant="ghost" 
-                                size="icon" 
+                                size="icon"
+                                aria-label="More actions" 
                                 className="h-10 w-10 sm:h-8 sm:w-8 shrink-0"
                                 onClick={(e) => e.stopPropagation()}
                               >

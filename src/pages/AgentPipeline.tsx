@@ -177,7 +177,8 @@ function BulkToolbar({
           {sending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
           Email Blast
         </Button>
-        <Button size="icon" variant="ghost" onClick={onClear} className="h-8 w-8">
+        <Button size="icon"
+        aria-label="Close" variant="ghost" onClick={onClear} className="h-8 w-8">
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -595,6 +596,7 @@ export default function AgentPipeline() {
             </Button>
             {app.phone && (
               <Button variant="ghost" size="icon"
+              aria-label="Call agent"
                 className="h-8 w-8 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
                 asChild
               >

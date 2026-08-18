@@ -207,6 +207,7 @@ export function AbandonedLeadsPanel() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label="Call lead"
                           className="h-7 w-7"
                           asChild
                         >
@@ -219,6 +220,7 @@ export function AbandonedLeadsPanel() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label="Email lead"
                           className="h-7 w-7"
                           asChild
                         >

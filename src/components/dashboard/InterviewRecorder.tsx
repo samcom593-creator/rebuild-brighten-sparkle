@@ -460,7 +460,8 @@ export function InterviewRecorder({
                 <Mic className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-semibold">Interview with {applicantName}</h2>
               </div>
-              <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon"
+              aria-label="Close recorder" onClick={onClose}><X className="h-4 w-4" /></Button>
             </div>
 
             {/* Recording Controls */}

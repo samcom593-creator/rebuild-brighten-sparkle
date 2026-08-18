@@ -242,7 +242,8 @@ function formatPhoneDisplay(phone: string): string {
                  {totalLeads - currentIndex} leads remaining
                </p>
              </div>
-             <Button variant="ghost" size="icon" onClick={onClose}>
+             <Button variant="ghost" size="icon"
+             aria-label="Exit call mode" onClick={onClose}>
                <X className="h-5 w-5" />
              </Button>
            </div>

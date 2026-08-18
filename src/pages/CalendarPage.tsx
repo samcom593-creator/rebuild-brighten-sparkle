@@ -793,6 +793,7 @@ export default function CalendarPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  aria-label="Mark as no-show"
                                   className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
                                   onClick={() => handleNoShow(iv)}
                                 >

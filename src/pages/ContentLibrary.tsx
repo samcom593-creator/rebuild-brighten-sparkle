@@ -1139,11 +1139,13 @@ function ContentCard({
 
         {/* Hover actions */}
         <div className="absolute inset-0 bg-white dark:bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-          <Button variant="secondary" size="icon" className="h-8 w-8" onClick={() => onDownload(item)}>
+          <Button variant="secondary" size="icon"
+          aria-label="Download asset" className="h-8 w-8" onClick={() => onDownload(item)}>
             <Download className="h-4 w-4" />
           </Button>
           {canManage && (
-            <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => onDelete(item)}>
+            <Button variant="destructive" size="icon"
+            aria-label="Delete asset" className="h-8 w-8" onClick={() => onDelete(item)}>
               <Trash2 className="h-4 w-4" />
             </Button>
           )}

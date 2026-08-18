@@ -846,7 +846,8 @@ export default function BuildersDashboard({ mode = "builders" }: { mode?: Dashbo
                     <Badge variant="outline">{TRACK_LABEL[selected.builder_track]}</Badge>
                   </div>
                 </div>
-                <Button asChild variant="ghost" size="icon">
+                <Button asChild variant="ghost" size="icon"
+                aria-label="Copy referral link">
                   <Link to={`/agent/${selected.agent_id}`} aria-label="Open agent profile">
                     <ExternalLink className="h-4 w-4" />
                   </Link>
@@ -1040,7 +1041,8 @@ function LinkRow({ label, value, onCopy }: { label: string; value: string; onCop
     <div className="flex items-center gap-2 py-1">
       <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">{label}</span>
       <span className="min-w-0 flex-1 truncate text-xs">{value}</span>
-      <Button type="button" size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={onCopy}>
+      <Button type="button" size="icon"
+      aria-label="Copy to clipboard" variant="ghost" className="h-7 w-7 shrink-0" onClick={onCopy}>
         <Copy className="h-3.5 w-3.5" />
       </Button>
     </div>

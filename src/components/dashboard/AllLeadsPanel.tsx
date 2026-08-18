@@ -255,12 +255,14 @@ export function AllLeadsPanel() {
             onAssigned={fetchAllLeads}
             displayMode="icon"
           />
-          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+          <Button variant="ghost" size="icon"
+          aria-label="Call lead" className="h-8 w-8" asChild>
             <a href={`tel:${lead.phone}`}>
               <Phone className="h-4 w-4" />
             </a>
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+          <Button variant="ghost" size="icon"
+          aria-label="Email lead" className="h-8 w-8" asChild>
             <a href={`mailto:${lead.email}`}>
               <Mail className="h-4 w-4" />
             </a>

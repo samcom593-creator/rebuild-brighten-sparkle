@@ -302,6 +302,7 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
                 <Button
                   variant="outline"
                   size="icon"
+                  aria-label="Confirm"
                   onClick={handleCopy}
                 >
                   {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -418,6 +419,7 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
                     <Button
                       type="button"
                       size="icon"
+                      aria-label="Add invite row"
                       onClick={handleSaveLink}
                       disabled={!newLinkName.trim() || !newLinkUrl.trim()}
                     >
@@ -447,6 +449,7 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
                             type="button"
                             variant="ghost"
                             size="icon"
+                            aria-label="Copy invite link"
                             className="h-6 w-6"
                             onClick={() => {
                               navigator.clipboard.writeText(link.url);
@@ -459,6 +462,7 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
                             type="button"
                             variant="ghost"
                             size="icon"
+                            aria-label="Remove invite row"
                             className="h-6 w-6 text-destructive hover:text-destructive"
                             onClick={() => handleDeleteLink(link.id)}
                           >

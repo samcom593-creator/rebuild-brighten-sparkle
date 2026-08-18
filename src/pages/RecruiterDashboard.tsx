@@ -552,6 +552,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
+                  aria-label="Call applicant"
                   className="h-8 w-8 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
                 >
                   <Phone className="h-4 w-4" />
@@ -602,6 +603,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
+                  aria-label="Send reminder"
                   className="h-8 w-8 border-violet-500/30 text-primary hover:bg-violet-500/10"
                 >
                   <Bell className="h-4 w-4" />
@@ -665,6 +667,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
+                  aria-label="Reschedule"
                   className="h-8 w-8 border-pink-500/30 text-foreground hover:bg-rose-500/10"
                   onClick={() => {
                     logLeadActivity({
@@ -688,6 +691,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
+                  aria-label="Schedule interview"
                   className="h-8 w-8 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
                   onClick={() => setSchedulerOpen(true)}
                 >
@@ -703,6 +707,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="View activity"
                   onClick={() => setShowTimeline((v) => !v)}
                   className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 >
@@ -718,6 +723,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Record interview"
                   onClick={() => setShowRecorder((v) => !v)}
                   className={cn("h-8 w-8", showRecorder ? "text-red-400 bg-red-500/10" : "text-muted-foreground hover:text-foreground")}
                 >
@@ -734,6 +740,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Send message"
                   onClick={() => setExpanded((v) => !v)}
                   className="h-8 w-8 ml-auto text-muted-foreground hover:text-foreground"
                 >
@@ -1538,6 +1545,7 @@ function RecruiterDashboardInner() {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                aria-label="Mark complete"
                                 className="h-6 w-6 text-emerald-400 hover:bg-emerald-500/10"
                                 onClick={async () => {
                                   await supabase.from("applications").update({ last_contacted_at: new Date().toISOString() } as any).eq("id", lead.id);

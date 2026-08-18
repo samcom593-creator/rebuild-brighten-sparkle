@@ -128,7 +128,8 @@ export function LicensingDelegateSection({ applicationId }: Props) {
                 )}
               </div>
               <Badge variant="outline" className="text-[10px] shrink-0">Active</Badge>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleRemove(d.id)}>
+              <Button size="icon"
+              aria-label="Remove delegate" variant="ghost" className="h-7 w-7" onClick={() => handleRemove(d.id)}>
                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
               </Button>
             </div>

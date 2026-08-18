@@ -84,6 +84,7 @@ export function ResendLicensingButton({
           <Button
             variant="outline"
             size="icon"
+            aria-label="Resend licensing email"
             onClick={handleSend}
             disabled={isSending}
             className={cn(

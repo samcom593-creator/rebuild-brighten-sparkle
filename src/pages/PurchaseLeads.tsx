@@ -278,10 +278,12 @@ export default function PurchaseLeads() {
                         onChange={(e) => setEditValue(e.target.value)}
                         className="w-24 h-8 text-lg font-bold"
                       />
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleSaveCount}>
+                      <Button size="icon"
+                      aria-label="Save quantity" variant="ghost" className="h-8 w-8" onClick={handleSaveCount}>
                         <Check className="h-4 w-4 text-green-500" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setIsEditing(false)}>
+                      <Button size="icon"
+                      aria-label="Cancel edit" variant="ghost" className="h-8 w-8" onClick={() => setIsEditing(false)}>
                         <X className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>
@@ -293,6 +295,7 @@ export default function PurchaseLeads() {
                       {isAdmin && inventorySource !== "readymode" && (
                         <Button
                           size="icon"
+                          aria-label="Edit quantity"
                           variant="ghost"
                           className="h-6 w-6 text-muted-foreground hover:text-primary"
                           onClick={() => {

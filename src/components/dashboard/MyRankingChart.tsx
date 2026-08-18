@@ -67,7 +67,8 @@ export function MyRankingChart({ currentAgentId, entries }: MyRankingChartProps)
                 Where You Stand
               </DrawerTitle>
               <DrawerClose asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon"
+                aria-label="Close chart" className="h-8 w-8">
                   <X className="h-4 w-4" />
                 </Button>
               </DrawerClose>

@@ -52,6 +52,7 @@ export function PhonePromptBanner() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Dismiss"
             onClick={handleDismiss}
             className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
           >

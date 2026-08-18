@@ -191,6 +191,7 @@ export default function DeletedLeadsVault() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Go back"
             onClick={() => navigate("/dashboard/settings")}
           >
             <ArrowLeft className="h-5 w-5" />

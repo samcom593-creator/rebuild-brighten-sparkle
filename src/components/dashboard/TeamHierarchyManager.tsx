@@ -826,7 +826,8 @@ export function TeamHierarchyManager() {
                       {agent.id !== adminAgentId && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                            <Button variant="ghost" size="icon"
+                            aria-label="More actions" className="h-6 w-6">
                               <MoreVertical className="h-3 w-3" />
                             </Button>
                           </DropdownMenuTrigger>

@@ -362,6 +362,7 @@ export function GlobalSidebar({
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Toggle sidebar width"
                   onClick={onToggle}
                   className="h-7 w-7 text-slate-400 hover:text-slate-300"
                   style={{ touchAction: "manipulation" }}
@@ -401,6 +402,7 @@ export function GlobalSidebar({
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label="Close menu"
                         onClick={() => { setSearchQuery(""); setSearchResults([]); }}
                         className="absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7"
                       >
@@ -691,6 +693,7 @@ export function GlobalSidebar({
           <Button
             variant="secondary"
             size="icon"
+            aria-label="Open menu"
             onClick={onFullscreenToggle}
             className="shadow-lg"
             style={{ touchAction: "manipulation" }}

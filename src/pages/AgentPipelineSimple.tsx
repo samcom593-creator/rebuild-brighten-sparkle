@@ -229,7 +229,8 @@ export default function AgentPipelineSimple() {
                 {switchRequests.length} Switch Request{switchRequests.length > 1 ? "s" : ""}
               </Button>
             )}
-            <Button variant="outline" size="icon" onClick={fetchAll}>
+            <Button variant="outline" size="icon"
+            aria-label="Refresh pipeline" onClick={fetchAll}>
               <RefreshCw className="h-4 w-4" />
             </Button>
           </>

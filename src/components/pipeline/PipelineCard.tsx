@@ -263,6 +263,7 @@ export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedul
           )}
           {app.phone && (
             <Button variant="ghost" size="icon"
+            aria-label="Call contact"
               className="h-7 w-7 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
               asChild onClick={(e) => e.stopPropagation()}
             >
@@ -270,6 +271,7 @@ export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedul
             </Button>
           )}
           <Button variant="ghost" size="icon"
+          aria-label="Email contact"
             className="h-7 w-7 text-sky-400 hover:text-sky-300 hover:bg-sky-500/10"
             asChild onClick={(e) => e.stopPropagation()}
           >

@@ -248,6 +248,7 @@ export function RecognitionQueue() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label="Preview plaque"
                         className="h-8 w-8"
                         onClick={() => setPreviewCandidate(candidate)}
                       >
@@ -256,6 +257,7 @@ export function RecognitionQueue() {
                       <Button
                         variant="default"
                         size="icon"
+                        aria-label="Send plaque"
                         className="h-8 w-8"
                         onClick={() => sendPlaque.mutate(candidate)}
                         disabled={sendPlaque.isPending}

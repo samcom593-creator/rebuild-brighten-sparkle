@@ -218,7 +218,8 @@ export function AskApex() {
           placeholder="Ask about your book…"
           className="h-9 text-12"
         />
-        <Button type="submit" size="icon" className="h-9 w-9" disabled={!input.trim()}>
+        <Button type="submit" size="icon"
+        aria-label="Send message" className="h-9 w-9" disabled={!input.trim()}>
           <Send className="h-3.5 w-3.5" />
         </Button>
       </form>

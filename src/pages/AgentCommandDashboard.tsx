@@ -870,6 +870,30 @@ function AgencyCommandView() {
     },
   });
 
+  // Skool-gated active-agent count. Sam: "the only agents who are alive ... it
+  // should be, like, twelve people, eight people." agents.status='active' says 42,
+  // because that column is a contract state nobody retires — it counts everyone
+  // who was ever activated. The people actually IN the business are the ones in
+  // the Skool community. Measured the same instant: status='active' 42, in Skool
+  // 8, posted a deal in 30d 12. Both numbers Sam named are real; neither is 42.
+  const skoolActive = useQuery({
+    queryKey: ["active-agents-skool"],
+    refetchInterval: 300_000,
+    staleTime: 240_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_active_agents_skool" as any)
+        .select("skool_members_loaded,active_current_definition,active_in_skool_and_enabled")
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as {
+        skool_members_loaded: number;
+        active_current_definition: number;
+        active_in_skool_and_enabled: number;
+      } | null;
+    },
+  });
+
   // Source = agentlink_book by POSTED_DATE (dead-excluded) — the exact truth the
   // public leaderboard/hero render. Previously this read agentlink_deals_snapshot
   // filtered by EFFECTIVE_DATE, which buckets July-written policies into the month
@@ -1731,7 +1755,14 @@ function AgencyCommandView() {
   };
 
   // Executive KPI strip — 6 tiles.
-  const activeAgentsCount = (c?.active_agents ?? tight.data?.active10d ?? 0) as number;
+  // If no Skool roster has been imported yet, skool_members_loaded is 0 and the
+  // gated count would read a truthful-looking 0. Fall back to the contract count
+  // in that case rather than telling Sam he has zero agents.
+  const skoolLoaded = (skoolActive.data?.skool_members_loaded ?? 0) > 0;
+  const contractedCount = (c?.active_agents ?? tight.data?.active10d ?? 0) as number;
+  const activeAgentsCount = skoolLoaded
+    ? (skoolActive.data?.active_in_skool_and_enabled ?? contractedCount)
+    : contractedCount;
   const policiesIssued = (periodDealsAllStatuses.data?.count ?? periodSummary.dealCount) as number;
   const licensedMtd = tight.data?.licensedMtd ?? 0;
   const activeApplicants = (c?.total_applications ?? apps.length) as number;
@@ -1827,7 +1858,9 @@ function AgencyCommandView() {
             },
             {
               icon: Users, label: "Active Agents", value: fmtNum(activeAgentsCount),
-              sub: `${fmtNum(tight.data?.active10d ?? 0)} active in 10d`,
+              sub: skoolLoaded
+                ? `in Skool · ${fmtNum(contractedCount)} contracted · ${fmtNum(tight.data?.active10d ?? 0)} produced 10d`
+                : `${fmtNum(tight.data?.active10d ?? 0)} active in 10d`,
               tone: "text-teal-400 border-teal-500/50 bg-teal-500/10",
               href: "/dashboard/team-hierarchy",
             },

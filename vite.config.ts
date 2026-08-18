@@ -152,7 +152,7 @@ export default defineConfig(({ mode }) => ({
         description: "Track your daily production, see your ranking, and compete on the leaderboard.",
         theme_color: "#0a0f1a",
         background_color: "#0a0f1a",
-        display: "standalone",
+        display: "browser",
         orientation: "portrait",
         scope: "/",
         start_url: "/",

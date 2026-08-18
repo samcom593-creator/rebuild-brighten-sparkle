@@ -79,6 +79,18 @@ harness exist — see DEC-002.
 | Discord contracting channel | webhook URL, or a non-empty bot token |
 | 3 Skool members absent from APEX | emails for Lorenzo Farfan, Jontay T, Billy Kalonji |
 
+## Known open UI items (not fabricated as done)
+
+- **`AgentCommandDashboard` is dark-only.** Panels hardcode `text-white` on
+  `slate-950`; children use `text-slate-300`. Token-swapping the surfaces with a
+  regex would leave child text unreadable in light mode — worse than the
+  gradients. Needs a real redesign of the page's colour contract (§18).
+- 37 gradients / 35 `backdrop-blur` / 32 `rounded-3xl` remain, now diffuse.
+- 79 raw `<button>` elements bypass the shared `Button`.
+- 203 fixed pixel widths (`w-[NNNpx]`) — the main mobile-overflow risk.
+- The per-route 12-field table (§3) is **not produced**: it needs 6 viewports ×
+  2 themes × 3 branding modes, and the branding modes need the tenant entity.
+
 ## Repository hazards
 
 - **Multiple automated workers commit here.** Never `git add -A`. Use

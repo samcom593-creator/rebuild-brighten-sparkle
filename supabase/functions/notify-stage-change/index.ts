@@ -1,4 +1,9 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+// 2026-08-17: bumped off supabase-js@2.50.0 — esm.sh resolves transitive deps at
+// request time, so that pin pinned nothing underneath it and now fails to resolve
+// ws's optional native deps (bufferutil / utf-8-validate). The function died at
+// BOOT, before the handler, so every call 500d and nothing recorded a reason.
+// 2.90.1 is the version proven booting.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createHandler } from "../_shared/handler.ts";
 import { jsonResponse } from "../_shared/cors.ts";

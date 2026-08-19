@@ -60,10 +60,52 @@
 // kills the push before a byte reaches the network and the throw looks like an
 // ordinary false. No emoji here, ever.
 
+// MP-307: TWO CHANNELS, AND THE PRIMARY IS STILL THE ONE THAT MATTERS.
+// Measured, not assumed: pg_cron jobid 79 fired this watcher at 13:20, 13:30,
+// 13:40, 13:50, 14:00 and 14:10 on 2026-08-19 (cron.job_run_details, 6 of 6
+// "succeeded"). The site was confirmed down from 13:30. Of the TWO autonomous
+// fires that reached the paging gate, ntfy refused BOTH with HTTP 429. The only
+// page that ever left the building is the 13:47:31 row -- and there is no 13:47
+// cron fire, because that one was invoked BY HAND by the session that was
+// already staring at the outage. So this watcher, whose entire purpose is the
+// case where no session is watching, delivered 0 of 2 autonomous pages on its
+// first and only real test.
+//
+// MP-306 added a 3-attempt in-process ladder and said in its own comment that
+// it reduces the mute window without closing it: ntfy.sh's free tier limits by
+// VISITOR, and this runtime's visitor is Supabase's shared egress, so the bucket
+// can be empty for reasons that have nothing to do with Apex and stay empty
+// longer than any backoff worth running inside a cron tick. Retrying harder on
+// one rate-limited channel is not redundancy.
+//
+// So the ladder now crosses CHANNELS, not just attempts: ntfy first, and only
+// if ntfy refuses, the Discord webhook in system_settings.discord_webhook_url --
+// a different vendor, a different limiter, a different quota.
+//
+// THE TRAP THIS OPENS, and the reason Check #28d exists. A fallback that works
+// makes the primary's failure invisible: every page still lands, `paged` still
+// reads true, and nothing anywhere says that the channel which actually reaches
+// Sam's pocket has gone dark. That is the fake-success disease wearing a helpful
+// costume. Two rules keep it honest:
+//   1. `paged_via` records WHICH channel landed and its provider-issued message
+//      id -- a receipt, never a bare boolean (MP-273: sent_sms_id held 'sent'
+//      314 times and a provider id zero times).
+//   2. Discord is never promoted. It is a fallback, it is labelled as one in the
+//      message body, and apex-doctor Check #28d grades the PRIMARY channel's
+//      health separately from whether delivery happened at all.
+// Discord is NOT claimed to reach Sam's phone; ntfy is the channel MP-291
+// measured landing there 207 times in 42 days. Discord is a second exit, not a
+// second pocket.
+
 const BASE = Deno.env.get("SHELL_WATCH_BASE") ?? "https://apex-financial.org";
 const CONTROL = Deno.env.get("SHELL_WATCH_CONTROL") ?? "https://vercel.com";
 const NTFY = Deno.env.get("SHELL_WATCH_NTFY") ??
   "https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb";
+// Read live from system_settings so a rotated webhook cannot leave a silently
+// dead fallback behind (2026-08-07: a token rotation that missed one consumer
+// would have made apex-doctor report a page of CRITICALs about a healthy DB).
+// Env override exists so the proof harness can point this at a throwaway sink.
+const DISCORD_ENV = Deno.env.get("SHELL_WATCH_DISCORD") ?? "";
 const MIN_JS_BYTES = Number(Deno.env.get("SHELL_WATCH_MIN_JS_BYTES") ?? "128");
 const CONFIRM_DELAY_MS = Number(Deno.env.get("SHELL_WATCH_CONFIRM_MS") ?? "20000");
 const FETCH_TIMEOUT_MS = 25000;
@@ -218,6 +260,79 @@ async function sql(path: string, init: RequestInit): Promise<Response> {
   });
 }
 
+
+// ---------------------------------------------------------------------------
+// PAGE CHANNELS (MP-307)
+//
+// Each returns a RECEIPT string on success, never a bare boolean. ntfy and
+// Discord both hand back a provider-issued message id; a status code alone
+// cannot tell "the sink accepted and stored this" from "something in front of
+// the sink answered 200".
+// ---------------------------------------------------------------------------
+type ChannelResult = { receipt: string | null; error: string | null };
+
+async function pushNtfy(body: string): Promise<ChannelResult> {
+  const res = await fetch(NTFY, {
+    method: "POST",
+    signal: AbortSignal.timeout(10000),
+    headers: {
+      // ASCII ONLY - see MP-274 in the header.
+      Title: "APEX site DOWN (off-laptop watcher)",
+      Priority: "5",
+      Tags: "rotating_light",
+    },
+    body,
+  });
+  if (!res.ok) {
+    // Record the BODY, not just the status. ntfy answers a refusal with a JSON
+    // `code` naming WHICH limit was hit; "ntfy HTTP 429" alone sends the next
+    // reader to tune a cadence when the real cause may be a daily quota that no
+    // cadence change can fix. Both 2026-08-19 refusals were logged before this
+    // capture existed, which is exactly why neither can be diagnosed today.
+    const detail = await res.text().catch(() => "");
+    return { receipt: null, error: `ntfy HTTP ${res.status}${detail ? " " + detail.slice(0, 200) : ""}` };
+  }
+  const id = await res.json().then((j) => j?.id ?? null).catch(() => null);
+  return { receipt: `ntfy:${id ?? "no-id"}`, error: null };
+}
+
+async function pushDiscord(body: string): Promise<ChannelResult> {
+  let url = DISCORD_ENV;
+  if (!url) {
+    const r = await sql("system_settings?select=value&key=eq.discord_webhook_url", { method: "GET" });
+    if (r.ok) {
+      const rows = await r.json().catch(() => null);
+      const v = rows?.[0]?.value;
+      url = typeof v === "string" ? v : (v?.url ?? "");
+    }
+  }
+  // An unresolvable fallback is an ERROR on the record, never a silent skip.
+  // A channel that is quietly absent looks identical to a channel that worked.
+  if (!url) return { receipt: null, error: "discord: no webhook (system_settings.discord_webhook_url empty/unreadable)" };
+
+  // ?wait=true makes Discord return the created message instead of a bare 204,
+  // so the receipt is the message's own id rather than our inference from a
+  // status code.
+  const res = await fetch(`${url}?wait=true`, {
+    method: "POST",
+    signal: AbortSignal.timeout(10000),
+    headers: { "Content-Type": "application/json", "User-Agent": "apex-site-shell-watch/1.0" },
+    body: JSON.stringify({
+      username: "APEX site watcher",
+      content:
+        "**APEX site DOWN (off-laptop watcher)**\n" +
+        "_Delivered here because ntfy refused the page. This is the FALLBACK channel._\n\n" +
+        body.slice(0, 1600),
+    }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    return { receipt: null, error: `discord HTTP ${res.status}${detail ? " " + detail.slice(0, 200) : ""}` };
+  }
+  const id = await res.json().then((j) => j?.id ?? null).catch(() => null);
+  return { receipt: `discord:${id ?? "no-id"}`, error: null };
+}
+
 Deno.serve(async (req) => {
   // AUTH. Called by pg_cron with the apex_bot_token, same as jobid 22. A
   // service-role bearer is also accepted so the check harness can drive the
@@ -269,61 +384,53 @@ Deno.serve(async (req) => {
     }
   }
 
-  let paged = false, pageError: string | null = null;
+  let paged = false, pageError: string | null = null, pagedVia: string | null = null;
   if (effective === "CRIT") {
     if (!episodeOpen) { episodeOpen = true; episodePaged = false; }
     // GATE 2: DE-STORM.
     if (!episodePaged) {
-      // MP-306: RETRY LADDER. On the first genuine production outage
-      // (2026-08-19 13:30 + 13:40Z) BOTH autonomous fires were refused by ntfy
-      // with HTTP 429 and the page did not leave the building. The
-      // retry-on-next-tick design was honest but cost 10 minutes per refusal,
-      // and the site was dark for 20 of them with this watcher mute. Same fix
-      // as the 2026-07-19 bot_sql hardening that killed this class for 22
-      // inline curls: retry in-process with backoff before giving up.
-      //
-      // This REDUCES the mute window. It does not close it, and must never be
-      // described as if it did -- a bucket that is empty stays empty for
-      // seconds, and ntfy.sh's per-visitor limit is shared with every other
-      // tenant on Supabase's egress, so a refusal can outlast the ladder. The
-      // next-tick retry is still the backstop; page_error is still the receipt.
+      const body =
+        `apex-financial.org shell/asset floor FAILED from Supabase pg_cron (off-laptop).\n\n${p.reason}\n\n` +
+        `This watcher checks the shell + asset graph ONLY. The data layer and application write path are checked by the laptop probe and are NOT covered by this page.`;
+
+      // CHANNEL LADDER (MP-307). ntfy first and always: it is the channel
+      // MP-291 measured actually landing on Sam's phone. Discord runs ONLY
+      // after ntfy has exhausted its attempts, so a working fallback can never
+      // quietly become the primary.
+      const errs: string[] = [];
       for (let attempt = 1; attempt <= 3 && !paged; attempt++) {
         try {
-          const res = await fetch(NTFY, {
-            method: "POST",
-            signal: AbortSignal.timeout(10000),
-            headers: {
-              // ASCII ONLY - see MP-274 in the header.
-              Title: "APEX site DOWN (off-laptop watcher)",
-              Priority: "5",
-              Tags: "rotating_light",
-            },
-            body:
-              `apex-financial.org shell/asset floor FAILED from Supabase pg_cron (off-laptop).\n\n${p.reason}\n\n` +
-              `This watcher checks the shell + asset graph ONLY. The data layer and application write path are checked by the laptop probe and are NOT covered by this page.`,
-          });
-          paged = res.ok;
-          if (!res.ok) {
-            // Record the BODY, not just the status. ntfy answers a refusal with
-            // a JSON `code` naming WHICH limit was hit; "ntfy HTTP 429" alone
-            // sends the next reader to tune a cadence when the real cause may
-            // be a daily quota that no cadence change can fix. A verdict that
-            // is right for a reason it misstates is the MP-304 lesson.
-            const detail = await res.text().catch(() => "");
-            pageError = `ntfy HTTP ${res.status} (attempt ${attempt}/3)` +
-              (detail ? ` ${detail.slice(0, 200)}` : "");
-          }
+          const r = await pushNtfy(body);
+          if (r.receipt) { paged = true; pagedVia = r.receipt; }
+          else if (r.error) errs.push(`${r.error} (attempt ${attempt}/3)`);
         } catch (e) {
-          pageError = `${String(e).slice(0, 200)} (attempt ${attempt}/3)`;
+          errs.push(`${String(e).slice(0, 200)} (attempt ${attempt}/3)`);
         }
         // Backoff only BETWEEN attempts, never after the last one.
-        if (!paged && attempt < 3) {
-          await new Promise((r) => setTimeout(r, attempt * 2500));
+        if (!paged && attempt < 3) await new Promise((r) => setTimeout(r, attempt * 2500));
+      }
+
+      if (!paged) {
+        for (let attempt = 1; attempt <= 2 && !paged; attempt++) {
+          try {
+            const r = await pushDiscord(body);
+            if (r.receipt) { paged = true; pagedVia = r.receipt; }
+            else if (r.error) errs.push(`${r.error} (attempt ${attempt}/2)`);
+          } catch (e) {
+            errs.push(`discord: ${String(e).slice(0, 200)} (attempt ${attempt}/2)`);
+          }
+          if (!paged && attempt < 2) await new Promise((r) => setTimeout(r, 2000));
         }
       }
+
+      // The ntfy failures are kept on the row EVEN WHEN Discord saved the page.
+      // Dropping them on success is precisely how a dead primary channel hides:
+      // delivery happened, so nothing looks wrong, and the one channel that
+      // reaches a pocket is dark with no record of it. Check #28d reads these.
+      pageError = errs.length ? errs.join(" | ") : null;
       // A failed push is a FAILURE, not a page. episode_paged stays false so the
       // next tick retries instead of booking an alert nobody received.
-      if (paged) { episodePaged = true; pageError = null; }
+      if (paged) episodePaged = true;
     }
   } else if (effective === "NOTE") {
     episodeOpen = false; episodePaged = false;
@@ -343,6 +450,7 @@ Deno.serve(async (req) => {
     episode_paged: episodePaged,
     paged,
     page_error: pageError,
+    paged_via: pagedVia,
   };
   const ins = await sql("site_shell_watch", {
     method: "POST",

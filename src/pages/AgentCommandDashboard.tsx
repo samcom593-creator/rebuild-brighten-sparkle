@@ -2917,6 +2917,17 @@ function AgencyCommandView() {
       {/* PL-MP242 cull 2026-07-05: removed TOP MOVERS + LIVE ACTIVITY + MONEY FLOW
           per Sam directive ("Who Pay + Live Activity + Top Movers sections gone").
           Kept: Carrier Mix, Conversion Funnel, Source Attribution ROI. */}
+      {/* 2026-08-19 (Sam: "zero clutter... I'm scrolling all the way down past
+          all these graphs"): the chart wall is collapsed by default so the home
+          is the clean, actionable top (KPIs, queue, needs-attention, low
+          producers, pipeline). The analytics still live one click away — nothing
+          deleted, no query touched. */}
+      <details className="group rounded-lg border border-border bg-card">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-muted-foreground flex items-center gap-2 hover:text-foreground">
+          <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+          Deep analytics — carrier mix, funnels &amp; AgentLink-parity panels
+        </summary>
+        <div className="space-y-4 p-4 pt-0">
       <div className="grid gap-4 lg:grid-cols-2">
         {/* PANEL 1 · CARRIER MIX (emerald) ────────────────────────── */}
         <CarrierMixPanel data={carrierMix.data} loading={carrierMix.isLoading} />
@@ -2946,6 +2957,8 @@ function AgencyCommandView() {
           8. 12-Week Hire Pace (real agents.created_at data)
       */}
       <ExtendedParityPanels />
+        </div>
+      </details>
 
       {/* MP-255 · §6 ProducerRiskBoard — table replacing heavy red panels.
           Every row: producer, manager, risk type, current ALP, 3-week trend,

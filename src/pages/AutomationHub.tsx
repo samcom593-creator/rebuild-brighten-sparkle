@@ -112,7 +112,7 @@ export default function AutomationHub() {
             <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/30 rounded-md transition-colors">
               <div className="flex items-center gap-2">
                 <Cloud className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-sm" style={{ fontFamily: "Syne" }}>InsuraCloud Outbox</span>
+                <span className="font-semibold text-sm" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>InsuraCloud Outbox</span>
                 <span className="text-xs text-muted-foreground">— deal sync, mapping, retries</span>
               </div>
               <ChevronDown className={cn("h-4 w-4 transition-base", outboxOpen && "rotate-180")} />
@@ -130,7 +130,7 @@ export default function AutomationHub() {
             <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/30 rounded-md transition-colors">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-sm" style={{ fontFamily: "Syne" }}>Cron Jobs</span>
+                <span className="font-semibold text-sm" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>Cron Jobs</span>
                 <span className="text-xs text-muted-foreground">— scheduled tasks running on the database</span>
               </div>
               <ChevronDown className={cn("h-4 w-4 transition-base", cronOpen && "rotate-180")} />
@@ -145,15 +145,15 @@ export default function AutomationHub() {
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="bg-card border border-border rounded-md p-3">
-          <p className="text-2xl font-bold text-primary" style={{ fontFamily: "Syne" }}>{automations.filter(a => a.enabled).length}</p>
+          <p className="text-2xl font-bold text-primary" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{automations.filter(a => a.enabled).length}</p>
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Active</p>
         </div>
         <div className="bg-card border border-border rounded-md p-3">
-          <p className="text-2xl font-bold" style={{ fontFamily: "Syne" }}>{automations.filter(a => a.last_status === "success").length}</p>
+          <p className="text-2xl font-bold" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{automations.filter(a => a.last_status === "success").length}</p>
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Last Succeeded</p>
         </div>
         <div className="bg-card border border-border rounded-md p-3">
-          <p className="text-2xl font-bold text-destructive" style={{ fontFamily: "Syne" }}>{automations.filter(a => a.last_status === "failed").length}</p>
+          <p className="text-2xl font-bold text-destructive" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{automations.filter(a => a.last_status === "failed").length}</p>
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Last Failed</p>
         </div>
       </div>
@@ -168,7 +168,7 @@ export default function AutomationHub() {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
                 <Zap className={cn("h-4 w-4", auto.enabled ? "text-primary" : "text-muted-foreground")} />
-                <h3 className="font-semibold text-sm" style={{ fontFamily: "Syne" }}>{auto.name}</h3>
+                <h3 className="font-semibold text-sm" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{auto.name}</h3>
               </div>
               <button onClick={() => toggleEnabled(auto.id, auto.enabled)} className="text-muted-foreground hover:text-foreground transition-colors">
                 {auto.enabled ? <ToggleRight className="h-6 w-6 text-primary" /> : <ToggleLeft className="h-6 w-6" />}

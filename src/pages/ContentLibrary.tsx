@@ -511,11 +511,11 @@ export default function ContentLibrary() {
     ctx.fillRect(0, 0, 1080, 1080);
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 36px 'Syne', sans-serif";
+    ctx.font = "bold 36px 'Hanken Grotesk', sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("APEX FINANCIAL", 540, 100);
 
-    ctx.font = "bold 28px 'Syne', sans-serif";
+    ctx.font = "bold 28px 'Hanken Grotesk', sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.fillText(selectedTemplate.subtitle, 540, 160);
 
@@ -523,11 +523,11 @@ export default function ContentLibrary() {
     ctx.fillText(selectedTemplate.label.split(" ")[0], 540, 420);
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 64px 'Syne', sans-serif";
+    ctx.font = "bold 64px 'Hanken Grotesk', sans-serif";
     ctx.fillText(awardAgentName || "Agent Name", 540, 600);
 
     if (awardAmount) {
-      ctx.font = "bold 48px 'Syne', sans-serif";
+      ctx.font = "bold 48px 'Hanken Grotesk', sans-serif";
       ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.fillText(`$${awardAmount}`, 540, 700);
     }
@@ -569,7 +569,7 @@ export default function ContentLibrary() {
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold gradient-text" style={{ fontFamily: "Syne" }}>Content Library</h1>
+            <h1 className="text-2xl font-bold gradient-text" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>Content Library</h1>
             <p className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
               <span>{stats.photos} photos</span>
               <span>·</span>
@@ -830,7 +830,7 @@ export default function ContentLibrary() {
             {/* Bulk Management */}
             {canManage && (
               <div className="glass-card p-4 space-y-3">
-                <h3 className="font-bold text-sm" style={{ fontFamily: "Syne" }}>Bulk Management</h3>
+                <h3 className="font-bold text-sm" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>Bulk Management</h3>
                 <div className="flex flex-wrap gap-2">
                   <Button variant="destructive" size="sm" onClick={handleBulkDeleteDuplicates} disabled={stats.duplicates === 0}>
                     <Trash2 className="h-3 w-3 mr-1" /> Delete All Duplicates ({stats.duplicates})
@@ -845,7 +845,7 @@ export default function ContentLibrary() {
             {/* Largest Files */}
             {stats.largest.length > 0 && (
               <div className="glass-card p-4 space-y-3">
-                <h3 className="font-bold text-sm" style={{ fontFamily: "Syne" }}>Largest Files</h3>
+                <h3 className="font-bold text-sm" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>Largest Files</h3>
                 <div className="space-y-2">
                   {stats.largest.map(item => (
                     <div key={item.id} className="flex items-center justify-between text-sm">
@@ -866,7 +866,7 @@ export default function ContentLibrary() {
 
             {/* Phone Safety Checklist */}
             <div className="glass-card p-4 space-y-3">
-              <h3 className="font-bold text-sm flex items-center gap-2" style={{ fontFamily: "Syne" }}>
+              <h3 className="font-bold text-sm flex items-center gap-2" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
                 <Smartphone className="h-4 w-4" /> Safe to Delete from iPhone
               </h3>
               <div className="space-y-2">
@@ -905,7 +905,7 @@ export default function ContentLibrary() {
               <div className="glass-card p-4 border-red-500/30 border">
                 <div className="flex items-center gap-2 mb-3">
                   <ShieldAlert className="h-5 w-5 text-red-500" />
-                  <h3 className="font-bold text-sm" style={{ fontFamily: "Syne" }}>Sensitive Content Review</h3>
+                  <h3 className="font-bold text-sm" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>Sensitive Content Review</h3>
                   <Badge variant="destructive" className="text-xs">{sensitiveCount} flagged</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">
@@ -946,7 +946,7 @@ export default function ContentLibrary() {
           <TabsContent value="awards" className="space-y-6 mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <h3 className="font-bold text-lg" style={{ fontFamily: "Syne" }}>Generate Award Graphic</h3>
+                <h3 className="font-bold text-lg" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>Generate Award Graphic</h3>
                 <div className="space-y-2">
                   <Label>Template</Label>
                   <div className="grid grid-cols-1 gap-2">
@@ -999,7 +999,7 @@ export default function ContentLibrary() {
         <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle style={{ fontFamily: "Syne" }}>Upload Content</DialogTitle>
+              <DialogTitle style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>Upload Content</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div

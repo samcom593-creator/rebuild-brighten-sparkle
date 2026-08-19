@@ -134,6 +134,23 @@ export default {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          bright: "hsl(var(--gold-bright))",
+          dim: "hsl(var(--gold-dim))",
+        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
@@ -173,7 +190,7 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["DM Sans", "system-ui", "sans-serif"],
+        sans: ["Hanken Grotesk", "system-ui", "sans-serif"],
         display: ["Syne", "system-ui", "sans-serif"],
       },
       keyframes: {

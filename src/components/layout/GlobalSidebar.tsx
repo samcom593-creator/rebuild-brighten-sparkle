@@ -341,7 +341,7 @@ export function GlobalSidebar({
                 to="/dashboard"
                 className="flex items-center shrink-0 text-apex-text hover:text-apex-accent transition-colors"
                 style={{
-                  fontFamily: "'Syne', sans-serif",
+                  fontFamily: "'Hanken Grotesk', sans-serif",
                   fontWeight: 700,
                   fontSize: "16px",
                   letterSpacing: "0.15em",
@@ -356,7 +356,7 @@ export function GlobalSidebar({
                 to="/dashboard"
                 className="text-apex-text hover:text-apex-accent transition-colors"
                 style={{
-                  fontFamily: "'Syne', sans-serif",
+                  fontFamily: "'Hanken Grotesk', sans-serif",
                   fontWeight: 800,
                   fontSize: "16px",
                   letterSpacing: "0.05em",

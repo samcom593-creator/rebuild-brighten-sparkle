@@ -205,10 +205,10 @@ export default function CourseCatalog() {
         <div className="absolute inset-0 bg-white dark:bg-slate-900 pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-2">
-            <Badge variant="outline" className="border-primary/40 text-primary text-xs" style={{ fontFamily: "Syne" }}>
+            <Badge variant="outline" className="border-primary/40 text-primary text-xs" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
               APEX TRAINING ACADEMY
             </Badge>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-foreground" style={{ fontFamily: "Syne" }}>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-foreground" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
               {isCourseComplete() ? "🎓 Course Complete!" : currentModule ? `Continue: ${currentModule.title}` : "Training Academy"}
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -219,7 +219,7 @@ export default function CourseCatalog() {
           </div>
           <div className="flex items-center gap-6">
             <div className="text-right">
-              <p className="text-4xl font-extrabold text-primary" style={{ fontFamily: "Syne" }}>{getOverallProgress()}%</p>
+              <p className="text-4xl font-extrabold text-primary" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{getOverallProgress()}%</p>
               <p className="text-xs text-muted-foreground">overall progress</p>
             </div>
           </div>
@@ -263,7 +263,7 @@ export default function CourseCatalog() {
                   >
                     {/* Thumbnail area */}
                     <div className="relative aspect-video bg-card flex items-center justify-center">
-                      <div className="text-6xl font-extrabold text-muted-foreground/20" style={{ fontFamily: "Syne" }}>
+                      <div className="text-6xl font-extrabold text-muted-foreground/20" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
                         {idx + 1}
                       </div>
 
@@ -292,7 +292,7 @@ export default function CourseCatalog() {
 
                     {/* Info */}
                     <div className="p-4 space-y-2">
-                      <h3 className="font-bold text-sm text-foreground line-clamp-1" style={{ fontFamily: "Syne" }}>
+                      <h3 className="font-bold text-sm text-foreground line-clamp-1" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
                         {mod.title}
                       </h3>
                       {mod.description && (
@@ -312,7 +312,7 @@ export default function CourseCatalog() {
           ) : (
             /* Module Detail View */
             <div className="space-y-4">
-              <Button variant="ghost" onClick={() => setActiveView("catalog")} className="gap-2 mb-2" style={{ fontFamily: "Syne" }}>
+              <Button variant="ghost" onClick={() => setActiveView("catalog")} className="gap-2 mb-2" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
                 ← Back to Catalog
               </Button>
 
@@ -320,7 +320,7 @@ export default function CourseCatalog() {
                 <motion.div key={currentModule.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                   <Card className="glass-card">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2" style={{ fontFamily: "Syne" }}>
+                      <CardTitle className="flex items-center gap-2" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
                         <span className="text-primary">Module {currentModuleIndex + 1}:</span>
                         {currentModule.title}
                       </CardTitle>
@@ -358,7 +358,7 @@ export default function CourseCatalog() {
                               <Card className="border-2 border-primary/30">
                                 <CardContent className="pt-8 pb-8 text-center">
                                   <Award className="h-16 w-16 text-primary mx-auto mb-4" />
-                                  <h3 className="text-xl font-bold mb-2" style={{ fontFamily: "Syne" }}>Module Complete!</h3>
+                                  <h3 className="text-xl font-bold mb-2" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>Module Complete!</h3>
                                   <p className="text-muted-foreground mb-4">Score: {currentProgress.score}%</p>
                                   {currentModuleIndex < modules.length - 1 && (
                                     <Button onClick={() => { setCurrentModuleIndex(currentModuleIndex + 1); setActiveTab("video"); }}>

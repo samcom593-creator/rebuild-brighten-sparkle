@@ -102,7 +102,7 @@ export function generateAwardSVG(opts: GenerateAwardOptions): string {
   <rect x="${size * 0.92}" y="${size * 0.86}" width="2" height="${size * 0.08}" fill="${cfg.accent}" opacity="0.4"/>
 
   <!-- APEX branding top -->
-  <text x="${size/2}" y="${size * 0.1}" text-anchor="middle" font-family="'Syne', Arial Black, sans-serif" font-weight="800" font-size="${size * 0.022}" fill="${cfg.accent}" letter-spacing="${size * 0.008}">APEX FINANCIAL</text>
+  <text x="${size/2}" y="${size * 0.1}" text-anchor="middle" font-family="'Hanken Grotesk', Arial Black, sans-serif" font-weight="800" font-size="${size * 0.022}" fill="${cfg.accent}" letter-spacing="${size * 0.008}">APEX FINANCIAL</text>
 
   <!-- Agent photo circle or emoji fallback -->
   ${opts.agentPhotoUrl
@@ -117,17 +117,17 @@ export function generateAwardSVG(opts: GenerateAwardOptions): string {
   <!-- Award badge pill -->
   <rect x="${size * 0.28}" y="${size * 0.585}" width="${size * 0.44}" height="${size * 0.055}" rx="${size * 0.027}" fill="${cfg.accent}" opacity="0.15"/>
   <rect x="${size * 0.28}" y="${size * 0.585}" width="${size * 0.44}" height="${size * 0.055}" rx="${size * 0.027}" fill="none" stroke="${cfg.accent}" stroke-width="1.5" opacity="0.4"/>
-  <text x="${size/2}" y="${size * 0.622}" text-anchor="middle" font-family="'Syne', Arial Black, sans-serif" font-weight="700" font-size="${size * 0.024}" fill="${cfg.accent}" letter-spacing="${size * 0.005}">${cfg.label}</text>
+  <text x="${size/2}" y="${size * 0.622}" text-anchor="middle" font-family="'Hanken Grotesk', Arial Black, sans-serif" font-weight="700" font-size="${size * 0.024}" fill="${cfg.accent}" letter-spacing="${size * 0.005}">${cfg.label}</text>
 
   <!-- Agent name -->
-  <text x="${size/2}" y="${size * 0.71}" text-anchor="middle" font-family="'Syne', Arial Black, sans-serif" font-weight="800" font-size="${size * 0.072}" fill="white" filter="url(#glow)">${firstName}</text>
-  ${lastName ? `<text x="${size/2}" y="${size * 0.775}" text-anchor="middle" font-family="'Syne', Arial Black, sans-serif" font-weight="400" font-size="${size * 0.038}" fill="rgba(255,255,255,0.5)">${lastName}</text>` : ""}
+  <text x="${size/2}" y="${size * 0.71}" text-anchor="middle" font-family="'Hanken Grotesk', Arial Black, sans-serif" font-weight="800" font-size="${size * 0.072}" fill="white" filter="url(#glow)">${firstName}</text>
+  ${lastName ? `<text x="${size/2}" y="${size * 0.775}" text-anchor="middle" font-family="'Hanken Grotesk', Arial Black, sans-serif" font-weight="400" font-size="${size * 0.038}" fill="rgba(255,255,255,0.5)">${lastName}</text>` : ""}
 
   <!-- Divider line -->
   <rect x="${size * 0.3}" y="${size * 0.805}" width="${size * 0.4}" height="1" fill="${cfg.accent}" opacity="0.3"/>
 
   <!-- Stat value (the big number) -->
-  <text x="${size/2}" y="${size * 0.875}" text-anchor="middle" font-family="'Syne', Arial Black, sans-serif" font-weight="800" font-size="${size * 0.06}" fill="${cfg.accent}" filter="url(#glow)">${opts.statValue}</text>
+  <text x="${size/2}" y="${size * 0.875}" text-anchor="middle" font-family="'Hanken Grotesk', Arial Black, sans-serif" font-weight="800" font-size="${size * 0.06}" fill="${cfg.accent}" filter="url(#glow)">${opts.statValue}</text>
 
   <!-- Stat label -->
   <text x="${size/2}" y="${size * 0.918}" text-anchor="middle" font-family="'DM Sans', Arial, sans-serif" font-weight="300" font-size="${size * 0.022}" fill="rgba(255,255,255,0.45)" letter-spacing="2">${opts.statLabel.toUpperCase()}</text>

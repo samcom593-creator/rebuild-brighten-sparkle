@@ -582,7 +582,7 @@ export default function InboxPage() {
               <Mail className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-lg font-bold" style={{ fontFamily: "Syne" }}>{emailsToday}</p>
+              <p className="text-lg font-bold" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{emailsToday}</p>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Emails Today</p>
             </div>
           </div>
@@ -599,7 +599,7 @@ export default function InboxPage() {
               <MessageSquare className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-lg font-bold" style={{ fontFamily: "Syne" }}>{smsToday}</p>
+              <p className="text-lg font-bold" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{smsToday}</p>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">SMS Today</p>
             </div>
           </div>
@@ -610,7 +610,7 @@ export default function InboxPage() {
               <Bell className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-lg font-bold" style={{ fontFamily: "Syne" }}>{deliveryRate}%</p>
+              <p className="text-lg font-bold" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{deliveryRate}%</p>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Delivery Rate</p>
             </div>
           </div>
@@ -627,7 +627,7 @@ export default function InboxPage() {
               <RotateCcw className="h-4 w-4" />
             </div>
             <div>
-              <p className={cn("text-lg font-bold", failedCount > 0 && "text-destructive")} style={{ fontFamily: "Syne" }}>{failedCount}</p>
+              <p className={cn("text-lg font-bold", failedCount > 0 && "text-destructive")} style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{failedCount}</p>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Failed · Click to Retry</p>
             </div>
           </div>
@@ -644,7 +644,7 @@ export default function InboxPage() {
               <RefreshCw className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-lg font-bold" style={{ fontFamily: "Syne" }}>{messages.length}</p>
+              <p className="text-lg font-bold" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{messages.length}</p>
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total Logged</p>
             </div>
           </div>
@@ -759,7 +759,7 @@ export default function InboxPage() {
             <div className="space-y-4">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-bold" style={{ fontFamily: "Syne" }}>
+                  <h2 className="text-lg font-bold" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
                     {selectedMessage.subject || selectedMessage.title}
                   </h2>
                   <div className="mt-1 flex flex-wrap items-center gap-2">

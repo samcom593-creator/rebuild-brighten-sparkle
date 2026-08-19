@@ -172,7 +172,7 @@ export default function SeminarPage() {
           <GlassCard className="p-6 sm:p-8 space-y-5 text-center">
             <div className="flex items-center justify-center gap-2">
               <Crown className="h-6 w-6 text-primary" />
-              <span className="text-base font-bold" style={{ fontFamily: "Syne" }}>APEX Financial</span>
+              <span className="text-base font-bold" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>APEX Financial</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
               You need your license first.
@@ -265,7 +265,7 @@ export default function SeminarPage() {
       >
         <div className="flex items-center justify-center gap-2 mb-2">
           <Crown className="h-6 w-6 text-primary" />
-          <span className="text-lg font-bold" style={{ fontFamily: "Syne" }}>APEX Financial</span>
+          <span className="text-lg font-bold" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>APEX Financial</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold mb-1">Lock your seat for the next career seminar</h1>
         <p className="text-sm text-muted-foreground max-w-xl mx-auto">

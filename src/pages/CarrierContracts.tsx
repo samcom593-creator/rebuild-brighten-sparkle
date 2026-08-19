@@ -127,7 +127,7 @@ function asLinkObject(value: unknown, fallbackLabel: string): LinkItem | null {
 
 export default function CarrierContracts() {
   usePageTitle("Contracts & Links · APEX");
-  const { user } = useAuth();
+  const { user, isAdmin, isManager } = useAuth();
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const copyLink = async (id: string, url: string) => {
@@ -316,6 +316,13 @@ export default function CarrierContracts() {
         eyebrowIcon={<Link2 className="h-3 w-3" />}
         title="Contracts & Links Hub"
         subtitle="One grid for every link Sam shares · copy + open in two taps"
+        actions={
+          (isAdmin || isManager) ? (
+            <Button asChild size="sm">
+              <a href="/admin/invite-links"><Users className="h-4 w-4" /> Invite an agent</a>
+            </Button>
+          ) : undefined
+        }
       />
 
       {/* Start Contracting is the ONE action on this page, so it renders first

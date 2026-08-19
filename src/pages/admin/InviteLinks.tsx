@@ -1,42 +1,38 @@
 /**
- * /admin/invite-links — MP-234 magic invite links admin.
+ * /admin/invite-links — APEX one-stop contracting + signup.
  *
- * Lists both hire and join tokens minted via generate_invite_token RPC.
- * Share-only: never rendered in GlobalSidebar. Direct URL only.
+ * 2026-08-19 (Sam, with his Agent Cloud "Invite Links" screenshot + "one link
+ * contracting and signup, this my one stop shop"): rebuilt from the bare
+ * hire/join generator into the Agent Cloud invite flow — Link Name, Invite As
+ * (Agent / Manager / Agency Owner [White Label] / Staff), Their Upline, Link
+ * Type (personal vs agency signup), then the shareable link that places the
+ * new agent directly in that upline's downline.
  *
- * Actions:
- *   - Generate new hire or join token.
- *   - Copy full URL to clipboard.
- *   - Revoke (soft, sets is_active=false + revoked_at).
+ * Every link is minted by the SAME generate_invite_token RPC that already
+ * worked — p_notes=Link Name, p_target_role=role, p_target_manager_id=upline
+ * (this is what actually places them in the downline), p_prefill carries the
+ * invite_as / white_label / link_type intent. Copy + revoke + the live list
+ * are preserved. Final comp level is confirmed on the joiner's profile after
+ * they join — the same model Agent Cloud states on this page — so nothing here
+ * claims a role is fully provisioned before the person exists.
  *
- * RLS: invite_tokens.admin_all policy scopes reads to admin/manager or
- * created_by_user_id, so managers only see their own links.
+ * RLS: invite_tokens.admin_all scopes reads to admin/manager or
+ * created_by_user_id, so managers see only their own links.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Link2,
-  Copy,
-  Check,
-  Plus,
-  Ban,
-  Loader2,
-  Users,
-  UserPlus,
+  Link2, Copy, Check, Ban, Loader2, User, Users, Building2, ClipboardList, ArrowRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { GlassCard } from "@/components/ui/glass-card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useConfirm } from "@/hooks/useConfirm";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
 
 interface InviteTokenRow {
   id: string;
@@ -51,36 +47,26 @@ interface InviteTokenRow {
   notes: string | null;
 }
 
-const ORIGIN =
-  typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org";
+interface ManagerOption { id: string; name: string }
+
+const ORIGIN = typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org";
+
+// Invite As → the role the token carries. p_target_manager_id is what actually
+// places the joiner in the downline; target_role + prefill record the intent
+// the joiner's profile is finalized against after they sign up.
+type InviteAs = "agent" | "manager" | "agency_owner" | "staff";
+const INVITE_AS: { key: InviteAs; label: string; desc: string; icon: typeof User; role: string; whiteLabel?: boolean }[] = [
+  { key: "agent", label: "Agent", desc: "Can work their own pipeline", icon: User, role: "hired_unlicensed" },
+  { key: "manager", label: "Manager", desc: "Can manage a downline team", icon: Users, role: "hired_manager" },
+  { key: "agency_owner", label: "Agency Owner", desc: "Their own sub-agency — they manage their team independently", icon: Building2, role: "agency_owner", whiteLabel: true },
+  { key: "staff", label: "Staff", desc: "Assistant — acts on your behalf", icon: ClipboardList, role: "staff" },
+];
 
 function statusBadge(row: InviteTokenRow) {
-  if (row.used_at) {
-    return (
-      <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-        Used
-      </Badge>
-    );
-  }
-  if (!row.is_active || row.revoked_at) {
-    return (
-      <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/30">
-        Revoked
-      </Badge>
-    );
-  }
-  if (new Date(row.expires_at).getTime() < Date.now()) {
-    return (
-      <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">
-        Expired
-      </Badge>
-    );
-  }
-  return (
-    <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
-      Active
-    </Badge>
-  );
+  if (row.used_at) return <Badge variant="outline" className="bg-info/15 text-info border-info/30">Used</Badge>;
+  if (!row.is_active || row.revoked_at) return <Badge variant="outline" className="bg-muted text-muted-foreground border-border">Revoked</Badge>;
+  if (new Date(row.expires_at).getTime() < Date.now()) return <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30">Expired</Badge>;
+  return <Badge variant="outline" className="bg-success/15 text-success border-success/30">Active</Badge>;
 }
 
 export default function InviteLinksAdmin() {
@@ -88,76 +74,76 @@ export default function InviteLinksAdmin() {
   const askConfirm = useConfirm();
   const [rows, setRows] = useState<InviteTokenRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState<"hire" | "join" | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [tab, setTab] = useState<"all" | "hire" | "join">("all");
+
+  // form state
+  const [linkName, setLinkName] = useState("");
+  const [inviteAs, setInviteAs] = useState<InviteAs>("agent");
+  const [linkType, setLinkType] = useState<"personal" | "agency">("personal");
+  const [uplineId, setUplineId] = useState<string>("");
+  const [managers, setManagers] = useState<ManagerOption[]>([]);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("invite_tokens")
-      .select(
-        "id, kind, token, created_at, expires_at, used_at, is_active, revoked_at, target_role, notes",
-      )
+      .select("id, kind, token, created_at, expires_at, used_at, is_active, revoked_at, target_role, notes")
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) {
       console.error("invite_tokens load failed", error);
       toast.error("Couldn't load invite links.");
-      setLoading(false);
-      return;
+    } else {
+      setRows((data ?? []) as unknown as InviteTokenRow[]);
     }
-    setRows((data ?? []) as unknown as InviteTokenRow[]);
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const filtered = useMemo(() => {
-    if (tab === "all") return rows;
-    return rows.filter((r) => r.kind === tab);
-  }, [rows, tab]);
-
-  const counts = useMemo(() => {
-    return {
-      all: rows.length,
-      hire: rows.filter((r) => r.kind === "hire").length,
-      join: rows.filter((r) => r.kind === "join").length,
-    };
-  }, [rows]);
-
-  async function generate(kind: "hire" | "join") {
-    setGenerating(kind);
+  const loadManagers = useCallback(async () => {
     try {
+      const { data, error } = await supabase.functions.invoke("get-active-managers");
+      if (error) return;
+      const list = ((data as { managers?: Array<{ id: string; display_name?: string; name?: string }> })?.managers ?? [])
+        .map((m) => ({ id: m.id, name: m.display_name || m.name || "Unnamed" }));
+      setManagers(list);
+    } catch { /* upline dropdown just falls back to "Me (default)" */ }
+  }, []);
+
+  useEffect(() => { load(); loadManagers(); }, [load, loadManagers]);
+
+  const counts = useMemo(() => ({
+    all: rows.length,
+    active: rows.filter((r) => r.is_active && !r.used_at && !r.revoked_at && new Date(r.expires_at).getTime() > Date.now()).length,
+    used: rows.filter((r) => r.used_at).length,
+  }), [rows]);
+
+  async function createLink() {
+    if (!linkName.trim()) { toast.error("Give the link a name so you can tell them apart."); return; }
+    setCreating(true);
+    try {
+      const chosen = INVITE_AS.find((o) => o.key === inviteAs)!;
       const { data, error } = await supabase.rpc("generate_invite_token", {
-        p_kind: kind,
+        p_kind: "hire",
         p_expires_hours: 168,
-        p_target_role: kind === "hire" ? "hired_unlicensed" : "referral_prospect",
-        p_notes: `admin/invite-links · ${kind}`,
+        p_target_role: chosen.role,
+        p_target_manager_id: uplineId || null,
+        p_prefill: { invite_as: inviteAs, white_label: !!chosen.whiteLabel, link_type: linkType },
+        p_notes: linkName.trim(),
       });
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
+      if (error) { toast.error(error.message); return; }
       const url = (data as { url?: string })?.url;
-      if (!url) {
-        toast.error("No URL returned.");
-        return;
+      if (url) {
+        try { await navigator.clipboard.writeText(url); toast.success("Link created and copied."); }
+        catch { toast.success(`Link created: ${url}`); }
       }
-      try {
-        await navigator.clipboard.writeText(url);
-        toast.success(`${kind === "hire" ? "Hire" : "Join"} link copied.`);
-      } catch {
-        toast.success(`${kind === "hire" ? "Hire" : "Join"} link: ${url}`);
-      }
+      setLinkName("");
       await load();
     } catch (err) {
       console.error("generate_invite_token failed", err);
-      toast.error("Couldn't generate link.");
+      toast.error("Couldn't create the link.");
     } finally {
-      setGenerating(null);
+      setCreating(false);
     }
   }
 
@@ -168,180 +154,159 @@ export default function InviteLinksAdmin() {
       setCopiedId(row.id);
       toast.success("Link copied.");
       setTimeout(() => setCopiedId(null), 2000);
-    } catch {
-      toast.error("Clipboard blocked. Copy manually.");
-    }
+    } catch { toast.error("Clipboard blocked. Copy manually."); }
   }
 
   async function revoke(row: InviteTokenRow) {
     const ok = await askConfirm({
-      title: `Revoke this ${row.kind} link?`,
-      description: "Anyone who opens it will hit an invalid page. Reversible by re-issuing a new link.",
-      confirmText: "Revoke",
-      tone: "danger",
+      title: "Revoke this link?",
+      description: "Anyone who opens it hits an invalid page. Reversible by issuing a new link.",
+      confirmText: "Revoke", tone: "danger",
     });
     if (!ok) return;
-    const { error } = await supabase
-      .from("invite_tokens")
-      .update({
-        is_active: false,
-        revoked_at: new Date().toISOString(),
-      })
-      .eq("id", row.id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    const { error } = await supabase.from("invite_tokens").update({ is_active: false, revoked_at: new Date().toISOString() }).eq("id", row.id);
+    if (error) { toast.error(error.message); return; }
     toast.success("Link revoked.");
     await load();
   }
 
+  const chosen = INVITE_AS.find((o) => o.key === inviteAs)!;
+
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Link2 className="h-6 w-6 text-primary" />
-            Invite Links
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            One-use, share-only links. Hire = new agent, Join = prospect capture.
-          </p>
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6 page-enter">
+      <PageHeader
+        eyebrow="Contracting · Invite Links"
+        eyebrowIcon={<Link2 className="h-3 w-3" />}
+        title="Invite Links"
+        subtitle="Create a shareable link that places new agents directly in your downline. One link contracts and onboards them — carrier requests route to whoever you pick as their upline."
+      />
+
+      <Card>
+        <CardContent className="p-5 space-y-6">
+          {/* Link name */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Link Name <span className="text-destructive">*</span></label>
+            <Input value={linkName} onChange={(e) => setLinkName(e.target.value)} placeholder="e.g. New Agent, New Manager, Regional Lead" className="h-11" />
+            <p className="text-xs text-muted-foreground">Just a label for you — it won't be shown to the person joining.</p>
+          </div>
+
+          {/* Invite As */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Invite As</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {INVITE_AS.map((o) => {
+                const Icon = o.icon;
+                const active = inviteAs === o.key;
+                return (
+                  <button key={o.key} type="button" onClick={() => setInviteAs(o.key)}
+                    className={`text-left rounded-md border p-4 transition-colors ${active ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"}`}>
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-primary" />
+                      <span className="font-medium text-sm">{o.label}</span>
+                      {o.whiteLabel && <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px]">White Label</Badge>}
+                      {active && <Check className="h-4 w-4 text-primary ml-auto" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{o.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Link type */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Link Type</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {([
+                { key: "personal" as const, label: "Personal invite", desc: '"[Your name] invited you" — you set the upline' },
+                { key: "agency" as const, label: "Agency signup link", desc: '"[Agency] invited you" — they pick their upline' },
+              ]).map((t) => {
+                const active = linkType === t.key;
+                return (
+                  <button key={t.key} type="button" onClick={() => setLinkType(t.key)}
+                    className={`text-left rounded-md border p-4 transition-colors ${active ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{t.label}</span>
+                      {active && <Check className="h-4 w-4 text-primary ml-auto" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{t.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Their upline */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Their Upline</label>
+            <select value={uplineId} onChange={(e) => setUplineId(e.target.value)}
+              className="h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm">
+              <option value="">Me (default)</option>
+              {managers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            <p className="text-xs text-muted-foreground">Anyone joining through this link is placed under whoever you pick here, and their carrier requests go to that person.</p>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+            <p className="text-xs text-muted-foreground">
+              {chosen.whiteLabel ? "White-label sub-agency — they run their own branded team under you." : `New ${chosen.label.toLowerCase()} placed under ${uplineId ? managers.find((m) => m.id === uplineId)?.name ?? "the chosen upline" : "you"}.`}
+            </p>
+            <Button onClick={createLink} disabled={creating || !linkName.trim()} className="gap-2">
+              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+              Create Link
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* My invite links */}
+      <div>
+        <div className="flex items-baseline justify-between mb-2">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">My Invite Links</h2>
+          <p className="text-xs text-muted-foreground">{counts.active} active · {counts.used} used · {counts.all} total</p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            data-testid="generate-hire"
-            data-invite-kind="hire"
-            disabled={generating !== null}
-            onClick={() => generate("hire")}
-          >
-            {generating === "hire" ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-            ) : (
-              <UserPlus className="h-4 w-4 mr-1" />
-            )}
-            New Hire Link
-          </Button>
-          <Button
-            size="sm"
-            data-testid="generate-join"
-            data-invite-kind="join"
-            disabled={generating !== null}
-            onClick={() => generate("join")}
-          >
-            {generating === "join" ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-            ) : (
-              <Plus className="h-4 w-4 mr-1" />
-            )}
-            New Join Link
-          </Button>
-        </div>
-      </div>
-
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "all" | "hire" | "join")}>
-        <TabsList>
-          <TabsTrigger value="all" data-testid="tab-all">
-            All ({counts.all})
-          </TabsTrigger>
-          <TabsTrigger value="hire" data-testid="tab-hire">
-            <Users className="h-3.5 w-3.5 mr-1" /> Hire ({counts.hire})
-          </TabsTrigger>
-          <TabsTrigger value="join" data-testid="tab-join">
-            <UserPlus className="h-3.5 w-3.5 mr-1" /> Join ({counts.join})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value={tab} className="mt-4">
-          <GlassCard className="p-0 overflow-hidden">
+        <Card>
+          <CardContent className="p-0">
             {loading ? (
-              <div className="p-8 flex items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : filtered.length === 0 ? (
-              <p className="p-8 text-sm text-muted-foreground text-center">
-                {tab === "all"
-                  ? "No links yet. Generate one above."
-                  : `No ${tab} links yet. Generate one above.`}
-              </p>
+              <div className="p-8 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : rows.length === 0 ? (
+              <p className="p-8 text-sm text-muted-foreground text-center">No links yet. Create one above and share it — the person who opens it lands in your downline.</p>
             ) : (
               <div className="divide-y divide-border">
-                {filtered.map((row) => {
+                {rows.map((row) => {
                   const url = `${ORIGIN}/${row.kind}/${row.token}`;
-                  const revocable =
-                    row.is_active && !row.used_at && !row.revoked_at;
+                  const revocable = row.is_active && !row.used_at && !row.revoked_at;
                   return (
-                    <div
-                      key={row.id}
-                      className="p-4 flex items-center justify-between gap-3 flex-wrap"
-                      data-testid={`invite-row-${row.id}`}
-                      data-invite-kind={row.kind}
-                    >
+                    <div key={row.id} className="p-4 flex items-center justify-between gap-3 flex-wrap" data-testid={`invite-row-${row.id}`} data-invite-kind={row.kind}>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge
-                            variant="outline"
-                            className={
-                              row.kind === "hire"
-                                ? "bg-purple-500/10 text-purple-300 border-purple-500/30"
-                                : "bg-cyan-500/10 text-cyan-300 border-cyan-500/30"
-                            }
-                          >
-                            {row.kind}
-                          </Badge>
+                          <span className="font-medium text-sm">{row.notes || `${row.kind} link`}</span>
                           {statusBadge(row)}
                         </div>
-                        <p className="text-sm font-mono truncate mt-1 text-muted-foreground">
-                          {url}
-                        </p>
+                        <p className="text-xs font-mono truncate mt-1 text-muted-foreground">{url}</p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
                           Expires {new Date(row.expires_at).toLocaleDateString()}
-                          {row.used_at
-                            ? ` · Used ${new Date(row.used_at).toLocaleDateString()}`
-                            : ""}
+                          {row.used_at ? ` · Used ${new Date(row.used_at).toLocaleDateString()}` : ""}
                         </p>
                       </div>
-
                       <div className="flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          onClick={() => copyUrl(row)}
-                          data-testid={`copy-${row.id}`}
-                          className="gap-1.5"
-                        >
-                          {copiedId === row.id ? (
-                            <>
-                              <Check className="h-4 w-4" /> Copied
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-4 w-4" /> Copy
-                            </>
-                          )}
+                        <Button size="sm" onClick={() => copyUrl(row)} data-testid={`copy-${row.id}`} className="gap-1.5">
+                          {copiedId === row.id ? <><Check className="h-4 w-4" /> Copied</> : <><Copy className="h-4 w-4" /> Copy</>}
                         </Button>
-                        {revocable ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => revoke(row)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                            data-testid={`revoke-${row.id}`}
-                          >
+                        {revocable && (
+                          <Button variant="ghost" size="sm" onClick={() => revoke(row)} className="text-destructive hover:text-destructive hover:bg-destructive/10" data-testid={`revoke-${row.id}`}>
                             <Ban className="h-4 w-4" />
                           </Button>
-                        ) : null}
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
             )}
-          </GlassCard>
-        </TabsContent>
-      </Tabs>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

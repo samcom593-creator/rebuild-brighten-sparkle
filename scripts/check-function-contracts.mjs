@@ -151,6 +151,14 @@ const undefinedRpcs = Array.from(allRpcCalls)
 
 // Allowed public functions (must have explicit rationale)
 const PUBLIC_ALLOWLIST = new Set([
+  // site-shell-watch (MP-304): cron-invoked production-shell watcher — the
+  // inbound call comes from pg_cron/GitHub schedule with the anon key, like
+  // poke-webhook and calendly-webhook below; it authenticates its own OUTBOUND
+  // reads with SUPABASE_SERVICE_ROLE_KEY internally and writes nothing on
+  // behalf of the caller. verify_jwt=false is intentional; allowlisted
+  // 2026-08-19 after it landed in 82c3dc20 without this entry and turned CI
+  // red on every subsequent push.
+  "site-shell-watch",
   "consume-invite-token",
   "ics-feed",
   "submit-application",

@@ -398,6 +398,17 @@ const handler = async (req: Request): Promise<Response> => {
     if (!contractingLink && crmSetupLink) {
       contractingLink = crmSetupLink;
     }
+    // 2026-08-19 Sam ("ensure the contract is working when I click add agent"):
+    // contracting_links is empty and there is no crm_setup_link, so contractingLink
+    // was undefined and welcome-new-agent SKIPPED its entire "Start Your Contracting"
+    // step — every new agent got a welcome email with no way to begin contracting.
+    // APEX owns a public, purpose-built contracting intake at /start-contracting; a
+    // manager-specific saved link still wins, but no agent should ever be sent
+    // without a working contracting destination. Anchored to the production origin
+    // rather than a request header so a preview host can't leak into the email.
+    if (!contractingLink) {
+      contractingLink = "https://apex-financial.org/start-contracting";
+    }
 
     // wave-p1j (audit L151): the previous fire-and-forget `.catch(console.log)`
     // pattern silently swallowed welcome + course email failures — the modal

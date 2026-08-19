@@ -27,19 +27,33 @@ export function JustHiredPanel() {
       const { data, error } = await (supabase as any).rpc("get_just_hired_30d");
       if (error || !data) {
         // Fallback: direct query if RPC missing
+        // 2026-08-19: the old fallback embedded agents!agents_invited_by_manager_id_fkey,
+        // which PostgREST rejects with PGRST200 on this self-referencing fk (the
+        // constraint-name hint resolves the WRONG direction on self-joins; the
+        // column hint returns children, not the inviting manager). Verified live
+        // as Sam: HTTP 400 — so this fallback threw and the panel showed the
+        // empty state whenever the RPC was unavailable. Two plain queries are
+        // boring and unambiguous.
         const fallback = await supabase
           .from("agents")
-          .select("id, display_name, start_date, created_at, invited_by_manager_id, mgr:agents!agents_invited_by_manager_id_fkey(display_name)")
+          .select("id, display_name, start_date, created_at, invited_by_manager_id")
           .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
           .eq("is_deactivated", false)
           .order("created_at", { ascending: false })
           .limit(15);
         if (fallback.error) throw fallback.error;
-        return (fallback.data ?? []).map((r: any) => ({
+        const rows = fallback.data ?? [];
+        const mgrIds = Array.from(new Set(rows.map((r: any) => r.invited_by_manager_id).filter(Boolean)));
+        const mgrName = new Map<string, string>();
+        if (mgrIds.length) {
+          const mgrs = await supabase.from("agents").select("id, display_name").in("id", mgrIds);
+          for (const m of mgrs.data ?? []) mgrName.set((m as any).id, (m as any).display_name);
+        }
+        return rows.map((r: any) => ({
           id: r.id,
           display_name: r.display_name,
           start_date: r.start_date,
-          routed_to: r.mgr?.display_name ?? "(direct to Sam)",
+          routed_to: mgrName.get(r.invited_by_manager_id) ?? "(direct to Sam)",
           created_at: r.created_at,
         })) as HireRow[];
       }

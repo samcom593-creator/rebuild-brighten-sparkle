@@ -1983,7 +1983,16 @@ function AgencyCommandView() {
         const personalDeals = me?.deals ?? 0;
         const goalPct = alpGoal > 0 ? Math.min(100, (apDisplay / alpGoal) * 100) : 0;
         const daysLeft = Math.max(0, Math.ceil((new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).getTime() - Date.now()) / 86400000));
-        const spark = (daily.data ?? []).slice(-30).map((d) => Number(d.aop) || 0);
+        // periodDeals is the in-scope source for THIS component; `daily` belongs
+        // to a different component in this file and was a ReferenceError that
+        // crashed the whole dashboard in prod (2026-08-19). Build the 30-day
+        // sparkline by bucketing the period's deals per day.
+        const byDay = new Map<string, number>();
+        for (const d of ((periodDeals.data ?? []) as any[])) {
+          const k = String(d.posted_date ?? d.effective_date ?? "").slice(0, 10);
+          if (k) byDay.set(k, (byDay.get(k) ?? 0) + Number(d.annual_premium ?? 0));
+        }
+        const spark = Array.from(byDay.entries()).sort((x, y) => x[0].localeCompare(y[0])).slice(-30).map(([, v]) => v);
         const sparkMax = Math.max(1, ...spark);
         const sparkPts = spark.map((v, i) => `${(i / Math.max(1, spark.length - 1)) * 100},${34 - (v / sparkMax) * 30}`).join(" ");
         const attention = [

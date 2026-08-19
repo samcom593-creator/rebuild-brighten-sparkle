@@ -330,14 +330,12 @@
     background-position: 0 0, 2px 0, 2px -2px, 0px 2px;
   }
 
-  /* APEX OS operational surface texture: subtle depth, not decoration. */
+  /* 2026-08-18 shell reskin: the 28px grid texture + gold glow that painted
+   * every dashboard is gone. The approved apex-shell template reads on a CLEAN
+   * ground — the texture was the single loudest "old skin" signal on screen.
+   * Class kept so call sites need no edit; it now paints nothing. */
   .ops-surface {
-    background-image:
-      linear-gradient(hsl(222 47% 10% / 0.22) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(222 47% 10% / 0.18) 1px, transparent 1px),
-      radial-gradient(circle at 50% 0%, hsl(45 85% 52% / 0.055), transparent 34rem);
-    background-size: 28px 28px, 28px 28px, 100% 100%;
-    background-attachment: scroll;
+    background-image: none;
   }
 
   .ops-card-depth {

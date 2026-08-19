@@ -1853,7 +1853,7 @@ function AgencyCommandView() {
             {
               icon: DollarSign, label: "Annual Premium", value: fmtUsd(periodSummary.totalAp, true),
               sub: `${periodBounds.label} · ${fmtNum(periodSummary.dealCount)} deals`,
-              tone: "text-amber-400 border-amber-500/50 bg-amber-500/10",
+              tone: "text-primary border-border bg-card",
               href: "/dashboard/legacy", delta: periodTrendPct,
             },
             {
@@ -1861,31 +1861,31 @@ function AgencyCommandView() {
               sub: skoolLoaded
                 ? `in Skool · ${fmtNum(contractedCount)} contracted · ${fmtNum(tight.data?.active10d ?? 0)} produced 10d`
                 : `${fmtNum(tight.data?.active10d ?? 0)} active in 10d`,
-              tone: "text-teal-400 border-teal-500/50 bg-teal-500/10",
+              tone: "text-primary border-border bg-card",
               href: "/dashboard/team-hierarchy",
             },
             {
               icon: FileCheck, label: "Policies Issued", value: fmtNum(policiesIssued),
               sub: `${periodBounds.label}`,
-              tone: "text-sky-400 border-sky-500/50 bg-sky-500/10",
+              tone: "text-foreground border-border bg-card",
               href: "/book-of-business",
             },
             {
               icon: GraduationCap, label: "Licensed MTD", value: fmtNum(licensedMtd),
               sub: `${fmtNum(tight.data?.contractedMtd ?? 0)} contracted`,
-              tone: "text-emerald-400 border-emerald-500/50 bg-emerald-500/10",
+              tone: "text-foreground border-border bg-card",
               href: "/admin/recovery-queue",
             },
             {
               icon: Briefcase, label: "Active Applicants", value: fmtNum(activeApplicants),
               sub: `${fmtNum(depth?.apps_mtd ?? 0)} new MTD`,
-              tone: "text-sky-400 border-sky-500/50 bg-sky-500/10",
+              tone: "text-foreground border-border bg-card",
               href: "/dashboard/applicants",
             },
             {
               icon: TrendingDown, label: "At-Risk Producers", value: fmtNum(atRiskProducers),
               sub: `${fmtNum((leak?.idle_active_agents ?? 0) as number)} idle 10d+`,
-              tone: "text-rose-500 border-rose-500/50 bg-rose-500/10",
+              tone: "text-rose-400 border-border bg-card",
               href: "/admin/producer-trends",
             },
           ];

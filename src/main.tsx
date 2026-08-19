@@ -76,4 +76,44 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+// ── Stale-client self-heal ───────────────────────────────────────────────────
+// 2026-08-18: Sam hard-refreshed for two days and still saw an old UI. One cause
+// was an entirely different HOST (Lovable's copy of this app serves months-old
+// bundles). For clients on the real domain, this closes the remaining class:
+// a wedged service worker or HTTP cache pinning an old shell. On load and on
+// tab-visible, compare the RUNNING build id against /version.json (no-store).
+// On mismatch: unregister every SW, delete every cache, reload — once per
+// server build id, so a broken deploy can never cause a reload loop.
+if (typeof window !== "undefined") {
+  const healCheck = () => {
+    fetch("/version.json", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((v: { id?: string } | null) => {
+        const served = v?.id;
+        if (!served || served === "dev" || typeof __BUILD_ID__ === "undefined") return;
+        if (served === __BUILD_ID__) return;
+        const guard = `apex-healed:${served}`;
+        if (localStorage.getItem(guard)) return; // already tried for this build
+        localStorage.setItem(guard, String(Date.now()));
+        const tasks: Promise<unknown>[] = [];
+        if ("serviceWorker" in navigator) {
+          tasks.push(
+            navigator.serviceWorker.getRegistrations()
+              .then((regs) => Promise.allSettled(regs.map((r) => r.unregister()))),
+          );
+        }
+        if ("caches" in window) {
+          tasks.push(caches.keys().then((keys) => Promise.allSettled(keys.map((k) => caches.delete(k)))));
+        }
+        Promise.allSettled(tasks).then(() => window.location.reload());
+      })
+      /* empty-catch-allow:version-probe-optional — offline or blocked probe must never break boot */
+      .catch(() => {});
+  };
+  healCheck();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") healCheck();
+  });
+}
+
 createRoot(document.getElementById("root")!).render(<App />);

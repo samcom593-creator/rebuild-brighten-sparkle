@@ -681,7 +681,7 @@ export function GlobalSidebar({
             {!isCollapsed && (
               <div className="mt-3 pt-3 border-t border-slate-800/50 text-center">
                 <p className="text-[9px] text-slate-600 uppercase tracking-widest">
-                  Powered by <span className="font-semibold text-amber-400/80">Apex Financial</span>
+                  Powered by <span className="font-semibold text-amber-400/80">Apex Financial</span>{" "}<span className="tabular-nums opacity-60">· b{typeof __BUILD_ID__ === "undefined" ? "dev" : __BUILD_ID__}</span>
                 </p>
               </div>
             )}

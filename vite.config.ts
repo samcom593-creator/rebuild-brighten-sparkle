@@ -121,12 +121,32 @@ function landingCssBuildPlugin() {
 }
 
 // https://vitejs.dev/config/
+// 2026-08-18 build identity: lets any running client prove WHICH build it is.
+// Sam spent two days seeing an old UI; the cause was a stale host (Lovable's
+// copy serves months-old bundles) plus no way to tell builds apart by eye.
+// The id renders in the sidebar footer and ships as /version.json so the app
+// can self-heal a stale service worker (see main.tsx).
+import { execSync } from "node:child_process";
+import { writeFileSync, mkdirSync } from "node:fs";
+const BUILD_ID = (process.env.VERCEL_GIT_COMMIT_SHA
+  ?? (() => { try { return execSync("git rev-parse HEAD").toString().trim(); } catch { return "dev"; } })()
+).slice(0, 8);
+const versionEmitPlugin = () => ({
+  name: "apex-version-emit",
+  closeBundle() {
+    try { mkdirSync("dist", { recursive: true }); writeFileSync("dist/version.json", JSON.stringify({ id: BUILD_ID })); }
+    catch { /* dev server has no dist; harmless */ }
+  },
+});
+
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
   },
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
   plugins: [
+    versionEmitPlugin(),
     vslSyncCheckPlugin(),
     landingCssBuildPlugin(),
     react(),

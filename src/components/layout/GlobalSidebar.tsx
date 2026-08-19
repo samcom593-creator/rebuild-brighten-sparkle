@@ -217,7 +217,9 @@ export function GlobalSidebar({
     // No slice cap: a cap of 10 silently dropped the Admin entry for admins
     // the moment Interviews became the 11th item (2026-08-13). Every item
     // pushed above is role-gated already; truncation is not a role gate.
-    return [{ label: "WORKSPACES", items }];
+    // 2026-08-18 artifact pass: the WORKSPACES section label was navigation noise
+    // the approved shell does not have. Empty label renders no header row.
+    return [{ label: "", items }];
   }, [isAdmin, isManager, isVaManager, isVa]);
 
   const handleLogout = useCallback(async () => {

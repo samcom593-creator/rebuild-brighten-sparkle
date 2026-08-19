@@ -1863,16 +1863,16 @@ function AgencyCommandView() {
               <Link
                 key={t.label}
                 to={t.href}
-                className={`group rounded-lg border p-3 bg-slate-950 hover:bg-slate-800/60 transition-colors ${t.tone.split(" ").filter((c) => c.startsWith("border")).join(" ")}`}
+                className="group rounded-[10px] border border-border bg-card p-3.5 hover:bg-secondary transition-colors"
               >
                 <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <p className="text-[10px] uppercase tracking-widest font-semibold text-slate-500 leading-tight">{t.label}</p>
-                  <span className={`rounded-md p-1 ring-1 ${t.tone}`}>
+                  <p className="text-[10px] uppercase tracking-[0.07em] font-bold text-muted-foreground leading-tight">{t.label}</p>
+                  <span className="rounded-md p-1 border border-border text-muted-foreground">
                     <Ic className="h-3 w-3" />
                   </span>
                 </div>
-                <p className={`text-[22px] leading-none font-black tabular-nums ${t.tone.split(" ").filter((c) => c.startsWith("text-")).join(" ")}`}>{t.value}</p>
-                <p className="mt-1 text-[10px] text-slate-400 leading-snug truncate">{t.sub}</p>
+                <p className={`text-[26px] leading-none font-bold tabular-nums ${t.tone.split(" ").filter((c) => c.startsWith("text-")).join(" ")}`}>{t.value}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground leading-snug truncate">{t.sub}</p>
                 {deltaLabel && (
                   <p className={`mt-0.5 text-[10px] tabular-nums ${t.delta! >= 0 ? "text-emerald-400" : "text-rose-500"}`}>{deltaLabel}</p>
                 )}
@@ -1954,17 +1954,14 @@ function AgencyCommandView() {
               <Link
                 key={c.title}
                 to={c.href}
-                className="group flex items-center gap-3 px-4 py-3.5 min-h-[60px] hover:bg-secondary transition-colors"
+                className="group flex items-center gap-3.5 px-5 py-4 min-h-[76px] hover:bg-secondary transition-colors"
               >
-                <span className={`h-2 w-2 rounded-full flex-none ${dot}`} />
-                <span className="rounded-md p-1.5 border border-border text-muted-foreground flex-none">
-                  <Ic className="h-3.5 w-3.5" />
-                </span>
+                <span className={`h-2.5 w-2.5 rounded-full flex-none ${dot}`} />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-bold leading-5 truncate">{c.title}</span>
-                  <span className="block text-xs text-muted-foreground truncate">{c.reason}</span>
+                  <span className="block text-[16px] font-bold leading-6 truncate">{c.title}</span>
+                  <span className="block text-[13px] text-muted-foreground truncate">{c.reason}</span>
                 </span>
-                <span className="text-xl font-bold tabular-nums flex-none">{fmtNum(c.count)}</span>
+                <span className="text-[22px] font-bold tabular-nums flex-none">{fmtNum(c.count)}</span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary flex-none" />
               </Link>
             );
@@ -1977,7 +1974,7 @@ function AgencyCommandView() {
       {/* MP-255 · retired: oversized decorative HERO band. Executive KPI strip
           above owns the 6 canonical KPIs; the gradient hero was scope debt. */}
       <div className="hidden">
-      <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
+      <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
         {/* glow accents */}
         <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
@@ -2246,7 +2243,7 @@ function AgencyCommandView() {
       </div>
 
       {/* §C · LEAKS · PREMIUM GLASS BAND (Sam: 'make leaks way better, way more appealing, more understandable') */}
-      <div className="relative overflow-hidden rounded-lg border border-rose-500/25 bg-slate-950 text-white shadow-sm">
+      <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
         <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
 
@@ -2326,7 +2323,7 @@ function AgencyCommandView() {
             Now wrapped in the canonical gradient hero pattern (slate→emerald)
             with glow rim shadow, 2 soft-blur accents, animate-ping LIVE dot,
             4 inner glass tiles above the chart for context. */}
-        <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm lg:col-span-2">
+        <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm lg:col-span-2">
           <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
           <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
 
@@ -2419,7 +2416,7 @@ function AgencyCommandView() {
         </div>
 
         {/* Leaderboard promoted to amber-gradient glass to match the new Daily AP card */}
-        <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
+        <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
 
@@ -2997,7 +2994,7 @@ function CarrierMixPanel({ data, loading }: {
   const topConcentration = chartData[0];
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3087,7 +3084,7 @@ function TopMoversPanel({ data, loading }: {
   loading: boolean;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3177,7 +3174,7 @@ function ConversionFunnelPanel({ data, loading }: {
   }, [data]);
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-rose-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3247,7 +3244,7 @@ function ActivityFeedPanel({ data, loading }: {
   loading: boolean;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3318,7 +3315,7 @@ function SourceRoiPanel({ data, loading }: {
   );
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3383,7 +3380,7 @@ function MoneyFlowPanel({ data, loading }: {
   loading: boolean;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3612,7 +3609,7 @@ function PersonalPacePanel() {
   const dealsDelta = p ? p.mtdDeals - p.lmtdSameDayDeals : 0;
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3710,7 +3707,7 @@ function ProductMixPanel() {
   const max = data?.list[0]?.ap ?? 0;
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3803,7 +3800,7 @@ function WeekOverWeekPanel() {
   const d = wow.data;
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -3929,7 +3926,7 @@ function RecruiterContactSlaPanel() {
   const d = sla.data;
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-rose-500/25 bg-slate-950 text-white shadow-sm lg:col-span-2">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm lg:col-span-2">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -4078,7 +4075,7 @@ function StateProductionPanel() {
   const max = d?.list[0]?.ap ?? 0;
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -4168,7 +4165,7 @@ function TimeOfDayProductionPanel() {
   const h = heat.data;
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -4287,7 +4284,7 @@ function CommissionProjectionPanel() {
   const p = proj.data;
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-emerald-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -4391,7 +4388,7 @@ function HirePace12WPanel() {
   const d = pace.data;
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -4495,7 +4492,7 @@ function AgedLeadsPanel() {
   const d = leads.data;
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-amber-500/25 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">
@@ -4655,7 +4652,7 @@ function LowProducersPanel() {
   const d = low.data;
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-rose-500/30 bg-slate-950 text-white shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-rose-500/20 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
       <div className="relative p-5">

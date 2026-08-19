@@ -360,9 +360,12 @@ export function SubmitDealDialog({ trigger }: { trigger?: ReactNode }) {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    for (let index = 0; index < 4; index += 1) {
+    // 2026-08-19 (Sam, exact Agent Cloud Post-a-Deal): single page, and evidence
+    // is OPTIONAL there — validate only client / policy / premium (0,1,2), never
+    // the evidence step. submit_apex_deal already accepts a deal with no files.
+    for (let index = 0; index < 3; index += 1) {
       const validation = validateStep(index);
-      if (validation) { setStep(index); toast.error(validation); return; }
+      if (validation) { toast.error(validation); return; }
     }
     setSaving(true);
     const saved = await saveSection("review");
@@ -426,11 +429,11 @@ export function SubmitDealDialog({ trigger }: { trigger?: ReactNode }) {
       </DialogTrigger>
       <DialogContent className="flex max-h-[96dvh] w-[calc(100vw-1rem)] max-w-3xl flex-col overflow-hidden p-0 sm:w-full">
         <DialogHeader className="border-b border-border px-5 py-4 pr-12">
-          <DialogTitle>{receipt ? "Deal saved" : "Add Deal"}</DialogTitle>
+          <DialogTitle>{receipt ? "Deal saved" : "Post a Deal"}</DialogTitle>
           <DialogDescription>
             {receipt
               ? "The deal is durable. Integration delivery continues independently."
-              : "Native APEX submission with a recoverable server draft and review receipt."}
+              : "Record a new policy for yourself or a downline agent."}
           </DialogDescription>
         </DialogHeader>
 
@@ -454,28 +457,14 @@ export function SubmitDealDialog({ trigger }: { trigger?: ReactNode }) {
           </div>
         ) : (
           <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
-            <div className="border-b border-border px-4 py-3">
-              <ol className="grid grid-cols-5 gap-1" aria-label="Deal sections">
-                {SECTIONS.map((section, index) => (
-                  <li key={section.key}>
-                    <button
-                      type="button"
-                      onClick={() => { if (index <= step) setStep(index); }}
-                      className={cn(
-                        "min-h-11 w-full rounded-md px-1 text-[11px] font-medium transition-colors sm:text-xs",
-                        index === step ? "bg-primary/15 text-primary" : index < step ? "text-emerald-500" : "text-muted-foreground",
-                      )}
-                      aria-current={index === step ? "step" : undefined}
-                    >
-                      <span className="block tabular-nums">{index + 1}</span>
-                      <span className="hidden sm:block">{section.label}</span>
-                    </button>
-                  </li>
-                ))}
-              </ol>
+            <div className="border-b border-border px-5 py-3">
+              <div className="inline-flex gap-1 rounded-full border border-border p-1 text-sm">
+                <span className="rounded-full bg-primary/15 px-4 py-1.5 font-medium text-primary">New Client</span>
+                <span className="rounded-full px-4 py-1.5 text-muted-foreground">Existing Client</span>
+              </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
               {recovering && <p className="mb-4 text-sm text-muted-foreground">Recovering saved draft…</p>}
               {recovered && !recovering && (
                 <div className="mb-4 rounded-md border border-sky-500/25 bg-sky-500/5 px-3 py-2 text-sm text-sky-700 dark:text-sky-300">
@@ -496,128 +485,99 @@ export function SubmitDealDialog({ trigger }: { trigger?: ReactNode }) {
                 <ReviewItem label="Manager / upline" value={writingAgent?.managerId ? manager.data || "Loading assigned manager…" : "No manager assigned"} />
               </div>
 
-              {step === 0 && (
-                <Section title="Client" description="Client identity is restricted operational data and is never copied into community posts.">
+              {(
+                <Section title="Client Information" description="Client identity is restricted operational data and is never copied into community posts.">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="First name" id="deal-first-name" value={form.clientFirstName} onChange={(value) => update("clientFirstName", value)} autoComplete="given-name" />
                     <Field label="Last name" id="deal-last-name" value={form.clientLastName} onChange={(value) => update("clientLastName", value)} autoComplete="family-name" />
-                    <Field label="Phone" id="deal-phone" value={form.clientPhone} onChange={(value) => update("clientPhone", value)} type="tel" autoComplete="tel" />
+                    <Field label="Phone number" id="deal-phone" value={form.clientPhone} onChange={(value) => update("clientPhone", value)} type="tel" autoComplete="tel" placeholder="(XXX) XXX-XXXX" />
                     <Field label="Date of birth" id="deal-dob" value={form.clientDob} onChange={(value) => update("clientDob", value)} type="date" />
                   </div>
                 </Section>
               )}
 
-              {step === 1 && (
-                <Section title="Policy & Product" description="Carrier and application details are checked again by the server before create.">
-                  <div className="grid gap-4 sm:grid-cols-2">
+              {(
+                <Section title="Policy Details" description="Carrier and application details are checked again by the server before create.">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="deal-carrier">Carrier</Label>
+                    <Select value={form.carrierId} onValueChange={(value) => update("carrierId", value)}>
+                      <SelectTrigger id="deal-carrier" className="h-11 sm:h-10"><SelectValue placeholder="Select carrier…" /></SelectTrigger>
+                      <SelectContent>{(carriers.data ?? []).map((carrier) => <SelectItem key={carrier.id} value={carrier.id}>{carrier.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <Field label="Product sold" id="deal-product" value={form.product} onChange={(value) => update("product", value)} placeholder="Product or plan name" />
+                    <Field label="Policy number" id="deal-policy" value={form.policyNumber} onChange={(value) => update("policyNumber", value)} placeholder="e.g., POL-123456" autoComplete="off" />
+                    <Field label="Effective date" id="deal-effective-date" value={form.effectiveDate} onChange={(value) => update("effectiveDate", value)} type="date" />
                     <div className="space-y-1.5">
-                      <Label htmlFor="deal-carrier">Carrier</Label>
-                      <Select value={form.carrierId} onValueChange={(value) => update("carrierId", value)}>
-                        <SelectTrigger id="deal-carrier" className="h-11 sm:h-10"><SelectValue placeholder="Select carrier" /></SelectTrigger>
-                        <SelectContent>{(carriers.data ?? []).map((carrier) => <SelectItem key={carrier.id} value={carrier.id}>{carrier.name}</SelectItem>)}</SelectContent>
-                      </Select>
+                      <Field label="Sale date" id="deal-application-date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} type="date" max={TODAY} />
+                      <p className="text-xs text-muted-foreground">Counts toward this month. Change it to log an older sale.</p>
                     </div>
-                    <Field label="Product" id="deal-product" value={form.product} onChange={(value) => update("product", value)} placeholder="Product or plan name" />
-                    <Field label="Application or policy number" id="deal-policy" value={form.policyNumber} onChange={(value) => update("policyNumber", value)} autoComplete="off" />
-                    <Field label="Application date" id="deal-application-date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} type="date" max={TODAY} />
-                    <Field label="Effective date (when known)" id="deal-effective-date" value={form.effectiveDate} onChange={(value) => update("effectiveDate", value)} type="date" />
-                    <Field label="Lead source" id="deal-lead-source" value={form.leadSource} onChange={(value) => update("leadSource", value)} />
+                    <Field label="Lead source" id="deal-lead-source" value={form.leadSource} onChange={(value) => update("leadSource", value)} placeholder="Optional" />
                   </div>
                 </Section>
               )}
 
-              {step === 2 && (
-                <Section title="Premium & Production" description="Recurring modes annualize automatically. Target, excess, single-pay, and other rules require review.">
+              {(
+                <Section title="Premium & Face" description="Monthly premium annualizes automatically. Change the frequency for annual, single-pay, or other rules.">
                   <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Face amount" id="deal-face" value={form.faceAmount} onChange={(value) => update("faceAmount", value)} type="number" min="1" step="1" inputMode="decimal" placeholder="e.g., 50000" />
+                    <Field label={form.premiumMode === "monthly" ? "Monthly premium" : "Premium (per payment)"} id="deal-modal-premium" value={form.modalPremium} onChange={(value) => update("modalPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="e.g., 99.99" />
                     <div className="space-y-1.5">
-                      <Label htmlFor="deal-premium-mode">Premium mode</Label>
+                      <Label htmlFor="deal-premium-mode">Payment frequency</Label>
                       <Select value={form.premiumMode} onValueChange={(value) => update("premiumMode", value as PremiumMode)}>
                         <SelectTrigger id="deal-premium-mode" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="annual">Annual</SelectItem><SelectItem value="semiannual">Semiannual</SelectItem>
-                          <SelectItem value="quarterly">Quarterly</SelectItem><SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem>
+                          <SelectItem value="semiannual">Semiannual</SelectItem><SelectItem value="annual">Annual</SelectItem>
                           <SelectItem value="single_pay">Single Pay</SelectItem><SelectItem value="other">Other</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <Field label="Modal premium" id="deal-modal-premium" value={form.modalPremium} onChange={(value) => update("modalPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" />
-                    <Field label="Annualized paid premium" id="deal-paid-premium" value={factor === null ? form.annualizedPaidPremium : calculatedAnnualPaid ? calculatedAnnualPaid.toFixed(2) : ""} onChange={(value) => update("annualizedPaidPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" readOnly={factor !== null} />
-                    <Field label="Annualized commissionable premium / ALP" id="deal-alp" value={form.annualizedCommissionablePremium} onChange={(value) => update("annualizedCommissionablePremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder={calculatedAnnualPaid ? calculatedAnnualPaid.toFixed(2) : "Carrier-provided ALP"} />
-                    <Field label="Face amount / death benefit" id="deal-face" value={form.faceAmount} onChange={(value) => update("faceAmount", value)} type="number" min="1" step="1" inputMode="decimal" />
+                    {factor === null && (
+                      <Field label="Annual paid premium" id="deal-paid-premium" value={form.annualizedPaidPremium} onChange={(value) => update("annualizedPaidPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="Enter for this frequency" />
+                    )}
                   </div>
-                  <div className="mt-4 rounded-md border border-border bg-muted/20 p-3 text-sm">
-                    <p className="font-medium">Calculation preview</p>
-                    <p className="mt-1 text-muted-foreground">
-                      {factor === null ? "Annual paid premium is entered directly for this mode." : `${formatMoney(form.modalPremium)} × ${factor} payments = ${formatMoney(calculatedAnnualPaid)} annual paid premium.`}
-                      {" "}Commissionable premium: {formatMoney(calculatedAlp)}.
-                    </p>
-                    <label className="mt-3 flex min-h-11 items-center gap-2">
-                      <input type="checkbox" checked={form.calculationNeedsReview} onChange={(event) => update("calculationNeedsReview", event.target.checked)} className="h-4 w-4" />
-                      Carrier target/excess rules require manager verification
-                    </label>
+                  <div className="mt-4 space-y-1">
+                    <Label>Annual Premium</Label>
+                    <p className="text-xl font-bold text-success">{formatMoney(calculatedAnnualPaid)} <span className="text-sm font-normal text-muted-foreground">/ year</span></p>
                   </div>
                 </Section>
               )}
 
-              {step === 3 && (
-                <Section title="Supporting Evidence" description="Private evidence is restricted to this deal and remains pending until the configured scan/review step clears it.">
+              {(
+                <Section title="Notes (Optional)" description="Any additional notes about this deal, client health, or application details.">
+                  <Textarea id="deal-notes" value={form.notes} onChange={(event) => update("notes", event.target.value)} rows={4} maxLength={2000} placeholder="Any additional notes about this deal, client health, or application details…" />
+                  <p className="mt-1 text-right text-xs text-muted-foreground">{form.notes.length} / 2000</p>
+                </Section>
+              )}
+
+              {(
+                <Section title="Supporting document (Optional)" description="Private evidence stays restricted to this deal. Not required to post.">
                   <div className="rounded-lg border border-dashed border-border p-4">
-                    <Label htmlFor="deal-evidence" className="block">Policy image or supporting document</Label>
-                    <p className="mt-1 text-sm text-muted-foreground">JPG, PNG, WebP, or PDF · maximum 10 MB</p>
-                    <Input ref={fileInput} id="deal-evidence" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="mt-3 h-11 pt-2 sm:h-10" onChange={(event) => uploadEvidence(event.target.files?.[0])} disabled={uploading} />
+                    <Input ref={fileInput} id="deal-evidence" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="h-11 pt-2 sm:h-10" onChange={(event) => uploadEvidence(event.target.files?.[0])} disabled={uploading} />
                     {uploading && <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Uploading privately…</p>}
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    {evidence.map((file) => (
-                      <div key={file.id} className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm">
-                        <span className="min-w-0 truncate"><FileCheck2 className="mr-2 inline h-4 w-4" />{file.original_file_name}</span>
-                        <span className="shrink-0 text-xs text-muted-foreground">{Math.ceil(file.size_bytes / 1024)} KB · {file.scan_status}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 grid gap-4">
-                    <div className="space-y-1.5"><Label htmlFor="deal-caption">Optional privacy-safe win caption</Label><Input id="deal-caption" value={form.communityCaption} onChange={(event) => update("communityCaption", event.target.value)} maxLength={240} /></div>
-                    <div className="space-y-1.5"><Label htmlFor="deal-notes">Internal notes</Label><Textarea id="deal-notes" value={form.notes} onChange={(event) => update("notes", event.target.value)} rows={3} /></div>
+                    <div className="mt-3 space-y-2">
+                      {evidence.map((file) => (
+                        <div key={file.id} className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm">
+                          <span className="min-w-0 truncate"><FileCheck2 className="mr-2 inline h-4 w-4" />{file.original_file_name}</span>
+                          <span className="shrink-0 text-xs text-muted-foreground">{Math.ceil(file.size_bytes / 1024)} KB · {file.scan_status}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </Section>
               )}
 
-              {step === 4 && (
-                <Section title="Review" description="This is the exact operational record. Community delivery never includes client identity, phone, birth date, policy number, notes, or documents.">
-                  <dl className="grid gap-3 sm:grid-cols-2">
-                    <ReviewItem label="Client" value={`${form.clientFirstName} ${form.clientLastName}`} />
-                    <ReviewItem label="Client phone" value={form.clientPhone} />
-                    <ReviewItem label="Writing agent" value={writingAgent?.displayName || "—"} />
-                    <ReviewItem label="Manager / upline" value={manager.data || "No manager assigned"} />
-                    <ReviewItem label="Carrier" value={carriers.data?.find((carrier) => carrier.id === form.carrierId)?.name || "—"} />
-                    <ReviewItem label="Product" value={form.product} />
-                    <ReviewItem label="Application / policy" value={form.policyNumber} />
-                    <ReviewItem label="Application date" value={form.applicationDate} />
-                    <ReviewItem label="Annual paid premium" value={formatMoney(calculatedAnnualPaid)} />
-                    <ReviewItem label="Commissionable premium / ALP" value={formatMoney(calculatedAlp)} />
-                    <ReviewItem label="Face amount" value={formatMoney(form.faceAmount)} />
-                    <ReviewItem label="Evidence" value={`${evidence.length} private file${evidence.length === 1 ? "" : "s"} · review pending`} />
-                  </dl>
-                  <div className="mt-4 rounded-md border border-sky-500/25 bg-sky-500/5 p-3 text-sm">
-                    <div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" /><p><strong>Submission receipt:</strong> the deal saves first. Discord, Skool, AgentLink, scanning, and analytics delivery are queued separately and cannot erase or duplicate this record.</p></div>
-                  </div>
-                </Section>
-              )}
+              <div className="rounded-md border border-sky-500/25 bg-sky-500/5 p-3 text-sm">
+                <div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" /><p><strong>The deal saves first.</strong> Discord, AgentLink, scanning and analytics delivery are queued separately and can never erase or duplicate this record. Client identity is never copied into community posts.</p></div>
+              </div>
             </div>
 
-            <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border px-5 py-4 sm:justify-between">
-              <Button type="button" variant="outline" className="h-11 sm:h-10" disabled={saving || step === 0} onClick={() => setStep((current) => Math.max(0, current - 1))}>
-                <ChevronLeft className="h-4 w-4" /> Back
+            <DialogFooter className="flex-row items-center justify-end gap-2 border-t border-border px-5 py-4">
+              <Button type="submit" className="h-11 gap-2 sm:h-10" disabled={saving || recovering}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trophy className="h-4 w-4" />} Post Deal
               </Button>
-              {step < SECTIONS.length - 1 ? (
-                <Button type="button" className="h-11 gap-2 sm:h-10" disabled={saving || recovering} onClick={next}>
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save & continue <ChevronRight className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button type="submit" className="h-11 gap-2 sm:h-10" disabled={saving}>
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Submit deal
-                </Button>
-              )}
             </DialogFooter>
           </form>
         )}

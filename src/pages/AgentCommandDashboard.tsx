@@ -1791,43 +1791,6 @@ function AgencyCommandView() {
               {c?.as_of && <> · As of {format(new Date(c.as_of), "MMM d, h:mm a")}</>}
             </p>
           </div>
-          {/* lg:mt-9 clears the floating Agent/Manager/Admin view-switcher pill,
-              which overlays the top-right of the content zone. The old framed
-              card absorbed that offset with its own padding; flat header must
-              reserve it explicitly or the period buttons sit underneath it. */}
-          <div className="flex flex-wrap items-center gap-2 lg:mt-9">
-            <div className="grid grid-cols-4 gap-0.5 rounded-md border border-border bg-card p-0.5">
-              {AGENCY_PERIODS.map((option) => (
-                <Button
-                  key={option.value}
-                  type="button"
-                  size="sm"
-                  variant={period === option.value ? "default" : "ghost"}
-                  className="h-7 px-2 text-11"
-                  onClick={() => setPeriod(option.value)}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-            <select
-              value={teamFilter}
-              onChange={(e) => setTeamFilter(e.target.value)}
-              className="h-8 rounded-md border border-border bg-card text-foreground text-11 px-2"
-              aria-label="Team filter"
-            >
-              <option value="all">All teams</option>
-              {(managersList.data ?? []).map((m) => (
-                <option key={m.id} value={m.id}>{m.display_name ?? "—"}</option>
-              ))}
-            </select>
-            <Button variant="outline" size="sm" onClick={refreshAll} className="h-8">
-              <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
-            </Button>
-            <Button size="sm" onClick={() => setDailyReviewOpen(true)} className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
-              <PlayCircle className="h-3.5 w-3.5 mr-1.5" /> Start Daily Review
-            </Button>
-          </div>
         </div>
       </div>
 
@@ -1919,15 +1882,53 @@ function AgencyCommandView() {
         })()}
       </div>
 
-      {/* 2026-08-18 template order: the owner's P&L reads FIRST. The Manager
-          Post Board is a daily habit tracker — it lived in slot #1 above Annual
-          Premium and every business number, which is why the page still read as
-          "the same" after two skin passes. Numbers first, habits second. */}
-      <ManagerPostCounter />
+      {/* 2026-08-18 template rebuild: the artifact's TOOLBAR row. Period
+          segmented control, team filter, refresh and the daily-review CTA live
+          here now — under the KPI strip, exactly where the approved shell puts
+          its controls — instead of crowding the title. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-4 gap-0.5 rounded-md border border-border bg-card p-0.5">
+              {AGENCY_PERIODS.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={period === option.value ? "default" : "ghost"}
+                  className="h-7 px-2 text-11"
+                  onClick={() => setPeriod(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            <select
+              value={teamFilter}
+              onChange={(e) => setTeamFilter(e.target.value)}
+              className="h-8 rounded-md border border-border bg-card text-foreground text-11 px-2"
+              aria-label="Team filter"
+            >
+              <option value="all">All teams</option>
+              {(managersList.data ?? []).map((m) => (
+                <option key={m.id} value={m.id}>{m.display_name ?? "—"}</option>
+              ))}
+            </select>
+            <Button variant="outline" size="sm" onClick={refreshAll} className="h-8">
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
+            </Button>
+            <Button size="sm" onClick={() => setDailyReviewOpen(true)} className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+              <PlayCircle className="h-3.5 w-3.5 mr-1.5" /> Start Daily Review
+            </Button>
+          </div>
+      </div>
 
       {/* MP-255 · §3 TodayPriorityGrid — 6 clickable priority cards. Every
           count is a real query; empty states are honest, never invented. */}
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+      <div className="flex items-baseline gap-2 px-0.5">
+        <span className="text-lg font-bold text-foreground">Today</span>
+        <span className="text-lg font-bold text-muted-foreground">priorities</span>
+      </div>
+      <div className="rounded-lg border border-border bg-card overflow-hidden divide-y divide-border">
         {(() => {
           const cards: Array<{
             title: string;
@@ -1947,31 +1948,31 @@ function AgencyCommandView() {
           return cards.map((c) => {
             const badge = priorityBadgeClasses(c.priorityKind);
             const Ic = c.icon;
+            // Artifact queue-row: status dot · label+reason · count · chevron.
+            const dot = badge.className.split(" ").filter((k) => k.startsWith("bg-")).join(" ") || "bg-muted-foreground";
             return (
               <Link
                 key={c.title}
                 to={c.href}
-                className="group rounded-lg border border-slate-800 bg-slate-900 p-3 hover:bg-slate-800/60 transition-colors flex flex-col"
+                className="group flex items-center gap-3 px-4 py-3.5 min-h-[60px] hover:bg-secondary transition-colors"
               >
-                <div className={`h-1 w-8 rounded-full mb-2 ${badge.className.split(" ").filter((s) => s.startsWith("bg-")).join(" ")}`} />
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-widest font-bold text-slate-500">{c.title}</p>
-                    <p className="mt-1.5 text-2xl font-black tabular-nums text-slate-100">{fmtNum(c.count)}</p>
-                    <p className="mt-1 text-11 text-slate-400 leading-snug">{c.reason}</p>
-                  </div>
-                  <span className={`rounded-md p-1.5 ring-1 ${badge.className}`}>
-                    <Ic className="h-3.5 w-3.5" />
-                  </span>
-                </div>
-                <p className="mt-2 pt-2 border-t border-slate-800/60 text-[10px] text-slate-500 font-semibold flex items-center gap-1 group-hover:text-teal-400">
-                  Open <ArrowRight className="h-3 w-3" />
-                </p>
+                <span className={`h-2 w-2 rounded-full flex-none ${dot}`} />
+                <span className="rounded-md p-1.5 border border-border text-muted-foreground flex-none">
+                  <Ic className="h-3.5 w-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-bold leading-5 truncate">{c.title}</span>
+                  <span className="block text-xs text-muted-foreground truncate">{c.reason}</span>
+                </span>
+                <span className="text-xl font-bold tabular-nums flex-none">{fmtNum(c.count)}</span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary flex-none" />
               </Link>
             );
           });
         })()}
       </div>
+
+      <ManagerPostCounter />
 
       {/* MP-255 · retired: oversized decorative HERO band. Executive KPI strip
           above owns the 6 canonical KPIs; the gradient hero was scope debt. */}

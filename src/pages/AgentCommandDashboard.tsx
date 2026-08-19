@@ -11,7 +11,7 @@
 // No mock numbers, no fallback placeholders, no fluff. If a row is
 // missing the page shows the empty state with the reason and a CTA.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {

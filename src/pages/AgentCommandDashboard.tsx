@@ -12,14 +12,13 @@
 // missing the page shows the empty state with the reason and a CTA.
 
 import { useEffect, useMemo, useState } from "react";
-import { APEX_BRAND } from "@/config/brand";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, Briefcase, Building2, Calendar, ChevronRight,
   CircleDollarSign, Clock, Crown, DollarSign, FileCheck, Filter, Flame, GraduationCap, Layers,
   Phone, PlayCircle, Radio, RefreshCw, ShieldAlert, ShieldCheck, Sparkles,
-  Target, TrendingDown, TrendingUp, X, Trophy, UserPlus, Users, Wallet, Zap,
+  Target, TrendingDown, TrendingUp, Trophy, UserPlus, Users, Wallet, Zap,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -851,17 +850,6 @@ function AgencyCommandView() {
   const [lapsesOpen, setLapsesOpen] = useState(false);
   // MP-255: Daily Review sheet + team filter for the executive dashboard.
   const [dailyReviewOpen, setDailyReviewOpen] = useState(false);
-  // AC Home composition state (MP-301: mirror the benchmark Home exactly).
-  const [acBannerDismissed, setAcBannerDismissed] = useState<boolean>(() => {
-    try { return localStorage.getItem("apex-ac-banner-dismissed") === "1"; }
-    catch { /* empty-catch-allow:storage-read-optional */ return false; }
-  });
-  const [focusOpen, setFocusOpen] = useState(false);
-  const [alpGoal, setAlpGoal] = useState<number>(() => {
-    try { return Number(localStorage.getItem("apex-alp-goal")) || 250000; }
-    catch { /* empty-catch-allow:storage-read-optional */ return 250000; }
-  });
-  const [goalEditing, setGoalEditing] = useState(false);
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const periodBounds = useMemo(
     () => getAgencyPeriodBounds(period, customStart, customEnd),
@@ -1962,299 +1950,52 @@ function AgencyCommandView() {
           </div>
       </div>
 
-      {/* ═══ AC HOME COMPOSITION (MP-301) — mirrors the benchmark exactly:
-          banner → focus stepper → clear strip → production quad + MTD ALP →
-          right rail (Needs Attention + Briefing) → leaderboard + commission.
-          Every number is a live query already on this page; the commission
-          card states its disconnected truth rather than inventing data. */}
-      {(() => {
-        const todayItems = [
-          { label: "License push", count: priCounts?.hot_licensing ?? 0, href: "/admin/recovery-queue" },
-          { label: "Unlicensed recovery", count: priCounts?.unlicensed_ghosted_30 ?? 0, href: "/admin/unlicensed-all?filter=ghosted_30" },
-          { label: "Producer drop risk", count: priCounts?.producer_risk ?? 0, href: "/admin/producer-trends" },
-          { label: "Hot applicants", count: priCounts?.hot_applicants ?? 0, href: "/dashboard/applicants" },
-          { label: "Manager follow-ups", count: priCounts?.overdue_follow_ups ?? 0, href: "/dashboard/applicants?filter=follow_up_due" },
-          { label: "Chargeback watch", count: priCounts?.chargebacks_30d ?? 0, href: "/book-of-business" },
-        ];
-        const todayTotal = todayItems.reduce((a, b) => a + b.count, 0);
-        const topItem = [...todayItems].sort((a, b) => b.count - a.count)[0];
-        const me = periodSummary.producers.find((pr) => /samuel\s+james/i.test(pr.display_name));
-        const personalAp = me?.ap ?? 0;
-        const personalDeals = me?.deals ?? 0;
-        const goalPct = alpGoal > 0 ? Math.min(100, (apDisplay / alpGoal) * 100) : 0;
-        const daysLeft = Math.max(0, Math.ceil((new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).getTime() - Date.now()) / 86400000));
-        const spark = (daily.data ?? []).slice(-30).map((d) => Number(d.aop) || 0);
-        const sparkMax = Math.max(1, ...spark);
-        const sparkPts = spark.map((v, i) => `${(i / Math.max(1, spark.length - 1)) * 100},${34 - (v / sparkMax) * 30}`).join(" ");
-        const attention = [
-          { label: "Producer drop risk", count: priCounts?.producer_risk ?? 0, href: "/admin/producer-trends" },
-          { label: "Chargebacks in 30d window", count: priCounts?.chargebacks_30d ?? 0, href: "/book-of-business" },
-          { label: "Producers idle 10d+", count: (leak?.idle_active_agents ?? 0) as number, href: "/admin/producer-trends" },
-        ].filter((r) => r.count > 0);
-        return (
-          <>
-            {/* ── dismissible attention banner ── */}
-            {!acBannerDismissed && todayTotal > 0 && (
-              <div className="rounded-lg border border-primary/40 bg-primary/[0.06] px-4 py-3.5 flex items-start gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-bold leading-6">The pipeline is waiting on {fmtNum(todayTotal)} actions.</p>
-                  <p className="mt-0.5 text-13 text-muted-foreground">
-                    {fmtNum(todayItems[0].count)} ready for a licensing push · {fmtNum(todayItems[1].count)} in unlicensed recovery · {fmtNum(todayItems[4].count)} follow-ups overdue.
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-4">
-                    {todayItems.slice(0, 3).map((t) => (
-                      <Link key={t.label} to={t.href} className="text-13 font-semibold text-primary hover:underline">
-                        {t.label} →
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Dismiss banner"
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setAcBannerDismissed(true);
-                    try { localStorage.setItem("apex-ac-banner-dismissed", "1"); }
-                    catch { /* empty-catch-allow:storage-write-optional */ }
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-
-            {/* ── TODAY'S FOCUS stepper ── */}
-            <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Clear today's queue</p>
-                <p className="text-13 text-muted-foreground tabular-nums">1 of {todayItems.filter((t) => t.count > 0).length || 1}</p>
-              </div>
-              <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
-                <div className="h-full bg-primary" style={{ width: `${todayTotal > 0 ? Math.max(6, 100 / Math.max(1, todayItems.filter((t) => t.count > 0).length)) : 100}%` }} />
-              </div>
-              <div className="mt-4 rounded-lg border border-border p-4">
-                <p className="text-[10px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Next</p>
-                <p className="mt-1 text-[16px] font-bold">{topItem.count > 0 ? `${topItem.label} — ${fmtNum(topItem.count)} waiting` : "Queue is clear"}</p>
-                <p className="mt-0.5 text-13 text-muted-foreground">
-                  {topItem.count > 0
-                    ? "Largest block of revenue-adjacent work right now. Clearing it moves everything downstream."
-                    : "Nothing is waiting on you in the pipeline queues."}
-                </p>
-                {topItem.count > 0 && (
-                  <Link to={topItem.href} className="mt-2 inline-flex items-center gap-1.5 text-13 font-semibold text-primary hover:underline">
-                    Open the queue <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
-                )}
-              </div>
-              <button
-                type="button"
-                className="mt-3 inline-flex items-center gap-1.5 text-13 text-muted-foreground hover:text-foreground"
-                onClick={() => setFocusOpen((v) => !v)}
-              >
-                <ChevronRight className={`h-3.5 w-3.5 transition-transform ${focusOpen ? "rotate-90" : ""}`} />
-                {focusOpen ? "Hide" : "Show"} all {todayItems.length} queues
-              </button>
-            </div>
-
-            {/* ── what needs you today ── */}
-            <div className={`rounded-lg border px-4 py-3 flex items-center gap-2.5 ${todayTotal === 0 ? "border-emerald-500/40 bg-emerald-500/[0.06]" : "border-border bg-card"}`}>
-              <span className={`h-2 w-2 rounded-full ${todayTotal === 0 ? "bg-emerald-500" : "bg-primary"}`} />
-              <p className="text-sm">
-                {todayTotal === 0
-                  ? "You're clear. Nothing is overdue and nothing is waiting on you."
-                  : `${fmtNum(todayTotal)} items need attention today across ${todayItems.filter((t) => t.count > 0).length} queues.`}
-              </p>
-            </div>
-
-            {/* ── main grid: production block + right rail ── */}
-            <div className="grid gap-4 lg:grid-cols-[1fr_340px] items-start">
-              <div className="space-y-4 min-w-0">
-                <div className="rounded-lg border border-border bg-card overflow-hidden">
-                  <div className="grid sm:grid-cols-[220px_1fr]">
-                    <div className="grid grid-cols-2 sm:grid-cols-1 divide-x sm:divide-x-0 sm:divide-y divide-border border-b sm:border-b-0 sm:border-r border-border">
-                      <div className="p-4">
-                        <p className="text-[10px] uppercase tracking-[0.1em] font-bold text-muted-foreground">Personal production</p>
-                        <p className="mt-1.5 text-[22px] font-bold tabular-nums">{fmtUsd(personalAp, true)}</p>
-                        <p className="text-[11px] text-muted-foreground">{fmtNum(personalDeals)} deals · {periodBounds.label}</p>
-                      </div>
-                      <div className="p-4">
-                        <p className="text-[10px] uppercase tracking-[0.1em] font-bold text-muted-foreground">Team production</p>
-                        <p className="mt-1.5 text-[22px] font-bold tabular-nums text-primary">{fmtUsd(apDisplay, true)}</p>
-                        <p className="text-[11px] text-muted-foreground">{fmtNum(apDealsDisplay)} deals · {fmtNum(periodSummary.producingAgents)} producing</p>
-                      </div>
-                    </div>
-                    <div className="p-4 sm:p-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Month-to-date ALP</p>
-                        <span className="text-[11px] text-muted-foreground">{periodBounds.label}</span>
-                      </div>
-                      <p className="mt-1 text-[40px] leading-none font-bold tabular-nums text-primary">{fmtUsd(apDisplay, true)}</p>
-                      <p className="mt-2 text-13 text-muted-foreground">
-                        Goal{" "}
-                        {goalEditing ? (
-                          <input
-                            autoFocus
-                            type="number"
-                            defaultValue={alpGoal}
-                            aria-label="Monthly ALP goal"
-                            className="w-28 h-6 px-1.5 rounded border border-border bg-card text-foreground text-13 tabular-nums"
-                            onBlur={(e) => {
-                              const v = Number(e.target.value) || alpGoal;
-                              setAlpGoal(v); setGoalEditing(false);
-                              try { localStorage.setItem("apex-alp-goal", String(v)); }
-                              catch { /* empty-catch-allow:storage-write-optional */ }
-                            }}
-                            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                          />
-                        ) : (
-                          <button type="button" className="font-semibold text-foreground underline decoration-dotted underline-offset-2" onClick={() => setGoalEditing(true)}>
-                            {fmtUsd(alpGoal, true)}
-                          </button>
-                        )}{" "}
-                        <span className="text-muted-foreground">(set yours)</span> · {goalPct.toFixed(0)}% there · {daysLeft} days left
-                      </p>
-                      <div className="mt-3 h-1.5 rounded-full bg-secondary overflow-hidden">
-                        <div className="h-full bg-primary" style={{ width: `${goalPct}%` }} />
-                      </div>
-                      <svg viewBox="0 0 100 36" preserveAspectRatio="none" className="mt-4 w-full h-14" aria-hidden>
-                        {spark.length > 1 ? (
-                          <polyline points={sparkPts} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-                        ) : (
-                          <line x1="0" y1="34" x2="100" y2="34" stroke="hsl(var(--primary))" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-                        )}
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                {/* queues feed (was Today priorities) */}
-                {(focusOpen || todayTotal > 0) && (
+      {/* MP-255 · §3 TodayPriorityGrid — 6 clickable priority cards. Every
+          count is a real query; empty states are honest, never invented. */}
+      <div className="flex items-baseline gap-2 px-0.5">
+        <span className="text-lg font-bold text-foreground">Today</span>
+        <span className="text-lg font-bold text-muted-foreground">priorities</span>
+      </div>
       <div className="rounded-lg border border-border bg-card overflow-hidden divide-y divide-border">
-            {(() => {
-              const cards: Array<{
-                title: string;
-                count: number;
-                reason: string;
-                href: string;
-                priorityKind: 'critical' | 'hot' | 'today' | 'watch' | 'low';
-                icon: any;
-              }> = [
-                { title: "License Push", count: priCounts?.hot_licensing ?? 0, reason: "Applicants ready for licensing push", href: "/admin/recovery-queue", priorityKind: 'critical', icon: GraduationCap },
-                { title: "Unlicensed Recovery", count: priCounts?.unlicensed_ghosted_30 ?? 0, reason: "Ghosted 30d+ with no VA owner", href: "/admin/unlicensed-all?filter=ghosted_30", priorityKind: 'hot', icon: AlertTriangle },
-                { title: "Producer Drop Risk", count: priCounts?.producer_risk ?? 0, reason: "Currently dropping WoW ALP", href: "/admin/producer-trends", priorityKind: 'hot', icon: TrendingDown },
-                { title: "Hot Applicants", count: priCounts?.hot_applicants ?? 0, reason: "New applicants with no contact logged", href: "/dashboard/applicants", priorityKind: 'today', icon: Flame },
-                { title: "Manager Follow-Ups", count: priCounts?.overdue_follow_ups ?? 0, reason: "Overdue next-action across pipeline", href: "/dashboard/applicants?filter=follow_up_due", priorityKind: 'watch', icon: Clock },
-                { title: "Chargeback Watch", count: priCounts?.chargebacks_30d ?? 0, reason: "Policies within 30d chargeback window", href: "/book-of-business", priorityKind: 'watch', icon: ShieldAlert },
-              ];
-              return cards.map((c) => {
-                const badge = priorityBadgeClasses(c.priorityKind);
-                const Ic = c.icon;
-                // Artifact queue-row: status dot · label+reason · count · chevron.
-                const dot = badge.className.split(" ").filter((k) => k.startsWith("bg-")).join(" ") || "bg-muted-foreground";
-                return (
-                  <Link
-                    key={c.title}
-                    to={c.href}
-                    className="group flex items-center gap-3.5 px-5 py-4 min-h-[76px] hover:bg-secondary transition-colors"
-                  >
-                    <span className={`h-2.5 w-2.5 rounded-full flex-none ${dot}`} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[16px] font-bold leading-6 truncate">{c.title}</span>
-                      <span className="block text-[13px] text-muted-foreground truncate">{c.reason}</span>
-                    </span>
-                    <span className="text-[22px] font-bold tabular-nums flex-none">{fmtNum(c.count)}</span>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary flex-none" />
-                  </Link>
-                );
-              });
-            })()}
-          </div>
-                )}
-
-                {/* leaderboard + commission */}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-lg border border-border bg-card p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Leaderboard</p>
-                      <span className="text-[11px] rounded-full border border-primary/50 bg-primary/10 text-primary px-2 py-0.5 font-semibold">My agency</span>
-                    </div>
-                    {periodSummary.producers.length === 0 ? (
-                      <p className="mt-6 mb-2 text-13 text-muted-foreground text-center">No production yet this period.</p>
-                    ) : (
-                      <div className="mt-3 space-y-2.5">
-                        {periodSummary.producers.slice(0, 5).map((pr, i) => (
-                          <div key={pr.agent_id ?? pr.display_name} className="flex items-center gap-2.5">
-                            <span className="w-5 text-13 tabular-nums text-muted-foreground">{i + 1}</span>
-                            <span className="min-w-0 flex-1 truncate text-sm font-medium">{pr.display_name}</span>
-                            <span className="text-sm font-bold tabular-nums">{fmtUsd(pr.ap, true)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="rounded-lg border border-border bg-card p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground">Commission</p>
-                      <Link to="/dashboard/finances" className="text-[11px] font-semibold text-primary hover:underline">Finances →</Link>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <div className="rounded-md border border-border p-3">
-                        <p className="text-[10px] uppercase tracking-[0.1em] font-bold text-muted-foreground">Advance paid</p>
-                        <p className="mt-1 text-[18px] font-bold text-muted-foreground">—</p>
-                      </div>
-                      <div className="rounded-md border border-border p-3">
-                        <p className="text-[10px] uppercase tracking-[0.1em] font-bold text-muted-foreground">Trail + renewal</p>
-                        <p className="mt-1 text-[18px] font-bold text-muted-foreground">—</p>
-                      </div>
-                    </div>
-                    <p className="mt-2.5 text-[11px] text-muted-foreground leading-snug">
-                      Carrier commission statements are not connected yet — this card fills in when Finance reconciliation lands. No invented numbers.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── right rail ── */}
-              <div className="space-y-4 min-w-0">
-                <div className="rounded-lg border border-border bg-card p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-rose-400">Needs attention</p>
-                    <Link to="/admin/producer-trends" className="text-[11px] font-semibold text-primary hover:underline">View all</Link>
-                  </div>
-                  {attention.length === 0 ? (
-                    <div className="mt-3 flex items-center gap-2 text-13 text-muted-foreground">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500" /> All policies and producers current.
-                    </div>
-                  ) : (
-                    <div className="mt-3 space-y-2">
-                      {attention.map((r) => (
-                        <Link key={r.label} to={r.href} className="flex items-center gap-2.5 rounded-md border border-border px-3 py-2 hover:bg-secondary transition-colors">
-                          <span className="h-2 w-2 rounded-full bg-rose-500 flex-none" />
-                          <span className="min-w-0 flex-1 truncate text-sm">{r.label}</span>
-                          <span className="text-sm font-bold tabular-nums">{fmtNum(r.count)}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="rounded-lg border border-border bg-card p-4">
-                  <p className="text-[11px] uppercase tracking-[0.12em] font-bold text-muted-foreground">{APEX_BRAND.shortName} briefing</p>
-                  <ul className="mt-2.5 space-y-2 text-13 leading-snug">
-                    <li className="flex gap-2"><span className="text-primary">·</span><span>{fmtUsd(apDisplay, true)} ALP this month across {fmtNum(apDealsDisplay)} deals — {periodTrendPct != null && Number.isFinite(periodTrendPct) ? `${periodTrendPct > 0 ? "up" : "down"} ${Math.abs(periodTrendPct).toFixed(1)}% vs prior` : "no prior-period comparison yet"}.</span></li>
-                    <li className="flex gap-2"><span className="text-primary">·</span><span>{fmtNum(activeAgentsCount)} active agents in Skool of {fmtNum(contractedCount)} contracted — {fmtNum(periodSummary.producingAgents)} produced this period.</span></li>
-                    <li className="flex gap-2"><span className="text-primary">·</span><span>{fmtNum(priCounts?.overdue_follow_ups ?? 0)} follow-ups overdue and {fmtNum(priCounts?.hot_licensing ?? 0)} applicants ready for a licensing push — the two biggest levers on next month's number.</span></li>
-                  </ul>
-                  <div className="mt-3 space-y-1.5">
-                    <Link to="/admin/recovery-queue" className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-13 font-medium hover:bg-secondary transition-colors">Open licensing push <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" /></Link>
-                    <Link to="/dashboard/applicants?filter=follow_up_due" className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-13 font-medium hover:bg-secondary transition-colors">Work overdue follow-ups <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" /></Link>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        );
-      })()}
+        {(() => {
+          const cards: Array<{
+            title: string;
+            count: number;
+            reason: string;
+            href: string;
+            priorityKind: 'critical' | 'hot' | 'today' | 'watch' | 'low';
+            icon: any;
+          }> = [
+            { title: "License Push", count: priCounts?.hot_licensing ?? 0, reason: "Applicants ready for licensing push", href: "/admin/recovery-queue", priorityKind: 'critical', icon: GraduationCap },
+            { title: "Unlicensed Recovery", count: priCounts?.unlicensed_ghosted_30 ?? 0, reason: "Ghosted 30d+ with no VA owner", href: "/admin/unlicensed-all?filter=ghosted_30", priorityKind: 'hot', icon: AlertTriangle },
+            { title: "Producer Drop Risk", count: priCounts?.producer_risk ?? 0, reason: "Currently dropping WoW ALP", href: "/admin/producer-trends", priorityKind: 'hot', icon: TrendingDown },
+            { title: "Hot Applicants", count: priCounts?.hot_applicants ?? 0, reason: "New applicants with no contact logged", href: "/dashboard/applicants", priorityKind: 'today', icon: Flame },
+            { title: "Manager Follow-Ups", count: priCounts?.overdue_follow_ups ?? 0, reason: "Overdue next-action across pipeline", href: "/dashboard/applicants?filter=follow_up_due", priorityKind: 'watch', icon: Clock },
+            { title: "Chargeback Watch", count: priCounts?.chargebacks_30d ?? 0, reason: "Policies within 30d chargeback window", href: "/book-of-business", priorityKind: 'watch', icon: ShieldAlert },
+          ];
+          return cards.map((c) => {
+            const badge = priorityBadgeClasses(c.priorityKind);
+            const Ic = c.icon;
+            // Artifact queue-row: status dot · label+reason · count · chevron.
+            const dot = badge.className.split(" ").filter((k) => k.startsWith("bg-")).join(" ") || "bg-muted-foreground";
+            return (
+              <Link
+                key={c.title}
+                to={c.href}
+                className="group flex items-center gap-3.5 px-5 py-4 min-h-[76px] hover:bg-secondary transition-colors"
+              >
+                <span className={`h-2.5 w-2.5 rounded-full flex-none ${dot}`} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[16px] font-bold leading-6 truncate">{c.title}</span>
+                  <span className="block text-[13px] text-muted-foreground truncate">{c.reason}</span>
+                </span>
+                <span className="text-[22px] font-bold tabular-nums flex-none">{fmtNum(c.count)}</span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary flex-none" />
+              </Link>
+            );
+          });
+        })()}
+      </div>
 
       <ManagerPostCounter />
 

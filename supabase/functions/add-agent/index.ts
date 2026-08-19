@@ -460,17 +460,24 @@ const handler = async (req: Request): Promise<Response> => {
     // ── Contracting channel post (Discord) + Ethos paste-row ────────────────
     // 2026-08-14 Sam: added agents were reaching neither the team Discord nor
     // the Ethos contracting sheet. The Ethos sheet is a third party's private
-    // Google Sheet (no service credential exists, export returns 401), so an
-    // unattended API write is impossible today. What CAN run unattended: post
-    // every new agent into the contracting channel with the EXACT tab-separated
-    // row the Ethos sheet takes in columns A–I (format proven by the 2026-07-16
-    // 188-agent fill: First, Last, NPN, agent# [unknown at add-time, blank],
-    // Phone, Email, blank, "6 Month Advance", "Apex Financial Empire") so
-    // placement is one paste with zero re-typing. Webhook key is
-    // discord_webhook_url_contracting — RAW text, never JSON-quoted (that
-    // exact bug killed Discord automation on 2026-07-31), and per the standing
-    // rule this NEVER falls back to another channel: unset = honest
-    // not_configured, not a post somewhere else.
+    // Google Sheet owned by the upline (Level 8 Financial), shared read/edit
+    // with Sam — an unattended service-role API write into someone else's
+    // multi-tab sheet is unsafe, so we hand a human a perfect paste instead.
+    // 2026-08-19 Sam ("use the ethos spreadsheet"): the previous row left
+    // columns D (Direct Upline NPN) and G (Comp Level) BLANK, so a paste landed
+    // one/two columns short of the real sheet. Verified against the live
+    // "(Samuel James) Apex Financial Empire | Ethos Agent Portal Signup" Agents
+    // tab — its GREEN (agent-filled) columns are A..L: First, Last, NPN,
+    // Direct-Upline-NPN, Mobile, Email, Comp-Level, Advance-Tier, Sub-Agency,
+    // Sub-Agent-Head?, Life-Licensed?, $1M-E&O?. Every existing row parents to
+    // Sam's NPN 21346366 (he is the sub-agency principal under Level 8), so that
+    // is the correct Direct Upline NPN regardless of internal team manager.
+    // Ethos fills the RED columns (portal id/code, invite link). Webhook key is
+    // discord_webhook_url_contracting — RAW text, never JSON-quoted (that exact
+    // bug killed Discord automation on 2026-07-31), and per the standing rule
+    // this NEVER falls back to another channel: unset = honest not_configured.
+    const ETHOS_UPLINE_NPN = "21346366"; // Samuel James Jr — Apex Financial Empire principal
+    const ETHOS_DEFAULT_COMP = "Level 12"; // most common comp on the sheet; Ethos/upline adjusts
     let contractingPostStatus: SideEffectStatus;
     try {
       const { data: whRow } = await supabaseAdmin
@@ -482,7 +489,20 @@ const handler = async (req: Request): Promise<Response> => {
       if (!webhook.startsWith("https://discord.com/api/webhooks/")) {
         contractingPostStatus = { ok: false, error: "not_configured: system_settings.discord_webhook_url_contracting is empty — create a webhook in the contracting channel and store its URL (raw text)" };
       } else {
-        const ethosRow = [firstName, lastName, normalizedNpn || "", "", phone ?? "", normalizedEmail, "", "6 Month Advance", "Apex Financial Empire"].join("\t");
+        const ethosRow = [
+          firstName,                                       // A First Name
+          lastName,                                        // B Last Name
+          normalizedNpn || "",                             // C NPN
+          ETHOS_UPLINE_NPN,                                // D Direct Upline NPN
+          phone ?? "",                                     // E Mobile
+          normalizedEmail,                                 // F Email
+          ETHOS_DEFAULT_COMP,                              // G Comp Level
+          "6 Month Advance",                               // H Advance Pay Tier
+          "Apex Financial Empire",                         // I Sub-Agency Name
+          "",                                              // J Sub-Agent Head?
+          licenseStatus === "licensed" ? "Yes" : "No",     // K Life Licensed?
+          "",                                              // L $1M in E&O coverage?
+        ].join("\t");
         const res = await fetch(webhook, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

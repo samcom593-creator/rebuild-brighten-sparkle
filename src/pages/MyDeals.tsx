@@ -149,7 +149,12 @@ export default function MyDeals() {
     queryFn: async () => {
       if (!isAdmin && scopedAgentIds.length === 0) return [];
       let query = supabase.from("deals")
-        .select("*, carrier:carriers(name), agent:agents(display_name)")
+        // 2026-08-19: 'agent:agents(display_name)' was AMBIGUOUS — deals has TWO fks
+        // to agents (agent_id and manager_id), so PostgREST returned HTTP 300
+        // PGRST201 and the query threw. The page rendered its empty state,
+        // 'No deals logged yet', while 1,780 deals sat in the table. Naming the
+        // constraint resolves it. Verified live as Sam: 300 -> 200 with rows.
+        .select("*, carrier:carriers(name), agent:agents!deals_agent_id_fkey(display_name)")
         .order("effective_date", { ascending: false })
         .limit(100);
       if (!isAdmin) query = query.in("agent_id", scopedAgentIds);

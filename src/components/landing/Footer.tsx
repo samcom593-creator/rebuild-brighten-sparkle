@@ -23,10 +23,10 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
               Warm leads, weekly pay, real coaching. No fee for leads ever.
             </p>
             <div className="flex flex-col gap-2 text-sm text-[#94a3b8]">
-              <a href="mailto:info@apex-financial.org" className="flex items-center gap-2 hover:text-[#e8bb2b] transition-colors">
+              <a href="mailto:info@apex-financial.org" className="flex min-h-6 items-center gap-2 hover:text-[#e8bb2b] transition-colors">
                 <Mail className="h-4 w-4" /> info@apex-financial.org
               </a>
-              <a href="tel:+14697676068" className="flex items-center gap-2 hover:text-[#e8bb2b] transition-colors">
+              <a href="tel:+14697676068" className="flex min-h-6 items-center gap-2 hover:text-[#e8bb2b] transition-colors">
                 <Phone className="h-4 w-4" /> (469) 767-6068
               </a>
               <div className="flex items-center gap-2">
@@ -38,20 +38,20 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
           <div>
             <h3 className="font-bold mb-4 text-[#f1f5f9] font-display">Quick Links</h3>
             <ul className="space-y-2 text-sm text-[#94a3b8]">
-              <li><a href="#benefits" className="hover:text-[#e8bb2b] transition-colors">Benefits</a></li>
-              <li><a href="#earnings" className="hover:text-[#e8bb2b] transition-colors">Earnings</a></li>
-              <li><a href="#benefits" className="hover:text-[#e8bb2b] transition-colors">Receipts</a></li>
-              <li><Link to={applyHref} className="hover:text-[#e8bb2b] transition-colors">Apply Now</Link></li>
+              <li><a href="#benefits" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Benefits</a></li>
+              <li><a href="#earnings" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Earnings</a></li>
+              <li><a href="#receipts" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Receipts</a></li>
+              <li><Link to={applyHref} className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Apply Now</Link></li>
             </ul>
           </div>
 
           <div>
             <h3 className="font-bold mb-4 text-[#f1f5f9] font-display">Legal</h3>
             <ul className="space-y-2 text-sm text-[#94a3b8]">
-              <li><Link to="/privacy" className="hover:text-[#e8bb2b] transition-colors">Privacy Policy</Link></li>
-              <li><Link to="/terms" className="hover:text-[#e8bb2b] transition-colors">Terms of Service</Link></li>
-              <li><Link to="/data-deletion" className="hover:text-[#e8bb2b] transition-colors">Delete My Data</Link></li>
-              <li><Link to="/disclosures" className="hover:text-[#e8bb2b] transition-colors">Disclosures</Link></li>
+              <li><Link to="/privacy" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Terms of Service</Link></li>
+              <li><Link to="/data-deletion" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Delete My Data</Link></li>
+              <li><Link to="/disclosures" className="inline-flex min-h-6 items-center hover:text-[#e8bb2b] transition-colors">Disclosures</Link></li>
             </ul>
           </div>
         </div>

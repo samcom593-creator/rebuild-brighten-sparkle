@@ -86,16 +86,12 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
 
           {/* Two CTA Buttons Side by Side */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to={applyHref}>
-              <button className="inline-flex items-center justify-center gap-2 px-10 py-5 text-xl rounded-lg font-bold font-display bg-[#e8bb2b] text-[#030712] hover: transition-all duration-200 animate-pulse-glow group">
-                Start Your Application
-                <ArrowRight className="h-5 w-5 transition-base group-hover:translate-x-1" />
-              </button>
+            <Link to={applyHref} className="inline-flex items-center justify-center gap-2 px-10 py-5 text-xl rounded-lg font-bold font-display bg-[#e8bb2b] text-[#030712] hover: transition-all duration-200 animate-pulse-glow group">
+              Start Your Application
+              <ArrowRight className="h-5 w-5 transition-base group-hover:translate-x-1" />
             </Link>
-            <Link to="/schedule-call">
-              <button className="inline-flex items-center justify-center gap-2 px-10 py-5 text-xl rounded-lg font-bold font-display border-2 border-[#e8bb2b] text-[#e8bb2b] bg-transparent hover:bg-[#e8bb2b]/10 transition-all duration-200">
-                Schedule a Call
-              </button>
+            <Link to="/schedule-call" className="inline-flex items-center justify-center gap-2 px-10 py-5 text-xl rounded-lg font-bold font-display border-2 border-[#e8bb2b] text-[#e8bb2b] bg-transparent hover:bg-[#e8bb2b]/10 transition-all duration-200">
+              Schedule a Call
             </Link>
           </div>
 

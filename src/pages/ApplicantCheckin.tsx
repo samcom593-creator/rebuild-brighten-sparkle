@@ -181,12 +181,12 @@ export default function ApplicantCheckin() {
               {loadError || "We could not find your daily check-in link."}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link to="/get-licensed">
-                <GradientButton>Open Licensing Steps</GradientButton>
-              </Link>
-              <a href={helpLink} target="_blank" rel="noopener noreferrer">
-                <GradientButton variant="outline">Book a Help Call</GradientButton>
-              </a>
+              <GradientButton asChild>
+                <Link to="/get-licensed">Open Licensing Steps</Link>
+              </GradientButton>
+              <GradientButton asChild variant="outline">
+                <a href={helpLink} target="_blank" rel="noopener noreferrer">Book a Help Call</a>
+              </GradientButton>
             </div>
           </GlassCard>
         </div>
@@ -348,18 +348,18 @@ export default function ApplicantCheckin() {
               </div>
 
               <div className="grid gap-3 md:grid-cols-3">
-                <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer" className="block">
-                  <GradientButton type="button" variant="outline" className="w-full">
+                <GradientButton asChild variant="outline" className="w-full">
+                  <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer" className="block">
                     <MessageCircle className="h-4 w-4 mr-2" />
                     Hiring Chat
-                  </GradientButton>
-                </a>
-                <a href={helpLink} target="_blank" rel="noopener noreferrer" className="block">
-                  <GradientButton type="button" variant="outline" className="w-full">
+                  </a>
+                </GradientButton>
+                <GradientButton asChild variant="outline" className="w-full">
+                  <a href={helpLink} target="_blank" rel="noopener noreferrer" className="block">
                     <CalendarDays className="h-4 w-4 mr-2" />
                     Book Help Call
-                  </GradientButton>
-                </a>
+                  </a>
+                </GradientButton>
                 <GradientButton type="submit" className="w-full" disabled={submitting}>
                   {submitting ? (
                     <>

@@ -11,7 +11,7 @@ export default function Disclosures() {
     <div className="min-h-screen bg-background">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />
       
-      <div className="container mx-auto px-4 py-8 relative z-10">
+      <main className="container mx-auto px-4 py-8 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -19,7 +19,7 @@ export default function Disclosures() {
         >
           <Link 
             to="/" 
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors mb-8"
+            className="inline-flex min-h-11 items-center gap-2 text-muted-foreground hover:text-primary transition-colors mb-8"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Home
@@ -124,7 +124,7 @@ export default function Disclosures() {
             </GlassCard>
           </div>
         </motion.div>
-      </div>
+      </main>
       
       <Footer />
     </div>

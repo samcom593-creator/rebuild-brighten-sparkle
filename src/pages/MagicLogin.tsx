@@ -191,7 +191,7 @@ export default function MagicLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-card/80  border border-border/50 rounded-md p-8 shadow-2xl">
           {/* Header */}
@@ -318,6 +318,6 @@ export default function MagicLogin() {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

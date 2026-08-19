@@ -97,7 +97,7 @@ export function ApplicationConfirmationV2({
 
   // Sticky-bottom CTA on mobile so it never gets lost in scroll.
   return (
-    <div className="min-h-screen bg-background py-6 sm:py-10 px-3 sm:px-4 pb-24 sm:pb-10">
+    <main className="min-h-screen bg-background py-6 sm:py-10 px-3 sm:px-4 pb-24 sm:pb-10">
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,hsl(168_84%_42%/0.10)_0%,transparent_55%)]" />
 
       <motion.div
@@ -132,7 +132,7 @@ export function ApplicationConfirmationV2({
           </p>
         </GlassCard>
       </motion.div>
-    </div>
+    </main>
   );
 }
 
@@ -173,28 +173,28 @@ function UnlicensedBody({
 
       {/* Primary CTA — auto-login + course when the magic link is ready */}
       {primaryIsExternal ? (
-        <a href={primaryHref} className="block">
-          <GradientButton className="w-full text-base h-14" size="lg">
+        <GradientButton asChild className="w-full text-base h-14" size="lg">
+          <a href={primaryHref} className="block">
             <Sparkles className="h-5 w-5 mr-2" />
             Start the course
-          </GradientButton>
-        </a>
+          </a>
+        </GradientButton>
       ) : (
-        <Link to={primaryHref} className="block">
-          <GradientButton className="w-full text-base h-14" size="lg">
+        <GradientButton asChild className="w-full text-base h-14" size="lg">
+          <Link to={primaryHref} className="block">
             <Sparkles className="h-5 w-5 mr-2" />
             Start your prelicensing course
-          </GradientButton>
-        </Link>
+          </Link>
+        </GradientButton>
       )}
 
       {/* Secondary CTA: Telegram bot */}
-      <a href={tgDeepLink} target="_blank" rel="noopener noreferrer" className="block">
-        <GradientButton variant="outline" className="w-full" size="lg">
+      <GradientButton asChild variant="outline" className="w-full" size="lg">
+        <a href={tgDeepLink} target="_blank" rel="noopener noreferrer" className="block">
           <Send className="h-4 w-4 mr-2" />
           Open APEX bot on Telegram
-        </GradientButton>
-      </a>
+        </a>
+      </GradientButton>
 
       <p className="text-xs text-center text-muted-foreground">
         We also sent the course link to your email. Check inbox + spam.
@@ -241,12 +241,12 @@ function LicensedBody({
           <CalendlyEmbed url={SCHEDULING_LINKS.licensed} />
         </section>
       ) : (
-        <a href={SCHEDULING_LINKS.licensed} target="_blank" rel="noopener noreferrer" className="block">
-          <GradientButton className="w-full text-base h-14" size="lg">
+        <GradientButton asChild className="w-full text-base h-14" size="lg">
+          <a href={SCHEDULING_LINKS.licensed} target="_blank" rel="noopener noreferrer" className="block">
             <Calendar className="h-5 w-5 mr-2" />
             Book your hire call
-          </GradientButton>
-        </a>
+          </a>
+        </GradientButton>
       )}
 
       {/* One-click auto-login into the agent portal — Sam directive
@@ -254,21 +254,21 @@ function LicensedBody({
           licensed applicants the destination is /dashboard (training course
           is for unlicensed). Hidden until the magic-link mint returns. */}
       {autoLoginUrl ? (
-        <a href={autoLoginUrl} className="block">
-          <GradientButton variant="outline" className="w-full" size="lg">
+        <GradientButton asChild variant="outline" className="w-full" size="lg">
+          <a href={autoLoginUrl} className="block">
             <Sparkles className="h-4 w-4 mr-2" />
             Enter your APEX portal
-          </GradientButton>
-        </a>
+          </a>
+        </GradientButton>
       ) : null}
 
       {/* Secondary CTA: Telegram bot */}
-      <a href={tgDeepLink} target="_blank" rel="noopener noreferrer" className="block">
-        <GradientButton variant="outline" className="w-full" size="lg">
+      <GradientButton asChild variant="outline" className="w-full" size="lg">
+        <a href={tgDeepLink} target="_blank" rel="noopener noreferrer" className="block">
           <Send className="h-4 w-4 mr-2" />
           Open APEX bot on Telegram
-        </GradientButton>
-      </a>
+        </a>
+      </GradientButton>
 
       <p className="text-xs text-center text-muted-foreground">
         We also emailed the booking link + Discord invite. Check inbox + spam.
@@ -285,12 +285,12 @@ function PendingBody({ tgDeepLink }: { tgDeepLink: string }) {
       <p className="text-sm text-center text-muted-foreground">
         Your manager will reach out shortly to verify license status and route you to the right next step.
       </p>
-      <a href={tgDeepLink} target="_blank" rel="noopener noreferrer" className="block">
-        <GradientButton variant="outline" className="w-full" size="lg">
+      <GradientButton asChild variant="outline" className="w-full" size="lg">
+        <a href={tgDeepLink} target="_blank" rel="noopener noreferrer" className="block">
           <Send className="h-4 w-4 mr-2" />
           Open APEX bot on Telegram
-        </GradientButton>
-      </a>
+        </a>
+      </GradientButton>
     </div>
   );
 }

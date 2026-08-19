@@ -163,7 +163,7 @@ export default function SeminarPage() {
 
   if (!success && watchedLicense === "unlicensed") {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <main className="min-h-screen bg-background flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -180,28 +180,28 @@ export default function SeminarPage() {
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               The seminar is the final step before we hire you. Get licensed first — most agents finish the course, exam, and license issuance in 2-4 weeks — then we put you on the seminar and write you a check.
             </p>
-            <Link to="/get-licensed" className="block">
-              <GradientButton className="w-full text-base h-14" size="lg">
+            <GradientButton asChild className="w-full text-base h-14" size="lg">
+              <Link to="/get-licensed" className="block">
                 Start prelicensing course
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </GradientButton>
-            </Link>
+              </Link>
+            </GradientButton>
             <button
               type="button"
               onClick={() => form.setValue("licenseStatus", "licensed", { shouldValidate: true })}
-              className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
+              className="inline-flex min-h-11 items-center justify-center text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
             >
               I'm already licensed → continue to seminar signup
             </button>
           </GlassCard>
         </motion.div>
-      </div>
+      </main>
     );
   }
 
   if (success) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <main className="min-h-screen bg-background flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -220,17 +220,17 @@ export default function SeminarPage() {
               we move fast.
             </p>
             {meetingCfg.data?.url ? (
-              <a
-                href={meetingCfg.data.url}
-                target={meetingCfg.data.url.startsWith("http") ? "_blank" : undefined}
-                rel="noopener noreferrer"
-                className="inline-block"
-              >
-                <GradientButton className="w-full">
+              <GradientButton asChild className="w-full">
+                <a
+                  href={meetingCfg.data.url}
+                  target={meetingCfg.data.url.startsWith("http") ? "_blank" : undefined}
+                  rel="noopener noreferrer"
+                  className="inline-block"
+                >
                   {meetingCfg.data.label}
                   <ArrowRight className="ml-2 h-4 w-4" />
-                </GradientButton>
-              </a>
+                </a>
+              </GradientButton>
             ) : null}
             {success.isNew ? (
               <div className="border border-primary/30 bg-primary/5 rounded-md p-4 text-left">
@@ -238,12 +238,12 @@ export default function SeminarPage() {
                 <p className="text-xs text-muted-foreground mb-3">
                   We started an application from your registration — finish it in 90 seconds so you're ready on day one.
                 </p>
-                <Link to="/apply">
-                  <GradientButton className="w-full" variant="ghost">
+                <GradientButton asChild className="w-full" variant="ghost">
+                  <Link to="/apply">
                     Finish my application
                     <ArrowRight className="ml-2 h-4 w-4" />
-                  </GradientButton>
-                </Link>
+                  </Link>
+                </GradientButton>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -252,12 +252,12 @@ export default function SeminarPage() {
             )}
           </GlassCard>
         </motion.div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <main className="min-h-screen bg-background flex flex-col">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -399,6 +399,6 @@ export default function SeminarPage() {
           Already applied? <Link to="/apply" className="underline">Finish your application →</Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

@@ -524,9 +524,9 @@ export default function AwardGraphics() {
                       <TableCell>
                         <div className="flex gap-1">
                           {batch.top_producer_file && (
-                            <a href={getStorageUrl(batch.top_producer_file) || "#"} target="_blank" rel="noopener noreferrer">
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-primary/10"><Download className="h-3.5 w-3.5" /></Button>
-                            </a>
+                            <Button asChild variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-primary/10" aria-label="Download top producer graphic">
+                              <a href={getStorageUrl(batch.top_producer_file) || "#"} target="_blank" rel="noopener noreferrer"><Download className="h-3.5 w-3.5" /></a>
+                            </Button>
                           )}
                           <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-primary/10" onClick={() => regenerateMutation.mutate(batch)} disabled={regenerateMutation.isPending}>
                             <RefreshCw className={cn("h-3.5 w-3.5", regenerateMutation.isPending && "animate-spin")} />

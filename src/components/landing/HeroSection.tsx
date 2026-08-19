@@ -277,7 +277,7 @@ export function HeroSection() {
                     "linear-gradient(135deg, hsl(45 90% 62%), hsl(40 72% 38%))",
                 }}
               />
-              <button
+              <span
                 className="
                   relative inline-flex items-center justify-center gap-2
                   px-10 py-5 text-lg sm:text-xl rounded-md font-bold font-display
@@ -288,7 +288,7 @@ export function HeroSection() {
               >
                 Start My Application
                 <ArrowRight className="h-5 w-5 transition-base group-hover:translate-x-1" />
-              </button>
+              </span>
             </Link>
             <p className="text-xs sm:text-sm text-muted-foreground text-center max-w-md">
               Takes 90 seconds · auto-saves if you bounce · Sam replies within 24 hours
@@ -321,7 +321,10 @@ export function HeroSection() {
                 height={44}
                 loading="lazy"
                 decoding="async"
-                fetchPriority="low"
+                // ts-ignore-allow:fetchpriority-html-attr-react-types-lag
+                // @ts-expect-error — use the standards-cased attribute to avoid
+                // React 18 forwarding warnings while retaining the low-priority hint.
+                fetchpriority="low"
                 className="h-11 w-11 rounded-full ring-2 ring-primary/40 object-cover "
               />
             </picture>

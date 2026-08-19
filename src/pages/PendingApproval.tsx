@@ -18,7 +18,7 @@ export default function PendingApproval() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <main className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />
       
       <motion.div
@@ -59,11 +59,11 @@ export default function PendingApproval() {
             </p>
 
             <div className="flex flex-col gap-2">
-              <Link to="/">
-                <GradientButton className="w-full">
+              <GradientButton asChild className="w-full">
+                <Link to="/">
                   Back to Home
-                </GradientButton>
-              </Link>
+                </Link>
+              </GradientButton>
               
               <Button 
                 variant="ghost" 
@@ -77,6 +77,6 @@ export default function PendingApproval() {
           </div>
         </GlassCard>
       </motion.div>
-    </div>
+    </main>
   );
 }

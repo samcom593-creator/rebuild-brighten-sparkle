@@ -24,6 +24,7 @@ export default function LeadsLanding() {
         </div>
       </nav>
 
+      <main>
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-20 pb-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
@@ -186,6 +187,7 @@ export default function LeadsLanding() {
           </Button>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-slate-700 py-12 px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-900">
@@ -198,23 +200,23 @@ export default function LeadsLanding() {
             <div>
               <h4 className="font-semibold text-white mb-4">Product</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li><Link to="/leads" className="hover:text-teal-400 transition">Leads</Link></li>
-                <li><Link to="/dashboard" className="hover:text-teal-400 transition">Dashboard</Link></li>
-                <li><Link to="/dialer" className="hover:text-teal-400 transition">Dialer</Link></li>
+                <li><Link to="/leads" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Leads</Link></li>
+                <li><Link to="/dashboard" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Dashboard</Link></li>
+                <li><Link to="/dialer" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Dialer</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-white mb-4">Company</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li><Link to="/" className="hover:text-teal-400 transition">About</Link></li>
-                <li><Link to="/contact" className="hover:text-teal-400 transition">Contact</Link></li>
+                <li><Link to="/" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">About</Link></li>
+                <li><Link to="/contact" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Contact</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-white mb-4">Legal</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="https://apex-financial.org/privacy" rel="noopener noreferrer" className="hover:text-teal-400 transition">Privacy</a></li>
-                <li><a href="https://apex-financial.org/terms" rel="noopener noreferrer" className="hover:text-teal-400 transition">Terms</a></li>
+                <li><a href="https://apex-financial.org/privacy" rel="noopener noreferrer" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Privacy</a></li>
+                <li><a href="https://apex-financial.org/terms" rel="noopener noreferrer" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Terms</a></li>
               </ul>
             </div>
           </div>
@@ -288,4 +290,3 @@ const faqs = [
     a: "Just a laptop or computer with internet. We provide everything else: cloud dialer, CRM, lead management tools, and training materials.",
   },
 ];
-

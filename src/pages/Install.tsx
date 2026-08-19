@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Download, Smartphone, Check, Share, Plus, MoreVertical, Crown, Mail, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -158,14 +158,14 @@ export default function Install() {
 
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <main className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <main className="min-h-screen bg-background flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -178,7 +178,7 @@ export default function Install() {
                 <Crown className="w-10 h-10 text-primary-foreground" />
               </div>
             </div>
-            <CardTitle className="text-2xl gradient-text">APEX Numbers</CardTitle>
+            <h1 className="text-2xl font-bold gradient-text">APEX Numbers</h1>
             <CardDescription>
               Enter your email to access your portal
             </CardDescription>
@@ -270,6 +270,6 @@ export default function Install() {
           Works offline • Fast loading • One-tap access
         </p>
       </motion.div>
-    </div>
+    </main>
   );
 }

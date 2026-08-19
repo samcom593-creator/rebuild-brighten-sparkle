@@ -599,22 +599,22 @@ export default function IntegrationsSettings() {
             </div>
           </div>
           <div className="flex gap-2 mt-2">
-            <a
-              href="https://supabase.com/dashboard/account/tokens"
-              target="_blank" rel="noopener noreferrer"
-            >
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+            <Button asChild variant="outline" size="sm" className="h-7 text-xs gap-1">
+              <a
+                href="https://supabase.com/dashboard/account/tokens"
+                target="_blank" rel="noopener noreferrer"
+              >
                 Get Access Token <ExternalLink className="h-2.5 w-2.5" />
-              </Button>
-            </a>
-            <a
-              href="https://github.com/samcom593-creator/rebuild-brighten-sparkle/settings/secrets/actions"
-              target="_blank" rel="noopener noreferrer"
-            >
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+              </a>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="h-7 text-xs gap-1">
+              <a
+                href="https://github.com/samcom593-creator/rebuild-brighten-sparkle/settings/secrets/actions"
+                target="_blank" rel="noopener noreferrer"
+              >
                 Add GitHub Secrets <ExternalLink className="h-2.5 w-2.5" />
-              </Button>
-            </a>
+              </a>
+            </Button>
           </div>
         </CardContent>
       </Card>

@@ -413,24 +413,19 @@ export default function AssistantInterviewForm() {
           </Button>
 
           {lastCalendarUrl && (
-            <a
-              href={lastCalendarUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full"
-            >
-              <Button
-                type="button"
-                size="lg"
-                variant="secondary"
-                className="w-full h-14 text-base"
+            <Button asChild size="lg" variant="secondary" className="w-full h-14 text-base">
+              <a
+                href={lastCalendarUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full"
               >
                 <span className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" /> Add to Google Calendar
                   <ExternalLink className="h-4 w-4 opacity-70" />
                 </span>
-              </Button>
-            </a>
+              </a>
+            </Button>
           )}
         </form>
 

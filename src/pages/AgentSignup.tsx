@@ -169,19 +169,19 @@ export default function AgentSignup() {
   // Loading state
   if (isValidatingRef) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <main className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-muted-foreground">Validating invite link...</p>
         </div>
-      </div>
+      </main>
     );
   }
 
   // Invalid ref state
   if (!isValidRef) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <main className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />
         
         <motion.div
@@ -203,20 +203,20 @@ export default function AgentSignup() {
               This invite link is invalid or has been deactivated.
               Please contact your manager for a new invite link.
             </p>
-            <Link to="/login">
-              <GradientButton className="w-full">
+            <GradientButton asChild className="w-full">
+              <Link to="/login">
                 Go to Login
-              </GradientButton>
-            </Link>
+              </Link>
+            </GradientButton>
           </GlassCard>
         </motion.div>
-      </div>
+      </main>
     );
   }
 
   // Valid ref - show signup form
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <main className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />
       
       <motion.div
@@ -328,6 +328,6 @@ export default function AgentSignup() {
           </p>
         </GlassCard>
       </motion.div>
-    </div>
+    </main>
   );
 }

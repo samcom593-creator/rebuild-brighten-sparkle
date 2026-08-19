@@ -184,12 +184,12 @@ export default function TrainingHubCourse() {
                 Retry
               </Button>
             )}
-            <Link to="/dashboard/training-hub?tab=courses">
-              <Button variant="outline" className="gap-2">
+            <Button asChild variant="outline" className="gap-2">
+              <Link to="/dashboard/training-hub?tab=courses">
                 <ArrowLeft className="h-4 w-4" />
                 Back to Training Hub
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </GlassCard>
       </div>

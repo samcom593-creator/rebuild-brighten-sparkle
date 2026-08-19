@@ -102,7 +102,7 @@ export default function LinksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <main className="min-h-screen bg-background relative overflow-hidden">
       {/* Background glow */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px]" />
@@ -147,6 +147,16 @@ export default function LinksPage() {
                 transition={{ delay: 0.4 + i * 0.1 }}
                 className={`flex items-center gap-4 w-full p-4 rounded-md  ${card.gradient} border ${card.border} transition-all duration-300  ${card.glow} group cursor-pointer`}
                 onClick={card.action ? () => handleOfferClick(card) : undefined}
+                onKeyDown={card.action ? (event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleOfferClick(card);
+                  }
+                } : undefined}
+                role={card.action ? "button" : undefined}
+                tabIndex={card.action ? 0 : undefined}
+                aria-expanded={card.action ? showEliteForm : undefined}
+                aria-controls={card.action ? "elite-circle-form" : undefined}
               >
                 <div className={`w-10 h-10 rounded-lg ${card.iconBg} flex items-center justify-center flex-shrink-0`}>
                   <card.icon className={`h-5 w-5 ${card.iconColor}`} />
@@ -169,7 +179,7 @@ export default function LinksPage() {
         {/* Elite Circle Signup Form */}
         <AnimatePresence>
           {showEliteForm && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="w-full overflow-hidden">
+            <motion.div id="elite-circle-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="w-full overflow-hidden">
               <GlassCard className="mt-2 p-6">
                 {submitted ? (
                   <div className="text-center py-4">
@@ -181,7 +191,14 @@ export default function LinksPage() {
                   <>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-bold gradient-text">Elite Circle Waitlist</h3>
-                      <button onClick={() => setShowEliteForm(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+                      <button
+                        type="button"
+                        aria-label="Close Elite Circle waitlist form"
+                        onClick={() => setShowEliteForm(false)}
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
                     <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-amber-500/20 mb-5">
                       <p className="text-sm text-muted-foreground leading-relaxed">
@@ -233,6 +250,6 @@ export default function LinksPage() {
           </p>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

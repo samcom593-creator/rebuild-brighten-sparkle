@@ -108,15 +108,11 @@ export function Navbar() {
               )}
             </div>
 
-            <Link to="/login">
-              <button className="px-4 py-2 text-sm font-bold font-display text-[#f1f5f9] hover:text-[#e8bb2b] transition-colors">
-                Login
-              </button>
+            <Link to="/login" className="inline-flex min-h-11 items-center px-4 py-2 text-sm font-bold font-display text-[#f1f5f9] hover:text-[#e8bb2b] transition-colors">
+              Login
             </Link>
-            <Link to={applyHref}>
-              <button className="px-6 py-2.5 text-sm font-bold font-display bg-[#e8bb2b] text-[#030712] rounded-lg hover:bg-[#1cb88f] hover:shadow-lg transition-all duration-200">
-                Apply Now
-              </button>
+            <Link to={applyHref} className="inline-flex min-h-11 items-center px-6 py-2.5 text-sm font-bold font-display bg-[#e8bb2b] text-[#030712] rounded-lg hover:bg-[#1cb88f] hover:shadow-lg transition-all duration-200">
+              Apply Now
             </Link>
           </div>
 
@@ -163,15 +159,11 @@ export function Navbar() {
             ))}
 
             <div className="flex flex-col gap-2 pt-4 border-t border-[#1e293b]">
-              <Link to="/login" onClick={() => setIsOpen(false)}>
-                <button className="w-full py-3 text-sm font-bold font-display border-2 border-[#1e293b] text-[#f1f5f9] rounded-lg hover:border-[#e8bb2b] transition-colors">
-                  Login
-                </button>
+              <Link to="/login" onClick={() => setIsOpen(false)} className="inline-flex min-h-11 w-full items-center justify-center py-3 text-sm font-bold font-display border-2 border-[#1e293b] text-[#f1f5f9] rounded-lg hover:border-[#e8bb2b] transition-colors">
+                Login
               </Link>
-              <Link to={applyHref} onClick={() => setIsOpen(false)}>
-                <button className="w-full py-3 text-sm font-bold font-display bg-[#e8bb2b] text-[#030712] rounded-lg hover:bg-[#1cb88f] transition-colors shadow-md">
-                  Apply Now
-                </button>
+              <Link to={applyHref} onClick={() => setIsOpen(false)} className="inline-flex min-h-11 w-full items-center justify-center py-3 text-sm font-bold font-display bg-[#e8bb2b] text-[#030712] rounded-lg hover:bg-[#1cb88f] transition-colors shadow-md">
+                Apply Now
               </Link>
             </div>
           </div>

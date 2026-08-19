@@ -29,7 +29,7 @@ const TESTIMONIALS = [
 
 export function Testimonials() {
   return (
-    <section className="relative py-24 md:py-32 bg-[#0a0f1a] overflow-hidden">
+    <section id="receipts" className="relative py-24 md:py-32 bg-[#0a0f1a] overflow-hidden">
       {/* dark aurora wash — matches the rest of the landing's dark surface */}
       <div aria-hidden className="absolute inset-0 pointer-events-none"
         style={{ background: "radial-gradient(ellipse 80% 50% at 50% 50%, hsl(45 80% 50% / 0.08) 0%, transparent 60%)" }} />

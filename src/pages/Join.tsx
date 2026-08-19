@@ -80,7 +80,7 @@ export default function Join() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center bg-white dark:bg-slate-900 p-4">
+    <main className="min-h-screen grid place-items-center bg-white dark:bg-slate-900 p-4">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -131,10 +131,10 @@ export default function Join() {
           </form>
 
           <div className="text-center text-xs text-muted-foreground">
-            Already have an account? <Link to="/login" className="text-primary underline">Sign in</Link>
+            Already have an account? <Link to="/login" className="inline-flex min-h-6 items-center text-primary underline">Sign in</Link>
           </div>
         </GlassCard>
       </motion.div>
-    </div>
+    </main>
   );
 }

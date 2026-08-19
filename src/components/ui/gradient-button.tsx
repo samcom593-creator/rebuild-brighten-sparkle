@@ -1,7 +1,9 @@
 import { cn } from "@/lib/utils";
+import { Slot } from "@radix-ui/react-slot";
 import { ButtonHTMLAttributes, forwardRef } from "react";
 
 interface GradientButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
   variant?: "primary" | "secondary" | "outline" | "ghost";
   size?: "sm" | "md" | "lg" | "xl";
   glow?: boolean;
@@ -9,7 +11,7 @@ interface GradientButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const GradientButton = forwardRef<HTMLButtonElement, GradientButtonProps>(
-  ({ className, variant = "primary", size = "md", glow = true, loading = false, children, disabled, ...props }, ref) => {
+  ({ asChild = false, className, variant = "primary", size = "md", glow = true, loading = false, children, disabled, ...props }, ref) => {
     const variants = {
       primary: "bg-apex-gradient text-primary-foreground hover:opacity-90",
       secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
@@ -24,20 +26,37 @@ export const GradientButton = forwardRef<HTMLButtonElement, GradientButtonProps>
       xl: "px-10 py-5 text-xl",
     };
 
+    const isDisabled = disabled || loading;
+    const buttonClassName = cn(
+      "inline-flex items-center justify-center gap-2 rounded-lg font-semibold",
+      "transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50",
+      "disabled:opacity-50 disabled:cursor-not-allowed",
+      !isDisabled && "hover:scale-[1.02] active:scale-[0.98]",
+      variants[variant],
+      sizes[size],
+      glow && variant === "primary" && !isDisabled && "shadow-apex-glow hover:shadow-apex-glow-strong",
+      className
+    );
+
+    if (asChild) {
+      return (
+        <Slot
+          ref={ref}
+          className={buttonClassName}
+          aria-disabled={isDisabled || undefined}
+          data-loading={loading || undefined}
+          {...props}
+        >
+          {children}
+        </Slot>
+      );
+    }
+
     return (
       <button
         ref={ref}
-        className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-lg font-semibold",
-          "transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50",
-          "disabled:opacity-50 disabled:cursor-not-allowed",
-          !disabled && !loading && "hover:scale-[1.02] active:scale-[0.98]",
-          variants[variant],
-          sizes[size],
-          glow && variant === "primary" && !disabled && "shadow-apex-glow hover:shadow-apex-glow-strong",
-          className
-        )}
-        disabled={disabled || loading}
+        className={buttonClassName}
+        disabled={isDisabled}
         {...props}
       >
         {loading ? (

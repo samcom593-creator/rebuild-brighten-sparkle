@@ -149,19 +149,19 @@ export default function Signup() {
   // Loading state
   if (isValidatingToken) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <main className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-muted-foreground">Validating invite link...</p>
         </div>
-      </div>
+      </main>
     );
   }
 
   // Invalid token state
   if (!isValidToken) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <main className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />
         
         <motion.div
@@ -183,20 +183,20 @@ export default function Signup() {
               This invite link is invalid, expired, or has already been used.
               Please contact your administrator for a new invite.
             </p>
-            <Link to="/login">
-              <GradientButton className="w-full">
+            <GradientButton asChild className="w-full">
+              <Link to="/login">
                 Go to Login
-              </GradientButton>
-            </Link>
+              </Link>
+            </GradientButton>
           </GlassCard>
         </motion.div>
-      </div>
+      </main>
     );
   }
 
   // Valid token - show signup form
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <main className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />
       
       <motion.div
@@ -306,6 +306,6 @@ export default function Signup() {
           </p>
         </GlassCard>
       </motion.div>
-    </div>
+    </main>
   );
 }

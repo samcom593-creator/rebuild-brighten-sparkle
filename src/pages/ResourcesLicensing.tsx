@@ -393,17 +393,16 @@ export default function ResourcesLicensing() {
                   <span>·</span>
                   <span>{course.duration}</span>
                 </div>
-                <a
-                  href={course.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-auto"
-                >
-                  <GradientButton variant="outline" className="w-full text-sm">
+                <GradientButton asChild variant="outline" className="mt-auto w-full text-sm">
+                  <a
+                    href={course.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <GraduationCap className="h-4 w-4 mr-2" />
                     Start Course
-                  </GradientButton>
-                </a>
+                  </a>
+                </GradientButton>
               </div>
             ))}
           </div>
@@ -585,12 +584,12 @@ export default function ResourcesLicensing() {
 
         {/* Single-purpose footer — back to the licensing flow. */}
         <div className="mt-8">
-          <Link to="/get-licensed">
-            <GradientButton variant="outline" className="w-full">
+          <GradientButton asChild variant="outline" className="w-full">
+            <Link to="/get-licensed">
               <GraduationCap className="h-4 w-4 mr-2" />
               Back to Get Licensed
-            </GradientButton>
-          </Link>
+            </Link>
+          </GradientButton>
         </div>
       </motion.div>
     </div>

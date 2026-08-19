@@ -304,7 +304,7 @@ export default function AgentNumbersLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 overflow-hidden">
+    <main className="min-h-screen bg-background flex items-center justify-center p-4 overflow-hidden">
       {/* Static background gradients — no infinite animations */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.15)_0%,transparent_50%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(var(--chart-2)/0.1)_0%,transparent_50%)]" />
@@ -719,6 +719,6 @@ export default function AgentNumbersLogin() {
           APEX Financial • Daily Production Tracker
         </motion.p>
       </motion.div>
-    </div>
+    </main>
   );
 }

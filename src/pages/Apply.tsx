@@ -793,7 +793,7 @@ export default function Apply() {
       <header className="border-b border-border bg-white dark:bg-slate-900">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
-            <Link to="/" className="flex items-center gap-2">
+            <Link to="/" className="flex min-h-11 items-center gap-2">
               <Crown className="h-7 w-7 text-primary" />
               <span className="text-lg font-bold">APEX Financial</span>
             </Link>
@@ -803,8 +803,9 @@ export default function Apply() {
               <span className="text-muted-foreground">·</span>
               <span className="text-foreground/80">{liveCarriers} carriers · {liveActiveAgents} active</span>
             </div>
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+            <Link to="/" className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
+              <span className="sr-only sm:hidden">Back to Home</span>
               <span className="hidden sm:inline">Back to Home</span>
             </Link>
           </div>
@@ -812,6 +813,7 @@ export default function Apply() {
       </header>
 
       <main className="container mx-auto max-w-full px-4 py-12">
+        <h1 className="sr-only">Agent application form</h1>
         <div className="w-full max-w-3xl mx-auto">
           {/* Founder credit — Brand Bible: "the face IS the brand". Trust signal
               on the conversion page, just under the page header. */}

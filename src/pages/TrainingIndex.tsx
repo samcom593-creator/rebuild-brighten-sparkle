@@ -244,12 +244,12 @@ export default function TrainingIndex() {
                 Start with the licensing track. We cover course costs and walk
                 you through every step.
               </p>
-              <Link to="/get-licensed">
-                <GradientButton>
+              <GradientButton asChild>
+                <Link to="/get-licensed">
                   <GraduationCap className="h-4 w-4 mr-2" />
                   Get Licensed
-                </GradientButton>
-              </Link>
+                </Link>
+              </GradientButton>
             </div>
           </div>
         </GlassCard>

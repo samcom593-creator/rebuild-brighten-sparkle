@@ -242,7 +242,7 @@ export default function GetLicensed() {
   const firstName = progress?.first_name?.trim();
 
   return (
-    <div className="min-h-screen bg-background py-6 sm:py-10 px-3 sm:px-4">
+    <main className="min-h-screen bg-background py-6 sm:py-10 px-3 sm:px-4">
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,hsl(168_84%_42%/0.08)_0%,transparent_55%)]" />
 
       <motion.div
@@ -297,9 +297,9 @@ export default function GetLicensed() {
                 <PlayCircle className="h-5 w-5 text-primary" />
               </span>
             </div>
-            <h3 className="font-bold text-base mb-1.5">
+            <h2 className="font-bold text-base mb-1.5">
               Watch the Overview Video
-            </h3>
+            </h2>
             <p className="text-sm text-muted-foreground mb-4">
               3-minute welcome from Sam James — how APEX works and what to
               expect.
@@ -329,34 +329,31 @@ export default function GetLicensed() {
                 <FileText className="h-5 w-5 text-primary" />
               </span>
             </div>
-            <h3 className="font-bold text-base mb-1.5">
+            <h2 className="font-bold text-base mb-1.5">
               Review Licensing Guide
-            </h3>
+            </h2>
             <p className="text-sm text-muted-foreground mb-4">
               Every step laid out in one document. Application through license
               issued.
             </p>
 
             <div className="flex flex-col gap-2 mb-4">
-              <a
-                href={LICENSING_DOCUMENT_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <GradientButton
-                  variant="outline"
-                  className="w-full h-11 text-sm"
+              <GradientButton asChild variant="outline" className="w-full h-11 text-sm">
+                <a
+                  href={LICENSING_DOCUMENT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   View Licensing Document
                   <ArrowUpRight className="h-3.5 w-3.5 ml-auto opacity-70" />
-                </GradientButton>
-              </a>
+                </a>
+              </GradientButton>
               <a
                 href={LICENSING_DOCUMENT_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="inline-flex min-h-6 items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Download className="h-3 w-3" />
                 Or download a copy
@@ -430,22 +427,22 @@ export default function GetLicensed() {
                 <GraduationCap className="h-5 w-5 text-primary" />
               </span>
             </div>
-            <h3 className="font-bold text-base mb-1.5">
+            <h2 className="font-bold text-base mb-1.5">
               Complete Pre-Licensing Course
-            </h3>
+            </h2>
             <p className="text-sm text-muted-foreground mb-4">
               The state requires a pre-licensing course before you can take the
               exam. APEX covers this cost — no upfront payment from you.
             </p>
 
             <div className="mt-auto space-y-3">
-              <a href={courseUrl} target="_blank" rel="noopener noreferrer">
-                <GradientButton className="w-full h-12 text-sm">
+              <GradientButton asChild className="w-full h-12 text-sm">
+                <a href={courseUrl} target="_blank" rel="noopener noreferrer">
                   <Sparkles className="h-4 w-4 mr-2" />
                   Start Your Course
                   <ArrowRight className="h-4 w-4 ml-auto" />
-                </GradientButton>
-              </a>
+                </a>
+              </GradientButton>
               <div className="rounded-md border border-border/40 bg-muted/20 p-3">
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
                   Included
@@ -574,16 +571,13 @@ export default function GetLicensed() {
             </li>
           </ol>
 
-          <a href={onboardingCallUrl} target="_blank" rel="noopener noreferrer">
-            <GradientButton
-              className="w-full h-12 sm:h-14 text-sm sm:text-base"
-              size="lg"
-            >
+          <GradientButton asChild className="w-full h-12 sm:h-14 text-sm sm:text-base" size="lg">
+            <a href={onboardingCallUrl} target="_blank" rel="noopener noreferrer">
               <Calendar className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
               Book Your Onboarding Call
               <ArrowRight className="h-4 w-4 ml-auto" />
-            </GradientButton>
-          </a>
+            </a>
+          </GradientButton>
         </GlassCard>
 
         {/* Full training resources — kept from prior page so existing deep
@@ -619,6 +613,6 @@ export default function GetLicensed() {
           Hold the Standard. Average is the disease.
         </p>
       </motion.div>
-    </div>
+    </main>
   );
 }

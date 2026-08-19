@@ -325,14 +325,14 @@ export function ManagerInviteLinks() {
                     <Copy className="h-4 w-4" />
                   )}
                 </Button>
-                <a
-                  href={`${baseUrl}/apply?ref=${link.invite_code}`}
-                  target="_blank" rel="noopener noreferrer"
-                >
-                  <Button variant="ghost" size="sm">
+                <Button asChild variant="ghost" size="sm" aria-label="Open application link">
+                  <a
+                    href={`${baseUrl}/apply?ref=${link.invite_code}`}
+                    target="_blank" rel="noopener noreferrer"
+                  >
                     <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </a>
+                  </a>
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"

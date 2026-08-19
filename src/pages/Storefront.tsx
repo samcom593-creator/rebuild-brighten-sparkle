@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { CheckCircle2, ArrowRight, Crown, Phone, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 /**
  * /storefront — Stripe Payment Link redirect target.
@@ -63,7 +63,7 @@ export default function Storefront() {
               <div className="mx-auto h-16 w-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-3">
                 <CheckCircle2 className="h-9 w-9 text-emerald-400" />
               </div>
-              <CardTitle className="text-3xl font-extrabold text-white">Payment received 🎉</CardTitle>
+              <h1 className="text-3xl font-extrabold text-white">Payment received 🎉</h1>
             </CardHeader>
             <CardContent className="space-y-5 text-center text-slate-600 dark:text-slate-300">
               <p>
@@ -98,7 +98,7 @@ export default function Storefront() {
               {SKUS.map((s) => (
                 <Card key={s.name} className="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:border-emerald-500/50 transition-colors">
                   <CardHeader>
-                    <CardTitle className="text-xl text-white">{s.name}</CardTitle>
+                    <h2 className="text-xl font-bold text-white">{s.name}</h2>
                     <div className="text-2xl font-extrabold text-emerald-400 pt-1">{s.price}</div>
                   </CardHeader>
                   <CardContent>

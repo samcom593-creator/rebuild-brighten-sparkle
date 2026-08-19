@@ -614,7 +614,7 @@ export function GlobalSidebar({
                         variant="outline"
                         size="sm"
                         className={cn(
-                          "gap-2 border-teal-400/25 bg-teal-400/10 text-teal-300 hover:bg-teal-400/15",
+                          "gap-2 border-primary/25 bg-primary/10 text-primary hover:bg-primary/15",
                           isCollapsed ? "w-full justify-center px-0" : "w-full justify-start",
                         )}
                         style={{ touchAction: "manipulation" }}

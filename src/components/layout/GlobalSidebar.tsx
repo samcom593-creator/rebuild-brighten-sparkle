@@ -527,7 +527,7 @@ export function GlobalSidebar({
               // only applies when the sidebar is expanded.
               const groupCollapsed = collapsible && !isCollapsed && collapsedGroups[section.label] === true;
               return (
-                <div key={section.label}>
+                <div key={section.label || `nav-section-${sIdx}`}>
                   {!isCollapsed && (
                     // MP-254 · section header: 10px uppercase tracking-[0.15em] muted
                     collapsible ? (

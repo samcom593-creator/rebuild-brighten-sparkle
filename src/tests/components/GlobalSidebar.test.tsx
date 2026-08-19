@@ -113,7 +113,7 @@ describe("GlobalSidebar · role-aware Interviews navigation", () => {
 });
 
 describe("GlobalSidebar · restored-item active-state behavior", () => {
-  const ACTIVE_CLASS = "border-teal-400";
+  const ACTIVE_CLASS = "border-primary";
 
   it("marks Interviews active on /dashboard/interviews and not Command Center", () => {
     setRoles({ isAdmin: true });

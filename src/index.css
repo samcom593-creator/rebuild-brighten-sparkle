@@ -165,25 +165,29 @@
   }
 
   .dark {
+    /* 2026-08-18 APEX shell reskin: warm 40-45deg blacks + gold-tinted
+     * hairlines swapped for the cool-neutral palette measured in the approved
+     * apex-shell template (ground #0A0B0D / surface #141619 / hairline #23262C).
+     * Gold primary is untouched - the template was derived FROM it. */
     /* Bumped 2026-05-17: was too close to card bg, surfaces blended into each
      * other. Body slightly darker, card noticeably lighter for clear depth. */
-    --background: 0 0% 4%;
-    --foreground: 210 20% 97%;
+    --background: 220 13% 4.5%;
+    --foreground: 220 16% 96%;
 
-    --card: 40 8% 8%;
-    --card-foreground: 210 18% 96%;
+    --card: 216 11% 9%;
+    --card-foreground: 220 16% 96%;
 
-    --popover: 40 8% 10%;
+    --popover: 214 12% 11%;
     --popover-foreground: 210 18% 96%;
 
     --primary: 45 85% 52%;
     --primary-foreground: 40 30% 8%;
 
-    --secondary: 40 6% 12%;
+    --secondary: 214 12% 11%;
     --secondary-foreground: 210 20% 96%;
 
-    --muted: 40 6% 13%;
-    --muted-foreground: 220 10% 64%;
+    --muted: 214 12% 12%;
+    --muted-foreground: 216 9% 60%;
 
     --accent: 45 85% 52%;
     --accent-foreground: 40 30% 8%;
@@ -191,19 +195,19 @@
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 45 18% 17%;
-    --input: 40 6% 14%;
+    --border: 220 11% 15.5%;
+    --input: 220 11% 17%;
     --ring: 45 85% 52%;
 
     /* Warm black + gold — kills the last cool blue-gray/teal remnants so the
      * left rail matches the gold brand instead of fighting it. */
-    --sidebar-background: 40 12% 4%;
+    --sidebar-background: 225 14% 5.5%;
     --sidebar-foreground: 42 14% 88%;
     --sidebar-primary: 45 85% 52%;
     --sidebar-primary-foreground: 40 30% 8%;
-    --sidebar-accent: 42 10% 11%;
+    --sidebar-accent: 216 11% 9%;
     --sidebar-accent-foreground: 45 40% 94%;
-    --sidebar-border: 45 16% 13%;
+    --sidebar-border: 220 11% 15.5%;
     --sidebar-ring: 45 85% 52%;
 
     /* Glass morphism - dark mode (warm-tinted) */

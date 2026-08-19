@@ -248,7 +248,8 @@ export function GlobalSidebar({
 
   const NavItemComponent = ({ item, isActive }: { item: NavItem; isActive: boolean }) => {
     // MP-254 (2026-07-08): visuals aligned to apexTokens.
-    //   - active  = teal-500/12 bg + border-l-2 teal-400 + text teal-200
+    //   - active  = gold primary/12 bg + border-l-2 gold + gold text (2026-08-18
+    //     shell reskin: teal was a pre-rebrand remnant fighting the gold brand)
     //   - special = gold border-l-2 (Add Agent, Command Center)
     //   - default = muted secondary text, hover white/[0.04]
     const linkContent = (
@@ -259,7 +260,7 @@ export function GlobalSidebar({
           "flex items-center gap-3 px-3 py-2 transition-colors duration-150 min-h-[40px] rounded-md",
           "touch-action-manipulation select-none group/nav",
           isActive
-            ? "text-teal-200 bg-teal-500/[0.12] border-l-2 border-teal-400"
+            ? "text-primary bg-primary/[0.12] border-l-2 border-primary"
             : item.special
               ? "text-amber-400 border-l-2 border-amber-400 hover:bg-white/[0.04]"
               : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]",
@@ -271,7 +272,7 @@ export function GlobalSidebar({
           className={cn(
             "h-4 w-4 flex-shrink-0",
             item.special && !isActive && "text-amber-400",
-            isActive && "text-teal-300",
+            isActive && "text-primary",
           )}
         />
         {!isCollapsed && (

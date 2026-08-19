@@ -136,6 +136,33 @@ export default function MyDeals() {
 
   const teamView = isAdmin || isManager;
 
+  // Agency production dollars, straight from the book-truth view (Phoenix tz,
+  // posted-date, dead excluded — the documented source of truth). The header's
+  // deal COUNT is every row; these are the ALP totals. Rolling 30d is the
+  // number Sam reads production by (~$305k) — calendar MTD understates it
+  // mid-month. Admin/manager only; the view is agency-wide, not agent-scoped.
+  const { data: book } = useQuery({
+    queryKey: ["book-truth-production"],
+    enabled: teamView,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_agentlink_book_truth")
+        .select("premium_30d, deals_30d, premium_prior_30d, premium_this_month, deals_this_month, total_annual_premium, total_deals")
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        premium_30d: number; deals_30d: number; premium_prior_30d: number;
+        premium_this_month: number; deals_this_month: number;
+        total_annual_premium: number; total_deals: number;
+      } | null;
+    },
+  });
+
+  const prod30dDelta = book && book.premium_prior_30d > 0
+    ? ((book.premium_30d - book.premium_prior_30d) / book.premium_prior_30d) * 100
+    : null;
+
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter max-w-5xl">
       <PageHeader
@@ -150,6 +177,36 @@ export default function MyDeals() {
         }
         actions={<SubmitDealDialog />}
       />
+
+      {teamView && book && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="rounded-md border border-border p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Last 30 days</p>
+            <p className="text-2xl font-bold tabular-nums mt-0.5">{fmtMoney(book.premium_30d)}</p>
+            <p className="text-xs text-muted-foreground">
+              {book.deals_30d} deals
+              {prod30dDelta !== null && (
+                <span className={prod30dDelta >= 0 ? "text-success" : "text-destructive"}> · {prod30dDelta >= 0 ? "+" : ""}{prod30dDelta.toFixed(1)}% vs prior 30d</span>
+              )}
+            </p>
+          </div>
+          <div className="rounded-md border border-border p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">This month</p>
+            <p className="text-2xl font-bold tabular-nums mt-0.5">{fmtMoney(book.premium_this_month)}</p>
+            <p className="text-xs text-muted-foreground">{book.deals_this_month} deals · calendar MTD</p>
+          </div>
+          <div className="rounded-md border border-border p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Total book</p>
+            <p className="text-2xl font-bold tabular-nums mt-0.5">{fmtMoney(book.total_annual_premium)}</p>
+            <p className="text-xs text-muted-foreground">{book.total_deals.toLocaleString()} deals all-time</p>
+          </div>
+          <div className="rounded-md border border-border p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Avg per deal</p>
+            <p className="text-2xl font-bold tabular-nums mt-0.5">{fmtMoney(book.deals_30d > 0 ? Math.round(book.premium_30d / book.deals_30d) : 0)}</p>
+            <p className="text-xs text-muted-foreground">last 30 days</p>
+          </div>
+        </div>
+      )}
 
       <Card className="border-primary/30 bg-primary/5">
         <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

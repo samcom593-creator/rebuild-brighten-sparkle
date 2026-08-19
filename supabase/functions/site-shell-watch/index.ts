@@ -274,27 +274,56 @@ Deno.serve(async (req) => {
     if (!episodeOpen) { episodeOpen = true; episodePaged = false; }
     // GATE 2: DE-STORM.
     if (!episodePaged) {
-      try {
-        const res = await fetch(NTFY, {
-          method: "POST",
-          headers: {
-            // ASCII ONLY - see MP-274 in the header.
-            Title: "APEX site DOWN (off-laptop watcher)",
-            Priority: "5",
-            Tags: "rotating_light",
-          },
-          body:
-            `apex-financial.org shell/asset floor FAILED from Supabase pg_cron (off-laptop).\n\n${p.reason}\n\n` +
-            `This watcher checks the shell + asset graph ONLY. The data layer and application write path are checked by the laptop probe and are NOT covered by this page.`,
-        });
-        paged = res.ok;
-        if (!res.ok) pageError = `ntfy HTTP ${res.status}`;
-      } catch (e) {
-        pageError = String(e);
+      // MP-306: RETRY LADDER. On the first genuine production outage
+      // (2026-08-19 13:30 + 13:40Z) BOTH autonomous fires were refused by ntfy
+      // with HTTP 429 and the page did not leave the building. The
+      // retry-on-next-tick design was honest but cost 10 minutes per refusal,
+      // and the site was dark for 20 of them with this watcher mute. Same fix
+      // as the 2026-07-19 bot_sql hardening that killed this class for 22
+      // inline curls: retry in-process with backoff before giving up.
+      //
+      // This REDUCES the mute window. It does not close it, and must never be
+      // described as if it did -- a bucket that is empty stays empty for
+      // seconds, and ntfy.sh's per-visitor limit is shared with every other
+      // tenant on Supabase's egress, so a refusal can outlast the ladder. The
+      // next-tick retry is still the backstop; page_error is still the receipt.
+      for (let attempt = 1; attempt <= 3 && !paged; attempt++) {
+        try {
+          const res = await fetch(NTFY, {
+            method: "POST",
+            signal: AbortSignal.timeout(10000),
+            headers: {
+              // ASCII ONLY - see MP-274 in the header.
+              Title: "APEX site DOWN (off-laptop watcher)",
+              Priority: "5",
+              Tags: "rotating_light",
+            },
+            body:
+              `apex-financial.org shell/asset floor FAILED from Supabase pg_cron (off-laptop).\n\n${p.reason}\n\n` +
+              `This watcher checks the shell + asset graph ONLY. The data layer and application write path are checked by the laptop probe and are NOT covered by this page.`,
+          });
+          paged = res.ok;
+          if (!res.ok) {
+            // Record the BODY, not just the status. ntfy answers a refusal with
+            // a JSON `code` naming WHICH limit was hit; "ntfy HTTP 429" alone
+            // sends the next reader to tune a cadence when the real cause may
+            // be a daily quota that no cadence change can fix. A verdict that
+            // is right for a reason it misstates is the MP-304 lesson.
+            const detail = await res.text().catch(() => "");
+            pageError = `ntfy HTTP ${res.status} (attempt ${attempt}/3)` +
+              (detail ? ` ${detail.slice(0, 200)}` : "");
+          }
+        } catch (e) {
+          pageError = `${String(e).slice(0, 200)} (attempt ${attempt}/3)`;
+        }
+        // Backoff only BETWEEN attempts, never after the last one.
+        if (!paged && attempt < 3) {
+          await new Promise((r) => setTimeout(r, attempt * 2500));
+        }
       }
       // A failed push is a FAILURE, not a page. episode_paged stays false so the
       // next tick retries instead of booking an alert nobody received.
-      if (paged) episodePaged = true;
+      if (paged) { episodePaged = true; pageError = null; }
     }
   } else if (effective === "NOTE") {
     episodeOpen = false; episodePaged = false;

@@ -66,6 +66,21 @@ function fmtMoney(n: number | null | undefined): string {
 // silently truncated to a fixed number the way the old .limit(100) did.
 const PAGE = 60;
 
+// Agent Cloud's POLICY STATUS 10-tile grid, sourced from the real book
+// (v_book_status_tiles over agentlink_book) with semantic tints.
+const POLICY_STATUS: { key: string; label: string; cls: string }[] = [
+  { key: "active", label: "Active", cls: "border-success/30 bg-success/10 text-success" },
+  { key: "issued_not_paid", label: "Issued, Not Paid", cls: "border-success/30 bg-success/10 text-success" },
+  { key: "in_review", label: "In Review", cls: "border-info/30 bg-info/10 text-info" },
+  { key: "lapse_pending", label: "Lapse Pending", cls: "border-warning/30 bg-warning/10 text-warning" },
+  { key: "lapsed", label: "Lapsed", cls: "border-destructive/30 bg-destructive/10 text-destructive" },
+  { key: "cancelled", label: "Cancelled", cls: "border-destructive/30 bg-destructive/10 text-destructive" },
+  { key: "withdrawn", label: "Withdrawn", cls: "border-border bg-muted/40 text-muted-foreground" },
+  { key: "not_taken", label: "Not Taken", cls: "border-warning/30 bg-warning/10 text-warning" },
+  { key: "postponed", label: "Postponed", cls: "border-warning/30 bg-warning/10 text-warning" },
+  { key: "carrier_na", label: "Carrier N/A", cls: "border-border bg-muted/40 text-muted-foreground" },
+];
+
 export default function MyDeals() {
   const { user, isAdmin, isManager } = useAuth();
   const downline = useMyDownline();
@@ -163,6 +178,19 @@ export default function MyDeals() {
     ? ((book.premium_30d - book.premium_prior_30d) / book.premium_prior_30d) * 100
     : null;
 
+  // Policy-status tiles from the real book (Active / In Review / Lapsed / …).
+  const { data: statusTiles = [] } = useQuery({
+    queryKey: ["book-status-tiles"],
+    enabled: teamView,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("v_book_status_tiles").select("bucket, n, alp");
+      if (error) throw error;
+      return (data ?? []) as Array<{ bucket: string; n: number; alp: number }>;
+    },
+  });
+  const statusByBucket = Object.fromEntries(statusTiles.map((t) => [t.bucket, t]));
+
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter max-w-5xl">
       <PageHeader
@@ -204,6 +232,20 @@ export default function MyDeals() {
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Avg per deal</p>
             <p className="text-2xl font-bold tabular-nums mt-0.5">{fmtMoney(book.deals_30d > 0 ? Math.round(book.premium_30d / book.deals_30d) : 0)}</p>
             <p className="text-xs text-muted-foreground">last 30 days</p>
+          </div>
+        </div>
+      )}
+
+      {teamView && statusTiles.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Policy Status</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {POLICY_STATUS.map((s) => (
+              <div key={s.key} className={`rounded-md border p-3 ${s.cls}`}>
+                <p className="text-2xl font-bold tabular-nums">{(statusByBucket[s.key]?.n ?? 0).toLocaleString()}</p>
+                <p className="text-xs font-medium opacity-90">{s.label}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}

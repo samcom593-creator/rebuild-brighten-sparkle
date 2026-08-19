@@ -193,33 +193,43 @@ export function GlobalSidebar({
   }, []);
 
   const navSections = useMemo<NavSection[]>(() => {
-    const items: NavItem[] = [
-      { icon: LayoutDashboard, label: "Command Center", href: "/dashboard", special: true },
+    // AC-P3 (2026-08-19, MP-301 section 6): the flat 11-item list becomes the
+    // Agent-Cloud grouped sections observed in the benchmark video — quiet
+    // labels over small role-gated clusters. Standalone entries (Command
+    // Center, Admin) carry no label, exactly like AC's Home/Reports. Same
+    // hrefs, same role gates, zero new routes — check:sidebar-routes agrees.
+    const canRecruit = isAdmin || isManager || isVaManager || isVa;
+    const sections: NavSection[] = [
+      { label: "", items: [
+        { icon: LayoutDashboard, label: "Command Center", href: "/dashboard", special: true },
+      ]},
+      { label: "Recruiting", items: [
+        ...(canRecruit ? [
+          { icon: Briefcase, label: "Recruiting", href: "/dashboard/recruiting", special: true },
+          { icon: CalendarDays, label: "Interviews", href: "/dashboard/interviews" },
+        ] : []),
+        { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center" },
+      ]},
+      { label: "Onboarding", items: [
+        { icon: Award, label: "Contracting", href: "/dashboard/contracting" },
+      ]},
+      { label: "Sales", items: [
+        { icon: BarChart3, label: "Production", href: "/dashboard/production" },
+        { icon: TrendingUp, label: "Analytics", href: "/dashboard/analytics" },
+      ]},
+      ...(canRecruit ? [{ label: "Team", items: [
+        { icon: Users, label: "Team", href: "/dashboard/team" },
+      ]}] : []),
+      { label: "Growth", items: [
+        { icon: Megaphone, label: "Community", href: "/dashboard/community" },
+        { icon: Library, label: "Resources", href: "/dashboard/resources" },
+      ]},
+      ...(isAdmin ? [{ label: "", items: [
+        { icon: Settings, label: "Admin", href: "/dashboard/admin" },
+      ]}] : []),
     ];
-
-    if (isAdmin || isManager || isVaManager || isVa) {
-      items.push({ icon: Briefcase, label: "Recruiting", href: "/dashboard/recruiting", special: true });
-      items.push({ icon: CalendarDays, label: "Interviews", href: "/dashboard/interviews" });
-    }
-    items.push({ icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center" });
-    if (isAdmin || isManager || isVaManager || isVa) {
-      items.push({ icon: Users, label: "Team", href: "/dashboard/team" });
-    }
-    items.push(
-      { icon: Award, label: "Contracting", href: "/dashboard/contracting" },
-      { icon: BarChart3, label: "Production", href: "/dashboard/production" },
-      { icon: TrendingUp, label: "Analytics", href: "/dashboard/analytics" },
-      { icon: Megaphone, label: "Community", href: "/dashboard/community" },
-      { icon: Library, label: "Resources", href: "/dashboard/resources" },
-    );
-    if (isAdmin) items.push({ icon: Settings, label: "Admin", href: "/dashboard/admin" });
-
-    // No slice cap: a cap of 10 silently dropped the Admin entry for admins
-    // the moment Interviews became the 11th item (2026-08-13). Every item
-    // pushed above is role-gated already; truncation is not a role gate.
-    // 2026-08-18 artifact pass: the WORKSPACES section label was navigation noise
-    // the approved shell does not have. Empty label renders no header row.
-    return [{ label: "", items }];
+    // Never render a header over an empty cluster.
+    return sections.filter((g) => g.items.length > 0);
   }, [isAdmin, isManager, isVaManager, isVa]);
 
   const handleLogout = useCallback(async () => {

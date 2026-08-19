@@ -1099,6 +1099,32 @@ function AgencyCommandView() {
     ? ((periodSummary.totalAp - priorPeriodDeals.data) / priorPeriodDeals.data) * 100
     : null;
 
+  // ── AC-P3 truth-flicker guard (MP-301 section 13) ──────────────────────────
+  // 2026-08-18, live: the agentlink book rebuilds for ~2-5 min; a page load in
+  // that window read 0 rows and rendered "$0 · 0 deals · -100.0% vs prior" as
+  // truth on the owner's P&L. Rule: never render a mid-rebuild empty book as a
+  // believable zero. Keep the last non-empty reading per period in
+  // localStorage; when the CURRENT read is empty but the last known good had
+  // deals, show the last-known-good stamped "Refreshing book…" and suppress
+  // the delta. A genuinely-zero month never trips this: its last known good is
+  // also zero-deal, so nothing is masked.
+  const lkgKey = `apex-lkg-ap:${period}`;
+  const lkgRead = (() => {
+    try { return JSON.parse(localStorage.getItem(lkgKey) || "null") as { ap: number; deals: number; ts: number } | null; }
+    catch { /* empty-catch-allow:lkg-storage-optional — blocked storage just disables the guard */ return null; }
+  })();
+  useEffect(() => {
+    if (periodSummary.dealCount > 0) {
+      try { localStorage.setItem(lkgKey, JSON.stringify({ ap: periodSummary.totalAp, deals: periodSummary.dealCount, ts: Date.now() })); }
+      catch { /* empty-catch-allow:lkg-storage-optional — persistence is best-effort */ }
+    }
+  }, [lkgKey, periodSummary.totalAp, periodSummary.dealCount]);
+  const bookMidRebuild = !periodDeals.isPending
+    && periodSummary.dealCount === 0
+    && (lkgRead?.deals ?? 0) > 0;
+  const apDisplay = bookMidRebuild ? (lkgRead?.ap ?? 0) : periodSummary.totalAp;
+  const apDealsDisplay = bookMidRebuild ? (lkgRead?.deals ?? 0) : periodSummary.dealCount;
+
   // ── Recent hires (last 14d) — surfaces just-hired agents who have
   // zero production yet and would otherwise be invisible in the agency
   // view. v_recent_hires filters out deactivated/inactive/ghost rows
@@ -1816,10 +1842,12 @@ function AgencyCommandView() {
             href: string; delta?: number | null;
           }> = [
             {
-              icon: DollarSign, label: "Annual Premium", value: fmtUsd(periodSummary.totalAp, true),
-              sub: `${periodBounds.label} · ${fmtNum(periodSummary.dealCount)} deals`,
+              icon: DollarSign, label: "Annual Premium", value: fmtUsd(apDisplay, true),
+              sub: bookMidRebuild
+                ? "Refreshing book… showing last good read"
+                : `${periodBounds.label} · ${fmtNum(apDealsDisplay)} deals`,
               tone: "text-primary border-border bg-card",
-              href: "/dashboard/legacy", delta: periodTrendPct,
+              href: "/dashboard/legacy", delta: bookMidRebuild ? null : periodTrendPct,
             },
             {
               icon: Users, label: "Active Agents", value: fmtNum(activeAgentsCount),

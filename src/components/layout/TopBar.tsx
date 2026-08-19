@@ -149,7 +149,24 @@ export function TopBar() {
         borderColor: "rgba(255,255,255,0.06)",
       }}
     >
-      {/* Breadcrumb */}
+      {/* AC-P3: the benchmark's topbar greets on Home and breadcrumbs on inner
+          pages. /dashboard gets "Good evening, Sam · Tuesday, August 19". */}
+      {location.pathname === "/dashboard" ? (
+        <div className="flex items-baseline gap-2 min-w-0">
+          <span className="text-sm font-semibold truncate">
+            {(() => {
+              const h = new Date().getHours();
+              const part = h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+              const raw = (user?.user_metadata?.full_name || user?.user_metadata?.name || "") as string;
+              const first = raw.trim().split(/\s+/)[0] || "there";
+              return `Good ${part}, ${first}`;
+            })()}
+          </span>
+          <span className="text-sm text-muted-foreground truncate">
+            {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+          </span>
+        </div>
+      ) : (
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 min-w-0">
         <Link
           to="/dashboard"
@@ -179,6 +196,7 @@ export function TopBar() {
           );
         })}
       </nav>
+      )}
 
       {/* Right cluster */}
       <div className="flex items-center gap-2 shrink-0">

@@ -1854,16 +1854,15 @@ button[class*="border-emerald"]:hover {
 }
 
 .dark .apex-app-shell {
-  background:
-    linear-gradient(180deg, hsl(40 14% 3%) 0%, hsl(40 12% 5%) 50%, hsl(42 12% 7%) 100%);
+  /* 2026-08-18 shell reskin: was a warm 40deg-hue gradient fighting the cool
+   * token ground. The approved template reads on ONE flat surface. */
+  background: hsl(var(--background));
 }
 
 .apex-main-canvas {
-  background-image:
-    linear-gradient(hsl(var(--foreground) / 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--foreground) / 0.035) 1px, transparent 1px);
-  background-position: top left;
-  background-size: 44px 44px;
+  /* 2026-08-18 shell reskin: the 44px grid behind every dashboard is gone —
+   * it was the loudest old-skin signal on screen. Clean ground per template. */
+  background-image: none;
 }
 
 .apex-content-frame {
@@ -1908,11 +1907,8 @@ button[class*="border-emerald"]:hover {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background-image:
-    linear-gradient(90deg, transparent 0, hsl(var(--foreground) / 0.05) 1px, transparent 1px),
-    linear-gradient(180deg, transparent 0, hsl(var(--foreground) / 0.04) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: linear-gradient(90deg, black 0%, black 65%, transparent 100%);
+  /* 2026-08-18 shell reskin: header grid overlay removed with the canvas grid. */
+  background-image: none;
 }
 
 .apex-header-scan {

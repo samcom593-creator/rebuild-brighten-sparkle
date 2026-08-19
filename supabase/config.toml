@@ -736,3 +736,6 @@ verify_jwt = true
 # submit_contracting_intake(), which is service-role only.
 [functions.submit-contracting-intake]
 verify_jwt = false
+
+[functions.site-shell-watch]
+verify_jwt = false

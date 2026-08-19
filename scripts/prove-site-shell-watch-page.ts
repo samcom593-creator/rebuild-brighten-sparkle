@@ -23,7 +23,7 @@ function slices(src: string) {
 
 {
   const { helpers, ladder } = slices(src0);
-  for (const tok of ["async function pushNtfy", "async function pushDiscord", "fetch(NTFY", "wait=true", "j?.id"]) {
+  for (const tok of ["async function pushNtfy", "async function pushDiscord", "fetch(NTFY", "wait=true", "JSON.parse(raw)"]) {
     if (!helpers.includes(tok)) throw new Error(`helper slice missing ${tok}`);
   }
   for (const tok of ["pushNtfy(body)", "pushDiscord(body)", "attempt <= 3", "attempt <= 2", "if (!paged) {", "pageError = errs.length"]) {

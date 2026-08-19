@@ -292,8 +292,13 @@ async function pushNtfy(body: string): Promise<ChannelResult> {
     const detail = await res.text().catch(() => "");
     return { receipt: null, error: `ntfy HTTP ${res.status}${detail ? " " + detail.slice(0, 200) : ""}` };
   }
-  const id = await res.json().then((j) => j?.id ?? null).catch(() => null);
-  return { receipt: `ntfy:${id ?? "no-id"}`, error: null };
+  // Not `.catch(() => null)`: swallowing the parse would hand back a receipt
+  // with no id in it, which is the bare boolean this wave exists to stop
+  // dressing up as proof. If the id cannot be read, the receipt says so and
+  // carries the body that was returned instead.
+  let raw = "", id: string | null = null;
+  try { raw = await res.text(); id = JSON.parse(raw)?.id ?? null; } catch { id = null; }
+  return { receipt: `ntfy:${id ?? "unparsed<" + raw.slice(0, 60) + ">"}`, error: null };
 }
 
 async function pushDiscord(body: string): Promise<ChannelResult> {
@@ -301,7 +306,8 @@ async function pushDiscord(body: string): Promise<ChannelResult> {
   if (!url) {
     const r = await sql("system_settings?select=value&key=eq.discord_webhook_url", { method: "GET" });
     if (r.ok) {
-      const rows = await r.json().catch(() => null);
+      let rows: { value?: string | { url?: string } }[] | null = null;
+      try { rows = await r.json(); } catch { rows = null; }
       const v = rows?.[0]?.value;
       url = typeof v === "string" ? v : (v?.url ?? "");
     }
@@ -329,8 +335,9 @@ async function pushDiscord(body: string): Promise<ChannelResult> {
     const detail = await res.text().catch(() => "");
     return { receipt: null, error: `discord HTTP ${res.status}${detail ? " " + detail.slice(0, 200) : ""}` };
   }
-  const id = await res.json().then((j) => j?.id ?? null).catch(() => null);
-  return { receipt: `discord:${id ?? "no-id"}`, error: null };
+  let raw = "", id: string | null = null;
+  try { raw = await res.text(); id = JSON.parse(raw)?.id ?? null; } catch { id = null; }
+  return { receipt: `discord:${id ?? "unparsed<" + raw.slice(0, 60) + ">"}`, error: null };
 }
 
 Deno.serve(async (req) => {

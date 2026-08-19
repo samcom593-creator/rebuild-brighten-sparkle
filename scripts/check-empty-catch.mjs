@@ -144,6 +144,51 @@ function stripComments(s) {
     .trim();
 }
 
+// MP-307: the scanner reads RAW SOURCE for `.catch(` and `try {`, so a call
+// site quoted inside a COMMENT counted as a real violation -- this file blocked
+// a commit over the string `.catch(() => null)` appearing in a sentence
+// explaining why that form was NOT used. MP-277 hit the identical bug in the
+// .maybeSingle() ratchet ("the ratchet was counting its own footnotes") and
+// recorded the trap in its fix: a stripper that also blanks STRING bodies turns
+// every call site into "unparseable" and the guard quietly stops guarding.
+//
+// So this masks comment SPANS ONLY, preserving byte offsets (line numbers stay
+// exact) and leaving string contents untouched. It tracks quote state first,
+// because this codebase is full of "https://..." and a naive `//` scan would
+// treat every URL as a comment start and blind the rest of that line -- which
+// LOWERS the count. A guard may only ever be made stricter by accident, never
+// looser, so the failure direction of this helper is the one that matters.
+function commentMask(src) {
+  const mask = new Uint8Array(src.length);
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i], n = src[i + 1];
+    if (c === '"' || c === "'" || c === "`") {
+      const q = c;
+      i++;
+      while (i < src.length) {
+        if (src[i] === "\\") { i += 2; continue; }
+        if (src[i] === q) { i++; break; }
+        i++;
+      }
+      continue;
+    }
+    if (c === "/" && n === "/") {
+      while (i < src.length && src[i] !== "\n") { mask[i] = 1; i++; }
+      continue;
+    }
+    if (c === "/" && n === "*") {
+      const end = src.indexOf("*/", i + 2);
+      const stop = end < 0 ? src.length : end + 2;
+      for (let k = i; k < stop; k++) mask[k] = 1;
+      i = stop;
+      continue;
+    }
+    i++;
+  }
+  return mask;
+}
+
 // Return null if not a suppressible catch body, otherwise return the file
 // contents starting index of the matching closing brace `}` after `openIdx`.
 // `openIdx` points at the `{` after the arrow / catch clause.
@@ -212,9 +257,11 @@ const tryCatchRe = /(?<![A-Za-z0-9_$])catch\s*(?:\(\s*[^)]*\s*\)\s*)?\{/g;
 function scanFile(file, violations) {
   const src = fs.readFileSync(file, "utf8");
   const lines = src.split("\n");
+  const inComment = commentMask(src);
 
   // --- .catch(...) form ---
   for (const m of src.matchAll(dotCatchRe)) {
+    if (inComment[m.index]) continue; // a quoted call site is documentation
     const argStart = m.index + m[0].length;
     // Read the arrow-function argument. Expect `(...) =>` or `ident =>` or bare identifier.
     let i = argStart;
@@ -279,6 +326,7 @@ function scanFile(file, violations) {
 
   // --- try { ... } catch { ... } form ---
   for (const m of src.matchAll(tryCatchRe)) {
+    if (inComment[m.index]) continue; // a quoted call site is documentation
     const openIdx = m.index + m[0].length - 1;
     const close = matchBraceBody(src, openIdx);
     if (close < 0) continue;

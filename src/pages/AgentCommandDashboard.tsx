@@ -1827,8 +1827,6 @@ function AgencyCommandView() {
         </div>
       </div>
 
-      <ManagerPostCounter />
-
       {/* Custom-period date inputs appear only when 'custom' picked, as a
           single skinny strip — not a full card. Saves a zone. */}
       {period === "custom" && (
@@ -1916,6 +1914,12 @@ function AgencyCommandView() {
           });
         })()}
       </div>
+
+      {/* 2026-08-18 template order: the owner's P&L reads FIRST. The Manager
+          Post Board is a daily habit tracker — it lived in slot #1 above Annual
+          Premium and every business number, which is why the page still read as
+          "the same" after two skin passes. Numbers first, habits second. */}
+      <ManagerPostCounter />
 
       {/* MP-255 · §3 TodayPriorityGrid — 6 clickable priority cards. Every
           count is a real query; empty states are honest, never invented. */}

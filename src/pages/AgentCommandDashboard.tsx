@@ -1791,7 +1791,11 @@ function AgencyCommandView() {
               {c?.as_of && <> · As of {format(new Date(c.as_of), "MMM d, h:mm a")}</>}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          {/* lg:mt-9 clears the floating Agent/Manager/Admin view-switcher pill,
+              which overlays the top-right of the content zone. The old framed
+              card absorbed that offset with its own padding; flat header must
+              reserve it explicitly or the period buttons sit underneath it. */}
+          <div className="flex flex-wrap items-center gap-2 lg:mt-9">
             <div className="grid grid-cols-4 gap-0.5 rounded-md border border-border bg-card p-0.5">
               {AGENCY_PERIODS.map((option) => (
                 <Button

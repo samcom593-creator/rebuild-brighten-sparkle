@@ -193,38 +193,29 @@ export function GlobalSidebar({
   }, []);
 
   const navSections = useMemo<NavSection[]>(() => {
-    // AC-P3 (2026-08-19, MP-301 section 6): the flat 11-item list becomes the
-    // Agent-Cloud grouped sections observed in the benchmark video — quiet
-    // labels over small role-gated clusters. Standalone entries (Command
-    // Center, Admin) carry no label, exactly like AC's Home/Reports. Same
+    // 2026-08-19 (Sam, with his live Agent Cloud sidebar screenshot): the real
+    // Agent Cloud nav is a FLAT single list + one quiet "Account" divider — not
+    // the 5 uppercase section headers (RECRUITING/ONBOARDING/SALES/TEAM/GROWTH)
+    // that AC-P3 inferred from the video. Those headers were the clutter Sam
+    // called out. One flat working list in journey order, then Account. Same
     // hrefs, same role gates, zero new routes — check:sidebar-routes agrees.
     const canRecruit = isAdmin || isManager || isVaManager || isVa;
     const sections: NavSection[] = [
       { label: "", items: [
-        { icon: LayoutDashboard, label: "Command Center", href: "/dashboard", special: true },
-      ]},
-      { label: "Recruiting", items: [
+        { icon: LayoutDashboard, label: "Home", href: "/dashboard", special: true },
         ...(canRecruit ? [
-          { icon: Briefcase, label: "Recruiting", href: "/dashboard/recruiting", special: true },
+          { icon: Briefcase, label: "Recruiting", href: "/dashboard/recruiting" },
           { icon: CalendarDays, label: "Interviews", href: "/dashboard/interviews" },
         ] : []),
         { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center" },
-      ]},
-      { label: "Onboarding", items: [
+        ...(canRecruit ? [{ icon: Users, label: "Team", href: "/dashboard/team" }] : []),
         { icon: Award, label: "Contracting", href: "/dashboard/contracting" },
-      ]},
-      { label: "Sales", items: [
         { icon: BarChart3, label: "Production", href: "/dashboard/production" },
-        { icon: TrendingUp, label: "Analytics", href: "/dashboard/analytics" },
-      ]},
-      ...(canRecruit ? [{ label: "Team", items: [
-        { icon: Users, label: "Team", href: "/dashboard/team" },
-      ]}] : []),
-      { label: "Growth", items: [
-        { icon: Megaphone, label: "Community", href: "/dashboard/community" },
+        { icon: TrendingUp, label: "Reports", href: "/dashboard/analytics" },
         { icon: Library, label: "Resources", href: "/dashboard/resources" },
+        { icon: Megaphone, label: "Community", href: "/dashboard/community" },
       ]},
-      ...(isAdmin ? [{ label: "", items: [
+      ...(isAdmin ? [{ label: "Account", items: [
         { icon: Settings, label: "Admin", href: "/dashboard/admin" },
       ]}] : []),
     ];

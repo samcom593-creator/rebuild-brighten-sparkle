@@ -1779,20 +1779,20 @@ function AgencyCommandView() {
       {/* MP-255 · CommandHeader — compact executive header with Day/Week/Month/
           Custom, Team filter, Refresh, and Start Daily Review CTA. Replaces
           the oversized decorative hero band. */}
-      <div className="rounded-lg border border-slate-800 bg-slate-950 p-4 sm:p-5 shadow-sm">
+      {/* 2026-08-18 template pass: the framed hero card (border + teal Crown
+          eyebrow + 3xl title) is now the template's FLAT title row — 22/700
+          title, muted one-line sub, hairline underneath. Controls unchanged. */}
+      <div className="border-b border-border pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.28em] font-bold text-teal-400 flex items-center gap-1.5">
-              <Crown className="h-3 w-3" /> Agency · Owner Mode
-            </p>
-            <h1 className="mt-1 text-2xl sm:text-3xl font-bold text-slate-100 leading-tight">Apex Financial</h1>
-            <p className="mt-1 text-13 text-slate-400 leading-snug">
+            <h1 className="text-[22px] font-bold text-foreground leading-7">Apex Financial</h1>
+            <p className="mt-0.5 text-13 text-muted-foreground leading-snug">
               Live agency-wide pulse on production, recruiting, licensing, and activity.
               {c?.as_of && <> · As of {format(new Date(c.as_of), "MMM d, h:mm a")}</>}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="grid grid-cols-4 gap-0.5 rounded-md border border-slate-700 bg-slate-800/60 p-0.5">
+            <div className="grid grid-cols-4 gap-0.5 rounded-md border border-border bg-card p-0.5">
               {AGENCY_PERIODS.map((option) => (
                 <Button
                   key={option.value}
@@ -1809,7 +1809,7 @@ function AgencyCommandView() {
             <select
               value={teamFilter}
               onChange={(e) => setTeamFilter(e.target.value)}
-              className="h-8 rounded-md border border-slate-700 bg-slate-800/60 text-slate-100 text-11 px-2"
+              className="h-8 rounded-md border border-border bg-card text-foreground text-11 px-2"
               aria-label="Team filter"
             >
               <option value="all">All teams</option>
@@ -1820,7 +1820,7 @@ function AgencyCommandView() {
             <Button variant="outline" size="sm" onClick={refreshAll} className="h-8">
               <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Refresh
             </Button>
-            <Button size="sm" onClick={() => setDailyReviewOpen(true)} className="h-8 bg-teal-400 hover:bg-teal-500 text-slate-950 font-semibold">
+            <Button size="sm" onClick={() => setDailyReviewOpen(true)} className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
               <PlayCircle className="h-3.5 w-3.5 mr-1.5" /> Start Daily Review
             </Button>
           </div>

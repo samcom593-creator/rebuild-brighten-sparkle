@@ -52,7 +52,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { QuickAddAgentDialog } from "@/components/onboarding/QuickAddAgentDialog";
+import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { cn } from "@/lib/utils";
 import {
@@ -580,7 +580,7 @@ export function GlobalSidebar({
             {user && (
               <div className={cn("mb-2 grid gap-1", isCollapsed ? "px-0" : "px-2")} aria-label="Global actions">
                 {(isAdmin || isManager || isVaManager || isVa) && (
-                  <QuickAddAgentDialog
+                  <AddAgentModal
                     trigger={
                       <Button
                         variant="outline"

@@ -61,7 +61,7 @@ export function InsuraCloudOutbox() {
         unmappedCarriers: carriersRes.count ?? 0,
       };
     },
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
   });
 
   const { data: recentErrors = [], refetch: refetchErrors } = useQuery({

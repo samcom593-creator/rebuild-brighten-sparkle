@@ -58,7 +58,7 @@ async function copy(text: string) {
 export default function CommissionRecovery() {
   const { data: agents, isLoading: loadingAgents, refetch: refetchAgents, isRefetching: refetchingAgents } = useQuery({
     queryKey: ["commission_recovery_by_agent"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("v_commission_recovery_by_agent").select("agent_display,agent_id,total_to_recover,emailed,responded,not_yet_emailed")
@@ -70,7 +70,7 @@ export default function CommissionRecovery() {
 
   const { data: policies, isLoading: loadingPolicies, refetch: refetchPolicies } = useQuery({
     queryKey: ["commission_recovery_status"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("v_commission_recovery_status").select("policy_id,agent_id,client_name,carrier_name,policy_number,effective_date,recovery_email_sent_at,recovery_email_count,recovery_response_received_at,recovery_status,face_amount,annual_premium,agent_raw,recovery_state")

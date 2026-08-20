@@ -76,7 +76,7 @@ export function BuilderProgressDashboard() {
       if (error) throw error;
       return (data ?? []) as BuilderRow[];
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const summary = useMemo(() => {

@@ -119,7 +119,7 @@ export default function Leaderboard() {
   // excluded, Phoenix tz month boundaries per Sam's permanent memory rule.
   const heroData = useQuery({
     queryKey: ["leaderboard-hero-agency-production"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data } = await supabase.rpc("leaderboard_book_hero" as any);

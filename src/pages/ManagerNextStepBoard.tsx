@@ -53,7 +53,7 @@ export default function ManagerNextStepBoard() {
       return (data as BoardRow[]) ?? [];
     },
     staleTime: 30_000,
-    refetchInterval: 2 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const totals = useMemo(() => {

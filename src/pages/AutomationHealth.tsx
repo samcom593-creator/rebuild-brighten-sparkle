@@ -83,7 +83,7 @@ export default function AutomationHealth() {
       return (data as any) ?? [];
     },
     enabled: isAdmin,
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
   });
 
   const { data: runs = [] } = useQuery({
@@ -96,7 +96,7 @@ export default function AutomationHealth() {
       return (data as any) ?? [];
     },
     enabled: isAdmin,
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
   });
 
   const allJobs = useMemo(() => {

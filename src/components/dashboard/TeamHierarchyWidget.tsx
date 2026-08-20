@@ -43,7 +43,7 @@ export function TeamHierarchyWidget() {
       if (error) throw error;
       return (data ?? []) as Row[];
     },
-    refetchInterval: 120_000,
+    refetchInterval: 300_000,
     staleTime: 60_000,
   });
 

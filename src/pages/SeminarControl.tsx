@@ -124,7 +124,7 @@ export default function SeminarControl() {
 
   const metricsQuery = useQuery({
     queryKey: ["seminar-metrics"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await (supabase.rpc as any)("kj_seminar_metrics");
       if (error) throw error;
@@ -134,7 +134,7 @@ export default function SeminarControl() {
 
   const rosterQuery = useQuery({
     queryKey: ["seminar-roster"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_kj_seminar_control" as any)

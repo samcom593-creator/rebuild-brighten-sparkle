@@ -192,7 +192,7 @@ export default function UnlicensedAll() {
       return (data as unknown as UnlicensedRow[]) ?? [];
     },
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const { data: xcelRows = [] } = useQuery<XcelProgressRow[]>({
@@ -383,7 +383,7 @@ export default function UnlicensedAll() {
       };
     },
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   // Distinct progress stages present

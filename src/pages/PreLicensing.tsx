@@ -137,7 +137,7 @@ export default function PreLicensing() {
 
   const reportQ = useQuery({
     queryKey: ["xcel-report-latest"],
-    refetchInterval: 120_000,
+    refetchInterval: 300_000,
     staleTime: 90_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -153,7 +153,7 @@ export default function PreLicensing() {
 
   const studentsQ = useQuery({
     queryKey: ["xcel-students-latest"],
-    refetchInterval: 120_000,
+    refetchInterval: 300_000,
     staleTime: 90_000,
     queryFn: async () => {
       const { data, error } = await supabase

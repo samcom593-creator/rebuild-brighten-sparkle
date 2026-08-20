@@ -983,7 +983,7 @@ export default function Dashboard() {
     queryFn: () => loadDashboardSnapshot(effectiveRole, user!.id, scopedAgentIds),
     enabled: Boolean(user?.id) && !shouldRenderDefaultAdminCommand && !isVaOps && !currentAgent.isLoading && !downline.isLoading,
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const runSystemCheck = async () => {

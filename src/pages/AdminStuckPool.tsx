@@ -55,7 +55,7 @@ export default function AdminStuckPool() {
       return (data as StuckRow[]) ?? [];
     },
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const counts = useMemo(() => {

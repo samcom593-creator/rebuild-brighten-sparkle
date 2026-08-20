@@ -206,7 +206,7 @@ export default function DashboardCommandCenter() {
   const { data: agentsData, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["command-center-agents", dateRange],
     staleTime: 120_000,
-    refetchInterval: 120_000,
+    refetchInterval: 300_000,
     gcTime: 600_000,
     queryFn: async () => {
       // Compute week start outside the parallel block so it's stable
@@ -527,7 +527,7 @@ export default function DashboardCommandCenter() {
   const { data: activeProducerIds } = useQuery({
     queryKey: ["live-agent-set-v2", LIVE_AGENT_DEAL_WINDOW_DAYS],
     staleTime: 120_000,
-    refetchInterval: 120_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const dealsRes = await supabase.from("deals")
         .select("agent_id")

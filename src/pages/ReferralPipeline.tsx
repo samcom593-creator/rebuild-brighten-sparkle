@@ -95,7 +95,7 @@ export default function ReferralPipeline() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["referral-pipeline"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     enabled: isAuthorized,
     queryFn: async () => {
       const { data, error } = await supabase

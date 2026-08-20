@@ -46,7 +46,7 @@ export default function SamTodo() {
       if (error) throw new Error(error.message);
       return (data ?? []) as TodoRow[];
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const dismiss = useMutation({

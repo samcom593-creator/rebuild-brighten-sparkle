@@ -46,7 +46,7 @@ export function HookLabModule() {
       return data as HookWithIdea[];
     },
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
   });
 
   const filtered = useMemo(() => {

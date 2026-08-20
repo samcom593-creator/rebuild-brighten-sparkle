@@ -179,7 +179,7 @@ export default function SocialMediaBot() {
       if (error) throw error;
       return data as DashboardRow;
     },
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
     staleTime: 10_000,
   });
 
@@ -1055,7 +1055,7 @@ function SandcastlesAutonomous() {
       if (error) throw error;
       return (data ?? []) as SandcastlesQueueRow[];
     },
-    refetchInterval: 5_000,
+    refetchInterval: 300_000,
     staleTime: 2_000,
   });
   const runAutonomous = async (t: string, h?: string) => {

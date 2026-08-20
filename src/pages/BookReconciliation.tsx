@@ -125,7 +125,7 @@ export default function BookReconciliation() {
 
   const summary = useQuery({
     queryKey: ["book-recon-summary"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase

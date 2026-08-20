@@ -129,7 +129,7 @@ export default function TelegramBot() {
 
   const { data: dash, isLoading: loadingDash } = useQuery<Dashboard | null>({
     queryKey: ["telegram-dashboard"],
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
     staleTime: 25_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("v_telegram_dashboard").select("total_users,dau,wau,lobby,applied_unpaid,applied_paid,call_scheduled,studying,exam_scheduled,licensed_unhired,hired,onboarding,active_agents,stale_7d,open_escalations,upcoming_nudges_24h,inbound_24h,outbound_24h").maybeSingle();
@@ -140,7 +140,7 @@ export default function TelegramBot() {
 
   const { data: funnel } = useQuery<FunnelRow[]>({
     queryKey: ["telegram-funnel"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("v_telegram_funnel").select("stage,count,pct");
@@ -151,7 +151,7 @@ export default function TelegramBot() {
 
   const { data: stuck } = useQuery<StuckUser[]>({
     queryKey: ["telegram-stuck"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("v_telegram_stuck_users").select("chat_id,first_name,username,stage,days_stale,already_escalated").limit(50);
@@ -162,7 +162,7 @@ export default function TelegramBot() {
 
   const { data: escalations } = useQuery<Escalation[]>({
     queryKey: ["telegram-escalations"],
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
     staleTime: 25_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -187,7 +187,7 @@ export default function TelegramBot() {
 
   const { data: groups } = useQuery<Group[]>({
     queryKey: ["telegram-groups"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -201,7 +201,7 @@ export default function TelegramBot() {
 
   const { data: templates } = useQuery<Template[]>({
     queryKey: ["telegram-templates"],
-    refetchInterval: 0,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("telegram_templates")
@@ -215,7 +215,7 @@ export default function TelegramBot() {
   // Pre-Agent HQ — 5 channels (filtered by type) + their last activity
   const { data: hqGroups } = useQuery<Group[]>({
     queryKey: ["telegram-hq-groups"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -231,7 +231,7 @@ export default function TelegramBot() {
   // Pre-Agent HQ — the 20 seeded FAQs
   const { data: hqFaqs } = useQuery<PreAgentHqFaq[]>({
     queryKey: ["telegram-hq-faqs"],
-    refetchInterval: 0,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("telegram_faq")
@@ -246,7 +246,7 @@ export default function TelegramBot() {
   // Proof panel: this is the honest Telegram-side status Sam needs before calling it "done".
   const { data: proof } = useQuery<TelegramProof>({
     queryKey: ["telegram-proof"],
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
     staleTime: 25_000,
     queryFn: async () => {
       const [recent, users, settings] = await Promise.all([
@@ -573,7 +573,7 @@ function BroadcastPanel({ templates }: { templates: Template[] }) {
   // Audience size preview
   const { data: audienceCount } = useQuery<number>({
     queryKey: ["broadcast-audience-count", audience],
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       let q = supabase.from("telegram_users").select("chat_id", { count: "exact", head: true })
         .eq("opt_out_all", false)

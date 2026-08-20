@@ -401,7 +401,7 @@ export default function Apply() {
       return data as unknown as { active_agents: number; carriers_partnered: number };
     },
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
   // wave-88 (2026-06-13): truth-floor sync with LiveStatsCounterStrip (95 → 104).
   // 104 was a stale hardcode that outlived the data — landing_live_stats() returns 41.

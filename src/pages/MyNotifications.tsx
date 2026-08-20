@@ -32,7 +32,7 @@ export default function MyNotifications() {
   const { data, isLoading } = useQuery({
     queryKey: ["my-notifications", user?.id],
     enabled: !!user?.id,
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("notifications")

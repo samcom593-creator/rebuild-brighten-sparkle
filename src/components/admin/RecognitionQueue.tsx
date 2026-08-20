@@ -150,7 +150,7 @@ export function RecognitionQueue() {
       // Sort by amount descending
       return candidates.sort((a, b) => b.amount - a.amount);
     },
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 300_000, // Refresh every minute
   });
 
   // Send plaque mutation

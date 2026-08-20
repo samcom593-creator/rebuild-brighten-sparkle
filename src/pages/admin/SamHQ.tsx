@@ -79,7 +79,7 @@ function TodaySection({ today }: { today: string }) {
       if (error) throw error;
       return data as unknown as TaskRow[];
     },
-    refetchInterval: 60_000, // 60s poll for cross-device sync
+    refetchInterval: 300_000, // 60s poll for cross-device sync
   });
 
   const toggle = useMutation({
@@ -269,7 +269,7 @@ function ThisWeekSection({ today }: { today: string }) {
       if (error) throw error;
       return data as unknown as WeekDay[];
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   // Build 7-day slot grid (today + next 6) even if days have no rows yet
@@ -340,7 +340,7 @@ function ShippedSection() {
       if (error) throw error;
       return data as Array<{ id?: string; display_name?: string; first_name?: string; hired_on?: string; manager_name?: string }>;
     },
-    refetchInterval: 120_000,
+    refetchInterval: 300_000,
   });
 
   return (
@@ -404,7 +404,7 @@ function ContentCommandSection() {
         created_at: string;
       }>;
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   // The 5-row preview above is a window, not the population — deriving the tile stats
@@ -427,7 +427,7 @@ function ContentCommandSection() {
       if (approvedRes.error) throw approvedRes.error;
       return { awaiting: awaitingRes.count ?? 0, approved: approvedRes.count ?? 0 };
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const awaiting = counts?.awaiting ?? 0;
@@ -497,7 +497,7 @@ function NextActionsSection() {
         unclaimedCount: unclaimed.count ?? 0,
       };
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const actions = [
@@ -553,7 +553,7 @@ function LeaksSection() {
         ica_health: ica.data?.[0] ?? null,
       };
     },
-    refetchInterval: 120_000,
+    refetchInterval: 300_000,
   });
 
   const tiles = [
@@ -729,7 +729,7 @@ function TelegramStatusTile() {
       const greenCount = checks.filter(Boolean).length;
       return { greenCount, total: checks.length, botUsername, registeredChats, bound, lastSent };
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   if (!data) return null;

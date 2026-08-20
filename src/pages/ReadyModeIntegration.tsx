@@ -134,7 +134,7 @@ export default function ReadyModeIntegration() {
 
   const calls = useQuery({
     queryKey: ["readymode-today"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_readymode_today" as any).select("id, agent_name, campaign_name, lead_phone, lead_first_name, lead_last_name, disposition, duration_seconds, recording_url, call_started_at, matched_application_id")
@@ -146,7 +146,7 @@ export default function ReadyModeIntegration() {
 
   const agents = useQuery({
     queryKey: ["readymode-agents-today"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_readymode_agent_today" as any).select("agent_id, agent_name, calls_today, connects, voicemails, no_answers, hours_called")
@@ -158,7 +158,7 @@ export default function ReadyModeIntegration() {
 
   const syncLogs = useQuery({
     queryKey: ["readymode-sync-log"],
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("readymode_sync_log" as any).select("id, started_at, finished_at, status, pulled_count, inserted_count, matched_count, error_message")
@@ -171,7 +171,7 @@ export default function ReadyModeIntegration() {
 
   const ingestHealth = useQuery({
     queryKey: ["readymode-ingest-health"],
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_readymode_ingest_health" as any).select("current_mode, webhook_enabled, ingest_24h, ingest_total, last_ingest_at, status")
@@ -183,7 +183,7 @@ export default function ReadyModeIntegration() {
 
   const dormantSeats = useQuery({
     queryKey: ["readymode-dormant-seats"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_dormant_dialer_seats" as any).select("agent_id, agent_name, email, status, is_inactive, is_deactivated, calls_last_30d, last_call_at");
@@ -194,7 +194,7 @@ export default function ReadyModeIntegration() {
 
   const strikeStandings = useQuery({
     queryKey: ["readymode-strike-standings"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_strike_summary" as any)

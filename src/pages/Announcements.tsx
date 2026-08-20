@@ -90,7 +90,7 @@ export default function Announcements() {
       if (error) throw error;
       return (data ?? []) as unknown as Announcement[];
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const feed = useQuery({
@@ -104,7 +104,7 @@ export default function Announcements() {
       if (error) throw error;
       return (data ?? []) as unknown as CultureFeedRow[];
     },
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
   });
 
   const postAnnouncement = useMutation({

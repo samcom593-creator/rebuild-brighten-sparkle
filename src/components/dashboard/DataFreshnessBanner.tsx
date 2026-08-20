@@ -45,7 +45,7 @@ export function DataFreshnessBanner({ className, autoRepair = false }: DataFresh
       };
     },
     staleTime: 60_000,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const stale = isAgentLinkSyncStale(data?.lastSuccessAt ?? null, 15);

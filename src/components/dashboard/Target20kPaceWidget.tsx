@@ -52,7 +52,7 @@ export function Target20kPaceWidget() {
       if (error) throw error;
       return (data ?? []) as Row[];
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 30_000,
   });
 

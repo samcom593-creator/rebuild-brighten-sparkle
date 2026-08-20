@@ -49,7 +49,7 @@ export function ProductionForecast({ agentId }: ProductionForecastProps) {
       };
     },
     staleTime: 120_000,
-    refetchInterval: 120_000,
+    refetchInterval: 300_000,
   });
 
   const trend = useMemo(() => {

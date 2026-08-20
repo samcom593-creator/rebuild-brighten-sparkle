@@ -58,7 +58,7 @@ function QueueCardTile({ card }: { card: QueueCard }) {
     queryKey: ["va-ops-count", card.key],
     queryFn: ({ signal }) => card.count(signal),
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
   const Icon = card.icon;
 

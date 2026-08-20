@@ -38,7 +38,7 @@ export function RecentActivationsPanel() {
       if (error) throw error;
       return (data as unknown as Row[]) ?? [];
     },
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   return (

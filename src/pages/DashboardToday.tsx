@@ -83,7 +83,7 @@ export default function DashboardToday() {
 
   const tasks = useQuery({
     queryKey: ["apex-today-tasks", agent.data?.id], enabled: !!agent.data?.id,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("today_tasks")
         .select("id,title,notes,due_at,completed_at,priority,is_income_producing")
@@ -97,7 +97,7 @@ export default function DashboardToday() {
   });
 
   const calls = useQuery({
-    queryKey: ["apex-today-calls", today], refetchInterval: 60_000,
+    queryKey: ["apex-today-calls", today], refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("v_upcoming_calls")
         .select("id,prospect_name,summary,location,start_at,end_at,call_type,status,outcome")
@@ -108,7 +108,7 @@ export default function DashboardToday() {
   });
 
   const revenue = useQuery({
-    queryKey: ["apex-today-revenue", today], refetchInterval: 5 * 60_000,
+    queryKey: ["apex-today-revenue", today], refetchInterval: 300_000 * 60_000,
     queryFn: async () => {
       // Source from agentlink_book (posted_date) — the SAME truth the leaderboard uses.
       // daily_production was inflated ~2.2x vs the book, so the dashboard revenue
@@ -122,7 +122,7 @@ export default function DashboardToday() {
   });
 
   const content = useQuery({
-    queryKey: ["apex-today-content"], refetchInterval: 60_000,
+    queryKey: ["apex-today-content"], refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("social_bot_drafts")
         .select("id,title,hook,platform,status")
@@ -135,7 +135,7 @@ export default function DashboardToday() {
   });
 
   const blockers = useQuery({
-    queryKey: ["apex-today-blockers"], refetchInterval: 60_000,
+    queryKey: ["apex-today-blockers"], refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("social_bot_blockers")
         .select("id,title,description,severity,dollar_impact")
@@ -146,7 +146,7 @@ export default function DashboardToday() {
   });
 
   const finances = useQuery({
-    queryKey: ["apex-today-finances"], refetchInterval: 5 * 60_000,
+    queryKey: ["apex-today-finances"], refetchInterval: 300_000 * 60_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("v_cfo_snapshot")
         .select("ghost_ap_at_risk,dup_charges_open,ica_paid_stuck,as_of").maybeSingle();

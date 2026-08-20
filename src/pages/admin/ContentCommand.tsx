@@ -179,7 +179,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
       return (data ?? []) as CultureEvent[];
     },
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   if (isLoading) return <Skeleton className="h-16 w-full" />;
@@ -259,7 +259,7 @@ export default function ContentCommand() {
 
   const { data: drafts, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["content_command_drafts", statusFilter],
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       // 2026-07-28: this query used to be `.order(draft_date ASC).limit(200)` against 587
       // rows, which returned the OLDEST 200 — draft_date 2025-12-10 through 2026-06-04 —
@@ -289,7 +289,7 @@ export default function ContentCommand() {
 
   const { data: bridge } = useQuery({
     queryKey: ["content_command_bridge"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("v_smb_cw_bridge").select("*").maybeSingle();
       if (error) return null;
@@ -299,7 +299,7 @@ export default function ContentCommand() {
 
   const { data: runs } = useQuery({
     queryKey: ["content_command_runs"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("social_bot_runs")
@@ -313,7 +313,7 @@ export default function ContentCommand() {
 
   const { data: inbound } = useQuery({
     queryKey: ["content_command_inbound"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("social_bot_inbound")
@@ -398,7 +398,7 @@ export default function ContentCommand() {
   // so every tile stays true regardless of what the list window holds.
   const { data: statusCounts } = useQuery({
     queryKey: ["content_command_status_counts"],
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const count = async (status: string) => {
         const { count: c, error } = await (supabase as any)

@@ -92,7 +92,7 @@ export default function MyApplicants() {
   const { data: rows, isLoading } = useQuery({
     queryKey: ["myApplicants", myAgent?.id],
     enabled: !!myAgent?.id,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("applications")

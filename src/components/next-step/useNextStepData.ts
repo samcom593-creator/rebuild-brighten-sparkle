@@ -83,7 +83,7 @@ export function useNextStepStuck(limit = 8, ownerUserId?: string | null) {
       return (data ?? []) as NextStepStuckRow[];
     },
     staleTime: 60_000,
-    refetchInterval: 2 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 }
 
@@ -100,7 +100,7 @@ export function useNextStepFunnel() {
       return (data ?? []) as NextStepFunnelRow[];
     },
     staleTime: 5 * 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 }
 
@@ -116,7 +116,7 @@ export function useNextStepManagerBoard(managerUserId?: string | null) {
       return (data ?? []) as NextStepManagerRow[];
     },
     staleTime: 60_000,
-    refetchInterval: 2 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 }
 
@@ -157,6 +157,6 @@ export function useMyNextStep(applicationId?: string | null, agentId?: string | 
       return (data as unknown as NextStepCandidateRow) ?? null;
     },
     staleTime: 60_000,
-    refetchInterval: 2 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 }

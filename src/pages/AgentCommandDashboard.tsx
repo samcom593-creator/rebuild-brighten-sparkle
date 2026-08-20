@@ -166,7 +166,7 @@ export default function AgentCommandDashboard() {
   const cc = useQuery({
     queryKey: ["cc-self", agentId],
     enabled: !isAdmin && !!agentId,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -872,7 +872,7 @@ function AgencyCommandView() {
   // ── CEO rollup ────────────────────────────────────────────────────────
   const ceo = useQuery({
     queryKey: ["agency-ceo"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -916,7 +916,7 @@ function AgencyCommandView() {
   // unchanged; only the table + date column move.
   const periodDeals = useQuery({
     queryKey: ["agency-period-deals-truth", periodBounds.startIso, periodBounds.endIso],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const startDate = periodBounds.startIso.slice(0, 10);
@@ -1001,7 +1001,7 @@ function AgencyCommandView() {
   // snapshot rows only include active book records.
   const periodDealsAllStatuses = useQuery({
     queryKey: ["agency-period-deals-all-truth", periodBounds.startIso, periodBounds.endIso],
-    refetchInterval: 120_000,
+    refetchInterval: 300_000,
     staleTime: 115_000,
     queryFn: async () => {
       const startDate = periodBounds.startIso.slice(0, 10);
@@ -1090,7 +1090,7 @@ function AgencyCommandView() {
   // read from agentlink_deals_snapshot via effective_date.
   const priorPeriodDeals = useQuery({
     queryKey: ["agency-prior-period-deals-truth", periodBounds.startIso, periodBounds.endIso],
-    refetchInterval: 120_000,
+    refetchInterval: 300_000,
     staleTime: 115_000,
     queryFn: async () => {
       const start = new Date(periodBounds.startIso);
@@ -1148,7 +1148,7 @@ function AgencyCommandView() {
     // v_recent_hires has 26 real rows. Now: ALWAYS show the most recent 12
     // hires regardless of period — recent hires are recent hires.
     queryKey: ["agency-recent-hires-always"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -1208,7 +1208,7 @@ function AgencyCommandView() {
   // deal inside the last ten days."
   const tight = useQuery({
     queryKey: ["agency-tight-counts", periodBounds.startIso, periodBounds.endIso],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const since10 = new Date(Date.now() - 10 * 86_400_000).toISOString();
@@ -1250,7 +1250,7 @@ function AgencyCommandView() {
   // AgentLink. Rendered as the hero row above the period-aware KPI grid.
   const summary = useQuery({
     queryKey: ["apex-dashboard-summary"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("apex_dashboard_summary" as any);
@@ -1278,7 +1278,7 @@ function AgencyCommandView() {
   // a tab. "Any leaks I need just aren't even there."
   const cfoLive = useQuery({
     queryKey: ["agency-cfo-live"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const { data } = await supabase.from("v_cfo_snapshot" as any).select("*").maybeSingle();
@@ -1305,7 +1305,7 @@ function AgencyCommandView() {
     // 3-lane strip counts are accurate against all 519 active apps + every
     // applicant from the website surfaces in their proper lane.
     queryKey: ["agency-live-applications"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -1336,7 +1336,7 @@ function AgencyCommandView() {
   // 2026-06-14 BIG PROMPT execution · enrich hero with month-level apps + hires + uncontacted depth
   const monthDepth = useQuery({
     queryKey: ["dashboard-month-depth"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const tzNow = new Date();
@@ -1377,7 +1377,7 @@ function AgencyCommandView() {
   // PANEL 1 · CARRIER MIX (this month, top 6) — emerald hero · donut + table
   const carrierMix = useQuery({
     queryKey: ["agency-carrier-mix-mtd"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const tzNow = new Date();
@@ -1429,7 +1429,7 @@ function AgencyCommandView() {
   // PANEL 2 · TOP MOVERS · this week vs last week (WoW production growth)
   const topMovers = useQuery({
     queryKey: ["agency-top-movers-wow"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const now = new Date();
@@ -1479,7 +1479,7 @@ function AgencyCommandView() {
   // PANEL 3 · CONVERSION FUNNEL · last 90 days (created → contacted → course → exam → licensed)
   const funnel = useQuery({
     queryKey: ["agency-conversion-funnel-90d"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const since = new Date(Date.now() - 90 * 86_400_000).toISOString();
@@ -1508,7 +1508,7 @@ function AgencyCommandView() {
   // PANEL 4 · ACTIVITY FEED · last 12 culture_events (live deals as they post)
   const activity = useQuery({
     queryKey: ["agency-activity-feed"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     staleTime: 55_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -1548,7 +1548,7 @@ function AgencyCommandView() {
   // Source attribution is the next-most-valuable hidden dataset per the audit.
   const sourceRoi = useQuery({
     queryKey: ["agency-source-roi-180d"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const since = new Date(Date.now() - 180 * 86_400_000).toISOString();
@@ -1584,7 +1584,7 @@ function AgencyCommandView() {
   // PANEL 6 · MONEY FLOW · commission_ledger this month
   const moneyFlow = useQuery({
     queryKey: ["agency-money-flow-mtd"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const tzNow = new Date();
@@ -1642,7 +1642,7 @@ function AgencyCommandView() {
   // TodayPriorityGrid counts — cheap head:true count queries.
   const priorityCounts = useQuery({
     queryKey: ["mp255-priority-counts"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const [
@@ -1674,7 +1674,7 @@ function AgencyCommandView() {
   // 12-stage pipeline funnel (v_licensing_stage_counts + v_next_step_funnel_health).
   const pipelineStages = useQuery({
     queryKey: ["mp255-pipeline-stages"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const [stagesRes, healthRes] = await Promise.all([
@@ -1694,7 +1694,7 @@ function AgencyCommandView() {
   // Producer risk board — v_producer_trend_alert (WoW ALP direction + reasons).
   const producerRisk = useQuery({
     queryKey: ["mp255-producer-risk"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -1744,7 +1744,7 @@ function AgencyCommandView() {
   // Manager accountability — reads v_manager_hierarchy_mtd (team ALP + count).
   const managerAccountability = useQuery({
     queryKey: ["mp255-manager-accountability"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -3873,7 +3873,7 @@ function PersonalPacePanel() {
   const pace = useQuery({
     queryKey: ["personal-pace", alUid],
     enabled: !!alUid,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     queryFn: async () => {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -3987,7 +3987,7 @@ function PersonalPacePanel() {
 function ProductMixPanel() {
   const mix = useQuery({
     queryKey: ["dashboard-product-mix"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     queryFn: async () => {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -4070,7 +4070,7 @@ function ProductMixPanel() {
 function WeekOverWeekPanel() {
   const wow = useQuery({
     queryKey: ["dashboard-wow"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     queryFn: async () => {
       const today = new Date();
       const start = new Date(today);
@@ -4174,7 +4174,7 @@ function WeekOverWeekPanel() {
 function RecruiterContactSlaPanel() {
   const sla = useQuery({
     queryKey: ["dashboard-contact-sla"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const cutoff48 = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
       const cutoff24 = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
@@ -4329,7 +4329,7 @@ function ExtendedParityPanels() {
 function StateProductionPanel() {
   const stateMix = useQuery({
     queryKey: ["state-production-mix"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     queryFn: async () => {
       // Pull last-30-day deals + their al_user_id
       const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
@@ -4440,7 +4440,7 @@ function StateProductionPanel() {
 function TimeOfDayProductionPanel() {
   const heat = useQuery({
     queryKey: ["time-of-day-production"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     queryFn: async () => {
       const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
       const { data } = await supabase
@@ -4544,7 +4544,7 @@ function TimeOfDayProductionPanel() {
 function CommissionProjectionPanel() {
   const proj = useQuery({
     queryKey: ["commission-projection"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     queryFn: async () => {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -4660,7 +4660,7 @@ function CommissionProjectionPanel() {
 function HirePace12WPanel() {
   const pace = useQuery({
     queryKey: ["hire-pace-12w"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     queryFn: async () => {
       const cutoff = new Date(Date.now() - 84 * 86400000).toISOString();
       const { data } = await supabase
@@ -4768,7 +4768,7 @@ function HirePace12WPanel() {
 function AgedLeadsPanel() {
   const leads = useQuery({
     queryKey: ["aged-leads-licensed-bank"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     queryFn: async () => {
       const cutoff7d = new Date(Date.now() - 7 * 86400000).toISOString();
       const [totalRes, licensedRes, unworkedLicensedRes, recent7Res, dialedRes, dncRes, licensedList, recentList] = await Promise.all([
@@ -4918,7 +4918,7 @@ function AgedLeadRowClickable({ l }: { l: AgedLeadRow }) {
 function LowProducersPanel() {
   const low = useQuery({
     queryKey: ["low-producers-7d"],
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
     queryFn: async () => {
       const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
       const { data: dealRows } = await supabase

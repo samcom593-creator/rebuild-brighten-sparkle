@@ -62,7 +62,7 @@ export function XcelStalledCard() {
       return (data ?? []) as XcelRow[];
     },
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const counts = useMemo(() => {

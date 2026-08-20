@@ -37,7 +37,7 @@ export function InsuraCloudHealthAlert() {
       return data as unknown as AuthHealthRow;
     },
     staleTime: 60_000,
-    refetchInterval: 2 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   if (!data) return null;

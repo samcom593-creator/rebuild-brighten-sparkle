@@ -59,7 +59,7 @@ export function JustHiredPanel() {
       }
       return data as HireRow[];
     },
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const directToSamCount = (hires ?? []).filter(h => h.routed_to === "(direct to Sam)" || h.routed_to === "Samuel James").length;

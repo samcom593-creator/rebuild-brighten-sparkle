@@ -141,7 +141,7 @@ export default function Finances() {
       if (error) throw error;
       return data as unknown as CfoSnapshot;
     },
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   // These three CFO views each return ONE aggregate row whose detail lives in a

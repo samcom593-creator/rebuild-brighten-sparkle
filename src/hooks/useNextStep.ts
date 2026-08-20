@@ -44,6 +44,6 @@ export function useNextStep({ application_id, agent_id }: UseNextStepArgs) {
       return (data as NextStepRow) ?? null;
     },
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 }

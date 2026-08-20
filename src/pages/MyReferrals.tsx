@@ -65,7 +65,7 @@ export default function MyReferrals() {
   const { data, isLoading } = useQuery({
     queryKey: ["my-referrals", myAgentId],
     enabled: !!myAgentId,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_agent_referrals" as any).select("referral_id,referrer_agent_id,referred_name,referred_email,referred_phone,status,created_at,bonus_owed_cents,bonus_paid_cents,lifecycle")
@@ -81,7 +81,7 @@ export default function MyReferrals() {
   const { data: earnings } = useQuery({
     queryKey: ["my-referral-earnings", myAgentId],
     enabled: !!myAgentId,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_referral_earnings_pending" as any).select("agent_id,total_referrals,open_count,won_count,bonus_owed_cents,bonus_paid_cents,bonus_pending_cents")

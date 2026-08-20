@@ -56,7 +56,7 @@ export default function SamInbox() {
 
   const query = useQuery({
     queryKey: ["sam-inbox"],
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_sam_inbox" as any)

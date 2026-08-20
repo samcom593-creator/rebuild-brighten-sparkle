@@ -141,7 +141,7 @@ export default function BusinessAnalytics() {
       if (error) throw error;
       return data as unknown as Summary;
     },
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const carriers = useQuery({
@@ -154,7 +154,7 @@ export default function BusinessAnalytics() {
       if (error) throw error;
       return (data ?? []) as unknown as Carrier[];
     },
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const insights = useQuery({
@@ -167,7 +167,7 @@ export default function BusinessAnalytics() {
       if (error) throw error;
       return data as unknown as Insights;
     },
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
   const ins = insights.data;
 
@@ -180,7 +180,7 @@ export default function BusinessAnalytics() {
       if (error) throw error;
       return (data ?? []) as unknown as Challenge[];
     },
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const trophy = useQuery({
@@ -193,7 +193,7 @@ export default function BusinessAnalytics() {
       if (error) throw error;
       return data as unknown as TrophyCabinet;
     },
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
   const tc = trophy.data;
 
@@ -207,7 +207,7 @@ export default function BusinessAnalytics() {
       if (error) throw error;
       return (data ?? []) as unknown as NeedsAttention[];
     },
-    refetchInterval: 10 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const learnFrom = useQuery({
@@ -219,7 +219,7 @@ export default function BusinessAnalytics() {
       if (error) throw error;
       return (data ?? []) as unknown as LearnFrom[];
     },
-    refetchInterval: 10 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const inactive = useQuery({
@@ -232,7 +232,7 @@ export default function BusinessAnalytics() {
       if (error) throw error;
       return data as unknown as InactiveSummary;
     },
-    refetchInterval: 10 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const s = summary.data;

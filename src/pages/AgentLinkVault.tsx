@@ -133,7 +133,7 @@ function OverviewPanel() {
         last_vault_capture: ((vault.data as AnyRow[] | null) ?? [])[0]?.captured_at,
       };
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   if (isLoading || !data) return <PageLoadingSkeleton />;

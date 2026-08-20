@@ -261,7 +261,7 @@ export default function InterviewRecovery() {
       if (error) throw error;
       return (data ?? []) as PipelineRow[];
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const prospects = useQuery({
@@ -276,7 +276,7 @@ export default function InterviewRecovery() {
       if (error) throw error;
       return (data ?? []) as ProspectRow[];
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const rows = useMemo(() => pipeline.data ?? [], [pipeline.data]);

@@ -62,7 +62,7 @@ function KanbanTab() {
       if (error) throw error;
       return data as unknown as StudentRow[];
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const moveStage = useMutation({
@@ -149,7 +149,7 @@ function StalledTab() {
       if (error) throw error;
       return data as unknown as StalledRow[];
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   if (isLoading) return <Card><CardContent className="p-6"><Skeleton className="h-40 w-full" /></CardContent></Card>;

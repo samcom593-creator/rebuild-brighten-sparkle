@@ -107,6 +107,6 @@ export function useDashboardPayload() {
       return data as unknown as CwDashboardPayload;
     },
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 }

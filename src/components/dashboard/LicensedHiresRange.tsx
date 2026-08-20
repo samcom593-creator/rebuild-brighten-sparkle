@@ -86,7 +86,7 @@ export function LicensedHiresRange() {
       return count ?? 0;
     },
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   return (

@@ -60,7 +60,7 @@ export default function BoardLive() {
   const board = useQuery({
     queryKey: ["board-live", bounds.start, bounds.end],
     // Live-tracker feel: re-pull while the board is on screen.
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data } = await supabase.rpc("leaderboard_board" as any, {
         p_start: bounds.start,

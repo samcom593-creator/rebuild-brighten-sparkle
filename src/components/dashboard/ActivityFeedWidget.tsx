@@ -85,7 +85,7 @@ export function ActivityFeedWidget({
         actor_name: r.actor_user_id ? profileMap.get(r.actor_user_id) ?? null : null,
       }));
     },
-    refetchInterval: 60_000, // backstop poll; realtime push handles most updates
+    refetchInterval: 300_000, // backstop poll; realtime push handles most updates
     staleTime: 30_000,
   });
 

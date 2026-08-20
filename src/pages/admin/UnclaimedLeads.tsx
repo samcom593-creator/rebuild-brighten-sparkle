@@ -60,7 +60,7 @@ export default function UnclaimedLeads() {
       if (error) throw error;
       return data as AppRow[];
     },
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const { data: agents } = useQuery({

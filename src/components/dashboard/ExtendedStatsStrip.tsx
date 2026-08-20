@@ -176,7 +176,7 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
       };
     },
     staleTime: 60_000,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   if (isLoading || !data) return null;

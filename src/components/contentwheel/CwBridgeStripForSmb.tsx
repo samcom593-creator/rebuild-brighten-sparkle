@@ -39,7 +39,7 @@ export function CwBridgeStripForSmb() {
       return (data as unknown as SmbCwBridgeRow) ?? null;
     },
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   if (isLoading || !data) {

@@ -46,7 +46,7 @@ export function ManagerHierarchyMtdPanel() {
       if (error) throw error;
       return data as ManagerRow[];
     },
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const { data: producers, isLoading: prodLoading } = useQuery({
@@ -56,7 +56,7 @@ export function ManagerHierarchyMtdPanel() {
       if (error) throw error;
       return data as ProducerRow[];
     },
-    refetchInterval: 5 * 60_000,
+    refetchInterval: 300_000 * 60_000,
   });
 
   const { totalAgencyAlp, totalAgencyDeals } = useMemo(() => ({

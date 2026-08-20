@@ -79,7 +79,7 @@ export function UnclaimedLeadsCommandCard() {
       return (data ?? []) as UnclaimedRow[];
     },
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const counts = useMemo(() => {

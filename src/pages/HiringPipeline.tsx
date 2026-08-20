@@ -143,7 +143,7 @@ export default function HiringPipeline() {
     },
     enabled: !!user && (isAdmin || isManager),
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
   });
 
   // Group by stage, apply search + filter pills. Within each column,

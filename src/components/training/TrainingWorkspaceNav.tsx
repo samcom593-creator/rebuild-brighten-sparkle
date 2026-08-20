@@ -36,7 +36,7 @@ export function TrainingWorkspaceNav() {
       className="overflow-x-auto border-b border-border"
     >
       <div className="flex min-w-max gap-1">
-        {VIEWS.filter((view) => !view.staffOnly || isStaff).map((view) => {
+        {VIEWS.filter((view) => !("staffOnly" in view) || !view.staffOnly || isStaff).map((view) => {
           const active = "exact" in view && view.exact
             ? pathname === view.href
             : pathname === view.href || pathname.startsWith(`${view.href}/`);

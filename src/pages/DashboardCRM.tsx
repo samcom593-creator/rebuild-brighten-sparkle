@@ -314,7 +314,7 @@ function CompactExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onEditL
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className={cn("text-[10px] font-bold uppercase tracking-wide", agent.agentLicenseStatus === "licensed" ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground")}>
+            <Badge variant="outline" className={cn("text-[10px] font-bold uppercase tracking-wide", agent.agentLicenseStatus === "licensed" ? "border-success/30 bg-success/15 text-success" : "bg-muted text-muted-foreground")}>
               {agent.agentLicenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
             </Badge>
             {agent.agentLicenseStatus !== "licensed" && (
@@ -1043,6 +1043,17 @@ export default function DashboardCRM() {
     return dupeIds;
   }, [activeAgentsRaw, activeAgents]);
 
+  // AC KPI row — at-a-glance snapshot of the deduped roster the header sits on.
+  // Pure presentation aggregate over already-fetched `activeAgents`; adds no
+  // query and reads no value the table below doesn't already show.
+  const teamKpis = useMemo(() => {
+    const roster = activeAgents;
+    const licensed = roster.filter(a => a.agentLicenseStatus === "licensed").length;
+    const producing = roster.filter(a => (a.monthlyALP ?? 0) > 0).length;
+    const active = roster.filter(a => !a.isDeactivated && !a.isInactive && a.onboardingStage !== "inactive").length;
+    return { total: roster.length, active, producing, licensed };
+  }, [activeAgents]);
+
   // MP-261 — unified 11-col table shape. Chips filter rows; columns stay stable.
   // Agent / Mentor / Stage / License / Present / Homework / Week ALP / Month ALP /
   // Last Activity / Next Best Action / Actions.
@@ -1217,7 +1228,7 @@ export default function DashboardCRM() {
             className={cn(
               "text-[10px] font-bold uppercase tracking-wide",
               isLicensed
-                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                ? "border-success/30 bg-success/15 text-success"
                 : "bg-muted text-muted-foreground",
             )}
           >
@@ -1309,6 +1320,7 @@ export default function DashboardCRM() {
         <PageHeader
           accent="cyan"
           eyebrow="Team"
+          eyebrowIcon={<Users className="h-3.5 w-3.5" />}
           title="CRM"
           subtitle="Every agent, status, production, access, and follow-up in one team view."
           actions={
@@ -1333,6 +1345,27 @@ export default function DashboardCRM() {
             </>
           }
         />
+
+        {!loading && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-md border border-border bg-card p-4">
+              <p className="text-2xl font-bold tabular-nums text-foreground">{teamKpis.total.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Team size</p>
+            </div>
+            <div className="rounded-md border border-border bg-card p-4">
+              <p className="text-2xl font-bold tabular-nums text-info">{teamKpis.active.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Active</p>
+            </div>
+            <div className="rounded-md border border-border bg-card p-4">
+              <p className="text-2xl font-bold tabular-nums text-success">{teamKpis.producing.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Producing this month</p>
+            </div>
+            <div className="rounded-md border border-border bg-card p-4">
+              <p className="text-2xl font-bold tabular-nums text-foreground">{teamKpis.licensed.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Licensed</p>
+            </div>
+          </div>
+        )}
 
         {bulkMode && (
           <div className="space-y-2">

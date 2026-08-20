@@ -9,6 +9,8 @@
 //
 // 2026-07-26 — presentation converged onto the APEX visual contract
 // (business-ops/2026-07-24-apex-implementation/APEX-VISUAL-CONTRACT.md).
+// 2026-08-19 — AC pass: PageHeader + KPI stat-tile row + Card sections +
+// Badge priority chips, matching the Agent Cloud composition in APEX black+gold.
 // Queries, mutations, branches, and rendered values are untouched.
 
 import { useState } from "react";
@@ -19,7 +21,7 @@ import { looseSupabase } from "@/lib/looseSupabase";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
-import { GlassCard } from "@/components/ui/glass-card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -129,26 +131,30 @@ export default function Announcements() {
     onError: (error: unknown) => toast.error(error instanceof Error ? error.message : "Failed to post"),
   });
 
-  // Severity text tone only — the priority word itself is the second channel
+  // Presentation-only derivations off the already-fetched query data — no new
+  // reads. These feed the KPI tiles below; the underlying numbers are unchanged.
+  const activeCount = announcements.data?.length ?? 0;
+  const pinnedCount = announcements.data?.filter((a) => a.pinned).length ?? 0;
+  const feedCount = feed.data?.length ?? 0;
+  const feedPremium = feed.data?.reduce((s, ev) => s + Number(ev.annual_premium ?? 0), 0) ?? 0;
+
+  // Priority chip tone. The priority word itself is the second channel
   // (WCAG 1.4.1), so colour is never carrying the meaning on its own.
-  const priorityColor = (p: string | null) => {
-    if (p === "high" || p === "urgent") return "text-rose-600 dark:text-rose-400";
-    if (p === "normal") return "text-amber-600 dark:text-amber-400";
-    return "text-muted-foreground";
+  const priorityBadge = (p: string | null) => {
+    if (p === "high" || p === "urgent") return "bg-destructive/15 text-destructive border-destructive/30";
+    if (p === "normal") return "bg-warning/15 text-warning border-warning/30";
+    return "bg-muted text-muted-foreground border-border";
   };
 
   return (
-    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-6 px-4 pb-24 sm:px-6">
       <PageHeader
-        eyebrow="Updates"
+        eyebrow="Community · Feed"
         eyebrowIcon={<Megaphone className="h-3 w-3" />}
         title="Announcements + News Feed"
         subtitle="Active company announcements + live celebrations stream. Mirrors AgentLink's Announcements + News Feed."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="text-[11px] tabular-nums">
-              {(announcements.data?.length ?? 0)} active · {(feed.data?.length ?? 0)} events
-            </Badge>
             <Button
               variant="outline"
               size="sm"
@@ -182,235 +188,263 @@ export default function Announcements() {
         }
       />
 
+      {/* KPI STAT TILES */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-md border border-border bg-card p-4">
+          <p className="text-2xl font-bold tabular-nums text-info">{activeCount}</p>
+          <p className="text-xs text-muted-foreground">Active announcements</p>
+        </div>
+        <div className="rounded-md border border-border bg-card p-4">
+          <p className="text-2xl font-bold tabular-nums text-warning">{pinnedCount}</p>
+          <p className="text-xs text-muted-foreground">Pinned to top</p>
+        </div>
+        <div className="rounded-md border border-border bg-card p-4">
+          <p className="text-2xl font-bold tabular-nums">{feedCount}</p>
+          <p className="text-xs text-muted-foreground">Feed events</p>
+        </div>
+        <div className="rounded-md border border-border bg-card p-4">
+          <p className="text-2xl font-bold tabular-nums text-success">{fmtUsd(feedPremium)}</p>
+          <p className="text-xs text-muted-foreground">Premium on feed</p>
+        </div>
+      </div>
+
       {/* ADMIN POST FORM */}
       {isAdmin && showForm && (
-        <GlassCard className="p-4">
-          <div className="mb-1 flex items-baseline justify-between gap-2">
-            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-sm">
               <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="truncate">New announcement</span>
-            </h3>
-          </div>
-          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-            Anything published here sits at the top of every agent's feed until it is deactivated.
-          </p>
-
-          <div className="space-y-3">
-            <Input
-              placeholder="Title…"
-              aria-label="Announcement title"
-              className="h-10 sm:h-9"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-            />
-            <Textarea
-              placeholder="Announcement body…"
-              aria-label="Announcement body"
-              value={form.body}
-              onChange={(e) => setForm({ ...form, body: e.target.value })}
-              rows={4}
-            />
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <label className="flex min-h-10 items-center gap-2 text-xs font-medium text-foreground sm:min-h-9">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 shrink-0 accent-primary focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
-                  checked={form.pinned}
-                  onChange={(e) => setForm({ ...form, pinned: e.target.checked })}
-                />
-                Pin to top
-              </label>
-              <select
-                aria-label="Announcement priority"
-                className="h-10 rounded-sm border border-border bg-background px-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
-                value={form.priority}
-                onChange={(e) => setForm({ ...form, priority: e.target.value })}
-              >
-                <option value="low">Low</option>
-                <option value="normal">Normal</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-              <div className="flex items-center gap-2 sm:ml-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-10 flex-1 sm:h-9 sm:flex-none"
-                  onClick={() => setShowForm(false)}
+            </CardTitle>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Anything published here sits at the top of every agent's feed until it is deactivated.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <Input
+                placeholder="Title…"
+                aria-label="Announcement title"
+                className="h-10 sm:h-9"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
+              <Textarea
+                placeholder="Announcement body…"
+                aria-label="Announcement body"
+                value={form.body}
+                onChange={(e) => setForm({ ...form, body: e.target.value })}
+                rows={4}
+              />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <label className="flex min-h-10 items-center gap-2 text-xs font-medium text-foreground sm:min-h-9">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 shrink-0 accent-primary focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                    checked={form.pinned}
+                    onChange={(e) => setForm({ ...form, pinned: e.target.checked })}
+                  />
+                  Pin to top
+                </label>
+                <select
+                  aria-label="Announcement priority"
+                  className="h-10 rounded-sm border border-border bg-background px-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)] sm:h-9"
+                  value={form.priority}
+                  onChange={(e) => setForm({ ...form, priority: e.target.value })}
                 >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-10 flex-1 sm:h-9 sm:flex-none"
-                  disabled={!form.title.trim() || !form.body.trim() || postAnnouncement.isPending}
-                  onClick={() => postAnnouncement.mutate()}
-                >
-                  <Send className="mr-1.5 h-4 w-4" />
-                  Publish
-                </Button>
+                  <option value="low">Low</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+                <div className="flex items-center gap-2 sm:ml-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 flex-1 sm:h-9 sm:flex-none"
+                    onClick={() => setShowForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-10 flex-1 sm:h-9 sm:flex-none"
+                    disabled={!form.title.trim() || !form.body.trim() || postAnnouncement.isPending}
+                    onClick={() => postAnnouncement.mutate()}
+                  >
+                    <Send className="mr-1.5 h-4 w-4" />
+                    Publish
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </GlassCard>
+          </CardContent>
+        </Card>
       )}
 
       {/* ANNOUNCEMENTS */}
-      <GlassCard className="p-4">
-        <div className="mb-1 flex items-baseline justify-between gap-2">
-          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-            <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="truncate">Active announcements</span>
-          </h3>
-          <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
-            {announcements.data?.length ?? 0}
-          </span>
-        </div>
-        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-          Everything the floor is expected to have read — pinned notices sit first, the rest run newest to oldest.
-        </p>
-
-        {announcements.isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <div
-                // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
-                key={i}
-                className="h-[80px] animate-pulse rounded-lg bg-muted/30"
-              />
-            ))}
+      <Card>
+        <CardHeader>
+          <div className="flex items-baseline justify-between gap-2">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-sm">
+              <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Active announcements</span>
+            </CardTitle>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+              {activeCount}
+            </span>
           </div>
-        ) : (announcements.data?.length ?? 0) === 0 ? (
-          <EmptyState
-            icon={<Megaphone className="h-7 w-7" />}
-            variant="default"
-            title="No active announcements"
-            description="Nothing is published for the floor right now. Post one the moment there is something everyone has to know."
-          />
-        ) : (
-          <ul className="space-y-2">
-            {announcements.data!.map((a) => (
-              <li
-                key={a.id}
-                className={cn(
-                  "rounded-lg border border-border/60 bg-card/60 px-3 py-2.5",
-                  a.pinned && "border-amber-500/35",
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    {a.pinned && (
-                      <Pin
-                        aria-label="Pinned"
-                        className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400"
-                      />
-                    )}
-                    <span className="truncate text-sm font-medium text-foreground">
-                      {a.title ?? "Announcement"}
-                    </span>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span
-                      className={cn(
-                        "text-[10px] font-bold uppercase tracking-wide",
-                        priorityColor(a.priority),
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Everything the floor is expected to have read — pinned notices sit first, the rest run newest to oldest.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {announcements.isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div
+                  // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
+                  key={i}
+                  className="h-[80px] animate-pulse rounded-lg bg-muted/30"
+                />
+              ))}
+            </div>
+          ) : activeCount === 0 ? (
+            <EmptyState
+              icon={<Megaphone className="h-7 w-7" />}
+              variant="default"
+              title="No active announcements"
+              description="Nothing is published for the floor right now. Post one the moment there is something everyone has to know."
+            />
+          ) : (
+            <ul className="space-y-2">
+              {announcements.data!.map((a) => (
+                <li
+                  key={a.id}
+                  className={cn(
+                    "rounded-lg border border-border/60 bg-card/60 px-3 py-2.5",
+                    a.pinned && "border-warning/35",
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      {a.pinned && (
+                        <Pin
+                          aria-label="Pinned"
+                          className="h-3.5 w-3.5 shrink-0 text-warning"
+                        />
                       )}
-                    >
-                      {a.priority ?? "normal"}
-                    </span>
-                    <span className="text-[11px] tabular-nums text-muted-foreground">
-                      {relativeTime(a.published_at ?? a.created_at)}
-                    </span>
+                      <span className="truncate text-sm font-medium text-foreground">
+                        {a.title ?? "Announcement"}
+                      </span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-[10px] uppercase tracking-wide",
+                          priorityBadge(a.priority),
+                        )}
+                      >
+                        {a.priority ?? "normal"}
+                      </Badge>
+                      <span className="text-[11px] tabular-nums text-muted-foreground">
+                        {relativeTime(a.published_at ?? a.created_at)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <p className="mt-1.5 whitespace-pre-line break-words text-xs leading-relaxed text-muted-foreground">
-                  {a.body ?? a.content ?? ""}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </GlassCard>
+                  <p className="mt-1.5 whitespace-pre-line break-words text-xs leading-relaxed text-muted-foreground">
+                    {a.body ?? a.content ?? ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       {/* NEWS FEED */}
-      <GlassCard className="p-4">
-        <div className="mb-1 flex items-baseline justify-between gap-2">
-          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-            <TrendingUp className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="truncate">Live news feed</span>
-          </h3>
-          <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
-            {feed.data?.length ?? 0}
-          </span>
-        </div>
-        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-          Every deal posted by the floor, newest first — the premium on the right is what the win was worth.
-        </p>
-
-        {feed.isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
-                key={i}
-                className="h-[60px] animate-pulse rounded-lg bg-muted/30"
-              />
-            ))}
+      <Card>
+        <CardHeader>
+          <div className="flex items-baseline justify-between gap-2">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-sm">
+              <TrendingUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Live news feed</span>
+            </CardTitle>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
+              {feedCount}
+            </span>
           </div>
-        ) : (feed.data?.length ?? 0) === 0 ? (
-          <EmptyState
-            icon={<Trophy className="h-7 w-7" />}
-            variant="default"
-            title="No deals on the feed yet"
-            description="The stream fills the second someone posts a win. Post yours and start it."
-          />
-        ) : (
-          <ul className="space-y-2">
-            {feed.data!.map((ev) => (
-              <li
-                key={ev.id}
-                className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5"
-              >
-                <div className="flex items-start gap-3">
-                  {ev.agent_photo ? (
-                    <img
-                      src={ev.agent_photo}
-                      alt=""
-                      className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-border"
-                    />
-                  ) : (
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">
-                      {(ev.agent_name ?? "?").split(" ").map((s) => s[0]).slice(0, 2).join("")}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-foreground">
-                      {ev.agent_name ?? "Someone"}
-                    </div>
-                    <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                      closed
-                      {ev.product_sold && <> · {ev.product_sold}</>}
-                    </div>
-                    {ev.draft_hook && (
-                      <p className="mt-0.5 truncate text-[11px] italic text-muted-foreground">
-                        "{ev.draft_hook}"
-                      </p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Every deal posted by the floor, newest first — the premium on the right is what the win was worth.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {feed.isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
+                  key={i}
+                  className="h-[60px] animate-pulse rounded-lg bg-muted/30"
+                />
+              ))}
+            </div>
+          ) : feedCount === 0 ? (
+            <EmptyState
+              icon={<Trophy className="h-7 w-7" />}
+              variant="default"
+              title="No deals on the feed yet"
+              description="The stream fills the second someone posts a win. Post yours and start it."
+            />
+          ) : (
+            <ul className="space-y-2">
+              {feed.data!.map((ev) => (
+                <li
+                  key={ev.id}
+                  className="rounded-lg border border-border/60 bg-card/60 px-3 py-2.5"
+                >
+                  <div className="flex items-start gap-3">
+                    {ev.agent_photo ? (
+                      <img
+                        src={ev.agent_photo}
+                        alt=""
+                        className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-border"
+                      />
+                    ) : (
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">
+                        {(ev.agent_name ?? "?").split(" ").map((s) => s[0]).slice(0, 2).join("")}
+                      </div>
                     )}
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <div className="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
-                      {fmtUsd(ev.annual_premium)}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-foreground">
+                        {ev.agent_name ?? "Someone"}
+                      </div>
+                      <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                        closed
+                        {ev.product_sold && <> · {ev.product_sold}</>}
+                      </div>
+                      {ev.draft_hook && (
+                        <p className="mt-0.5 truncate text-[11px] italic text-muted-foreground">
+                          "{ev.draft_hook}"
+                        </p>
+                      )}
                     </div>
-                    <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
-                      {relativeTime(ev.created_at)}
+                    <div className="shrink-0 text-right">
+                      <div className="text-sm font-bold tabular-nums text-success">
+                        {fmtUsd(ev.annual_premium)}
+                      </div>
+                      <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide tabular-nums text-muted-foreground">
+                        {relativeTime(ev.created_at)}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </GlassCard>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

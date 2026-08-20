@@ -21,11 +21,10 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/ui/page-header";
-import { GlassCard } from "@/components/ui/glass-card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -65,12 +64,14 @@ const LIBRARY_FILTERS: { key: string; label: string }[] = [
   { key: "training", label: "Trainings" },
 ];
 
+// Category tone mapped onto the brand's semantic tokens so the chips read on the
+// black+gold palette instead of arbitrary raw Tailwind hues.
 const TYPE_BADGE: Record<string, { label: string; className: string }> = {
-  pdf: { label: "PDF", className: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
-  guide: { label: "Guide", className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
-  video: { label: "Video", className: "bg-rose-500/15 text-rose-400 border-rose-500/30" },
-  training: { label: "Training", className: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
-  course: { label: "Course", className: "bg-purple-500/15 text-purple-400 border-purple-500/30" },
+  pdf: { label: "PDF", className: "bg-info/15 text-info border-info/30" },
+  guide: { label: "Guide", className: "bg-success/15 text-success border-success/30" },
+  video: { label: "Video", className: "bg-destructive/15 text-destructive border-destructive/30" },
+  training: { label: "Training", className: "bg-warning/15 text-warning border-warning/30" },
+  course: { label: "Course", className: "bg-primary/15 text-primary border-primary/30" },
 };
 
 function fmtClock(ms: number): string {
@@ -82,6 +83,24 @@ function fmtClock(ms: number): string {
 function parseHubDate(d: string): number {
   const t = Date.parse(d);
   return Number.isNaN(t) ? 0 : t;
+}
+
+/* Small KPI stat tile — value over label, matching the AC control-room look. */
+function StatTile({
+  value,
+  label,
+  tone,
+}: {
+  value: number | string;
+  label: string;
+  tone?: string;
+}) {
+  return (
+    <div className="rounded-md border border-border bg-card p-4">
+      <p className={cn("text-2xl font-bold tabular-nums", tone)}>{value}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
+    </div>
+  );
 }
 
 export default function TrainingHub() {
@@ -146,6 +165,11 @@ export default function TrainingHub() {
     return byCourse;
   }, [courses, progressRows]);
 
+  const completedCourses = useMemo(
+    () => Object.values(courseCompletion).filter((v) => v === 100).length,
+    [courseCompletion],
+  );
+
   const quickLinks = useMemo(
     () =>
       (data?.quickLinks ?? []).filter(
@@ -155,17 +179,13 @@ export default function TrainingHub() {
   );
 
   return (
-    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-6 px-4 pb-24 sm:px-6">
       <PageHeader
-        eyebrow="Agent Hub"
+        eyebrow="Agent Hub · Resources"
         eyebrowIcon={<Library className="h-3 w-3" />}
         title="Training Hub"
-        subtitle={
-          data
-            ? `${courses.length} courses · ${data.recordings.length} recorded trainings · ${libraryItems.length} resources — live from the APEX content library.`
-            : "Recordings, courses, scripts, and tools — everything an APEX agent needs, in one place."
-        }
-        accent="amber"
+        subtitle="Recordings, courses, scripts, and tools — everything an APEX agent needs, in one place, live from the content library."
+        accent="primary"
         actions={
           (isAdmin || isManager) && (
             <Button asChild variant="outline" size="sm" className="gap-2">
@@ -187,54 +207,69 @@ export default function TrainingHub() {
       )}
 
       {isError && !isLoading && (
-        <GlassCard className="p-8 text-center">
-          <p className="mb-1 text-lg font-bold">Couldn't reach the content library</p>
-          <p className="mb-4 text-sm text-muted-foreground">
-            The live library at apex-resources.vercel.app didn't respond. Retry, or open the
-            legacy hub directly.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button onClick={() => refetch()} disabled={isRefetching} className="gap-2">
-              <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />
-              Retry
-            </Button>
-            <Button asChild variant="outline" className="gap-2">
-              <a href={HUB_ORIGIN} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />
-                Open legacy hub
-              </a>
-            </Button>
-          </div>
-        </GlassCard>
+        <Card>
+          <CardContent className="p-8 pt-8 text-center">
+            <p className="mb-1 text-lg font-bold">Couldn't reach the content library</p>
+            <p className="mb-4 text-sm text-muted-foreground">
+              The live library at apex-resources.vercel.app didn't respond. Retry, or open the
+              legacy hub directly.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button onClick={() => refetch()} disabled={isRefetching} className="gap-2">
+                <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />
+                Retry
+              </Button>
+              <Button asChild variant="outline" className="gap-2">
+                <a href={HUB_ORIGIN} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                  Open legacy hub
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {data && (
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="mb-4 w-full justify-start overflow-x-auto">
-            <TabsTrigger value="courses" className="gap-1.5">
-              <GraduationCap className="h-4 w-4" />
-              Courses
-            </TabsTrigger>
-            <TabsTrigger value="recordings" className="gap-1.5">
-              <Headphones className="h-4 w-4" />
-              Recordings
-            </TabsTrigger>
-            <TabsTrigger value="library" className="gap-1.5">
-              <BookOpen className="h-4 w-4" />
-              Library
-            </TabsTrigger>
-          </TabsList>
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatTile value={courses.length} label="Courses" />
+            <StatTile value={data.recordings.length} label="Recorded trainings" />
+            <StatTile value={libraryItems.length} label="Library resources" />
+            <StatTile
+              value={completedCourses}
+              label="Courses completed"
+              tone={completedCourses > 0 ? "text-success" : undefined}
+            />
+          </div>
 
-          <TabsContent value="courses">
-            <CoursesTab courses={courses} completion={courseCompletion} />
-          </TabsContent>
-          <TabsContent value="recordings">
-            <RecordingsTab data={data} />
-          </TabsContent>
-          <TabsContent value="library">
-            <LibraryTab items={libraryItems} />
-          </TabsContent>
-        </Tabs>
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList className="mb-4 w-full justify-start overflow-x-auto">
+              <TabsTrigger value="courses" className="gap-1.5">
+                <GraduationCap className="h-4 w-4" />
+                Courses
+              </TabsTrigger>
+              <TabsTrigger value="recordings" className="gap-1.5">
+                <Headphones className="h-4 w-4" />
+                Recordings
+              </TabsTrigger>
+              <TabsTrigger value="library" className="gap-1.5">
+                <BookOpen className="h-4 w-4" />
+                Library
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="courses">
+              <CoursesTab courses={courses} completion={courseCompletion} />
+            </TabsContent>
+            <TabsContent value="recordings">
+              <RecordingsTab data={data} />
+            </TabsContent>
+            <TabsContent value="library">
+              <LibraryTab items={libraryItems} />
+            </TabsContent>
+          </Tabs>
+        </>
       )}
 
       {data && quickLinks.length > 0 && (
@@ -253,14 +288,15 @@ export default function TrainingHub() {
                 href={l.href}
                 target="_blank"
                 rel="noopener noreferrer"
+                className="group"
               >
-                <GlassCard hoverEffect className="flex h-full flex-col gap-1 p-4">
+                <Card className="flex h-full cursor-pointer flex-col gap-1 p-4 hover:border-primary/40">
                   <span className="flex items-center justify-between text-sm font-semibold">
                     {l.label}
-                    <ExternalLink className="h-3.5 w-3.5 text-amber-400" />
+                    <ExternalLink className="h-3.5 w-3.5 text-primary" />
                   </span>
                   <span className="text-xs text-muted-foreground">{l.sub}</span>
-                </GlassCard>
+                </Card>
               </a>
             ))}
           </div>
@@ -285,12 +321,14 @@ function CoursesTab({
 }) {
   if (courses.length === 0) {
     return (
-      <GlassCard className="p-8 text-center">
-        <p className="text-lg font-bold">No courses published yet</p>
-        <p className="text-sm text-muted-foreground">
-          Courses added in the content library will appear here.
-        </p>
-      </GlassCard>
+      <Card>
+        <CardContent className="p-8 pt-8 text-center">
+          <p className="text-lg font-bold">Nothing here yet — no courses published</p>
+          <p className="text-sm text-muted-foreground">
+            Courses added in the content library will appear here.
+          </p>
+        </CardContent>
+      </Card>
     );
   }
   const ordered = [...courses].sort(
@@ -303,13 +341,15 @@ function CoursesTab({
         const pct = completion[c.id] ?? 0;
         return (
           <Link key={c.id} to={`/dashboard/training-hub/course/${c.id}`}>
-            <GlassCard hoverEffect className="flex h-full flex-col gap-3 p-5">
+            <Card className="flex h-full cursor-pointer flex-col gap-3 p-5 hover:border-primary/40">
               <div className="flex items-center justify-between gap-2">
                 <Badge variant="outline" className={TYPE_BADGE.course.className}>
                   {c.course!.level}
                 </Badge>
                 {c.isNew && (
-                  <Badge className="bg-amber-500 text-black hover:bg-amber-500">New</Badge>
+                  <Badge className="border-primary bg-primary text-primary-foreground hover:bg-primary">
+                    New
+                  </Badge>
                 )}
               </div>
               <div>
@@ -325,11 +365,22 @@ function CoursesTab({
                   ` · ${counts.quizzes} quiz${counts.quizzes === 1 ? "" : "zes"}`}
                 {c.duration ? ` · ${c.duration}` : ""}
               </div>
-              <div className="flex items-center gap-3 border-t border-border/60 pt-3">
-                <Progress value={pct} className="h-1.5 flex-1" />
+              <div className="flex items-center gap-3 border-t border-border pt-3">
+                <div
+                  className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"
+                  role="progressbar"
+                  aria-valuenow={pct}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
                 <span className="text-xs font-semibold tabular-nums text-muted-foreground">
                   {pct === 100 ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-400">
+                    <span className="inline-flex items-center gap-1 text-success">
                       <CheckCircle2 className="h-3.5 w-3.5" /> Done
                     </span>
                   ) : (
@@ -337,7 +388,7 @@ function CoursesTab({
                   )}
                 </span>
               </div>
-            </GlassCard>
+            </Card>
           </Link>
         );
       })}
@@ -379,7 +430,7 @@ function RecordingsTab({
   const activeEmbed = active?.video ? toHubEmbedUrl(active.video) : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -387,7 +438,7 @@ function RecordingsTab({
           className={cn(
             "rounded-md border px-3 py-2 text-sm font-semibold transition-colors",
             presenterId === "all"
-              ? "border-amber-500/60 bg-amber-500/10 text-amber-400"
+              ? "border-primary/60 bg-primary/10 text-primary"
               : "border-border bg-card text-muted-foreground hover:text-foreground",
           )}
         >
@@ -401,7 +452,7 @@ function RecordingsTab({
             className={cn(
               "flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
               presenterId === p.id
-                ? "border-amber-500/60 bg-amber-500/10"
+                ? "border-primary/60 bg-primary/10"
                 : "border-border bg-card hover:bg-muted/40",
             )}
           >
@@ -409,8 +460,8 @@ function RecordingsTab({
               className={cn(
                 "flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold",
                 presenterId === p.id
-                  ? "border-amber-500 bg-amber-500 text-black"
-                  : "border-amber-500/40 text-amber-400",
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-primary/40 text-primary",
               )}
             >
               {p.initials}
@@ -426,14 +477,16 @@ function RecordingsTab({
       </div>
 
       {list.length === 0 ? (
-        <GlassCard className="p-8 text-center">
-          <p className="text-lg font-bold">No recordings yet</p>
-          <p className="text-sm text-muted-foreground">
-            Recordings for this presenter will appear here once they're added.
-          </p>
-        </GlassCard>
+        <Card>
+          <CardContent className="p-8 pt-8 text-center">
+            <p className="text-lg font-bold">Nothing here yet — no recordings</p>
+            <p className="text-sm text-muted-foreground">
+              Recordings for this presenter will appear here once they're added.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="space-y-2">
+        <Card className="divide-y divide-border">
           {list.map((rec) => {
             const presenter = data.presenters.find((p) => p.id === rec.presenter);
             return (
@@ -441,17 +494,17 @@ function RecordingsTab({
                 key={rec.id}
                 type="button"
                 onClick={() => setActive(rec)}
-                className="flex w-full items-center gap-4 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-amber-500/50 hover:bg-muted/30"
+                className="flex w-full items-center gap-4 p-4 text-left transition-colors first:rounded-t-[10px] last:rounded-b-[10px] hover:bg-muted/30"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-500/40 bg-amber-500/10">
-                  <Play className="h-4 w-4 text-amber-400" />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-primary/10">
+                  <Play className="h-4 w-4 text-primary" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{rec.title}</span>
                   <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                     <Badge
                       variant="outline"
-                      className="border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] uppercase tracking-wide text-amber-400"
+                      className="border-primary/30 bg-primary/10 px-1.5 py-0 text-[10px] uppercase tracking-wide text-primary"
                     >
                       {rec.topic}
                     </Badge>
@@ -470,7 +523,7 @@ function RecordingsTab({
               </button>
             );
           })}
-        </div>
+        </Card>
       )}
 
       <Dialog open={!!active} onOpenChange={(open) => !open && setActive(null)}>
@@ -544,7 +597,7 @@ function TranscriptPanel({ recId }: { recId: string }) {
                 {fmtClock(u.startMs)}
               </span>
               {u.speaker && (
-                <span className="shrink-0 pt-0.5 text-[10px] font-bold uppercase text-amber-400">
+                <span className="shrink-0 pt-0.5 text-[10px] font-bold uppercase text-primary">
                   {u.speaker}
                 </span>
               )}
@@ -602,7 +655,7 @@ function LibraryTab({ items }: { items: HubResource[] }) {
   }, [items, filter, query]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-1.5">
           {LIBRARY_FILTERS.filter((f) => f.key === "all" || filterCounts[f.key] > 0).map(
@@ -614,7 +667,7 @@ function LibraryTab({ items }: { items: HubResource[] }) {
                 className={cn(
                   "rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors",
                   filter === f.key
-                    ? "border-amber-500/60 bg-amber-500/10 text-amber-400"
+                    ? "border-primary/60 bg-primary/10 text-primary"
                     : "border-border bg-card text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -646,32 +699,36 @@ function LibraryTab({ items }: { items: HubResource[] }) {
       </div>
 
       {visible.length === 0 ? (
-        <GlassCard className="p-8 text-center">
-          <p className="text-lg font-bold">No resources found</p>
-          <p className="text-sm text-muted-foreground">Try a different search or filter.</p>
-        </GlassCard>
+        <Card>
+          <CardContent className="p-8 pt-8 text-center">
+            <p className="text-lg font-bold">Nothing here yet — no resources found</p>
+            <p className="text-sm text-muted-foreground">Try a different search or filter.</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {visible.map((r) => {
             const badge = TYPE_BADGE[r.type] ?? TYPE_BADGE.guide;
             const card = (
-              <GlassCard hoverEffect className="flex h-full flex-col gap-3 p-5">
+              <Card className={cn("flex h-full flex-col gap-3 p-5", r.url && "cursor-pointer hover:border-primary/40")}>
                 <div className="flex items-center justify-between gap-2">
                   <Badge variant="outline" className={badge.className}>
                     {badge.label}
                   </Badge>
                   <span className="flex items-center gap-2">
                     {r.isNew && (
-                      <Badge className="bg-amber-500 text-black hover:bg-amber-500">New</Badge>
+                      <Badge className="border-primary bg-primary text-primary-foreground hover:bg-primary">
+                        New
+                      </Badge>
                     )}
                     <span className="text-xs text-muted-foreground">{r.date}</span>
                   </span>
                 </div>
                 <h3 className="text-lg font-bold leading-tight">{r.title}</h3>
                 <p className="line-clamp-3 flex-1 text-sm text-muted-foreground">{r.desc}</p>
-                <div className="flex items-center justify-between border-t border-border/60 pt-3">
+                <div className="flex items-center justify-between border-t border-border pt-3">
                   <span className="text-xs text-muted-foreground">{r.meta}</span>
-                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-400">
+                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
                     {r.type === "pdf" ? (
                       <FileText className="h-4 w-4" />
                     ) : (
@@ -680,7 +737,7 @@ function LibraryTab({ items }: { items: HubResource[] }) {
                     {r.cta ?? "Open"}
                   </span>
                 </div>
-              </GlassCard>
+              </Card>
             );
             return r.url ? (
               <a key={r.id} href={r.url} target="_blank" rel="noopener noreferrer">

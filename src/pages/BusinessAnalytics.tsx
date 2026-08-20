@@ -1,26 +1,22 @@
-// BusinessAnalytics — mirrors agentlink.insuracloud.ai/business-analytics
+// BusinessAnalytics — the APEX "Reports" route.
 //
-// Layout (matched against AgentLink screenshot at biz.png 2026-06-12):
-//   1. Header: title + "Last 30 days" badge + AI Insights button + Refresh
-//   2. 4-tile KPI strip: Total Deals · Total Premium · Active Producers · Avg Deal Size
-//   3. 2-up stat band: Conversion Rate + Monthly Growth
-//   4. Carrier Performance list (sorted by premium desc)
+// 2026-08-19 · AGENT CLOUD composition pass. Presentation only — no query,
+// hook, RPC, condition, route, handler or rendered value was touched. The page
+// now leads with a KPI stat row (Production · Policies · Producers · Growth)
+// and lays every breakdown into calm Card sections instead of the previous
+// GlassCard stack + dense bordered table. Same numbers in, executive layout out.
 //
 // Data sources (our internal views, since agentlink v1 /business-analytics
 // returns HTTP 500 on their side — see master prompt 121):
 //   - v_business_analytics_summary
 //   - v_business_analytics_carriers
+//   - v_business_analytics_insights
+//   - v_sales_challenges
+//   - v_trophy_cabinet
+//   - v_agents_needs_attention / v_agents_learn_from / v_inactive_agents_summary
 //
 // When the AgentLink /api/v1/business-analytics endpoint stops 500-ing,
 // swap the queries below to call the AgentLink API instead. Same shape.
-//
-// 2026-07-26 · APEX VISUAL CONTRACT v1 pass. Presentation only — no query,
-// hook, condition, route, handler or rendered value was touched. The dark
-// gradient hero (rounded-3xl + glow shadow + blur blobs + white-on-slate
-// type + dark-only severity weights) was the "bolted-on" tell called out in
-// contract §11.8; it is now the canonical GlassCard section stack with the
-// -600 dark:-400 severity pairs, the shared type scale and tabular-nums on
-// every rendered number.
 
 import { useQuery } from "@tanstack/react-query";
 import { DollarSign, Trophy, Users, Target, TrendingUp, RefreshCw, Sparkles, Flame, AlertTriangle, Brain, UserX, Lightbulb, GraduationCap } from "lucide-react";
@@ -28,30 +24,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
-import { Card, CardContent } from "@/components/ui/card";
-import { GlassCard } from "@/components/ui/glass-card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/ui/empty-state";
 
-// Contract §6 — the only three severity tokens, always the -600 dark:-400
-// pair so they stay legible on the white light-theme card.
+// Contract §6 — three severity tones, mapped to the app's semantic tokens so
+// success/warning/destructive read the same everywhere and stay legible on the
+// black+gold card in both themes.
 const SEV_TEXT = {
-  good: "text-emerald-600 dark:text-emerald-400",
-  warn: "text-amber-600 dark:text-amber-400",
-  bad: "text-rose-600 dark:text-rose-400",
+  good: "text-success",
+  warn: "text-warning",
+  bad: "text-destructive",
   none: "text-muted-foreground",
 } as const;
 const SEV_BORDER = {
-  good: "border-emerald-500/35",
-  warn: "border-amber-500/35",
-  bad: "border-rose-500/35",
+  good: "border-success/30",
+  warn: "border-warning/30",
+  bad: "border-destructive/30",
 } as const;
 const SEV_DOT = {
-  good: "bg-emerald-500",
-  warn: "bg-amber-500",
-  bad: "bg-rose-500",
+  good: "bg-success",
+  warn: "bg-warning",
+  bad: "bg-destructive",
 } as const;
 
 function fmtUsd(n: number, compact = false): string {
@@ -267,8 +262,8 @@ export default function BusinessAnalytics() {
       ? summary.error.message
       : "Unknown error loading Business Analytics data.";
     return (
-      <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
-        <div className={cn("rounded-lg border bg-rose-500/5 p-3 sm:p-4", SEV_BORDER.bad)}>
+      <div className="page-enter mx-auto w-full max-w-6xl space-y-6 px-4 pb-24 sm:px-6">
+        <div className={cn("rounded-[10px] border bg-destructive/5 p-3 sm:p-4", SEV_BORDER.bad)}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-start gap-3">
               <AlertTriangle className={cn("mt-0.5 h-5 w-5 shrink-0", SEV_TEXT.bad)} aria-hidden="true" />
@@ -288,15 +283,15 @@ export default function BusinessAnalytics() {
   }
 
   return (
-    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-6 px-4 pb-24 sm:px-6">
       <PageHeader
-        eyebrow="Analytics"
+        eyebrow="Reports · Overview"
         eyebrowIcon={<TrendingUp className="h-3 w-3" />}
         title="Business Analytics"
-        subtitle="Track this team's performance and business growth. Mirrors AgentLink's business-analytics page."
+        subtitle="This team's production, carriers and coaching signals — recomputed from the book every five minutes. Mirrors AgentLink's business-analytics page."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wide">Last 30 days</Badge>
+            <Badge variant="outline" className="uppercase tracking-wide">Last 30 days</Badge>
             {/* WAVE FINAL · AI Insights jump-to-section button · mirrors AgentLink's
                 top-right "AI Insights" header button. Scrolls to the AI section. */}
             <Button
@@ -319,268 +314,281 @@ export default function BusinessAnalytics() {
         }
       />
 
-      {/* WAVE v6 §31 · CANONICAL HERO · single source of truth for
-          Business Analytics top-of-page. Replaces the previous 4-tile sales
-          challenge grid + Trophy Cabinet banner ("kinda duplicate" per Sam).
-          4 hero metrics: Trophy wins · Active challenges · Needs-Attention ·
-          Learn-From. 3-lane challenge strip below: Daily / Weekly / Monthly
-          (rose if not started · amber if in progress · emerald if complete).
-          All LIVE via useQuery. */}
+      {/* KPI STAT ROW · Production · Policies · Producers · Growth. Leads the page
+          per the AC Reports composition; every value is live from
+          v_business_analytics_summary. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {summary.isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={`kpi-skel-${i}`} className="rounded-md border border-border bg-card p-4">
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="mt-2 h-3 w-20" />
+            </div>
+          ))
+        ) : (
+          <>
+            <div className="rounded-md border border-border bg-card p-4">
+              <p className="text-2xl font-bold tabular-nums text-success">{fmtUsd(totalPremium, true)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Production · MTD premium</p>
+              <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">{fmtUsd(totalPremium)}</p>
+            </div>
+            <div className="rounded-md border border-border bg-card p-4">
+              <p className="text-2xl font-bold tabular-nums text-foreground">{fmtNum(s?.total_deals_mtd)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Policies · deals MTD</p>
+              <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">avg {fmtUsd(Number(s?.avg_deal_size ?? 0))}</p>
+            </div>
+            <div className="rounded-md border border-border bg-card p-4">
+              <p className="text-2xl font-bold tabular-nums text-foreground">{fmtNum(s?.active_producers_30d)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Active producers · 30d</p>
+              <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">wrote {fmtNum(s?.total_deals_mtd)} deals</p>
+            </div>
+            <div className="rounded-md border border-border bg-card p-4">
+              <p className={cn(
+                "text-2xl font-bold tabular-nums",
+                growthPositive ? "text-success" : "text-destructive",
+              )}>
+                {growthPositive ? "+" : ""}{growth}%
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">MoM growth</p>
+              <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">vs {fmtUsd(Number(s?.premium_last_month ?? 0), true)}</p>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* PERFORMANCE SNAPSHOT · operational counts + 3-lane challenge strip.
+          Replaces the previous GlassCard hero; the MTD totals it used to nest
+          now live in the KPI row above, so nothing is shown twice. All LIVE. */}
       {(summary.isLoading || trophy.isLoading || challenges.isLoading) ? (
-        <Skeleton className="h-64 w-full rounded-lg" />
+        <Skeleton className="h-64 w-full rounded-[10px]" />
       ) : (
-        <GlassCard className="p-4">
-          <div className="mb-1 flex items-baseline justify-between gap-2">
-            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-              <Target className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="truncate">Performance snapshot</span>
-            </h3>
-            <span className="flex shrink-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-              <span aria-hidden className={cn("h-2 w-2 rounded-full", SEV_DOT.good)} />
-              Live
-            </span>
-          </div>
-          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-            Trophy wins, open challenges and the producers the AI singled out — recomputed from the book every five minutes and personalized per producer.
-          </p>
-
-          {/* 4 hero metrics */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Card>
+          <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
             <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-2">
-                <Trophy className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Trophy wins</p>
-              </div>
-              <p className="mt-1 text-2xl font-bold leading-none tabular-nums text-foreground">
-                {fmtNum(tc?.total_wins ?? 0)}
-              </p>
-              <p className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">
-                {fmtNum(tc?.daily_wins ?? 0)}D · {fmtNum(tc?.weekly_wins ?? 0)}W · {fmtNum(tc?.monthly_wins ?? 0)}M · {fmtNum(tc?.quarterly_wins ?? 0)}Q
-              </p>
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
                 <Target className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Active challenges</p>
-              </div>
-              <p className="mt-1 text-2xl font-bold leading-none tabular-nums text-foreground">
-                {fmtNum(challenges.data?.length ?? 0)}
-              </p>
-              <p className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">
-                {ins
-                  ? `${ins.streak_days}/${ins.days_in_month_elapsed} day streak`
-                  : insights.isError
-                    ? <button onClick={() => insights.refetch()} className="text-amber-500 hover:underline">couldn’t load — retry</button>
-                    : insights.isLoading ? "…" : "no streak data"}
+                <span className="truncate">Performance snapshot</span>
+              </CardTitle>
+              <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
+                Trophy wins, open challenges and the producers the AI singled out — personalized per producer.
               </p>
             </div>
-
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-2">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Needs attention</p>
-              </div>
-              <p className={cn(
-                "mt-1 text-2xl font-bold leading-none tabular-nums",
-                (needsAttention.data?.length ?? 0) > 0 ? SEV_TEXT.bad : SEV_TEXT.none,
-              )}>
-                {fmtNum(needsAttention.data?.length ?? 0)}
-              </p>
-              <p className="mt-1 truncate text-[11px] text-muted-foreground">
-                {(needsAttention.data?.length ?? 0) > 0 ? "agents below team avg" : "Roster healthy"}
-              </p>
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-2">
-                <GraduationCap className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Learn from</p>
-              </div>
-              <p className={cn(
-                "mt-1 text-2xl font-bold leading-none tabular-nums",
-                (learnFrom.data?.length ?? 0) > 0 ? SEV_TEXT.good : SEV_TEXT.none,
-              )}>
-                {fmtNum(learnFrom.data?.length ?? 0)}
-              </p>
-              <p className="mt-1 truncate text-[11px] text-muted-foreground">
-                {(learnFrom.data?.length ?? 0) > 0 ? "top performers · share playbook" : "Coach to exam"}
-              </p>
-            </div>
-          </div>
-
-          {/* Nested panel · MTD totals */}
-          <div className="mt-3 rounded-lg border border-border bg-card p-3 sm:p-4">
+            <Badge variant="outline" className="shrink-0 border-success/30 bg-success/15 text-success">
+              <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", SEV_DOT.good)} /> Live
+            </Badge>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* 4 operational metrics */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="min-w-0">
-                <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">MTD premium</p>
-                <p className={cn("mt-1 text-2xl font-bold leading-none tabular-nums", SEV_TEXT.good)}>
-                  {fmtUsd(totalPremium, true)}
-                </p>
-                <p className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">{fmtUsd(totalPremium)}</p>
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Deals MTD</p>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Trophy className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">Trophy wins</p>
+                </div>
                 <p className="mt-1 text-2xl font-bold leading-none tabular-nums text-foreground">
-                  {fmtNum(s?.total_deals_mtd)}
-                </p>
-                <p className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">avg {fmtUsd(Number(s?.avg_deal_size ?? 0))}</p>
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Producers · 30d</p>
-                <p className="mt-1 text-2xl font-bold leading-none tabular-nums text-foreground">
-                  {fmtNum(s?.active_producers_30d)}
-                </p>
-                <p className="mt-1 truncate text-[11px] text-muted-foreground">active</p>
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">MoM growth</p>
-                <p className={cn(
-                  "mt-1 text-2xl font-bold leading-none tabular-nums",
-                  growthPositive ? SEV_TEXT.good : SEV_TEXT.bad,
-                )}>
-                  {growthPositive ? "+" : ""}{growth}%
+                  {fmtNum(tc?.total_wins ?? 0)}
                 </p>
                 <p className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">
-                  vs {fmtUsd(Number(s?.premium_last_month ?? 0), true)}
+                  {fmtNum(tc?.daily_wins ?? 0)}D · {fmtNum(tc?.weekly_wins ?? 0)}W · {fmtNum(tc?.monthly_wins ?? 0)}M · {fmtNum(tc?.quarterly_wins ?? 0)}Q
+                </p>
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Target className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">Active challenges</p>
+                </div>
+                <p className="mt-1 text-2xl font-bold leading-none tabular-nums text-foreground">
+                  {fmtNum(challenges.data?.length ?? 0)}
+                </p>
+                <p className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">
+                  {ins
+                    ? `${ins.streak_days}/${ins.days_in_month_elapsed} day streak`
+                    : insights.isError
+                      ? <button onClick={() => insights.refetch()} className="text-warning hover:underline">couldn’t load — retry</button>
+                      : insights.isLoading ? "…" : "no streak data"}
+                </p>
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">Needs attention</p>
+                </div>
+                <p className={cn(
+                  "mt-1 text-2xl font-bold leading-none tabular-nums",
+                  (needsAttention.data?.length ?? 0) > 0 ? SEV_TEXT.bad : SEV_TEXT.none,
+                )}>
+                  {fmtNum(needsAttention.data?.length ?? 0)}
+                </p>
+                <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                  {(needsAttention.data?.length ?? 0) > 0 ? "agents below team avg" : "Roster healthy"}
+                </p>
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <GraduationCap className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">Learn from</p>
+                </div>
+                <p className={cn(
+                  "mt-1 text-2xl font-bold leading-none tabular-nums",
+                  (learnFrom.data?.length ?? 0) > 0 ? SEV_TEXT.good : SEV_TEXT.none,
+                )}>
+                  {fmtNum(learnFrom.data?.length ?? 0)}
+                </p>
+                <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                  {(learnFrom.data?.length ?? 0) > 0 ? "top performers · share playbook" : "Coach to exam"}
                 </p>
               </div>
             </div>
-          </div>
 
-          {/* 3-LANE CHALLENGE STRIP · Daily / Weekly / Monthly with status tones */}
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {(["daily", "weekly", "monthly"] as const).map((period) => {
-              const c = challenges.data?.find((x) => x.period === period);
-              const cur = Number(c?.current_premium ?? 0);
-              const tgt = Number(c?.target_premium ?? 0) || 1;
-              const pct = c ? Math.min(150, Math.round((cur / tgt) * 100)) : 0;
-              // rose if not started · amber if in progress · emerald if complete
-              const complete = pct >= 100;
-              const inProgress = pct > 0 && pct < 100;
-              const tone = complete ? "good" : inProgress ? "warn" : "bad";
-              const label = period.charAt(0).toUpperCase() + period.slice(1);
-              const status = complete ? "Complete" : inProgress ? "In progress" : "Not started";
-              const coaching = complete
-                ? "Locked · push the bonus"
-                : inProgress
-                ? "Maintain your momentum"
-                : "Close one deal · break the seal";
-              return (
-                <div
-                  key={period}
-                  className={cn("rounded-lg border bg-card p-3 sm:p-4", SEV_BORDER[tone])}
-                >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="flex min-w-0 items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                      <span aria-hidden className={cn("h-2 w-2 shrink-0 rounded-full", SEV_DOT[tone])} />
-                      <span className="truncate">{label} challenge</span>
+            {/* 3-LANE CHALLENGE STRIP · Daily / Weekly / Monthly with status tones */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {(["daily", "weekly", "monthly"] as const).map((period) => {
+                const c = challenges.data?.find((x) => x.period === period);
+                const cur = Number(c?.current_premium ?? 0);
+                const tgt = Number(c?.target_premium ?? 0) || 1;
+                const pct = c ? Math.min(150, Math.round((cur / tgt) * 100)) : 0;
+                // rose if not started · amber if in progress · emerald if complete
+                const complete = pct >= 100;
+                const inProgress = pct > 0 && pct < 100;
+                const tone = complete ? "good" : inProgress ? "warn" : "bad";
+                const label = period.charAt(0).toUpperCase() + period.slice(1);
+                const status = complete ? "Complete" : inProgress ? "In progress" : "Not started";
+                const coaching = complete
+                  ? "Locked · push the bonus"
+                  : inProgress
+                  ? "Maintain your momentum"
+                  : "Close one deal · break the seal";
+                return (
+                  <div
+                    key={period}
+                    className={cn("rounded-md border bg-card p-3 sm:p-4", SEV_BORDER[tone])}
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="flex min-w-0 items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <span aria-hidden className={cn("h-2 w-2 shrink-0 rounded-full", SEV_DOT[tone])} />
+                        <span className="truncate">{label} challenge</span>
+                      </p>
+                      <span className={cn("shrink-0 text-sm font-bold tabular-nums", SEV_TEXT[tone])}>
+                        {pct}%
+                      </span>
+                    </div>
+                    <p className={cn("text-2xl font-bold leading-none tabular-nums", SEV_TEXT[tone])}>
+                      {c ? fmtUsd(cur, true) : "—"}
+                      <span className="ml-1 text-[11px] font-medium tabular-nums text-muted-foreground">
+                        / {c ? fmtUsd(tgt, true) : "—"}
+                      </span>
                     </p>
-                    <span className={cn("shrink-0 text-sm font-bold tabular-nums", SEV_TEXT[tone])}>
-                      {pct}%
-                    </span>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={cn("h-full", SEV_DOT[tone])}
+                        style={{ width: `${Math.min(100, pct)}%` }}
+                      />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <p className={cn("min-w-0 truncate text-xs font-semibold uppercase tracking-wide", SEV_TEXT[tone])}>
+                        {status}
+                      </p>
+                      <p className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                        {c ? `${c.current_deals}/${c.target_deals} deals` : "—"}
+                      </p>
+                    </div>
+                    <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{coaching}</p>
                   </div>
-                  <p className={cn("text-2xl font-bold leading-none tabular-nums", SEV_TEXT[tone])}>
-                    {c ? fmtUsd(cur, true) : "—"}
-                    <span className="ml-1 text-[11px] font-medium tabular-nums text-muted-foreground">
-                      / {c ? fmtUsd(tgt, true) : "—"}
-                    </span>
-                  </p>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={cn("h-full", SEV_DOT[tone])}
-                      style={{ width: `${Math.min(100, pct)}%` }}
-                    />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <p className={cn("min-w-0 truncate text-[10px] font-bold uppercase tracking-wide", SEV_TEXT[tone])}>
-                      {status}
-                    </p>
-                    <p className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                      {c ? `${c.current_deals}/${c.target_deals} deals` : "—"}
-                    </p>
-                  </div>
-                  <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{coaching}</p>
-                </div>
-              );
-            })}
-          </div>
-        </GlassCard>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* 2026-06-15 zero-substance cull: removed the dead tab strip.
-          Business Analytics now shows only live data-backed sections. */}
-      <div className="space-y-5">
-        {/* WAVE FINAL · AI-Powered Insights · PERSONALIZED with named agents.
-            Mirrors AgentLink's actual insight card layout: "<Agent Name> Needs
-            Attention · $X potential · Action: <verb>". Backed by 3 SQL views
-            shipped 2026-06-13. Falls back to formula insights if no agents need
-            attention (healthy roster). */}
-        <GlassCard className="p-4" data-section="ai-insights">
-          <div className="mb-1 flex items-baseline justify-between gap-2">
-            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+      {/* WAVE FINAL · AI-Powered Insights · PERSONALIZED with named agents.
+          Mirrors AgentLink's actual insight card layout: "<Agent Name> Needs
+          Attention · $X potential · Action: <verb>". Backed by 3 SQL views
+          shipped 2026-06-13. Falls back to formula insights if no agents need
+          attention (healthy roster). */}
+      <Card data-section="ai-insights">
+        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
+          <div className="min-w-0">
+            <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="truncate">AI-powered insights</span>
-            </h3>
-            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-              Live
-            </span>
+            </CardTitle>
+            <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
+              Personalized per producer — each card names the agent and the single move that closes the gap.
+            </p>
           </div>
-          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-            Personalized per producer — each card names the agent and the single move that closes the gap.
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Up to 3 "Needs Attention" cards · names with action recommendation */}
-            {(needsAttention.data ?? []).slice(0, 3).map((agent, i) => (
-              <InsightCard
-                key={`na-${agent.id}`}
-                icon={i === 0 ? AlertTriangle : UserX}
-                tone="warn"
-                title={`${agent.display_name ?? agent.agent_code ?? "Agent"} · needs attention`}
-                metric={fmtUsd(Number(agent.potential_30d), true)}
-                body={`${agent.recommendation} · potential ${fmtUsd(Number(agent.potential_30d))} if matched team avg.`}
-              />
-            ))}
-            {/* Fill remainder with the original 3 formula insights so the row is always full */}
-            {ins && Array.from({ length: Math.max(0, 3 - (needsAttention.data?.length ?? 0)) }).slice(0, 1).map((_, i) => (
-              <InsightCard
-                key={`fallback-carrier-${i}`}
-                icon={Flame}
-                tone={Number(ins.top_carrier_share_pct) >= 50 ? "warn" : "neutral"}
-                title="Carrier concentration"
-                metric={`${ins.top_carrier_share_pct}%`}
-                body={`${ins.top_carrier_name ?? "Top carrier"} carries ${ins.top_carrier_share_pct}% of premium (${ins.top_carrier_deals} deals · 30d).${
-                  Number(ins.top_carrier_share_pct) >= 50
-                    ? " Diversify before this becomes a single-point failure."
-                    : " Healthy spread across carriers."
-                }`}
-              />
-            ))}
-          </div>
-        </GlassCard>
+          <Badge variant="outline" className="shrink-0 uppercase tracking-wide">Live</Badge>
+        </CardHeader>
+        <CardContent>
+          {(needsAttention.data?.length ?? 0) === 0 && !ins ? (
+            <div className="rounded-md border border-dashed border-border bg-muted/20 p-6 text-center">
+              <Sparkles className="mx-auto h-7 w-7 text-muted-foreground/50" />
+              <p className="mt-2 text-sm font-medium text-foreground">Nothing flagged yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Insight cards appear here as the roster's book moves. Roster is healthy.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {/* Up to 3 "Needs Attention" cards · names with action recommendation */}
+              {(needsAttention.data ?? []).slice(0, 3).map((agent, i) => (
+                <InsightCard
+                  key={`na-${agent.id}`}
+                  icon={i === 0 ? AlertTriangle : UserX}
+                  tone="warn"
+                  title={`${agent.display_name ?? agent.agent_code ?? "Agent"} · needs attention`}
+                  metric={fmtUsd(Number(agent.potential_30d), true)}
+                  body={`${agent.recommendation} · potential ${fmtUsd(Number(agent.potential_30d))} if matched team avg.`}
+                />
+              ))}
+              {/* Fill remainder with the original formula insight so the row is always full */}
+              {ins && Array.from({ length: Math.max(0, 3 - (needsAttention.data?.length ?? 0)) }).slice(0, 1).map((_, i) => (
+                <InsightCard
+                  key={`fallback-carrier-${i}`}
+                  icon={Flame}
+                  tone={Number(ins.top_carrier_share_pct) >= 50 ? "warn" : "neutral"}
+                  title="Carrier concentration"
+                  metric={`${ins.top_carrier_share_pct}%`}
+                  body={`${ins.top_carrier_name ?? "Top carrier"} carries ${ins.top_carrier_share_pct}% of premium (${ins.top_carrier_deals} deals · 30d).${
+                    Number(ins.top_carrier_share_pct) >= 50
+                      ? " Diversify before this becomes a single-point failure."
+                      : " Healthy spread across carriers."
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* WAVE FINAL · LEARN FROM cards · top-3 performers above team avg.
-            Mirrors AgentLink's "Learn from <agent> · X% above average · Action".
-            v_agents_learn_from filters to >150% team avg. */}
-        {(learnFrom.data?.length ?? 0) > 0 && (
-          <GlassCard className="p-4">
-            <div className="mb-1 flex items-baseline justify-between gap-2">
-              <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+      {/* WAVE FINAL · LEARN FROM cards · top-3 performers above team avg.
+          Mirrors AgentLink's "Learn from <agent> · X% above average · Action".
+          v_agents_learn_from filters to >150% team avg. */}
+      {(learnFrom.data?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
+            <div className="min-w-0">
+              <CardTitle className="flex items-center gap-2">
                 <GraduationCap className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="truncate">Learn from</span>
-              </h3>
-              <span className={cn("shrink-0 text-sm font-bold tabular-nums", SEV_TEXT.good)}>
-                {learnFrom.data!.length}
-              </span>
+              </CardTitle>
+              <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
+                Producers writing well above team average — their playbook is the fastest lift available to everyone below them.
+              </p>
             </div>
-            <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-              Producers writing well above team average — their playbook is the fastest lift available to everyone below them.
-            </p>
+            <Badge variant="outline" className="shrink-0 border-success/30 bg-success/15 text-success">
+              {learnFrom.data!.length}
+            </Badge>
+          </CardHeader>
+          <CardContent>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {learnFrom.data!.map((agent) => (
                 <div
                   key={`lf-${agent.user_id}`}
-                  className={cn("rounded-lg border bg-card p-3 sm:p-4", SEV_BORDER.good)}
+                  className={cn("rounded-md border bg-card p-3 sm:p-4", SEV_BORDER.good)}
                 >
                   <div className="flex items-start gap-3">
                     <Lightbulb className={cn("mt-0.5 h-4 w-4 shrink-0", SEV_TEXT.good)} />
@@ -598,154 +606,151 @@ export default function BusinessAnalytics() {
                 </div>
               ))}
             </div>
-          </GlassCard>
-        )}
+          </CardContent>
+        </Card>
+      )}
 
-        {/* WAVE FINAL · INACTIVE AGENTS · count + sample names · mirrors
-            AgentLink's "138 Agents Inactive" callout. */}
-        {inactive.data && Number(inactive.data.inactive_count) > 0 && (
-          <div className={cn("rounded-lg border bg-amber-500/5 p-3 sm:p-4", SEV_BORDER.warn)}>
-            <div className="flex items-start gap-3">
-              <UserX className={cn("mt-0.5 h-5 w-5 shrink-0", SEV_TEXT.warn)} />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-baseline gap-2">
-                  <span className={cn("text-2xl font-bold leading-none tabular-nums", SEV_TEXT.warn)}>
-                    {inactive.data.inactive_count}
-                  </span>
-                  <span className="text-sm font-medium text-foreground">Licensed agents inactive 30d</span>
-                </div>
-                {inactive.data.sample_names && inactive.data.sample_names.length > 0 && (
-                  <p className="mt-2 break-words text-[11px] leading-relaxed text-muted-foreground">
-                    {inactive.data.sample_names.slice(0, 10).join(" · ")}
-                    {Number(inactive.data.inactive_count) > 10 && ` · +${Number(inactive.data.inactive_count) - 10} more`}
-                  </p>
-                )}
-                <p className={cn("mt-2 text-xs font-semibold leading-relaxed", SEV_TEXT.warn)}>
-                  Action: bulk re-engagement campaign · 1-on-1 check-ins prioritized by tenure.
-                </p>
+      {/* WAVE FINAL · INACTIVE AGENTS · count + sample names · mirrors
+          AgentLink's "138 Agents Inactive" callout. */}
+      {inactive.data && Number(inactive.data.inactive_count) > 0 && (
+        <div className={cn("rounded-[10px] border bg-warning/5 p-3 sm:p-4", SEV_BORDER.warn)}>
+          <div className="flex items-start gap-3">
+            <UserX className={cn("mt-0.5 h-5 w-5 shrink-0", SEV_TEXT.warn)} />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-baseline gap-2">
+                <span className={cn("text-2xl font-bold leading-none tabular-nums", SEV_TEXT.warn)}>
+                  {inactive.data.inactive_count}
+                </span>
+                <span className="text-sm font-medium text-foreground">Licensed agents inactive 30d</span>
               </div>
+              {inactive.data.sample_names && inactive.data.sample_names.length > 0 && (
+                <p className="mt-2 break-words text-[11px] leading-relaxed text-muted-foreground">
+                  {inactive.data.sample_names.slice(0, 10).join(" · ")}
+                  {Number(inactive.data.inactive_count) > 10 && ` · +${Number(inactive.data.inactive_count) - 10} more`}
+                </p>
+              )}
+              <p className={cn("mt-2 text-xs font-semibold leading-relaxed", SEV_TEXT.warn)}>
+                Action: bulk re-engagement campaign · 1-on-1 check-ins prioritized by tenure.
+              </p>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-      {/* 2-up stat band */}
+      {/* 2-up stat band · derived detail not shown in the KPI row */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <GlassCard className="p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Monthly growth</p>
-          {summary.isLoading ? (
-            <Skeleton className="mt-2 h-8 w-24" />
+        <Card>
+          <CardContent className="p-4 sm:p-[18px] sm:pt-[18px] pt-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Monthly growth</p>
+            {summary.isLoading ? (
+              <Skeleton className="mt-2 h-8 w-24" />
+            ) : (
+              <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                <span className={cn(
+                  "text-2xl font-bold leading-none tabular-nums",
+                  growthPositive ? SEV_TEXT.good : SEV_TEXT.bad,
+                )}>
+                  {growthPositive ? "+" : ""}{growth}%
+                </span>
+                <span className="text-[11px] text-muted-foreground">vs last month</span>
+              </div>
+            )}
+            <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
+              Last month: {fmtUsd(Number(s?.premium_last_month ?? 0), true)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 sm:p-[18px] sm:pt-[18px] pt-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Avg producer output</p>
+            {summary.isLoading ? (
+              <Skeleton className="mt-2 h-8 w-32" />
+            ) : (() => {
+              const apc = Number(s?.active_producers_30d ?? 0);
+              const per = apc > 0 ? totalPremium / apc : 0;
+              return (
+                <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                  <span className="text-2xl font-bold leading-none tabular-nums text-foreground">{fmtUsd(per, true)}</span>
+                  <span className="text-[11px] text-muted-foreground">/ producer · 30d</span>
+                </div>
+              );
+            })()}
+            <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
+              {fmtNum(s?.active_producers_30d)} producers wrote {fmtNum(s?.total_deals_mtd)} deals
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* CARRIER PERFORMANCE · where the month's premium landed. Sorted by
+          premium; a carrier holding an outsized share is a single point of
+          failure. Rendered as a clean divide-y list, not a dense table. */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
+          <div className="min-w-0">
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">Carrier performance</span>
+            </CardTitle>
+            <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
+              Where the month's premium actually landed — a carrier holding an outsized share is a single point of failure.
+            </p>
+          </div>
+          <Badge variant="outline" className="shrink-0 uppercase tracking-wide">Last 30 days</Badge>
+        </CardHeader>
+        <CardContent>
+          {carriers.isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : (carriers.data?.length ?? 0) === 0 ? (
+            <div className="rounded-md border border-dashed border-border bg-muted/20 p-8 text-center">
+              <Sparkles className="mx-auto h-7 w-7 text-muted-foreground/50" />
+              <p className="mt-2 text-sm font-medium text-foreground">No carrier data in the last 30 days</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Carrier rows appear here as deals land via the AgentLink sync. Check sync status if this stays empty.
+              </p>
+            </div>
           ) : (
-            <div className="mt-2 flex flex-wrap items-baseline gap-2">
-              <span className={cn(
-                "text-2xl font-bold leading-none tabular-nums",
-                growthPositive ? SEV_TEXT.good : SEV_TEXT.bad,
-              )}>
-                {growthPositive ? "+" : ""}{growth}%
-              </span>
-              <span className="text-[11px] text-muted-foreground">vs last month</span>
+            <div className="divide-y divide-border">
+              {carriers.data!.map((c, i) => {
+                // Denominator must come from these same rows. totalPremium is
+                // v_business_analytics_summary.total_premium_mtd (month-to-date) while every
+                // c.total_premium is v_business_analytics_carriers (rolling 30 days), so
+                // dividing one by the other made the column sum to 473.7% on 2026-08-11.
+                const pct = carrierTotalPremium > 0 ? (Number(c.total_premium) / carrierTotalPremium) * 100 : 0;
+                return (
+                  <div key={c.carrier_id} className="py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="w-5 shrink-0 text-right text-xs font-bold tabular-nums text-muted-foreground">{i + 1}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{c.carrier_name}</p>
+                        <p className="mt-0.5 truncate text-[11px] tabular-nums text-muted-foreground">
+                          {fmtNum(c.deal_count)} deals · avg {fmtUsd(Number(c.avg_deal_size))}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className={cn("text-sm font-semibold tabular-nums", SEV_TEXT.good)}>
+                          {fmtUsd(Number(c.total_premium))}
+                        </p>
+                        <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">{pct.toFixed(1)}% share</p>
+                      </div>
+                    </div>
+                    <div className="mt-2 ml-8 h-1 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full bg-primary/60" style={{ width: `${Math.min(100, pct)}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
-          <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
-            Last month: {fmtUsd(Number(s?.premium_last_month ?? 0), true)}
-          </p>
-        </GlassCard>
-
-        <GlassCard className="p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Avg producer output</p>
-          {summary.isLoading ? (
-            <Skeleton className="mt-2 h-8 w-32" />
-          ) : (() => {
-            const apc = Number(s?.active_producers_30d ?? 0);
-            const per = apc > 0 ? totalPremium / apc : 0;
-            return (
-              <div className="mt-2 flex flex-wrap items-baseline gap-2">
-                <span className="text-2xl font-bold leading-none tabular-nums text-foreground">{fmtUsd(per, true)}</span>
-                <span className="text-[11px] text-muted-foreground">/ producer · 30d</span>
-              </div>
-            );
-          })()}
-          <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
-            {fmtNum(s?.active_producers_30d)} producers wrote {fmtNum(s?.total_deals_mtd)} deals
-          </p>
-        </GlassCard>
-      </div>
-
-      {/* Carrier Performance · sorted by premium */}
-      <GlassCard className="p-4">
-        <div className="mb-1 flex items-baseline justify-between gap-2">
-          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-            <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="truncate">Carrier performance</span>
-          </h3>
-          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-            Last 30 days
-          </span>
-        </div>
-        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-          Where the month's premium actually landed — a carrier holding an outsized share is a single point of failure.
-        </p>
-
-        {carriers.isLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : (carriers.data?.length ?? 0) === 0 ? (
-          <EmptyState
-            icon={<Sparkles className="h-7 w-7" />}
-            title="No carrier data in the last 30 days"
-            description="Carrier rows appear here as deals land via the AgentLink sync. Check sync status if this stays empty."
-          />
-        ) : (
-          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                  <th className="px-2 py-2 text-right">#</th>
-                  <th className="px-2 py-2 text-left">Carrier</th>
-                  <th className="px-2 py-2 text-right">Deals</th>
-                  <th className="px-2 py-2 text-right">Avg deal</th>
-                  <th className="px-2 py-2 text-right">Premium</th>
-                  <th className="px-2 py-2 text-right">Share</th>
-                </tr>
-              </thead>
-              <tbody>
-                {carriers.data!.map((c, i) => {
-                  // Denominator must come from these same rows. totalPremium is
-                  // v_business_analytics_summary.total_premium_mtd (month-to-date) while every
-                  // c.total_premium is v_business_analytics_carriers (rolling 30 days), so
-                  // dividing one by the other made the column sum to 473.7% on 2026-08-11.
-                  const pct = carrierTotalPremium > 0 ? (Number(c.total_premium) / carrierTotalPremium) * 100 : 0;
-                  return (
-                    <tr key={c.carrier_id} className="border-b border-border/60 transition-colors hover:bg-muted/30">
-                      <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{i + 1}</td>
-                      <td className="max-w-[220px] px-2 py-2">
-                        <div className="truncate text-sm font-medium text-foreground">{c.carrier_name}</div>
-                      </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-muted-foreground">
-                        {fmtNum(c.deal_count)}
-                      </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-muted-foreground">
-                        {fmtUsd(Number(c.avg_deal_size))}
-                      </td>
-                      <td className={cn("whitespace-nowrap px-2 py-2 text-right font-semibold tabular-nums", SEV_TEXT.good)}>
-                        {fmtUsd(Number(c.total_premium))}
-                      </td>
-                      <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-muted-foreground">
-                        {pct.toFixed(1)}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </GlassCard>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -823,11 +828,11 @@ function InsightCard({
   const toneBorder = sev === "none" ? "border-border" : SEV_BORDER[sev];
   const toneText = SEV_TEXT[sev];
   return (
-    <div className={cn("rounded-lg border bg-card p-3 sm:p-4", toneBorder)}>
+    <div className={cn("rounded-md border bg-card p-3 sm:p-4", toneBorder)}>
       <div className="flex items-start gap-3">
         <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", toneText)} />
         <div className="min-w-0 flex-1">
-          <p className="break-words text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{title}</p>
+          <p className="break-words text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
           <p className={cn("mt-1 text-2xl font-bold leading-none tabular-nums", sev === "none" ? "text-foreground" : toneText)}>
             {metric}
           </p>

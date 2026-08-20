@@ -21,10 +21,11 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface CfoSnapshot {
   ghost_ap_at_risk: string | number;
@@ -98,26 +99,35 @@ function relativeTime(iso?: string | null): string {
   return `${Math.round(sec / 86400)}d ago`;
 }
 
-function MetricTile({ icon: Icon, label, value, tone = "slate", sub }: {
-  icon: any; label: string; value: React.ReactNode; tone?: "rose"|"amber"|"emerald"|"slate"; sub?: string;
+type Tone = "danger" | "warning" | "success" | "info" | "neutral";
+
+const TONE_TEXT: Record<Tone, string> = {
+  danger: "text-destructive",
+  warning: "text-warning",
+  success: "text-success",
+  info: "text-info",
+  neutral: "text-foreground",
+};
+
+function StatTile({ icon: Icon, label, value, tone = "neutral", sub }: {
+  icon: any; label: string; value: React.ReactNode; tone?: Tone; sub?: string;
 }) {
-  const toneClasses: Record<string, string> = {
-    rose:    "border-rose-500/30 bg-rose-500/5 text-rose-700 dark:text-rose-300",
-    amber:   "border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-300",
-    emerald: "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300",
-    slate:   "border-slate-500/30 bg-slate-500/5 text-slate-700 dark:text-slate-300",
-  };
   return (
-    <Card className={toneClasses[tone]}>
-      <CardContent className="p-3">
-        <div className="flex items-center gap-1.5 text-11 uppercase tracking-wider font-semibold opacity-80 mb-1">
-          <Icon className="h-3 w-3" /> {label}
-        </div>
-        <p className="text-18 font-bold tabular-nums">{value}</p>
-        {sub && <p className="text-11 opacity-70 mt-0.5">{sub}</p>}
-      </CardContent>
-    </Card>
+    <div className="rounded-md border border-border bg-card p-4">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate">{label}</span>
+      </div>
+      <p className={`text-2xl font-bold tabular-nums ${TONE_TEXT[tone]}`}>{value}</p>
+      {sub && <p className="text-xs text-muted-foreground mt-1 leading-snug">{sub}</p>}
+    </div>
   );
+}
+
+function syncChipClass(v: string): string {
+  return String(v).includes("🟢")
+    ? "bg-success/15 text-success border-success/30"
+    : "bg-destructive/15 text-destructive border-destructive/30";
 }
 
 export default function Finances() {
@@ -197,20 +207,20 @@ export default function Finances() {
   const snap = snapshot.data;
 
   return (
-    <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+    <div className="page-enter mx-auto w-full max-w-7xl px-4 sm:px-6 pb-24 space-y-6">
       <PageHeader
-        eyebrow="CFO"
+        eyebrow="Finances · Overview"
         eyebrowIcon={<DollarSign className="h-3 w-3" />}
         title="Finances"
-        subtitle="Live CFO snapshot from the finance bot — leak detection, ghost AP, stuck payouts, idle agents, commission ledger, pending approvals."
+        subtitle="Live CFO snapshot from the finance bot — leak detection, ghost AP, stuck payouts, idle agents, commission ledger, and pending approvals."
         actions={
           <div className="flex items-center gap-2">
             {snap?.as_of && (
-              <Badge variant="outline" className="text-11 tabular-nums">
+              <Badge variant="outline" className="tabular-nums">
                 Updated {relativeTime(snap.as_of)}
               </Badge>
             )}
-            <Button variant="outline" size="sm" onClick={refreshAll}>
+            <Button size="sm" onClick={refreshAll}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${snapshot.isFetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>
@@ -218,156 +228,221 @@ export default function Finances() {
         }
       />
 
-      {/* Top metrics grid */}
+      {/* KPI stat row — the money numbers lead */}
       {snapshot.isLoading ? (
-        <div className="grid gap-2 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
-          {Array.from({ length: 10 }).map((_, i) => <Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-20" />)}
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-24 rounded-md" />
+          ))}
         </div>
       ) : snap ? (
-        <div className="grid gap-2 grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
-          <MetricTile icon={AlertTriangle} label="Ghost AP at risk" value={fmtUsd(snap.ghost_ap_at_risk)} tone="rose" />
-          <MetricTile icon={Clock} label="Course bought · stuck" value={snap.ica_paid_stuck} tone="amber" sub="paid for prelicensing course · not advancing" />
-          <MetricTile icon={TrendingDown} label="Walked commission" value={fmtUsd(snap.lapsed_walked_commission)} tone="rose" sub="lapsed/withdrawn" />
-          <MetricTile icon={ShieldAlert} label="Open dup charges" value={snap.dup_charges_open} tone="amber" />
-          <MetricTile icon={Users} label="Idle active agents" value={snap.idle_active_agents} tone="amber" sub="no recent activity" />
-          <MetricTile icon={Activity} label="InsuraCloud sync" value={snap.insuracloud_sync} tone={String(snap.insuracloud_sync).includes("🟢") ? "emerald" : "rose"} />
-          <MetricTile icon={Activity} label="AgentLink sync" value={snap.agentlink_sync} tone={String(snap.agentlink_sync).includes("🟢") ? "emerald" : "rose"} />
-          <MetricTile icon={TrendingUp} label="Mentorship revenue" value={fmtUsd(snap.mentorship_revenue_usd)} tone="emerald" />
-          <MetricTile icon={CheckCircle2} label="Mentorship paid" value={snap.mentorship_paid_total} tone="emerald" sub="lifetime" />
-          <MetricTile icon={ShieldCheck} label="Snapshot" value="LIVE" tone="emerald" sub="cron-refreshed" />
+        <div className="space-y-4">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+            <StatTile icon={AlertTriangle} label="Ghost AP at risk" value={fmtUsd(snap.ghost_ap_at_risk)} tone="danger" sub="unreconciled advance exposure" />
+            <StatTile icon={TrendingDown} label="Walked commission" value={fmtUsd(snap.lapsed_walked_commission)} tone="danger" sub="lapsed / withdrawn" />
+            <StatTile icon={TrendingUp} label="Mentorship revenue" value={fmtUsd(snap.mentorship_revenue_usd)} tone="success" />
+            <StatTile icon={CheckCircle2} label="Mentorship paid" value={snap.mentorship_paid_total} tone="success" sub="lifetime payments" />
+            <StatTile icon={Clock} label="Course bought · stuck" value={snap.ica_paid_stuck} tone="warning" sub="paid for prelicensing · not advancing" />
+            <StatTile icon={ShieldAlert} label="Open dup charges" value={snap.dup_charges_open} tone="warning" />
+            <StatTile icon={Users} label="Idle active agents" value={snap.idle_active_agents} tone="warning" sub="no recent activity" />
+          </div>
+
+          {/* System status strip — sync health as compact chips */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Activity className="h-3.5 w-3.5" /> System
+            </span>
+            <Badge variant="outline" className={syncChipClass(snap.insuracloud_sync)}>
+              InsuraCloud {snap.insuracloud_sync}
+            </Badge>
+            <Badge variant="outline" className={syncChipClass(snap.agentlink_sync)}>
+              AgentLink {snap.agentlink_sync}
+            </Badge>
+            <Badge variant="outline" className="bg-success/15 text-success border-success/30">
+              <ShieldCheck className="h-3 w-3" /> Snapshot LIVE · cron-refreshed
+            </Badge>
+          </div>
         </div>
       ) : null}
 
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-border">
-        {(["overview","anomalies","commissions","approvals"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-3 py-2 text-13 font-medium transition-base border-b-2 ${
-              tab === t
-                ? "border-amber-500 text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t === "overview" ? "Overview"
-              : t === "anomalies" ? "Anomalies"
-              : t === "commissions" ? `Commissions (${commissions.data?.length ?? 0})`
-              : `Pending Approvals (${approvals.data?.length ?? 0})`}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="anomalies">Anomalies</TabsTrigger>
+          <TabsTrigger value="commissions">Commissions ({commissions.data?.length ?? 0})</TabsTrigger>
+          <TabsTrigger value="approvals">Pending Approvals ({approvals.data?.length ?? 0})</TabsTrigger>
+        </TabsList>
 
-      {tab === "overview" && (
-        <Card>
-          <CardContent className="p-5">
-            <h3 className="text-15 font-bold mb-2">CFO Bot Health</h3>
-            <p className="text-13 text-foreground/80 leading-relaxed mb-3">
-              The finance bot runs continuously on launchd at <code className="text-12 bg-muted px-1.5 py-0.5 rounded">com.samjames.apex.finance-bot</code>.
-              It scans for leaks every hour, reconciles deals nightly, and writes snapshot rows to <code className="text-12 bg-muted px-1.5 py-0.5 rounded">v_cfo_snapshot</code>.
-            </p>
-            <p className="text-13 text-foreground/80 leading-relaxed">
-              Tap <strong>Anomalies</strong> to see duplicate charges, stuck-paid applicants, and idle active agents.
-              Tap <strong>Commissions</strong> for the recent ledger. Tap <strong>Pending Approvals</strong> for CFO-flagged items awaiting your call.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {tab === "anomalies" && (
-        <div className="grid gap-3 md:grid-cols-3">
+        <TabsContent value="overview" className="mt-5">
           <Card>
-            <CardContent className="p-4">
-              <h4 className="text-13 font-bold mb-2 flex items-center gap-1.5"><ShieldAlert className="h-3.5 w-3.5 text-amber-500" /> Duplicate Charges ({dups.data?.length ?? 0})</h4>
-              <div className="space-y-1.5 max-h-72 overflow-auto">
-                {(dups.data ?? []).slice(0, 20).map((d, i) => (
-                  <div key={d.stripe_charge_id ?? `dup|${d.customer ?? "?"}|${i}`} className="text-12 flex justify-between border-b border-border/40 py-1">
-                    <span className="truncate">{d.customer ?? d.email ?? "—"}</span>
-                    <span className="tabular-nums text-amber-700">{fmtUsd(d.amount_usd)}</span>
-                  </div>
-                ))}
-                {(dups.data ?? []).length === 0 && <p className="text-12 text-muted-foreground">No duplicate-charge anomalies.</p>}
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" /> CFO Bot Health
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-foreground/80 leading-relaxed">
+                The finance bot runs continuously on launchd at{" "}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">com.samjames.apex.finance-bot</code>.
+                It scans for leaks every hour, reconciles deals nightly, and writes snapshot rows to{" "}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">v_cfo_snapshot</code>.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3 pt-1">
+                <div className="rounded-md border border-border bg-muted/30 p-3">
+                  <p className="text-sm font-semibold flex items-center gap-1.5">
+                    <ShieldAlert className="h-3.5 w-3.5 text-warning" /> Anomalies
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Duplicate charges, stuck-paid applicants, and idle active agents.</p>
+                </div>
+                <div className="rounded-md border border-border bg-muted/30 p-3">
+                  <p className="text-sm font-semibold flex items-center gap-1.5">
+                    <DollarSign className="h-3.5 w-3.5 text-success" /> Commissions
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">The most recent rows from the commission ledger.</p>
+                </div>
+                <div className="rounded-md border border-border bg-muted/30 p-3">
+                  <p className="text-sm font-semibold flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-info" /> Pending Approvals
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">CFO-flagged items awaiting your call.</p>
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h4 className="text-13 font-bold mb-2 flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-rose-500" /> Course Bought · Stuck ({stuck.data?.length ?? 0})</h4>
-              <div className="space-y-1.5 max-h-72 overflow-auto">
-                {(stuck.data ?? []).slice(0, 50).map((s, i) => (
-                  <div key={`stuck|${s.email ?? s.name ?? "?"}|${i}`} className="text-12 flex justify-between border-b border-border/40 py-1">
-                    <span className="truncate">{s.name ?? "—"}</span>
-                    <span className="tabular-nums text-rose-700">{s.status ?? "—"}</span>
-                  </div>
-                ))}
-                {(stuck.data ?? []).length === 0 && <p className="text-12 text-muted-foreground">No stuck-paid apps.</p>}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <h4 className="text-13 font-bold mb-2 flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-amber-500" /> Idle Active Agents ({idle.data?.length ?? 0})</h4>
-              <div className="space-y-1.5 max-h-72 overflow-auto">
-                {(idle.data ?? []).slice(0, 50).map((a, i) => (
-                  <div key={a.agent_id ?? `idle|${a.name ?? "?"}|${i}`} className="text-12 flex justify-between border-b border-border/40 py-1">
-                    <span className="truncate">{a.name ?? "—"}</span>
-                    <span className="tabular-nums text-muted-foreground text-11">{a.agent_code ?? ""}</span>
-                  </div>
-                ))}
-                {(idle.data ?? []).length === 0 && <p className="text-12 text-muted-foreground">No idle agents.</p>}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+        </TabsContent>
 
-      {tab === "commissions" && (
-        <Card>
-          <CardContent className="p-0">
-            {commissions.isLoading ? (
-              <div className="p-4 space-y-2">{Array.from({length:5}).map((_,i)=><Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-10" />)}</div>
-            ) : (
-              <div className="divide-y divide-border/60">
-                {(commissions.data ?? []).map((c) => (
-                  <div key={c.id} className="px-4 py-2.5 flex items-center gap-3 text-13">
-                    <DollarSign className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{c.annual_premium ? `${fmtUsd(c.annual_premium)} AP` : "Commission"}{c.rate_source ? ` · ${c.rate_source}` : ""}</p>
-                      <p className="text-11 text-muted-foreground">{relativeTime(c.created_at)} · {c.status ?? "—"}</p>
+        <TabsContent value="anomalies" className="mt-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-1.5 text-sm">
+                  <ShieldAlert className="h-4 w-4 text-warning" /> Duplicate Charges
+                  <Badge variant="outline" className="ml-auto">{dups.data?.length ?? 0}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border max-h-72 overflow-auto">
+                  {(dups.data ?? []).slice(0, 20).map((d, i) => (
+                    <div key={d.stripe_charge_id ?? `dup|${d.customer ?? "?"}|${i}`} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                      <span className="truncate">{d.customer ?? d.email ?? "—"}</span>
+                      <span className="tabular-nums font-semibold text-warning shrink-0">{fmtUsd(d.amount_usd)}</span>
                     </div>
-                    <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{fmtUsd(c.amount)}</span>
-                  </div>
-                ))}
-                {(commissions.data ?? []).length === 0 && <p className="p-6 text-center text-13 text-muted-foreground">No commission rows yet.</p>}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                  ))}
+                  {(dups.data ?? []).length === 0 && (
+                    <p className="px-4 py-8 text-center text-sm text-muted-foreground">Clean — no duplicate-charge anomalies flagged.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
-      {tab === "approvals" && (
-        <Card>
-          <CardContent className="p-0">
-            {approvals.isLoading ? (
-              <div className="p-4 space-y-2">{Array.from({length:3}).map((_,i)=><Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-12" />)}</div>
-            ) : (
-              <div className="divide-y divide-border/60">
-                {(approvals.data ?? []).map((a) => (
-                  <div key={a.id} className="px-4 py-3">
-                    <div className="flex items-center justify-between gap-3 mb-1">
-                      <p className="text-13 font-bold truncate">{a.subject ?? "—"}</p>
-                      {a.amount_cents != null && <span className="text-13 tabular-nums text-amber-700 dark:text-amber-300">{fmtUsd(a.amount_cents / 100)}</span>}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-1.5 text-sm">
+                  <Clock className="h-4 w-4 text-destructive" /> Course Bought · Stuck
+                  <Badge variant="outline" className="ml-auto">{stuck.data?.length ?? 0}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border max-h-72 overflow-auto">
+                  {(stuck.data ?? []).slice(0, 50).map((s, i) => (
+                    <div key={`stuck|${s.email ?? s.name ?? "?"}|${i}`} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                      <span className="truncate">{s.name ?? "—"}</span>
+                      <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30 shrink-0">{s.status ?? "—"}</Badge>
                     </div>
-                    {a.body && <p className="text-12 text-muted-foreground line-clamp-2">{a.body}</p>}
-                    <p className="text-11 text-muted-foreground mt-1">{relativeTime(a.created_at)}</p>
-                  </div>
-                ))}
-                {(approvals.data ?? []).length === 0 && <p className="p-6 text-center text-13 text-muted-foreground">No pending CFO approvals.</p>}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                  ))}
+                  {(stuck.data ?? []).length === 0 && (
+                    <p className="px-4 py-8 text-center text-sm text-muted-foreground">Nothing stuck — every paid applicant is advancing.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-1.5 text-sm">
+                  <Users className="h-4 w-4 text-warning" /> Idle Active Agents
+                  <Badge variant="outline" className="ml-auto">{idle.data?.length ?? 0}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border max-h-72 overflow-auto">
+                  {(idle.data ?? []).slice(0, 50).map((a, i) => (
+                    <div key={a.agent_id ?? `idle|${a.name ?? "?"}|${i}`} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                      <span className="truncate">{a.name ?? "—"}</span>
+                      <span className="tabular-nums text-xs text-muted-foreground shrink-0">{a.agent_code ?? ""}</span>
+                    </div>
+                  ))}
+                  {(idle.data ?? []).length === 0 && (
+                    <p className="px-4 py-8 text-center text-sm text-muted-foreground">All active agents have recent activity.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="commissions" className="mt-5">
+          <Card>
+            <CardContent className="p-0">
+              {commissions.isLoading ? (
+                <div className="p-4 space-y-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-10 rounded-md" />
+                  ))}
+                </div>
+              ) : (commissions.data ?? []).length === 0 ? (
+                <p className="p-10 text-center text-sm text-muted-foreground">No commission rows yet — the ledger is empty.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {(commissions.data ?? []).map((c) => (
+                    <div key={c.id} className="flex items-center gap-3 px-4 py-3 text-sm">
+                      <DollarSign className="h-4 w-4 text-success shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">
+                          {c.annual_premium ? `${fmtUsd(c.annual_premium)} AP` : "Commission"}{c.rate_source ? ` · ${c.rate_source}` : ""}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{relativeTime(c.created_at)} · {c.status ?? "—"}</p>
+                      </div>
+                      <span className="tabular-nums font-bold text-success shrink-0">{fmtUsd(c.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="approvals" className="mt-5">
+          <Card>
+            <CardContent className="p-0">
+              {approvals.isLoading ? (
+                <div className="p-4 space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-12 rounded-md" />
+                  ))}
+                </div>
+              ) : (approvals.data ?? []).length === 0 ? (
+                <p className="p-10 text-center text-sm text-muted-foreground">No pending CFO approvals — you're all caught up.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {(approvals.data ?? []).map((a) => (
+                    <div key={a.id} className="px-4 py-3">
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <p className="text-sm font-bold truncate">{a.subject ?? "—"}</p>
+                        {a.amount_cents != null && (
+                          <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 shrink-0">{fmtUsd(a.amount_cents / 100)}</Badge>
+                        )}
+                      </div>
+                      {a.body && <p className="text-xs text-muted-foreground line-clamp-2">{a.body}</p>}
+                      <p className="text-xs text-muted-foreground mt-1">{relativeTime(a.created_at)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

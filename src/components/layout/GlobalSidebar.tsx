@@ -8,7 +8,6 @@ import {
   BookOpen,
   Briefcase,
   Calculator,
-  CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -205,7 +204,6 @@ export function GlobalSidebar({
         { icon: LayoutDashboard, label: "Home", href: "/dashboard", special: true },
         ...(canRecruit ? [
           { icon: Briefcase, label: "Recruiting", href: "/dashboard/recruiting" },
-          { icon: CalendarDays, label: "Interviews", href: "/dashboard/interviews" },
         ] : []),
         { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center" },
         ...(canRecruit ? [{ icon: Users, label: "Team", href: "/dashboard/team" }] : []),
@@ -556,11 +554,7 @@ export function GlobalSidebar({
                         const isActive = item.href === "/dashboard"
                           ? location.pathname === item.href
                           : location.pathname === item.href
-                            || location.pathname.startsWith(`${item.href}/`)
-                            // Interview recovery is part of the Interviews
-                            // workflow but lives on a sibling path.
-                            || (item.href === "/dashboard/interviews"
-                              && location.pathname === "/dashboard/interview-recovery");
+                            || location.pathname.startsWith(`${item.href}/`);
                         return <NavItemComponent key={item.href} item={item} isActive={isActive} />;
                       })}
                     </div>

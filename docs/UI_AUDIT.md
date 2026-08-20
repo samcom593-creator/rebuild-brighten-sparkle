@@ -53,7 +53,7 @@ tag for `sr-only`, flagging shadcn's already-accessible `SidebarTrigger`. 93 →
 Cleared in `AgentCommandDashboard` (22 gradients, all glow shadows, all
 `rounded-3xl` → 0) — **verified live** in `AgentCommandDashboard-DgZCskpQ.js`.
 
-**CORRECTION — `InterviewCommandCenter` was dead code.** It was cleaned of 17
+**HISTORICAL CORRECTION — `InterviewCommandCenter` was dead code.** It was cleaned of 17
 gradients on the assumption it was "the interviews page Sam called rough". It was
 not. `/dashboard/interviews` routes to `HeadhunterGateway`, which hands off to the
 separate Headhunter app at `headhunter-sand.vercel.app`. `InterviewCommandCenter`
@@ -65,8 +65,11 @@ This is why the chunk could not be found in the deployed asset graph during live
 verification. That was the evidence, and it was read as a packaging quirk instead
 of the answer it actually was.
 
-**The real interviews UI lives in the Headhunter app — a separate repo and
-deployment.** No UI work in this repo can improve it.
+This was superseded on 2026-08-19: the real interviews UI is now native at
+`/dashboard/recruiting/interviews`; only the `hh_*` backend contract remains.
+
+**The previous interviews UI lived in the Headhunter app — a separate repo and
+deployment.** At that point, UI work in this repo could not improve it.
 
 **OPEN AND DELIBERATELY NOT REGEX-FIXED — `AgentCommandDashboard` is dark-only.**
 Its panels hardcode `text-white` on `slate-950`, and child text uses

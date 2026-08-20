@@ -616,7 +616,7 @@ export default function DashboardCRM() {
         // RLS hard-blocks non-admin reads — this returns 0 rows for managers
         // (and renders the hasReadymodeCreds flag as false, which is honest).
         allAgentIds.length > 0
-          ? supabase
+          ? (supabase as any)
               .from("agent_credentials")
               .select("agent_id, service")
               .in("agent_id", allAgentIds)

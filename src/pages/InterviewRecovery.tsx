@@ -50,6 +50,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
+import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 
 // ---------------------------------------------------------------------------
 // Types — mirror v_interview_pipeline
@@ -841,6 +842,7 @@ export default function InterviewRecovery() {
   // -------------------------------------------------------------------------
   return (
     <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+      <RecruitingWorkspaceNav />
       <PageHeader
         title="Interview Recovery"
         subtitle={

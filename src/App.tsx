@@ -192,7 +192,6 @@ const DataDeletion = lazy(() => import("./pages/DataDeletion"));
 const Contact = lazy(() => import("./pages/Contact"));
 const BotToken = lazy(() => import("./pages/BotToken"));
 const InstagramInbox = lazy(() => import("./pages/InstagramInbox"));
-const RecruitCommandCenter = lazy(() => import("./pages/RecruitCommandCenter"));
 const TeamChat = lazy(() => import("./pages/TeamChat"));
 const BulkDeals = lazy(() => import("./pages/BulkDeals"));
 const AgentLinkSync = lazy(() => import("./pages/AgentLinkSync"));
@@ -455,6 +454,9 @@ const App = () => (
                     {/* Unified APEX OS destinations. Legacy URLs below remain
                         as redirects so bookmarks keep their filters/query. */}
                     <Route path="/dashboard/recruiting" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardApplicants /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><Interviews /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/follow-ups" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><InterviewRecovery /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/hires" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardApplicants /></ProtectedRoute>} />
                     <Route path="/dashboard/team" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardCRM /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/production" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
@@ -597,8 +599,8 @@ const App = () => (
                      <Route path="/dashboard/headhunters-calendar" element={<Navigate to="/dashboard/command" replace />} />
                      {/* MP-264: VAs book every one of these calls — they need to see
                          the queue and the applicant names behind it. */}
-                     <Route path="/dashboard/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><Interviews /></ProtectedRoute>} />
-                     <Route path="/dashboard/interview-recovery" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><InterviewRecovery /></ProtectedRoute>} />
+                     <Route path="/dashboard/interviews" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/interviews" />} />
+                     <Route path="/dashboard/interview-recovery" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/follow-ups" />} />
                      {/* MP-264: 60% of everyone who has ever produced is dark. */}
                      <Route path="/dashboard/reactivation" element={<ProtectedRoute requireAdmin allowManagers><ProducerReactivation /></ProtectedRoute>} />
                      <Route path="/dashboard/hierarchy" element={<Navigate to="/dashboard/crm" replace />} />
@@ -635,8 +637,8 @@ const App = () => (
                        <Route path="/dashboard/inbox/instagram" element={<ProtectedRoute><InstagramInbox /></ProtectedRoute>} />
                        <Route path="/dashboard/instagram-inbox" element={<ProtectedRoute><InstagramInbox /></ProtectedRoute>} />
                        <Route path="/today" element={<Navigate to="/dashboard/command" replace />} />
-                       <Route path="/dashboard/recruit" element={<ProtectedRoute><RecruitCommandCenter /></ProtectedRoute>} />
-                       <Route path="/recruit" element={<ProtectedRoute><RecruitCommandCenter /></ProtectedRoute>} />
+                       <Route path="/dashboard/recruit" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting" />} />
+                       <Route path="/recruit" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting" />} />
                        <Route path="/dashboard/team-chat" element={<ProtectedRoute><TeamChat /></ProtectedRoute>} />
                        <Route path="/team-chat" element={<ProtectedRoute><TeamChat /></ProtectedRoute>} />
                        <Route path="/dashboard/bulk-deals" element={<ProtectedRoute requireAdmin allowManagers><BulkDeals /></ProtectedRoute>} />

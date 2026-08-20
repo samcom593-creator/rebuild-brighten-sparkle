@@ -33,6 +33,8 @@ interface Props {
   compact?: boolean;
   /** Called with the new agent_id after success. */
   onPromoted?: (agentId: string) => void;
+  /** Context-specific copy; the default remains unchanged on applicant rows. */
+  label?: string;
 }
 
 export function PromoteApplicantButton({
@@ -41,6 +43,7 @@ export function PromoteApplicantButton({
   managerId,
   compact,
   onPromoted,
+  label = "Promote",
 }: Props) {
   const [busy, setBusy] = useState(false);
   const qc = useQueryClient();
@@ -67,6 +70,7 @@ export function PromoteApplicantButton({
         qc.invalidateQueries({ queryKey: ["dashboard-applicants"] }),
         qc.invalidateQueries({ queryKey: ["agents"] }),
         qc.invalidateQueries({ queryKey: ["interviews-unified"] }),
+        qc.invalidateQueries({ queryKey: ["interviews-pipeline"] }),
       ]);
       // Open the new agent's drawer so Sam can immediately tap Send Course Link.
       openAgent(newAgentId);
@@ -96,12 +100,12 @@ export function PromoteApplicantButton({
     <Button
       variant="outline"
       size="sm"
-      className="h-8 gap-1.5"
+      className="h-11 gap-1.5 sm:h-9"
       disabled={busy}
       onClick={handle}
     >
       {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
-      <span className="text-xs">Promote</span>
+      <span className="text-xs">{label}</span>
     </Button>
   );
 }

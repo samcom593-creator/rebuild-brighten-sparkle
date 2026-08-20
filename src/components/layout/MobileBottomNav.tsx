@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, Briefcase, Crown, Home, LayoutDashboard, Settings, Target, User, Users } from "lucide-react";
+import { BarChart3, Briefcase, Home, LayoutDashboard, Library, Settings, User, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,18 +18,18 @@ const agentNavItems = [
 
 const adminNavItems = [
   { path: "/dashboard",               icon: LayoutDashboard, label: "Home" },
-  { path: "/dashboard/recruit",       icon: Target,     label: "Recruit" },
-  { path: "/dashboard/crm",           icon: Briefcase,  label: "CRM" },
-  { path: "/dashboard/seminar-control", icon: Crown,    label: "Seminar" },
-  { path: "/dashboard/command",       icon: Settings,   label: "Command" },
+  { path: "/dashboard/recruiting",    icon: Briefcase,  label: "Recruiting" },
+  { path: "/dashboard/team",          icon: Users,      label: "Team" },
+  { path: "/dashboard/production",    icon: BarChart3,  label: "Production" },
+  { path: "/dashboard/admin",         icon: Settings,   label: "Admin" },
 ];
 
 const managerNavItems = [
   { path: "/dashboard",               icon: LayoutDashboard, label: "Home" },
-  { path: "/dashboard/recruit",       icon: Target,     label: "Recruit" },
-  { path: "/dashboard/crm",           icon: Briefcase,  label: "CRM" },
-  { path: "/dashboard/seminar-control", icon: Crown,    label: "Seminar" },
-  { path: "/dashboard/applicants",    icon: Users,      label: "Pipeline" },
+  { path: "/dashboard/recruiting",    icon: Briefcase,  label: "Recruiting" },
+  { path: "/dashboard/team",          icon: Users,      label: "Team" },
+  { path: "/dashboard/production",    icon: BarChart3,  label: "Production" },
+  { path: "/dashboard/resources",     icon: Library,    label: "Resources" },
 ];
 
 export function MobileBottomNav() {
@@ -46,7 +46,9 @@ export function MobileBottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-background/95  safe-area-bottom">
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
+          const isActive = item.path === "/dashboard"
+            ? location.pathname === item.path
+            : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
           return (
             <button
               key={item.label}

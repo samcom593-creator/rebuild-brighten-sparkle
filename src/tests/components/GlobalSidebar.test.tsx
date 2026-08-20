@@ -29,6 +29,7 @@ vi.mock("@/hooks/useSoundEffects", () => ({ useSoundEffects: () => ({ playSound:
 vi.mock("@/components/layout/NotificationBell", () => ({ NotificationBell: () => null }));
 vi.mock("@/components/ThemeToggle", () => ({ ThemeToggle: () => null }));
 vi.mock("@/components/onboarding/QuickAddAgentDialog", () => ({ QuickAddAgentDialog: () => null }));
+vi.mock("@/components/dashboard/AddAgentModal", () => ({ AddAgentModal: () => null }));
 vi.mock("@/components/deals/SubmitDealDialog", () => ({ SubmitDealDialog: () => null }));
 vi.mock("@/stores/agentProfileDrawer", () => ({
   useAgentProfileDrawer: (selector: (s: { openAgent: () => void }) => unknown) =>
@@ -66,22 +67,23 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
-describe("GlobalSidebar · role-aware Interviews navigation", () => {
-  it("shows Interviews to admins, pointing at the protected route", () => {
+describe("GlobalSidebar · unified recruiting navigation", () => {
+  it("gives admins one recruiting destination instead of a separate Interviews product", () => {
     setRoles({ isAdmin: true });
     renderSidebar();
-    expect(link("Interviews")).toBeTruthy();
-    expect(link("Interviews")!.getAttribute("href")).toBe("/dashboard/interviews");
+    expect(link("Recruiting")?.getAttribute("href")).toBe("/dashboard/recruiting");
+    expect(link("Interviews")).toBeNull();
   });
 
   it.each([
     ["manager", { isManager: true }],
     ["va_manager", { isVaManager: true }],
     ["va", { isVa: true }],
-  ])("shows Interviews to %s", (_label, roles) => {
+  ])("shows the unified Recruiting workspace to %s", (_label, roles) => {
     setRoles(roles as Partial<typeof authState>);
     renderSidebar();
-    expect(link("Interviews")).toBeTruthy();
+    expect(link("Recruiting")).toBeTruthy();
+    expect(link("Interviews")).toBeNull();
   });
 
   it("hides Interviews (and the rest of the staff cluster) from plain agents", () => {
@@ -95,63 +97,45 @@ describe("GlobalSidebar · role-aware Interviews navigation", () => {
     expect(link("Contracting")).toBeTruthy();
   });
 
-  it("keeps Admin visible for admins now that Interviews is the 11th item", () => {
-    // Regression: a slice(0, 10) cap silently dropped Admin the moment the
-    // restored Interviews entry pushed the admin list to 11 items.
+  it("keeps the complete ten-destination admin map visible", () => {
     setRoles({ isAdmin: true });
     renderSidebar();
     expect(link("Admin")).toBeTruthy();
-    expect(link("Interviews")).toBeTruthy();
-    // The whole admin workspace set, no truncation.
     for (const label of [
-      "Command Center", "Recruiting", "Interviews", "Call Center", "Team",
-      "Contracting", "Production", "Analytics", "Community", "Resources", "Admin",
+      "Home", "Recruiting", "Call Center", "Team", "Contracting",
+      "Production", "Reports", "Resources", "Community", "Admin",
     ]) {
       expect(link(label)).toBeTruthy();
     }
   });
 });
 
-describe("GlobalSidebar · restored-item active-state behavior", () => {
+describe("GlobalSidebar · recruiting active-state behavior", () => {
   const ACTIVE_CLASS = "border-primary";
 
-  it("marks Interviews active on /dashboard/interviews and not Command Center", () => {
+  it.each([
+    "/dashboard/recruiting",
+    "/dashboard/recruiting/interviews",
+    "/dashboard/recruiting/follow-ups",
+    "/dashboard/recruiting/hires",
+  ])("keeps Recruiting active across %s", (pathname) => {
     setRoles({ isAdmin: true });
-    renderSidebar("/dashboard/interviews");
-    expect(link("Interviews")!.className).toContain(ACTIVE_CLASS);
-    expect(link("Command Center")!.className).not.toContain(ACTIVE_CLASS);
+    renderSidebar(pathname);
+    expect(link("Recruiting")!.className).toContain(ACTIVE_CLASS);
+    expect(link("Home")!.className).not.toContain(ACTIVE_CLASS);
   });
 
-  it("keeps Interviews active on nested interview paths", () => {
-    setRoles({ isAdmin: true });
-    renderSidebar("/dashboard/interviews/candidate-123");
-    expect(link("Interviews")!.className).toContain(ACTIVE_CLASS);
-  });
-
-  it("marks Interviews active on /dashboard/interview-recovery (sibling path, same workflow)", () => {
-    setRoles({ isAdmin: true });
-    renderSidebar("/dashboard/interview-recovery");
-    expect(link("Interviews")!.className).toContain(ACTIVE_CLASS);
-    expect(link("Command Center")!.className).not.toContain(ACTIVE_CLASS);
-  });
-
-  it("does not activate Interviews on sibling routes that merely share the prefix string", () => {
-    setRoles({ isAdmin: true });
-    renderSidebar("/dashboard/interviews-archive");
-    expect(link("Interviews")!.className).not.toContain(ACTIVE_CLASS);
-  });
-
-  it("Command Center is exact-match only", () => {
+  it("Home is exact-match only", () => {
     setRoles({ isAdmin: true });
     renderSidebar("/dashboard");
-    expect(link("Command Center")!.className).toContain(ACTIVE_CLASS);
+    expect(link("Home")!.className).toContain(ACTIVE_CLASS);
   });
 });
 
 describe("SidebarLayout · mobile drawer contract", () => {
   it("renders GlobalSidebar for both desktop rail and mobile drawer", () => {
     // The mobile drawer must stay a GlobalSidebar render — a separate mobile
-    // nav is how the Interviews entry went missing on phones last time.
+    // nav is how role-specific workspace entries went missing on phones before.
     const source = fs.readFileSync(
       path.resolve(__dirname, "../../components/layout/SidebarLayout.tsx"),
       "utf8",

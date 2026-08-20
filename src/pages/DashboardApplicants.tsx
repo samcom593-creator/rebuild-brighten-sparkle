@@ -84,6 +84,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { phoneHref, smsHref } from "@/lib/phone";
 import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
+import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 
 interface Application {
   id: string;
@@ -369,7 +370,7 @@ export default function DashboardApplicants() {
         throw new Error("Supabase returned null data without an error · investigate client config.");
       }
 
-      return { rows: data as Application[], count: count ?? data.length };
+      return { rows: data as unknown as Application[], count: count ?? data.length };
     };
 
     const activeResult = await fetchScopedApplications(false);
@@ -722,13 +723,11 @@ export default function DashboardApplicants() {
     applicationId: string,
     channel: "call" | "sms" | "email",
   ) => {
-    void supabase
-      .rpc("log_contact_attempt" as any, {
+    void Promise.resolve(supabase.rpc("log_contact_attempt" as any, {
         p_application_id: applicationId,
         p_channel: channel,
         p_outcome: "initiated",
-      })
-      .then(() => undefined)
+      }))
       // empty-catch-allow:fire-and-forget telemetry — must not block tel:/sms:/mailto: navigation
       .catch(() => undefined);
   };
@@ -1175,6 +1174,7 @@ export default function DashboardApplicants() {
       {/* Root wrapper padding is px-4 sm:px-6 so PageHeader's -mx-4 sm:-mx-6 cancels exactly.
           The full-bleed opt-out above is deliberate (11-column table on ultrawide). */}
       <div className="page-enter w-full space-y-5 px-4 pb-24 sm:px-6">
+      <RecruitingWorkspaceNav />
       <PageHeader
         accent="cyan"
         eyebrow="Recruiting · Applicants"

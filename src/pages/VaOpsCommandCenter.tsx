@@ -96,7 +96,7 @@ export default function VaOpsCommandCenter() {
       key: "interviews",
       label: "Interview Queue",
       desc: "Booked interviews to run and dispose",
-      href: "/dashboard/interviews",
+      href: "/dashboard/recruiting/interviews",
       icon: PhoneCall,
       count: viewCount("v_command_center_queue"),
     },

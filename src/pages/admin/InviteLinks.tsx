@@ -107,6 +107,7 @@ export default function InviteLinksAdmin() {
       const list = ((data as { managers?: Array<{ id: string; display_name?: string; name?: string }> })?.managers ?? [])
         .map((m) => ({ id: m.id, name: m.display_name || m.name || "Unnamed" }));
       setManagers(list);
+    // empty-catch-allow:optional-upline-list — dropdown visibly falls back to Me (default).
     } catch { /* upline dropdown just falls back to "Me (default)" */ }
   }, []);
 

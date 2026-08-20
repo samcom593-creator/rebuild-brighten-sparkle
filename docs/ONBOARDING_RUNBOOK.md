@@ -65,12 +65,10 @@ work for her").
 
 ## Stage 3 — Interview
 
-`/dashboard/interviews` hands off to the **Headhunter app**
-(`headhunter-sand.vercel.app`) — a separate product with its own login and
-`hh_*` tables. 244 interview events recorded, so this lane works.
-
-Nothing in this repo can change the interviews UI. That work happens in the
-Headhunter repo.
+`/dashboard/recruiting/interviews` is the native interview queue. It keeps the
+proven `hh_*` data contract, but the user stays inside APEX for confirmation,
+outcomes, reschedules, hires, and the explicit onboarding handoff. Old
+`/dashboard/interviews` bookmarks redirect here with their query string.
 
 ---
 

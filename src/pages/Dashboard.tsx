@@ -943,7 +943,7 @@ function ExecutiveDashboard({
           <Link to="/dashboard/leaderboard"><span className="truncate">Leaderboard</span> <ArrowRight className="ml-2 h-4 w-4 shrink-0" /></Link>
         </Button>
         <Button asChild variant="outline" className="h-10 justify-between sm:h-9">
-          <Link to="/dashboard/recruit"><span className="truncate">Recruiting</span> <ArrowRight className="ml-2 h-4 w-4 shrink-0" /></Link>
+          <Link to="/dashboard/recruiting"><span className="truncate">Recruiting</span> <ArrowRight className="ml-2 h-4 w-4 shrink-0" /></Link>
         </Button>
         <Button asChild variant="outline" className="h-10 justify-between sm:h-9">
           <Link to="/dashboard/seminar-control"><span className="truncate">Seminar Control</span> <ArrowRight className="ml-2 h-4 w-4 shrink-0" /></Link>

@@ -99,7 +99,7 @@ export default function DashboardToday() {
   const calls = useQuery({
     queryKey: ["apex-today-calls", today], refetchInterval: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_upcoming_calls")
+      const { data, error } = await (supabase as any).from("v_upcoming_calls")
         .select("id,prospect_name,summary,location,start_at,end_at,call_type,status,outcome")
         .order("start_at", { ascending: true });
       if (error) throw error;

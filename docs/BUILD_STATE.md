@@ -4,6 +4,14 @@
 
 **Last updated:** 2026-08-17
 
+## 2026-08-19 recruiting consolidation
+
+- `/dashboard/recruiting` now owns Applicants, Interviews, Follow-ups, and Hires as URL-addressable slices.
+- Legacy interview/recruit routes redirect into the workspace and the standalone Interviews sidebar destination is removed.
+- Native `interviews-pipeline` now preserves VA ownership, supports guarded interview transitions, uses optimistic row versions, and writes append-only activity receipts.
+- Hired interview rows expose the existing explicit `promote_applicant_to_agent` onboarding handoff when an unambiguous application match exists; ambiguous/missing matches are labelled rather than guessed.
+- The external Headhunter app remains a data-administration fallback only; see `docs/recruiting-workspace.md` for the bounded cutover.
+
 ---
 
 ## Completed

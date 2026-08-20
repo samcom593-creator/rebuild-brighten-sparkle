@@ -739,3 +739,6 @@ verify_jwt = false
 
 [functions.site-shell-watch]
 verify_jwt = false
+
+[functions.interviews-pipeline]
+verify_jwt = true

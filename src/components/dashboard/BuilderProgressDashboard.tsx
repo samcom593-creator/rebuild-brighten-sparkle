@@ -157,7 +157,7 @@ export function BuilderProgressDashboard() {
             </p>
           </div>
           <Button asChild size="sm" variant="ghost" className="text-xs">
-            <Link to="/dashboard/recruit">
+            <Link to="/dashboard/recruiting">
               Recruit center <ArrowRight className="h-3 w-3 ml-1" />
             </Link>
           </Button>

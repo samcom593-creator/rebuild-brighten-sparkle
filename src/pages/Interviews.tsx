@@ -1,21 +1,44 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { format, isPast, differenceInCalendarDays } from "date-fns";
+import {
+  Building2, CalendarClock, CheckCircle2, ChevronDown, Instagram, Mail,
+  MessageSquare, Phone, RefreshCw, RotateCcw, Search, UserCheck, UserX,
+} from "lucide-react";
+import { toast } from "sonner";
+
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/ui/page-header";
-import { CalendarClock, Search, RefreshCw, Phone, MessageSquare, Mail, ExternalLink, Building2, Instagram } from "lucide-react";
-import { format, formatDistanceToNowStrict, isPast, differenceInCalendarDays } from "date-fns";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
+import { PromoteApplicantButton } from "@/components/applicants/PromoteApplicantButton";
 
+type ActorRole = "executive" | "recruiter" | "va";
+type InterviewAction =
+  | "confirm" | "qualified" | "follow_up" | "hire" | "not_hired"
+  | "unqualified" | "no_show" | "reschedule" | "cancel" | "reopen";
 type Applicant = {
   id: string; name: string | null; phone: string | null; email: string | null;
   instagram: string | null; company: string | null; appointment_at: string | null;
   stage: string; interview_result: string | null; unqualified_reason: string | null;
   notes: string | null; reschedule_count: number | null; va_name: string | null;
-  recruiter_name: string | null; created_at: string | null; updated_at: string | null;
+  recruiter_name: string | null; version: number; created_at: string | null; updated_at: string | null;
+  application_id: string | null; onboarding_status: string;
 };
-type PipelineResponse = { applicants: Applicant[]; counts: Record<string, number>; total: number; role: string | null; generatedAt: string };
+type PipelineResponse = {
+  applicants: Applicant[]; counts: Record<string, number>; total: number;
+  role: ActorRole; generatedAt: string;
+};
 
 const STAGE_META: Record<string, { label: string }> = {
   appointment_set: { label: "Appointment set" }, confirmed: { label: "Confirmed" },
@@ -24,35 +47,94 @@ const STAGE_META: Record<string, { label: string }> = {
   not_hired: { label: "Not hired" }, unqualified: { label: "Unqualified" }, canceled: { label: "Canceled" },
 };
 const OPEN = ["appointment_set", "confirmed", "rescheduled", "no_show", "interview_complete"];
-const HEADHUNTER_ORIGIN = (import.meta.env.VITE_HEADHUNTER_URL || "https://headhunter-sand.vercel.app").replace(/\/$/, "");
+const LEGAL_BY_STAGE: Record<string, InterviewAction[]> = {
+  appointment_set: ["confirm", "no_show", "reschedule", "cancel"],
+  confirmed: ["qualified", "follow_up", "hire", "not_hired", "unqualified", "no_show", "reschedule"],
+  rescheduled: ["confirm", "qualified", "follow_up", "hire", "not_hired", "unqualified", "no_show", "cancel"],
+  interview_complete: ["hire", "not_hired", "follow_up", "unqualified"],
+  no_show: ["reschedule", "unqualified", "cancel"],
+  canceled: ["reschedule"], hired: ["reopen"], not_hired: ["reopen"], unqualified: ["reopen"],
+};
+const VA_ACTIONS = new Set<InterviewAction>(["confirm", "no_show", "reschedule", "cancel"]);
+const ACTION_LABEL: Record<InterviewAction, string> = {
+  confirm: "Confirm appointment", qualified: "Qualified", follow_up: "Follow up", hire: "Hire",
+  not_hired: "Not hired", unqualified: "Unqualify", no_show: "No-show", reschedule: "Reschedule",
+  cancel: "Cancel", reopen: "Reopen",
+};
 
 function initials(name: string | null) {
   if (!name) return "?";
-  return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
+  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("");
 }
 
-// The queue's status pill for one applicant — dot color + label + timing line,
-// exactly like the APEX Shell queue template (Overdue red · Up next amber ·
-// Confirmed green · Callback amber).
-function statusOf(a: Applicant, now: Date): { tone: string; dot: string; label: string; timing: string } {
-  const appt = a.appointment_at ? new Date(a.appointment_at) : null;
-  if (a.stage === "hired") return { tone: "text-success", dot: "bg-success", label: "Hired", timing: "handed to onboarding" };
-  if (a.stage === "interview_complete") return { tone: "text-primary", dot: "bg-primary", label: "Interviewed", timing: "record the decision" };
-  if (a.stage === "no_show") return { tone: "text-warning", dot: "bg-warning", label: "No-show", timing: "follow up / reschedule" };
-  if (a.stage === "rescheduled") return { tone: "text-warning", dot: "bg-warning", label: "Rescheduled", timing: appt ? format(appt, "EEE MMM d · h:mma") : "re-confirm time" };
-  if (appt && isPast(appt) && OPEN.includes(a.stage)) {
-    const days = Math.abs(differenceInCalendarDays(now, appt));
-    return { tone: "text-destructive", dot: "bg-destructive", label: "Overdue", timing: `${days} day${days === 1 ? "" : "s"} · ${a.reschedule_count ? `${a.reschedule_count} reschedule${a.reschedule_count === 1 ? "" : "s"}` : "no follow-up"}` };
+function availableActions(row: Applicant, role: ActorRole | undefined) {
+  const actions = LEGAL_BY_STAGE[row.stage] ?? [];
+  return role === "va" ? actions.filter((action) => VA_ACTIONS.has(action)) : actions;
+}
+
+function actionPrompt(row: Applicant) {
+  switch (row.stage) {
+    case "appointment_set": return "Confirm";
+    case "confirmed": case "rescheduled": return "Record outcome";
+    case "interview_complete": return "Make decision";
+    case "no_show": case "canceled": return "Rebook";
+    default: return "Reopen";
   }
-  if (appt) return { tone: "text-primary", dot: "bg-primary", label: a.stage === "confirmed" ? "Confirmed" : "Up next", timing: format(appt, "EEE MMM d · h:mma") };
-  return { tone: "text-muted-foreground", dot: "bg-muted-foreground", label: STAGE_META[a.stage]?.label ?? a.stage, timing: "no time set" };
+}
+
+function statusOf(row: Applicant, now: Date) {
+  const appointment = row.appointment_at ? new Date(row.appointment_at) : null;
+  if (row.stage === "hired") {
+    const timing = !row.application_id ? "application link needed"
+      : row.onboarding_status === "contracted" ? "contracted"
+      : row.onboarding_status === "hired" ? "onboarding started"
+      : "ready for onboarding";
+    return { tone: "text-success", dot: "bg-success", label: "Hired", timing };
+  }
+  if (row.stage === "interview_complete") return { tone: "text-primary", dot: "bg-primary", label: "Interviewed", timing: "record the decision" };
+  if (row.stage === "no_show") return { tone: "text-warning", dot: "bg-warning", label: "No-show", timing: "follow up or reschedule" };
+  if (row.stage === "rescheduled") return { tone: "text-warning", dot: "bg-warning", label: "Rescheduled", timing: appointment ? format(appointment, "EEE MMM d · h:mma") : "set a new time" };
+  if (appointment && isPast(appointment) && OPEN.includes(row.stage)) {
+    const days = Math.abs(differenceInCalendarDays(now, appointment));
+    return { tone: "text-destructive", dot: "bg-destructive", label: "Overdue", timing: `${days} day${days === 1 ? "" : "s"} · needs action` };
+  }
+  if (appointment) return { tone: "text-primary", dot: "bg-primary", label: row.stage === "confirmed" ? "Confirmed" : "Up next", timing: format(appointment, "EEE MMM d · h:mma") };
+  return { tone: "text-muted-foreground", dot: "bg-muted-foreground", label: STAGE_META[row.stage]?.label ?? row.stage, timing: "no time set" };
+}
+
+async function invokeAction(row: Applicant, action: InterviewAction, appointmentAt: string, reason: string) {
+  const { data, error } = await supabase.functions.invoke("interviews-pipeline", {
+    body: {
+      id: row.id,
+      action,
+      expectedVersion: row.version,
+      appointmentAt: appointmentAt ? new Date(appointmentAt).toISOString() : undefined,
+      reason: reason.trim() || undefined,
+    },
+  });
+  if (error) {
+    let message = error.message;
+    const context = (error as { context?: Response }).context;
+    if (context) {
+      // empty-catch-allow:http-error-body — original functions error remains the fallback message.
+      const payload = await context.clone().json().catch(() => null) as { error?: string } | null;
+      message = payload?.error || message;
+    }
+    throw new Error(message);
+  }
+  if (data?.error) throw new Error(data.error);
+  return data as { receipt: { persistedAt: string; warning: string | null } };
 }
 
 export default function Interviews() {
-  const [q, setQ] = useState("");
+  const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"open" | "overdue" | "upcoming" | "all">("open");
+  const [pending, setPending] = useState<{ row: Applicant; action: InterviewAction } | null>(null);
+  const [appointmentAt, setAppointmentAt] = useState("");
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const { data, isLoading, isError, refetch, isFetching } = useQuery<PipelineResponse>({
+  const pipeline = useQuery<PipelineResponse>({
     queryKey: ["interviews-pipeline"],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("interviews-pipeline");
@@ -62,129 +144,164 @@ export default function Interviews() {
     staleTime: 60_000,
   });
 
-  const now = useMemo(() => new Date(), []);
-  const applicants = data?.applicants ?? [];
-  const counts = data?.counts ?? {};
-
-  const overdue = applicants.filter((a) => a.appointment_at && isPast(new Date(a.appointment_at)) && OPEN.includes(a.stage) && a.stage !== "interview_complete");
-  const upcoming = applicants.filter((a) => a.appointment_at && !isPast(new Date(a.appointment_at)) && OPEN.includes(a.stage));
-  const openAll = applicants.filter((a) => OPEN.includes(a.stage));
-
-  const kpis = [
-    { label: "In pipeline", value: data?.total ?? 0, tone: "" },
-    { label: "Open", value: openAll.length, tone: "text-primary" },
-    { label: "Overdue", value: overdue.length, tone: "text-destructive" },
-    { label: "Upcoming", value: upcoming.length, tone: "text-primary" },
-    { label: "Interviewed", value: counts["interview_complete"] ?? 0, tone: "" },
-    { label: "Hired", value: counts["hired"] ?? 0, tone: "text-success" },
-  ];
-
-  const source = (tab === "overdue" ? overdue : tab === "upcoming" ? upcoming : tab === "all" ? applicants : openAll);
-  const term = q.trim().toLowerCase();
+  const now = new Date();
+  const applicants = pipeline.data?.applicants ?? [];
+  const overdue = applicants.filter((row) => row.appointment_at && isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage) && row.stage !== "interview_complete");
+  const upcoming = applicants.filter((row) => row.appointment_at && !isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage));
+  const openAll = applicants.filter((row) => OPEN.includes(row.stage));
+  const needsDecision = applicants.filter((row) => row.stage === "interview_complete").length;
+  const source = tab === "overdue" ? overdue : tab === "upcoming" ? upcoming : tab === "all" ? applicants : openAll;
+  const term = query.trim().toLowerCase();
   const filtered = term
-    ? source.filter((a) => [a.name, a.company, a.email, a.phone, a.instagram].some((v) => (v ?? "").toLowerCase().includes(term)))
+    ? source.filter((row) => [row.name, row.company, row.email, row.phone, row.instagram].some((value) => (value ?? "").toLowerCase().includes(term)))
     : source;
+  const groups = useMemo(() => [
+    { key: "overdue", title: "Overdue", sub: "appointment passed, still open", danger: true, rows: filtered.filter((row) => row.appointment_at && isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage) && row.stage !== "interview_complete") },
+    { key: "upcoming", title: "Upcoming", sub: "confirmed and scheduled", rows: filtered.filter((row) => row.appointment_at && !isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage)) },
+    { key: "other", title: "Needs a decision or time", sub: "interviewed, unscheduled, or closed", rows: filtered.filter((row) => !((row.appointment_at && isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage) && row.stage !== "interview_complete") || (row.appointment_at && !isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage)))) },
+  ].filter((group) => group.rows.length > 0), [filtered]);
 
-  // Group into the template's sections.
-  const groups: { key: string; title: string; sub: string; rows: Applicant[]; danger?: boolean }[] = [
-    { key: "overdue", title: "Overdue", sub: "appointment passed, still open", rows: filtered.filter((a) => a.appointment_at && isPast(new Date(a.appointment_at)) && OPEN.includes(a.stage) && a.stage !== "interview_complete"), danger: true },
-    { key: "upcoming", title: "Upcoming", sub: "confirmed & scheduled", rows: filtered.filter((a) => a.appointment_at && !isPast(new Date(a.appointment_at)) && OPEN.includes(a.stage)) },
-    { key: "other", title: "Needs a decision / no time", sub: "interviewed or unscheduled", rows: filtered.filter((a) => !((a.appointment_at && isPast(new Date(a.appointment_at)) && OPEN.includes(a.stage) && a.stage !== "interview_complete") || (a.appointment_at && !isPast(new Date(a.appointment_at)) && OPEN.includes(a.stage)))) },
-  ].filter((g) => g.rows.length > 0);
-
-  const tel = (p: string | null) => p ? `tel:${p.replace(/[^\d+]/g, "")}` : undefined;
-  const sms = (p: string | null) => p ? `sms:${p.replace(/[^\d+]/g, "")}` : undefined;
+  const chooseAction = (row: Applicant, action: InterviewAction) => {
+    setPending({ row, action });
+    setAppointmentAt("");
+    setReason("");
+  };
+  const saveAction = async () => {
+    if (!pending) return;
+    setSaving(true);
+    try {
+      const result = await invokeAction(pending.row, pending.action, appointmentAt, reason);
+      const receiptTime = format(new Date(result.receipt.persistedAt), "h:mm a");
+      if (result.receipt.warning) toast.warning(result.receipt.warning);
+      else toast.success(`${ACTION_LABEL[pending.action]} saved · ${receiptTime}`);
+      setPending(null);
+      await pipeline.refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Interview update failed");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className="space-y-5 p-4 md:p-6 page-enter max-w-6xl">
+    <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+      <RecruitingWorkspaceNav />
       <PageHeader
         eyebrow="Recruiting · Interviews"
         eyebrowIcon={<CalendarClock className="h-3 w-3" />}
         title="Interviews"
-        subtitle={<>Live queue{data && <> · as of {format(now, "h:mm a")} · {data.total.toLocaleString()} in pipeline</>}</>}
-        actions={
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}><RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} /> Refresh</Button>
-            <Button asChild size="sm" variant="ghost"><a href={HEADHUNTER_ORIGIN} target="_blank" rel="noopener noreferrer">Legacy board <ExternalLink className="h-3 w-3 ml-1.5" /></a></Button>
-          </div>
-        }
+        subtitle={<>One queue from appointment to decision{pipeline.data && <> · updated {format(new Date(pipeline.data.generatedAt), "h:mm a")}</>}</>}
+        actions={<Button size="sm" variant="outline" onClick={() => pipeline.refetch()} disabled={pipeline.isFetching}><RefreshCw className={`h-4 w-4 ${pipeline.isFetching ? "animate-spin" : ""}`} /> Refresh</Button>}
       />
 
-      {/* KPI row */}
-      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-        {kpis.map((k) => (
-          <div key={k.label} className="rounded-md border border-border bg-card p-3">
-            <p className={`text-2xl font-bold tabular-nums ${k.tone}`}>{k.value.toLocaleString()}</p>
-            <p className="text-[11px] text-muted-foreground">{k.label}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {[
+          { label: "Needs attention", value: overdue.length + needsDecision, detail: `${overdue.length} overdue · ${needsDecision} decisions`, tone: "text-destructive" },
+          { label: "Upcoming", value: upcoming.length, detail: "scheduled ahead", tone: "text-primary" },
+          { label: "Hired", value: pipeline.data?.counts.hired ?? 0, detail: "onboarding handoff", tone: "text-success" },
+        ].map((item) => <div key={item.label} className="rounded-lg border border-border bg-card p-4"><p className={`text-3xl font-bold tabular-nums ${item.tone}`}>{item.value.toLocaleString()}</p><p className="mt-1 text-sm font-semibold">{item.label}</p><p className="text-xs text-muted-foreground">{item.detail}</p></div>)}
       </div>
 
-      {/* toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative">
+        <div className="relative w-full sm:w-80">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the queue…" className="h-9 w-72 pl-8" />
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, company, phone, or email" className="h-11 pl-8 sm:h-9" aria-label="Search interviews" />
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {([["open", "Open"], ["overdue", "Overdue"], ["upcoming", "Upcoming"], ["all", "All"]] as const).map(([k, l]) => (
-            <button key={k} type="button" onClick={() => setTab(k)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${tab === k ? (k === "overdue" ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground") : "border border-border text-muted-foreground hover:bg-muted/40"}`}>
-              {l}{k === "overdue" && overdue.length > 0 ? ` ${overdue.length}` : ""}
-            </button>
+        <div className="flex max-w-full gap-1.5 overflow-x-auto pb-1">
+          {([['open', 'Open'], ['overdue', 'Overdue'], ['upcoming', 'Upcoming'], ['all', 'All']] as const).map(([key, label]) => (
+            <Button key={key} type="button" size="sm" variant={tab === key ? "default" : "outline"} onClick={() => setTab(key)} aria-pressed={tab === key} className="h-11 shrink-0 sm:h-9">
+              {label}{key === "overdue" && overdue.length ? ` ${overdue.length}` : ""}
+            </Button>
           ))}
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-20 rounded-lg border border-border bg-muted/20 animate-pulse" />)}</div>
-      ) : isError ? (
-        <div className="rounded-lg border border-border p-8 text-center text-sm text-destructive">Couldn't load the queue. <button className="underline" onClick={() => refetch()}>Retry</button></div>
+      {pipeline.isLoading ? (
+        // stable-key-allow:static-interview-skeleton — fixed five placeholders never reorder or hold state.
+        <div className="space-y-2">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-24 animate-pulse rounded-lg border border-border bg-muted/20" />)}</div>
+      ) : pipeline.isError ? (
+        <div className="rounded-lg border border-destructive/30 p-8 text-center text-sm text-destructive">The interview queue is unavailable; no count above should be treated as zero. <button className="underline" onClick={() => pipeline.refetch()}>Retry</button></div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-lg border border-border p-10 text-center text-sm text-muted-foreground">Nothing in this view. An appointment moves here the moment it's booked.</div>
+        <div className="rounded-lg border border-border p-10 text-center text-sm text-muted-foreground">Nothing in this view. A booking appears here as soon as it enters the interview pipeline.</div>
       ) : (
         <div className="space-y-6">
-          {groups.map((g) => (
-            <div key={g.key}>
-              <div className="mb-2 flex items-center gap-2">
-                <h3 className={`text-sm font-bold ${g.danger ? "text-destructive" : "text-foreground"}`}>{g.title}</h3>
-                <span className="text-xs text-muted-foreground">{g.sub}</span>
-                <Badge variant="outline" className={g.danger ? "bg-destructive/15 text-destructive border-destructive/30" : "bg-muted text-muted-foreground border-border"}>{g.rows.length} waiting</Badge>
+          {groups.map((group) => (
+            <section key={group.key} aria-labelledby={`interview-group-${group.key}`}>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <h2 id={`interview-group-${group.key}`} className={`text-sm font-bold ${group.danger ? "text-destructive" : "text-foreground"}`}>{group.title}</h2>
+                <span className="text-xs text-muted-foreground">{group.sub}</span>
+                <Badge variant="outline">{group.rows.length} waiting</Badge>
               </div>
-              <div className="overflow-hidden rounded-lg border border-border">
-                {g.rows.map((a, i) => {
-                  const s = statusOf(a, now);
+              <div className="overflow-hidden rounded-lg border border-border bg-card">
+                {group.rows.map((row, index) => {
+                  const status = statusOf(row, now);
+                  const actions = availableActions(row, pipeline.data?.role);
                   return (
-                    <div key={a.id} className={`grid grid-cols-[190px_1fr_auto] items-center gap-4 p-3 ${i > 0 ? "border-t border-border" : ""} hover:bg-muted/10`}>
+                    <div key={row.id} className={`grid grid-cols-1 gap-3 p-4 md:grid-cols-[175px_minmax(0,1fr)_auto] md:items-center ${index ? "border-t border-border" : ""}`}>
                       <div className="text-xs">
-                        <p className={`inline-flex items-center gap-1.5 font-medium ${s.tone}`}><span className={`h-2 w-2 rounded-full ${s.dot}`} />{s.label}</p>
-                        <p className="mt-0.5 text-muted-foreground">{s.timing}</p>
+                        <p className={`inline-flex items-center gap-1.5 font-semibold ${status.tone}`}><span className={`h-2 w-2 rounded-full ${status.dot}`} />{status.label}</p>
+                        <p className="mt-1 text-muted-foreground">{status.timing}</p>
                       </div>
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">{initials(a.name)}</span>
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">{initials(row.name)}</span>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">{a.name || "Unnamed"}</p>
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                            {a.company && <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{a.company}</span>}
-                            {a.instagram && <span className="inline-flex items-center gap-1"><Instagram className="h-3 w-3" />{a.instagram.replace(/^@?/, "@")}</span>}
-                            {a.va_name && <span>· {a.va_name}</span>}
-                            <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-[10px]">{STAGE_META[a.stage]?.label ?? a.stage}</Badge>
+                          <p className="truncate text-sm font-semibold">{row.name || "Unnamed"}</p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                            {row.company && <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{row.company}</span>}
+                            {row.instagram && <span className="inline-flex items-center gap-1"><Instagram className="h-3 w-3" />{row.instagram.replace(/^@?/, "@")}</span>}
+                            {row.va_name && <span>Owner · {row.va_name}</span>}
+                            <Badge variant="outline" className="text-[10px]">{STAGE_META[row.stage]?.label ?? row.stage}</Badge>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <Button asChild size="icon" className="h-9 w-9" disabled={!a.phone}><a href={tel(a.phone)} aria-label="Call"><Phone className="h-4 w-4" /></a></Button>
-                        <Button asChild size="icon" variant="outline" className="h-9 w-9" disabled={!a.phone}><a href={sms(a.phone)} aria-label="Text"><MessageSquare className="h-4 w-4" /></a></Button>
-                        <Button asChild size="icon" variant="outline" className="h-9 w-9" disabled={!a.email}><a href={a.email ? `mailto:${a.email}` : undefined} aria-label="Email"><Mail className="h-4 w-4" /></a></Button>
+                      <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                        {row.phone && <Button asChild size="icon" aria-label={`Call ${row.name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`tel:${row.phone.replace(/[^\d+]/g, "")}`}><Phone className="h-4 w-4" /></a></Button>}
+                        {row.phone && <Button asChild size="icon" variant="outline" aria-label={`Text ${row.name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`sms:${row.phone.replace(/[^\d+]/g, "")}`}><MessageSquare className="h-4 w-4" /></a></Button>}
+                        {row.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${row.name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`mailto:${row.email}`}><Mail className="h-4 w-4" /></a></Button>}
+                        {row.stage === "hired" && row.application_id ? (
+                          <PromoteApplicantButton
+                            applicationId={row.application_id}
+                            applicantName={row.name ?? undefined}
+                            label={row.onboarding_status === "ready_to_promote" ? "Start onboarding" : "Open agent"}
+                          />
+                        ) : actions.length ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild><Button className="h-11 gap-1.5 sm:h-9">{actionPrompt(row)} <ChevronDown className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {actions.map((action) => <DropdownMenuItem key={action} onSelect={() => chooseAction(row, action)}>{ACTION_LABEL[action]}</DropdownMenuItem>)}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : null}
+                        {row.stage === "hired" && !row.application_id && <Badge variant="outline" className="border-warning/30 text-warning">Application link needed</Badge>}
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </section>
           ))}
         </div>
       )}
+
+      <Dialog open={Boolean(pending)} onOpenChange={(open) => { if (!open && !saving) setPending(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{pending ? ACTION_LABEL[pending.action] : "Update interview"}</DialogTitle>
+            <DialogDescription>{pending?.row.name} · this writes the decision to the shared interview record and activity history.</DialogDescription>
+          </DialogHeader>
+          {pending?.action === "reschedule" && <div className="space-y-2"><Label htmlFor="interview-reschedule-at">New appointment time</Label><Input id="interview-reschedule-at" type="datetime-local" value={appointmentAt} onChange={(event) => setAppointmentAt(event.target.value)} /></div>}
+          {pending?.action === "unqualified" && <div className="space-y-2"><Label htmlFor="interview-unqualified-reason">Reason</Label><Textarea id="interview-unqualified-reason" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Why this candidate is not qualified" /></div>}
+          {pending?.action === "hire" && <div className="rounded-lg border border-success/30 bg-success/5 p-3 text-sm"><p className="flex items-center gap-2 font-semibold text-success"><UserCheck className="h-4 w-4" /> Hire decision</p><p className="mt-1 text-muted-foreground">After the receipt is saved, use Start onboarding on the row to create or open the linked APEX agent.</p></div>}
+          {pending?.action === "not_hired" && <p className="flex items-center gap-2 text-sm text-muted-foreground"><UserX className="h-4 w-4" /> The candidate remains in history and can be reopened.</p>}
+          {pending?.action === "reopen" && <p className="flex items-center gap-2 text-sm text-muted-foreground"><RotateCcw className="h-4 w-4" /> This returns the interview to Confirmed with its outcome pending.</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPending(null)} disabled={saving}>Cancel</Button>
+            <Button onClick={() => void saveAction()} disabled={saving || (pending?.action === "reschedule" && !appointmentAt) || (pending?.action === "unqualified" && !reason.trim())}>
+              {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />} Save with receipt
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

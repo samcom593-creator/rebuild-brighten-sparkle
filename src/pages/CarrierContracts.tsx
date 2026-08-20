@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { AlertTriangle, ExternalLink, Copy, Check, Link2, Users, Briefcase, ClipboardList, FileSignature, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -319,7 +320,7 @@ export default function CarrierContracts() {
         actions={
           (isAdmin || isManager) ? (
             <Button asChild size="sm">
-              <a href="/admin/invite-links"><Users className="h-4 w-4" /> Invite an agent</a>
+              <Link to="/admin/invite-links"><Users className="h-4 w-4" /> Invite an agent</Link>
             </Button>
           ) : undefined
         }

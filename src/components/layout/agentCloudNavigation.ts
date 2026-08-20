@@ -48,10 +48,25 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     label: "Clients",
     icon: ContactRound,
     items: [
-      { label: "Pipeline", href: "/dashboard/recruiting", icon: FolderKanban },
+      // Agent Cloud's Clients→Pipeline is the CLIENT pipeline. This pointed at
+      // /dashboard/recruiting (agent applicants), so the client pipeline was
+      // unreachable from the sidebar — "there's still no client pipeline".
+      { label: "Pipeline", href: "/dashboard/agent-pipeline", icon: FolderKanban },
       { label: "Calendar", href: "/dashboard/calendar", icon: CalendarDays },
-      { label: "Book of Business", href: "/dashboard/book-of-business", icon: BookOpen },
+      // Book of Business = the AgentLink production book (true numbers), per
+      // the replication map — not the legacy book page.
+      { label: "Book of Business", href: "/dashboard/production", icon: BookOpen },
       { label: "Retention", href: "/dashboard/retention", icon: Shield },
+    ],
+  },
+  {
+    label: "Recruiting",
+    icon: UserPlus,
+    items: [
+      { label: "Pipeline", href: "/dashboard/recruiting", icon: FolderKanban },
+      { label: "Interviews", href: "/dashboard/interviews", icon: CalendarDays },
+      { label: "Call Center", href: "/dashboard/call-center", icon: Target },
+      { label: "Awards", href: "/dashboard/awards", icon: Trophy },
     ],
   },
   {

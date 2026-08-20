@@ -152,6 +152,16 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
+      // 2026-08-20: self-destroying. The SW precached index.html, so every
+      // deploy left installed clients on a stale shell whose lazy-chunk hashes
+      // no longer existed — routes went blank until the SW update cycle caught
+      // up ("almost all pages don't work"). A live-data admin dashboard gets
+      // nothing from shell precaching: Vercel already serves index.html with
+      // max-age=0 must-revalidate and content-hashed /assets/ as immutable.
+      // selfDestroying ships a kill-switch SW that unregisters itself on every
+      // installed client, ending the stale-shell class permanently.
+      // chunkRecovery in main.tsx stays as the belt-and-braces reload path.
+      selfDestroying: true,
       registerType: "autoUpdate",
       // wave-45 (2026-06-09): live mobile Lighthouse for e1530c22 (HEAD) found
       // registerSW.js as the #3 cold-landing long task (112ms) on the main

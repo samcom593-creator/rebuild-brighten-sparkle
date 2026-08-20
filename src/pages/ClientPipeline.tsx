@@ -202,6 +202,26 @@ export default function ClientPipeline() {
     },
   });
 
+  // Headline numbers come from a server-side, RLS-scoped aggregate — NOT from
+  // rows.length. PostgREST caps the row fetch above at 1000, so deriving totals
+  // from the fetched array showed "1,000 clients" when the book holds 1,906.
+  // The directory list below still uses `rows` (capped + sliced for render);
+  // only the counts must be exact.
+  const { data: agg } = useQuery({
+    queryKey: ["client-pipeline-stats", isAdmin],
+    enabled: !!user?.id,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_client_pipeline_stats")
+        .select("*")
+        .maybeSingle();
+      if (error) throw error;
+      return data as Record<string, number> | null;
+    },
+  });
+
   // ── Derived totals ─────────────────────────────────────────────────────
   const stats = useMemo(() => {
     const total = rows.length;
@@ -239,11 +259,24 @@ export default function ClientPipeline() {
     }).length;
     const missing = neverContacted + coldAfterTouch;
 
+    // Prefer the exact server-side aggregate; fall back to row-derived (capped)
+    // only while the aggregate query is in flight or unavailable.
     return {
-      total, sold, inFlight, unsorted, new7d, callbacksDue, dnc, hostile,
-      hasntBought, hasntBoughtActive, missing, neverContacted, coldAfterTouch,
+      total:            agg?.total            ?? total,
+      sold:             agg?.sold             ?? sold,
+      inFlight:         agg?.in_flight        ?? inFlight,
+      unsorted:         agg?.unsorted         ?? unsorted,
+      new7d:            agg?.new_7d           ?? new7d,
+      callbacksDue:     agg?.callbacks_due    ?? callbacksDue,
+      dnc:              agg?.dnc              ?? dnc,
+      hostile:          agg?.hostile          ?? hostile,
+      hasntBought:      agg?.hasnt_bought     ?? hasntBought,
+      hasntBoughtActive: agg?.hasnt_bought_active ?? hasntBoughtActive,
+      missing:          agg ? (agg.never_contacted + agg.cold_after_touch) : missing,
+      neverContacted:   agg?.never_contacted  ?? neverContacted,
+      coldAfterTouch:   agg?.cold_after_touch ?? coldAfterTouch,
     };
-  }, [rows]);
+  }, [rows, agg]);
 
   // Housing segmentation — counts per bucket. Will be all-unknown today;
   // surfaces real numbers automatically once AgentLink starts syncing
@@ -270,8 +303,9 @@ export default function ClientPipeline() {
     ).length;
     const almost = rows.filter((c) => c.pipeline_stage === "ALMOST_THERE").length;
     const sold = rows.filter((c) => c.pipeline_stage === "SOLD").length;
+    if (agg) return { NEW_INITIAL: agg.f_new, WORKING_TOTAL: agg.f_working, ALMOST_THERE: agg.f_almost, SOLD: agg.sold };
     return { NEW_INITIAL: newCount, WORKING_TOTAL: workingTotal, ALMOST_THERE: almost, SOLD: sold };
-  }, [rows]);
+  }, [rows, agg]);
 
   // Bottleneck: pick the worst stage-to-stage conv% across the 4 cards.
   // Returns null when any prev is 0 (no funnel to score yet) or all

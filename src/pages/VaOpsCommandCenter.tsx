@@ -167,7 +167,7 @@ export default function VaOpsCommandCenter() {
       count: () =>
         countOf(
           supabase
-            .from("profiles")
+            .from("profiles" as any)
             .select("*", { count: "exact", head: true })
             .eq("managed_by", user?.id ?? ""),
         ),

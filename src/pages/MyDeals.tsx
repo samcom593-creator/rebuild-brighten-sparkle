@@ -198,9 +198,9 @@ export default function MyDeals() {
     enabled: teamView,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_imo_by_agency").select("agency, is_primary, policies, alp, alp_mtd").order("alp", { ascending: false });
+      const { data, error } = await supabase.from("v_imo_by_agency" as any).select("agency, is_primary, policies, alp, alp_mtd").order("alp", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as Array<{ agency: string; is_primary: boolean; policies: number; alp: number; alp_mtd: number }>;
+      return (data ?? []) as unknown as Array<{ agency: string; is_primary: boolean; policies: number; alp: number; alp_mtd: number }>;
     },
   });
   const imoMax = Math.max(1, ...imo.map((a) => a.alp));

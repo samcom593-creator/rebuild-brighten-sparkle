@@ -6,9 +6,11 @@ Deno.serve(
   createHandler(
     {
       functionName: "check-overdue-tasks",
+      requireAuth: true,
       rateLimit: { maxRequests: 20, windowSeconds: 60 },
     },
-    async () => {
+    async (req, ctx) => {
+      if (!ctx.auth) return jsonResponse({ error: "Unauthorized" }, 401);
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,

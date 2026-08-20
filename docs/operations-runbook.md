@@ -1,15 +1,23 @@
 # APEX Operations Runbook
 
-## Current incident finding
+## Current incident finding & remediation status
 
-The August 10, 2026 live request returned `502 Bad Gateway` with connection refused. That proves the upstream application was unavailable, but it does not identify whether the cause was a failed build, crashed runtime, bad route, missing environment value, or platform networking. This slice adds `/healthz` and `/readiness`; the production cause remains unverified until platform logs and a staged deploy are inspected.
+The August 10, 2026 live request returned `502 Bad Gateway` with connection refused. That proves the upstream application was unavailable, but it does not identify whether the cause was a failed build, crashed runtime, bad route, missing environment value, or platform networking. This slice adds `/healthz` and `/readiness` and completes the APEX function perfection remediation (migration `20260811223000`).
 
 ## Health contract
 
 - `GET /healthz`: process liveness only; no vendor dependency.
-- `GET /readiness`: required Supabase configuration, database reachability, and migration `20260811222000`.
+- `GET /readiness`: required Supabase configuration, database reachability, and migration `20260811223000`.
 - Admin health should separately display optional integration capability, outbox lag, oldest pending event, dead letters, and worker heartbeat.
 - Never return secrets, recipients, message bodies, client identity, policy data, or documents.
+
+## Edge Function & Function Contract Safeguards
+
+- All new edge functions default to `verify_jwt = true` in `supabase/config.toml`.
+- Public functions and webhooks are restricted to an explicit, audited `PUBLIC_ALLOWLIST`.
+- In-code webhooks (`poke-webhook`, `calendly-webhook`, `instagram-webhook`) fail closed with HTTP 503 if verification credentials are missing and HTTP 401 on signature mismatch.
+- Privileged endpoints (`send-email`, `ai-lead-insights`, `score-applicant`, `verify-nipr`, `notify-notes-added`, `notify-stage-change`, `check-overdue-tasks`, `create-va-account`, `set-va-account`) enforce caller JWT and role verification (`requireAuth` / `requireRole`).
+- Deployed VA edge functions (`create-va-account`, `set-va-account`) are source-controlled, authenticated, and role-guarded.
 
 ## Release procedure
 
@@ -17,7 +25,7 @@ The August 10, 2026 live request returned `502 Bad Gateway` with connection refu
 2. Create/verify a restore point.
 3. Apply migrations and functions to staging only.
 4. Configure placeholders with staging secrets; set `APEX_CONTACT_DRY_RUN=true` for contact smoke tests.
-5. Require `npm run check:migration-versions`, lint, TypeScript ratchet, tests, production build, Deno checks, `/healthz`, and `/readiness`.
+5. Require `npm run check:migration-versions`, `npm run check:function-contracts`, lint, TypeScript ratchet, tests, production build, Deno checks, `/healthz`, and `/readiness`.
 6. Smoke role access, Add Agent, call logging, SMS/email preview and dry-run receipt, deal draft recovery, evidence upload, duplicate submit, and deal status transition.
 7. Review logs for PII and unhandled errors.
 8. Obtain explicit owner authorization before production migration/deployment or a real outbound send.

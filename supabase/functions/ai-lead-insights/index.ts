@@ -2,7 +2,8 @@
 // request time, so that pin pinned nothing underneath it and now fails to resolve
 // ws's optional native deps (bufferutil / utf-8-validate). The function died at
 // BOOT, before the handler, so every call 500d and nothing recorded a reason.
-// 2.90.1 is the version proven booting.
+// Measured 2026-08-17: send-notification 903/903 failures in 24h, poke-pusher
+// 164/164, metricool-sync 3/3 — zero 200s. 2.90.1 is the version proven booting.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { createHandler } from "../_shared/handler.ts";
 import { jsonResponse } from "../_shared/cors.ts";
@@ -16,6 +17,7 @@ Deno.serve(
   createHandler(
     {
       functionName: "ai-lead-insights",
+      requireAuth: true,
       rateLimit: { maxRequests: 30, windowSeconds: 60 },
     },
     async (req) => {

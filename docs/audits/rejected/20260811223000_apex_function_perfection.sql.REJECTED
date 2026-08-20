@@ -1,0 +1,497 @@
+-- APEX FUNCTION PERFECTION REMEDIATION (2026-08-11)
+-- Additive, reversible migration providing missing RPCs, fixing production function bugs,
+-- and backfilling schema-drift definitions.
+
+-- 1. get_just_hired_30d() for JustHiredPanel.tsx
+CREATE OR REPLACE FUNCTION public.get_just_hired_30d()
+RETURNS TABLE (
+  id uuid,
+  display_name text,
+  start_date date,
+  routed_to text,
+  created_at timestamptz
+) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    a.id,
+    a.display_name,
+    a.start_date,
+    COALESCE(m.display_name, '(direct to Sam)') AS routed_to,
+    a.created_at
+  FROM public.agents a
+  LEFT JOIN public.agents m ON m.id = a.invited_by_manager_id
+  WHERE a.created_at >= now() - interval '30 days'
+    AND COALESCE(a.is_deactivated, false) = false
+  ORDER BY a.created_at DESC
+  LIMIT 15;
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.get_just_hired_30d() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_just_hired_30d() TO anon;
+
+-- 2. next_step_message_stats_24h(since_ts timestamptz) for AdminFunnelHealth.tsx
+CREATE OR REPLACE FUNCTION public.next_step_message_stats_24h(since_ts timestamptz DEFAULT (now() - interval '24 hours'))
+RETURNS TABLE (
+  channel text,
+  sent bigint,
+  failed bigint
+) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    COALESCE(nsm.channel, 'unknown') AS channel,
+    COUNT(*) FILTER (WHERE nsm.sent_at IS NOT NULL) AS sent,
+    COUNT(*) FILTER (WHERE nsm.failed_at IS NOT NULL) AS failed
+  FROM public.next_step_messages nsm
+  WHERE nsm.created_at >= since_ts
+  GROUP BY COALESCE(nsm.channel, 'unknown')
+  ORDER BY sent DESC;
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.next_step_message_stats_24h(timestamptz) TO authenticated;
+
+-- 3. should_post_to_discord RPC for canPostToDiscord edge function helper
+CREATE TABLE IF NOT EXISTS public.discord_post_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  category text NOT NULL,
+  posted_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE OR REPLACE FUNCTION public.should_post_to_discord(
+  p_category text DEFAULT 'default',
+  p_max_per_hour int DEFAULT 5
+) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_count int;
+BEGIN
+  SELECT COUNT(*) INTO v_count
+  FROM public.discord_post_log
+  WHERE category = p_category
+    AND posted_at >= now() - interval '1 hour';
+
+  IF v_count >= p_max_per_hour THEN
+    RETURN false;
+  END IF;
+
+  INSERT INTO public.discord_post_log (category, posted_at)
+  VALUES (p_category, now());
+
+  RETURN true;
+EXCEPTION WHEN OTHERS THEN
+  RETURN true;
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.should_post_to_discord(text, int) TO authenticated;
+
+-- 4. mark_application_paid RPC for Stripe lead purchase webhook
+CREATE OR REPLACE FUNCTION public.mark_application_paid(
+  p_application_id uuid,
+  p_payment_intent text DEFAULT NULL
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  UPDATE public.applications
+     SET ica_paid_at = COALESCE(ica_paid_at, now()),
+         status = CASE WHEN status = 'applied_unpaid' THEN 'applied_paid' ELSE status END
+   WHERE id = p_application_id;
+
+  RETURN jsonb_build_object('success', true, 'application_id', p_application_id);
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.mark_application_paid(uuid, text) TO authenticated;
+
+-- 5. Backfill agent_call_activity(p_agent_id uuid)
+CREATE OR REPLACE FUNCTION public.agent_call_activity(p_agent_id uuid)
+RETURNS TABLE (
+  total_calls bigint,
+  total_duration_minutes numeric,
+  last_call_at timestamptz
+) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    COUNT(*)::bigint AS total_calls,
+    COALESCE(SUM(duration_seconds) / 60.0, 0)::numeric AS total_duration_minutes,
+    MAX(created_at) AS last_call_at
+  FROM public.contact_history
+  WHERE agent_id = p_agent_id
+    AND contact_type IN ('call', 'phone');
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.agent_call_activity(uuid) TO authenticated;
+
+-- 6. Backfill finance_snapshot()
+CREATE OR REPLACE FUNCTION public.finance_snapshot()
+RETURNS TABLE (
+  mtd_volume numeric,
+  ytd_volume numeric,
+  active_policies bigint
+) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    COALESCE(SUM(annual_premium) FILTER (WHERE posted_date >= date_trunc('month', CURRENT_DATE)), 0)::numeric AS mtd_volume,
+    COALESCE(SUM(annual_premium) FILTER (WHERE posted_date >= date_trunc('year', CURRENT_DATE)), 0)::numeric AS ytd_volume,
+    COUNT(*)::bigint AS active_policies
+  FROM public.agentlink_book
+  WHERE is_dead = false;
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.finance_snapshot() TO authenticated;
+
+-- 7. Backfill fn_readymode_ingest(p_payload jsonb)
+CREATE OR REPLACE FUNCTION public.fn_readymode_ingest(p_payload jsonb)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  INSERT INTO public.readymode_logs (payload, created_at)
+  VALUES (p_payload, now());
+
+  RETURN jsonb_build_object('success', true, 'ingested_at', now());
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.fn_readymode_ingest(jsonb) TO authenticated;
+
+-- 8. Backfill landing_recent_hires()
+CREATE OR REPLACE FUNCTION public.landing_recent_hires()
+RETURNS TABLE (
+  first_name text,
+  state text,
+  hired_days_ago int
+) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    SPLIT_PART(a.display_name, ' ', 1) AS first_name,
+    COALESCE(p.state, 'US') AS state,
+    GREATEST(0, (CURRENT_DATE - a.created_at::date))::int AS hired_days_ago
+  FROM public.agents a
+  LEFT JOIN public.profiles p ON p.id = a.profile_id OR p.user_id = a.user_id
+  WHERE COALESCE(a.is_deactivated, false) = false
+  ORDER BY a.created_at DESC
+  LIMIT 10;
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.landing_recent_hires() TO anon;
+GRANT EXECUTE ON FUNCTION public.landing_recent_hires() TO authenticated;
+
+-- 9. Backfill leaderboard_book(p_start date, p_end date, p_include_dead boolean)
+CREATE OR REPLACE FUNCTION public.leaderboard_book(
+  p_start date DEFAULT date_trunc('month', CURRENT_DATE)::date,
+  p_end date DEFAULT CURRENT_DATE,
+  p_include_dead boolean DEFAULT false
+) RETURNS TABLE (
+  agent_key text,
+  agent_id uuid,
+  display_name text,
+  total_alp numeric,
+  deal_count bigint,
+  photo_url text,
+  instagram text
+) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    COALESCE(b.agent_id::text, b.agent_name) AS agent_key,
+    b.agent_id,
+    MAX(b.agent_name) AS display_name,
+    SUM(b.annual_premium)::numeric AS total_alp,
+    COUNT(*)::bigint AS deal_count,
+    MAX(p.avatar_url) AS photo_url,
+    MAX(p.instagram_handle) AS instagram
+  FROM public.agentlink_book b
+  LEFT JOIN public.agents a ON a.id = b.agent_id
+  LEFT JOIN public.profiles p ON p.id = a.profile_id OR p.user_id = a.user_id
+  WHERE b.posted_date >= p_start
+    AND b.posted_date <= p_end
+    AND (p_include_dead OR b.is_dead = false)
+  GROUP BY COALESCE(b.agent_id::text, b.agent_name), b.agent_id
+  ORDER BY total_alp DESC;
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.leaderboard_book(date, date, boolean) TO anon;
+GRANT EXECUTE ON FUNCTION public.leaderboard_book(date, date, boolean) TO authenticated;
+
+-- 10. Backfill leaderboard_book_hero()
+CREATE OR REPLACE FUNCTION public.leaderboard_book_hero()
+RETURNS TABLE (
+  total_alp numeric,
+  total_deals bigint,
+  producer_count bigint,
+  top_producer_name text,
+  top_producer_alp numeric,
+  top_producer_photo text
+) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_start date := date_trunc('month', CURRENT_DATE)::date;
+  v_end date := CURRENT_DATE;
+BEGIN
+  RETURN QUERY
+  WITH ranked AS (
+    SELECT
+      agent_key,
+      display_name,
+      total_alp,
+      photo_url,
+      ROW_NUMBER() OVER (ORDER BY total_alp DESC) as rnk
+    FROM public.leaderboard_book(v_start, v_end, false)
+  )
+  SELECT
+    COALESCE(SUM(b.annual_premium), 0)::numeric AS total_alp,
+    COUNT(*)::bigint AS total_deals,
+    COUNT(DISTINCT COALESCE(b.agent_id::text, b.agent_name))::bigint AS producer_count,
+    (SELECT r.display_name FROM ranked r WHERE r.rnk = 1) AS top_producer_name,
+    (SELECT r.total_alp FROM ranked r WHERE r.rnk = 1) AS top_producer_alp,
+    (SELECT r.photo_url FROM ranked r WHERE r.rnk = 1) AS top_producer_photo
+  FROM public.agentlink_book b
+  WHERE b.posted_date >= v_start
+    AND b.posted_date <= v_end
+    AND b.is_dead = false;
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.leaderboard_book_hero() TO anon;
+GRANT EXECUTE ON FUNCTION public.leaderboard_book_hero() TO authenticated;
+
+-- 11. Backfill my_referral_status()
+CREATE OR REPLACE FUNCTION public.my_referral_status()
+RETURNS TABLE (
+  ref_slug text,
+  referral_link text,
+  total_referrals bigint,
+  hired_referrals bigint
+) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_agent_id uuid;
+  v_slug text;
+BEGIN
+  SELECT a.id INTO v_agent_id
+  FROM public.agents a
+  WHERE a.user_id = auth.uid()
+  LIMIT 1;
+
+  IF v_agent_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  SELECT p.ref_slug INTO v_slug
+  FROM public.agents a
+  JOIN public.profiles p ON p.id = a.profile_id OR p.user_id = a.user_id
+  WHERE a.id = v_agent_id;
+
+  RETURN QUERY
+  SELECT
+    v_slug AS ref_slug,
+    'https://apex-financial.org/apply?ref=' || COALESCE(v_slug, '') AS referral_link,
+    COUNT(*)::bigint AS total_referrals,
+    COUNT(*) FILTER (WHERE status = 'active' OR onboarding_stage = 'evaluated')::bigint AS hired_referrals
+  FROM public.agents
+  WHERE invited_by_manager_id = v_agent_id;
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.my_referral_status() TO authenticated;
+
+-- 12. Backfill sam_todo_list(), sam_todo_dismiss(), sam_todo_snooze()
+CREATE OR REPLACE FUNCTION public.sam_todo_list()
+RETURNS TABLE (
+  id text,
+  title text,
+  category text,
+  priority text,
+  source text,
+  created_at timestamptz,
+  action_url text
+) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    'task_' || t.id::text AS id,
+    t.title,
+    'task'::text AS category,
+    'high'::text AS priority,
+    'agent_tasks'::text AS source,
+    t.created_at,
+    '/dashboard/tasks'::text AS action_url
+  FROM public.agent_tasks t
+  WHERE t.status = 'overdue'
+  ORDER BY t.created_at DESC;
+END$$;
+
+CREATE OR REPLACE FUNCTION public.sam_todo_dismiss(p_id text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  INSERT INTO public.sam_todo_dismissed (item_id, dismissed_at)
+  VALUES (p_id, now())
+  ON CONFLICT (item_id) DO UPDATE SET dismissed_at = now();
+
+  RETURN jsonb_build_object('success', true, 'item_id', p_id);
+END$$;
+
+CREATE OR REPLACE FUNCTION public.sam_todo_snooze(p_id text, p_hours int DEFAULT 4)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  INSERT INTO public.sam_todo_snoozed (item_id, snoozed_until)
+  VALUES (p_id, now() + (p_hours || ' hours')::interval)
+  ON CONFLICT (item_id) DO UPDATE SET snoozed_until = now() + (p_hours || ' hours')::interval;
+
+  RETURN jsonb_build_object('success', true, 'item_id', p_id, 'hours', p_hours);
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.sam_todo_list() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.sam_todo_dismiss(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.sam_todo_snooze(text, int) TO authenticated;
+
+-- 13. FIX BUGS IN EXISTING FUNCTIONS:
+-- Fix fn_commission_recovery_next_batch(p_limit int)
+CREATE OR REPLACE FUNCTION public.fn_commission_recovery_next_batch(p_limit int DEFAULT 50)
+RETURNS TABLE (
+  policy_id uuid,
+  agent_id uuid,
+  agent_display text,
+  agent_email text,
+  carrier_name text,
+  effective_date date,
+  client_name text
+) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    cp.id,
+    cp.agent_id,
+    a.display_name,
+    p.email,
+    cp.carrier_name,
+    cp.effective_date,
+    cp.client_first_name || ' ' || cp.client_last_name
+  FROM public.carrier_policies cp
+  LEFT JOIN public.agents a ON a.id = cp.agent_id
+  LEFT JOIN public.profiles p ON p.id = a.profile_id OR p.user_id = a.user_id
+  WHERE (cp.face_amount IS NULL OR cp.annual_premium IS NULL OR cp.face_amount = 0 OR cp.annual_premium = 0)
+    AND (cp.recovery_email_sent_at IS NULL OR cp.recovery_email_sent_at < now() - interval '7 days')
+    AND cp.recovery_response_received_at IS NULL
+    AND p.email IS NOT NULL
+  ORDER BY cp.imported_at DESC NULLS LAST
+  LIMIT p_limit;
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.fn_commission_recovery_next_batch(int) TO authenticated;
+
+-- Fix generate_invite_token schema path & qualify gen_random_bytes
+CREATE OR REPLACE FUNCTION public.generate_invite_token(
+  p_kind text,
+  p_expires_hours int DEFAULT 168,
+  p_target_role text DEFAULT NULL,
+  p_target_manager_id uuid DEFAULT NULL,
+  p_prefill jsonb DEFAULT '{}'::jsonb,
+  p_notes text DEFAULT NULL
+) RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_agent_id uuid;
+  v_token text;
+  v_row public.invite_tokens%rowtype;
+  v_recent_count int;
+  v_hours int;
+BEGIN
+  SELECT id INTO v_agent_id
+    FROM public.agents
+   WHERE user_id = auth.uid()
+     AND COALESCE(is_deactivated, false) = false
+   LIMIT 1;
+
+  IF v_agent_id IS NULL THEN
+    RAISE EXCEPTION 'unauthorized: no active agent for caller';
+  END IF;
+
+  IF p_kind NOT IN ('hire','join') THEN
+    RAISE EXCEPTION 'invalid kind: %', p_kind;
+  END IF;
+
+  v_hours := GREATEST(1, LEAST(COALESCE(p_expires_hours, 168), 720));
+
+  SELECT count(*) INTO v_recent_count
+    FROM public.invite_tokens
+   WHERE created_by = v_agent_id
+     AND created_at > now() - interval '1 hour';
+
+  IF v_recent_count >= 20 THEN
+    RAISE EXCEPTION 'rate_limit: 20 tokens/hour cap reached';
+  END IF;
+
+  v_token := encode(gen_random_bytes(24), 'base64');
+  v_token := replace(replace(replace(v_token, '+','-'), '/','_'), '=','');
+
+  INSERT INTO public.invite_tokens (
+    kind, token, created_by, created_by_user_id,
+    expires_at, target_role, target_manager_id, prefill_json, notes
+  ) VALUES (
+    p_kind, v_token, v_agent_id, auth.uid(),
+    now() + make_interval(hours => v_hours),
+    p_target_role, p_target_manager_id, COALESCE(p_prefill,'{}'::jsonb), p_notes
+  ) RETURNING * INTO v_row;
+
+  RETURN jsonb_build_object(
+    'token', v_row.token,
+    'expires_at', v_row.expires_at,
+    'kind', v_row.kind
+  );
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.generate_invite_token(text, int, text, uuid, jsonb, text) TO authenticated;
+
+-- Fix telegram_sync_stages PL/pgSQL variable ambiguity
+CREATE OR REPLACE FUNCTION public.telegram_sync_stages()
+RETURNS TABLE (chat_id BIGINT, old_stage TEXT, new_stage TEXT, nudge_template TEXT) LANGUAGE plpgsql AS $$
+DECLARE
+  r RECORD;
+  v_new_stage TEXT;
+  v_template TEXT;
+BEGIN
+  FOR r IN
+    SELECT tu.chat_id, tu.stage AS old_stage, tu.applicant_id, tu.agent_id, tu.last_active_at,
+           a.ica_paid_at, ag.id AS agent_row_id, ag.created_at AS hired_at
+    FROM public.telegram_users tu
+    LEFT JOIN public.applications a ON a.id = tu.applicant_id
+    LEFT JOIN public.agents ag ON ag.id = tu.agent_id
+    WHERE NOT tu.opt_out_all
+      AND tu.stage NOT IN ('active_agent','opt_out')
+  LOOP
+    v_new_stage := r.old_stage;
+    v_template := NULL;
+
+    IF r.agent_row_id IS NOT NULL AND r.old_stage NOT IN ('hired','onboarding_d1','onboarding_d3','onboarding_d7','onboarding_d14','active_agent') THEN
+      v_new_stage := 'hired';
+      v_template := 'stage.hired';
+    ELSIF r.old_stage = 'applied_unpaid' AND r.ica_paid_at IS NOT NULL THEN
+      v_new_stage := 'applied_paid';
+      v_template := 'stage.applied_paid';
+    ELSIF r.old_stage = 'hired' AND r.hired_at IS NOT NULL AND r.hired_at < now() - interval '1 day' THEN
+      v_new_stage := 'onboarding_d1';
+      v_template := 'nudge.onboarding_d1';
+    ELSIF r.old_stage = 'onboarding_d1' AND r.hired_at IS NOT NULL AND r.hired_at < now() - interval '3 days' THEN
+      v_new_stage := 'onboarding_d3';
+      v_template := 'nudge.onboarding_d3';
+    ELSIF r.old_stage = 'onboarding_d3' AND r.hired_at IS NOT NULL AND r.hired_at < now() - interval '7 days' THEN
+      v_new_stage := 'onboarding_d7';
+      v_template := 'nudge.onboarding_d7';
+    ELSIF r.old_stage = 'onboarding_d7' AND r.hired_at IS NOT NULL AND r.hired_at < now() - interval '14 days' THEN
+      v_new_stage := 'onboarding_d14';
+      v_template := 'nudge.onboarding_d14';
+    END IF;
+
+    IF v_new_stage <> r.old_stage THEN
+      UPDATE public.telegram_users SET stage = v_new_stage, updated_at = now() WHERE telegram_users.chat_id = r.chat_id;
+
+      IF v_template IS NOT NULL THEN
+        INSERT INTO public.telegram_scheduled_messages(chat_id, template_key, scheduled_at, reason, dedupe_key)
+        VALUES (r.chat_id, v_template, now(), 'stage_transition_' || v_new_stage, 'transition_' || v_new_stage || '_' || r.chat_id)
+        ON CONFLICT (chat_id, dedupe_key) WHERE dedupe_key IS NOT NULL AND status = 'pending' DO NOTHING;
+      END IF;
+
+      RETURN QUERY SELECT r.chat_id, r.old_stage, v_new_stage, v_template;
+    END IF;
+  END LOOP;
+END$$;
+
+GRANT EXECUTE ON FUNCTION public.telegram_sync_stages() TO authenticated;

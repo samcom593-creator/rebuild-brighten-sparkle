@@ -74,7 +74,7 @@ serve(async (req) => {
     const { data } = await supabase
       .from("notification_log")
       .select("created_at")
-      .ilike("notification_type", "%sms%")
+      .or("channel.eq.sms,channel.eq.sms-auto,notification_type.ilike.%sms%")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -257,11 +257,18 @@ serve(async (req) => {
 
   // ─── CHECK 8: Broken agent records ───
   try {
-    const { data: orphanAgents } = await supabase.from("agents").select("id").is("profile_id", null).is("user_id", null).eq("is_deactivated", false);
+    const cutoff48h = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+    const { data: orphanAgents } = await supabase
+      .from("agents")
+      .select("id")
+      .is("profile_id", null)
+      .is("user_id", null)
+      .eq("is_deactivated", false)
+      .lt("created_at", cutoff48h);
     if (orphanAgents && orphanAgents.length > 0) {
-      results.push({ service: "Agent Data Integrity", status: "degraded", responseTime: 0, message: `${orphanAgents.length} agents with no profile linked`, requiresAction: true, actionRequired: "Review agents table for orphaned records" });
+      results.push({ service: "Agent Data Integrity", status: "degraded", responseTime: 0, message: `${orphanAgents.length} agents with no profile linked (>48h old)`, requiresAction: true, actionRequired: "Review agents table for orphaned records" });
     } else {
-      results.push({ service: "Agent Data Integrity", status: "healthy", responseTime: 0, message: "All agents have profiles" });
+      results.push({ service: "Agent Data Integrity", status: "healthy", responseTime: 0, message: "All active agents have linked profiles" });
     }
   } catch (err) {
     results.push({ service: "Agent Data Integrity", status: "degraded", responseTime: 0, message: String(err) });

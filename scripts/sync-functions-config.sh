@@ -1,22 +1,8 @@
 #!/usr/bin/env bash
 # Keep supabase/config.toml in sync with supabase/functions/*.
 #
-# Why: Lovable's deploy pipeline only deploys functions registered in
-# config.toml. Creating a new folder under supabase/functions/ is NOT
-# enough — the registration stanza must also exist. Miss it once and
-# your new function silently 404s forever. This script prevents that.
-#
-# Behavior: for every directory in supabase/functions/ that isn't _shared,
-# append a `[functions.<name>]\nverify_jwt = false` block to config.toml
-# if one isn't already present. Idempotent — run as often as you want.
-#
-# Exit code:
-#   0 — no changes (or changes applied cleanly)
-#   1 — sync error
-#
-# Called by:
-#   - .github/workflows/deploy-supabase.yml (pre-deploy step)
-#   - manually: bash scripts/sync-functions-config.sh
+# Rule: New functions default to `verify_jwt = true`.
+# Public exceptions MUST be in the explicit PUBLIC_ALLOWLIST below.
 
 set -euo pipefail
 
@@ -33,6 +19,40 @@ if [ ! -d "$FUNCS_DIR" ]; then
   exit 1
 fi
 
+# Explicit allowlist of endpoints that are intentionally verify_jwt = false
+# because they verify HMAC signatures/secrets in-code or serve public forms/feeds.
+PUBLIC_ALLOWLIST=(
+  "consume-invite-token"
+  "ics-feed"
+  "submit-application"
+  "seminar-confirmation"
+  "seminar-register"
+  "update-application-referral"
+  "poke-webhook"
+  "calendly-webhook"
+  "instagram-webhook"
+  "manychat-webhook"
+  "readymode-webhook"
+  "telegram-webhook"
+  "stripe-webhook-lead-purchase"
+  "track-email-click"
+  "track-email-open"
+  "unsubscribe"
+  "manager-signup"
+  "applicant-checkin"
+  "submit-contracting-intake"
+)
+
+is_public() {
+  local name="$1"
+  for item in "${PUBLIC_ALLOWLIST[@]}"; do
+    if [ "$item" = "$name" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 added=()
 for dir in "$FUNCS_DIR"/*/; do
   [ -d "$dir" ] || continue
@@ -40,9 +60,12 @@ for dir in "$FUNCS_DIR"/*/; do
   [ "$name" = "_shared" ] && continue
   [ "$name" = "tests" ] && continue
 
-  # Grep for exact stanza header — avoid false positives from comments.
   if ! grep -qE "^\[functions\.${name}\]" "$CONFIG"; then
-    printf '\n[functions.%s]\nverify_jwt = false\n' "$name" >> "$CONFIG"
+    if is_public "$name"; then
+      printf '\n[functions.%s]\nverify_jwt = false\n' "$name" >> "$CONFIG"
+    else
+      printf '\n[functions.%s]\nverify_jwt = true\n' "$name" >> "$CONFIG"
+    fi
     added+=("$name")
   fi
 done

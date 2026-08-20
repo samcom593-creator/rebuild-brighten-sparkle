@@ -37,4 +37,17 @@ describe("AgentCloud parity surfaces", () => {
     const profile = source("pages/ProducerProfile.tsx");
     for (const tab of ["Personal info", "Carriers", "Contracts", "Background", "Documents"]) expect(profile).toContain(tab);
   });
+
+  it("keeps APEX Training recruit lifecycle, active journey, and qualification calculator first-class", () => {
+    const toolkit = source("pages/ApexCareerToolkit.tsx");
+    for (const phrase of [
+      "Master recruit pipeline",
+      "Next right action",
+      "Path rule",
+      "First 30, 60, and 90 days",
+      "Career qualification calculator",
+    ]) {
+      expect(toolkit).toContain(phrase);
+    }
+  });
 });

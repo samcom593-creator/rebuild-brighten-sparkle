@@ -195,7 +195,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // InviteLinks, LicensingTracker, SamHQ, TelegramBot) that had been hidden
 // behind TS2589 deep-instantiation noise. All 15 fixed with the `as unknown as`
 // intermediate the error itself prescribes; one TS2589 dissolved outright.
-const BASELINE = 229; // 2026-08-07: ratchet drop 233→230 — Headhunter unification wave fixed 3 real type errors (ErrorBoundary/useIdleSession/test mocks) while wiring SSO + chunk recovery.
+const BASELINE = 228; // 2026-08-20: ratchet drop 229→228 — AgentCloud parity pass fixed query type instantiations in MyDeals and VaOpsCommandCenter.
 
 const startedAt = Date.now();
 

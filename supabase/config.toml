@@ -742,3 +742,9 @@ verify_jwt = false
 
 [functions.interviews-pipeline]
 verify_jwt = true
+
+[functions.interviews-outcome]
+verify_jwt = true
+
+[functions.agentlink-clients-sync]
+verify_jwt = true

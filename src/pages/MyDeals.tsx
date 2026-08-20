@@ -191,6 +191,21 @@ export default function MyDeals() {
   });
   const statusByBucket = Object.fromEntries(statusTiles.map((t) => [t.bucket, t]));
 
+  // TOTAL IMO BY AGENCY — APEX (direct) vs Vantage (KJ Vaughn's sub-agency),
+  // rolled up from the real hierarchy in agentlink_book (v_imo_by_agency).
+  const { data: imo = [] } = useQuery({
+    queryKey: ["imo-by-agency"],
+    enabled: teamView,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("v_imo_by_agency").select("agency, is_primary, policies, alp, alp_mtd").order("alp", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Array<{ agency: string; is_primary: boolean; policies: number; alp: number; alp_mtd: number }>;
+    },
+  });
+  const imoMax = Math.max(1, ...imo.map((a) => a.alp));
+  const imoMtdTotal = imo.reduce((s, a) => s + (a.alp_mtd || 0), 0);
+
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter max-w-5xl">
       <PageHeader
@@ -247,6 +262,34 @@ export default function MyDeals() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {teamView && imo.length > 0 && (
+        <div>
+          <div className="mb-2 flex items-baseline justify-between">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Total IMO by Agency</p>
+            <p className="text-xs text-muted-foreground">This month · {fmtMoney(imoMtdTotal)} ALP</p>
+          </div>
+          <Card>
+            <CardContent className="space-y-3 p-4">
+              {imo.map((a) => (
+                <div key={a.agency}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 font-medium">
+                      {a.agency}
+                      {a.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-primary text-[10px]">YOU</Badge>}
+                    </span>
+                    <span className="font-semibold tabular-nums">{fmtMoney(a.alp)}</span>
+                  </div>
+                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${(a.alp / imoMax) * 100}%` }} />
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">{a.policies.toLocaleString()} policies · {fmtMoney(a.alp_mtd)} this month</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
       )}
 

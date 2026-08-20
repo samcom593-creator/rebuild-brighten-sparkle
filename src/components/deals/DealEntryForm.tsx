@@ -151,10 +151,27 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
         // My Deals will show the retry state.
         supabase.functions
           .invoke("insuracloud-outbox", { body: { deal_id: dealId } })
-          .then(({ error }) => {
+          .then(({ data, error }) => {
             if (error) {
               console.error("insuracloud-outbox failed", error);
               toast.warning("Deal saved, but AgentLink sync didn't run. Check My Deals for status.");
+              return;
+            }
+            // MP-312: the outbox answers HTTP 200 with { ok: true } when its
+            // guard REFUSES the deal, so `error` is null and this used to show
+            // the agent nothing at all. The deal sits in Apex looking posted and
+            // never reaches AgentLink. The single most likely refusal is exactly
+            // what this form produces — a deal whose policy number the agent
+            // does not have yet — so the silent branch is the DEFAULT one once
+            // Post-a-Deal is live. Say it out loud instead.
+            if (data?.outcome === "refused") {
+              const reason = String(data?.refused_reason ?? "unknown");
+              const detail = reason === "placeholder_literal" || reason === "no_digit"
+                ? "AgentLink needs the real policy number. Add it in My Deals and it will sync."
+                : reason === "test_literal"
+                  ? "This looks like a test policy number, so it was not sent to AgentLink."
+                  : `AgentLink declined it (${reason}).`;
+              toast.warning(`Deal saved, but it did NOT sync to AgentLink. ${detail}`);
             }
           })
           .catch((err) => {

@@ -91,7 +91,14 @@ export function InsuraCloudOutbox() {
     try {
       const { data, error } = await supabase.functions.invoke("insuracloud-outbox", { body: { sweep: true } });
       if (error) throw error;
-      toast.success(`Sweep done — processed ${data?.processed ?? 0}, ✓${data?.succeeded ?? 0}, ✗${data?.failed ?? 0}`);
+      // MP-312: report every bucket the sweep actually has. "processed 3, ✓0,
+      // ✗0" with three rows unaccounted for reads as a clean run.
+      const refused = data?.refused ?? 0;
+      const skipped = data?.skipped ?? 0;
+      const extra = refused || skipped ? `, refused ${refused}, skipped ${skipped}` : "";
+      toast.success(
+        `Sweep done — processed ${data?.processed ?? 0}, ✓${data?.succeeded ?? 0}, ✗${data?.failed ?? 0}${extra}`,
+      );
       refetchStats(); refetchErrors();
     } catch (e: any) { toast.error(e.message ?? "Sweep failed"); }
     finally { setSweeping(false); }

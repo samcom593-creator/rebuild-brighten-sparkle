@@ -79,7 +79,14 @@ async function authorize(req: Request, sb: any): Promise<DispatchAuthorization |
   };
 }
 
-async function callFunction(name: string, body: Record<string, unknown>): Promise<void> {
+// MP-312: returns the parsed response body so a caller can branch on WHAT the
+// callee did, not merely on whether it threw. Existing void callers are
+// unaffected. Non-2xx and an explicit { ok: false } / { error } still throw —
+// that contract is load-bearing for every other destination.
+async function callFunction(
+  name: string,
+  body: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
   const response = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
     method: "POST",
     headers: {
@@ -98,11 +105,13 @@ async function callFunction(name: string, body: Record<string, unknown>): Promis
       if (parsed?.ok === false || parsed?.error) {
         throw new Error(`${name}: ${parsed.error ?? "reported failure"}`);
       }
+      return parsed as Record<string, unknown>;
     } catch (error) {
-      if (error instanceof SyntaxError) return;
+      if (error instanceof SyntaxError) return null;
       throw error;
     }
   }
+  return null;
 }
 
 function normalizePhone(value: unknown): string {
@@ -346,6 +355,12 @@ async function skoolCapability(sb: any): Promise<"supported" | "not_configured" 
 
 type DispatchResult = {
   state: "delivered" | "manual_action_required";
+  // MP-312: why the event landed in manual_action_required. Without this the
+  // outbox row got a hardcoded "Provider write capability is unavailable",
+  // which is false for a refusal — the capability is fine, the DEAL was
+  // refused. An operator acting on the wrong sentence is the four months this
+  // integration already lost to an error string that named the wrong fix.
+  manualReason?: string;
   providerMessageId?: string;
   deliveryConfirmed?: boolean;
 };
@@ -445,7 +460,29 @@ async function dispatch(sb: any, event: any): Promise<DispatchResult> {
     return { state: "delivered" };
   }
   if (event.destination === "insuracloud") {
-    await callFunction("insuracloud-outbox", { deal_id: event.aggregate_id });
+    // MP-312: the outbox returns HTTP 200 { ok: true } when its guard REFUSES a
+    // deal — a placeholder policy number, a test literal, a name with no digit.
+    // callFunction() therefore does not throw, and this used to fall straight
+    // through to `delivered`, writing a durable false receipt into
+    // outbox_events for a deal that never left the building. `delivered` is the
+    // one word this row must not say. A refusal is TERMINAL (retrying a
+    // PLACEHOLDER-<uuid> forever is how the 1,221-alert storm happened), so it
+    // lands in manual_action_required, which is terminal by construction and
+    // already carries an operator-facing status.
+    const response = await callFunction("insuracloud-outbox", { deal_id: event.aggregate_id });
+    const outcome = typeof response?.outcome === "string" ? response.outcome : null;
+    if (outcome === "refused") {
+      const reason = typeof response?.refused_reason === "string" ? response.refused_reason : "unknown";
+      return {
+        state: "manual_action_required",
+        manualReason:
+          `InsuraCloud refused this deal (${reason}); it was not sent. Fix the deal's policy number and re-post.`,
+      };
+    }
+    // "not_a_candidate" is an agent_link import or a policy the destination
+    // already holds — correctly never sent, and not an operator's problem.
+    // Anything else that got here without throwing did reach InsuraCloud or was
+    // already there.
     return { state: "delivered" };
   }
   if (event.destination === "contact_email" || event.destination === "contact_sms") {
@@ -546,7 +583,8 @@ Deno.serve(async (req) => {
           status: "manual_action_required",
           processed_at: new Date().toISOString(),
           locked_at: null,
-          last_error_redacted: "Provider write capability is unavailable; operator action required.",
+          last_error_redacted: result.manualReason
+            ?? "Provider write capability is unavailable; operator action required.",
         }).eq("id", event.id);
         if (manualError) throw manualError;
       } else {

@@ -220,7 +220,39 @@ async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; in
   }
 }
 
-async function processDeal(dealId: string): Promise<{ deal_id: string; ok: boolean; error?: string }> {
+// MP-312 (2026-08-20): THE RETURN VALUE NOW SAYS WHICH THING HAPPENED.
+//
+// Four different events used to return `{ ok: true }`: a real push, an
+// already-synced no-op, a draft skip, and a GUARD REFUSAL. The caller could not
+// tell them apart, so a deal the guard refused was indistinguishable from a deal
+// that reached InsuraCloud. That is the same shape as the 465 fake-success
+// InsuraCloud sync rows and the 198 AgentLink zombie rows: the row says success
+// and no write happened.
+//
+// `ok` deliberately stays TRUE on a refusal. It is not an error — the function
+// did exactly its job. Flipping it to false would make apex-outbox-dispatcher's
+// callFunction() throw, which routes a PLACEHOLDER-<uuid> policy into the retry
+// ladder forever and pages about a row whose remedy is nothing. That is the
+// alert-storm disease (1,221 undelivered insuracloud_sync_error alerts) traded
+// for the silence disease. The truth goes in `outcome`, which every caller
+// branches on explicitly.
+export type OutboxOutcome =
+  | "pushed"
+  | "already_synced"
+  | "skipped_draft"
+  | "not_a_candidate"
+  | "refused"
+  | "failed";
+
+export type ProcessResult = {
+  deal_id: string;
+  ok: boolean;
+  outcome: OutboxOutcome;
+  error?: string;
+  refused_reason?: string;
+};
+
+async function processDeal(dealId: string): Promise<ProcessResult> {
   const { data: deal, error } = await supabase
     .from("deals")
     .select(
@@ -230,13 +262,13 @@ async function processDeal(dealId: string): Promise<{ deal_id: string; ok: boole
     .maybeSingle();
 
   if (error || !deal) {
-    return { deal_id: dealId, ok: false, error: error?.message ?? "Deal not found" };
+    return { deal_id: dealId, ok: false, outcome: "failed", error: error?.message ?? "Deal not found" };
   }
   if (deal.synced_to_insuracloud_at) {
-    return { deal_id: dealId, ok: true };
+    return { deal_id: dealId, ok: true, outcome: "already_synced" };
   }
   if (deal.status === "draft") {
-    return { deal_id: dealId, ok: true };
+    return { deal_id: dealId, ok: true, outcome: "skipped_draft" };
   }
 
   // wave-outbox-direction 2026-08-11: the sweep now reads the eligibility view,
@@ -245,14 +277,27 @@ async function processDeal(dealId: string): Promise<{ deal_id: string; ok: boole
   // caller can route an imported or already-present policy to pushOne(). The
   // trigger carries the same rule, so this is the second of two locks, not the
   // only one.
-  const { data: eligible } = await supabase
-    .from("v_insuracloud_push_eligible")
-    .select("id")
+  //
+  // MP-312: this reads v_insuracloud_push_verdict, the SINGLE source MP-311
+  // shipped, rather than the v_insuracloud_push_eligible projection. Reading the
+  // projection told us only "absent", which collapses "the guard refused this"
+  // and "this was never a candidate" into one silent branch. The verdict view
+  // carries the reason, so the refusal can name itself. One rule, one read.
+  const { data: verdict } = await supabase
+    .from("v_insuracloud_push_verdict")
+    .select("push_verdict")
     .eq("id", dealId)
     .maybeSingle();
 
-  if (!eligible) {
-    return { deal_id: dealId, ok: true };
+  if (!verdict) {
+    // Not in the candidate set at all — an agent_link import, or a row already
+    // present in agentlink_book. Never pushed, and correctly so.
+    return { deal_id: dealId, ok: true, outcome: "not_a_candidate" };
+  }
+
+  const pushVerdict = (verdict as { push_verdict?: string }).push_verdict ?? "unknown";
+  if (pushVerdict !== "eligible") {
+    return { deal_id: dealId, ok: true, outcome: "refused", refused_reason: pushVerdict };
   }
 
   const result = await pushOne(deal as DealRow);
@@ -265,17 +310,26 @@ async function processDeal(dealId: string): Promise<{ deal_id: string; ok: boole
         insuracloud_sync_error: null,
       })
       .eq("id", deal.id);
-  } else {
-    await supabase
-      .from("deals")
-      .update({ insuracloud_sync_error: result.error?.slice(0, 500) ?? "Unknown error" })
-      .eq("id", deal.id);
+    return { deal_id: deal.id, ok: true, outcome: "pushed" };
   }
 
-  return { deal_id: deal.id, ok: result.ok, error: result.error };
+  await supabase
+    .from("deals")
+    .update({ insuracloud_sync_error: result.error?.slice(0, 500) ?? "Unknown error" })
+    .eq("id", deal.id);
+
+  return { deal_id: deal.id, ok: false, outcome: "failed", error: result.error };
 }
 
-async function sweepUnsynced(): Promise<{ processed: number; succeeded: number; failed: number }> {
+type SweepSummary = {
+  processed: number;
+  succeeded: number;
+  failed: number;
+  refused: number;
+  skipped: number;
+};
+
+async function sweepUnsynced(): Promise<SweepSummary> {
   // wave-outbox-direction 2026-08-11: this used to select `deals` directly on
   // (synced_to_insuracloud_at IS NULL AND status <> 'draft') with no dedupe,
   // which described 1,759 rows. 1,749 of them are source='agent_link' — they
@@ -287,6 +341,16 @@ async function sweepUnsynced(): Promise<{ processed: number; succeeded: number; 
   // /api/csrf-token and /api/deals), so that accident is not a safety net.
   // v_insuracloud_push_eligible applies both rules live. Measured at cutover:
   // 1,759 -> 10 eligible, $9,104.04 AP.
+  //
+  // MP-312 re-measured the handed-forward claim that this loop "counts refused
+  // rows as succeeded". It does not, and could not: its input IS the eligible
+  // projection, so a refused row is structurally absent (verified live — the
+  // eligible and refused sets have 0 overlap). The counters were honest here.
+  // The lie lived on the deal_id path, which the trigger, the dispatcher and
+  // DealEntryForm all use. `refused`/`skipped` are still counted separately
+  // because processDeal re-checks the verdict, so a row whose eligibility
+  // changes between this SELECT and that re-check lands in one of them — and a
+  // bucket that exists is how you find out that race is real.
   const { data: deals } = await supabase
     .from("v_insuracloud_push_eligible")
     .select("id")
@@ -294,11 +358,14 @@ async function sweepUnsynced(): Promise<{ processed: number; succeeded: number; 
     .limit(SWEEP_BATCH_SIZE);
 
   const ids = (deals ?? []).map((d) => d.id);
-  let succeeded = 0, failed = 0;
+  let succeeded = 0, failed = 0, refused = 0, skipped = 0;
 
   for (const id of ids) {
     const r = await processDeal(id);
-    if (r.ok) succeeded++; else failed++;
+    if (r.outcome === "pushed") succeeded++;
+    else if (r.outcome === "failed") failed++;
+    else if (r.outcome === "refused") refused++;
+    else skipped++;
   }
 
   // Session keepalive: InsuraCloud's connect.sid rolls on every request.
@@ -318,7 +385,7 @@ async function sweepUnsynced(): Promise<{ processed: number; succeeded: number; 
     }
   }
 
-  return { processed: ids.length, succeeded, failed };
+  return { processed: ids.length, succeeded, failed, refused, skipped };
 }
 
 Deno.serve(async (req) => {

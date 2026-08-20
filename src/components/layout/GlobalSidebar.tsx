@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ChevronDown, ChevronLeft, ChevronRight, Cloud } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,8 +37,8 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
       : entry)
     .filter((entry) => !isAgentCloudGroup(entry) || entry.items.length > 0);
 
-  const primary = useMemo(() => filterEntries(AGENT_CLOUD_PRIMARY_NAV), [isAdmin]);
-  const account = useMemo(() => filterEntries(AGENT_CLOUD_ACCOUNT_NAV), [isAdmin]);
+  const primary = filterEntries(AGENT_CLOUD_PRIMARY_NAV);
+  const account = filterEntries(AGENT_CLOUD_ACCOUNT_NAV);
 
   const withTooltip = (label: string, child: ReactNode) => {
     if (!collapsed || isTouch) return child;
@@ -60,11 +60,11 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
           "flex min-h-9 items-center rounded-md text-[13px] font-medium transition-colors",
           collapsed ? "justify-center px-2" : nested ? "gap-2.5 px-3" : "gap-3 px-3",
           active
-            ? "bg-[#d8a83e]/15 text-[#e4b84f]"
-            : "text-[#aaa9ae] hover:bg-white/[0.045] hover:text-white",
+            ? "bg-[#C9A961]/15 text-[#C9A961]"
+            : "text-[#9A9A9A] hover:bg-white/[0.045] hover:text-white",
         )}
       >
-        {Icon && <Icon className={cn("h-[17px] w-[17px] shrink-0", active && "text-[#e4b84f]")} />}
+        {Icon && <Icon className={cn("h-[17px] w-[17px] shrink-0", active && "text-[#C9A961]")} />}
         {!collapsed && <span className="truncate">{item.label}</span>}
       </Link>
     ));
@@ -82,10 +82,10 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
         className={cn(
           "flex min-h-9 w-full items-center rounded-md text-[13px] font-medium transition-colors",
           collapsed ? "justify-center px-2" : "gap-3 px-3",
-          active ? "text-white" : "text-[#aaa9ae] hover:bg-white/[0.045] hover:text-white",
+          active ? "text-white" : "text-[#9A9A9A] hover:bg-white/[0.045] hover:text-white",
         )}
       >
-        <Icon className={cn("h-[17px] w-[17px] shrink-0", active && "text-[#e4b84f]")} />
+        <Icon className={cn("h-[17px] w-[17px] shrink-0", active && "text-[#C9A961]")} />
         {!collapsed && <span className="flex-1 text-left">{group.label}</span>}
         {!collapsed && <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />}
       </button>
@@ -95,9 +95,9 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
       <div key={group.label} className="space-y-0.5">
         {withTooltip(group.label, trigger)}
         {!collapsed && open && (
-          <div className="ml-[20px] space-y-0.5 border-l border-[#333337] pl-2">
+          <div className="ml-[20px] space-y-0.5 border-l border-border pl-2">
             {group.kicker && (
-              <div className="px-3 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#6f6e74]">
+              <div className="px-3 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9A9A9A]">
                 {group.kicker}
               </div>
             )}
@@ -115,39 +115,39 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-50 overflow-hidden border-r border-[#29292d] bg-[#121214] transition-[width,opacity] duration-150",
+        "fixed inset-y-0 left-0 z-50 overflow-hidden border-r border-border bg-[#0A0A0A] transition-[width,opacity] duration-150",
         isFullscreen && "pointer-events-none opacity-0",
       )}
       style={{ width: isFullscreen ? 0 : collapsed ? 72 : 256 }}
     >
       <div className="flex h-full flex-col">
-        <div className={cn("flex h-[60px] shrink-0 items-center border-b border-[#29292d]", collapsed ? "justify-center" : "px-4")}>
+        <div className={cn("flex h-[60px] shrink-0 items-center border-b border-border", collapsed ? "justify-center" : "px-4")}>
           <Link to="/dashboard" className="flex min-w-0 items-center gap-3">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#d9aa42] text-[#111113]">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#C9A961] text-[#0A0A0A]">
               <Cloud className="h-[18px] w-[18px]" strokeWidth={2.25} />
             </span>
             {!collapsed && (
               <span className="min-w-0 leading-none">
                 <span className="block truncate text-[15px] font-semibold tracking-tight text-white">APEX Financial</span>
-                <span className="mt-1 block text-[8px] font-semibold uppercase tracking-[0.22em] text-[#79787e]">By Agent Cloud</span>
+                <span className="mt-1 block text-[8px] font-semibold uppercase tracking-[0.22em] text-[#9A9A9A]">By Agent Cloud</span>
               </span>
             )}
           </Link>
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:thin] [scrollbar-color:#333337_transparent]">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:thin]">
           <div className="space-y-0.5">{renderEntries(primary)}</div>
-          <div className="my-3 border-t border-[#29292d]" />
-          {!collapsed && <div className="px-3 pb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-[#65646a]">Account</div>}
+          <div className="my-3 border-t border-border" />
+          {!collapsed && <div className="px-3 pb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-[#9A9A9A]">Account</div>}
           <div className="space-y-0.5">{renderEntries(account)}</div>
         </nav>
 
-        <div className="flex h-12 shrink-0 items-center border-t border-[#29292d] px-2">
+        <div className="flex h-12 shrink-0 items-center border-t border-border px-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={onToggle}
-            className={cn("h-8 text-[#85848a] hover:bg-white/[0.045] hover:text-white", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
+            className={cn("h-8 text-[#9A9A9A] hover:bg-white/[0.045] hover:text-white", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}

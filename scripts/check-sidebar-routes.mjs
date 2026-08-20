@@ -20,12 +20,15 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const SIDEBAR = "src/components/layout/GlobalSidebar.tsx";
+const SIDEBAR_NAV = "src/components/layout/agentCloudNavigation.ts";
 const APP_TSX = "src/App.tsx";
 
 const sidebarAbs = path.join(repoRoot, SIDEBAR);
+const sidebarNavAbs = path.join(repoRoot, SIDEBAR_NAV);
 const appAbs = path.join(repoRoot, APP_TSX);
 for (const [label, p] of [
   ["GlobalSidebar", sidebarAbs],
+  ["AgentCloud navigation", sidebarNavAbs],
   ["App.tsx", appAbs],
 ]) {
   if (!fs.existsSync(p)) {
@@ -34,7 +37,7 @@ for (const [label, p] of [
   }
 }
 
-const sidebarSrc = fs.readFileSync(sidebarAbs, "utf8");
+const sidebarSrc = [sidebarAbs, sidebarNavAbs].map((file) => fs.readFileSync(file, "utf8")).join("\n");
 const appSrc = fs.readFileSync(appAbs, "utf8");
 
 // A runtime cap is equivalent to deleting authorized links, but it evades the

@@ -52,10 +52,10 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
   return (
     <div className="apex-app-shell min-h-screen relative bg-background">
       {/* Mobile Header - only visible on small screens */}
-      <header className="fixed left-0 right-0 top-0 z-50 border-b border-[#29292d] bg-[#121214] lg:hidden">
+      <header className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background lg:hidden">
         <div className="flex h-[60px] items-center justify-between px-3 pt-[env(safe-area-inset-top)]">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#d9aa42] text-[#111113]"><Cloud className="h-[18px] w-[18px]" /></span>
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#C9A961] text-[#0A0A0A]"><Cloud className="h-[18px] w-[18px]" /></span>
             <span className="text-sm font-semibold text-white">APEX Financial</span>
           </Link>
           <div className="flex items-center gap-2">

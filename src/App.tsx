@@ -459,10 +459,17 @@ const App = () => (
                     <Route path="/dashboard/recruiting/hires" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardApplicants /></ProtectedRoute>} />
                     <Route path="/dashboard/team" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardCRM /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
+                    <Route path="/dashboard/contracting/carriers" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
+                    <Route path="/dashboard/contracting/ops" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
+                    <Route path="/dashboard/contracting/requests" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
+                    <Route path="/dashboard/contracting/documents" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
+                    <Route path="/dashboard/retention" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />
                     <Route path="/dashboard/production" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
                     <Route path="/dashboard/analytics" element={<ProtectedRoute><BusinessAnalytics /></ProtectedRoute>} />
                     <Route path="/dashboard/community" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
                     <Route path="/dashboard/resources" element={<ProtectedRoute><TrainingHub /></ProtectedRoute>} />
+                    <Route path="/dashboard/import" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager"]}><XcelImport /></ProtectedRoute>} />
+                    <Route path="/dashboard/nova" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />
                     <Route path="/dashboard/admin" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     {/* VA Manager (Milver) portal — create/monitor/disable sub-VA
                         accounts. Admins + va_manager role only. */}
@@ -499,6 +506,11 @@ const App = () => (
                     <Route path="/dashboard/offers" element={<ProtectedRoute requireAdmin><OffersPage /></ProtectedRoute>} />
                     <Route path="/dashboard/xcel-pipeline" element={<ProtectedRoute requireAdmin><XcelPipeline /></ProtectedRoute>} />
                     <Route path="/dashboard/settings" element={<Settings />} />
+                    <Route path="/dashboard/settings/agency" element={<ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
+                    <Route path="/dashboard/settings/notifications" element={<Settings />} />
+                    <Route path="/dashboard/settings/security" element={<Settings />} />
+                    <Route path="/dashboard/settings/billing" element={<ProtectedRoute requireAdmin><Settings /></ProtectedRoute>} />
+                    <Route path="/dashboard/settings/nova-pro" element={<Settings />} />
                     <Route path="/dashboard/settings/deleted-leads" element={<ProtectedRoute requireAdmin><DeletedLeadsVault /></ProtectedRoute>} />
                     {/* 2026-06-16 Sam directive: short recruiting links.
                         apex-financial.org/r/sjames01 → /apply?ref=sjames01

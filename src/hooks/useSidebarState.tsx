@@ -62,10 +62,8 @@ export function SidebarProvider({ children }: SidebarProviderProps) {
   const toggleSidebar = () => setIsOpen((prev) => !prev);
   const toggleFullscreen = () => setIsFullscreen((prev) => !prev);
 
-  // Calculate sidebar width based on state. MUST match GlobalSidebar's actual
-  // rendered width (220 open / 64 collapsed) — it was 256 here, leaving a 36px
-  // dead gutter between the sidebar and content on every desktop page.
-  const sidebarWidth = isFullscreen ? 0 : isOpen ? 220 : 64;
+  // AgentCloud reference shell: 256px navigation drawer / 72px icon rail.
+  const sidebarWidth = isFullscreen ? 0 : isOpen ? 256 : 72;
 
   const value: SidebarContextValue = {
     isOpen,

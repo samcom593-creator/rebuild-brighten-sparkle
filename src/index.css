@@ -1893,8 +1893,7 @@ button[class*="border-emerald"]:hover {
 
 .apex-content-frame {
   width: 100%;
-  max-width: 1760px;
-  margin-inline: auto;
+  max-width: none;
 }
 
 /* Full-bleed pages (e.g. Applicants feed) opt out of the 1760px content cap so
@@ -1906,35 +1905,20 @@ button[class*="border-emerald"]:hover {
 }
 
 .apex-page-header {
-  animation: apex-panel-rise 360ms var(--ease-emphasized) both;
-  border-radius: 0 0 8px 8px;
+  animation: none;
+  border-radius: 0;
 }
 
 .apex-page-header::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(120deg, hsl(var(--primary) / 0.10), transparent 26%),
-    linear-gradient(90deg, hsl(38 90% 55% / 0.08), transparent 38%),
-    linear-gradient(180deg, hsl(var(--card) / 0.96), hsl(var(--card) / 0.86));
+  content: none;
 }
 
 .dark .apex-page-header::before {
-  background:
-    linear-gradient(120deg, hsl(45 85% 52% / 0.20), transparent 30%),
-    linear-gradient(90deg, hsl(38 90% 55% / 0.10), transparent 42%),
-    linear-gradient(180deg, hsl(42 14% 10% / 0.98), hsl(40 14% 6% / 0.98));
+  content: none;
 }
 
 .apex-page-header::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  /* 2026-08-18 shell reskin: header grid overlay removed with the canvas grid. */
-  background-image: none;
+  content: none;
 }
 
 .apex-header-scan {
@@ -1953,25 +1937,16 @@ h1,
 }
 
 .apex-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(180deg, hsl(255 100% 100% / 0.055), transparent 44%);
-  opacity: 0.9;
+  content: none;
 }
 
 .apex-card:hover {
-  border-color: hsl(var(--primary) / 0.42);
-  box-shadow:
-    var(--elev-3),
-    0 0 0 1px hsl(var(--primary) / 0.12);
+  border-color: hsl(var(--border));
+  box-shadow: none;
 }
 
 .dark .apex-card:hover {
-  box-shadow:
-    0 14px 38px hsl(40 50% 0% / 0.48),
-    0 0 0 1px hsl(45 85% 52% / 0.32);
+  box-shadow: none;
 }
 
 .apex-op-panel {
@@ -2001,11 +1976,9 @@ h1,
 }
 
 .apex-kpi-tile:hover {
-  transform: translateY(-2px);
-  border-color: hsl(var(--primary) / 0.45);
-  box-shadow:
-    var(--elev-3),
-    0 0 0 1px hsl(var(--primary) / 0.14);
+  transform: none;
+  border-color: hsl(var(--border));
+  box-shadow: none;
 }
 
 @media (max-width: 640px) {

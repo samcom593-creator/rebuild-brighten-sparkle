@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { APEX_BRAND } from "@/config/brand";
 import { Link } from "react-router-dom";
+import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, Briefcase, Building2, Calendar, ChevronRight,
@@ -2221,6 +2222,8 @@ function AgencyCommandView() {
                       Carrier commission statements are not connected yet — this card fills in when Finance reconciliation lands. No invented numbers.
                     </p>
                   </div>
+                  {/* Agent Cloud home block: agency production split (APEX vs Vantage). */}
+                  <ImoByAgency />
                 </div>
               </div>
 

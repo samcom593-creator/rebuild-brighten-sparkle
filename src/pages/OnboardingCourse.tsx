@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+// intentionally-orphan: legacy single-module player retained as rollback; CourseCatalog is canonical.
 import { motion } from "framer-motion";
 import { BookOpen, PlayCircle, HelpCircle, Award, Camera, Upload, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";

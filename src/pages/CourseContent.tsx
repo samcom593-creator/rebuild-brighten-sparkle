@@ -26,10 +26,12 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import type { CourseModule, CourseQuestion } from "@/types/course";
+import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
 
 export default function CourseContent() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin, isManager, isVaManager, isVa } = useAuth();
+  const isStaff = isAdmin || isManager || isVaManager || isVa;
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
 
@@ -40,12 +42,17 @@ export default function CourseContent() {
     let cancelled = false;
     const check = async () => {
       if (!user?.id) return;
+      if (isStaff) {
+        setIsLicensed(true);
+        setLicenseCheckLoading(false);
+        return;
+      }
       try {
         const [agentRes, appRes] = await Promise.all([
           supabase.from("agents").select("license_status").eq("user_id", user.id).maybeSingle(),
           supabase.from("applications").select("license_status, license_progress").ilike("email", user.email || "__nope__").order("created_at", { ascending: false }).limit(1).maybeSingle(),
         ]);
-        const agentLicensed = (agentRes.data as any)?.license_status === "licensed";
+        const agentLicensed = (agentRes.data as { license_status?: string } | null)?.license_status === "licensed";
         const app = appRes.data as { license_status?: string; license_progress?: string } | null;
         const appLicensed = app?.license_status === "licensed"
           || ["licensed", "fingerprints_done", "waiting_on_license"].includes(app?.license_progress || "");
@@ -56,7 +63,7 @@ export default function CourseContent() {
     };
     check();
     return () => { cancelled = true; };
-  }, [user?.id, user?.email]);
+  }, [isStaff, user?.id, user?.email]);
   useEffect(() => {
     if (!licenseCheckLoading && !isLicensed) navigate("/get-licensed", { replace: true });
   }, [licenseCheckLoading, isLicensed, navigate]);
@@ -148,6 +155,7 @@ export default function CourseContent() {
   return (
     <>
       <div className="space-y-6">
+        <TrainingWorkspaceNav />
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -156,7 +164,7 @@ export default function CourseContent() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold gradient-text flex items-center gap-2">
+              <h1 className="flex items-center gap-2 text-2xl font-bold">
                 <BookOpen className="h-6 w-6" />
                 Course Content
               </h1>

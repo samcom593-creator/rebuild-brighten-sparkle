@@ -21,6 +21,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/ui/page-header";
+import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -180,6 +181,7 @@ export default function TrainingHub() {
 
   return (
     <div className="page-enter mx-auto w-full max-w-6xl space-y-6 px-4 pb-24 sm:px-6">
+      <TrainingWorkspaceNav />
       <PageHeader
         eyebrow="Agent Hub · Resources"
         eyebrowIcon={<Library className="h-3 w-3" />}
@@ -340,7 +342,7 @@ function CoursesTab({
         const counts = hubCourseCounts(c.course!);
         const pct = completion[c.id] ?? 0;
         return (
-          <Link key={c.id} to={`/dashboard/training-hub/course/${c.id}`}>
+          <Link key={c.id} to={`/dashboard/recruiting/training/library/course/${c.id}`}>
             <Card className="flex h-full cursor-pointer flex-col gap-3 p-5 hover:border-primary/40">
               <div className="flex items-center justify-between gap-2">
                 <Badge variant="outline" className={TYPE_BADGE.course.className}>

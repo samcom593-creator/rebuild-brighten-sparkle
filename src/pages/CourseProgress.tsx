@@ -62,6 +62,7 @@ import { cn } from "@/lib/utils";
 import { AddToCourseButton } from "@/components/dashboard/AddToCourseButton";
 import { AddAgentToCourseDialog } from "@/components/dashboard/AddAgentToCourseDialog";
 import { CourseContentViewer } from "@/components/admin/CourseContentViewer";
+import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
 
 interface ModuleInfo {
   id: string;
@@ -220,7 +221,7 @@ export default function CourseProgress() {
           }
         }
         
-        const startedAt = (p as any).started_at || p.completed_at;
+        const startedAt = p.started_at || p.completed_at;
         if (startedAt) {
           const currentStart = courseStartByAgent.get(p.agent_id);
           if (!currentStart || startedAt < currentStart) {
@@ -320,18 +321,18 @@ export default function CourseProgress() {
         })
         .eq("id", agentId);
       if (error) throw error;
-      // Trigger new hire auto-flow
-      try {
-        await supabase.functions.invoke("trigger-new-hire-flow", {
-          body: { agentId, triggerType: "course_complete" }
-        });
-      } catch (e) {
-        console.error("New hire flow trigger failed:", e);
-      }
+      const { error: flowError } = await supabase.functions.invoke("trigger-new-hire-flow", {
+        body: { agentId, triggerType: "course_complete" }
+      });
+      return { flowTriggered: !flowError };
     },
-    onSuccess: (_, agentId) => {
+    onSuccess: (result, agentId) => {
       const agent = agentProgress?.find(a => a.agentId === agentId);
-      toast.success(`${agent?.agentName || 'Agent'} is now LIVE — welcome email and SMS sent automatically`);
+      if (result.flowTriggered) {
+        toast.success(`${agent?.agentName || 'Agent'} is now LIVE — welcome automation started`);
+      } else {
+        toast.warning(`${agent?.agentName || 'Agent'} is now LIVE, but the welcome automation needs a retry`);
+      }
       queryClient.invalidateQueries({ queryKey: ["course-progress-full"] });
     },
     onError: (error) => {
@@ -366,9 +367,10 @@ export default function CourseProgress() {
       queryClient.invalidateQueries({ queryKey: ["course-progress-full"] });
       queryClient.invalidateQueries({ queryKey: ["course-progress-admin"] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error("Unenroll error:", error);
-      toast.error(`Failed to unenroll agent: ${error?.message || "something went wrong — try again"}`);
+      const message = error instanceof Error ? error.message : "something went wrong — try again";
+      toast.error(`Failed to unenroll agent: ${message}`);
     },
   });
 
@@ -380,10 +382,14 @@ export default function CourseProgress() {
       return;
     }
     
+    const reminders = Promise.all(stalledAgents.map(async (agent) => {
+      const { error } = await supabase.functions.invoke("send-course-reminder", {
+        body: { agentId: agent.agentId },
+      });
+      if (error) throw error;
+    }));
     toast.promise(
-      Promise.all(stalledAgents.map(a => 
-        supabase.functions.invoke("send-course-reminder", { body: { agentId: a.agentId } })
-      )),
+      reminders,
       {
         loading: `Sending reminders to ${stalledAgents.length} agents...`,
         success: `Sent reminders to ${stalledAgents.length} agents`,
@@ -393,12 +399,16 @@ export default function CourseProgress() {
   };
 
   // Copy progress to clipboard
-  const copyToClipboard = () => {
+  const copyToClipboard = async () => {
     const text = agentProgress.map(a => 
       `${a.agentName} - ${a.percentComplete}% (${a.completedCount}/${a.totalModules}) - ${a.isAtRisk ? "AT RISK" : a.isStalled ? "STALLED" : "Active"}`
     ).join("\n");
-    navigator.clipboard.writeText(text);
-    toast.success("Progress copied to clipboard!");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Progress copied to clipboard!");
+    } catch {
+      toast.error("Couldn't copy progress");
+    }
   };
 
   // Filter agents
@@ -455,6 +465,7 @@ export default function CourseProgress() {
   return (
     <>
       <div className="space-y-4 page-enter">
+        <TrainingWorkspaceNav />
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -462,7 +473,7 @@ export default function CourseProgress() {
               <GraduationCap className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold gradient-text">
+              <h1 className="text-xl font-bold">
                 Course Progress Monitor
               </h1>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -472,7 +483,7 @@ export default function CourseProgress() {
           </div>
           <div className="flex gap-2 flex-wrap">
             <AddAgentToCourseDialog onSuccess={() => refetch()} />
-            <Button variant="outline" size="sm" onClick={() => navigate('/course-progress/content')} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/recruiting/training/content')} className="gap-1.5">
               <Eye className="h-3.5 w-3.5" />
               View Full Course
             </Button>

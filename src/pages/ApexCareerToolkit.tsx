@@ -18,6 +18,7 @@ import { toast } from "sonner";
 
 import { QuickAddAgentDialog } from "@/components/onboarding/QuickAddAgentDialog";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
+import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
@@ -328,6 +329,7 @@ export default function ApexCareerToolkit() {
   return (
     <div className="page-enter mx-auto w-full max-w-7xl space-y-5 px-4 pb-24 sm:px-6">
       <RecruitingWorkspaceNav />
+      <TrainingWorkspaceNav />
       <PageHeader
         eyebrow={`Recruiting · ${trainingLabel}`}
         eyebrowIcon={<Route className="h-4 w-4" />}

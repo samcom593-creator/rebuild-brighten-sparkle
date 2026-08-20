@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
+import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -136,6 +137,7 @@ export default function AnnuityTraining() {
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
+      <TrainingWorkspaceNav />
       <PageHeader
         eyebrow="Training"
         eyebrowIcon={<TrendingUp className="h-3 w-3" />}
@@ -155,43 +157,38 @@ export default function AnnuityTraining() {
         }
       />
 
-      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
-        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-        <div className="relative p-5">
+      <div className="overflow-hidden rounded-md border border-border bg-card">
+        <div className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
-              </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">ANNUITY TRAINING · LIVE</p>
+              <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">ANNUITY TRAINING · LIVE</p>
             </div>
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-white/40">
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
               <Clock className="h-3 w-3" />
               <span>~{READ_TIME_MIN} min read</span>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TOTAL MODULES</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{MODULES.length}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">curated curriculum</p>
+              <p className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">TOTAL MODULES</p>
+              <p className="text-[28px] font-black leading-none tabular-nums">{MODULES.length}</p>
+              <p className="text-[10px] tabular-nums text-muted-foreground">curated curriculum</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">COMPLETED</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{completed.size}<span className="text-white/30">/{MODULES.length}</span></p>
-              <p className="text-[10px] text-white/40 tabular-nums">{allDone ? "training complete" : "keep going"}</p>
+              <p className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">COMPLETED</p>
+              <p className="text-[28px] font-black leading-none tabular-nums">{completed.size}<span className="text-muted-foreground">/{MODULES.length}</span></p>
+              <p className="text-[10px] tabular-nums text-muted-foreground">{allDone ? "training complete" : "keep going"}</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">READ TIME</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{READ_TIME_MIN}<span className="text-white/40 text-[14px] ml-1">min</span></p>
-              <p className="text-[10px] text-white/40 tabular-nums">end to end</p>
+              <p className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">READ TIME</p>
+              <p className="text-[28px] font-black leading-none tabular-nums">{READ_TIME_MIN}<span className="ml-1 text-[14px] text-muted-foreground">min</span></p>
+              <p className="text-[10px] tabular-nums text-muted-foreground">end to end</p>
             </div>
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PRODUCTS COVERED</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{ANNUITY_PRODUCTS.length}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">FA · FIA · VA · SPIA</p>
+              <p className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">PRODUCTS COVERED</p>
+              <p className="text-[28px] font-black leading-none tabular-nums">{ANNUITY_PRODUCTS.length}</p>
+              <p className="text-[10px] tabular-nums text-muted-foreground">FA · FIA · VA · SPIA</p>
             </div>
           </div>
         </div>

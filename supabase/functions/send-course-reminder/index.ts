@@ -15,9 +15,10 @@ async function generateMagicToken(
   supabaseClient: any,
   agentId: string,
   email: string,
-  destination: string
+  destination: string,
 ): Promise<string> {
-  const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+  const token = crypto.randomUUID().replace(/-/g, "") +
+    crypto.randomUUID().replace(/-/g, "");
 
   await supabaseClient.from("magic_login_tokens").insert({
     agent_id: agentId,
@@ -36,26 +37,78 @@ serve(async (req) => {
   }
 
   try {
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      serviceRoleKey,
     );
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+
+    // This endpoint sends email and mints a one-tap login token. Never trust
+    // an agentId from an anonymous caller, even though gateway JWT validation
+    // is disabled for browser/CORS compatibility.
+    const authHeader = req.headers.get("authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    let callerUserId: string | null = null;
+    let callerRoles = new Set<string>();
+    if (token === serviceRoleKey) {
+      callerRoles = new Set(["service_role"]);
+    } else {
+      const { data: authData, error: authError } = await supabase.auth.getUser(
+        token,
+      );
+      if (authError || !authData.user?.id) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      callerUserId = authData.user.id;
+      const { data: roleRows, error: roleError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", callerUserId);
+      if (roleError) throw roleError;
+      callerRoles = new Set((roleRows ?? []).map((row) => String(row.role)));
+    }
+
+    const elevated = ["service_role", "admin", "va_manager", "va"].some((
+      role,
+    ) => callerRoles.has(role));
+    const manager = callerRoles.has("manager");
+    if (!elevated && !manager) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { agentId } = await req.json();
 
     if (!agentId) {
       return new Response(
         JSON.stringify({ error: "Agent ID is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
     // Get agent details including manager
     const { data: agent, error: agentError } = await supabase
       .from("agents")
-      .select("id, onboarding_stage, user_id, invited_by_manager_id")
+      .select(
+        "id, onboarding_stage, user_id, invited_by_manager_id, manager_id",
+      )
       .eq("id", agentId)
       .single();
 
@@ -63,8 +116,33 @@ serve(async (req) => {
       console.error("Agent not found:", agentError);
       return new Response(
         JSON.stringify({ error: "Agent not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
+    }
+
+    // Managers may remind only their own downline. Recruiting operators and
+    // admins are intentionally agency-wide.
+    if (!elevated && manager && callerUserId) {
+      const { data: callerAgents, error: callerAgentError } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", callerUserId);
+      if (callerAgentError) throw callerAgentError;
+      const callerAgentIds = new Set(
+        (callerAgents ?? []).map((row) => String(row.id)),
+      );
+      const assignedManagerId = agent.invited_by_manager_id || agent.manager_id;
+      if (
+        !assignedManagerId || !callerAgentIds.has(String(assignedManagerId))
+      ) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Get profile by user_id
@@ -77,7 +155,10 @@ serve(async (req) => {
     if (profileError || !profile?.email) {
       return new Response(
         JSON.stringify({ error: "Agent has no email" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -117,13 +198,20 @@ serve(async (req) => {
       .select("module_id, passed")
       .eq("agent_id", agentId);
 
-    const completedModules = progress?.filter(p => p.passed).length || 0;
-    const percentComplete = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+    const completedModules = progress?.filter((p) => p.passed).length || 0;
+    const percentComplete = totalModules > 0
+      ? Math.round((completedModules / totalModules) * 100)
+      : 0;
 
     const firstName = profile.full_name?.split(" ")[0] || "Team Member";
 
     // Generate magic link for one-tap access
-    const courseMagicLink = await generateMagicToken(supabase, agentId, profile.email, "course");
+    const courseMagicLink = await generateMagicToken(
+      supabase,
+      agentId,
+      profile.email,
+      "course",
+    );
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -202,18 +290,26 @@ serve(async (req) => {
       throw emailError;
     }
 
-    console.log(`Course reminder sent to ${profile.email}, CC: ${ccList.join(", ")}`);
+    console.log(
+      `Course reminder sent to ${profile.email}, CC: ${ccList.join(", ")}`,
+    );
 
     return new Response(
       JSON.stringify({ success: true, email: profile.email }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   } catch (error: unknown) {
     console.error("Error in send-course-reminder:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({ error: message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 });

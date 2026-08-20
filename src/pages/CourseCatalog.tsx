@@ -14,10 +14,12 @@ import { CourseVideoPlayer } from "@/components/course/CourseVideoPlayer";
 import { CourseQuiz } from "@/components/course/CourseQuiz";
 import { supabase } from "@/integrations/supabase/client";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
 
 export default function CourseCatalog() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin, isManager, isVaManager, isVa } = useAuth();
+  const isStaff = isAdmin || isManager || isVaManager || isVa;
   const { playSound } = useSoundEffects();
   const [agentId, setAgentId] = useState<string | null>(null);
   const [agentNotFound, setAgentNotFound] = useState(false);
@@ -81,6 +83,11 @@ export default function CourseCatalog() {
     let cancelled = false;
     const check = async () => {
       if (!user?.id) return;
+      if (isStaff) {
+        setIsLicensed(true);
+        setLicenseCheckLoading(false);
+        return;
+      }
       setLicenseCheckLoading(true);
       try {
         // Agents table may already have a license flag; otherwise fall back
@@ -95,7 +102,7 @@ export default function CourseCatalog() {
             .limit(1)
             .maybeSingle(),
         ]);
-        const agentLicensed = (agentRes.data as any)?.license_status === "licensed";
+        const agentLicensed = (agentRes.data as { license_status?: string } | null)?.license_status === "licensed";
         const app = appRes.data as { license_status?: string; license_progress?: string } | null;
         const appLicensed = app?.license_status === "licensed"
           || ["licensed", "fingerprints_done", "waiting_on_license"].includes(app?.license_progress || "");
@@ -106,7 +113,7 @@ export default function CourseCatalog() {
     };
     check();
     return () => { cancelled = true; };
-  }, [user?.id, user?.email]);
+  }, [isStaff, user?.id, user?.email]);
 
   useEffect(() => {
     const autoProvision = async () => {
@@ -196,6 +203,7 @@ export default function CourseCatalog() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      <TrainingWorkspaceNav />
       {/* Hero Banner */}
       <motion.div
         initial={{ opacity: 0, y: -12 }}

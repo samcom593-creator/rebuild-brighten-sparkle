@@ -117,7 +117,7 @@ const DashboardToday = lazy(() => import("./pages/DashboardToday"));
 const OnboardingLadder = lazy(() => import("./pages/OnboardingLadder"));
 const AdminProducerTrends = lazy(() => import("./pages/AdminProducerTrends"));
 const LicensedInbox = lazy(() => import("./pages/LicensedInbox"));
-const ApexCareerToolkit = lazy(() => import("./pages/ApexCareerToolkit"));
+const ApexTrainingEntry = lazy(() => import("./pages/ApexTrainingEntry"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const ScheduleCall = lazy(() => import("./pages/ScheduleCall"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -126,7 +126,6 @@ const DeletedLeadsVault = lazy(() => import("./pages/DeletedLeadsVault"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const AgentPortal = lazy(() => import("./pages/AgentPortal"));
 const AgentCommandDashboard = lazy(() => import("./pages/AgentCommandDashboard"));
-const OnboardingCourse = lazy(() => import("./pages/OnboardingCourse"));
 const CourseCatalog = lazy(() => import("./pages/CourseCatalog"));
 const TrainingHub = lazy(() => import("./pages/TrainingHub"));
 const TrainingHubCourse = lazy(() => import("./pages/TrainingHubCourse"));
@@ -457,7 +456,13 @@ const App = () => (
                     <Route path="/dashboard/recruiting/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><Interviews /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/follow-ups" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><InterviewRecovery /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/hires" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardApplicants /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/training" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><ApexCareerToolkit /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/training" element={<ProtectedRoute><ApexTrainingEntry /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/training/library" element={<ProtectedRoute><TrainingHub /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/training/library/course/:courseId" element={<ProtectedRoute><TrainingHubCourse /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/training/sales-course" element={<ProtectedRoute><CourseCatalog /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/training/progress" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><CourseProgress /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/training/content" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><CourseContent /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/training/annuities" element={<ProtectedRoute><AnnuityTraining /></ProtectedRoute>} />
                     <Route path="/dashboard/team" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardCRM /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/carriers" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
@@ -468,7 +473,7 @@ const App = () => (
                     <Route path="/dashboard/production" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
                     <Route path="/dashboard/analytics" element={<ProtectedRoute><BusinessAnalytics /></ProtectedRoute>} />
                     <Route path="/dashboard/community" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
-                    <Route path="/dashboard/resources" element={<ProtectedRoute><TrainingHub /></ProtectedRoute>} />
+                    <Route path="/dashboard/resources" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/library" />} />
                     <Route path="/dashboard/import" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager"]}><XcelImport /></ProtectedRoute>} />
                     <Route path="/dashboard/nova" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />
                     <Route path="/dashboard/admin" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
@@ -571,15 +576,15 @@ const App = () => (
                     <Route path="/agent-portal" element={<AgentCommandDashboard />} />
                     <Route path="/agent-dashboard" element={<AgentCommandDashboard />} />
                     <Route path="/agent-portal/legacy" element={<AgentPortal />} />
-                    <Route path="/onboarding-course" element={<LegacyWorkspaceRedirect to="/dashboard/resources" />} />
-                    <Route path="/course-catalog" element={<LegacyWorkspaceRedirect to="/dashboard/resources" />} />
+                    <Route path="/onboarding-course" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/sales-course" />} />
+                    <Route path="/course-catalog" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/sales-course" />} />
                     {/* Training Hub — live apex-resources content rendered in-app
                         (recordings / courses / library). Content API stays the
                         apex-resources admin portal; progress in hub_course_progress. */}
-                    <Route path="/dashboard/training-hub" element={<LegacyWorkspaceRedirect to="/dashboard/resources" />} />
-                    <Route path="/dashboard/training-hub/course/:courseId" element={<TrainingHubCourse />} />
-                    <Route path="/course-progress" element={<CourseProgress />} />
-                    <Route path="/course-progress/content" element={<CourseContent />} />
+                    <Route path="/dashboard/training-hub" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/library" />} />
+                    <Route path="/dashboard/training-hub/course/:courseId" element={<ProtectedRoute><TrainingHubCourse /></ProtectedRoute>} />
+                    <Route path="/course-progress" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/progress" />} />
+                    <Route path="/course-progress/content" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/content" />} />
                     <Route path="/numbers" element={<Numbers />} />
                     <Route path="/purchase-leads" element={<PurchaseLeads />} />
                     <Route path="/dashboard/call-center" element={<CallCenter />} />

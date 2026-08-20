@@ -185,7 +185,7 @@ export default function TrainingHubCourse() {
               </Button>
             )}
             <Button asChild variant="outline" className="gap-2">
-              <Link to="/dashboard/training-hub?tab=courses">
+              <Link to="/dashboard/recruiting/training/library?tab=courses">
                 <ArrowLeft className="h-4 w-4" />
                 Back to Training Hub
               </Link>
@@ -314,7 +314,7 @@ export default function TrainingHubCourse() {
     <div className="page-enter mx-auto w-full max-w-4xl space-y-5 px-4 pb-24 sm:px-6">
       <div className="pt-2">
         <Link
-          to="/dashboard/training-hub?tab=courses"
+          to="/dashboard/recruiting/training/library?tab=courses"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />

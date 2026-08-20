@@ -296,7 +296,7 @@ export default function DeletedLeadsVault() {
                         variant="outline"
                         className={
                           lead.source === "applications"
-                            ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                            ? "bg-info/20 text-info border-info/30"
                             : "bg-amber-500/20 text-amber-400 border-amber-500/30"
                         }
                       >

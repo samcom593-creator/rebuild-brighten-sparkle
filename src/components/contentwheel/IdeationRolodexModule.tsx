@@ -32,8 +32,8 @@ const STATUS_ORDER = ["backlog","queued","scripted","shot","sequenced","testing"
 const STATUS_COLORS: Record<string, string> = {
   backlog: "bg-zinc-700/40 text-zinc-300",
   queued: "bg-amber-500/20 text-amber-300 border-amber-500/40",
-  scripted: "bg-blue-500/20 text-blue-300 border-blue-500/40",
-  shot: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
+  scripted: "bg-info/20 text-info border-info/30",
+  shot: "bg-info/20 text-info border-info/30",
   sequenced: "bg-purple-500/20 text-purple-300 border-purple-500/40",
   testing: "bg-orange-500/20 text-orange-300 border-orange-500/40",
   posted: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",

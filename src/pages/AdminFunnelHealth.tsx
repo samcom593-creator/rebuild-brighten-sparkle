@@ -236,10 +236,10 @@ export default function AdminFunnelHealth() {
               Stall sweep every 15min · Nudge sweep hourly · Full recompute nightly 03:00 CT · Auto-dispatch fires on every queue insert
             </div>
           </div>
-          <Link to="/admin/next-step/stuck" className="ml-auto text-sm hover:underline text-blue-300 inline-flex items-center gap-1 shrink-0">
+          <Link to="/admin/next-step/stuck" className="ml-auto text-sm hover:underline text-info inline-flex items-center gap-1 shrink-0">
             Stuck pool <ArrowRight className="h-3 w-3" />
           </Link>
-          <Link to="/dashboard/team/next-step" className="text-sm hover:underline text-blue-300 inline-flex items-center gap-1 shrink-0">
+          <Link to="/dashboard/team/next-step" className="text-sm hover:underline text-info inline-flex items-center gap-1 shrink-0">
             Manager board <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
@@ -250,7 +250,7 @@ export default function AdminFunnelHealth() {
 
 function KpiTile({ label, value, tone }: { label: string; value: number; tone: "blue" | "rose" | "amber" | "emerald" | "neutral" }) {
   const toneClass: Record<typeof tone, string> = {
-    blue: "border-blue-500/30 text-blue-300",
+    blue: "border-info/30 text-info",
     rose: "border-rose-500/30 text-rose-300",
     amber: "border-amber-500/30 text-amber-300",
     emerald: "border-emerald-500/30 text-emerald-300",

@@ -67,7 +67,7 @@ export default function LeadsLanding() {
                 <p className="text-muted-foreground">Monthly pace serious agents can build toward</p>
               </div>
               <div className="space-y-2">
-                <div className="text-3xl font-bold text-blue-400">Warm</div>
+                <div className="text-3xl font-bold text-info">Warm</div>
                 <p className="text-muted-foreground">Daily lead flow</p>
               </div>
               <div className="space-y-2">
@@ -134,7 +134,7 @@ export default function LeadsLanding() {
               <div className="space-y-4">
                 {features.slice(5).map((feature) => (
                   <div key={feature.title} className="flex gap-3 items-start">
-                    <Check className="h-6 w-6 text-blue-400 flex-shrink-0 mt-1" />
+                    <Check className="h-6 w-6 text-info flex-shrink-0 mt-1" />
                     <div>
                       <h3 className="font-semibold text-white">{feature.title}</h3>
                       <p className="text-muted-foreground text-sm">{feature.desc}</p>

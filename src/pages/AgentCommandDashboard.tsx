@@ -1814,14 +1814,14 @@ function AgencyCommandView() {
 
 
   return (
-    <div className="page-enter px-4 sm:px-6 pb-24 space-y-4">
+    <div className="page-enter pb-24 space-y-4">
       {/* MP-255 · CommandHeader — compact executive header with Day/Week/Month/
           Custom, Team filter, Refresh, and Start Daily Review CTA. Replaces
           the oversized decorative hero band. */}
       {/* 2026-08-18 template pass: the framed hero card (border + teal Crown
           eyebrow + 3xl title) is now the template's FLAT title row — 22/700
           title, muted one-line sub, hairline underneath. Controls unchanged. */}
-      <div className="border-b border-border pb-4">
+      <div className="hidden border-b border-border pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <h1 className="text-[22px] font-bold text-foreground leading-7">Apex Financial</h1>
@@ -1836,7 +1836,7 @@ function AgencyCommandView() {
       {/* Custom-period date inputs appear only when 'custom' picked, as a
           single skinny strip — not a full card. Saves a zone. */}
       {period === "custom" && (
-        <div className="flex flex-wrap items-center gap-2 px-1 py-1 border-l-2 border-l-primary/40 bg-primary/[0.03] rounded-r-md">
+        <div className="hidden flex-wrap items-center gap-2 px-1 py-1 border-l-2 border-l-primary/40 bg-primary/[0.03] rounded-r-md">
           <span className="text-11 text-muted-foreground">Custom range:</span>
           <Input type="date" value={customStart} onChange={(e) => setCustomStart(e.target.value)} className="h-8 w-36 text-11" aria-label="Custom period start" />
           <span className="text-11 text-muted-foreground">→</span>
@@ -1848,7 +1848,7 @@ function AgencyCommandView() {
           Policies Issued, Licensed MTD, Active Applicants, At-Risk Producers).
           Clicking a tile navigates to the drill-down surface. All numbers
           source from live views — Sam's "no invented data" rule. */}
-      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="hidden gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         {(() => {
           const tiles: Array<{
             icon: any; label: string; value: string; sub: string; tone: string;
@@ -1927,7 +1927,7 @@ function AgencyCommandView() {
           segmented control, team filter, refresh and the daily-review CTA live
           here now — under the KPI strip, exactly where the approved shell puts
           its controls — instead of crowding the title. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+      <div className="hidden flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <div className="flex flex-wrap items-center gap-2">
             <div className="grid grid-cols-4 gap-0.5 rounded-md border border-border bg-card p-0.5">
               {AGENCY_PERIODS.map((option) => (
@@ -3103,7 +3103,7 @@ function AgencyCommandView() {
       <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-sky-400" />
+            <Users className="h-4 w-4 text-info" />
             <h3 className="text-14 font-bold text-slate-100">Manager Accountability</h3>
           </div>
           <Button asChild variant="ghost" size="sm">

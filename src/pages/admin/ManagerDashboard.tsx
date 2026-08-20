@@ -88,7 +88,7 @@ function RecruitingTab() {
         <StatTile label="Apps last 24h" value={last24h} color="text-emerald-300" />
         <StatTile label="Stage=new no contact" value={noContact} color="text-rose-300" />
         <StatTile label="In interview" value={interviewing} color="text-amber-300" />
-        <StatTile label="In contracting" value={contracting} color="text-cyan-300" />
+        <StatTile label="In contracting" value={contracting} color="text-info" />
         <StatTile label="Approved (30d)" value={approved} color="text-emerald-300" />
       </div>
       <Card>
@@ -161,7 +161,7 @@ function LicensingTab() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTile label="Paid / enrolled" value={stageCount("paid")} color="text-emerald-300" />
-        <StatTile label="In onboarding" value={stageCount("onboarding")} color="text-cyan-300" />
+        <StatTile label="In onboarding" value={stageCount("onboarding")} color="text-info" />
         <StatTile label="Registered for exam" value={stageCount("registered")} color="text-amber-300" />
         <StatTile label="Attended seminar" value={stageCount("attended")} color="text-emerald-300" />
       </div>
@@ -225,7 +225,7 @@ function ProductionTab() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTile label="Deals closed (30d)" value={closed.length} color="text-emerald-300" />
         <StatTile label="$ ALP submitted (30d)" value={`$${Math.round(monthAmt).toLocaleString()}`} color="text-emerald-300" />
-        <StatTile label="Active producers (30d)" value={Object.keys(byAgent).length} color="text-cyan-300" />
+        <StatTile label="Active producers (30d)" value={Object.keys(byAgent).length} color="text-info" />
         <StatTile label="Avg deal" value={closed.length ? `$${Math.round(monthAmt / closed.length).toLocaleString()}` : "—"} color="text-slate-600 dark:text-slate-300" />
       </div>
 

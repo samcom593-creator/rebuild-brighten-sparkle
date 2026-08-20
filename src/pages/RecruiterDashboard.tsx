@@ -307,7 +307,7 @@ function MetricsStrip({ leads }: { leads: Lead[] }) {
   const pills = [
     { icon: Phone, label: "Contact Rate", value: `${metrics.contactRate}%`, color: metrics.contactRate >= 80 ? "text-emerald-400" : metrics.contactRate >= 50 ? "text-amber-400" : "text-rose-400" },
     { icon: Award, label: "License Rate", value: `${metrics.licenseRate}%`, color: metrics.licenseRate >= 30 ? "text-emerald-400" : metrics.licenseRate >= 15 ? "text-amber-400" : "text-rose-400" },
-    { icon: Timer, label: "Avg Days to Licensed", value: `${metrics.avgDaysToLicensed}d`, color: "text-blue-400" },
+    { icon: Timer, label: "Avg Days to Licensed", value: `${metrics.avgDaysToLicensed}d`, color: "text-info" },
     { icon: AlertTriangle, label: "Overdue", value: `${metrics.overdueRate}%`, color: metrics.overdueRate <= 10 ? "text-emerald-400" : metrics.overdueRate <= 30 ? "text-amber-400" : "text-rose-400" },
   ];
 
@@ -639,7 +639,7 @@ const LeadCard = memo(function LeadCard({
                     }}
                     className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded-md hover:bg-accent transition-colors"
                   >
-                    <MessageSquare className="h-3 w-3 text-blue-400" />
+                    <MessageSquare className="h-3 w-3 text-info" />
                     <span>Send SMS</span>
                   </button>
                 )}
@@ -692,7 +692,7 @@ const LeadCard = memo(function LeadCard({
                   variant="outline"
                   size="icon"
                   aria-label="Schedule interview"
-                  className="h-8 w-8 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                  className="h-8 w-8 border-info/30 text-info hover:bg-info/10"
                   onClick={() => setSchedulerOpen(true)}
                 >
                   <Calendar className="h-4 w-4" />

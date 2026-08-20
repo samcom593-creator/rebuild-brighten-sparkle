@@ -109,7 +109,7 @@ export function AISummaryReport() {
   };
 
   const quickStats = stats ? [
-    { icon: Users, label: "Live Agents", value: stats.activeAgents, color: "text-blue-400" },
+    { icon: Users, label: "Live Agents", value: stats.activeAgents, color: "text-info" },
     { icon: TrendingUp, label: "Week ALP", value: `$${stats.weekAlp.toLocaleString()}`, color: "text-emerald-400" },
     { icon: BarChart3, label: "Producers", value: stats.producersCount, color: "text-purple-400" },
     { icon: AlertTriangle, label: "Overdue Leads", value: stats.overdueCount, color: "text-amber-400" },

@@ -47,16 +47,16 @@ export function NextStepCard({ application_id, agent_id, compact = false }: Prop
 
   const borderClass = isUrgent
     ? "border-rose-500/40 bg-white dark:bg-card"
-    : "border-blue-500/40 bg-white dark:bg-card";
+    : "border-info/30 bg-white dark:bg-card";
 
-  const accent = isUrgent ? "text-rose-300" : "text-blue-300";
+  const accent = isUrgent ? "text-rose-300" : "text-info";
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
       <Card className={cn("p-5 sm:p-6 transition-colors", borderClass)}>
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-start gap-3 min-w-0">
-            <div className={cn("rounded-md p-3 border shrink-0", isUrgent ? "bg-rose-500/15 border-rose-500/30" : "bg-blue-500/15 border-blue-500/30")}>
+            <div className={cn("rounded-md p-3 border shrink-0", isUrgent ? "bg-rose-500/15 border-rose-500/30" : "bg-info/15 border-info/30")}>
               <Compass className={cn("h-6 w-6", accent)} />
             </div>
             <div className="min-w-0">
@@ -86,7 +86,7 @@ export function NextStepCard({ application_id, agent_id, compact = false }: Prop
             to={row.next_action_url.startsWith("http") ? row.next_action_url : row.next_action_url}
             className={cn(
               "inline-flex items-center justify-center w-full gap-2 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors",
-              isUrgent ? "bg-rose-500/20 border border-rose-500/40 text-rose-100 hover:bg-rose-500/30" : "bg-blue-500/20 border border-blue-500/40 text-blue-100 hover:bg-blue-500/30",
+              isUrgent ? "bg-rose-500/20 border border-rose-500/40 text-rose-100 hover:bg-rose-500/30" : "bg-info/20 border border-info/30 text-blue-100 hover:bg-info/30",
             )}
           >
             {row.next_action_label} <ArrowRight className="h-4 w-4" />

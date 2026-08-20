@@ -251,7 +251,7 @@ export default function SocialMediaBot() {
         label: "Total Followers",
         value: fmtNum(data.total_followers),
         sub: "tracked across wired platforms",
-        accent: "text-cyan-300",
+        accent: "text-info",
       },
       {
         icon: MessageSquare,
@@ -559,7 +559,7 @@ export default function SocialMediaBot() {
             <div className="space-y-4">
               <GlassCard className="p-5">
                 <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
-                  <Quote className="h-5 w-5 text-cyan-300" /> 8 Cinematic Moments
+                  <Quote className="h-5 w-5 text-info" /> 8 Cinematic Moments
                 </h3>
                 <p className="text-xs text-muted-foreground mb-3">Spine of every long-form. Use surgically.</p>
                 <ol className="space-y-1.5 text-sm">
@@ -814,7 +814,7 @@ export default function SocialMediaBot() {
         <TabsContent value="runs" className="mt-4">
           <GlassCard className="p-4 md:p-5">
             <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-              <Activity className="h-5 w-5 text-cyan-300" /> Recent Bot Runs
+              <Activity className="h-5 w-5 text-info" /> Recent Bot Runs
             </h3>
             <div className="space-y-2 text-sm">
               {(data.recent_runs ?? []).map((r) => (
@@ -1084,7 +1084,7 @@ function SandcastlesAutonomous() {
           </div>
           <div className="text-right text-xs text-muted-foreground font-mono shrink-0">
             <div>queued <span className="text-amber-300">{counts.queued ?? 0}</span></div>
-            <div>running <span className="text-cyan-300">{counts.running ?? 0}</span></div>
+            <div>running <span className="text-info">{counts.running ?? 0}</span></div>
             <div>complete <span className="text-emerald-300">{counts.complete ?? 0}</span></div>
             {(counts.failed ?? 0) > 0 && <div>failed <span className="text-rose-300">{counts.failed}</span></div>}
           </div>
@@ -1145,7 +1145,7 @@ function SandcastlesAutonomous() {
                   <div className="text-right shrink-0">
                     <Badge variant="outline" className={
                       r.status === "complete" ? "border-emerald-500/40 text-emerald-300" :
-                      r.status === "running"  ? "border-cyan-500/40 text-cyan-300" :
+                      r.status === "running"  ? "border-info/30 text-info" :
                       r.status === "failed"   ? "border-rose-500/40 text-rose-300" :
                       "border-amber-500/40 text-amber-300"
                     }>{r.status}</Badge>

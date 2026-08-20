@@ -92,7 +92,7 @@ interface Manager {
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   new: { label: "New", color: "bg-primary/15 text-primary border-primary/20", icon: UserPlus },
-  contacted: { label: "Contacted", color: "bg-blue-500/15 text-blue-400 border-blue-500/20", icon: Phone },
+  contacted: { label: "Contacted", color: "bg-info/15 text-info border-info/30", icon: Phone },
   hired: { label: "Hired", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20", icon: CheckCircle2 },
   not_qualified: { label: "Not Qualified", color: "bg-destructive/15 text-destructive border-destructive/20", icon: XCircle },
   licensing: { label: "Licensing", color: "bg-amber-500/15 text-amber-400 border-amber-500/20", icon: GraduationCap },
@@ -721,7 +721,7 @@ export default function DashboardAgedLeads() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { icon: Archive, label: "Total", value: totalLeads, gradient: "from-primary/20 to-primary/5" },
-          { icon: UserPlus, label: "Unprocessed", value: newLeads, gradient: "from-blue-500/20 to-blue-500/5" },
+          { icon: UserPlus, label: "Unprocessed", value: newLeads, gradient: "from-info/20 to-info/5" },
           { icon: CheckCircle2, label: "Hired", value: hiredLeads, gradient: "from-emerald-500/20 to-emerald-500/5" },
           { icon: AlertTriangle, label: "Duplicates", value: duplicateMap.size, gradient: "from-amber-500/20 to-amber-500/5" },
         ].map((stat, i) => (
@@ -1102,7 +1102,7 @@ export default function DashboardAgedLeads() {
                           <Badge variant="outline" className="text-[9px] h-4 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>
                         )}
                         {lead.leadSource === "new_drip" && (
-                          <Badge variant="outline" className="text-[9px] h-4 px-1 bg-slate-500/10 text-foreground border-cyan-500/20">Drip</Badge>
+                          <Badge variant="outline" className="text-[9px] h-4 px-1 bg-slate-500/10 text-foreground border-info/30">Drip</Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
@@ -1113,7 +1113,7 @@ export default function DashboardAgedLeads() {
                         )}
                         {lead.phone && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" asChild title="Text">
-                            <a href={`sms:${lead.phone}`}><MessageSquare className="h-3.5 w-3.5 text-blue-400" /></a>
+                            <a href={`sms:${lead.phone}`}><MessageSquare className="h-3.5 w-3.5 text-info" /></a>
                           </Button>
                         )}
                         {lead.email && (

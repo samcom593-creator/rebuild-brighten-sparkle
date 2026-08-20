@@ -30,8 +30,8 @@ interface LicenseProgressSelectorProps {
 
 const progressSteps: { value: LicenseProgress; label: string; icon: React.ElementType; color: string }[] = [
   { value: "unlicensed", label: "Unlicensed", icon: GraduationCap, color: "text-amber-400" },
-  { value: "course_purchased", label: "Course Started", icon: BookOpen, color: "text-blue-400" },
-  { value: "finished_course", label: "Finished Course", icon: BookCheck, color: "text-indigo-400" },
+  { value: "course_purchased", label: "Course Started", icon: BookOpen, color: "text-info" },
+  { value: "finished_course", label: "Finished Course", icon: BookCheck, color: "text-info" },
   { value: "test_scheduled", label: "Test Scheduled", icon: CalendarClock, color: "text-purple-400" },
   { value: "failed_test", label: "Failed Test · Retake", icon: RotateCcw, color: "text-rose-400" },
   { value: "passed_test", label: "Passed Test", icon: FileCheck, color: "text-primary" },
@@ -42,8 +42,8 @@ const progressSteps: { value: LicenseProgress; label: string; icon: React.Elemen
 
 const progressColors: Record<LicenseProgress, string> = {
   unlicensed: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  course_purchased: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  finished_course: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30",
+  course_purchased: "bg-info/20 text-info border-info/30",
+  finished_course: "bg-info/20 text-info border-info/30",
   test_scheduled: "bg-purple-500/20 text-purple-400 border-purple-500/30",
   failed_test: "bg-rose-500/20 text-rose-400 border-rose-500/30",
   passed_test: "bg-violet-500/20 text-primary border-violet-500/30",

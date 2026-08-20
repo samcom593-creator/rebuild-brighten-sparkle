@@ -109,7 +109,7 @@ function platformIcon(platform?: string | null) {
 function platformTone(platform?: string | null) {
   const p = (platform ?? "").toLowerCase();
   if (p.includes("youtube")) return "text-red-300 border-red-500/30";
-  if (p.includes("tiktok")) return "text-cyan-300 border-cyan-500/30";
+  if (p.includes("tiktok")) return "text-info border-info/30";
   if (p.includes("instagram") || p === "ig") return "text-pink-300 border-pink-500/30";
   if (p.includes("snap")) return "text-yellow-200 border-yellow-500/30";
   return "text-slate-600 dark:text-slate-300 border-slate-500/30";
@@ -119,7 +119,7 @@ function statusTone(status: DraftStatus) {
   if (status === "shipped") return "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
   if (status === "approved") return "bg-amber-500/15 text-amber-300 border-amber-500/30";
   if (status === "rejected") return "bg-rose-500/15 text-rose-300 border-rose-500/30";
-  if (status === "awaiting_approval") return "bg-slate-500/15 text-cyan-300 border-cyan-500/30";
+  if (status === "awaiting_approval") return "bg-slate-500/15 text-info border-info/30";
   if (status === "awaiting_film") return "bg-violet-500/15 text-violet-300 border-violet-500/30";
   return "bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/30";
 }
@@ -514,7 +514,7 @@ export default function ContentCommand() {
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <Metric label="Active drafts" value={totals.active} tone="text-cyan-300" />
+        <Metric label="Active drafts" value={totals.active} tone="text-info" />
         <Metric label="Awaiting stamp" value={totals.awaiting} tone="text-amber-300" />
         <Metric label="Awaiting film" value={totals.awaitingFilm} tone="text-violet-300" />
         <Metric label="Approved" value={totals.approved} tone="text-emerald-300" />
@@ -553,7 +553,7 @@ export default function ContentCommand() {
             <CardHeader className="pb-3">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Radio className="h-4 w-4 text-cyan-300" /> Draft queue
+                  <Radio className="h-4 w-4 text-info" /> Draft queue
                 </CardTitle>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -910,7 +910,7 @@ function PoolOverview({
     { label: "Raw Ideas", value: data?.ideas, hint: "cw_ideas", tone: "text-slate-600 dark:text-slate-300" },
     { label: "Demand mines", value: data?.demand_mines, hint: "cw_demand_mines", tone: "text-slate-600 dark:text-slate-300" },
     { label: "Hook pool", value: data?.hooks, hint: "cw_hooks", tone: "text-violet-300" },
-    { label: "Outliers", value: data?.outliers, hint: "cw_outliers", tone: "text-cyan-300" },
+    { label: "Outliers", value: data?.outliers, hint: "cw_outliers", tone: "text-info" },
     { label: "Drafts awaiting", value: draftAwait, hint: "social_bot_drafts", tone: "text-amber-300" },
     { label: "Approved to post", value: draftApproved, hint: "social_bot_drafts", tone: "text-emerald-300" },
     { label: "Shipped", value: draftShipped, hint: "social_bot_drafts + cw_posts", tone: "text-muted-foreground" },

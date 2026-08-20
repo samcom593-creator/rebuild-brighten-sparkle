@@ -451,7 +451,7 @@ export default function ProducerDetailsDrawer({
             variant="outline"
             onClick={markReviewed}
             disabled={writeNote.isPending}
-            className="border-blue-500/30 bg-blue-500/10 text-blue-200 hover:bg-blue-500/20"
+            className="border-info/30 bg-info/10 text-info hover:bg-info/20"
           >
             <ClipboardCheck className="h-4 w-4 mr-1.5" /> Mark reviewed
           </Button>

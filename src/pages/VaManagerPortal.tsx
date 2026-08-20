@@ -148,7 +148,7 @@ export default function VaManagerPortal() {
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-cyan-400">
+          <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-info">
             <ShieldCheck className="h-3.5 w-3.5" /> VA Team · Portal
           </div>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold">

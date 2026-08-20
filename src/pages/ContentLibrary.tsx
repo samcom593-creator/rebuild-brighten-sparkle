@@ -815,7 +815,7 @@ export default function ContentLibrary() {
           {/* ═══ STORAGE TAB ═══ */}
           <TabsContent value="storage" className="space-y-4 mt-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <StatCard icon={<FileImage className="h-5 w-5 text-blue-500" />} label="Photos" value={String(stats.photos)} />
+              <StatCard icon={<FileImage className="h-5 w-5 text-info" />} label="Photos" value={String(stats.photos)} />
               <StatCard icon={<FileVideo className="h-5 w-5 text-purple-500" />} label="Videos" value={String(stats.videos)} />
               <StatCard icon={<HardDrive className="h-5 w-5 text-emerald-500" />} label="Storage Used" value={`${stats.totalGB} GB`} />
               <StatCard icon={<Copy className="h-5 w-5 text-amber-500" />} label="Duplicates" value={`${stats.duplicates} items`} />

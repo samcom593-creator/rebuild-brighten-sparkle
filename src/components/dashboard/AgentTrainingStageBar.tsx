@@ -38,7 +38,7 @@ const ORDERED: Stage[] = ["test", "classroom", "field", "active"];
 
 const META: Record<Stage, { label: string; icon: any; color: string; ring: string; dot: string }> = {
   test:      { label: "Test",       icon: BookOpen,     color: "text-amber-600 dark:text-amber-400",   ring: "ring-amber-500/30",   dot: "bg-amber-500" },
-  classroom: { label: "Classroom",  icon: GraduationCap, color: "text-sky-600 dark:text-sky-400",       ring: "ring-sky-500/30",     dot: "bg-sky-500" },
+  classroom: { label: "Classroom",  icon: GraduationCap, color: "text-info dark:text-info",       ring: "ring-sky-500/30",     dot: "bg-info" },
   field:     { label: "Field",      icon: Compass,      color: "text-violet-600 dark:text-violet-400", ring: "ring-violet-500/30",  dot: "bg-violet-500" },
   active:    { label: "Active",     icon: Briefcase,    color: "text-emerald-600 dark:text-emerald-400", ring: "ring-emerald-500/30", dot: "bg-emerald-500" },
   unknown:   { label: "Pending",    icon: RefreshCw,    color: "text-muted-foreground",                ring: "ring-border",         dot: "bg-muted" },

@@ -507,7 +507,7 @@ export default function ReadyModeIntegration() {
           </GlassCard>
 
           {/* Webhook URL — preferred ingest path (real-time) */}
-          <GlassCard className="p-5 border-l-4 border-cyan-500/60">
+          <GlassCard className="p-5 border-l-4 border-info/30">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold flex items-center gap-1.5">

@@ -32,7 +32,7 @@ interface LeadInsightsPanelProps {
 const TIER_COLORS: Record<Insights["tier"], string> = {
   hot: "bg-red-500/15 text-red-400 border-red-500/30",
   warm: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  cold: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  cold: "bg-info/15 text-info border-info/30",
   dead: "bg-muted text-muted-foreground border-border",
 };
 

@@ -237,7 +237,7 @@ export default function AwardProfilesPanel() {
               { label: "Producers", value: stats.total, icon: User, color: "text-primary" },
               { label: "Profiles Ready", value: stats.complete, icon: CheckCircle2, color: "text-emerald-500" },
               { label: "Total ALP", value: `$${Math.round(stats.totalAlp).toLocaleString()}`, icon: TrendingUp, color: "text-amber-500" },
-              { label: "Total Deals", value: stats.totalDeals, icon: Hash, color: "text-blue-500" },
+              { label: "Total Deals", value: stats.totalDeals, icon: Hash, color: "text-info" },
             ].map((s) => (
               <div key={s.label} className="rounded-lg bg-background/40 border border-border/30 px-3 py-2.5 flex items-center gap-2.5">
                 <s.icon className={cn("h-4 w-4", s.color)} />

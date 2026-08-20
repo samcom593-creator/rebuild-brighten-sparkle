@@ -142,7 +142,7 @@ interface CardProps {
 const COLOR_CLASSES: Record<CardProps["color"], { text: string; ring: string; glow: string }> = {
   emerald: { text: "text-emerald-300", ring: "border-emerald-500/30", glow: "from-emerald-500/15" },
   amber:   { text: "text-amber-300",   ring: "border-amber-500/30",   glow: "from-amber-500/15"   },
-  cyan:    { text: "text-cyan-300",    ring: "border-cyan-500/30",    glow: "from-cyan-500/15"    },
+  cyan:    { text: "text-info",    ring: "border-info/30",    glow: "from-info/15"    },
 };
 
 function CounterCard({ icon: Icon, value, label, color }: CardProps) {

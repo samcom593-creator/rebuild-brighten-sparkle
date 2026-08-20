@@ -212,7 +212,7 @@ const TRACK_LABEL: Record<BuilderTrack, string> = {
 
 const TITLE_TONE: Record<string, string> = {
   "Agency Owner": "border-amber-400/50 bg-amber-400/10 text-amber-300",
-  "Agency Owner Track - Not Qualified Yet": "border-blue-400/50 bg-blue-400/10 text-blue-300",
+  "Agency Owner Track - Not Qualified Yet": "border-info/30 bg-info/10 text-info",
   Manager: "border-emerald-400/50 bg-emerald-400/10 text-emerald-300",
   Agent: "border-slate-400/40 bg-slate-400/10 text-slate-600 dark:text-slate-300",
 };

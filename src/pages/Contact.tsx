@@ -34,7 +34,7 @@ export default function Contact() {
           </GlassCard>
 
           <GlassCard className="border-slate-200 dark:border-border/60 bg-white dark:bg-card/70 p-5">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-blue-500/15 text-blue-300">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-info/15 text-info">
               <Mail className="h-5 w-5" />
             </div>
             <h2 className="text-xl font-semibold">Email</h2>

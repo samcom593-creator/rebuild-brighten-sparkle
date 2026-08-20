@@ -209,12 +209,12 @@ export default function AgentLinkSync() {
                     {l.status === "error"     && <span className="text-rose-400 inline-flex items-center gap-1"><AlertCircle className="h-3 w-3" />error</span>}
                     {l.status === "empty"     && <span className="text-amber-400">empty</span>}
                     {l.status === "no_cookie" && <span className="text-muted-foreground">no cookie</span>}
-                    {l.status === "running"   && <span className="text-blue-400 inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />running</span>}
+                    {l.status === "running"   && <span className="text-info inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />running</span>}
                     {l.status === "stuck"     && <span className="text-muted-foreground/60">timed out</span>}
                   </td>
                   <td className="px-3 py-1.5 text-right tabular-nums">{l.policies_seen ?? "—"}</td>
                   <td className="px-3 py-1.5 text-right tabular-nums text-emerald-400">{l.deals_inserted ?? "—"}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums text-blue-400">{l.deals_updated ?? "—"}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums text-info">{l.deals_updated ?? "—"}</td>
                   <td className="px-3 py-1.5 text-xs">{l.upstream_status ?? "—"}</td>
                   <td className="px-3 py-1.5 text-xs text-rose-300 max-w-[240px] truncate" title={l.error_message ?? undefined}>
                     {l.error_message ?? ""}

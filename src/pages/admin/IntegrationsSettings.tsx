@@ -446,7 +446,7 @@ export default function IntegrationsSettings() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-indigo-400" />
+              <MessageSquare className="h-5 w-5 text-info" />
               <CardTitle className="text-base">Discord Notifications</CardTitle>
             </div>
             <div className="flex items-center gap-2">
@@ -535,7 +535,7 @@ export default function IntegrationsSettings() {
       <Card className="border-border">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Terminal className="h-5 w-5 text-sky-400" />
+            <Terminal className="h-5 w-5 text-info" />
             <CardTitle className="text-base">First-Time SQL Setup</CardTitle>
           </div>
           <CardDescription className="text-xs">
@@ -543,7 +543,7 @@ export default function IntegrationsSettings() {
             <a
               href="https://supabase.com/dashboard/project/xrzweoneiieddzxogewk/sql/new"
               target="_blank" rel="noopener noreferrer"
-              className="text-sky-400 underline inline-flex items-center gap-0.5"
+              className="text-info underline inline-flex items-center gap-0.5"
             >
               Supabase SQL Editor <ExternalLink className="h-2.5 w-2.5" />
             </a>

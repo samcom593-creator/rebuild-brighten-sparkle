@@ -18,7 +18,7 @@ const sizes = {
 
 const colors = [
   "bg-purple-500/20 text-purple-300",
-  "bg-blue-500/20 text-blue-300",
+  "bg-info/20 text-info",
   "bg-emerald-500/20 text-emerald-300",
   "bg-amber-500/20 text-amber-300",
   "bg-rose-500/20 text-rose-300",

@@ -252,7 +252,7 @@ function DispositionButton({
   onClick: () => void;
 }) {
   const activeTone: Record<Tone, string> = {
-    sky: "border-sky-500/50 bg-sky-500/15 text-sky-200",
+    sky: "border-info/30 bg-info/15 text-info",
     slate: "border-slate-400/40 bg-slate-500/15 text-slate-200",
     amber: "border-amber-500/50 bg-amber-500/15 text-amber-200",
     violet: "border-violet-500/50 bg-violet-500/15 text-violet-200",

@@ -118,8 +118,8 @@ const PROGRESS_TONE: Record<string, string> = {
   passed_test: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
   test_scheduled: "bg-amber-500/15 text-amber-300 border-amber-500/40",
   finished_course: "bg-amber-500/15 text-amber-300 border-amber-500/40",
-  in_course: "bg-sky-500/15 text-sky-300 border-sky-500/40",
-  course_started: "bg-sky-500/15 text-sky-300 border-sky-500/40",
+  in_course: "bg-info/15 text-info border-info/30",
+  course_started: "bg-info/15 text-info border-info/30",
   bought_not_started: "bg-rose-500/15 text-rose-300 border-rose-500/40",
   not_started: "bg-slate-500/15 text-slate-300 border-slate-500/40",
 };

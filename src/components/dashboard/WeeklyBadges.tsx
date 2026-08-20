@@ -61,8 +61,8 @@ const colorMap = {
     ring: "ring-primary/30",
   },
   cyan: {
-    bg: "from-cyan-500/20 to-cyan-600/10",
-    border: "border-cyan-500/30",
+    bg: "from-info/20 to-info/10",
+    border: "border-info/30",
     text: "text-foreground",
     glow: "shadow-cyan-500/20",
     ring: "ring-cyan-500/30",

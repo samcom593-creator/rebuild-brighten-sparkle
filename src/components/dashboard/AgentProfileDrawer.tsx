@@ -709,7 +709,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
               <div className={cn(
                 "rounded-full border px-3 py-2 flex items-center justify-between gap-2 text-xs",
                 pace.pace_verdict === "hit_20k" && "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
-                pace.pace_verdict === "on_pace_20k" && "border-sky-500/40 bg-sky-500/10 text-sky-500",
+                pace.pace_verdict === "on_pace_20k" && "border-info/30 bg-info/10 text-info",
                 pace.pace_verdict === "below_pace" && "border-amber-500/40 bg-amber-500/10 text-amber-500",
                 pace.pace_verdict === "new_hire_grace" && "border-slate-500/40 bg-slate-500/10 text-muted-foreground",
                 pace.pace_verdict === "zero_mtd" && "border-rose-500/40 bg-rose-500/10 text-rose-500",
@@ -791,10 +791,10 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 <p className="mt-1 text-[10px] text-muted-foreground">premium · this month</p>
               </div>
               <div className="min-w-0 px-3 py-4">
-                <p className="text-[10px] uppercase tracking-wider text-sky-500/80 font-semibold flex items-center gap-1">
+                <p className="text-[10px] uppercase tracking-wider text-info/80 font-semibold flex items-center gap-1">
                   <Users className="h-2.5 w-2.5" /> Legs
                 </p>
-                <p className="mt-1 text-3xl font-black tabular-nums leading-none text-sky-500 dark:text-sky-400">
+                <p className="mt-1 text-3xl font-black tabular-nums leading-none text-info dark:text-info">
                   {(monthly?.legs ?? 0).toLocaleString()}
                 </p>
                 <p className="mt-1 text-[10px] text-muted-foreground">downline</p>
@@ -1029,7 +1029,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
               </div>
               <div className="rounded-lg border border-border bg-card/60 p-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <Calendar className="h-3 w-3 text-sky-500" />
+                  <Calendar className="h-3 w-3 text-info" />
                   <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Deals</span>
                 </div>
                 <p className="text-sm font-bold tabular-nums">{(activity?.lifetime_deals ?? 0).toLocaleString()}</p>
@@ -1230,7 +1230,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                               "text-[9px] uppercase tracking-wide shrink-0",
                               row.source === "call"
                                 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                : "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400",
+                                : "border-info/30 bg-info/10 text-info dark:text-info",
                             )}
                           >
                             {row.source === "call" ? "call" : "note"}

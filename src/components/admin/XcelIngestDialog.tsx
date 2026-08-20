@@ -217,7 +217,7 @@ export function XcelIngestDialog({ trigger }: Props) {
                           </Badge>
                           <span className={`tabular-nums font-bold ${
                             (s.pct_complete ?? 0) >= 100 ? "text-emerald-400" :
-                            (s.pct_complete ?? 0) >= 50  ? "text-cyan-400" : "text-amber-400"
+                            (s.pct_complete ?? 0) >= 50  ? "text-info" : "text-amber-400"
                           }`}>
                             {s.pct_complete ?? 0}%
                           </span>

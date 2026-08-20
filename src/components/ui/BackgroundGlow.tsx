@@ -8,7 +8,7 @@ interface BackgroundGlowProps {
 
 const accentColors: Record<string, { blob1: string; blob2: string }> = {
   teal: { blob1: "bg-primary/10", blob2: "bg-emerald-500/8" },
-  blue: { blob1: "bg-blue-500/10", blob2: "bg-indigo-500/8" },
+  blue: { blob1: "bg-info/10", blob2: "bg-info/8" },
   amber: { blob1: "bg-amber-500/10", blob2: "bg-orange-500/8" },
   pink: { blob1: "bg-pink-500/10", blob2: "bg-rose-500/8" },
   purple: { blob1: "bg-purple-500/10", blob2: "bg-violet-500/8" },

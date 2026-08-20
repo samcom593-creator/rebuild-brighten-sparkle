@@ -30,14 +30,14 @@ const SEVERITY_COLORS: Record<StuckRow["severity"], string> = {
   critical: "text-rose-400",
   high: "text-orange-400",
   medium: "text-amber-400",
-  low: "text-blue-400",
+  low: "text-info",
 };
 
 const SEVERITY_BG: Record<StuckRow["severity"], string> = {
   critical: "bg-rose-500/15 border-rose-500/40",
   high: "bg-orange-500/15 border-orange-500/40",
   medium: "bg-amber-500/15 border-amber-500/40",
-  low: "bg-blue-500/15 border-blue-500/40",
+  low: "bg-info/15 border-info/30",
 };
 
 export default function AdminStuckPool() {
@@ -230,7 +230,7 @@ export default function AdminStuckPool() {
           <span className="text-muted-foreground">
             Stall sweep runs every 15 min · Nudge sweep hourly · Dispatcher fans out Telegram → SMS → Email
           </span>
-          <Link to="/dashboard/team/next-step" className="ml-auto text-sm hover:underline text-blue-300 inline-flex items-center gap-1">
+          <Link to="/dashboard/team/next-step" className="ml-auto text-sm hover:underline text-info inline-flex items-center gap-1">
             Manager board <ArrowRight className="h-3 w-3" />
           </Link>
         </div>

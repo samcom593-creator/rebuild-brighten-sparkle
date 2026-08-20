@@ -75,9 +75,9 @@ const SECTION_META: Record<string, { label: string; color: string }> = {
 
 const HEALTH_META: Record<XcelStudent["health_bucket"], { label: string; color: string; icon: React.ElementType }> = {
   completed:    { label: "Completed",   color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/40", icon: CheckCircle2 },
-  almost_done:  { label: "Almost done", color: "bg-slate-500/15 text-foreground border-cyan-500/40",         icon: TrendingUp },
+  almost_done:  { label: "Almost done", color: "bg-slate-500/15 text-foreground border-info/30",         icon: TrendingUp },
   in_progress:  { label: "In progress", color: "bg-primary/15 text-primary border-primary/40",            icon: BookOpen },
-  just_started: { label: "Just started", color: "bg-blue-500/15 text-blue-400 border-blue-500/40",        icon: Sparkles },
+  just_started: { label: "Just started", color: "bg-info/15 text-info border-info/30",        icon: Sparkles },
   stalled:      { label: "Stalled",     color: "bg-rose-500/15 text-rose-400 border-rose-500/40",         icon: AlertCircle },
 };
 
@@ -434,7 +434,7 @@ export default function PreLicensing() {
             const zebra = i % 2 === 0 ? "bg-card/60" : "bg-card/30";
             const barColor = {
               completed:   "[&>div]:bg-emerald-500",
-              almost_done: "[&>div]:bg-cyan-400",
+              almost_done: "[&>div]:bg-info",
               in_progress: "[&>div]:bg-primary",
               just_started: "[&>div]:bg-amber-400",
               stalled:     "[&>div]:bg-rose-500",

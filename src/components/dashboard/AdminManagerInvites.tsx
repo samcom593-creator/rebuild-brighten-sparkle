@@ -214,7 +214,7 @@ export function AdminManagerInvites() {
                         ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                         : isExpired(token.expires_at)
                         ? "bg-red-500/20 text-red-400 border-red-500/30"
-                        : "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                        : "bg-info/20 text-info border-info/30"
                     }
                   >
                     {token.is_used ? "Used" : isExpired(token.expires_at) ? "Expired" : "Active"}

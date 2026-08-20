@@ -446,7 +446,7 @@ export default function CourseProgress() {
     const total = stats.total || 1;
     return [
       { label: "Complete", pct: (stats.complete / total) * 100, color: "bg-emerald-500" },
-      { label: "In Progress", pct: (stats.inProgress / total) * 100, color: "bg-blue-500" },
+      { label: "In Progress", pct: (stats.inProgress / total) * 100, color: "bg-info" },
       { label: "Stalled", pct: (stats.stalled / total) * 100, color: "bg-amber-500" },
       { label: "Not Started", pct: (stats.notStarted / total) * 100, color: "bg-muted-foreground/40" },
     ];
@@ -523,14 +523,14 @@ export default function CourseProgress() {
           <button 
             className={cn(
               "p-3 rounded-md border cursor-pointer transition-all hover:shadow-md text-left",
-              "bg-white dark:bg-card border-blue-500/20",
+              "bg-white dark:bg-card border-info/30",
               filter === "in_progress" && "ring-2 ring-blue-500 shadow-md shadow-blue-500/20"
             )}
             onClick={() => setFilter("in_progress")}
           >
             <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <Clock className="h-3.5 w-3.5 text-blue-500" />
+              <div className="h-6 w-6 rounded-lg bg-info/20 flex items-center justify-center">
+                <Clock className="h-3.5 w-3.5 text-info" />
               </div>
               <div>
                 <p className="text-lg font-bold">{stats.inProgress + stats.stalled}</p>
@@ -693,7 +693,7 @@ export default function CourseProgress() {
                                     </div>
                                   ) : progress?.watchedPercent > 0 ? (
                                     <div className="flex flex-col items-center">
-                                      <Clock className="h-3.5 w-3.5 text-blue-400" />
+                                      <Clock className="h-3.5 w-3.5 text-info" />
                                       <span className="text-[9px] text-muted-foreground">{progress.watchedPercent}%</span>
                                     </div>
                                   ) : (

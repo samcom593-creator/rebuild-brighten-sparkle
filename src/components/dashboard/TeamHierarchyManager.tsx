@@ -591,7 +591,7 @@ export function TeamHierarchyManager() {
             {indirectReports > 0 && (
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs cursor-pointer hover:bg-blue-500/20 transition-colors">
+                  <button className="flex items-center gap-1.5 px-2 py-1 rounded bg-info/10 border border-info/30 text-info dark:text-info text-xs cursor-pointer hover:bg-info/20 transition-colors">
                     <Users className="h-3 w-3" />
                     <span>{indirectReports} under sub-managers</span>
                   </button>

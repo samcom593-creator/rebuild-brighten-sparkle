@@ -314,7 +314,7 @@ export function ApplicationDetailSheet({
                 )}
                 <Badge variant="outline" className="text-xs">{app.status}</Badge>
                 {app.started_training && (
-                  <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">
+                  <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30">
                     <GraduationCap className="h-3 w-3 mr-1" /> In Training
                   </Badge>
                 )}

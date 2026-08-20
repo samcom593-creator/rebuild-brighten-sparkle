@@ -22,11 +22,11 @@ import { getBusinessWeekBounds } from "@/lib/dateUtils";
 import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
 const STAGES = [
-  { key: "applied",        label: "Applied",         color: "bg-blue-500/20 text-blue-400 border-blue-500/30",    dot: "bg-blue-400" },
+  { key: "applied",        label: "Applied",         color: "bg-info/20 text-info border-info/30",    dot: "bg-info" },
   { key: "interviewed",    label: "Interviewed",     color: "bg-violet-500/20 text-violet-400 border-violet-500/30", dot: "bg-violet-400" },
   { key: "contracted",     label: "Contracted",      color: "bg-amber-500/20 text-amber-400 border-amber-500/30", dot: "bg-amber-400" },
   { key: "in_training",    label: "In Training",     color: "bg-orange-500/20 text-orange-400 border-orange-500/30", dot: "bg-orange-400" },
-  { key: "field_training", label: "Field Training",  color: "bg-slate-500/20 text-foreground border-cyan-500/30",    dot: "bg-cyan-400" },
+  { key: "field_training", label: "Field Training",  color: "bg-slate-500/20 text-foreground border-info/30",    dot: "bg-info" },
   { key: "evaluated",      label: "Active",          color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400" },
   { key: "inactive",       label: "Inactive",        color: "bg-gray-500/20 text-muted-foreground border-gray-500/30",    dot: "bg-gray-400" },
 ];

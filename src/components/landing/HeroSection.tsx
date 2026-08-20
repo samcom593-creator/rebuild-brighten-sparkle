@@ -97,7 +97,7 @@ const carriers = [
 
 const stats = [
   { icon: TrendingUp, label: "Commission contracts", value: "70%–145%", color: "text-emerald-400" },
-  { icon: Users, label: "Carriers on contract", value: "22 carriers", color: "text-cyan-400" },
+  { icon: Users, label: "Carriers on contract", value: "22 carriers", color: "text-info" },
   { icon: Shield, label: "Course included, no fee", value: "Licensed in 4 wks", color: "text-amber-400" },
 ];
 

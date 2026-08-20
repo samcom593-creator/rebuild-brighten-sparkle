@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const licensedSteps = [
-  { icon: FileCheck, title: "Application Submitted", desc: "Apply through our portal", color: "text-blue-400" },
+  { icon: FileCheck, title: "Application Submitted", desc: "Apply through our portal", color: "text-info" },
   { icon: Phone, title: "Phone Interview", desc: "15-min screening call", color: "text-violet-400" },
   { icon: CheckCircle, title: "Hired & Contracted", desc: "Background check + contracting", color: "text-emerald-400" },
   { icon: BookOpen, title: "Onboarding Course", desc: "Complete training modules", color: "text-amber-400" },
@@ -14,7 +14,7 @@ const licensedSteps = [
 ];
 
 const unlicensedSteps = [
-  { icon: FileCheck, title: "Application Submitted", desc: "Apply through our portal", color: "text-blue-400" },
+  { icon: FileCheck, title: "Application Submitted", desc: "Apply through our portal", color: "text-info" },
   { icon: Phone, title: "Phone Interview", desc: "15-min screening call", color: "text-violet-400" },
   { icon: GraduationCap, title: "Purchase Pre-Licensing Course", desc: "ExamFX or Kaplan recommended", color: "text-amber-400" },
   { icon: BookOpen, title: "Study & Pass Exam", desc: "2-4 weeks average timeline", color: "text-orange-400" },

@@ -32,8 +32,8 @@ interface StageDef {
 }
 
 const stages: StageDef[] = [
-  { id: "course_purchased", label: "Course Started", icon: BookOpen, color: "text-blue-400", bgColor: "bg-blue-500/20" },
-  { id: "finished_course", label: "Finished Course", icon: BookCheck, color: "text-indigo-400", bgColor: "bg-indigo-500/20" },
+  { id: "course_purchased", label: "Course Started", icon: BookOpen, color: "text-info", bgColor: "bg-info/20" },
+  { id: "finished_course", label: "Finished Course", icon: BookCheck, color: "text-info", bgColor: "bg-info/20" },
   { id: "test_scheduled", label: "Test Scheduled", icon: CalendarClock, color: "text-purple-400", bgColor: "bg-purple-500/20" },
   { id: "passed_test", label: "Passed Test", icon: FileCheck, color: "text-violet-400", bgColor: "bg-violet-500/20" },
   { id: "fingerprints_done", label: "Fingerprints", icon: Fingerprint, color: "text-teal-400", bgColor: "bg-teal-500/20" },

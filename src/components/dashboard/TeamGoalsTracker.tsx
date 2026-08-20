@@ -90,7 +90,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
           current: totals.presentations,
           target: MONTHLY_TARGETS.presentations,
           icon: <Users className="h-4 w-4" />,
-          color: "from-blue-500 to-cyan-500",
+          color: "from-info to-info",
         },
         {
           label: "Referrals",

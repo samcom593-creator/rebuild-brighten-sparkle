@@ -243,7 +243,7 @@ export default function ManagerCommandView() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-16 flex items-center gap-2">
-            <UserCheck className="h-4 w-4 text-blue-500" />
+            <UserCheck className="h-4 w-4 text-info" />
             My agents · {agentRows.length}
           </CardTitle>
         </CardHeader>

@@ -29,9 +29,9 @@ const SKUS: Sku[] = [
   { id: "gold",               name: "Gold Leads",                category: "leads",       cadence: "weekly",   amount: 250,  blurb: "Quality leads ≤30 days old · weekly drop", Icon: ShieldCheck, accent: "from-amber-500 to-yellow-300", paymentLink: "https://buy.stripe.com/dRm28q56XbDN7uH8w97ss02" },
   { id: "platinum",           name: "Platinum Vet Leads",        category: "leads",       cadence: "weekly",   amount: 500,  blurb: "Hottest leads from this week · first access", Icon: Crown,       accent: "from-violet-500 to-purple-300", paymentLink: "https://buy.stripe.com/28E8wOfLB7nx8yLcMp7ss03" },
   { id: "auto_dm",            name: "Auto-DM Engine",            category: "social",      cadence: "monthly",  amount: 250,  blurb: "Hands-off Instagram DM outreach", Icon: Mail,        accent: "from-emerald-500 to-teal-300" },
-  { id: "social_growth",      name: "Full Social Growth Suite",  category: "social",      cadence: "monthly",  amount: 500,  blurb: "DM + content + manager-managed growth", Icon: Zap,         accent: "from-emerald-500 to-cyan-300" },
+  { id: "social_growth",      name: "Full Social Growth Suite",  category: "social",      cadence: "monthly",  amount: 500,  blurb: "DM + content + manager-managed growth", Icon: Zap,         accent: "from-emerald-500 to-info" },
   { id: "fitness_reset",      name: "Fitness Reset Blueprint",   category: "fitness",     cadence: "one-time", amount: 97,   blurb: "Sam's reset routine · pdf + audio", Icon: Dumbbell,    accent: "from-rose-500 to-orange-300" },
-  { id: "kingofsales_course", name: "King of Sales Course",      category: "course",      cadence: "one-time", amount: 497,  blurb: "Full sales course · lifetime access", Icon: GraduationCap, accent: "from-sky-500 to-indigo-300" },
+  { id: "kingofsales_course", name: "King of Sales Course",      category: "course",      cadence: "one-time", amount: 497,  blurb: "Full sales course · lifetime access", Icon: GraduationCap, accent: "from-info to-info" },
   { id: "work_with_sam",      name: "1:1 Work With Sam",         category: "high_ticket", cadence: "one-time", amount: 5000, blurb: "Direct sessions · application required", Icon: Award,       accent: "from-yellow-500 to-amber-300" },
 ];
 

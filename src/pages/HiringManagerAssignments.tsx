@@ -55,8 +55,8 @@ const SCOPE_META: Record<Scope, { label: string; description: string; icon: any;
     label: "Transfers",
     description: "Agents transferring from another agency",
     icon: ArrowRightLeft,
-    color: "text-blue-400 bg-blue-500/10",
-    border: "border-blue-500/30",
+    color: "text-info bg-info/10",
+    border: "border-info/30",
   },
   post_started: {
     label: "Post-Started",

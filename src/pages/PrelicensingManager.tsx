@@ -31,8 +31,8 @@ import { cn } from "@/lib/utils";
 const STAGES = [
   { key: "unlicensed", label: "Not Started", color: "bg-slate-500" },
   { key: "course_purchased", label: "Course Purchased", color: "bg-amber-500" },
-  { key: "finished_course", label: "Course Finished", color: "bg-blue-500" },
-  { key: "test_scheduled", label: "Exam Scheduled", color: "bg-indigo-500" },
+  { key: "finished_course", label: "Course Finished", color: "bg-info" },
+  { key: "test_scheduled", label: "Exam Scheduled", color: "bg-info" },
   { key: "passed_test", label: "Exam Passed", color: "bg-violet-500" },
   { key: "fingerprints_done", label: "Fingerprints Done", color: "bg-purple-500" },
   { key: "waiting_on_license", label: "Waiting on License", color: "bg-fuchsia-500" },

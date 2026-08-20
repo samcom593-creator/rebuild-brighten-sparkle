@@ -42,8 +42,8 @@ type StalledRow = StudentRow & { stall_reason: string };
 const STAGES: { key: Stage; label: string; color: string }[] = [
   { key: "enrolled",             label: "Enrolled",       color: "border-slate-500/40 text-slate-600 dark:text-slate-300 bg-slate-500/5" },
   { key: "not_responding",       label: "Not responding", color: "border-amber-500/40 text-amber-300 bg-amber-500/5" },
-  { key: "waiting_to_schedule",  label: "Waiting → Sched", color: "border-cyan-500/40 text-cyan-300 bg-slate-500/5" },
-  { key: "calendar_sent",        label: "Calendar sent",  color: "border-blue-500/40 text-blue-300 bg-blue-500/5" },
+  { key: "waiting_to_schedule",  label: "Waiting → Sched", color: "border-info/30 text-info bg-slate-500/5" },
+  { key: "calendar_sent",        label: "Calendar sent",  color: "border-info/30 text-info bg-info/5" },
   { key: "booked",               label: "Booked",         color: "border-violet-500/40 text-violet-300 bg-violet-500/5" },
   { key: "exam_passed",          label: "Exam passed",    color: "border-emerald-500/40 text-emerald-300 bg-emerald-500/5" },
   { key: "exam_failed",          label: "Exam failed",    color: "border-rose-500/40 text-rose-300 bg-rose-500/5" },

@@ -31,7 +31,7 @@ type Row = {
 
 const VERDICT_STYLE: Record<Row["pace_verdict"], { label: string; cls: string }> = {
   hit_20k:        { label: "Hit $20K ✓",   cls: "bg-emerald-600/15 text-emerald-400 border-emerald-600/40" },
-  on_pace_20k:    { label: "On pace",      cls: "bg-blue-600/15 text-blue-300 border-blue-600/40" },
+  on_pace_20k:    { label: "On pace",      cls: "bg-info/15 text-info border-info/30" },
   below_pace:     { label: "Below pace",   cls: "bg-amber-600/15 text-amber-300 border-amber-600/40" },
   new_hire_grace: { label: "New (≤30d)",   cls: "bg-zinc-600/15 text-zinc-300 border-zinc-600/40" },
   zero_mtd:       { label: "Zero this mo", cls: "bg-rose-600/15 text-rose-300 border-rose-600/40" },
@@ -88,7 +88,7 @@ export function Target20kPaceWidget() {
             <Badge variant="outline" className="border-emerald-600/40 text-emerald-400">
               {hit} hit $20K
             </Badge>
-            <Badge variant="outline" className="border-blue-600/40 text-blue-300">
+            <Badge variant="outline" className="border-info/30 text-info">
               {onPace} on pace
             </Badge>
             <Badge variant="outline" className="border-rose-600/40 text-rose-300">

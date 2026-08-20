@@ -81,8 +81,7 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "apex-page-header relative -mx-4 sm:-mx-6 mb-5 px-4 py-3.5 sm:px-6 sm:py-4 lg:px-8",
-        "border-b border-border",
+        "apex-page-header relative mb-5 py-1",
         className,
       )}
     >
@@ -94,10 +93,10 @@ export function PageHeader({
           ACCENT_SHEENS[accent],
         )}
       />
-      <div className="relative z-10 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <h1 className="text-[24px] font-bold tracking-[-0.6px] leading-8">
+            <h1 className="text-[24px] font-semibold leading-8 text-foreground">
               {title}
             </h1>
             {eyebrow && (

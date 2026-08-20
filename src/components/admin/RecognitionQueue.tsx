@@ -23,7 +23,7 @@ const achievementConfig = {
   bronze: { label: "Bronze Achievement", threshold: 1000, color: "bg-amber-700", textColor: "text-amber-700" },
   gold: { label: "Gold Achievement", threshold: 3000, color: "bg-amber-500", textColor: "text-amber-500" },
   platinum: { label: "Platinum Achievement", threshold: 5000, color: "bg-gray-300", textColor: "text-gray-600" },
-  weekly: { label: "Weekly Diamond", threshold: 10000, color: "bg-cyan-400", textColor: "text-cyan-500" },
+  weekly: { label: "Weekly Diamond", threshold: 10000, color: "bg-info", textColor: "text-info" },
   monthly: { label: "Elite Producer", threshold: 25000, color: "bg-purple-600", textColor: "text-purple-600" },
 };
 

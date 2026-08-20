@@ -28,10 +28,10 @@ import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 
 const STAGES = [
   { key: "new",              label: "Applied",        color: "border-t-slate-500",  bg: "bg-slate-500/5" },
-  { key: "contacted",        label: "Contacted",      color: "border-t-sky-500",    bg: "bg-sky-500/5" },
-  { key: "contracted",       label: "Contracted",     color: "border-t-indigo-500", bg: "bg-indigo-500/5" },
+  { key: "contacted",        label: "Contacted",      color: "border-t-sky-500",    bg: "bg-info/5" },
+  { key: "contracted",       label: "Contracted",     color: "border-t-indigo-500", bg: "bg-info/5" },
   { key: "course_purchased", label: "In Course",      color: "border-t-amber-500",  bg: "bg-amber-500/5" },
-  { key: "finished_course",  label: "Course Done",    color: "border-t-blue-500",   bg: "bg-blue-500/5" },
+  { key: "finished_course",  label: "Course Done",    color: "border-t-blue-500",   bg: "bg-info/5" },
   { key: "passed_test",      label: "Exam Passed",    color: "border-t-violet-500", bg: "bg-violet-500/5" },
   { key: "licensed",         label: "Licensed",       color: "border-t-emerald-500",bg: "bg-emerald-500/5" },
 ] as const;
@@ -387,11 +387,11 @@ export default function HiringPipeline() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-lg border border-cyan-500/25 bg-white dark:bg-card shadow-sm"
+        className="rounded-lg border border-info/30 bg-white dark:bg-card shadow-sm"
       >
         <div className="grid gap-3 p-3 md:grid-cols-[1fr_auto] md:items-center">
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Badge variant="outline" className="border-cyan-500/30 bg-slate-500/10 text-foreground">
+            <Badge variant="outline" className="border-info/30 bg-slate-500/10 text-foreground">
               Live board
             </Badge>
             <span className="text-muted-foreground">
@@ -778,7 +778,7 @@ function ApplicantCard({
 
   const tierColor =
     app.ai_score_tier === "A" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
-    app.ai_score_tier === "B" ? "bg-sky-500/15 text-sky-400 border-sky-500/30" :
+    app.ai_score_tier === "B" ? "bg-info/15 text-info border-info/30" :
     app.ai_score_tier === "C" ? "bg-amber-500/15 text-amber-400 border-amber-500/30" :
     app.ai_score_tier === "D" ? "bg-slate-500/15 text-muted-foreground border-slate-500/30" : "";
 
@@ -891,7 +891,7 @@ function ApplicantCard({
                 <CheckCircle2 className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Got through
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onLogCall("voicemail")}>
-                <Voicemail className="h-3.5 w-3.5 mr-2 text-sky-500" /> Left voicemail
+                <Voicemail className="h-3.5 w-3.5 mr-2 text-info" /> Left voicemail
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onLogCall("no_answer")}>
                 <PhoneOff className="h-3.5 w-3.5 mr-2 text-muted-foreground" /> No answer

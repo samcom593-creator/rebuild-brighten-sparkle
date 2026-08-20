@@ -28,10 +28,10 @@ type Stage =
 
 const STAGE_META: Record<Stage, { label: string; color: string; order: number }> = {
   signed_up: { label: "Signed Up", color: "bg-gray-500/20 text-muted-foreground border-gray-500/30", order: 1 },
-  onboarding: { label: "Onboarding", color: "bg-blue-500/20 text-blue-400 border-blue-500/30", order: 2 },
+  onboarding: { label: "Onboarding", color: "bg-info/20 text-info border-info/30", order: 2 },
   licensing: { label: "Licensing", color: "bg-amber-500/20 text-amber-400 border-amber-500/30", order: 3 },
   contracting: { label: "Contracting", color: "bg-violet-500/20 text-violet-400 border-violet-500/30", order: 4 },
-  field_training: { label: "Field Training", color: "bg-slate-500/20 text-foreground border-cyan-500/30", order: 5 },
+  field_training: { label: "Field Training", color: "bg-slate-500/20 text-foreground border-info/30", order: 5 },
   producing: { label: "Producing", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", order: 6 },
   inactive: { label: "Inactive", color: "bg-red-500/20 text-red-400 border-red-500/30", order: 99 },
 };

@@ -588,7 +588,7 @@ export default function InactiveAgents() {
                           <DropdownMenuItem
                             onClick={() => resolve(e.id, "transferred", "Transferred to another manager")}
                           >
-                            <ArrowRightLeft className="h-4 w-4 mr-2 text-blue-400" /> Transfer to Another Manager
+                            <ArrowRightLeft className="h-4 w-4 mr-2 text-info" /> Transfer to Another Manager
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => resolve(e.id, "snoozed", "Snoozed 14 days")}>
                             <PauseCircle className="h-4 w-4 mr-2 text-amber-400" /> Snooze 14 days

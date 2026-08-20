@@ -34,7 +34,7 @@ const getAvatarColor = (name: string) => {
     "from-emerald-500 to-emerald-600",
     "from-amber-500 to-orange-500",
     "from-purple-500 to-pink-500",
-    "from-cyan-500 to-blue-500",
+    "from-info to-info",
   ];
   const index = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[index % colors.length];
@@ -375,7 +375,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
 
                 {/* Applications */}
                 <div className="col-span-2 text-center">
-                  <span className="text-xs font-semibold text-blue-400">{entry.applications}</span>
+                  <span className="text-xs font-semibold text-info">{entry.applications}</span>
                 </div>
 
                 {/* Contracted (Hired) */}
@@ -441,9 +441,9 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
             </span>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5">
-                <UserPlus className="h-3.5 w-3.5 text-blue-400" />
+                <UserPlus className="h-3.5 w-3.5 text-info" />
                 <span className="text-muted-foreground">Total Apps:</span>
-                <span className="font-bold text-blue-400">
+                <span className="font-bold text-info">
                   {entries.reduce((sum, e) => sum + e.applications, 0)}
                 </span>
               </div>

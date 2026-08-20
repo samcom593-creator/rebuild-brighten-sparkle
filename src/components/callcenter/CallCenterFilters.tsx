@@ -283,7 +283,7 @@ function PreviewTile({ label, value, hint, tone = "slate" }: PreviewTileProps) {
     teal: "border-teal-500/30 text-teal-300",
     gold: "border-amber-500/30 text-amber-300",
     rose: "border-rose-500/30 text-rose-300",
-    blue: "border-sky-500/30 text-sky-300",
+    blue: "border-info/30 text-info",
     slate: "border-white/10 text-slate-100",
     green: "border-emerald-500/30 text-emerald-300",
   };

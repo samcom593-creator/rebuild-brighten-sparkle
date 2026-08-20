@@ -492,7 +492,7 @@ export default function LicensedInbox() {
                         {name}
                       </span>
                       {r.origin === "toolkit_agent" ? (
-                        <span title="Added by APEX staff; NPN is self-reported until verified against NIPR" className="shrink-0 rounded-sm border border-sky-500/35 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-600 dark:text-sky-400">
+                        <span title="Added by APEX staff; NPN is self-reported until verified against NIPR" className="shrink-0 rounded-sm border border-info/30 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-info dark:text-info">
                           Added agent
                         </span>
                       ) : r.nipr_verified === true ? (

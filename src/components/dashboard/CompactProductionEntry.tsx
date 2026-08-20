@@ -411,7 +411,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="h-7 w-7 rounded-lg bg-white dark:bg-card flex items-center justify-center">
-                    <Target className="h-4 w-4 text-blue-500" />
+                    <Target className="h-4 w-4 text-info" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold">📊 Activity Stats</h3>

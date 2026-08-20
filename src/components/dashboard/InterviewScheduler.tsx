@@ -42,7 +42,7 @@ interface InterviewSchedulerProps {
 type InterviewType = "video" | "phone" | "in_person";
 
 const interviewTypeConfig = {
-  video: { label: "Video Call", icon: Video, color: "text-blue-400" },
+  video: { label: "Video Call", icon: Video, color: "text-info" },
   phone: { label: "Phone Call", icon: Phone, color: "text-emerald-400" },
   in_person: { label: "In Person", icon: MapPin, color: "text-primary" },
 };

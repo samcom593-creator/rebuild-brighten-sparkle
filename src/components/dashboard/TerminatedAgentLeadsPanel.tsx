@@ -121,7 +121,7 @@ export function TerminatedAgentLeadsPanel() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { className: string; label: string }> = {
-      new: { className: "bg-blue-500/20 text-blue-400 border-blue-500/30", label: "New" },
+      new: { className: "bg-info/20 text-info border-info/30", label: "New" },
       reviewing: { className: "bg-purple-500/20 text-purple-400 border-purple-500/30", label: "Reviewing" },
       interview: { className: "bg-amber-500/20 text-amber-400 border-amber-500/30", label: "Interview" },
       contracting: { className: "bg-teal-500/20 text-teal-400 border-teal-500/30", label: "Contracting" },

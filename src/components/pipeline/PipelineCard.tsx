@@ -225,7 +225,7 @@ export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedul
 
         {/* ── Next recommended action ───────────────────────────────────── */}
         {nextAction && !isLicensed && (
-          <div className="flex items-center gap-1 text-[10px] text-blue-400 mb-2 truncate">
+          <div className="flex items-center gap-1 text-[10px] text-info mb-2 truncate">
             <span>{nextAction}</span>
           </div>
         )}
@@ -254,7 +254,7 @@ export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedul
           </Button>
           {onSchedule && (
             <Button variant="ghost" size="icon"
-              className="h-7 w-7 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+              className="h-7 w-7 text-info hover:text-info hover:bg-info/10"
               onClick={(e) => { e.stopPropagation(); onSchedule(app); }}
               title="Schedule Interview"
             >
@@ -272,7 +272,7 @@ export const PipelineCard = memo(function PipelineCard({ app, onClick, onSchedul
           )}
           <Button variant="ghost" size="icon"
           aria-label="Email contact"
-            className="h-7 w-7 text-sky-400 hover:text-sky-300 hover:bg-sky-500/10"
+            className="h-7 w-7 text-info hover:text-info hover:bg-info/10"
             asChild onClick={(e) => e.stopPropagation()}
           >
             <a href={`mailto:${app.email}`}><Mail className="h-3.5 w-3.5" /></a>

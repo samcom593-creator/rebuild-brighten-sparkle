@@ -61,7 +61,7 @@ const getAvatarColor = (name: string) => {
     "from-emerald-500 to-emerald-600",
     "from-amber-500 to-orange-500",
     "from-purple-500 to-pink-500",
-    "from-cyan-500 to-blue-500",
+    "from-info to-info",
   ];
   const index = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[index % colors.length];
@@ -373,7 +373,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
 
   const getLeaderBadge = (agentId: string) => {
     if (leaders.alp === agentId) return <Crown className="h-3 w-3 text-amber-400" />;
-    if (leaders.presentations === agentId) return <Target className="h-3 w-3 text-blue-400" />;
+    if (leaders.presentations === agentId) return <Target className="h-3 w-3 text-info" />;
     if (leaders.closingRate === agentId) return <Percent className="h-3 w-3 text-emerald-400" />;
     if (leaders.deals === agentId) return <Trophy className="h-3 w-3 text-purple-400" />;
     return null;

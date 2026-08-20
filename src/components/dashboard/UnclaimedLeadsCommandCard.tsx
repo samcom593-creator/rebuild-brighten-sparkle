@@ -56,7 +56,7 @@ type UnclaimedRow = {
 const HEAT_STYLES: Record<UnclaimedRow["heat"], { label: string; pill: string; dot: string }> = {
   urgent: { label: "URGENT",      pill: "border-rose-500/60 bg-rose-500/15 text-rose-200",       dot: "bg-rose-400" },
   cold:   { label: "Cold",        pill: "border-amber-500/50 bg-amber-500/10 text-amber-200",    dot: "bg-amber-400" },
-  warm:   { label: "Warm",        pill: "border-sky-500/40 bg-sky-500/10 text-sky-200",          dot: "bg-sky-400" },
+  warm:   { label: "Warm",        pill: "border-info/30 bg-info/10 text-info",          dot: "bg-info" },
   fresh:  { label: "Fresh",       pill: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200", dot: "bg-emerald-400" },
 };
 
@@ -276,7 +276,7 @@ function HeatPill({
   const toneClasses: Record<typeof tone, string> = {
     rose:    "border-rose-500/40 bg-rose-500/10 text-rose-200",
     amber:   "border-amber-500/40 bg-amber-500/10 text-amber-200",
-    sky:     "border-sky-500/40 bg-sky-500/10 text-sky-200",
+    sky:     "border-info/30 bg-info/10 text-info",
     emerald: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
   };
   return (

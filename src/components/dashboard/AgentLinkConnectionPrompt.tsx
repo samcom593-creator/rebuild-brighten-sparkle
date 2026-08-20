@@ -64,11 +64,11 @@ export function AgentLinkConnectionPrompt({ force, message, hideForNonAgents = t
   if (status === "not_an_agent" && hideForNonAgents) return null;
 
   return (
-    <GlassCard className={cn("p-4 border-blue-500/40 bg-blue-500/[0.06]", className)}>
+    <GlassCard className={cn("p-4 border-info/30 bg-info/[0.06]", className)}>
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div className="flex items-start gap-3 flex-1 min-w-0">
-          <div className="rounded-lg p-2 bg-blue-500/15 border border-blue-500/30 shrink-0">
-            <AlertCircle className="h-4 w-4 text-blue-300" />
+          <div className="rounded-lg p-2 bg-info/15 border border-info/30 shrink-0">
+            <AlertCircle className="h-4 w-4 text-info" />
           </div>
           <div className="min-w-0">
             <p className="font-semibold text-sm">

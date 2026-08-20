@@ -117,7 +117,7 @@ export default function CommissionRecovery() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric label="Policies to recover" value={totals.total} tone="text-rose-300" />
         <Metric label="Not yet emailed" value={totals.notYet} tone="text-amber-300" />
-        <Metric label="Emailed" value={totals.emailed} tone="text-cyan-300" />
+        <Metric label="Emailed" value={totals.emailed} tone="text-info" />
         <Metric label="Responded" value={totals.responded} tone="text-emerald-300" />
       </div>
 

@@ -503,7 +503,7 @@ function NextActionsSection() {
   const actions = [
     data?.draftCount ? { label: `Stamp ${data.draftCount} content drafts`, href: "/dashboard/admin/content-command", tone: "text-amber-300" } : null,
     data?.pendingTelegram ? { label: `Bind ${data.pendingTelegram} Telegram HQ channels`, href: "/dashboard/admin/telegram-bot", tone: "text-rose-300" } : null,
-    data?.unclaimedCount ? { label: `Review ${data.unclaimedCount} new applicants`, href: "/dashboard/admin/unclaimed", tone: "text-cyan-300" } : null,
+    data?.unclaimedCount ? { label: `Review ${data.unclaimedCount} new applicants`, href: "/dashboard/admin/unclaimed", tone: "text-info" } : null,
     { label: "Run final branch QA before merge/deploy", href: "/dashboard/system-health", tone: "text-emerald-300" },
   ].filter(Boolean).slice(0, 3) as Array<{ label: string; href: string; tone: string }>;
 

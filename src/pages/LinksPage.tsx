@@ -25,7 +25,7 @@ const waitlistSchema = z.object({
 
 const socialLinks = [
   { icon: Instagram, label: "Instagram", href: "https://instagram.com/theprincejamez", gradient: "from-pink-500 to-purple-600", hoverGlow: "hover:" },
-  { icon: Video, label: "TikTok", href: "https://tiktok.com/@theprincejamez", gradient: "from-cyan-400 to-pink-500", hoverGlow: "hover:" },
+  { icon: Video, label: "TikTok", href: "https://tiktok.com/@theprincejamez", gradient: "from-info to-pink-500", hoverGlow: "hover:" },
 ];
 
 const offerCards = [

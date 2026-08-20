@@ -59,8 +59,8 @@ interface Step {
 
 // Phase connector colors for the animated lines
 const phaseConnectorColors = [
-  "from-orange-500 to-blue-500",
-  "from-blue-500 to-primary",
+  "from-orange-500 to-info",
+  "from-info to-primary",
   "from-primary to-purple-500",
 ];
 
@@ -99,8 +99,8 @@ const buildPhases = (carriers: number): Phase[] => [
   {
     name: "Phase 2: Structure",
     subtitle: "Set Up Your Business Operations",
-    color: "text-blue-400",
-    bgColor: "from-blue-500/20 to-blue-600/10",
+    color: "text-info",
+    bgColor: "from-info/20 to-info/10",
     borderColor: "border-l-blue-500",
     steps: [
       {
@@ -212,7 +212,7 @@ const buildPhases = (carriers: number): Phase[] => [
 // Phase indicator data for the floating sidebar
 const phaseIndicators = [
   { id: "phase-0", label: "Foundation", shortLabel: "1", color: "bg-orange-500", textColor: "text-orange-400" },
-  { id: "phase-1", label: "Structure", shortLabel: "2", color: "bg-blue-500", textColor: "text-blue-400" },
+  { id: "phase-1", label: "Structure", shortLabel: "2", color: "bg-info", textColor: "text-info" },
   { id: "phase-2", label: "Production", shortLabel: "3", color: "bg-primary", textColor: "text-primary" },
   { id: "phase-3", label: "Scale", shortLabel: "4", color: "bg-purple-500", textColor: "text-purple-400" },
 ];

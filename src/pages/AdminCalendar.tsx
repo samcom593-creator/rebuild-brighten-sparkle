@@ -32,7 +32,7 @@ import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const CATEGORIES = [
-  { key: "recruiting", label: "Recruiting", color: "bg-blue-500", text: "text-blue-400", border: "border-blue-500/30" },
+  { key: "recruiting", label: "Recruiting", color: "bg-info", text: "text-info", border: "border-info/30" },
   { key: "sales", label: "Sales", color: "bg-emerald-500", text: "text-emerald-400", border: "border-emerald-500/30" },
   { key: "content", label: "Content", color: "bg-purple-500", text: "text-purple-400", border: "border-purple-500/30" },
   { key: "admin", label: "Admin", color: "bg-muted-foreground", text: "text-muted-foreground", border: "border-border" },

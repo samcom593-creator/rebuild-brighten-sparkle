@@ -203,7 +203,7 @@ export function CallCenterLeadCard({
                   "text-xs px-3 py-1 rounded-full font-medium",
                   lead.source === "aged_leads"
                     ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                    : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                    : "bg-info/20 text-info border border-info/30"
                 )}
               >
                 {lead.source === "aged_leads" ? "Aged Lead" : "New Applicant"}
@@ -224,7 +224,7 @@ export function CallCenterLeadCard({
                 <motion.span
                   variants={badgeVariants}
                   whileHover={{ scale: 1.05 }}
-                  className="text-xs px-3 py-1 rounded-full font-medium bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center gap-1"
+                  className="text-xs px-3 py-1 rounded-full font-medium bg-info/20 text-info border border-info/30 flex items-center gap-1"
                 >
                   <Building2 className="h-3 w-3" />
                   Manager: {lead.assignedManagerName}
@@ -311,7 +311,7 @@ export function CallCenterLeadCard({
               
               {lead.lastContactedAt && lead.lastContactedAt !== lead.contactedAt && (
                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Phone className="h-3.5 w-3.5 text-blue-500" />
+                  <Phone className="h-3.5 w-3.5 text-info" />
                   <span>Last Contact:</span>
                   <span className="text-foreground">{format(new Date(lead.lastContactedAt), "MMM d, yyyy 'at' h:mm a")}</span>
                 </div>
@@ -389,16 +389,16 @@ export function CallCenterLeadCard({
             <motion.a
               href={`sms:${lead.phone}`}
               whileHover={{ scale: 1.01, x: 2 }}
-              className="flex items-center gap-4 p-3 rounded-md bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 transition-colors"
+              className="flex items-center gap-4 p-3 rounded-md bg-info/10 border border-info/30 hover:bg-info/20 transition-colors"
             >
-              <div className="p-2.5 rounded-full bg-blue-500/20">
-                <Phone className="h-4 w-4 text-blue-400" />
+              <div className="p-2.5 rounded-full bg-info/20">
+                <Phone className="h-4 w-4 text-info" />
               </div>
               <div className="flex-1">
                 <div className="text-sm font-semibold text-foreground">Send Text</div>
-                <div className="text-xs text-blue-400">Use after voicemail or for follow-up</div>
+                <div className="text-xs text-info">Use after voicemail or for follow-up</div>
               </div>
-              <div className="text-xs px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 font-medium">
+              <div className="text-xs px-3 py-1.5 rounded-lg bg-info/20 text-info font-medium">
                 TEXT
               </div>
             </motion.a>
@@ -568,7 +568,7 @@ export function CallCenterLeadCard({
                   const url = `/dashboard/calendar`;
                   window.open(url, "_blank", "noopener,noreferrer");
                 }}
-                className="p-2.5 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors border border-blue-500/30"
+                className="p-2.5 rounded-full bg-info/10 hover:bg-info/20 text-info transition-colors border border-info/30"
                 title="Schedule Interview"
               >
                 <Calendar className="h-4 w-4" />

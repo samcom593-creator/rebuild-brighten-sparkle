@@ -65,10 +65,10 @@ interface Manager {
 }
 
 const statusColors: Record<string, string> = {
-  new: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  new: "bg-info/20 text-info border-info/30",
   reviewing: "bg-purple-500/20 text-purple-400 border-purple-500/30",
   interview: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  contracting: "bg-slate-500/20 text-foreground border-cyan-500/30",
+  contracting: "bg-slate-500/20 text-foreground border-info/30",
   approved: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   rejected: "bg-red-500/20 text-red-400 border-red-500/30",
 };

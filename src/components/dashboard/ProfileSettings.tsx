@@ -84,7 +84,7 @@ function DiscordWebhookSection() {
   return (
     <GlassCard className="p-6">
       <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-        <MessageSquare className="h-5 w-5 text-indigo-400" />
+        <MessageSquare className="h-5 w-5 text-info" />
         Discord Integration
       </h3>
       <p className="text-sm text-muted-foreground mb-4">

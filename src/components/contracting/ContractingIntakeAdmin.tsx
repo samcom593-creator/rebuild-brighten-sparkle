@@ -57,7 +57,7 @@ type StatusRow = {
 
 const TONE_CLASS: Record<string, string> = {
   ok: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  pending: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  pending: "border-info/30 bg-info/10 text-info dark:text-info",
   warn: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
   muted: "border-border bg-muted/40 text-muted-foreground",
 };

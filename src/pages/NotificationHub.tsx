@@ -37,7 +37,7 @@ function NotificationStats({ logs, onFilterChannel }: { logs: any[]; onFilterCha
 
   const stats = [
     { label: "Total Today", value: todayLogs.length, icon: Bell, gradient: "from-primary/20 to-primary/5 border-primary/20", color: "text-primary", filter: "all" },
-    { label: "Push", value: todayLogs.filter((l) => l.channel === "push").length, icon: Smartphone, gradient: "from-blue-500/20 to-blue-500/5 border-blue-500/20", color: "text-blue-400", filter: "push" },
+    { label: "Push", value: todayLogs.filter((l) => l.channel === "push").length, icon: Smartphone, gradient: "from-info/20 to-info/5 border-info/30", color: "text-info", filter: "push" },
     { label: "SMS", value: todayLogs.filter((l) => l.channel === "sms").length, icon: MessageSquare, gradient: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/20", color: "text-emerald-400", filter: "sms" },
     { label: "Auto SMS", value: todayLogs.filter((l) => l.channel === "sms-auto").length, icon: Radio, gradient: "from-purple-500/20 to-purple-500/5 border-purple-500/20", color: "text-purple-400", filter: "sms-auto" },
     { label: "Email", value: todayLogs.filter((l) => l.channel === "email").length, icon: Mail, gradient: "from-amber-500/20 to-amber-500/5 border-amber-500/20", color: "text-amber-400", filter: "email" },
@@ -905,8 +905,8 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
       title: "📅 Seminar Invite Blast",
       desc: "Thursday seminar invite",
       icon: CalendarDays,
-      gradient: "from-indigo-500/20 to-indigo-500/5 border-indigo-500/20",
-      color: "text-indigo-400",
+      gradient: "from-info/20 to-info/5 border-info/30",
+      color: "text-info",
       loading: seminarBlasting,
       handler: handleSeminarBlast,
       confirmTitle: "Seminar Invite Blast",
@@ -960,7 +960,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
               "rounded-md border p-4 flex items-center justify-between gap-3",
               lastRetryResult.type === "success" && "bg-emerald-500/10 border-emerald-500/30 text-emerald-300",
               lastRetryResult.type === "warning" && "bg-amber-500/10 border-amber-500/30 text-amber-300",
-              lastRetryResult.type === "info" && "bg-sky-500/10 border-sky-500/30 text-sky-300"
+              lastRetryResult.type === "info" && "bg-info/10 border-info/30 text-info"
             )}
           >
             <div className="flex-1 text-sm">
@@ -1231,11 +1231,11 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
         <div>
           <div className={cn(
             "relative overflow-hidden rounded-md border  p-6 ",
-            "from-blue-500/10 to-blue-500/5 border-blue-500/20"
+            "from-info/10 to-info/5 border-info/30"
           )}>
             <div className="flex items-center gap-3 mb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background/50">
-                <Zap className="h-5 w-5 text-blue-400" />
+                <Zap className="h-5 w-5 text-info" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold">
@@ -1252,8 +1252,8 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
             <Progress value={Math.round((savedProgress.batchIndex / savedProgress.totalBatches) * 100)} className="h-3 mb-4" />
 
             <div className="grid grid-cols-3 gap-2 text-center mb-4">
-              <div className="rounded-lg bg-blue-500/10 p-2">
-                <p className="text-lg font-bold text-blue-400">{savedProgress.stats.push_sent}</p>
+              <div className="rounded-lg bg-info/10 p-2">
+                <p className="text-lg font-bold text-info">{savedProgress.stats.push_sent}</p>
                 <p className="text-[10px] text-muted-foreground">Push</p>
               </div>
               <div className="rounded-lg bg-emerald-500/10 p-2">
@@ -1295,8 +1295,8 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className={cn("rounded-md border p-4 bg-blue-500/[0.06] border-blue-500/20")}>
-              <p className="text-2xl font-bold text-blue-400"><AnimatedCounter value={counts?.applicants || 0} /></p>
+            <div className={cn("rounded-md border p-4 bg-info/[0.06] border-info/30")}>
+              <p className="text-2xl font-bold text-info"><AnimatedCounter value={counts?.applicants || 0} /></p>
               <p className="text-xs text-muted-foreground">Active Applicants</p>
             </div>
             <div className={cn("rounded-md border p-4 bg-purple-500/[0.06] border-purple-500/20")}>
@@ -1326,8 +1326,8 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
                 </div>
                 <Progress value={progress.percent} className="h-3" />
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-lg bg-blue-500/10 p-2">
-                    <p className="text-lg font-bold text-blue-400">{stats.push_sent}</p>
+                  <div className="rounded-lg bg-info/10 p-2">
+                    <p className="text-lg font-bold text-info">{stats.push_sent}</p>
                     <p className="text-[10px] text-muted-foreground">Push</p>
                   </div>
                   <div className="rounded-lg bg-emerald-500/10 p-2">
@@ -1377,7 +1377,7 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
                 className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2"
               >
                 {[
-                  { label: "Push Sent", value: lastResult.push_sent || 0, color: "text-blue-400" },
+                  { label: "Push Sent", value: lastResult.push_sent || 0, color: "text-info" },
                   { label: "SMS Sent", value: lastResult.sms_sent || 0, color: "text-emerald-400" },
                   { label: "Emailed", value: lastResult.emailed || 0, color: "text-amber-400" },
                   { label: "Failed", value: lastResult.failed || 0, color: "text-red-400" },

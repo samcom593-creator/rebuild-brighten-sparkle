@@ -33,7 +33,7 @@ const getAvatarColor = (name: string) => {
     "from-emerald-500 to-emerald-600",
     "from-amber-500 to-orange-500",
     "from-purple-500 to-pink-500",
-    "from-cyan-500 to-blue-500",
+    "from-info to-info",
   ];
   const index = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[index % colors.length];
@@ -80,7 +80,7 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
   const getLeaderBadges = () => {
     const badges = [];
     if (leaders?.alp === entry.agentId) badges.push(<Crown key="alp" className="h-3.5 w-3.5 text-amber-400" />);
-    if (leaders?.presentations === entry.agentId) badges.push(<Target key="pres" className="h-3.5 w-3.5 text-blue-400" />);
+    if (leaders?.presentations === entry.agentId) badges.push(<Target key="pres" className="h-3.5 w-3.5 text-info" />);
     if (leaders?.closingRate === entry.agentId) badges.push(<Percent key="close" className="h-3.5 w-3.5 text-emerald-400" />);
     if (leaders?.deals === entry.agentId) badges.push(<Trophy key="deals" className="h-3.5 w-3.5 text-purple-400" />);
     return badges;

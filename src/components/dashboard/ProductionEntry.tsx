@@ -559,8 +559,8 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
               {/* Activity Metrics Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="h-8 w-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
-                    <Target className="h-4 w-4 text-blue-500" />
+                  <div className="h-8 w-8 rounded-lg bg-info/15 flex items-center justify-center">
+                    <Target className="h-4 w-4 text-info" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold">Activity Metrics</h3>

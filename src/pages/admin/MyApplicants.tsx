@@ -57,9 +57,9 @@ const STAGE_LABEL: Record<string, string> = {
 
 const STAGE_COLOR: Record<string, string> = {
   applied: "bg-amber-600/15 text-amber-300 border-amber-600/40",
-  contacted: "bg-blue-600/15 text-blue-300 border-blue-600/40",
+  contacted: "bg-info/15 text-info border-info/30",
   started_prelicense: "bg-purple-600/15 text-purple-300 border-purple-600/40",
-  finished_prelicense: "bg-slate-500/15 text-cyan-300 border-cyan-600/40",
+  finished_prelicense: "bg-slate-500/15 text-info border-info/30",
   passed_exam: "bg-emerald-600/15 text-emerald-400 border-emerald-600/40",
   closed_lost: "bg-zinc-600/15 text-muted-foreground border-zinc-600/40",
 };

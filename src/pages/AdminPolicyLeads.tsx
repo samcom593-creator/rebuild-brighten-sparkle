@@ -37,7 +37,7 @@ type PhcStats = { total: number; today: number; uncalled: number };
 
 const STATUS_STYLES: Record<string, string> = {
   new: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300",
-  contacted: "bg-blue-500/15 border-blue-500/40 text-blue-300",
+  contacted: "bg-info/15 border-info/30 text-info",
   appointment: "bg-violet-500/15 border-violet-500/40 text-violet-300",
   application: "bg-amber-500/15 border-amber-500/40 text-amber-300",
   issued: "bg-green-600/20 border-green-600/50 text-green-300",

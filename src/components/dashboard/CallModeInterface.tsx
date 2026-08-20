@@ -281,8 +281,8 @@ function formatPhoneDisplay(phone: string): string {
                          {currentLead.firstName} {currentLead.lastName || ""}
                        </h3>
                        {currentLead.assignedManagerName && (
-                         <p className="text-sm text-indigo-400 mt-1 flex items-center gap-1.5">
-                           <span className="inline-block w-3 h-3 rounded-full bg-indigo-500/20 text-center text-[10px] leading-3">🏢</span>
+                         <p className="text-sm text-info mt-1 flex items-center gap-1.5">
+                           <span className="inline-block w-3 h-3 rounded-full bg-info/20 text-center text-[10px] leading-3">🏢</span>
                            Manager: {currentLead.assignedManagerName}
                          </p>
                        )}

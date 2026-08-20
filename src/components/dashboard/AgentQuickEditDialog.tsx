@@ -698,8 +698,8 @@ export function AgentQuickEditDialog({
 
           {/* ═══ ACCOUNT MANAGEMENT (existing login) ═══ */}
           {isAdmin && hasExistingLogin && (
-            <div className="space-y-3 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
-              <Label className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+            <div className="space-y-3 p-3 rounded-lg bg-info/5 border border-info/30">
+              <Label className="flex items-center gap-2 text-info dark:text-info">
                 <KeyRound className="h-4 w-4" />
                 Account Management
               </Label>

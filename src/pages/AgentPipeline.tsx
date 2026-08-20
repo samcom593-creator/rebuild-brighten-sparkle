@@ -549,7 +549,7 @@ export default function AgentPipeline() {
             <LastContactedBadge applicationId={app.id} />
             <Button
               variant="ghost" size="icon"
-              className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+              className="h-8 w-8 text-info hover:text-info hover:bg-info/10"
               onClick={() => { setSchedulerApp(app); setSchedulerOpen(true); }}
               title="Schedule Interview"
             >

@@ -311,7 +311,7 @@ export default function DashboardAccounts() {
         );
       case "manager":
         return (
-          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+          <Badge className="bg-info/20 text-info border-info/30">
             <Shield className="h-3 w-3 mr-1" />
             Manager
           </Badge>
@@ -370,7 +370,7 @@ export default function DashboardAccounts() {
 
   const statCards = [
     { label: "Total Accounts", value: stats.totalAccounts, icon: Users, gradient: "from-primary/20 to-primary/5 border-primary/20", color: "text-primary" },
-    { label: "Managers", value: stats.managers, icon: Shield, gradient: "from-blue-500/20 to-blue-500/5 border-blue-500/20", color: "text-blue-400" },
+    { label: "Managers", value: stats.managers, icon: Shield, gradient: "from-info/20 to-info/5 border-info/30", color: "text-info" },
     { label: "Agents", value: stats.agents, icon: UserPlus, gradient: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/20", color: "text-emerald-400" },
     { label: "Pending", value: stats.pendingApproval, icon: AlertTriangle, gradient: "from-amber-500/20 to-amber-500/5 border-amber-500/20", color: "text-amber-400" },
   ];

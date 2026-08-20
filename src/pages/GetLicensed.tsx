@@ -179,8 +179,8 @@ const TRUST_CARDS: Array<{
     icon: BookOpen,
     title: "Full Training Provided",
     detail: "Scripts, playbooks, live closes.",
-    tint: "border-sky-500/25 bg-sky-500/[0.03]",
-    iconClass: "text-sky-400",
+    tint: "border-info/30 bg-info/[0.03]",
+    iconClass: "text-info",
   },
   {
     icon: ShieldCheck,

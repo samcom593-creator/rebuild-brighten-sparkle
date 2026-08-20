@@ -1,12 +1,11 @@
 import { ReactNode, useState, useEffect, useRef, memo } from "react";
-import { Menu, Crown, Plus, Search } from "lucide-react";
+import { Cloud, Menu, Search } from "lucide-react";
 import { useUIStore } from "@/shared/store/uiStore";
 import { Link, useLocation } from "react-router-dom";
 import { GlobalSidebar } from "./GlobalSidebar";
 import { TopBar } from "./TopBar";
 import { ScrollProgress } from "./ScrollProgress";
 import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { RolePreviewBubbles } from "@/components/layout/RolePreviewBubbles";
 import { useSidebarState } from "@/hooks/useSidebarState";
@@ -53,11 +52,11 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
   return (
     <div className="apex-app-shell min-h-screen relative bg-background">
       {/* Mobile Header - only visible on small screens */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border shadow-sm">
-        <div className="flex items-center justify-between p-4 pt-[max(1rem,env(safe-area-inset-top))]">
+      <header className="fixed left-0 right-0 top-0 z-50 border-b border-[#29292d] bg-[#121214] lg:hidden">
+        <div className="flex h-[60px] items-center justify-between px-3 pt-[env(safe-area-inset-top)]">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <Crown className="h-8 w-8 text-primary" />
-            <span className="text-lg font-bold gradient-text">APEX</span>
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#d9aa42] text-[#111113]"><Cloud className="h-[18px] w-[18px]" /></span>
+            <span className="text-sm font-semibold text-white">APEX Financial</span>
           </Link>
           <div className="flex items-center gap-2">
             <Button
@@ -68,17 +67,6 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
             >
               <Search className="h-5 w-5" />
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-10 gap-1.5 px-2.5"
-              onClick={() => setMobileOpen(true)}
-              aria-label="Open Add Agent and Add Deal actions"
-            >
-              <Plus className="h-4 w-4" />
-              Actions
-            </Button>
-            <ThemeToggle />
             <Button
               variant="ghost"
               size="icon"
@@ -148,7 +136,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
           // Mobile header = p-4 (16+16) + h-10 icon row (40) = 72px base (4.5rem),
           // plus env(safe-area-inset-top) on notched iPhones. Reserving the real
           // height keeps the first page heading from sliding under the fixed header.
-          "apex-main-canvas min-h-screen pt-[calc(4.5rem+env(safe-area-inset-top,0px))] lg:pt-0"
+          "apex-main-canvas min-h-screen pt-[calc(3.75rem+env(safe-area-inset-top,0px))] lg:pt-0"
         )}
         style={{
           marginLeft: isDesktop ? `${marginLeft}px` : 0,
@@ -157,7 +145,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       >
         <TopBar />
         <RolePreviewBubbles />
-        <div className="apex-content-frame p-4 sm:p-6 lg:p-8">
+        <div className="apex-content-frame p-4 lg:p-5">
           <PageContent showPhoneBanner={showPhoneBanner}>
             {children}
           </PageContent>

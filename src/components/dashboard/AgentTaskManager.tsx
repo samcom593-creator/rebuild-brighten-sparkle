@@ -182,7 +182,7 @@ export function AgentTaskManager({
     switch (s) {
       case "completed": return <CheckCircle className="h-4 w-4 text-emerald-400" />;
       case "overdue": return <AlertTriangle className="h-4 w-4 text-red-400" />;
-      case "in_progress": return <Loader2 className="h-4 w-4 text-blue-400" />;
+      case "in_progress": return <Loader2 className="h-4 w-4 text-info" />;
       default: return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };

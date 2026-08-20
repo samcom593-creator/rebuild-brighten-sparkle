@@ -131,8 +131,8 @@ const COHORT_META: Record<CohortKey, {
     help: "Studying. Nudge every three to five days.",
     action: "Nudge on course progress",
     icon: BookOpen,
-    accent: "text-sky-300",
-    bar: "bg-sky-400",
+    accent: "text-info",
+    bar: "bg-info",
     ring: "ring-sky-400/70",
     weight: 6,
   },
@@ -202,7 +202,7 @@ interface OutcomeMeta {
 
 const OUTCOMES: OutcomeMeta[] = [
   { key: "contacted",      label: "Contacted",      short: "Contact",    shortcut: "1", icon: CheckCheck,   tone: "border-teal-500/40 bg-teal-500/15 text-teal-200 hover:bg-teal-500/25" },
-  { key: "left_vm",        label: "Left VM",        short: "VM",         shortcut: "2", icon: Voicemail,    tone: "border-sky-500/40 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25" },
+  { key: "left_vm",        label: "Left VM",        short: "VM",         shortcut: "2", icon: Voicemail,    tone: "border-info/30 bg-info/15 text-info hover:bg-info/25" },
   { key: "text_sent",      label: "Text sent",      short: "Text",       shortcut: "3", icon: MessageSquare,tone: "border-white/10 bg-white/[0.05] text-slate-200 hover:bg-white/[0.10]" },
   { key: "email_sent",     label: "Email sent",     short: "Email",      shortcut: "4", icon: Send,         tone: "border-white/10 bg-white/[0.05] text-slate-200 hover:bg-white/[0.10]" },
   { key: "no_answer",      label: "No answer",      short: "No ans",     shortcut: "5", icon: PhoneOff,     tone: "border-slate-500/30 bg-slate-500/10 text-slate-300 hover:bg-slate-500/20" },
@@ -1668,7 +1668,7 @@ function InsightChip({ icon, label, value, tone, onClick, active }: {
     teal: "text-teal-300 border-teal-500/40 bg-teal-500/10",
     rose: "text-rose-300 border-rose-500/40 bg-rose-500/10",
     amber: "text-amber-300 border-amber-500/40 bg-amber-500/10",
-    sky: "text-sky-300 border-sky-500/40 bg-sky-500/10",
+    sky: "text-info border-info/30 bg-info/10",
   }[tone];
   return (
     <button

@@ -46,7 +46,7 @@ export const KANBAN_COLUMNS: KanbanColumn[] = [
     id: "applicants",
     label: "Applicants",
     stages: ["new_applicant"],
-    color: "border-sky-500/30 bg-sky-500/5",
+    color: "border-info/30 bg-info/5",
     emoji: "📥",
   },
   {
@@ -67,7 +67,7 @@ export const KANBAN_COLUMNS: KanbanColumn[] = [
     id: "test_phase",
     label: "Test Phase",
     stages: ["test_scheduled", "passed_test"],
-    color: "border-blue-500/30 bg-blue-500/5",
+    color: "border-info/30 bg-info/5",
     emoji: "📝",
   },
   {

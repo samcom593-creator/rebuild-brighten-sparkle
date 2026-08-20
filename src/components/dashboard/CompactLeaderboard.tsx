@@ -33,7 +33,7 @@ const getAvatarColor = (name: string) => {
     "from-violet-400 to-purple-500",
     "from-amber-400 to-orange-500",
     "from-rose-400 to-pink-500",
-    "from-cyan-400 to-blue-500",
+    "from-info to-info",
   ];
   const index = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[index % colors.length];

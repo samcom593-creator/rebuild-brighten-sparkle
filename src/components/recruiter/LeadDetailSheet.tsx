@@ -64,11 +64,11 @@ const ACTIVITY_TYPE_COLORS: Record<string, string> = {
   call_no_answer: "text-muted-foreground",
   call_voicemail: "text-amber-400",
   call_wrong_number: "text-rose-400",
-  email_sent: "text-blue-400",
+  email_sent: "text-info",
   note_added: "text-purple-400",
   stage_changed: "text-pink-400",
   calendly_link_sent: "text-pink-400",
-  interview_scheduled: "text-blue-400",
+  interview_scheduled: "text-info",
   followup_completed: "text-emerald-400",
   suggestion_applied: "text-amber-400",
 };
@@ -238,7 +238,7 @@ export function LeadDetailSheet({ lead, open, onOpenChange, onRefresh }: LeadDet
               </a>
             )}
             {lead.email && (
-              <a href={`mailto:${lead.email}`} className="text-xs text-blue-400 hover:underline flex items-center gap-1">
+              <a href={`mailto:${lead.email}`} className="text-xs text-info hover:underline flex items-center gap-1">
                 <Mail className="h-3 w-3" /> {lead.email}
               </a>
             )}

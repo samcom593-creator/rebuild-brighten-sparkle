@@ -744,7 +744,7 @@ export default function CalendarPage() {
                           <CardContent className="p-4 flex items-center gap-4">
                             <div className={cn(
                               "p-2 rounded-lg shrink-0",
-                              iv.interview_type === "video" && "bg-blue-500/10 text-blue-400",
+                              iv.interview_type === "video" && "bg-info/10 text-info",
                               iv.interview_type === "phone" && "bg-emerald-500/10 text-emerald-400",
                               iv.interview_type === "in_person" && "bg-violet-500/10 text-violet-400",
                             )}>

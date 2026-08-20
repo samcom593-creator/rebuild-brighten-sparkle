@@ -44,7 +44,7 @@ const TIER_META: Record<BuilderRow["builder_tier"], { label: string; tone: strin
   builder_emerging: { label: "Emerging builder", tone: "bg-amber-500/15 text-amber-200 border-amber-500/40", icon: Sparkles },
   producer: { label: "Producer", tone: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40", icon: TrendingUp },
   producer_light: { label: "Light producer", tone: "bg-emerald-500/10 text-emerald-200 border-emerald-500/30", icon: Activity },
-  new_hire: { label: "New hire", tone: "bg-blue-500/15 text-blue-200 border-blue-500/40", icon: Users },
+  new_hire: { label: "New hire", tone: "bg-info/15 text-info border-info/30", icon: Users },
   dormant: { label: "Dormant", tone: "bg-zinc-500/15 text-muted-foreground border-zinc-500/40", icon: AlertTriangle },
   unknown: { label: "—", tone: "bg-zinc-500/10 text-muted-foreground border-zinc-500/30", icon: Users },
 };
@@ -168,7 +168,7 @@ export function BuilderProgressDashboard() {
           <Counter label="Builders" value={summary.builders} tone="text-yellow-300" />
           <Counter label="Producers" value={summary.producers} tone="text-emerald-300" />
           <Counter label="Active 14d" value={summary.activelyProducing} tone="text-emerald-300" />
-          <Counter label="New hires" value={summary.newHires} tone="text-blue-300" />
+          <Counter label="New hires" value={summary.newHires} tone="text-info" />
           <Counter label="Dormant" value={summary.dormant} tone="text-muted-foreground" />
         </div>
       </CardHeader>

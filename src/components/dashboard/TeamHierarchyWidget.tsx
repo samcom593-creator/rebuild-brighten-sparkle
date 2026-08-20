@@ -77,7 +77,7 @@ export function TeamHierarchyWidget() {
             <GitBranch className="h-5 w-5" /> Team Hierarchy + Downline Production
           </span>
           <div className="flex items-center gap-2 text-xs">
-            <Badge variant="outline" className="border-blue-600/40 text-blue-300">
+            <Badge variant="outline" className="border-info/30 text-info">
               {recruiters.length} recruiters
             </Badge>
             <Badge variant="outline" className="border-emerald-600/40 text-emerald-400">

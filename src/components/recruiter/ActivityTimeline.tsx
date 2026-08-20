@@ -35,7 +35,7 @@ const typeIcons: Record<string, React.ElementType> = {
 
 const typeDotColors: Record<string, string> = {
   call_attempt: "bg-emerald-400",
-  email_sent: "bg-blue-400",
+  email_sent: "bg-info",
   stage_changed: "bg-purple-400",
   note_added: "bg-amber-400",
   calendly_link_sent: "bg-pink-400",

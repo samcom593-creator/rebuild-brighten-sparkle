@@ -80,9 +80,9 @@ interface OutcomePill {
 
 const OUTCOMES: OutcomePill[] = [
   { key: "contacted",        label: "Contacted",        tone: "border-emerald-500/40 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25", icon: <CheckCircle2 className="h-3 w-3" /> },
-  { key: "left_vm",          label: "Left VM",          tone: "border-sky-500/40 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25" },
-  { key: "text_sent",        label: "Text sent",        tone: "border-sky-500/40 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25" },
-  { key: "email_sent",       label: "Email sent",       tone: "border-sky-500/40 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25" },
+  { key: "left_vm",          label: "Left VM",          tone: "border-info/30 bg-info/15 text-info hover:bg-info/25" },
+  { key: "text_sent",        label: "Text sent",        tone: "border-info/30 bg-info/15 text-info hover:bg-info/25" },
+  { key: "email_sent",       label: "Email sent",       tone: "border-info/30 bg-info/15 text-info hover:bg-info/25" },
   { key: "wrong_number",     label: "Wrong number",     tone: "border-rose-500/40 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25", icon: <PhoneOff className="h-3 w-3" /> },
   { key: "no_answer",        label: "No answer",        tone: "border-amber-500/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25" },
   { key: "not_interested",   label: "Not interested",   tone: "border-slate-500/40 bg-slate-500/15 text-slate-200 hover:bg-slate-500/25" },

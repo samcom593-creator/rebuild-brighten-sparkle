@@ -78,11 +78,17 @@ interface NavSection {
   items: NavItem[];
 }
 
+interface NavChild {
+  label: string;
+  href: string;
+}
+
 interface NavItem {
   icon: ElementType;
   label: string;
-  href: string;
+  href?: string;
   special?: boolean;
+  children?: NavChild[];
 }
 
 const SIDEBAR_GROUPS_STORAGE_KEY = "apex.sidebar.collapsedGroups.v1";
@@ -198,21 +204,44 @@ export function GlobalSidebar({
     // that AC-P3 inferred from the video. Those headers were the clutter Sam
     // called out. One flat working list in journey order, then Account. Same
     // hrefs, same role gates, zero new routes — check:sidebar-routes agrees.
+    // 2026-08-19 (Sam: 'copy Agent Cloud exactly'): the real AC sidebar is
+    // nested collapsible GROUPS (Clients ▸ / Agency ▸ / Contracting ▸ / Tools ▸)
+    // each expanding to its sub-pages, plus standalone Home/Reports/Finances,
+    // then an Account section. Rebuilt to that exact structure, mapping every
+    // sub-item to a real APEX route.
     const canRecruit = isAdmin || isManager || isVaManager || isVa;
     const sections: NavSection[] = [
       { label: "", items: [
         { icon: LayoutDashboard, label: "Home", href: "/dashboard", special: true },
-        ...(canRecruit ? [
-          { icon: Briefcase, label: "Recruiting", href: "/dashboard/recruiting" },
-        ] : []),
-        { icon: PhoneCall, label: "Call Center", href: "/dashboard/call-center" },
-        ...(canRecruit ? [{ icon: Users, label: "Team", href: "/dashboard/team" }] : []),
-        { icon: Award, label: "Contracting", href: "/dashboard/contracting" },
+        { icon: Users, label: "Clients", children: [
+          ...(canRecruit ? [
+            { label: "Pipeline", href: "/dashboard/recruiting" },
+            { label: "Interviews", href: "/dashboard/interviews" },
+          ] : []),
+          { label: "Call Center", href: "/dashboard/call-center" },
+          { label: "Calendar", href: "/dashboard/calendar" },
+          { label: "Book of Business", href: "/dashboard/book-of-business" },
+        ] },
+        { icon: Crown, label: "Agency", children: [
+          { label: "Team", href: "/dashboard/team" },
+          { label: "Announcements", href: "/dashboard/announcements" },
+          { label: "Leaderboard", href: "/dashboard/awards" },
+        ] },
+        { icon: Award, label: "Contracting", children: [
+          { label: "My Contracts", href: "/dashboard/contracting" },
+          { label: "Invite an agent", href: "/admin/invite-links" },
+          { label: "Carrier Directory", href: "/dashboard/carriers" },
+        ] },
         { icon: BarChart3, label: "Production", href: "/dashboard/production" },
         { icon: TrendingUp, label: "Reports", href: "/dashboard/analytics" },
-        { icon: Library, label: "Resources", href: "/dashboard/resources" },
-        { icon: Megaphone, label: "Community", href: "/dashboard/community" },
-      ]},
+        { icon: DollarSign, label: "Finances", href: "/dashboard/finances" },
+        { icon: FileSpreadsheet, label: "Tools", children: [
+          { label: "Import", href: "/admin/xcel-import" },
+          { label: "Resources", href: "/dashboard/resources" },
+          { label: "Marketing", href: "/dashboard/client-marketing" },
+        ] },
+        { icon: Sparkles, label: "Community", href: "/dashboard/community" },
+      ] },
       ...(isAdmin ? [{ label: "Account", items: [
         { icon: Settings, label: "Admin", href: "/dashboard/admin" },
       ]}] : []),
@@ -551,6 +580,51 @@ export function GlobalSidebar({
                       className="space-y-0.5"
                     >
                       {section.items.map((item) => {
+                        if (item.children) {
+                          const groupOpen = collapsedGroups[item.label] !== true; // default expanded
+                          const anyChildActive = item.children.some((c) => location.pathname === c.href || location.pathname.startsWith(`${c.href}/`));
+                          const GroupIcon = item.icon;
+                          return (
+                            <div key={item.label}>
+                              <button
+                                type="button"
+                                onClick={() => toggleGroup(item.label)}
+                                aria-expanded={groupOpen}
+                                className={cn(
+                                  "w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors min-h-11 sm:min-h-0",
+                                  anyChildActive ? "text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+                                )}
+                                style={{ touchAction: "manipulation" }}
+                              >
+                                <GroupIcon className="h-4 w-4 shrink-0" />
+                                {!isCollapsed && <span className="flex-1 text-left">{item.label}</span>}
+                                {!isCollapsed && (
+                                  <ChevronRight className={cn("h-4 w-4 shrink-0 transition-transform duration-200", groupOpen && "rotate-90")} />
+                                )}
+                              </button>
+                              {groupOpen && !isCollapsed && (
+                                <div className="ml-[19px] mt-0.5 space-y-0.5 border-l border-border/60 pl-2.5">
+                                  {item.children.map((c) => {
+                                    const active = location.pathname === c.href || location.pathname.startsWith(`${c.href}/`);
+                                    return (
+                                      <Link
+                                        key={c.href}
+                                        to={c.href}
+                                        onClick={() => { if (!active) playSound("click"); }}
+                                        className={cn(
+                                          "block rounded-md px-3 py-1.5 text-sm transition-colors min-h-10 sm:min-h-0 flex items-center",
+                                          active ? "bg-muted text-primary font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+                                        )}
+                                      >
+                                        {c.label}
+                                      </Link>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
                         const isActive = item.href === "/dashboard"
                           ? location.pathname === item.href
                           : location.pathname === item.href

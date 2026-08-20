@@ -597,8 +597,21 @@ Deno.serve(async (req) => {
         if (deliveredError) throw deliveredError;
       }
       if (attempt.id) {
+        // MP-313: this used to say "delivered" unconditionally -- including on
+        // the manual_action_required branch three lines above, for the same
+        // event, inside the same try. The parent outbox_events row said the
+        // deal was refused and never sent; the child audit row said it was
+        // delivered. delivery_attempts has no reader in the app: its whole job
+        // is to be the durable per-attempt record a human reads later, so a
+        // wrong word here is the entire failure, not a cosmetic one.
+        // The status now comes from the SAME result.state the parent branched
+        // on, so the two rows cannot disagree by construction. The reason text
+        // is deliberately NOT copied down here -- it lives once on
+        // outbox_events.last_error_redacted, one FK hop away, because two
+        // copies of one fact is how curl --max-time and fn_agentlink_reap_stuck
+        // drifted into 36 false pages a day.
         const { error: attemptUpdateError } = await sb.from("delivery_attempts").update({
-          status: "delivered",
+          status: result.state === "manual_action_required" ? "manual_action_required" : "delivered",
           finished_at: new Date().toISOString(),
         }).eq("id", attempt.id);
         if (attemptUpdateError) throw attemptUpdateError;

@@ -97,7 +97,7 @@ export function PageHeader({
       <div className="relative z-10 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <h1 className="text-[22px] font-bold tracking-normal leading-7">
+            <h1 className="text-[24px] font-bold tracking-[-0.6px] leading-8">
               {title}
             </h1>
             {eyebrow && (

@@ -192,50 +192,50 @@
     --background: 240 6% 4%;
     --foreground: 240 6% 93%;
 
-    --card: 240 4% 9%;
+    --card: 240 7% 8%;
     --card-foreground: 240 6% 93%;
 
-    --popover: 240 4% 10%;
+    --popover: 240 7% 9%;
     --popover-foreground: 240 6% 93%;
 
-    --primary: 45 85% 52%;
+    --primary: 46 68% 47%;
     --primary-foreground: 47 100% 6%;
 
-    --secondary: 240 4% 12%;
+    --secondary: 240 6% 11%;
     --secondary-foreground: 240 6% 93%;
 
-    --muted: 240 4% 12%;
+    --muted: 240 6% 11%;
     --muted-foreground: 240 4% 62%;
 
-    --accent: 240 5% 15%;
+    --accent: 240 6% 14%;
     --accent-foreground: 240 6% 93%;
 
     --destructive: 1 60% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 5% 15%;
-    --input: 240 5% 16%;
-    --ring: 45 85% 52%;
+    --border: 240 6% 14%;
+    --input: 240 6% 15%;
+    --ring: 46 68% 47%;
     --success: 137 50% 46%;
     --success-foreground: 0 0% 100%;
     --warning: 39 72% 52%;
     --warning-foreground: 47 100% 6%;
     --info: 211 62% 58%;
     --info-foreground: 0 0% 100%;
-    --gold: 45 85% 52%;
-    --gold-bright: 45 90% 62%;
-    --gold-dim: 42 42% 55%;
+    --gold: 46 68% 47%;
+    --gold-bright: 46 72% 56%;
+    --gold-dim: 44 45% 44%;
 
     /* Warm black + gold — kills the last cool blue-gray/teal remnants so the
      * left rail matches the gold brand instead of fighting it. */
     --sidebar-background: 240 6% 5%;
     --sidebar-foreground: 240 6% 90%;
-    --sidebar-primary: 45 85% 52%;
+    --sidebar-primary: 46 68% 47%;
     --sidebar-primary-foreground: 47 100% 6%;
-    --sidebar-accent: 240 5% 11%;
+    --sidebar-accent: 240 6% 10%;
     --sidebar-accent-foreground: 240 6% 93%;
-    --sidebar-border: 240 5% 14%;
-    --sidebar-ring: 45 85% 52%;
+    --sidebar-border: 240 6% 13%;
+    --sidebar-ring: 46 68% 47%;
 
     /* Glass morphism - dark mode (warm-tinted) */
     --glass-bg: hsl(40 12% 8% / 0.88);

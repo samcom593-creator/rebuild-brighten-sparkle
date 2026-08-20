@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { AlertTriangle, ExternalLink, Copy, Check, Link2, Users, Briefcase, ClipboardList, FileSignature, Sparkles } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { AlertTriangle, ExternalLink, Copy, Check, Link2, Users, Briefcase, ClipboardList, FileSignature, Sparkles, Building2, Files, Settings2, Search } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ContractingIntakeAdmin } from "@/components/contracting/ContractingIntakeAdmin";
 
@@ -127,9 +128,13 @@ function asLinkObject(value: unknown, fallbackLabel: string): LinkItem | null {
 }
 
 export default function CarrierContracts() {
-  usePageTitle("Contracts & Links · APEX");
+  const pathname = useLocation().pathname;
+  const mode = pathname.endsWith("/carriers") ? "carriers" : pathname.endsWith("/ops") ? "ops" : pathname.endsWith("/requests") ? "requests" : pathname.endsWith("/documents") ? "documents" : "contracts";
+  usePageTitle(`${mode === "contracts" ? "Contracts" : mode.charAt(0).toUpperCase() + mode.slice(1)} · APEX`);
   const { user, isAdmin, isManager } = useAuth();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [documentSearch, setDocumentSearch] = useState("");
+  const [documentStatus, setDocumentStatus] = useState("all");
 
   const copyLink = async (id: string, url: string) => {
     try {
@@ -309,14 +314,50 @@ export default function CarrierContracts() {
   }, [settingsQ.data, carriersQ.data, myContractsQ.data]);
 
   const totalLinks = sections.reduce((sum, s) => sum + s.items.length, 0);
+  const filteredDocumentContracts = (myContractsQ.data ?? []).filter((contract) => {
+    const matchesSearch = !documentSearch || `${contract.carrier_name} ${contract.writing_number} ${contract.contract_number}`.toLowerCase().includes(documentSearch.toLowerCase());
+    const matchesStatus = documentStatus === "all" || (contract.status ?? "pending").toLowerCase() === documentStatus;
+    return matchesSearch && matchesStatus;
+  });
+
+  const workspaceNav = <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label="Contracting sections">
+    {[
+      ["contracts", "/dashboard/contracting", "Contracts"],
+      ["carriers", "/dashboard/contracting/carriers", "Carriers"],
+      ["ops", "/dashboard/contracting/ops", "Operations"],
+      ["requests", "/dashboard/contracting/requests", "Requests"],
+      ["documents", "/dashboard/contracting/documents", "Documents"],
+    ].map(([key, to, label]) => <Button key={key} asChild variant="ghost" className={cn("rounded-none border-b-2 px-3", mode === key ? "border-primary text-foreground" : "border-transparent text-muted-foreground")}><Link to={to}>{label}</Link></Button>)}
+  </nav>;
+
+  if (mode !== "contracts") {
+    const title = mode === "carriers" ? "Carrier Directory" : mode === "ops" ? "Contracting Operations" : mode === "requests" ? "Contracting Requests" : "Contract Documents";
+    const subtitle = mode === "carriers" ? "Active carrier access, portals, and contracting availability." : mode === "ops" ? "Licensing, carrier contracting, writing numbers, compensation and hierarchy—prepared here, submitted through whichever system each carrier requires." : mode === "requests" ? "Start and monitor producer contracting requests." : "Review requirements, approvals, and expiry-sensitive producer documents.";
+    return <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
+      <PageHeader eyebrow="Contracting" eyebrowIcon={mode === "carriers" ? <Building2 className="h-4 w-4" /> : mode === "ops" ? <Settings2 className="h-4 w-4" /> : mode === "documents" ? <Files className="h-4 w-4" /> : <ClipboardList className="h-4 w-4" />} title={title} subtitle={subtitle} />
+      {workspaceNav}
+      {errorMsg && <div className="rounded-md border border-rose-500/35 bg-rose-500/5 p-3 text-sm">Could not load contracting data: {errorMsg.slice(0, 120)}</div>}
+      {mode === "carriers" && <GlassCard className="overflow-hidden">
+        <div className="grid grid-cols-[minmax(0,1fr)_120px_120px] border-b border-border bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><span>Carrier</span><span>Contracting</span><span>Access</span></div>
+        {isLoading ? <div className="space-y-2 p-4"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div> : (carriersQ.data ?? []).length === 0 ? <EmptyState icon={<Building2 className="h-7 w-7" />} title="No active carriers" description="No carrier records are currently visible for this workspace." /> : <ul>{(carriersQ.data ?? []).map((carrier) => <li key={carrier.id} className="grid grid-cols-[minmax(0,1fr)_120px_120px] items-center border-b border-border/70 px-4 py-3 text-sm last:border-0"><span className="truncate font-medium">{carrier.name ?? `Carrier ${carrier.id}`}</span><span className={carrier.contract_invite_url ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}>{carrier.contract_invite_url ? "Available" : "Not configured"}</span><span>{(carrier.contract_invite_url || carrier.website) ? <Button asChild size="sm" variant="outline"><a href={carrier.contract_invite_url || carrier.website || "#"} target="_blank" rel="noopener noreferrer">Open <ExternalLink className="ml-1 h-3.5 w-3.5" /></a></Button> : "—"}</span></li>)}</ul>}
+      </GlassCard>}
+      {mode === "ops" && <ContractingIntakeAdmin />}
+      {mode === "requests" && <><StartContractingCard masterInvite={asLinkObject((settingsQ.data ?? {}).agentlink_master_invite, "AgentLink master invite")} copyLink={copyLink} copiedId={copiedId} /><ContractingIntakeAdmin /></>}
+      {mode === "documents" && <GlassCard className="overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border p-4"><div className="relative min-w-56 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={documentSearch} onChange={(event) => setDocumentSearch(event.target.value)} placeholder="Search agent or document type" className="pl-9" /></div>{["all", "pending", "active"].map((status) => <Button key={status} variant={documentStatus === status ? "default" : "outline"} size="sm" onClick={() => setDocumentStatus(status)} className="capitalize">{status === "all" ? "All statuses" : status}</Button>)}</div>
+        <div className="grid grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)] border-b border-border bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><span>Carrier</span><span>Status</span><span>Contract details</span></div>
+        {myContractsQ.isLoading ? <div className="p-4"><Skeleton className="h-12 w-full" /></div> : filteredDocumentContracts.length === 0 ? <EmptyState icon={<Files className="h-7 w-7" />} title="No documents waiting on review" description="A document waiting on review does not satisfy a requirement—approve it first. Expiry alerts, including E&O certificates, appear here when a verified document source is connected." /> : <ul>{filteredDocumentContracts.map((contract) => <li key={contract.id} className="grid grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)] border-b border-border/70 px-4 py-3 text-sm last:border-0"><span className="font-medium">{contract.carrier_name ?? "Carrier"}</span><span className="capitalize text-muted-foreground">{contract.status ?? "Pending"}</span><span className="truncate font-mono text-xs text-muted-foreground">{contract.writing_number ? `Writing # ${contract.writing_number}` : contract.contract_number ? `Contract # ${contract.contract_number}` : "Awaiting carrier record"}</span></li>)}</ul>}
+      </GlassCard>}
+    </div>;
+  }
 
   return (
     <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <PageHeader
-        eyebrow="Contracts & Links"
+        eyebrow="Contracting"
         eyebrowIcon={<Link2 className="h-3 w-3" />}
-        title="Contracts & Links Hub"
-        subtitle="One grid for every link Sam shares · copy + open in two taps"
+        title="Contracts"
+        subtitle="Contracting access, carrier links, and producer contract records."
         actions={
           (isAdmin || isManager) ? (
             <Button asChild size="sm">
@@ -325,6 +366,7 @@ export default function CarrierContracts() {
           ) : undefined
         }
       />
+      {workspaceNav}
 
       {/* Start Contracting is the ONE action on this page, so it renders first
           and it renders whether or not the link grid below has loaded. Burying

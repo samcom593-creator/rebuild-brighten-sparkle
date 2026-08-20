@@ -50,7 +50,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
   const marginLeft = isDesktop ? (isFullscreen ? 0 : sidebarWidth) : 0;
 
   return (
-    <div className="apex-app-shell min-h-screen relative bg-background">
+    <div className="apex-app-shell agentcloud-parity min-h-screen relative bg-background">
       {/* Mobile Header - only visible on small screens */}
       <header className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background lg:hidden">
         <div className="flex h-[60px] items-center justify-between px-3 pt-[env(safe-area-inset-top)]">

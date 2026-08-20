@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { CelebrationProvider } from "@/components/celebrations/CelebrationProvider";
 import { RequireProfilePicture } from "@/components/profile/RequireProfilePicture";
+import { AgentCloudSetupChecklist } from "@/components/layout/AgentCloudSetupChecklist";
 // WAVE C1 · AskApex AI assistant docked bottom-right on every dashboard route.
 // Lazy to keep landing chunk clean.
 const AskApex = lazy(() => import("@/components/ai/AskApex").then((m) => ({ default: m.AskApex })));
@@ -160,6 +161,7 @@ export function AuthenticatedShell() {
             <WelcomeToast />
             <PushNotificationPrompt />
             <RequireProfilePicture />
+            <AgentCloudSetupChecklist />
             <ComponentErrorBoundary name="page-content">
               <Suspense fallback={<InnerPageLoader />}>
                 <Outlet />

@@ -63,12 +63,6 @@ const ACCENT_SHEENS: Record<NonNullable<PageHeaderProps["accent"]>, string> = {
   rose: "hidden", purple: "hidden", cyan: "hidden",
 };
 
-const ACCENT_TEXTS: Record<NonNullable<PageHeaderProps["accent"]>, string> = {
-  primary: "text-primary", emerald: "text-primary", blue: "text-primary",
-  amber: "text-primary", rose: "text-primary", purple: "text-primary",
-  cyan: "text-primary",
-};
-
 export function PageHeader({
   eyebrow,
   eyebrowIcon,
@@ -81,7 +75,7 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "apex-page-header relative mb-5 py-1",
+        "apex-page-header relative mb-4 py-0.5",
         className,
       )}
     >
@@ -95,21 +89,18 @@ export function PageHeader({
       />
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <h1 className="text-[24px] font-semibold leading-8 text-foreground">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            {eyebrowIcon && <span className="text-muted-foreground">{eyebrowIcon}</span>}
+            <h1 className="text-xl font-semibold leading-7 tracking-[-0.02em] text-foreground">
               {title}
             </h1>
             {eyebrow && (
               <span
                 className={cn(
-                  // Hidden on phones: it wrapped to its own 29px row there, and the
-                  // sidebar already says which section you are in. Kept from sm up.
-                  "hidden sm:inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-0.5 text-xs font-semibold uppercase tracking-wide",
-                  ACCENT_TEXTS[accent],
+                  "hidden sm:inline text-xs font-medium text-muted-foreground",
                 )}
               >
-                {eyebrowIcon}
-                <span>{eyebrow}</span>
+                · {eyebrow}
               </span>
             )}
           </div>

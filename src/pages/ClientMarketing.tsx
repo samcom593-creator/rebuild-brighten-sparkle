@@ -3,8 +3,10 @@
 // referral asks, holiday touches). Click-to-copy.
 
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import {
-  Copy, Check, Search, Heart, Filter,
+  Copy, Check, Search, Heart, Filter, Users, ArrowRight,
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
@@ -13,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 interface Template {
   title: string;
@@ -108,13 +112,23 @@ const CHANNEL_COLOR: Record<string, string> = {
 
 const CATEGORIES = Array.from(new Set(TEMPLATES.map((t) => t.category)));
 
+function MarketingTabs({ view, onChange }: { view: "clients" | "funnels"; onChange: (view: "clients" | "funnels") => void }) {
+  return <div className="flex gap-1 border-b border-border"><Button variant="ghost" className={cn("rounded-none border-b-2", view === "clients" ? "border-primary text-foreground" : "border-transparent text-muted-foreground")} onClick={() => onChange("clients")}>Client Marketing</Button><Button variant="ghost" className={cn("rounded-none border-b-2", view === "funnels" ? "border-primary text-foreground" : "border-transparent text-muted-foreground")} onClick={() => onChange("funnels")}>Recruiting Funnels</Button></div>;
+}
+
 export default function ClientMarketing() {
   usePageTitle("Client Marketing · APEX");
+  const [view, setView] = useState<"clients" | "funnels">("clients");
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState("All");
   const [copied, setCopied] = useState<string | null>(null);
 
   const [copyCounts, setCopyCounts] = useState<Record<string, number>>({});
+  const funnelQ = useQuery({
+    queryKey: ["recruiting-funnel-overview"],
+    staleTime: 60_000,
+    queryFn: async () => { const { data, error } = await supabase.from("applications").select("contacted_at,licensed_at,first_deal_at").or("is_duplicate.eq.false,is_duplicate.is.null"); if (error) throw error; return data; },
+  });
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -147,6 +161,22 @@ export default function ClientMarketing() {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  if (view === "funnels") {
+    const records = funnelQ.data ?? [];
+    const stages = [
+      { label: "New", value: records.length, description: "Applications in scope" },
+      { label: "Contacted", value: records.filter((row) => row.contacted_at).length, description: "First contact completed" },
+      { label: "Licensed", value: records.filter((row) => row.licensed_at).length, description: "License approved" },
+      { label: "First Sale", value: records.filter((row) => row.first_deal_at).length, description: "Activated producer" },
+    ];
+    return <div className="page-enter space-y-5 px-4 pb-24 sm:px-6">
+      <PageHeader eyebrow="Recruiting" eyebrowIcon={<Users className="h-4 w-4" />} title="Recruiting Funnels" subtitle="See where applicants convert—and where follow-up is leaking." actions={<Button asChild size="sm"><Link to="/dashboard/recruiting/pipeline">Open pipeline <ArrowRight className="ml-1 h-4 w-4" /></Link></Button>} />
+      <MarketingTabs view={view} onChange={setView} />
+      {funnelQ.error ? <Card><CardContent className="p-5 text-sm text-rose-600">Could not load funnel data: {(funnelQ.error as Error).message}</CardContent></Card> : <div className="grid gap-3 md:grid-cols-4">{stages.map((stage, index) => { const prior = index === 0 ? stage.value : stages[index - 1].value; const conversion = prior > 0 ? Math.round(stage.value / prior * 100) : 0; return <Card key={stage.label}><CardContent className="p-5"><p className="text-xs font-medium text-muted-foreground">{stage.label}</p><p className="mt-2 text-3xl font-semibold tabular-nums">{funnelQ.isLoading ? "—" : stage.value}</p><p className="mt-1 text-xs text-muted-foreground">{stage.description}</p>{index > 0 && <p className="mt-4 border-t border-border pt-3 text-xs"><span className="font-semibold">{conversion}%</span> from prior stage</p>}</CardContent></Card>; })}</div>}
+      <Card><CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold">Move the bottleneck</p><p className="mt-1 text-xs text-muted-foreground">Open the recruiting pipeline to contact, license, and activate the people represented here.</p></div><Button asChild variant="outline"><Link to="/dashboard/recruiting/pipeline">Manage applicants</Link></Button></CardContent></Card>
+    </div>;
+  }
+
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
       <PageHeader
@@ -156,45 +186,10 @@ export default function ClientMarketing() {
         subtitle="Pre-written DM/SMS/email templates to send your clients post-sale. Pre-appointment confirms, onboarding, referrals, holidays. Click to copy."
         actions={<Badge variant="outline" className="text-11">{TEMPLATES.length} templates</Badge>}
       />
+      <MarketingTabs view={view} onChange={setView} />
 
-      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
-        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-        <div className="relative p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
-              </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">CLIENT MARKETING · LIVE</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TEMPLATES</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{TEMPLATES.length}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">ready to send</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CHANNELS</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">
-                {channelCounts.sms}<span className="text-white/40">/</span>{channelCounts.email}<span className="text-white/40">/</span>{channelCounts.dm}
-              </p>
-              <p className="text-[10px] text-white/40 tabular-nums">SMS · Email · DM</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CATEGORIES</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{CATEGORIES.length}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">touchpoint types</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">MOST COPIED</p>
-              <p className="text-[18px] leading-tight font-black text-white truncate" title={mostCopied.title}>{mostCopied.title}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">{mostCopied.count > 0 ? `${mostCopied.count}× this session` : "copy one to track"}</p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[{ label: "Templates", value: TEMPLATES.length, note: "ready to send" }, { label: "Channels", value: `${channelCounts.sms}/${channelCounts.email}/${channelCounts.dm}`, note: "SMS · Email · DM" }, { label: "Categories", value: CATEGORIES.length, note: "touchpoint types" }, { label: "Most copied", value: mostCopied.title, note: mostCopied.count > 0 ? `${mostCopied.count}× this session` : "copy one to track" }].map((metric) => <Card key={metric.label}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 truncate text-xl font-semibold tabular-nums" title={String(metric.value)}>{metric.value}</p><p className="text-xs text-muted-foreground">{metric.note}</p></CardContent></Card>)}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">

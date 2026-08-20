@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isBefore, startOfWeek, addDays, getHours, getMinutes } from "date-fns";
-import { motion } from "framer-motion";
 import {
   Calendar, Video, Phone, MapPin, Clock, Plus, Download,
   AlertTriangle, CheckCircle2, CalendarPlus, ExternalLink, Search, User, RefreshCw,
@@ -15,7 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BackgroundGlow } from "@/components/ui/BackgroundGlow";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -497,96 +496,15 @@ export default function CalendarPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      {/* Premium Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-md border border-primary/20 bg-white dark:bg-card p-6 "
-      >
-        <BackgroundGlow accent="blue" intensity="subtle" />
-        <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary/20">
-              <Calendar className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Calendar</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {todayCount > 0 ? `${todayCount} interview${todayCount > 1 ? "s" : ""} today` : "No interviews today"}
-                {overdueCount > 0 && <span className="text-rose-400 ml-2">• {overdueCount} overdue</span>}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {todayCount > 0 && (
-              <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
-                {todayCount} today
-              </Badge>
-            )}
-            {overdueCount > 0 && (
-              <Badge variant="outline" className="text-xs bg-rose-500/10 text-rose-400 border-rose-500/30">
-                {overdueCount} overdue
-              </Badge>
-            )}
-            <Button onClick={handleAutoPopulate} variant="outline" size="sm" disabled={autoPopulating}>
-              <RefreshCw className={cn("h-4 w-4 mr-1", autoPopulating && "animate-spin")} />
-              Auto-fill
-            </Button>
-            <Button onClick={() => setSearchOpen(true)} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Schedule
-            </Button>
-          </div>
-        </div>
-      </motion.div>
+      <PageHeader eyebrow="Workspace" eyebrowIcon={<Calendar className="h-4 w-4" />} title="Calendar" subtitle={todayCount > 0 ? `${todayCount} interview${todayCount > 1 ? "s" : ""} today${overdueCount ? ` · ${overdueCount} overdue` : ""}` : "Interviews, follow-ups, policy dates, and client milestones."} actions={<><Button onClick={handleAutoPopulate} variant="outline" size="sm" disabled={autoPopulating}><RefreshCw className={cn("mr-1 h-4 w-4", autoPopulating && "animate-spin")} />Auto-fill</Button><Button onClick={() => setSearchOpen(true)} size="sm"><Plus className="mr-1 h-4 w-4" />Create</Button></>} />
 
-      {/* Canonical v6 §31 Premium Hero — emerald (production/calendar) */}
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
-        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-        <div className="relative p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-emerald-300">CALENDAR FLOW · LIVE</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">TODAY</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{todayCount}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">{todayCount === 1 ? "interview" : "interviews"}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">THIS WEEK</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{weekEventCount}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">scheduled</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">OPEN SLOTS</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{openSlotsToday}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">today · 9a–5p</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">CALENDLY SYNC</p>
-              <p className={cn(
-                "text-[28px] leading-none font-black tabular-nums",
-                calendlySyncStatus?.live ? "text-emerald-300" : "text-white/60"
-              )}>
-                {calendlySyncStatus?.live ? "LIVE" : "—"}
-              </p>
-              <p className="text-[10px] text-white/40 tabular-nums">
-                {calendlySyncStatus?.lastSync
-                  ? `last ${format(new Date(calendlySyncStatus.lastSync), "MMM d")}`
-                  : "feed quiet — push to sync"}
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[{ label: "Today", value: todayCount, note: "interviews" }, { label: "This week", value: weekEventCount, note: "scheduled" }, { label: "Open slots", value: openSlotsToday, note: "today · 9a–5p" }, { label: "Calendar sync", value: calendlySyncStatus?.live ? "Live" : "—", note: calendlySyncStatus?.lastSync ? `last ${format(new Date(calendlySyncStatus.lastSync), "MMM d")}` : "no recent feed" }].map((metric) => <Card key={metric.label}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{metric.value}</p><p className="text-xs text-muted-foreground">{metric.note}</p></CardContent></Card>)}
       </div>
+
+      <Card><CardContent className="p-4"><p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Event types</p><div className="flex flex-wrap gap-x-5 gap-y-2 text-xs">{[
+        ["bg-blue-500", "Appointment"], ["bg-pink-500", "Birthday"], ["bg-amber-500", "Policy Starting Soon"], ["bg-violet-500", "Beneficiary Check-In"], ["bg-rose-500", "Lapse Follow-Up"], ["bg-emerald-500", "Policy Anniversary"],
+      ].map(([color, label]) => <span key={label} className="flex items-center gap-2"><span className={cn("h-2.5 w-2.5 rounded-full", color)} />{label}</span>)}</div></CardContent></Card>
 
       {/* View Toggle + Filters */}
       <div className="flex items-center gap-3 flex-wrap">

@@ -7,6 +7,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* AgentCloud parity layer: authenticated applications use restrained radii,
+   hairline borders and flat surfaces. Existing workflow components keep their
+   data and behavior while the old oversized "premium dashboard" decoration is
+   removed across every side application. */
+.agentcloud-parity .apex-content-frame .rounded-3xl {
+  border-radius: 0.625rem !important;
+}
+
+.agentcloud-parity .apex-content-frame [class*="shadow-[0_0_"] {
+  box-shadow: none !important;
+}
+
+.agentcloud-parity .apex-content-frame .page-enter {
+  animation-duration: 120ms;
+}
+
 /* 2026-08-12: controls use the clean UI face, not the display face.
    Syne is a display type — forcing it (at 700) onto every button, nav link,
    badge and label made the whole app read like a wall of marketing headlines

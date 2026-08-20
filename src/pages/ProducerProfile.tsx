@@ -271,44 +271,16 @@ export default function ProducerProfile() {
           </Button>
         }
       />
+      <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label="Producer profile sections">
+        <Button variant="ghost" className="rounded-none border-b-2 border-primary">Personal info</Button>
+        <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/contracting/carriers">Carriers</Link></Button>
+        <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/contracting">Contracts</Link></Button>
+        <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/settings/security">Background</Link></Button>
+        <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/contracting/documents">Documents</Link></Button>
+      </nav>
 
-      {/* PREMIUM GRADIENT HERO · v6 §31 · amber */}
-      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950 text-white shadow-[0_0_48px_-12px_hsl(168_70%_45%/0.25)]">
-        <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-        <div className="relative p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
-              </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">PRODUCER · LIVE</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LICENSE</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{ag?.license_status ?? "—"}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">{ag?.agent_code ?? "—"}</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">STATES</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{(ag?.license_states ?? []).length}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">licensed</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">PREMIUM</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmtUsd(bookRollup.data?.premium ?? 0)}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">{bookRollup.data?.policies ?? 0} policies written</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">EST. EARNINGS</p>
-              <p className="text-[28px] leading-none font-black tabular-nums text-white">{fmtUsd(bookRollup.data?.estEarnings ?? 0)}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">contract estimate</p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[{ label: "License", value: ag?.license_status ?? "—", note: ag?.agent_code ?? "No agent code" }, { label: "States", value: (ag?.license_states ?? []).length, note: "licensed" }, { label: "Premium", value: fmtUsd(bookRollup.data?.premium ?? 0), note: `${bookRollup.data?.policies ?? 0} policies written` }, { label: "Est. earnings", value: fmtUsd(bookRollup.data?.estEarnings ?? 0), note: "contract estimate" }].map((metric) => <Card key={metric.label}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 truncate text-xl font-semibold tabular-nums capitalize">{metric.value}</p><p className="text-xs text-muted-foreground">{metric.note}</p></CardContent></Card>)}
       </div>
 
       {/* COURSE ACCESS / TRAINING · audit: every applicant with licensed_at IS NOT NULL gets course access */}
@@ -537,15 +509,15 @@ export default function ProducerProfile() {
                   <div className="border-t border-border/40 pt-2 mt-2 space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Policies</span>
-                      <span className="tabular-nums font-bold">{ag.total_policies ?? 0}</span>
+                      <span className="tabular-nums font-bold">{bookRollup.data?.policies ?? 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Total Premium</span>
-                      <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{fmtUsd(ag.total_premium)}</span>
+                      <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{fmtUsd(bookRollup.data?.premium ?? 0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Total Earnings</span>
-                      <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{fmtUsd(ag.total_earnings)}</span>
+                      <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{fmtUsd(bookRollup.data?.estEarnings ?? 0)}</span>
                     </div>
                   </div>
                   {ag.performance_tier && (

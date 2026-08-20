@@ -1,8 +1,43 @@
 import { z } from "zod";
 
+import { resolveBrand } from "@/config/brand";
 import { normalizePhoneForDial } from "@/lib/phone";
 
+const brand = resolveBrand();
+
 export type ApexJourneyPath = "licensed" | "unlicensed";
+
+export type RecruitMilestoneTone = "complete" | "progress" | "pending" | "failed" | "ready" | "muted";
+
+export interface RecruitMilestoneStatus {
+  label: string;
+  tone: RecruitMilestoneTone;
+}
+
+export interface RecruitLifecycleInput {
+  path: ApexJourneyPath;
+  licenseStatus: string | null | undefined;
+  licenseProgress: string | null | undefined;
+  startedTraining: boolean | null | undefined;
+  completedSteps: Iterable<string>;
+  lastProgressAt: string;
+  now?: Date;
+}
+
+export interface RecruitLifecycleSnapshot {
+  percentComplete: number;
+  welcome: RecruitMilestoneStatus;
+  preLicensing: RecruitMilestoneStatus;
+  examSchedule: RecruitMilestoneStatus;
+  examResult: RecruitMilestoneStatus;
+  license: RecruitMilestoneStatus;
+  apexTraining: RecruitMilestoneStatus;
+  certification: RecruitMilestoneStatus;
+  launchReady: RecruitMilestoneStatus;
+  firstSale: RecruitMilestoneStatus;
+  nextAction: string;
+  risk: RecruitMilestoneStatus;
+}
 
 export interface ApexJourneyStep {
   key: string;
@@ -38,9 +73,15 @@ const SHARED_ACTIVATION_STEPS: ApexJourneyStep[] = [
   },
   {
     key: "training",
-    label: "Training",
+    label: `${brand.platformName} Training`,
     description: "Complete core product, process, and sales preparation.",
     successCondition: "Training owner confirms completion",
+  },
+  {
+    key: "certification",
+    label: "Certification",
+    description: `Pass the required ${brand.platformName} knowledge and readiness check.`,
+    successCondition: "Certification result is recorded",
   },
   {
     key: "launch_ready",
@@ -157,6 +198,119 @@ export const APEX_30_60_90_STEPS: ApexJourneyStep[] = [
     successCondition: "Production routine is repeatable",
   },
 ];
+
+const LICENSE_PROGRESS_ORDER = [
+  "unlicensed",
+  "course_purchased",
+  "finished_course",
+  "test_scheduled",
+  "failed_test",
+  "passed_test",
+  "fingerprints_done",
+  "waiting_on_license",
+  "licensed",
+] as const;
+
+function licenseAtOrBeyond(current: string, target: string): boolean {
+  const currentIndex = LICENSE_PROGRESS_ORDER.indexOf(current as (typeof LICENSE_PROGRESS_ORDER)[number]);
+  const targetIndex = LICENSE_PROGRESS_ORDER.indexOf(target as (typeof LICENSE_PROGRESS_ORDER)[number]);
+  return currentIndex >= targetIndex && targetIndex >= 0;
+}
+
+/**
+ * Builds the master-pipeline cells from recorded facts only. Licensing fields
+ * can prove licensing milestones even before a journey ledger exists; post-
+ * license milestones require durable apex_agent_journey_steps receipts.
+ */
+export function buildRecruitLifecycleSnapshot(input: RecruitLifecycleInput): RecruitLifecycleSnapshot {
+  const completed = new Set(input.completedSteps);
+  const licenseProgress = (input.licenseProgress ?? "unlicensed").toLowerCase();
+  const isLicensed = input.licenseStatus === "licensed" || licenseProgress === "licensed";
+  const licensedPath = input.path === "licensed";
+
+  const complete = (label = "Complete"): RecruitMilestoneStatus => ({ label, tone: "complete" });
+  const pending = (label = "Not started"): RecruitMilestoneStatus => ({ label, tone: "pending" });
+  const muted = (label: string): RecruitMilestoneStatus => ({ label, tone: "muted" });
+
+  const welcome = completed.has("welcome") ? complete() : pending();
+  const preLicensing: RecruitMilestoneStatus = licensedPath
+    ? muted("Not required")
+    : licenseAtOrBeyond(licenseProgress, "finished_course")
+      ? complete()
+      : licenseProgress === "course_purchased"
+        ? { label: "In progress", tone: "progress" }
+        : pending();
+  const examSchedule: RecruitMilestoneStatus = licensedPath
+    ? muted("Not required")
+    : licenseAtOrBeyond(licenseProgress, "test_scheduled")
+      ? complete("Scheduled")
+      : pending("Not scheduled");
+  const examResult: RecruitMilestoneStatus = licensedPath
+    ? muted("Not required")
+    : licenseProgress === "failed_test"
+      ? { label: "Failed · retest", tone: "failed" }
+      : licenseAtOrBeyond(licenseProgress, "passed_test")
+        ? complete("Passed")
+        : pending("Pending");
+  const license: RecruitMilestoneStatus = isLicensed
+    ? complete("Verified")
+    : licenseProgress === "waiting_on_license"
+      ? { label: "Pending", tone: "progress" }
+      : pending("Not yet");
+  const apexTraining: RecruitMilestoneStatus = completed.has("training")
+    ? complete()
+    : input.startedTraining
+      ? { label: "In progress", tone: "progress" }
+      : pending();
+  const certification = completed.has("certification") ? complete("Passed") : pending();
+  const launchReady: RecruitMilestoneStatus = completed.has("launch_ready") ? { label: "Ready", tone: "ready" } : pending("No");
+  const firstSale = completed.has("first_sale") ? complete("Yes") : pending("No");
+
+  const inferredComplete = (key: string): boolean => {
+    if (completed.has(key)) return true;
+    if (licensedPath && ["course_active", "exam_ready", "exam_scheduled", "exam_passed", "licensed"].includes(key)) return true;
+    if (key === "course_active") return licenseAtOrBeyond(licenseProgress, "course_purchased");
+    if (key === "exam_ready") return licenseAtOrBeyond(licenseProgress, "finished_course");
+    if (key === "exam_scheduled") return licenseAtOrBeyond(licenseProgress, "test_scheduled");
+    if (key === "exam_passed") return licenseAtOrBeyond(licenseProgress, "passed_test") && licenseProgress !== "failed_test";
+    if (key === "licensed") return isLicensed;
+    return false;
+  };
+  const nextStep = APEX_JOURNEY_STEPS[input.path].find((step) => !inferredComplete(step.key));
+
+  const applicable = licensedPath
+    ? [welcome, license, apexTraining, certification, launchReady, firstSale]
+    : [welcome, preLicensing, examSchedule, examResult, license, apexTraining, certification, launchReady, firstSale];
+  const completedCount = applicable.filter((status) => ["complete", "ready"].includes(status.tone)).length;
+  const percentComplete = Math.round((completedCount / applicable.length) * 100);
+
+  const now = input.now ?? new Date();
+  const lastProgress = new Date(input.lastProgressAt);
+  const elapsedMs = now.getTime() - lastProgress.getTime();
+  const daysStalled = Number.isFinite(elapsedMs) ? Math.max(0, Math.floor(elapsedMs / 86_400_000)) : 0;
+  const risk: RecruitMilestoneStatus = firstSale.tone === "complete"
+    ? { label: "Green · launched", tone: "complete" }
+    : daysStalled >= 14
+      ? { label: `Red · ${daysStalled}d`, tone: "failed" }
+      : daysStalled >= 7
+        ? { label: `Yellow · ${daysStalled}d`, tone: "progress" }
+        : { label: `Green · ${daysStalled}d`, tone: "complete" };
+
+  return {
+    percentComplete,
+    welcome,
+    preLicensing,
+    examSchedule,
+    examResult,
+    license,
+    apexTraining,
+    certification,
+    launchReady,
+    firstSale,
+    nextAction: nextStep?.label ?? "Coach consistent production",
+    risk,
+  };
+}
 
 function hasControlCharacter(value: string): boolean {
   return [...value].some((character) => {

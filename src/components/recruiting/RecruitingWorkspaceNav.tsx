@@ -1,13 +1,17 @@
 import { Link, useLocation } from "react-router-dom";
-import { CalendarClock, RotateCcw, UserCheck, Users } from "lucide-react";
+import { BookOpenCheck, CalendarClock, RotateCcw, UserCheck, Users } from "lucide-react";
 
+import { resolveBrand } from "@/config/brand";
 import { cn } from "@/lib/utils";
+
+const trainingLabel = `${resolveBrand().platformName} Training`;
 
 const WORKSPACE_VIEWS = [
   { label: "Applicants", href: "/dashboard/recruiting", icon: Users, exact: true },
   { label: "Interviews", href: "/dashboard/recruiting/interviews", icon: CalendarClock },
   { label: "Follow-ups", href: "/dashboard/recruiting/follow-ups", icon: RotateCcw },
   { label: "Hires", href: "/dashboard/recruiting/hires?status=hired", icon: UserCheck },
+  { label: trainingLabel, href: "/dashboard/recruiting/training", icon: BookOpenCheck },
 ] as const;
 
 /** One URL-addressable recruiting journey; no second product or sidebar island. */

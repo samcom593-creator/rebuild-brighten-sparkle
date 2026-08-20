@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isDialablePhone,
+  googleVoiceAccountChooserHref,
   normalizePhoneForDial,
   phoneHref,
   smsHref,
@@ -32,8 +33,16 @@ describe("phone helpers", () => {
   });
 
   it("builds normalized call and text links on desktop", () => {
-    expect(phoneHref("(469) 767-6068")).toBe("https://voice.google.com/u/0/calls?a=nc,%2B14697676068");
-    expect(smsHref("(469) 767-6068")).toBe("https://voice.google.com/u/0/messages?itemId=t.%2B14697676068");
+    const call = decodeURIComponent(phoneHref("(469) 767-6068")!);
+    const text = decodeURIComponent(smsHref("(469) 767-6068")!);
+    expect(call).toContain("accounts.google.com/AccountChooser?continue=https://voice.google.com/calls?a=nc,%2B14697676068");
+    expect(text).toContain("accounts.google.com/AccountChooser?continue=https://voice.google.com/messages?itemId=t.%2B14697676068");
+  });
+
+  it("provides an account-switch recovery link for ineligible Voice accounts", () => {
+    const href = googleVoiceAccountChooserHref();
+    expect(href).toContain("accounts.google.com/AccountChooser");
+    expect(decodeURIComponent(href)).toContain("continue=https://voice.google.com/");
   });
 
   it("builds tel and sms links on touch devices", () => {

@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
+import { GoogleVoiceReadinessCard } from "@/components/callcenter/GoogleVoiceReadinessCard";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 /**
@@ -182,6 +183,7 @@ export default function VaOpsCommandCenter() {
         title="Work Queues"
         subtitle="Every queue your team owns, live. Tap a card to start working it."
       />
+      <GoogleVoiceReadinessCard />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {cards.map((card) => (
           <QueueCardTile key={card.key} card={card} />

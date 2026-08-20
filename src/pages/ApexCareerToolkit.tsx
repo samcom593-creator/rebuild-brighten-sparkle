@@ -17,9 +17,11 @@ import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { QuickAddAgentDialog } from "@/components/onboarding/QuickAddAgentDialog";
+import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
+import { resolveBrand } from "@/config/brand";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   Select,
@@ -32,10 +34,13 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   APEX_30_60_90_STEPS,
   APEX_JOURNEY_STEPS,
+  buildRecruitLifecycleSnapshot,
   calculateCareerQualification,
   type ApexJourneyPath,
   type ApexJourneyStep,
   type CareerTrack,
+  type RecruitLifecycleSnapshot,
+  type RecruitMilestoneStatus,
 } from "@/lib/apexCareerToolkit";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -51,6 +56,7 @@ interface ToolkitAgent {
   pa_number: string | null;
   license_status: string;
   license_progress: string | null;
+  started_training: boolean | null;
   status: string | null;
   record_type: string;
   created_at: string;
@@ -122,7 +128,9 @@ function inferredPath(agent: ToolkitAgent): ApexJourneyPath {
 }
 
 export default function ApexCareerToolkit() {
-  usePageTitle("Welcome Aboard Toolkit · APEX");
+  const brand = resolveBrand();
+  const trainingLabel = `${brand.platformName} Training`;
+  usePageTitle(`${trainingLabel} ${brand.titleSuffix}`);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [agentSearch, setAgentSearch] = useState("");
@@ -138,7 +146,7 @@ export default function ApexCareerToolkit() {
       const [applicationsResult, toolkitAgentsResult, journeysResult, stepsResult] = await Promise.all([
         toolkitClient
           .from<Omit<ToolkitAgent, "subject_type" | "npn" | "pa_number"> & { nipr_number: string | null }>("applications")
-          .select("id,first_name,last_name,email,phone,nipr_number,license_status,license_progress,status,record_type,created_at")
+          .select("id,first_name,last_name,email,phone,nipr_number,license_status,license_progress,started_training,status,record_type,created_at")
           .in("record_type", ["application"])
           .is("terminated_at", null)
           .order("created_at", { ascending: false })
@@ -174,6 +182,7 @@ export default function ApexCareerToolkit() {
             ...agent,
             subject_type: "toolkit_agent" as const,
             license_progress: null,
+            started_training: false,
             record_type: "manual_agent",
           })),
         ].sort((left, right) => right.created_at.localeCompare(left.created_at)),
@@ -233,6 +242,23 @@ export default function ApexCareerToolkit() {
       return haystack.includes(query);
     }).slice(0, 150);
   }, [agentSearch, agents]);
+
+  const lifecycleRows = useMemo(() => matchingAgents.map((agent) => {
+    const key = subjectKey(agent);
+    const journey = journeysByAgent.get(key);
+    const completedSteps = completedByAgent.get(key) ?? new Set<string>();
+    return {
+      agent,
+      snapshot: buildRecruitLifecycleSnapshot({
+        path: journey?.path ?? inferredPath(agent),
+        licenseStatus: agent.license_status,
+        licenseProgress: agent.license_progress,
+        startedTraining: agent.started_training,
+        completedSteps,
+        lastProgressAt: journey?.updated_at ?? agent.created_at,
+      }),
+    };
+  }), [completedByAgent, journeysByAgent, matchingAgents]);
 
   const path = selectedAgent
     ? journeysByAgent.get(subjectKey(selectedAgent))?.path ?? inferredPath(selectedAgent)
@@ -301,11 +327,12 @@ export default function ApexCareerToolkit() {
 
   return (
     <div className="page-enter mx-auto w-full max-w-7xl space-y-5 px-4 pb-24 sm:px-6">
+      <RecruitingWorkspaceNav />
       <PageHeader
-        eyebrow="Onboarding · Career growth"
+        eyebrow={`Recruiting · ${trainingLabel}`}
         eyebrowIcon={<Route className="h-4 w-4" />}
-        title="Welcome Aboard Toolkit"
-        subtitle="Move each agent through the licensed or unlicensed path, then coach the first 90 days and production progression. Every completed milestone is saved."
+        title={trainingLabel}
+        subtitle={`Move every recruit from licensing through ${trainingLabel}, certification, launch readiness, and first sale. Every completed milestone is saved.`}
         accent="amber"
         actions={(
           <>
@@ -325,6 +352,55 @@ export default function ApexCareerToolkit() {
           <p className="mt-1 text-xs text-muted-foreground">
             {(toolkit.error as Error | null)?.message ?? "The Supabase workflow tables did not respond."}
           </p>
+        </GlassCard>
+      )}
+
+      {!toolkit.isLoading && !toolkit.isError && lifecycleRows.length > 0 && (
+        <GlassCard className="overflow-hidden p-0">
+          <div className="border-b border-border p-4 sm:p-5">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-base font-bold text-foreground">Master recruit pipeline</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  One continuous record from welcome activation through first sale. Select a recruit to update the durable milestones below.
+                </p>
+              </div>
+              <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+                {lifecycleRows.length.toLocaleString()} shown
+              </span>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-[1580px] w-full text-left text-xs">
+              <thead className="bg-muted/45 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="sticky left-0 z-10 min-w-52 border-r border-border bg-muted px-4 py-3">Recruit</th>
+                  <th className="px-3 py-3">Overall</th>
+                  <th className="px-3 py-3">Welcome</th>
+                  <th className="px-3 py-3">Pre-license course</th>
+                  <th className="px-3 py-3">Exam schedule</th>
+                  <th className="px-3 py-3">Exam result</th>
+                  <th className="px-3 py-3">License</th>
+                  <th className="px-3 py-3">{trainingLabel}</th>
+                  <th className="px-3 py-3">Certification</th>
+                  <th className="px-3 py-3">Launch ready</th>
+                  <th className="px-3 py-3">First sale</th>
+                  <th className="min-w-48 px-3 py-3">Next action</th>
+                  <th className="px-3 py-3">Risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lifecycleRows.map(({ agent, snapshot }) => (
+                  <RecruitLifecycleRow
+                    key={subjectKey(agent)}
+                    agent={agent}
+                    snapshot={snapshot}
+                    onSelect={() => selectAgent(subjectKey(agent))}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </GlassCard>
       )}
 
@@ -572,6 +648,51 @@ function PathBadge({ path }: { path: ApexJourneyPath }) {
       {path} path
     </span>
   );
+}
+
+function RecruitLifecycleRow({
+  agent,
+  snapshot,
+  onSelect,
+}: {
+  agent: ToolkitAgent;
+  snapshot: RecruitLifecycleSnapshot;
+  onSelect: () => void;
+}) {
+  return (
+    <tr className="border-t border-border first:border-t-0 hover:bg-muted/20">
+      <td className="sticky left-0 z-[1] border-r border-border bg-card px-4 py-3">
+        <button type="button" onClick={onSelect} className="max-w-48 text-left focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]">
+          <span className="block truncate font-semibold text-foreground">{fullName(agent)}</span>
+          <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">{agent.email}</span>
+        </button>
+      </td>
+      <td className="px-3 py-3 text-sm font-bold tabular-nums text-foreground">{snapshot.percentComplete}%</td>
+      <MilestoneCell status={snapshot.welcome} />
+      <MilestoneCell status={snapshot.preLicensing} />
+      <MilestoneCell status={snapshot.examSchedule} />
+      <MilestoneCell status={snapshot.examResult} />
+      <MilestoneCell status={snapshot.license} />
+      <MilestoneCell status={snapshot.apexTraining} />
+      <MilestoneCell status={snapshot.certification} />
+      <MilestoneCell status={snapshot.launchReady} />
+      <MilestoneCell status={snapshot.firstSale} />
+      <td className="px-3 py-3 font-medium text-foreground">{snapshot.nextAction}</td>
+      <MilestoneCell status={snapshot.risk} />
+    </tr>
+  );
+}
+
+function MilestoneCell({ status }: { status: RecruitMilestoneStatus }) {
+  const tone = {
+    complete: "text-emerald-600 dark:text-emerald-400",
+    progress: "text-amber-600 dark:text-amber-400",
+    pending: "text-muted-foreground",
+    failed: "text-rose-600 dark:text-rose-400",
+    ready: "text-primary",
+    muted: "text-muted-foreground/70",
+  }[status.tone];
+  return <td className={cn("whitespace-nowrap px-3 py-3 font-medium", tone)}>{status.label}</td>;
 }
 
 function JourneyStepButton({

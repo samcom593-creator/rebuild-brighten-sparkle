@@ -457,6 +457,7 @@ const App = () => (
                     <Route path="/dashboard/recruiting/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><Interviews /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/follow-ups" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><InterviewRecovery /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/hires" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardApplicants /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/training" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><ApexCareerToolkit /></ProtectedRoute>} />
                     <Route path="/dashboard/team" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardCRM /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/carriers" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
@@ -540,7 +541,7 @@ const App = () => (
                     <Route path="/admin/licensed-inbox" element={<ProtectedRoute requireAdmin allowRoles={["va_manager", "va"]}><LicensedInbox /></ProtectedRoute>} />
                     {/* Executable Welcome Aboard toolkit: persisted licensed/unlicensed paths,
                         30/60/90-day milestones, and career qualification calculator. */}
-                    <Route path="/admin/apex-toolkit" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><ApexCareerToolkit /></ProtectedRoute>} />
+                    <Route path="/admin/apex-toolkit" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training" />} />
                     {/* 2026-07-05 Sam: unlicensed → licensed recovery queue for assistants. Sorted by cohort proximity to licensed. Tap-to-call. */}
                     <Route path="/admin/recovery-queue" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><RecoveryQueue /></ProtectedRoute>} />
                     {/* 2026-07-05 Sam: full unlicensed roster w/ VA assignment + ghosted-30d+ filter. */}

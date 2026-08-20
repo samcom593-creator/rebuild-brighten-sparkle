@@ -54,6 +54,10 @@ function link(name: string) {
   return screen.queryByRole("link", { name });
 }
 
+function group(name: string) {
+  return screen.queryByRole("button", { name });
+}
+
 function setRoles(roles: Partial<typeof authState>) {
   authState.isAdmin = false;
   authState.isManager = false;
@@ -67,68 +71,77 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
-describe("GlobalSidebar · unified recruiting navigation", () => {
-  it("gives admins one recruiting destination instead of a separate Interviews product", () => {
+describe("GlobalSidebar · AgentCloud application navigation", () => {
+  it("keeps every recruiting application inside one expanded group", () => {
     setRoles({ isAdmin: true });
     renderSidebar();
-    expect(link("Recruiting")?.getAttribute("href")).toBe("/dashboard/recruiting");
-    expect(link("Interviews")).toBeNull();
+    expect(group("Recruiting")).toBeTruthy();
+    expect(link("Interviews")?.getAttribute("href")).toBe("/dashboard/recruiting/interviews");
+    expect(link("APEX Training")?.getAttribute("href")).toBe("/dashboard/recruiting/training");
   });
 
   it.each([
     ["manager", { isManager: true }],
     ["va_manager", { isVaManager: true }],
     ["va", { isVa: true }],
-  ])("shows the unified Recruiting workspace to %s", (_label, roles) => {
+  ])("shows the AgentCloud recruiting applications to %s", (_label, roles) => {
     setRoles(roles as Partial<typeof authState>);
     renderSidebar();
-    expect(link("Recruiting")).toBeTruthy();
-    expect(link("Interviews")).toBeNull();
+    expect(group("Recruiting")).toBeTruthy();
+    expect(link("Interviews")).toBeTruthy();
+    expect(link("APEX Training")).toBeTruthy();
   });
 
-  it("hides Interviews (and the rest of the staff cluster) from plain agents", () => {
+  it("keeps non-admin AgentCloud applications discoverable to plain agents", () => {
     renderSidebar();
-    expect(link("Interviews")).toBeNull();
-    expect(link("Recruiting")).toBeNull();
-    expect(link("Team")).toBeNull();
-    expect(link("Admin")).toBeNull();
-    // Non-staff items still render.
+    expect(group("Recruiting")).toBeTruthy();
+    expect(link("Interviews")).toBeTruthy();
+    expect(link("APEX Training")).toBeTruthy();
     expect(link("Call Center")).toBeTruthy();
-    expect(link("Contracting")).toBeTruthy();
+    expect(group("Contracting")).toBeTruthy();
+    expect(link("Finances")).toBeNull();
   });
 
-  it("keeps the complete ten-destination admin map visible", () => {
+  it("keeps the complete grouped admin map visible", () => {
     setRoles({ isAdmin: true });
     renderSidebar();
-    expect(link("Admin")).toBeTruthy();
-    for (const label of [
-      "Home", "Recruiting", "Call Center", "Team", "Contracting",
-      "Production", "Reports", "Resources", "Community", "Admin",
-    ]) {
+    for (const label of ["Clients", "Recruiting", "Agency", "Contracting", "Tools", "Settings"]) {
+      expect(group(label)).toBeTruthy();
+    }
+    for (const label of ["Home", "Reports", "Finances", "Resources", "Nova", "Producer Profile"]) {
       expect(link(label)).toBeTruthy();
     }
   });
 });
 
 describe("GlobalSidebar · recruiting active-state behavior", () => {
-  const ACTIVE_CLASS = "border-primary";
+  const ACTIVE_GROUP_CLASS = "text-white";
+  const ACTIVE_LINK_CLASS = "bg-[#C9A961]/15";
 
   it.each([
     "/dashboard/recruiting",
     "/dashboard/recruiting/interviews",
     "/dashboard/recruiting/follow-ups",
     "/dashboard/recruiting/hires",
+    "/dashboard/recruiting/training",
   ])("keeps Recruiting active across %s", (pathname) => {
     setRoles({ isAdmin: true });
     renderSidebar(pathname);
-    expect(link("Recruiting")!.className).toContain(ACTIVE_CLASS);
-    expect(link("Home")!.className).not.toContain(ACTIVE_CLASS);
+    expect(group("Recruiting")!.className).toContain(ACTIVE_GROUP_CLASS);
+    expect(link("Home")!.className).not.toContain(ACTIVE_LINK_CLASS);
+  });
+
+  it("marks APEX Training without also marking the pipeline", () => {
+    setRoles({ isAdmin: true });
+    renderSidebar("/dashboard/recruiting/training");
+    expect(link("APEX Training")!.className).toContain(ACTIVE_LINK_CLASS);
+    expect(screen.getAllByRole("link", { name: "Pipeline" }).every((item) => !item.className.includes(ACTIVE_LINK_CLASS))).toBe(true);
   });
 
   it("Home is exact-match only", () => {
     setRoles({ isAdmin: true });
     renderSidebar("/dashboard");
-    expect(link("Home")!.className).toContain(ACTIVE_CLASS);
+    expect(link("Home")!.className).toContain(ACTIVE_LINK_CLASS);
   });
 });
 

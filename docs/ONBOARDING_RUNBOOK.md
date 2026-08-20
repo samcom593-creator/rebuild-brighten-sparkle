@@ -58,6 +58,12 @@ Call / Text / Email buttons. Those now route through Google Voice on desktop
 (they were dead `tel:` links until 2026-08-16, which is why "the buttons don't
 work for her").
 
+If Google shows **Upgrade not available**, open the VA command center and use
+**Switch Google account** in the Google Voice readiness card. APEX cannot
+override Google's account-eligibility decision; the recovery deliberately
+opens Google's chooser instead of leaving the operator trapped on the
+ineligible default Gmail account.
+
 **Queue to work:** `/dashboard/stale-recovery` and the `UNLICENSED RECOVERY` tile
 (990 ghosted 30d+ with no VA owner).
 
@@ -147,7 +153,9 @@ pipeline.
 5. Licensed? → licensing auto-advances them to contracting.
 6. **Manual:** contract them in AgentLink + Ethos. Use `/dashboard/contracting` → Export (Ethos) to paste the row.
 7. **Add Agent** → creates the agent, sends course + Discord invite.
-8. Invite to Skool → they count as an active agent.
+8. `/dashboard/recruiting/training` → complete APEX Training → Certification →
+   Launch Ready → First Sale. Each milestone writes a durable journey receipt.
+9. Invite to Skool → they count as an active agent.
 
 ---
 

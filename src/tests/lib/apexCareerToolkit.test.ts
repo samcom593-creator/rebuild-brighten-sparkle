@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   APEX_JOURNEY_STEPS,
+  buildRecruitLifecycleSnapshot,
   calculateCareerQualification,
   normalizeQuickAddAgent,
   quickAddAgentSchema,
@@ -72,12 +73,50 @@ describe("APEX_JOURNEY_STEPS", () => {
         "agentlink",
         "contracting",
         "training",
+        "certification",
         "launch_ready",
         "first_sale",
         "first_consistent_month",
         "first_leadership_responsibility",
       ]),
     );
+  });
+});
+
+describe("buildRecruitLifecycleSnapshot", () => {
+  it("continues an unlicensed recruit beyond licensing through first sale", () => {
+    const snapshot = buildRecruitLifecycleSnapshot({
+      path: "unlicensed",
+      licenseStatus: "licensed",
+      licenseProgress: "licensed",
+      startedTraining: true,
+      completedSteps: ["welcome", "training", "certification", "launch_ready"],
+      lastProgressAt: "2026-08-19T12:00:00Z",
+      now: new Date("2026-08-20T12:00:00Z"),
+    });
+
+    expect(snapshot.license.label).toBe("Verified");
+    expect(snapshot.apexTraining.label).toBe("Complete");
+    expect(snapshot.certification.label).toBe("Passed");
+    expect(snapshot.launchReady.label).toBe("Ready");
+    expect(snapshot.firstSale.label).toBe("No");
+    expect(snapshot.nextAction).toBe("AgentLink");
+  });
+
+  it("shows failed exams and a truthful stalled-risk state", () => {
+    const snapshot = buildRecruitLifecycleSnapshot({
+      path: "unlicensed",
+      licenseStatus: "pending",
+      licenseProgress: "failed_test",
+      startedTraining: false,
+      completedSteps: ["welcome"],
+      lastProgressAt: "2026-08-01T12:00:00Z",
+      now: new Date("2026-08-20T12:00:00Z"),
+    });
+
+    expect(snapshot.examResult).toEqual({ label: "Failed · retest", tone: "failed" });
+    expect(snapshot.risk).toEqual({ label: "Red · 19d", tone: "failed" });
+    expect(snapshot.percentComplete).toBeLessThan(50);
   });
 });
 

@@ -1977,6 +1977,8 @@ export default function DashboardApplicants() {
                                     >
                                       <a
                                         href={phoneHref(app.phone)!}
+                                        target={phoneHref(app.phone)!.startsWith("https://") ? "_blank" : undefined}
+                                        rel={phoneHref(app.phone)!.startsWith("https://") ? "noopener noreferrer" : undefined}
                                         onClick={() => logContactAttempt(app.id, "call")}
                                       >
                                         <Phone className="h-3.5 w-3.5" />
@@ -1994,6 +1996,8 @@ export default function DashboardApplicants() {
                                     >
                                       <a
                                         href={smsHref(app.phone)!}
+                                        target={smsHref(app.phone)!.startsWith("https://") ? "_blank" : undefined}
+                                        rel={smsHref(app.phone)!.startsWith("https://") ? "noopener noreferrer" : undefined}
                                         onClick={() => logContactAttempt(app.id, "sms")}
                                       >
                                         <MessageCircle className="h-3.5 w-3.5" />

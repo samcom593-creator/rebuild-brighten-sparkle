@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { PromoteApplicantButton } from "@/components/applicants/PromoteApplicantButton";
+import { phoneHref, smsHref } from "@/lib/phone";
 
 type ActorRole = "executive" | "recruiter" | "va";
 type InterviewAction =
@@ -255,8 +256,8 @@ export default function Interviews() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                        {row.phone && <Button asChild size="icon" aria-label={`Call ${row.name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`tel:${row.phone.replace(/[^\d+]/g, "")}`}><Phone className="h-4 w-4" /></a></Button>}
-                        {row.phone && <Button asChild size="icon" variant="outline" aria-label={`Text ${row.name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`sms:${row.phone.replace(/[^\d+]/g, "")}`}><MessageSquare className="h-4 w-4" /></a></Button>}
+                        {phoneHref(row.phone) && <Button asChild size="icon" aria-label={`Call ${row.name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={phoneHref(row.phone)!} target={phoneHref(row.phone)!.startsWith("https://") ? "_blank" : undefined} rel={phoneHref(row.phone)!.startsWith("https://") ? "noopener noreferrer" : undefined}><Phone className="h-4 w-4" /></a></Button>}
+                        {smsHref(row.phone) && <Button asChild size="icon" variant="outline" aria-label={`Text ${row.name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={smsHref(row.phone)!} target={smsHref(row.phone)!.startsWith("https://") ? "_blank" : undefined} rel={smsHref(row.phone)!.startsWith("https://") ? "noopener noreferrer" : undefined}><MessageSquare className="h-4 w-4" /></a></Button>}
                         {row.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${row.name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`mailto:${row.email}`}><Mail className="h-4 w-4" /></a></Button>}
                         {row.stage === "hired" && row.application_id ? (
                           <PromoteApplicantButton

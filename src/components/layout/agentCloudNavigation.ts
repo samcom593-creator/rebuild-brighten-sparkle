@@ -1,7 +1,9 @@
 import type { ElementType } from "react";
+import { resolveBrand } from "@/config/brand";
 import {
   BarChart3,
   BookOpen,
+  BookOpenCheck,
   Building2,
   CalendarDays,
   Cloud,
@@ -42,6 +44,8 @@ export interface AgentCloudNavGroup {
 
 export type AgentCloudNavEntry = AgentCloudNavItem | AgentCloudNavGroup;
 
+const trainingLabel = `${resolveBrand().platformName} Training`;
+
 export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
   { label: "Home", href: "/dashboard", icon: LayoutGrid },
   {
@@ -64,7 +68,8 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
     icon: UserPlus,
     items: [
       { label: "Pipeline", href: "/dashboard/recruiting", icon: FolderKanban },
-      { label: "Interviews", href: "/dashboard/interviews", icon: CalendarDays },
+      { label: "Interviews", href: "/dashboard/recruiting/interviews", icon: CalendarDays },
+      { label: trainingLabel, href: "/dashboard/recruiting/training", icon: BookOpenCheck },
       { label: "Call Center", href: "/dashboard/call-center", icon: Target },
       { label: "Awards", href: "/dashboard/awards", icon: Trophy },
     ],
@@ -129,6 +134,7 @@ export function isAgentCloudGroup(entry: AgentCloudNavEntry): entry is AgentClou
 export function agentCloudPathIsActive(pathname: string, href: string): boolean {
   const target = href.split("?")[0];
   if (target === "/dashboard") return pathname === target;
+  if (target === "/dashboard/recruiting") return pathname === target;
   if (target === "/dashboard/contracting") return pathname === target;
   if (target === "/dashboard/settings") return pathname === target;
   return pathname === target || pathname.startsWith(`${target}/`);

@@ -9,6 +9,7 @@ describe("native recruiting interview contract", () => {
   it("routes every visible interview entry into the recruiting workspace", () => {
     const app = read("src/App.tsx");
     expect(app).toContain('path="/dashboard/recruiting/interviews"');
+    expect(app).toContain('path="/dashboard/recruiting/training"');
     expect(app).toContain('<LegacyWorkspaceRedirect to="/dashboard/recruiting/interviews" />');
     expect(app).toContain('<LegacyWorkspaceRedirect to="/dashboard/recruiting/follow-ups" />');
     expect(read("src/pages/Interviews.tsx")).not.toContain("headhunter-sand.vercel.app");

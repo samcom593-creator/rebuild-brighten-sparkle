@@ -106,7 +106,7 @@ function BadgeIcon({ badge, compact }: { badge: WeeklyBadge; compact?: boolean }
             )} />
             {/* Shimmer effect */}
             <div className="absolute inset-0 rounded-full overflow-hidden">
-              <div className="absolute inset-0 bg-white dark:bg-slate-900 -translate-x-full animate-[shimmer_2s_infinite]" />
+              <div className="absolute inset-0 bg-white dark:bg-card -translate-x-full animate-[shimmer_2s_infinite]" />
             </div>
           </motion.div>
         </TooltipTrigger>
@@ -182,7 +182,7 @@ export function WeeklyBadgesCard({ agentId }: { agentId: string | null }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-md border border-border/50 bg-white dark:bg-slate-900 p-6"
+      className="relative overflow-hidden rounded-md border border-border/50 bg-white dark:bg-card p-6"
     >
       {/* Background decoration */}
       <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/10 " />
@@ -190,7 +190,7 @@ export function WeeklyBadgesCard({ agentId }: { agentId: string | null }) {
       
       <div className="relative">
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white dark:bg-slate-900 shadow-sm shadow-primary/20">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white dark:bg-card shadow-sm shadow-primary/20">
             <Trophy className="h-5 w-5 text-white" />
           </div>
           <div>

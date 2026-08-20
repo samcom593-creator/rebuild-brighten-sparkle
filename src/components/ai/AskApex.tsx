@@ -156,7 +156,7 @@ export function AskApex() {
   if (!open) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 w-[360px] max-w-[calc(100vw-2rem)] h-[480px] max-h-[calc(100vh-2rem)] flex flex-col rounded-md border border-border bg-white dark:bg-slate-900 shadow-xl">
+    <div className="fixed bottom-5 right-5 z-40 w-[360px] max-w-[calc(100vw-2rem)] h-[480px] max-h-[calc(100vh-2rem)] flex flex-col rounded-md border border-border bg-white dark:bg-card shadow-xl">
       <div className="flex items-center justify-between p-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-amber-500" />
@@ -180,7 +180,7 @@ export function AskApex() {
                   key={s}
                   type="button"
                   onClick={() => submit(s)}
-                  className="text-left rounded-md border border-border px-3 py-2 text-12 hover:bg-slate-50 dark:hover:bg-slate-800 transition-base"
+                  className="text-left rounded-md border border-border px-3 py-2 text-12 hover:bg-slate-50 dark:hover:bg-muted transition-base"
                 >
                   {s}
                 </button>
@@ -195,7 +195,7 @@ export function AskApex() {
                 className={`inline-block max-w-[85%] rounded-md px-3 py-2 text-12 ${
                   m.role === "user"
                     ? "bg-primary text-primary-foreground"
-                    : "bg-slate-100 dark:bg-slate-800 text-foreground"
+                    : "bg-slate-100 dark:bg-muted text-foreground"
                 }`}
               >
                 {m.text}

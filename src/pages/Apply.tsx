@@ -132,7 +132,7 @@ function ManagerAvatar({ name, src }: { name: string; src?: string | null }) {
     .map(w => w[0]?.toUpperCase() ?? "")
     .join("");
   return (
-    <span className="h-7 w-7 rounded-full overflow-hidden bg-white dark:bg-slate-900 ring-1 ring-primary/40 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+    <span className="h-7 w-7 rounded-full overflow-hidden bg-white dark:bg-card ring-1 ring-primary/40 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
       {src ? (
         <img src={src} alt={name} className="h-full w-full object-cover" loading="lazy" />
       ) : (
@@ -790,7 +790,7 @@ export default function Apply() {
           Was: live ribbon (40px) + glass-strong header (64px) + (founder
           credit rendered elsewhere). Now: single 56px bar with brand on
           left + live stats inline + Back-to-Home on right. */}
-      <header className="border-b border-border bg-white dark:bg-slate-900">
+      <header className="border-b border-border bg-white dark:bg-card">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
             <Link to="/" className="flex min-h-11 items-center gap-2">

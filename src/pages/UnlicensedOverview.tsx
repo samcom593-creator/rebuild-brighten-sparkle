@@ -62,7 +62,7 @@ export default function UnlicensedOverview() {
           </a>
         </div>
 
-        <p className="mt-3 text-center text-xs text-slate-500">
+        <p className="mt-3 text-center text-xs text-muted-foreground">
           15 minutes. No pressure. Just a straight conversation.
         </p>
       </section>
@@ -71,7 +71,7 @@ export default function UnlicensedOverview() {
         <h2 className="text-xl sm:text-2xl font-bold mb-6 text-white">
           The 4 steps to your first check
         </h2>
-        <p className="text-sm text-slate-400 mb-6 leading-relaxed">
+        <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
           Licensing runs about 4 weeks. First commission typically follows
           inside 30 days after that. Your pace decides the ceiling.
         </p>
@@ -79,7 +79,7 @@ export default function UnlicensedOverview() {
           {steps.map((s) => (
             <li
               key={s.n}
-              className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 sm:p-6"
+              className="rounded-xl border border-border bg-card/60 p-5 sm:p-6"
             >
               <div className="flex items-start gap-4">
                 <span
@@ -116,7 +116,7 @@ export default function UnlicensedOverview() {
           </a>
         </div>
 
-        <p className="mt-10 text-center text-xs text-slate-500">
+        <p className="mt-10 text-center text-xs text-muted-foreground">
           Apex Financial &nbsp;|&nbsp; sam@apex-financial.org
         </p>
       </section>

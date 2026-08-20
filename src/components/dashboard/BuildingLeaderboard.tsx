@@ -246,21 +246,21 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
   const renderRankBadge = (rank: number, isCurrentUser: boolean) => {
     if (rank === 1) {
       return (
-        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-slate-900 shadow-sm shadow-amber-500/30">
+        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-card shadow-sm shadow-amber-500/30">
           <span className="text-xs font-bold text-white">1</span>
         </div>
       );
     }
     if (rank === 2) {
       return (
-        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-slate-900">
+        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-card">
           <span className="text-xs font-bold text-slate-700">2</span>
         </div>
       );
     }
     if (rank === 3) {
       return (
-        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-slate-900">
+        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-white dark:bg-card">
           <span className="text-xs font-bold text-white">3</span>
         </div>
       );

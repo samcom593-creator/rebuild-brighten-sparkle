@@ -302,7 +302,7 @@ export function ManagerInviteLinks() {
                     className={
                       link.is_active
                         ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                        : "bg-gray-500/20 text-gray-400 border-gray-500/30"
+                        : "bg-gray-500/20 text-muted-foreground border-gray-500/30"
                     }
                   >
                     {link.is_active ? "Active" : "Inactive"}

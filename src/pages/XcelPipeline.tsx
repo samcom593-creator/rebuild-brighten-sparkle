@@ -157,7 +157,7 @@ export default function XcelPipeline() {
               .join("");
             return (
               <div key={r.student_email} className="p-4 flex items-start gap-3 hover:bg-muted/30 transition">
-                <div className="h-10 w-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center font-bold text-sm text-white shrink-0">
+                <div className="h-10 w-10 rounded-full bg-white dark:bg-card flex items-center justify-center font-bold text-sm text-white shrink-0">
                   {initials || "?"}
                 </div>
                 <div className="flex-1 min-w-0">

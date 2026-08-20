@@ -107,7 +107,7 @@ export function HookLabModule() {
 
   return (
     <div className="space-y-4">
-      <Card className="p-5 bg-white dark:bg-slate-900 border-amber-500/20">
+      <Card className="p-5 bg-white dark:bg-card border-amber-500/20">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-amber-400/80">Module 03 · the 3 C's gate</p>
@@ -208,7 +208,7 @@ export function HookLabModule() {
                       {h.cw_ideas.cw_pillars.code}
                     </Badge>
                   )}
-                  <Badge variant="outline" className={h.cw_ideas?.audience === "icp" ? "border-emerald-500/40 text-emerald-300" : "border-zinc-600 text-zinc-400"}>
+                  <Badge variant="outline" className={h.cw_ideas?.audience === "icp" ? "border-emerald-500/40 text-emerald-300" : "border-zinc-600 text-muted-foreground"}>
                     {h.cw_ideas?.audience}
                   </Badge>
                   <span className="text-muted-foreground truncate max-w-md" title={h.cw_ideas?.title ?? ""}>
@@ -229,7 +229,7 @@ export function HookLabModule() {
                       key={cfg.key}
                       onClick={() => toggle3C(h, cfg.key as any)}
                       title={cfg.title}
-                      className={`h-7 w-7 rounded text-xs font-mono font-semibold transition-colors border ${on ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50" : "bg-slate-50 dark:bg-zinc-800 text-zinc-500 border-zinc-700 hover:border-zinc-500"}`}
+                      className={`h-7 w-7 rounded text-xs font-mono font-semibold transition-colors border ${on ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50" : "bg-slate-50 dark:bg-muted text-muted-foreground border-border hover:border-zinc-500"}`}
                     >
                       {on ? <Check className="h-3.5 w-3.5 mx-auto" /> : cfg.label}
                     </button>

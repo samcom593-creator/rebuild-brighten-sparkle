@@ -273,7 +273,7 @@ export default function AwardGraphics() {
 
       {/* Generate Panel */}
       <Card className="border-border/40 shadow-lg shadow-black/5 overflow-hidden">
-        <CardHeader className="bg-white dark:bg-slate-900 border-b border-border/30">
+        <CardHeader className="bg-white dark:bg-card border-b border-border/30">
           <CardTitle className="flex items-center gap-2.5 text-lg">
             <div className="h-8 w-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
               <Sparkles className="h-4 w-4 text-amber-500" />
@@ -332,7 +332,7 @@ export default function AwardGraphics() {
             <Button
               onClick={handleGenerate}
               disabled={generateMutation.isPending}
-              className="bg-white dark:bg-slate-900 hover:from-amber-700 hover:to-orange-700 text-white shadow-lg shadow-amber-500/20 transition-all hover:shadow-xl hover:shadow-amber-500/30"
+              className="bg-white dark:bg-card hover:from-amber-700 hover:to-orange-700 text-white shadow-lg shadow-amber-500/20 transition-all hover:shadow-xl hover:shadow-amber-500/30"
             >
               {generateMutation.isPending ? (
                 <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Generating...</>
@@ -393,7 +393,7 @@ export default function AwardGraphics() {
                             <label className="text-xs font-medium">Amount</label>
                             <Input value={editAmount} onChange={e => setEditAmount(e.target.value)} placeholder="$" className="w-28" type="number" />
                           </div>
-                          <Button onClick={handleRegenerateWithOverrides} disabled={generateMutation.isPending} className="bg-white dark:bg-slate-900 hover:from-amber-700 hover:to-orange-700 text-white gap-1.5">
+                          <Button onClick={handleRegenerateWithOverrides} disabled={generateMutation.isPending} className="bg-white dark:bg-card hover:from-amber-700 hover:to-orange-700 text-white gap-1.5">
                             <RefreshCw className="h-4 w-4" />Regenerate
                           </Button>
                         </div>
@@ -550,7 +550,7 @@ export default function AwardGraphics() {
               <img src={fullscreenImage} alt="Award fullscreen" className="max-h-[80vh] w-auto rounded-lg" />
               <div className="flex gap-2">
                 <Button
-                  className="gap-2 bg-slate-900 text-white dark:bg-slate-800"
+                  className="gap-2 bg-card text-white dark:bg-muted"
                   onClick={() => saveAsPng(fullscreenImage, `apex_award_${Date.now()}.png`)}
                 >
                   <Download className="h-4 w-4" />Save to Photos

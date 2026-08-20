@@ -11,9 +11,9 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 export default function LeadsLanding() {
   usePageTitle("APEX Leads & Dialer · Daily Warm Leads");
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900">
+    <div className="min-h-screen bg-white dark:bg-card">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700/50">
+      <nav className="sticky top-0 z-50 backdrop-blur-sm border-b border-slate-200 dark:border-border/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <Link to="/" className="text-2xl font-bold text-foreground">
             APEX FINANCIAL
@@ -29,7 +29,7 @@ export default function LeadsLanding() {
       <section className="relative overflow-hidden pt-20 pb-32 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           {/* Animated background gradient */}
-          <div className="absolute inset-0 bg-white dark:bg-slate-900 " />
+          <div className="absolute inset-0 bg-white dark:bg-card " />
           
           <div className="relative space-y-8 text-center">
             <div className="inline-block">
@@ -47,7 +47,7 @@ export default function LeadsLanding() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
-              <Button asChild size="lg" className="bg-white dark:bg-slate-900 hover:from-teal-600 hover:to-teal-700 text-white border-0">
+              <Button asChild size="lg" className="bg-white dark:bg-card hover:from-teal-600 hover:to-teal-700 text-white border-0">
                 <Link to="/get-licensed" className="gap-2">
                   Get Started <ArrowRight className="h-5 w-5" />
                 </Link>
@@ -64,15 +64,15 @@ export default function LeadsLanding() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-16">
               <div className="space-y-2">
                 <div className="text-3xl font-bold text-teal-400">$10K+</div>
-                <p className="text-slate-400">Monthly pace serious agents can build toward</p>
+                <p className="text-muted-foreground">Monthly pace serious agents can build toward</p>
               </div>
               <div className="space-y-2">
                 <div className="text-3xl font-bold text-blue-400">Warm</div>
-                <p className="text-slate-400">Daily lead flow</p>
+                <p className="text-muted-foreground">Daily lead flow</p>
               </div>
               <div className="space-y-2">
                 <div className="text-3xl font-bold text-teal-400">Scalable</div>
-                <p className="text-slate-400">Coaching, dialer, and recruiting support</p>
+                <p className="text-muted-foreground">Coaching, dialer, and recruiting support</p>
               </div>
             </div>
           </div>
@@ -80,13 +80,13 @@ export default function LeadsLanding() {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-800/50">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-muted/50">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-white mb-4">
               Why APEX Agents Win
             </h2>
-            <p className="text-xl text-slate-400">Everything you need to succeed in one platform</p>
+            <p className="text-xl text-muted-foreground">Everything you need to succeed in one platform</p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
@@ -118,7 +118,7 @@ export default function LeadsLanding() {
             </h2>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-md p-12 border border-slate-600">
+          <div className="bg-white dark:bg-card rounded-md p-12 border border-slate-600">
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 {features.slice(0, 5).map((feature) => (
@@ -126,7 +126,7 @@ export default function LeadsLanding() {
                     <Check className="h-6 w-6 text-teal-400 flex-shrink-0 mt-1" />
                     <div>
                       <h3 className="font-semibold text-white">{feature.title}</h3>
-                      <p className="text-slate-400 text-sm">{feature.desc}</p>
+                      <p className="text-muted-foreground text-sm">{feature.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -137,7 +137,7 @@ export default function LeadsLanding() {
                     <Check className="h-6 w-6 text-blue-400 flex-shrink-0 mt-1" />
                     <div>
                       <h3 className="font-semibold text-white">{feature.title}</h3>
-                      <p className="text-slate-400 text-sm">{feature.desc}</p>
+                      <p className="text-muted-foreground text-sm">{feature.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -148,7 +148,7 @@ export default function LeadsLanding() {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-800/50">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-muted/50">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-white mb-4">
@@ -172,7 +172,7 @@ export default function LeadsLanding() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-900">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white dark:bg-card">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-4xl font-bold text-white mb-6">
             Ready to Build Your First $10K Month?
@@ -180,7 +180,7 @@ export default function LeadsLanding() {
           <p className="text-xl text-slate-600 dark:text-slate-300 mb-8">
             Apply now to join the team and start receiving daily warm leads. Get licensed first if you aren't yet — APEX covers the cost when you finish the course.
           </p>
-          <Button asChild size="lg" className="bg-white dark:bg-slate-900 hover:from-teal-600 hover:to-teal-700 text-white border-0">
+          <Button asChild size="lg" className="bg-white dark:bg-card hover:from-teal-600 hover:to-teal-700 text-white border-0">
             <Link to="/get-licensed" className="gap-2">
               Apply Now <ArrowRight className="h-5 w-5" />
             </Link>
@@ -190,16 +190,16 @@ export default function LeadsLanding() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-700 py-12 px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-900">
+      <footer className="border-t border-slate-200 dark:border-border py-12 px-4 sm:px-6 lg:px-8 bg-white dark:bg-card">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <h3 className="font-bold text-white mb-4">APEX Financial</h3>
-              <p className="text-slate-400 text-sm">Warm life insurance leads. Built for agents who dial, not browse.</p>
+              <p className="text-muted-foreground text-sm">Warm life insurance leads. Built for agents who dial, not browse.</p>
             </div>
             <div>
               <h4 className="font-semibold text-white mb-4">Product</h4>
-              <ul className="space-y-2 text-slate-400 text-sm">
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li><Link to="/leads" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Leads</Link></li>
                 <li><Link to="/dashboard" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Dashboard</Link></li>
                 <li><Link to="/dialer" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Dialer</Link></li>
@@ -207,20 +207,20 @@ export default function LeadsLanding() {
             </div>
             <div>
               <h4 className="font-semibold text-white mb-4">Company</h4>
-              <ul className="space-y-2 text-slate-400 text-sm">
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li><Link to="/" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">About</Link></li>
                 <li><Link to="/contact" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Contact</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-white mb-4">Legal</h4>
-              <ul className="space-y-2 text-slate-400 text-sm">
+              <ul className="space-y-2 text-muted-foreground text-sm">
                 <li><a href="https://apex-financial.org/privacy" rel="noopener noreferrer" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Privacy</a></li>
                 <li><a href="https://apex-financial.org/terms" rel="noopener noreferrer" className="inline-flex min-h-6 items-center hover:text-teal-400 transition">Terms</a></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-slate-200 dark:border-slate-700 pt-8 flex justify-between items-center text-slate-400 text-sm">
+          <div className="border-t border-slate-200 dark:border-border pt-8 flex justify-between items-center text-muted-foreground text-sm">
             <p>&copy; 2026 APEX Financial. All rights reserved.</p>
             <p>APEX — Hold the Standard.</p>
           </div>

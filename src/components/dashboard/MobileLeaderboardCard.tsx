@@ -48,21 +48,21 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
   const renderRankBadge = () => {
     if (entry.rank === 1) {
       return (
-        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-slate-900 animate-rank-glow shadow-sm">
+        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-card animate-rank-glow shadow-sm">
           <Trophy className="h-4 w-4 text-white" />
         </div>
       );
     }
     if (entry.rank === 2) {
       return (
-        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-slate-900 shadow">
+        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-card shadow">
           <Medal className="h-4 w-4 text-slate-700" />
         </div>
       );
     }
     if (entry.rank === 3) {
       return (
-        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-slate-900 shadow">
+        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white dark:bg-card shadow">
           <Award className="h-4 w-4 text-white" />
         </div>
       );
@@ -97,7 +97,7 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
         entry.isCurrentUser
           ? "bg-primary/10 border-2 border-primary/30 shadow-md"
           : entry.rank <= 3
-            ? "bg-white dark:bg-slate-900 border border-amber-500/20"
+            ? "bg-white dark:bg-card border border-amber-500/20"
             : "bg-muted/30 border border-border/50",
         "hover:shadow-sm"
       )}
@@ -161,7 +161,7 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
           <div className={cn(
             "text-lg font-bold",
             entry.rank === 1 && "text-amber-400",
-            entry.rank === 2 && "text-slate-400",
+            entry.rank === 2 && "text-muted-foreground",
             entry.rank === 3 && "text-amber-600",
             entry.rank > 3 && entry.isCurrentUser && "text-primary"
           )}>

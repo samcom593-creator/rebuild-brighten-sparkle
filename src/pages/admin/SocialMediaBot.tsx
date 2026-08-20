@@ -330,7 +330,7 @@ export default function SocialMediaBot() {
                 {k.label}
               </div>
               <div className={`mt-3 text-4xl md:text-5xl font-bold tabular-nums leading-none ${k.accent}`}>{k.value}</div>
-              <div className="mt-2 text-xs text-zinc-400 leading-snug">{k.sub}</div>
+              <div className="mt-2 text-xs text-muted-foreground leading-snug">{k.sub}</div>
             </GlassCard>
           </motion.div>
         ))}
@@ -344,7 +344,7 @@ export default function SocialMediaBot() {
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Target className="h-5 w-5 text-amber-300" /> 3 Public Goals
               </h3>
-              <span className="text-xs text-zinc-500">Brand Bible Ch 10</span>
+              <span className="text-xs text-muted-foreground">Brand Bible Ch 10</span>
             </div>
             <div className="space-y-5">
               {(data.goals ?? []).map((g) => {
@@ -366,16 +366,16 @@ export default function SocialMediaBot() {
                       <span className="font-semibold text-sm md:text-base">{g.goal_label}</span>
                       <span className="font-mono text-xs text-zinc-300 shrink-0">
                         <span className="text-amber-300 font-semibold">{fmtNum(liveCurrent ?? 0)}{g.unit === "%" ? "%" : ""}</span>
-                        <span className="text-zinc-500"> / {fmtNum(g.target_value)}{g.unit === "%" ? "%" : ""}</span>
+                        <span className="text-muted-foreground"> / {fmtNum(g.target_value)}{g.unit === "%" ? "%" : ""}</span>
                       </span>
                     </div>
-                    <div className="relative h-3 bg-slate-50 dark:bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="relative h-3 bg-slate-50 dark:bg-muted rounded-full overflow-hidden">
                       <div
                         className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-500 to-amber-200 rounded-full shadow-[0_0_12px_rgba(232,197,71,0.4)]"
                         style={{ width: `${pct.toFixed(1)}%` }}
                       />
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
                       <span>{pct.toFixed(1)}% complete</span>
                       <span>
                         {daysLeft}d left
@@ -396,11 +396,11 @@ export default function SocialMediaBot() {
             <AlertTriangle className="h-5 w-5 text-rose-400" /> Open Blockers
           </h3>
           {(data.blockers ?? []).length === 0 ? (
-            <p className="text-sm text-zinc-500">All clear. Hold the Standard.</p>
+            <p className="text-sm text-muted-foreground">All clear. Hold the Standard.</p>
           ) : (
             <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
               {(data.blockers ?? []).map((b) => (
-                <div key={b.id} className="rounded-md border border-zinc-700/50 bg-white dark:bg-zinc-900/40 p-3">
+                <div key={b.id} className="rounded-md border border-border/50 bg-white dark:bg-card/40 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="text-sm font-medium leading-tight">{b.title}</div>
                     {severityBadge(b.severity)}
@@ -411,7 +411,7 @@ export default function SocialMediaBot() {
                     </div>
                   )}
                   {b.fix_action && (
-                    <div className="mt-2 text-xs text-zinc-400 leading-snug">{b.fix_action}</div>
+                    <div className="mt-2 text-xs text-muted-foreground leading-snug">{b.fix_action}</div>
                   )}
                   <BlockerActions blocker={b} onResolve={() => resolveBlocker(b.id)} />
                 </div>
@@ -456,12 +456,12 @@ export default function SocialMediaBot() {
                   return (
                     <div
                       key={d.id}
-                      className="rounded-md border border-zinc-700/50 bg-white dark:bg-zinc-900/40 p-3 md:p-4 hover:border-amber-500/40 transition-colors cursor-pointer"
+                      className="rounded-md border border-border/50 bg-white dark:bg-card/40 p-3 md:p-4 hover:border-amber-500/40 transition-colors cursor-pointer"
                       onClick={() => setActiveDraft(d)}
                     >
                       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 text-xs text-zinc-400 uppercase tracking-wider">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider">
                             <Icon className={`h-3.5 w-3.5 ${platformColor(d.platform)}`} />
                             <span>{d.platform}</span>
                             {d.slot && <span>· {d.slot}</span>}
@@ -512,9 +512,9 @@ export default function SocialMediaBot() {
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <ScrollText className="h-5 w-5 text-amber-300" /> The 6 Pillars
               </h3>
-              <span className="text-xs text-zinc-500">Brand Bible Ch 8 · click to filter hooks</span>
+              <span className="text-xs text-muted-foreground">Brand Bible Ch 8 · click to filter hooks</span>
             </div>
-            <p className="text-xs text-zinc-500 mb-4">Every post lands under exactly one pillar. Best posts weave 2-3.</p>
+            <p className="text-xs text-muted-foreground mb-4">Every post lands under exactly one pillar. Best posts weave 2-3.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {(pillars ?? []).map((p) => {
                 const active = selectedPillarCode === p.code;
@@ -523,14 +523,14 @@ export default function SocialMediaBot() {
                   <button
                     key={p.id}
                     onClick={() => setSelectedPillarCode(active ? null : p.code)}
-                    className={`text-left rounded-lg border p-3 transition-colors ${active ? "border-amber-500/60 bg-amber-500/10" : "border-zinc-700/50 bg-white dark:bg-zinc-900/40 hover:border-zinc-600"}`}
+                    className={`text-left rounded-lg border p-3 transition-colors ${active ? "border-amber-500/60 bg-amber-500/10" : "border-border/50 bg-white dark:bg-card/40 hover:border-border"}`}
                   >
-                    <div className="flex items-center justify-between text-xs text-zinc-400">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span className="font-mono uppercase tracking-wider">{p.code}</span>
                       <Badge variant="outline">{hookCount} hooks</Badge>
                     </div>
                     <div className="mt-1.5 font-semibold text-sm">{p.name}</div>
-                    {p.description && <div className="mt-1 text-xs text-zinc-500 leading-snug">{p.description}</div>}
+                    {p.description && <div className="mt-1 text-xs text-muted-foreground leading-snug">{p.description}</div>}
                     {p.monetization_tie && (
                       <div className="mt-2 text-[11px] text-emerald-300/80 italic">→ {p.monetization_tie}</div>
                     )}
@@ -545,10 +545,10 @@ export default function SocialMediaBot() {
               <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
                 <Flame className="h-5 w-5 text-rose-400" /> The 15 Dogmas
               </h3>
-              <p className="text-xs text-zinc-500 mb-3">Every piece of content carries exactly one.</p>
+              <p className="text-xs text-muted-foreground mb-3">Every piece of content carries exactly one.</p>
               <ol className="space-y-2 text-sm leading-snug">
                 {(dogmas ?? []).map((d) => (
-                  <li key={d.id} className="flex gap-2.5 border-b border-zinc-800 pb-2 last:border-b-0">
+                  <li key={d.id} className="flex gap-2.5 border-b border-border pb-2 last:border-b-0">
                     <span className="font-mono text-amber-300/70 shrink-0 w-6">{String(d.number).padStart(2, '0')}</span>
                     <span className="text-zinc-200">{d.text}</span>
                   </li>
@@ -561,14 +561,14 @@ export default function SocialMediaBot() {
                 <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
                   <Quote className="h-5 w-5 text-cyan-300" /> 8 Cinematic Moments
                 </h3>
-                <p className="text-xs text-zinc-500 mb-3">Spine of every long-form. Use surgically.</p>
+                <p className="text-xs text-muted-foreground mb-3">Spine of every long-form. Use surgically.</p>
                 <ol className="space-y-1.5 text-sm">
                   {CINEMATIC_MOMENTS.map((m) => (
                     <li key={m.num} className="flex items-baseline gap-2">
                       <span className="font-mono text-amber-300/70 shrink-0 w-5">{m.num}</span>
                       <div>
                         <span className="font-medium">{m.name}</span>
-                        <span className="text-zinc-500 italic"> — {m.note}</span>
+                        <span className="text-muted-foreground italic"> — {m.note}</span>
                       </div>
                     </li>
                   ))}
@@ -579,14 +579,14 @@ export default function SocialMediaBot() {
                 <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
                   <Sparkles className="h-5 w-5 text-amber-300" /> Voice Rules
                 </h3>
-                <p className="text-xs text-zinc-500 mb-3">Hard. Enforced at the output gate.</p>
+                <p className="text-xs text-muted-foreground mb-3">Hard. Enforced at the output gate.</p>
                 <div className="space-y-2.5 text-sm">
                   {VOICE_RULES.map((r) => (
                     <div key={r.do_text} className="border-l-2 border-amber-500/40 pl-3">
                       <div className="text-emerald-300 text-xs uppercase tracking-wider font-mono">DO</div>
                       <div className="mb-1">{r.do_text}</div>
                       <div className="text-rose-400 text-xs uppercase tracking-wider font-mono">DON'T</div>
-                      <div className="text-zinc-400">{r.dont}</div>
+                      <div className="text-muted-foreground">{r.dont}</div>
                     </div>
                   ))}
                 </div>
@@ -602,7 +602,7 @@ export default function SocialMediaBot() {
               </h3>
               <Badge variant="outline">{(cwHooks ?? []).length} in library</Badge>
             </div>
-            <p className="text-xs text-zinc-500 mb-3">
+            <p className="text-xs text-muted-foreground mb-3">
               Why each hook works → linked pillar + dogma + ICP/Nurture audience. Click a pillar above to filter.
               Empty rows mean the hook has been authored but not yet posted; outlier multipliers populate after cw_posts get analytics.
             </p>
@@ -613,9 +613,9 @@ export default function SocialMediaBot() {
                 .map((h) => {
                   const pillar = (pillars ?? []).find(p => p.id === h.cw_ideas?.pillar_id);
                   return (
-                    <div key={h.id} className="rounded-md border border-zinc-700/50 bg-white dark:bg-zinc-900/40 p-3">
+                    <div key={h.id} className="rounded-md border border-border/50 bg-white dark:bg-card/40 p-3">
                       <div className="text-sm leading-snug">"{h.text}"</div>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         {pillar && <Badge variant="outline">{pillar.code} {pillar.name}</Badge>}
                         {h.cw_ideas?.audience && <Badge variant="outline" className={h.cw_ideas.audience === "icp" ? "border-emerald-500/40 text-emerald-300" : ""}>{h.cw_ideas.audience}</Badge>}
                         {h.is_agenda && <Badge variant="outline" className="border-rose-500/40 text-rose-300">agenda</Badge>}
@@ -660,11 +660,11 @@ export default function SocialMediaBot() {
                   {wired ? (
                     <>
                       <div className="text-3xl font-bold">{fmtNum(a.subscribers)}</div>
-                      <div className="text-xs text-zinc-400 mb-3">{a.channel_handle ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground mb-3">{a.channel_handle ?? "—"}</div>
                       <div className="space-y-1.5 text-sm">
                         {a.subscribers_net != null && (
                           <div className="flex items-center justify-between">
-                            <span className="text-zinc-400">Net Δ (28d)</span>
+                            <span className="text-muted-foreground">Net Δ (28d)</span>
                             <span className={a.subscribers_net >= 0 ? "text-emerald-300" : "text-rose-300"}>
                               {a.subscribers_net >= 0 ? "+" : ""}{a.subscribers_net}
                             </span>
@@ -672,13 +672,13 @@ export default function SocialMediaBot() {
                         )}
                         {a.views_window != null && (
                           <div className="flex items-center justify-between">
-                            <span className="text-zinc-400">Views (28d)</span>
+                            <span className="text-muted-foreground">Views (28d)</span>
                             <span>{fmtNum(a.views_window)}</span>
                           </div>
                         )}
                         {a.avg_view_pct != null && (
                           <div className="flex items-center justify-between">
-                            <span className="text-zinc-400">Avg view %</span>
+                            <span className="text-muted-foreground">Avg view %</span>
                             <span className={a.avg_view_pct >= 50 ? "text-emerald-300" : "text-amber-300"}>
                               {a.avg_view_pct.toFixed(1)}%
                             </span>
@@ -686,7 +686,7 @@ export default function SocialMediaBot() {
                         )}
                         {a.days_since_upload != null && (
                           <div className="flex items-center justify-between">
-                            <span className="text-zinc-400">Days since upload</span>
+                            <span className="text-muted-foreground">Days since upload</span>
                             <span className={a.days_since_upload <= 7 ? "text-emerald-300" : "text-rose-300"}>
                               {a.days_since_upload}d
                             </span>
@@ -695,7 +695,7 @@ export default function SocialMediaBot() {
                       </div>
                     </>
                   ) : (
-                    <div className="text-sm text-zinc-500">
+                    <div className="text-sm text-muted-foreground">
                       <div className="mb-2">Handle: {a.channel_handle ?? "—"}</div>
                       <Badge variant="outline" className="mb-2">
                         {a.platform === "snapchat" ? "No public count" : "API not authed"}
@@ -735,13 +735,13 @@ export default function SocialMediaBot() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="text-xs text-zinc-400 uppercase">
+                  <thead className="text-xs text-muted-foreground uppercase">
                     <tr><th className="text-left p-2">When</th><th className="text-left p-2">Platform</th><th className="text-left p-2">Handle</th><th className="text-left p-2">Intent</th><th className="text-left p-2">Status</th><th className="text-right p-2">$</th></tr>
                   </thead>
                   <tbody>
                     {(data.inbound ?? []).map((row) => (
-                      <tr key={row.id} className="border-t border-zinc-800">
-                        <td className="p-2 text-zinc-400">{formatDistanceToNow(parseISO(row.ts), { addSuffix: true })}</td>
+                      <tr key={row.id} className="border-t border-border">
+                        <td className="p-2 text-muted-foreground">{formatDistanceToNow(parseISO(row.ts), { addSuffix: true })}</td>
                         <td className="p-2">{row.platform}</td>
                         <td className="p-2">{row.handle ?? "—"}</td>
                         <td className="p-2"><Badge variant="outline">{row.intent ?? "—"}</Badge></td>
@@ -764,13 +764,13 @@ export default function SocialMediaBot() {
                 <Crown className="h-5 w-5 text-amber-300" /> Weekly Scoreboard
               </h3>
               {data.scoreboard?.week_of && (
-                <span className="text-xs text-zinc-400">
+                <span className="text-xs text-muted-foreground">
                   Week of {format(new Date(data.scoreboard.week_of), "MMM d, yyyy")}
                 </span>
               )}
             </div>
             {data.scoreboard?.scoreboard_md ? (
-              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200 font-mono bg-white dark:bg-zinc-950/50 p-4 rounded border border-zinc-800 max-h-[500px] overflow-y-auto">
+              <pre className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200 font-mono bg-white dark:bg-background/50 p-4 rounded border border-border max-h-[500px] overflow-y-auto">
                 {data.scoreboard.scoreboard_md}
               </pre>
             ) : (
@@ -794,10 +794,10 @@ export default function SocialMediaBot() {
             </div>
             <div className="space-y-2">
               {(data.top_hooks ?? []).map((h) => (
-                <div key={h.id} className="flex items-start gap-3 rounded-md border border-zinc-800 bg-white dark:bg-zinc-900/30 p-3">
+                <div key={h.id} className="flex items-start gap-3 rounded-md border border-border bg-white dark:bg-card/30 p-3">
                   <div className="flex-1">
                     <div className="text-sm leading-snug">{h.hook_text}</div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500">
+                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                       <Badge variant="outline" className="capitalize">{h.category ?? "uncategorized"}</Badge>
                       {h.is_starred && <span className="text-amber-300">★ starred</span>}
                       <span>· {h.uses} uses</span>
@@ -818,14 +818,14 @@ export default function SocialMediaBot() {
             </h3>
             <div className="space-y-2 text-sm">
               {(data.recent_runs ?? []).map((r) => (
-                <div key={r.id} className="flex items-center justify-between gap-2 border-t border-zinc-800 py-2">
+                <div key={r.id} className="flex items-center justify-between gap-2 border-t border-border py-2">
                   <div className="flex items-center gap-2">
                     <Radio className={`h-3.5 w-3.5 ${r.status === "complete" ? "text-emerald-300" : r.status === "failed" ? "text-rose-300" : "text-amber-300"}`} />
-                    <span className="text-zinc-400">{format(parseISO(r.started_at), "MMM d HH:mm")}</span>
+                    <span className="text-muted-foreground">{format(parseISO(r.started_at), "MMM d HH:mm")}</span>
                     <Badge variant="outline" className="capitalize">{r.mode ?? "manual"}</Badge>
                     <Badge variant="outline">{r.status}</Badge>
                   </div>
-                  <div className="text-xs text-zinc-500 truncate max-w-[60%]" title={r.log_excerpt ?? ""}>{r.log_excerpt}</div>
+                  <div className="text-xs text-muted-foreground truncate max-w-[60%]" title={r.log_excerpt ?? ""}>{r.log_excerpt}</div>
                 </div>
               ))}
             </div>
@@ -834,11 +834,11 @@ export default function SocialMediaBot() {
       </Tabs>
 
       {/* Footer + sign-off */}
-      <div className="text-center text-xs text-zinc-600 pt-6 border-t border-zinc-800">
+      <div className="text-center text-xs text-zinc-600 pt-6 border-t border-border">
         Generated {data.generated_at ? format(parseISO(data.generated_at), "MMM d, yyyy HH:mm:ss") : ""} ·
-        Daemon: launchd <code className="text-zinc-500">com.samjames.apex.social-media-bot</code> ·
-        Engine: <code className="text-zinc-500">~/business-ops/social-media-bot/</code>
-        <div className="mt-1 text-zinc-500 italic">Hold the Standard. Average is the disease.</div>
+        Daemon: launchd <code className="text-muted-foreground">com.samjames.apex.social-media-bot</code> ·
+        Engine: <code className="text-muted-foreground">~/business-ops/social-media-bot/</code>
+        <div className="mt-1 text-muted-foreground italic">Hold the Standard. Average is the disease.</div>
       </div>
 
       {/* Draft detail dialog */}
@@ -864,42 +864,42 @@ export default function SocialMediaBot() {
               </div>
               {activeDraft.hook && (
                 <div>
-                  <div className="text-xs uppercase text-zinc-500 mb-1">Hook (3 sec)</div>
+                  <div className="text-xs uppercase text-muted-foreground mb-1">Hook (3 sec)</div>
                   <div className="text-base italic">"{activeDraft.hook}"</div>
                 </div>
               )}
               {activeDraft.body && (
                 <div>
-                  <div className="text-xs uppercase text-zinc-500 mb-1">Body</div>
+                  <div className="text-xs uppercase text-muted-foreground mb-1">Body</div>
                   <div className="whitespace-pre-wrap">{activeDraft.body}</div>
                 </div>
               )}
               {activeDraft.cta && (
                 <div>
-                  <div className="text-xs uppercase text-zinc-500 mb-1">CTA</div>
+                  <div className="text-xs uppercase text-muted-foreground mb-1">CTA</div>
                   <div>{activeDraft.cta}</div>
                 </div>
               )}
               {activeDraft.caption && (
                 <div>
-                  <div className="text-xs uppercase text-zinc-500 mb-1">Caption</div>
+                  <div className="text-xs uppercase text-muted-foreground mb-1">Caption</div>
                   <div className="whitespace-pre-wrap text-zinc-300">{activeDraft.caption}</div>
                 </div>
               )}
               {activeDraft.hashtags && (
                 <div>
-                  <div className="text-xs uppercase text-zinc-500 mb-1">Hashtags</div>
+                  <div className="text-xs uppercase text-muted-foreground mb-1">Hashtags</div>
                   <div className="text-zinc-300">{activeDraft.hashtags}</div>
                 </div>
               )}
               {activeDraft.sound && (
                 <div>
-                  <div className="text-xs uppercase text-zinc-500 mb-1">Sound</div>
+                  <div className="text-xs uppercase text-muted-foreground mb-1">Sound</div>
                   <div className="text-zinc-300">{activeDraft.sound}</div>
                 </div>
               )}
               {activeDraft.file_path && (
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-muted-foreground">
                   Source file: <code>{activeDraft.file_path}</code>
                 </div>
               )}
@@ -966,7 +966,7 @@ function SnapManualInput({ handle }: { handle: string }) {
     return <Button size="sm" variant="outline" className="mt-1 w-full" onClick={() => setOpen(true)}>Set Snap stats</Button>;
   }
   return (
-    <div className="mt-2 space-y-1.5 p-2 rounded bg-white dark:bg-zinc-900/60 border border-zinc-700">
+    <div className="mt-2 space-y-1.5 p-2 rounded bg-white dark:bg-card/60 border border-border">
       <Input className="h-8 text-xs" placeholder="Subscribers" value={subs} onChange={(e) => setSubs(e.target.value)} />
       <Input className="h-8 text-xs" placeholder="Story views (recent)" value={storyViews} onChange={(e) => setStoryViews(e.target.value)} />
       <Input className="h-8 text-xs" placeholder="Spotlight views total" value={spotlightViews} onChange={(e) => setSpotlightViews(e.target.value)} />
@@ -1010,7 +1010,7 @@ function BlockerActions({ blocker, onResolve }: { blocker: Blocker; onResolve: (
             href={a.href}
             target="_blank"
             rel="noopener noreferrer"
-            className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded border transition-colors ${a.primary ? "border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20" : "border-zinc-700 text-zinc-300 hover:bg-slate-50 dark:bg-zinc-800"}`}
+            className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded border transition-colors ${a.primary ? "border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20" : "border-border text-zinc-300 hover:bg-slate-50 dark:bg-muted"}`}
           >
             <ArrowRight className="h-3 w-3" /> {a.label}
           </a>
@@ -1078,11 +1078,11 @@ function SandcastlesAutonomous() {
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <FlaskConical className="h-5 w-5 text-purple-300" /> Sandcastles — Autonomous
             </h3>
-            <p className="text-sm text-zinc-400 mt-1 leading-snug">
+            <p className="text-sm text-muted-foreground mt-1 leading-snug">
               Type a topic. Click Run. Daemon does research, runs Gate A → Translation → Gate B, inserts ideas + hooks into ContentWheel. You do nothing else.
             </p>
           </div>
-          <div className="text-right text-xs text-zinc-500 font-mono shrink-0">
+          <div className="text-right text-xs text-muted-foreground font-mono shrink-0">
             <div>queued <span className="text-amber-300">{counts.queued ?? 0}</span></div>
             <div>running <span className="text-cyan-300">{counts.running ?? 0}</span></div>
             <div>complete <span className="text-emerald-300">{counts.complete ?? 0}</span></div>
@@ -1106,11 +1106,11 @@ function SandcastlesAutonomous() {
             <Button onClick={() => runAutonomous(topic, hint)} disabled={!topic.trim()}>
               <FlaskConical className="h-4 w-4 mr-1.5" /> Run Autonomous
             </Button>
-            <span className="text-xs text-zinc-500 self-center">Daemon: <code>com.samjames.apex.sandcastles-worker</code> · every 2 min</span>
+            <span className="text-xs text-muted-foreground self-center">Daemon: <code>com.samjames.apex.sandcastles-worker</code> · every 2 min</span>
           </div>
         </div>
         <div className="mt-4">
-          <div className="text-xs uppercase tracking-wider text-zinc-500 font-mono mb-2">Quick-pick topics (1 click)</div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground font-mono mb-2">Quick-pick topics (1 click)</div>
           <div className="flex flex-wrap gap-2">
             {SUGGESTED_TOPICS.map((t) => (
               <button
@@ -1128,16 +1128,16 @@ function SandcastlesAutonomous() {
       <GlassCard className="p-5">
         <h3 className="text-base font-semibold mb-3">Run history</h3>
         {(queue ?? []).length === 0 ? (
-          <p className="text-sm text-zinc-500">No runs yet. Drop a topic above to kick off the first one.</p>
+          <p className="text-sm text-muted-foreground">No runs yet. Drop a topic above to kick off the first one.</p>
         ) : (
           <div className="space-y-2">
             {(queue ?? []).map((r) => (
-              <div key={r.id} className="rounded border border-zinc-700/50 bg-white dark:bg-zinc-900/40 p-3 text-sm">
+              <div key={r.id} className="rounded border border-border/50 bg-white dark:bg-card/40 p-3 text-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="font-medium leading-snug truncate">{r.topic}</div>
-                    {r.hint && <div className="text-xs text-zinc-500 mt-0.5 italic">hint: {r.hint}</div>}
-                    <div className="text-xs text-zinc-500 mt-1">
+                    {r.hint && <div className="text-xs text-muted-foreground mt-0.5 italic">hint: {r.hint}</div>}
+                    <div className="text-xs text-muted-foreground mt-1">
                       {format(parseISO(r.requested_at), "MMM d HH:mm")}
                       {r.completed_at && ` · finished in ${Math.max(1, Math.round((new Date(r.completed_at).getTime() - new Date(r.requested_at).getTime()) / 1000))}s`}
                     </div>
@@ -1150,7 +1150,7 @@ function SandcastlesAutonomous() {
                       "border-amber-500/40 text-amber-300"
                     }>{r.status}</Badge>
                     {r.status === "complete" && (
-                      <div className="text-xs text-zinc-400 mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         {(r.ideas_inserted ?? 0)} ideas · {(r.hooks_inserted ?? 0)} hooks · {(r.mines_inserted ?? 0)} mines
                       </div>
                     )}

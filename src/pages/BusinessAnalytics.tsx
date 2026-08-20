@@ -797,20 +797,20 @@ function ChallengeTile({ challenge: c }: { challenge: Challenge }) {
     ? <><span className="tabular-nums">{Math.round(current)}</span><span className="text-11 font-normal text-muted-foreground"> / {Math.round(target)} {unit}</span></>
     : <><>{fmtUsd(current, true)}</><span className="text-11 font-normal text-muted-foreground"> / {fmtUsd(target, true)}</span></>;
   return (
-    <Card className={`border ${onTrack ? "border-emerald-500/40" : close ? "border-amber-500/40" : "border-slate-300 dark:border-slate-700"} bg-white dark:bg-slate-900`}>
+    <Card className={`border ${onTrack ? "border-emerald-500/40" : close ? "border-amber-500/40" : "border-slate-300 dark:border-border"} bg-white dark:bg-card`}>
       <CardContent className="p-3.5">
         <div className="flex items-center justify-between mb-1.5">
-          <p className="text-11 uppercase tracking-wider font-bold text-slate-500">{periodLabel} Challenge</p>
-          <span className={`text-11 font-bold tabular-nums ${onTrack ? "text-emerald-600 dark:text-emerald-400" : close ? "text-amber-600 dark:text-amber-400" : "text-slate-500"}`}>{pct}%</span>
+          <p className="text-11 uppercase tracking-wider font-bold text-muted-foreground">{periodLabel} Challenge</p>
+          <span className={`text-11 font-bold tabular-nums ${onTrack ? "text-emerald-600 dark:text-emerald-400" : close ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{pct}%</span>
         </div>
         <p className="text-lg font-bold leading-tight">{headlineMetric}</p>
         <p className="text-11 text-muted-foreground mt-0.5">
           {isQuarterly ? `${Math.round(current)} / ${Math.round(target)} ${unit}` : `${c.current_deals} / ${c.target_deals} deals`} · {goal}
         </p>
-        <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+        <div className="h-1.5 bg-slate-200 dark:bg-muted rounded-full overflow-hidden mt-2">
           <div className={`h-full ${barColor} transition-all`} style={{ width: `${Math.min(100, pct)}%` }} />
         </div>
-        <p className={`text-11 mt-2 ${onTrack ? "text-emerald-700 dark:text-emerald-300" : close ? "text-amber-700 dark:text-amber-300" : "text-slate-600 dark:text-slate-400"} leading-snug`}>
+        <p className={`text-11 mt-2 ${onTrack ? "text-emerald-700 dark:text-emerald-300" : close ? "text-amber-700 dark:text-amber-300" : "text-slate-600 dark:text-muted-foreground"} leading-snug`}>
           {copy}
         </p>
         <p className="text-11 text-muted-foreground tabular-nums mt-1.5 text-right">{timeLabel}</p>
@@ -849,9 +849,9 @@ function Kpi({
   icon: any; label: string; value: string; sub?: string; color?: string; loading?: boolean;
 }) {
   return (
-    <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+    <Card className="bg-white dark:bg-card border-slate-200 dark:border-border">
       <CardContent className="p-4">
-        <div className="flex items-center gap-2 text-11 uppercase tracking-wider font-semibold text-slate-500">
+        <div className="flex items-center gap-2 text-11 uppercase tracking-wider font-semibold text-muted-foreground">
           <Icon className="h-3.5 w-3.5 opacity-60" />
           {label}
         </div>

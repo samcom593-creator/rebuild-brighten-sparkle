@@ -65,7 +65,7 @@ export function EarningsSection() {
           key={selected}
           className="landing-scale-in max-w-4xl mx-auto"
         >
-          <div className="p-8 md:p-12 rounded-md bg-white dark:bg-slate-900 border border-[#1e293b] ">
+          <div className="p-8 md:p-12 rounded-md bg-white dark:bg-card border border-[#1e293b] ">
             <div className="text-center mb-8">
               <p className="text-[#94a3b8] mb-2">{data.description}</p>
               <div className="text-4xl md:text-6xl font-extrabold text-[#e8bb2b] text-glow mb-2 font-display">

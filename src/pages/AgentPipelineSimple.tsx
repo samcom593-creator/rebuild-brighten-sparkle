@@ -28,7 +28,7 @@ const STAGES = [
   { key: "in_training",    label: "In Training",     color: "bg-orange-500/20 text-orange-400 border-orange-500/30", dot: "bg-orange-400" },
   { key: "field_training", label: "Field Training",  color: "bg-slate-500/20 text-foreground border-cyan-500/30",    dot: "bg-cyan-400" },
   { key: "evaluated",      label: "Active",          color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400" },
-  { key: "inactive",       label: "Inactive",        color: "bg-gray-500/20 text-gray-400 border-gray-500/30",    dot: "bg-gray-400" },
+  { key: "inactive",       label: "Inactive",        color: "bg-gray-500/20 text-muted-foreground border-gray-500/30",    dot: "bg-gray-400" },
 ];
 
 const stageMap = Object.fromEntries(STAGES.map(s => [s.key, s]));

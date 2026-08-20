@@ -153,7 +153,7 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
 
   return (
     <GlassCard className="p-4 md:p-6 relative overflow-hidden">
-      <div className="absolute inset-0 bg-white dark:bg-slate-900 pointer-events-none" />
+      <div className="absolute inset-0 bg-white dark:bg-card pointer-events-none" />
       <div className="relative space-y-5">
         <div className="flex items-center justify-between">
           <div>
@@ -227,7 +227,7 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
                       isMe
-                        ? "bg-white dark:bg-slate-900 border border-primary/40 font-semibold"
+                        ? "bg-white dark:bg-card border border-primary/40 font-semibold"
                         : "hover:bg-muted/30",
                     )}
                   >
@@ -249,7 +249,7 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
               })}
               {/* Show agent's position if outside top 10 */}
               {snap.productionRank && snap.productionRank > 10 && (
-                <div className="mt-2 px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-primary/30 text-sm">
+                <div className="mt-2 px-3 py-2 rounded-lg bg-white dark:bg-card border border-primary/30 text-sm">
                   <span className="w-6 inline-block text-center text-xs text-muted-foreground mr-2">
                     {snap.productionRank}.
                   </span>

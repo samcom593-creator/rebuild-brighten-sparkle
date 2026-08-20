@@ -52,7 +52,7 @@ interface AgentInfo {
 const SEVERITY_META: Record<string, { label: string; color: string; icon: any }> = {
   warning: { label: "Warning", color: "bg-amber-500/20 text-amber-400 border-amber-500/30", icon: AlertTriangle },
   critical: { label: "Critical", color: "bg-red-500/20 text-red-400 border-red-500/30", icon: Flame },
-  abandoned: { label: "Abandoned", color: "bg-gray-500/30 text-gray-400 border-gray-500/40", icon: UserX },
+  abandoned: { label: "Abandoned", color: "bg-gray-500/30 text-muted-foreground border-gray-500/40", icon: UserX },
 };
 
 const REASON_LABEL: Record<string, string> = {

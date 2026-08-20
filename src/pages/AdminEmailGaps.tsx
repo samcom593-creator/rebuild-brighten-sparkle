@@ -36,7 +36,7 @@ const STATE_META: Record<string, { label: string; icon: any; pill: string }> = {
   queued:      { label: "Queued",   icon: Clock,        pill: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" },
   gap:         { label: "GAP",      icon: AlertCircle,  pill: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20" },
   no_email:    { label: "No email", icon: AlertCircle,  pill: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20" },
-  not_licensed:{ label: "Not licensed", icon: Mail,     pill: "bg-slate-500/10 text-slate-500 border-slate-500/20" },
+  not_licensed:{ label: "Not licensed", icon: Mail,     pill: "bg-slate-500/10 text-muted-foreground border-slate-500/20" },
 };
 
 function fmtTime(iso: string | null): string {

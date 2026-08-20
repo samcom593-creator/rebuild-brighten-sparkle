@@ -183,7 +183,7 @@ export default function UnclaimedLeads() {
           <CardContent className="p-4 flex items-center justify-between gap-4">
             <div className="text-sm">
               <strong>{filtered.length}</strong> visible.
-              <span className="text-slate-400 ml-2">
+              <span className="text-muted-foreground ml-2">
                 Click "Reassign all → Sam" to take ownership of every visible row.
                 Use with care: this rips them from their current assignee.
               </span>
@@ -220,11 +220,11 @@ export default function UnclaimedLeads() {
           {isLoading ? (
             <div className="p-6"><Skeleton className="h-40 w-full" /></div>
           ) : filtered.length === 0 ? (
-            <div className="p-6 text-sm text-slate-400">No matches.</div>
+            <div className="p-6 text-sm text-muted-foreground">No matches.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-white/[0.03] text-slate-400 text-xs">
+                <thead className="bg-white/[0.03] text-muted-foreground text-xs">
                   <tr>
                     <th className="text-left p-3">Applicant</th>
                     <th className="text-left p-3">State</th>
@@ -247,7 +247,7 @@ export default function UnclaimedLeads() {
                           <div className="text-xs text-slate-600 dark:text-slate-300">{row.email ?? "—"} · {row.phone ?? "—"}</div>
                         </td>
                         <td className="p-3">{row.state ?? "—"}</td>
-                        <td className="p-3 text-xs text-slate-400">{row.referral_source ?? "—"}</td>
+                        <td className="p-3 text-xs text-muted-foreground">{row.referral_source ?? "—"}</td>
                         <td className="p-3 tabular-nums">
                           <Badge variant={days >= 7 ? "destructive" : days >= 3 ? "secondary" : "outline"}>{days}d</Badge>
                         </td>
@@ -287,7 +287,7 @@ export default function UnclaimedLeads() {
         </CardContent>
       </Card>
 
-      <div className="text-center text-xs text-slate-400 pt-4 pb-8 italic">
+      <div className="text-center text-xs text-muted-foreground pt-4 pb-8 italic">
         Hold the Standard. Average is the disease.
       </div>
     </div>
@@ -299,7 +299,7 @@ function StatTile({ label, value, color }: { label: string; value: number; color
     <Card>
       <CardContent className="p-4">
         <div className={cn("text-3xl font-bold tabular-nums", color)}>{value}</div>
-        <div className="text-xs text-slate-400 mt-1">{label}</div>
+        <div className="text-xs text-muted-foreground mt-1">{label}</div>
       </CardContent>
     </Card>
   );

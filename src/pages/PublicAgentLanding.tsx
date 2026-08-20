@@ -67,7 +67,7 @@ export default function PublicAgentLanding() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-card flex items-center justify-center">
         <p className="text-amber-400 text-13 animate-pulse">Loading…</p>
       </div>
     );
@@ -75,7 +75,7 @@ export default function PublicAgentLanding() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-card flex items-center justify-center p-6">
         <div className="text-center">
           <Shield className="h-12 w-12 text-amber-400 mx-auto mb-4" />
           <h1 className="text-22 text-white font-bold mb-2">APEX Financial</h1>
@@ -92,7 +92,7 @@ export default function PublicAgentLanding() {
   const avatar = profile.avatar_url || profile.photo_url;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
+    <div className="min-h-screen bg-card text-white">
       {/* Hero */}
       <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-amber-900 px-6 pt-16 pb-12 text-center">
         {avatar ? (

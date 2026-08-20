@@ -41,7 +41,7 @@ const STATUS_STYLES: Record<string, string> = {
   appointment: "bg-violet-500/15 border-violet-500/40 text-violet-300",
   application: "bg-amber-500/15 border-amber-500/40 text-amber-300",
   issued: "bg-green-600/20 border-green-600/50 text-green-300",
-  dead: "bg-slate-500/15 border-slate-500/40 text-slate-400",
+  dead: "bg-slate-500/15 border-slate-500/40 text-muted-foreground",
 };
 
 export default function AdminPolicyLeads() {

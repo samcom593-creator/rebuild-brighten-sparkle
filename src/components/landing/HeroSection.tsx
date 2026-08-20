@@ -78,7 +78,7 @@ function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
             className="absolute inset-0 w-full h-full object-cover"
           />
           <span className="absolute inset-0 bg-white dark:bg-black/30 group-hover:bg-white dark:bg-black/45 transition-colors" />
-          <span className="relative h-20 w-20 rounded-full bg-primary/95 flex items-center justify-center  group-hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-base">
+          <span className="relative h-20 w-20 rounded-full bg-primary/95 flex items-center justify-center  group-hover:bg-slate-50 dark:hover:bg-muted/50 transition-base">
             <Play className="h-10 w-10 text-primary-foreground fill-primary-foreground ml-1" />
           </span>
         </button>
@@ -396,8 +396,8 @@ export function HeroSection() {
                 ))}
               </div>
               {/* Fade edges */}
-              <div className="absolute inset-y-0 left-0 w-12 bg-white dark:bg-slate-900" />
-              <div className="absolute inset-y-0 right-0 w-12 bg-white dark:bg-slate-900" />
+              <div className="absolute inset-y-0 left-0 w-12 bg-white dark:bg-card" />
+              <div className="absolute inset-y-0 right-0 w-12 bg-white dark:bg-card" />
             </div>
             <p className="text-[11px] text-muted-foreground mt-3 font-medium font-display">
               Carrier access varies by market and licensing status

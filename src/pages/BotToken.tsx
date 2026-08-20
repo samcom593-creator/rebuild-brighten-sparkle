@@ -96,7 +96,7 @@ export default function BotToken() {
         </div>
       </div>
 
-      <GlassCard className="w-full max-w-2xl p-8 border-2 border-primary/50 bg-white dark:bg-slate-900 win-glow">
+      <GlassCard className="w-full max-w-2xl p-8 border-2 border-primary/50 bg-white dark:bg-card win-glow">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <KeyRound className="h-5 w-5 text-primary" />

@@ -31,7 +31,7 @@ export function BenefitsSection() {
           {benefits.map((b, i) => (
             <div
               key={b.title}
-              className="reveal group relative rounded-md p-6 bg-white dark:bg-slate-900 border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
+              className="reveal group relative rounded-md p-6 bg-white dark:bg-card border border-[#1e293b] hover:border-[#334155] transition-all duration-300"
               style={{ transitionDelay: `${i * 60}ms` }}
             >
               {/* Green left border accent */}

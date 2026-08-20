@@ -342,21 +342,21 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
   const renderRankBadge = (rank: number, isCurrentUser: boolean) => {
     if (rank === 1) {
       return (
-        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-white dark:bg-slate-900 animate-rank-glow">
+        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-white dark:bg-card animate-rank-glow">
           <span className="text-[10px] font-bold text-white">1</span>
         </div>
       );
     }
     if (rank === 2) {
       return (
-        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-white dark:bg-slate-900">
+        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-white dark:bg-card">
           <span className="text-[10px] font-bold text-slate-700">2</span>
         </div>
       );
     }
     if (rank === 3) {
       return (
-        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-white dark:bg-slate-900">
+        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-white dark:bg-card">
           <span className="text-[10px] font-bold text-white">3</span>
         </div>
       );
@@ -416,7 +416,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                   onClick={() => setLeaderboardMode(mode => mode === "production" ? "building" : "production")}
                   className={cn(
                     "relative px-2 sm:px-3 py-1 rounded-full text-[10px] font-bold transition-all shrink-0",
-                    "bg-white dark:bg-slate-900",
+                    "bg-white dark:bg-card",
                     "text-black shadow-md shadow-amber-500/20",
                     "hover:shadow-amber-500/40 active:scale-95",
                     "border border-amber-300/50"

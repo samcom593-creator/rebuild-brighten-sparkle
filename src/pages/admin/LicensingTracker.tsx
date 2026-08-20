@@ -166,7 +166,7 @@ function StalledTab() {
           <div className="p-6 text-sm text-slate-600 dark:text-slate-300">No stalled students. Either the pipeline is clean or no students have crossed SLA thresholds yet.</div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-white/[0.03] text-slate-400 text-xs">
+            <thead className="bg-white/[0.03] text-muted-foreground text-xs">
               <tr>
                 <th className="text-left p-3">Student</th>
                 <th className="text-left p-3">State</th>
@@ -225,7 +225,7 @@ export default function LicensingTracker() {
         <TabsContent value="stalled" className="mt-4"><StalledTab /></TabsContent>
       </Tabs>
 
-      <div className="text-center text-xs text-slate-400 pt-4 pb-8 italic">Hold the Standard. Average is the disease.</div>
+      <div className="text-center text-xs text-muted-foreground pt-4 pb-8 italic">Hold the Standard. Average is the disease.</div>
     </div>
   );
 }

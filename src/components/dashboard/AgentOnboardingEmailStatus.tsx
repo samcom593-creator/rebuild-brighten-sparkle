@@ -136,7 +136,7 @@ export function AgentOnboardingEmailStatus({ agentId }: Props) {
     label = "No email on profile";
   } else if (state === "not_licensed") {
     icon = <Mail className="h-3.5 w-3.5" />;
-    pillClass = "bg-slate-500/10 text-slate-500 border-slate-500/20";
+    pillClass = "bg-slate-500/10 text-muted-foreground border-slate-500/20";
     label = "Not licensed · no course email";
   }
 

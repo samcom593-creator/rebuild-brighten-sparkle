@@ -49,7 +49,7 @@ export function CalendlyEmbed({ url, className = "" }: CalendlyEmbedProps) {
 
   if (reachable === false) {
     return (
-      <div className={`rounded-md border border-primary/30 bg-white dark:bg-slate-900 p-6 md:p-8 ${className}`}>
+      <div className={`rounded-md border border-primary/30 bg-white dark:bg-card p-6 md:p-8 ${className}`}>
         <div className="text-center mb-6">
           <h3 className="text-2xl font-bold text-white mb-2">Let's Talk</h3>
           <p className="text-sm text-slate-600 dark:text-slate-300">

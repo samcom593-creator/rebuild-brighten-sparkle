@@ -458,7 +458,7 @@ export default function CourseProgress() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-md bg-white dark:bg-slate-900 border border-primary/20">
+            <div className="p-2 rounded-md bg-white dark:bg-card border border-primary/20">
               <GraduationCap className="h-4 w-4 text-primary" />
             </div>
             <div>
@@ -523,7 +523,7 @@ export default function CourseProgress() {
           <button 
             className={cn(
               "p-3 rounded-md border cursor-pointer transition-all hover:shadow-md text-left",
-              "bg-white dark:bg-slate-900 border-blue-500/20",
+              "bg-white dark:bg-card border-blue-500/20",
               filter === "in_progress" && "ring-2 ring-blue-500 shadow-md shadow-blue-500/20"
             )}
             onClick={() => setFilter("in_progress")}
@@ -542,7 +542,7 @@ export default function CourseProgress() {
           <button 
             className={cn(
               "p-3 rounded-md border cursor-pointer transition-all hover:shadow-md text-left",
-              "bg-white dark:bg-slate-900 border-emerald-500/20",
+              "bg-white dark:bg-card border-emerald-500/20",
               filter === "complete" && "ring-2 ring-emerald-500 shadow-md shadow-emerald-500/20"
             )}
             onClick={() => setFilter("complete")}
@@ -561,7 +561,7 @@ export default function CourseProgress() {
           <button 
             className={cn(
               "p-3 rounded-md border cursor-pointer transition-all hover:shadow-md text-left",
-              "bg-white dark:bg-slate-900 border-border",
+              "bg-white dark:bg-card border-border",
               filter === "not_started" && "ring-2 ring-muted-foreground shadow-md"
             )}
             onClick={() => setFilter("not_started")}

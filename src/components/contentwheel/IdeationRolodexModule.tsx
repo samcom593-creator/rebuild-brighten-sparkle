@@ -38,7 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
   testing: "bg-orange-500/20 text-orange-300 border-orange-500/40",
   posted: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
   iterating: "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40",
-  vault: "bg-zinc-600/30 text-zinc-400",
+  vault: "bg-zinc-600/30 text-muted-foreground",
   killed: "bg-rose-700/20 text-rose-300 border-rose-700/40",
 };
 
@@ -104,7 +104,7 @@ export function IdeationRolodexModule() {
 
   return (
     <div className="space-y-4">
-      <Card className="p-5 bg-white dark:bg-slate-900 border-amber-500/20">
+      <Card className="p-5 bg-white dark:bg-card border-amber-500/20">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <p className="text-[10px] uppercase tracking-[0.18em] text-amber-400/80">Module 02 · the BRAIN ideating</p>
@@ -165,7 +165,7 @@ export function IdeationRolodexModule() {
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] mb-2">
                     {idea.cw_pillars && <Badge variant="outline" className="text-amber-300 border-amber-500/40">{idea.cw_pillars.code} {idea.cw_pillars.name}</Badge>}
-                    <Badge variant="outline" className={idea.audience === "icp" ? "border-emerald-500/40 text-emerald-300" : "border-zinc-600 text-zinc-400"}>{idea.audience}</Badge>
+                    <Badge variant="outline" className={idea.audience === "icp" ? "border-emerald-500/40 text-emerald-300" : "border-zinc-600 text-muted-foreground"}>{idea.audience}</Badge>
                     <Badge className={STATUS_COLORS[idea.status] ?? "bg-zinc-700/40 text-zinc-300"}>{idea.status}</Badge>
                     {idea.cw_dogmas && <Badge variant="outline" className="text-rose-300/80 border-rose-500/30">D{String(idea.cw_dogmas.number).padStart(2, "0")}</Badge>}
                     <span className="text-muted-foreground">· {formatDistanceToNow(parseISO(idea.created_at), { addSuffix: true })}</span>

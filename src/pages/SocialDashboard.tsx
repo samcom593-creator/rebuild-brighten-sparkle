@@ -38,10 +38,10 @@ const PLATFORMS = [
   // v24 palette restraint: desaturate platform brand colors. Was 4
   // brand colors (pink/red/yellow/slate) competing on every tile. Now
   // muted slate-400 by default · text-emerald only when Metricool-connected.
-  { key: "instagram", label: "Instagram", icon: Instagram, color: "text-slate-400", handle: "theprincejames" },
-  { key: "tiktok",    label: "TikTok",    icon: Music2,    color: "text-slate-400", handle: "theprincejames" },
-  { key: "youtube",   label: "YouTube",   icon: Youtube,   color: "text-slate-400", handle: "@SamuelJamesHQ" },
-  { key: "snapchat",  label: "Snapchat",  icon: Camera,    color: "text-slate-400", handle: "theprincejames" },
+  { key: "instagram", label: "Instagram", icon: Instagram, color: "text-muted-foreground", handle: "theprincejames" },
+  { key: "tiktok",    label: "TikTok",    icon: Music2,    color: "text-muted-foreground", handle: "theprincejames" },
+  { key: "youtube",   label: "YouTube",   icon: Youtube,   color: "text-muted-foreground", handle: "@SamuelJamesHQ" },
+  { key: "snapchat",  label: "Snapchat",  icon: Camera,    color: "text-muted-foreground", handle: "theprincejames" },
 ] as const;
 
 function fmt(n: number | null | undefined): string {
@@ -96,7 +96,7 @@ export default function SocialDashboard() {
           (was silent failure showing 4 cards with 0/0/0/0 if the query
           400'd or returned []). */}
       {snapshots.isError ? (
-        <Card className="bg-white dark:bg-slate-900 border-rose-500/30">
+        <Card className="bg-white dark:bg-card border-rose-500/30">
           <CardContent className="p-4 text-12 text-rose-700 dark:text-rose-300">
             <span className="font-semibold">Couldn't load social snapshots:</span>{" "}
             {(snapshots.error as any)?.message?.slice(0, 80) ?? "unknown error"}
@@ -113,15 +113,15 @@ export default function SocialDashboard() {
           return (
             <Card
               key={key}
-              className={`bg-white dark:bg-slate-900 border ${
-                connected ? "border-emerald-500/40" : "border-slate-200 dark:border-slate-800"
+              className={`bg-white dark:bg-card border ${
+                connected ? "border-emerald-500/40" : "border-slate-200 dark:border-border"
               }`}
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Icon className={`h-5 w-5 ${color}`} />
-                    <span className="text-12 font-semibold uppercase tracking-wider text-slate-500">{label}</span>
+                    <span className="text-12 font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
                   </div>
                   {connected && (
                     <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-700 dark:text-emerald-300">
@@ -139,7 +139,7 @@ export default function SocialDashboard() {
                     ? fmt(s?.views_7d ?? null)
                     : fmt(s?.followers ?? null)}
                 </p>
-                <p className="text-12 text-slate-500">
+                <p className="text-12 text-muted-foreground">
                   {connected && (s?.reach_7d ?? 0) > 0
                     ? "reach · 30d"
                     : connected && (s?.views_7d ?? 0) > 0
@@ -155,7 +155,7 @@ export default function SocialDashboard() {
                   )}
                 </p>
                 {connected && (s?.posts_total ?? 0) > 0 && (
-                  <p className="text-11 text-slate-500 mt-1">
+                  <p className="text-11 text-muted-foreground mt-1">
                     {s?.posts_total} posts · {fmt(s?.payload?.total_likes ?? null)} likes · {fmt(s?.payload?.total_comments ?? null)} comments
                   </p>
                 )}
@@ -171,7 +171,7 @@ export default function SocialDashboard() {
                   </Badge>
                 )}
                 {!connected && s == null && (
-                  <p className="text-11 text-slate-400 mt-1">No data yet — paste your weekly numbers below.</p>
+                  <p className="text-11 text-muted-foreground mt-1">No data yet — paste your weekly numbers below.</p>
                 )}
               </CardContent>
             </Card>
@@ -263,14 +263,14 @@ function PlatformDetail({
         </div>
       ) : null}
 
-      <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+      <Card className="bg-white dark:bg-card border-slate-200 dark:border-border">
         <CardHeader>
           <CardTitle className="text-16">
             {snapshot ? "Add a fresh snapshot" : `No ${label} data yet`}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-12 text-slate-500">
+          <p className="text-12 text-muted-foreground">
             {platform === "instagram"
               ? "Your IG profile is private, so the auto-pull can't reach it. Open the Insights screen in the Instagram app and paste the numbers here."
               : platform === "tiktok"
@@ -297,13 +297,13 @@ function PlatformDetail({
 
 function Stat({ icon: Icon, label, value, format }: { icon: React.ElementType; label: string; value: number | null | undefined; format?: (n: number | null) => string }) {
   return (
-    <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+    <Card className="bg-white dark:bg-card border-slate-200 dark:border-border">
       <CardContent className="p-4 flex items-center justify-between">
         <div>
-          <p className="text-12 text-slate-500 uppercase tracking-wider">{label}</p>
+          <p className="text-12 text-muted-foreground uppercase tracking-wider">{label}</p>
           <p className="text-20 font-bold tabular-nums mt-1">{format ? format(value ?? null) : fmt(value ?? null)}</p>
         </div>
-        <Icon className="h-5 w-5 text-slate-400" />
+        <Icon className="h-5 w-5 text-muted-foreground" />
       </CardContent>
     </Card>
   );
@@ -312,7 +312,7 @@ function Stat({ icon: Icon, label, value, format }: { icon: React.ElementType; l
 function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div>
-      <Label className="text-12 text-slate-500">{label}</Label>
+      <Label className="text-12 text-muted-foreground">{label}</Label>
       <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? "0"} inputMode="numeric" className="mt-1" />
     </div>
   );

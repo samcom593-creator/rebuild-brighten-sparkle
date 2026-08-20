@@ -135,11 +135,11 @@ export default function Challenges() {
       )}
 
       {isAdmin && (
-        <Card className="bg-slate-50/50 dark:bg-slate-900/50 border-dashed">
+        <Card className="bg-slate-50/50 dark:bg-card/50 border-dashed">
           <CardHeader className="pb-3">
-            <CardTitle className="text-14 text-slate-500">Admin · How the engine works</CardTitle>
+            <CardTitle className="text-14 text-muted-foreground">Admin · How the engine works</CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 text-12 text-slate-500 space-y-1">
+          <CardContent className="pt-0 text-12 text-muted-foreground space-y-1">
             <p>Each challenge has a JSONB criteria block. A nightly cron job evaluates the criteria against agent stats (deals, recruits, monthly rank, etc) and inserts apex_challenge_unlocks rows.</p>
             <p>On unlock: ntfy notification to agent's phone · Telegram message · wallet credit awarded.</p>
             <p>Phase 1 (live): catalog visible. Phase 2 (next): unlock-engine cron.</p>
@@ -156,7 +156,7 @@ function ChallengeCard({ challenge, unlocked }: { challenge: ChallengeRow; unloc
 
   return (
     <Card
-      className={`bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 transition-base ${
+      className={`bg-white dark:bg-card border-slate-200 dark:border-border transition-base ${
         unlocked ? `ring-2 ${tier.ring}` : "opacity-70"
       }`}
     >
@@ -172,7 +172,7 @@ function ChallengeCard({ challenge, unlocked }: { challenge: ChallengeRow; unloc
             </Badge>
           </div>
           {challenge.description && (
-            <p className="text-12 text-slate-500 line-clamp-2">{challenge.description}</p>
+            <p className="text-12 text-muted-foreground line-clamp-2">{challenge.description}</p>
           )}
           <div className="flex items-center gap-2 mt-2 text-11">
             <span className="text-emerald-700 dark:text-emerald-300 font-semibold">

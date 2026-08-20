@@ -2487,7 +2487,7 @@ function AgencyCommandView() {
           v_next_step_funnel_health with per-stage in_stage / stalled / median
           days-in-stage / conversion-to-next %. Worst-conversion stage flagged
           amber as the bottleneck. Data-driven — no invented stages. */}
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 sm:p-5">
+      <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-teal-400" />
@@ -2518,9 +2518,9 @@ function AgencyCommandView() {
               return (
                 <div
                   key={s.stage_key}
-                  className={`rounded-lg border p-3 transition-colors ${isBottleneck ? "border-amber-500/50 bg-amber-500/10" : "border-slate-800 bg-slate-950 hover:bg-slate-800/60"}`}
+                  className={`rounded-lg border p-3 transition-colors ${isBottleneck ? "border-amber-500/50 bg-amber-500/10" : "border-border bg-background hover:bg-muted/60"}`}
                 >
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-slate-500 truncate">{s.display_name}</p>
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground truncate">{s.display_name}</p>
                   <p className={`mt-1 text-2xl font-black tabular-nums ${isBottleneck ? "text-amber-400" : "text-slate-100"}`}>{fmtNum(s.in_stage)}</p>
                   <div className="mt-1 flex items-center gap-1 text-[10px] tabular-nums">
                     {conv !== null && conv !== undefined && (
@@ -2528,7 +2528,7 @@ function AgencyCommandView() {
                     )}
                     {s.stalled > 0 && <span className="text-rose-500">{fmtNum(s.stalled)} stall</span>}
                   </div>
-                  <p className="mt-0.5 text-[10px] text-slate-400 tabular-nums">
+                  <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
                     {median !== null && median !== undefined ? `${median}d median` : "—"}
                   </p>
                 </div>
@@ -2964,7 +2964,7 @@ function AgencyCommandView() {
           Every row: producer, manager, risk type, current ALP, 3-week trend,
           last contact placeholder, Next Best Action, quick actions. Reads
           v_producer_trend_alert. */}
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 sm:p-5">
+      <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <TrendingDown className="h-4 w-4 text-rose-500" />
@@ -2989,7 +2989,7 @@ function AgencyCommandView() {
           <div className="overflow-x-auto">
             <table className="w-full text-12">
               <thead>
-                <tr className="text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-800/60">
+                <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/60">
                   <th className="text-left font-semibold py-2 px-2">Producer</th>
                   <th className="text-left font-semibold py-2 px-2 hidden sm:table-cell">Manager</th>
                   <th className="text-left font-semibold py-2 px-2">Risk</th>
@@ -3019,11 +3019,11 @@ function AgencyCommandView() {
                   const riskLabel = dropped ? "3-week drop" : (r.direction === 'down' ? "Down WoW" : (noAlp ? "No ALP" : "Watch"));
                   const trendMax = Math.max(alp3, alp2, alp1, currentAlp, 1);
                   return (
-                    <tr key={r.producer_id} className="border-b border-slate-800/40 hover:bg-slate-800/60">
+                    <tr key={r.producer_id} className="border-b border-border/40 hover:bg-muted/60">
                       <td className="py-2 px-2">
                         <p className="font-semibold text-slate-100 truncate max-w-[10rem]">{r.display_name ?? "—"}</p>
                       </td>
-                      <td className="py-2 px-2 hidden sm:table-cell text-slate-400 truncate max-w-[8rem]">{r.manager_name}</td>
+                      <td className="py-2 px-2 hidden sm:table-cell text-muted-foreground truncate max-w-[8rem]">{r.manager_name}</td>
                       <td className="py-2 px-2">
                         <span className={`inline-block text-[10px] font-bold rounded-md px-1.5 py-0.5 ring-1 ${badge.className}`}>
                           {riskLabel}
@@ -3043,7 +3043,7 @@ function AgencyCommandView() {
                           ))}
                         </div>
                       </td>
-                      <td className="py-2 px-2 hidden lg:table-cell text-slate-400 truncate max-w-[14rem]">{nba.action}</td>
+                      <td className="py-2 px-2 hidden lg:table-cell text-muted-foreground truncate max-w-[14rem]">{nba.action}</td>
                       <td className="py-2 px-2 text-right">
                         <Button asChild variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]">
                           <Link to={`/dashboard/agents/${r.producer_id}`}>Open</Link>
@@ -3060,7 +3060,7 @@ function AgencyCommandView() {
 
       {/* MP-255 · §7 LeaderboardCard preview — top 5 producers this period.
           Compact rows only; the full leaderboard sits at /leaderboard. */}
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 sm:p-5">
+      <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-amber-400" />
@@ -3071,22 +3071,22 @@ function AgencyCommandView() {
           </Button>
         </div>
         {periodSummary.producers.length === 0 ? (
-          <p className="text-12 text-slate-400">No production in {periodBounds.label.toLowerCase()} yet.</p>
+          <p className="text-12 text-muted-foreground">No production in {periodBounds.label.toLowerCase()} yet.</p>
         ) : (
           <ul className="space-y-1">
             {periodSummary.producers.slice(0, 5).map((a, i) => (
-              <li key={a.agent_id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-800/60">
+              <li key={a.agent_id} className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/60">
                 <span className={`h-6 w-6 rounded-md text-[11px] font-black flex items-center justify-center shrink-0 ${
                   i === 0 ? "bg-amber-500/20 text-amber-400 border border-amber-500/50"
-                    : i === 1 ? "bg-slate-400/20 text-slate-400"
+                    : i === 1 ? "bg-slate-400/20 text-muted-foreground"
                     : i === 2 ? "bg-amber-500/10 text-amber-400"
-                    : "bg-white/5 text-slate-500"
+                    : "bg-white/5 text-muted-foreground"
                 }`}>
                   {i + 1}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-13 font-semibold text-slate-100 truncate">{a.display_name}</p>
-                  <p className="text-[10px] text-slate-500">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
+                  <p className="text-[10px] text-muted-foreground">{a.agent_code ?? "—"} · {fmtNum(a.deals)} deals</p>
                 </div>
                 <span className="text-13 font-bold tabular-nums text-emerald-400">{fmtUsd(a.ap, true)}</span>
               </li>
@@ -3097,7 +3097,7 @@ function AgencyCommandView() {
 
       {/* MP-255 · §8 ManagerAccountabilityTable — team roll-up with placeholders
           for activity columns that require manager_activity_daily. */}
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 sm:p-5">
+      <div className="rounded-lg border border-border bg-card p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-sky-400" />
@@ -3119,7 +3119,7 @@ function AgencyCommandView() {
           <div className="overflow-x-auto">
             <table className="w-full text-12">
               <thead>
-                <tr className="text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-800/60">
+                <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border/60">
                   <th className="text-left font-semibold py-2 px-2">Manager</th>
                   <th className="text-right font-semibold py-2 px-2">Team</th>
                   <th className="text-right font-semibold py-2 px-2 hidden sm:table-cell" title="Requires manager_activity_daily view">Calls</th>
@@ -3135,23 +3135,23 @@ function AgencyCommandView() {
                   const teamAlp = Number(m.team_alp_mtd ?? 0);
                   const atRiskInTeam = riskRows.filter((r) => r.currently_dropping && r.manager_name === (m.manager_name ?? "")).length;
                   return (
-                    <tr key={m.manager_id} className="border-b border-slate-800/40 hover:bg-slate-800/60">
+                    <tr key={m.manager_id} className="border-b border-border/40 hover:bg-muted/60">
                       <td className="py-2 px-2 font-semibold text-slate-100 truncate max-w-[12rem]">{m.manager_name ?? "—"}</td>
-                      <td className="py-2 px-2 text-right tabular-nums text-slate-400">{fmtNum(m.team_size ?? 0)}</td>
-                      <td className="py-2 px-2 text-right tabular-nums text-slate-500 hidden sm:table-cell" title="Requires manager_activity_daily view">—</td>
-                      <td className="py-2 px-2 text-right tabular-nums text-slate-500 hidden sm:table-cell" title="Requires manager_activity_daily view">—</td>
-                      <td className="py-2 px-2 text-right tabular-nums text-slate-500 hidden md:table-cell" title="Requires manager_activity_daily view">—</td>
+                      <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{fmtNum(m.team_size ?? 0)}</td>
+                      <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell" title="Requires manager_activity_daily view">—</td>
+                      <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden sm:table-cell" title="Requires manager_activity_daily view">—</td>
+                      <td className="py-2 px-2 text-right tabular-nums text-muted-foreground hidden md:table-cell" title="Requires manager_activity_daily view">—</td>
                       <td className="py-2 px-2 text-right tabular-nums text-slate-100">{fmtNum(m.producing_team_mtd ?? 0)}</td>
                       <td className="py-2 px-2 text-right font-bold tabular-nums text-emerald-400">{fmtUsd(teamAlp, true)}</td>
                       <td className="py-2 px-2 text-right tabular-nums hidden lg:table-cell">
-                        <span className={atRiskInTeam > 0 ? "text-rose-500 font-bold" : "text-slate-500"}>{fmtNum(atRiskInTeam)}</span>
+                        <span className={atRiskInTeam > 0 ? "text-rose-500 font-bold" : "text-muted-foreground"}>{fmtNum(atRiskInTeam)}</span>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-            <p className="mt-2 text-[10px] text-slate-500">
+            <p className="mt-2 text-[10px] text-muted-foreground">
               Calls / Follow-ups / Licenses-pushed columns require manager_activity_daily view (deferred).
             </p>
           </div>
@@ -3178,10 +3178,10 @@ function AgencyCommandView() {
           "Start Daily Review" CTA in the CommandHeader. Each step surfaces
           the top 3 records + a Handle-now link so Sam can execute in place. */}
       <Sheet open={dailyReviewOpen} onOpenChange={setDailyReviewOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto bg-slate-950 border-l border-slate-700">
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto bg-background border-l border-border">
           <SheetHeader>
             <SheetTitle className="text-slate-100">Daily Review</SheetTitle>
-            <SheetDescription className="text-slate-400">
+            <SheetDescription className="text-muted-foreground">
               7-step walkthrough of today's agency priorities. Handle each in order.
             </SheetDescription>
           </SheetHeader>
@@ -3242,11 +3242,11 @@ function AgencyCommandView() {
                 },
               ];
               return steps.map((step) => (
-                <div key={step.title} className="rounded-lg border border-slate-800 bg-slate-900 p-3">
+                <div key={step.title} className="rounded-lg border border-border bg-card p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-13 font-bold text-slate-100">{step.title}</p>
-                      <p className="text-11 text-slate-400 mt-0.5">{step.metric}</p>
+                      <p className="text-11 text-muted-foreground mt-0.5">{step.metric}</p>
                     </div>
                     <Button asChild variant="ghost" size="sm" className="h-7 text-[10px] text-teal-400">
                       <Link to={step.href} onClick={() => setDailyReviewOpen(false)}>Handle now <ArrowRight className="h-3 w-3 ml-1" /></Link>
@@ -3256,11 +3256,11 @@ function AgencyCommandView() {
                     <ul className="mt-2 space-y-1">
                       {step.bullets.map((b, i) => (
                         // stable-key-allow:daily-review-bullet-static-list
-                        <li key={i} className="text-11 text-slate-400 flex items-start gap-2">
+                        <li key={i} className="text-11 text-muted-foreground flex items-start gap-2">
                           <span className="text-teal-400">·</span>
                           <span className="min-w-0">
                             <span className="font-semibold text-slate-100">{b.label}</span>
-                            {b.sub && <span className="text-slate-500"> — {b.sub}</span>}
+                            {b.sub && <span className="text-muted-foreground"> — {b.sub}</span>}
                           </span>
                         </li>
                       ))}
@@ -3802,7 +3802,7 @@ function StatRowCard({ icon: Icon, label, value, color, onClick }: StatRowCardPr
       >
         {/* v24 audit fix: removed hover:scale-[1.01] Y-translate (banned per v22 §10.5).
             AgentLink uses bg/border shifts only — no size mutations on rows. */}
-        <GlassCard className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-primary/40">
+        <GlassCard className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-muted/50 hover:border-primary/40">
           {inner}
         </GlassCard>
       </button>

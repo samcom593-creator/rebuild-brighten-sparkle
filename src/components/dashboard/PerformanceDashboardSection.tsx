@@ -46,7 +46,7 @@ function FeatureCard({ icon: Icon, title, description, color, onClick, delay = 0
         onClick={onClick}
         className={cn(
           "w-full text-left p-4 rounded-md border transition-all",
-          "hover:bg-slate-50 dark:hover:bg-slate-800/40 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+          "hover:bg-slate-50 dark:hover:bg-muted/40 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
           colorClasses[color]
         )}
       >
@@ -97,7 +97,7 @@ export function PerformanceDashboardSection({
         <div className="relative">
           {/* Header - Larger */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-white dark:bg-slate-900 text-white shadow-sm shadow-primary/25">
+            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-white dark:bg-card text-white shadow-sm shadow-primary/25">
               <Zap className="h-6 w-6" />
             </div>
             <div>

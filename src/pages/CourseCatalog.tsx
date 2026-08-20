@@ -202,7 +202,7 @@ export default function CourseCatalog() {
         animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-md glass-card p-6 md:p-8"
       >
-        <div className="absolute inset-0 bg-white dark:bg-slate-900 pointer-events-none" />
+        <div className="absolute inset-0 bg-white dark:bg-card pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-2">
             <Badge variant="outline" className="border-primary/40 text-primary text-xs" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>

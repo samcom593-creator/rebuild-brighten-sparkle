@@ -82,7 +82,7 @@ export function TeamCommissionsCard() {
   const empty = !isLoading && totals.agents === 0;
 
   return (
-    <Card className="border-border/60 bg-white dark:bg-slate-900">
+    <Card className="border-border/60 bg-white dark:bg-card">
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">

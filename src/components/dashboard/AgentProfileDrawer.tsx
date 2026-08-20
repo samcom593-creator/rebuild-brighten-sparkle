@@ -196,7 +196,7 @@ function fmtDate(iso: string | null | undefined): string {
 function statusBadgeColor(status: string | null | undefined): string {
   switch ((status ?? "").toLowerCase()) {
     case "active":     return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
-    case "inactive":   return "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20";
+    case "inactive":   return "bg-slate-500/10 text-slate-600 dark:text-muted-foreground border-slate-500/20";
     case "terminated": return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
     case "pending":    return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
     default:           return "bg-muted/50 text-muted-foreground border-border";
@@ -711,7 +711,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 pace.pace_verdict === "hit_20k" && "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
                 pace.pace_verdict === "on_pace_20k" && "border-sky-500/40 bg-sky-500/10 text-sky-500",
                 pace.pace_verdict === "below_pace" && "border-amber-500/40 bg-amber-500/10 text-amber-500",
-                pace.pace_verdict === "new_hire_grace" && "border-slate-500/40 bg-slate-500/10 text-slate-400",
+                pace.pace_verdict === "new_hire_grace" && "border-slate-500/40 bg-slate-500/10 text-muted-foreground",
                 pace.pace_verdict === "zero_mtd" && "border-rose-500/40 bg-rose-500/10 text-rose-500",
               )}>
                 <span className="font-semibold tabular-nums">

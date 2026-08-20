@@ -45,8 +45,8 @@ const TIER_META: Record<BuilderRow["builder_tier"], { label: string; tone: strin
   producer: { label: "Producer", tone: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40", icon: TrendingUp },
   producer_light: { label: "Light producer", tone: "bg-emerald-500/10 text-emerald-200 border-emerald-500/30", icon: Activity },
   new_hire: { label: "New hire", tone: "bg-blue-500/15 text-blue-200 border-blue-500/40", icon: Users },
-  dormant: { label: "Dormant", tone: "bg-zinc-500/15 text-zinc-400 border-zinc-500/40", icon: AlertTriangle },
-  unknown: { label: "—", tone: "bg-zinc-500/10 text-zinc-400 border-zinc-500/30", icon: Users },
+  dormant: { label: "Dormant", tone: "bg-zinc-500/15 text-muted-foreground border-zinc-500/40", icon: AlertTriangle },
+  unknown: { label: "—", tone: "bg-zinc-500/10 text-muted-foreground border-zinc-500/30", icon: Users },
 };
 
 function fmtUSD(n: number): string {
@@ -169,7 +169,7 @@ export function BuilderProgressDashboard() {
           <Counter label="Producers" value={summary.producers} tone="text-emerald-300" />
           <Counter label="Active 14d" value={summary.activelyProducing} tone="text-emerald-300" />
           <Counter label="New hires" value={summary.newHires} tone="text-blue-300" />
-          <Counter label="Dormant" value={summary.dormant} tone="text-zinc-400" />
+          <Counter label="Dormant" value={summary.dormant} tone="text-muted-foreground" />
         </div>
       </CardHeader>
 
@@ -201,7 +201,7 @@ export function BuilderProgressDashboard() {
 
 function Counter({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
-    <div className="rounded-md border border-border/40 bg-white dark:bg-zinc-900/40 px-3 py-2">
+    <div className="rounded-md border border-border/40 bg-white dark:bg-card/40 px-3 py-2">
       <div className={cn("text-xl font-bold leading-none", tone)}>{value}</div>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{label}</div>
     </div>
@@ -215,7 +215,7 @@ function BuilderRowItem({ row, muted = false }: { row: BuilderRow; muted?: boole
     <Link
       to={`/admin/agents`}
       className={cn(
-        "flex items-center gap-3 rounded-md border px-3 py-2 hover:bg-white dark:bg-zinc-900/60 transition",
+        "flex items-center gap-3 rounded-md border px-3 py-2 hover:bg-white dark:bg-card/60 transition",
         muted ? "border-border/30 opacity-70" : "border-border/40",
       )}
     >

@@ -40,21 +40,21 @@ export function BookTrendCard() {
   const max = Math.max(...((q.data ?? []).map((r) => Number(r.premium ?? 0))), 1);
 
   return (
-    <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+    <Card className="bg-white dark:bg-card border-slate-200 dark:border-border">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-16 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-emerald-600" />
             Premium by month
           </CardTitle>
-          <span className="text-12 text-slate-500">Last 12 months</span>
+          <span className="text-12 text-muted-foreground">Last 12 months</span>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         {q.isLoading ? (
           <Skeleton className="h-32 w-full" />
         ) : (q.data ?? []).length === 0 ? (
-          <p className="text-12 text-slate-500 py-8 text-center">
+          <p className="text-12 text-muted-foreground py-8 text-center">
             No monthly history yet — view refreshes every 30 min.
           </p>
         ) : (
@@ -74,7 +74,7 @@ export function BookTrendCard() {
                       title={`${format(dt, "MMM yyyy")} · ${row.deals} deals · ${money(row.premium)}`}
                     />
                   </div>
-                  <span className="text-11 text-slate-500">{format(dt, "MMM")}</span>
+                  <span className="text-11 text-muted-foreground">{format(dt, "MMM")}</span>
                 </div>
               );
             })}

@@ -387,7 +387,7 @@ export default function HiringPipeline() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-lg border border-cyan-500/25 bg-white dark:bg-slate-900 shadow-sm"
+        className="rounded-lg border border-cyan-500/25 bg-white dark:bg-card shadow-sm"
       >
         <div className="grid gap-3 p-3 md:grid-cols-[1fr_auto] md:items-center">
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -780,7 +780,7 @@ function ApplicantCard({
     app.ai_score_tier === "A" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
     app.ai_score_tier === "B" ? "bg-sky-500/15 text-sky-400 border-sky-500/30" :
     app.ai_score_tier === "C" ? "bg-amber-500/15 text-amber-400 border-amber-500/30" :
-    app.ai_score_tier === "D" ? "bg-slate-500/15 text-slate-400 border-slate-500/30" : "";
+    app.ai_score_tier === "D" ? "bg-slate-500/15 text-muted-foreground border-slate-500/30" : "";
 
   return (
     <motion.div

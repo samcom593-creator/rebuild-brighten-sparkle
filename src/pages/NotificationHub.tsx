@@ -1501,7 +1501,7 @@ export default function NotificationHub() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-md border border-primary/20 bg-white dark:bg-slate-900 p-6 "
+        className="relative overflow-hidden rounded-md border border-primary/20 bg-white dark:bg-card p-6 "
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

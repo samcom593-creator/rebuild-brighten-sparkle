@@ -52,7 +52,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
   return (
     <section ref={ref} className="py-24 relative overflow-hidden bg-white dark:bg-[#030712]">
       {/* Accent bars */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-white dark:bg-slate-900 opacity-40" />
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-white dark:bg-card opacity-40" />
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="reveal max-w-4xl mx-auto text-center">
@@ -102,7 +102,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
       </div>
 
       {/* Bottom accent bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white dark:bg-slate-900 opacity-40" />
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white dark:bg-card opacity-40" />
     </section>
   );
 });

@@ -206,7 +206,7 @@ export function AttendanceGrid({
                     className={cn(
                       "w-5 h-5 rounded flex items-center justify-center border text-[9px] font-medium transition-all",
                       getStatusClass(record.status, day),
-                      !readOnly && "hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer",
+                      !readOnly && "hover:bg-slate-50 dark:hover:bg-muted/50 cursor-pointer",
                       updating === index && "opacity-50 animate-pulse",
                       isToday && "ring-1 ring-primary ring-offset-1 ring-offset-background"
                     )}

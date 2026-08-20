@@ -20,7 +20,7 @@ export default function Contact() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <GlassCard className="border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/70 p-5">
+          <GlassCard className="border-slate-200 dark:border-border/60 bg-white dark:bg-card/70 p-5">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-teal-500/15 text-teal-300">
               <Calendar className="h-5 w-5" />
             </div>
@@ -33,7 +33,7 @@ export default function Contact() {
             </Button>
           </GlassCard>
 
-          <GlassCard className="border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/70 p-5">
+          <GlassCard className="border-slate-200 dark:border-border/60 bg-white dark:bg-card/70 p-5">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-blue-500/15 text-blue-300">
               <Mail className="h-5 w-5" />
             </div>
@@ -43,13 +43,13 @@ export default function Contact() {
             </p>
             <a
               href="mailto:info@apex-financial.org"
-              className="mt-5 inline-flex w-full items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 text-sm font-medium text-white transition hover:border-teal-400 hover:text-teal-300"
+              className="mt-5 inline-flex w-full items-center justify-center rounded-md border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted px-4 py-2.5 text-sm font-medium text-white transition hover:border-teal-400 hover:text-teal-300"
             >
               info@apex-financial.org
             </a>
           </GlassCard>
 
-          <GlassCard className="border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/70 p-5">
+          <GlassCard className="border-slate-200 dark:border-border/60 bg-white dark:bg-card/70 p-5">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-amber-500/15 text-amber-300">
               <Phone className="h-5 w-5" />
             </div>
@@ -59,16 +59,16 @@ export default function Contact() {
             </p>
             <a
               href="tel:+14697676068"
-              className="mt-5 inline-flex w-full items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 py-2.5 text-sm font-medium text-white transition hover:border-teal-400 hover:text-teal-300"
+              className="mt-5 inline-flex w-full items-center justify-center rounded-md border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted px-4 py-2.5 text-sm font-medium text-white transition hover:border-teal-400 hover:text-teal-300"
             >
               (469) 767-6068
             </a>
           </GlassCard>
         </div>
 
-        <GlassCard className="border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/70 p-6">
+        <GlassCard className="border-slate-200 dark:border-border/60 bg-white dark:bg-card/70 p-6">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 rounded-full bg-slate-50 dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-300">
+            <div className="mt-0.5 rounded-full bg-slate-50 dark:bg-muted p-2 text-slate-600 dark:text-slate-300">
               <MapPin className="h-4 w-4" />
             </div>
             <div>

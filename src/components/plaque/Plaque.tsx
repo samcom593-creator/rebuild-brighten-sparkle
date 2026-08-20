@@ -91,7 +91,7 @@ export function Plaque({
             />
           ) : (
             <div
-              className="relative z-10 rounded-full flex items-center justify-center font-black text-white bg-white dark:bg-slate-900"
+              className="relative z-10 rounded-full flex items-center justify-center font-black text-white bg-white dark:bg-card"
               style={{ width: 560, height: 560, fontSize: 200 }}
             >
               {initials}
@@ -107,7 +107,7 @@ export function Plaque({
           style={{ background: "rgba(12,12,14,0.85)", backdropFilter: "blur(8px)" }}
         >
           <div
-            className="flex items-center justify-center rounded-full text-zinc-400 bg-zinc-700/60"
+            className="flex items-center justify-center rounded-full text-muted-foreground bg-zinc-700/60"
             style={{ width: 72, height: 72 }}
           >
             <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">

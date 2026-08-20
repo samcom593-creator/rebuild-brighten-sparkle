@@ -49,7 +49,7 @@ export function MyRankingChart({ currentAgentId, entries }: MyRankingChartProps)
           className={cn(
             "gap-1.5 text-xs font-semibold",
             "border-primary/30 hover:bg-primary/10 hover:border-primary/50",
-            "bg-white dark:bg-slate-900"
+            "bg-white dark:bg-card"
           )}
         >
           <BarChart3 className="h-3.5 w-3.5 text-primary" />
@@ -81,7 +81,7 @@ export function MyRankingChart({ currentAgentId, entries }: MyRankingChartProps)
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-5 p-4 rounded-md bg-white dark:bg-slate-900 border border-primary/20"
+                className="mb-5 p-4 rounded-md bg-white dark:bg-card border border-primary/20"
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-muted-foreground">Your Position</span>
@@ -90,7 +90,7 @@ export function MyRankingChart({ currentAgentId, entries }: MyRankingChartProps)
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center h-12 w-12 rounded-full bg-white dark:bg-slate-900">
+                  <div className="flex items-center justify-center h-12 w-12 rounded-full bg-white dark:bg-card">
                     <span className="text-xl font-bold text-white">#{currentRank}</span>
                   </div>
                   <div>
@@ -127,9 +127,9 @@ export function MyRankingChart({ currentAgentId, entries }: MyRankingChartProps)
                     {/* Rank */}
                     <div className={cn(
                       "flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold shrink-0",
-                      entry.rank === 1 && "bg-white dark:bg-slate-900 text-white",
-                      entry.rank === 2 && "bg-white dark:bg-slate-900 text-slate-700",
-                      entry.rank === 3 && "bg-white dark:bg-slate-900 text-white",
+                      entry.rank === 1 && "bg-white dark:bg-card text-white",
+                      entry.rank === 2 && "bg-white dark:bg-card text-slate-700",
+                      entry.rank === 3 && "bg-white dark:bg-card text-white",
                       entry.rank > 3 && "bg-muted text-muted-foreground"
                     )}>
                       {entry.rank}
@@ -155,10 +155,10 @@ export function MyRankingChart({ currentAgentId, entries }: MyRankingChartProps)
                         className={cn(
                           "absolute inset-y-0 left-0 rounded-full",
                           isCurrentUser 
-                            ? "bg-white dark:bg-slate-900" 
+                            ? "bg-white dark:bg-card" 
                             : entry.rank <= 3 
-                              ? "bg-white dark:bg-slate-900"
-                              : "bg-white dark:bg-slate-900"
+                              ? "bg-white dark:bg-card"
+                              : "bg-white dark:bg-card"
                         )}
                       />
                     </div>

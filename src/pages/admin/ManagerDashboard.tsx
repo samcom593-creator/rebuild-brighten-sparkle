@@ -96,7 +96,7 @@ function RecruitingTab() {
         <CardContent className="p-0">
           {!pipeline ? <div className="p-6"><Skeleton className="h-40 w-full" /></div> :
             <div className="overflow-x-auto"><table className="w-full text-sm">
-              <thead className="bg-white/[0.03] text-slate-400 text-xs"><tr>
+              <thead className="bg-white/[0.03] text-muted-foreground text-xs"><tr>
                 <th className="text-left p-3">Applicant</th>
                 <th className="text-left p-3">State</th>
                 <th className="text-left p-3">Stage</th>
@@ -247,7 +247,7 @@ function ProductionTab() {
         <CardContent className="p-0">
           {!deals ? <div className="p-6"><Skeleton className="h-40 w-full" /></div> :
             <div className="overflow-x-auto"><table className="w-full text-sm">
-              <thead className="bg-white/[0.03] text-slate-400 text-xs"><tr>
+              <thead className="bg-white/[0.03] text-muted-foreground text-xs"><tr>
                 <th className="text-left p-3">Agent</th>
                 <th className="text-left p-3">Carrier</th>
                 <th className="text-left p-3 tabular-nums">Amount</th>
@@ -276,7 +276,7 @@ function StatTile({ label, value, color }: { label: string; value: number | stri
     <Card>
       <CardContent className="p-4">
         <div className={cn("text-2xl lg:text-3xl font-bold tabular-nums leading-tight", color)}>{value}</div>
-        <div className="text-xs text-slate-400 mt-1">{label}</div>
+        <div className="text-xs text-muted-foreground mt-1">{label}</div>
       </CardContent>
     </Card>
   );
@@ -305,7 +305,7 @@ export default function ManagerDashboard() {
         <TabsContent value="production" className="mt-4"><ProductionTab /></TabsContent>
       </Tabs>
 
-      <div className="text-center text-xs text-slate-400 pt-4 pb-8 italic">Hold the Standard. Average is the disease.</div>
+      <div className="text-center text-xs text-muted-foreground pt-4 pb-8 italic">Hold the Standard. Average is the disease.</div>
     </div>
   );
 }

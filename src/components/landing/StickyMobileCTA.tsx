@@ -35,7 +35,7 @@ export function StickyMobileCTA() {
     //      viewport-fit=cover, so on notched iPhones this bar sat underneath
     //      the home indicator. The app already handles the TOP inset in
     //      SidebarLayout; the bottom inset was never handled anywhere.
-    //   2. The button was `bg-white dark:bg-slate-900 text-primary-foreground`.
+    //   2. The button was `bg-white dark:bg-card text-primary-foreground`.
     //      --primary-foreground is near-black (40 30% 8%) because it is designed
     //      to sit ON the gold --primary fill — on a white surface it was
     //      low-contrast, and on dark:slate-900 it was black-on-near-black, i.e.

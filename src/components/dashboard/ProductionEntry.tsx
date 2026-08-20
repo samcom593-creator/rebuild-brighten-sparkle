@@ -416,7 +416,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="ml-auto px-3 py-1.5 bg-white dark:bg-slate-900 border border-primary/30 rounded-md font-bold text-primary text-sm shadow-sm shadow-primary/10 shrink-0"
+                    className="ml-auto px-3 py-1.5 bg-white dark:bg-card border border-primary/30 rounded-md font-bold text-primary text-sm shadow-sm shadow-primary/10 shrink-0"
                   >
                     ${totalValue.toLocaleString()}
                   </motion.div>
@@ -642,7 +642,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                 type="submit" 
                 className={cn(
                   "w-full gap-3 h-14 text-lg font-bold rounded-md transition-all duration-300",
-                  "bg-white dark:bg-slate-900 hover:from-primary/90 hover:to-emerald-500/90",
+                  "bg-white dark:bg-card hover:from-primary/90 hover:to-emerald-500/90",
                   "shadow-sm shadow-primary/20 hover:shadow-sm hover:shadow-primary/30",
                   hasProduction && "animate-pulse"
                 )}

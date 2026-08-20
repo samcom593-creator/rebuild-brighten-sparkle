@@ -51,7 +51,7 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900 px-6">
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-card px-6">
       <div className="animate-fade-in w-full max-w-md">
         <div className="text-center mb-10">
           <div className="landing-scale-in inline-flex items-center justify-center w-16 h-16 rounded-md bg-primary/10 text-primary mb-5">

@@ -125,7 +125,7 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
             <div className="mt-3">
               <div className="h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-white dark:bg-slate-900 transition-all"
+                  className="h-full bg-white dark:bg-card transition-all"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -148,7 +148,7 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
     >
       <GlassCard className={cn(
         "p-5 relative overflow-hidden",
-        "bg-white dark:bg-slate-900",
+        "bg-white dark:bg-card",
         "border border-amber-500/40 shadow-lg shadow-amber-500/10",
       )}>
         <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-amber-500/20 blur-2xl pointer-events-none" />

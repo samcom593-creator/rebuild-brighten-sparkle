@@ -254,7 +254,7 @@ export default function SeminarControl() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-lg border border-amber-500/25 bg-white dark:bg-slate-900 shadow-sm"
+        className="rounded-lg border border-amber-500/25 bg-white dark:bg-card shadow-sm"
       >
         <div className="grid gap-3 p-3 md:grid-cols-[1fr_auto] md:items-center">
           <div className="flex flex-wrap items-center gap-2 text-sm">

@@ -149,7 +149,7 @@ export default function CallsTodayCockpit() {
           <Skeleton className="h-20 w-full" />
         </div>
       ) : (callsQ.data ?? []).length === 0 ? (
-        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+        <Card className="bg-white dark:bg-card border-slate-200 dark:border-border">
           <CardContent className="p-10">
             <EmptyState
               icon={<CalendarCheck className="h-6 w-6" />}
@@ -186,7 +186,7 @@ function Section({
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-12 font-semibold uppercase tracking-wider text-slate-500 px-1">{label}</p>
+      <p className="text-12 font-semibold uppercase tracking-wider text-muted-foreground px-1">{label}</p>
       <div className="space-y-2">
         {calls.map((call) => (
           <CallRow key={call.id} call={call} onStart={onStart} />
@@ -211,7 +211,7 @@ function CallRow({ call, onStart }: { call: ScheduledCall; onStart: (c: Schedule
       <CardContent className="p-4 flex items-center gap-4">
         <div className="text-center w-16 shrink-0">
           <p className="text-20 font-bold tabular-nums">{format(start, "h:mm")}</p>
-          <p className="text-11 text-slate-500 uppercase">{format(start, "a")}</p>
+          <p className="text-11 text-muted-foreground uppercase">{format(start, "a")}</p>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -225,7 +225,7 @@ function CallRow({ call, onStart }: { call: ScheduledCall; onStart: (c: Schedule
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-3 text-12 text-slate-500 flex-wrap">
+          <div className="flex items-center gap-3 text-12 text-muted-foreground flex-wrap">
             {call.prospect_phone && (
               <a href={`tel:${call.prospect_phone}`} className="flex items-center gap-1 hover:text-emerald-600">
                 <Phone className="h-3 w-3" /> {call.prospect_phone}
@@ -273,7 +273,7 @@ function getStageTone(call: ScheduledCall, inFuture: boolean): { bg: string; bor
   if (pending) {
     return { bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-900/60" };
   }
-  return { bg: "bg-white dark:bg-slate-900", border: "border-slate-200 dark:border-slate-800" };
+  return { bg: "bg-white dark:bg-card", border: "border-slate-200 dark:border-border" };
 }
 
 // v6 §31 canonical hero — amber gradient (recruiting/data lane).

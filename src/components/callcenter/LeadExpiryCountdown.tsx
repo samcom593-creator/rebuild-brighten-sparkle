@@ -107,10 +107,10 @@ export function LeadExpiryCountdown({ createdAt, contactedAt, lastContactedAt }:
           className={cn(
             "absolute inset-y-0 left-0 rounded-full",
             isExpired
-              ? "bg-white dark:bg-slate-900"
+              ? "bg-white dark:bg-card"
               : isUrgent
-              ? "bg-white dark:bg-slate-900"
-              : "bg-white dark:bg-slate-900"
+              ? "bg-white dark:bg-card"
+              : "bg-white dark:bg-card"
           )}
           initial={{ width: 0 }}
           animate={{ width: mounted ? `${progress}%` : 0 }}

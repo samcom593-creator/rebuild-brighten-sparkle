@@ -61,7 +61,7 @@ const STAGE_COLOR: Record<string, string> = {
   started_prelicense: "bg-purple-600/15 text-purple-300 border-purple-600/40",
   finished_prelicense: "bg-slate-500/15 text-cyan-300 border-cyan-600/40",
   passed_exam: "bg-emerald-600/15 text-emerald-400 border-emerald-600/40",
-  closed_lost: "bg-zinc-600/15 text-zinc-400 border-zinc-600/40",
+  closed_lost: "bg-zinc-600/15 text-muted-foreground border-zinc-600/40",
 };
 
 function hoursSince(iso: string): number {

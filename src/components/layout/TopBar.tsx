@@ -231,7 +231,7 @@ export function TopBar() {
         </Button>
 
         <Avatar className="h-8 w-8 ring-1 ring-primary/40">
-          <AvatarFallback className="text-[11px] font-bold bg-white dark:bg-slate-900">
+          <AvatarFallback className="text-[11px] font-bold bg-white dark:bg-card">
             {initials}
           </AvatarFallback>
         </Avatar>

@@ -565,7 +565,7 @@ export default function LogNumbers() {
                     {/* Deal Amounts - Primary Action */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center">
+                        <div className="h-7 w-7 rounded-lg bg-white dark:bg-card flex items-center justify-center">
                           <DollarSign className="h-4 w-4 text-primary" />
                         </div>
                         <div>
@@ -579,7 +579,7 @@ export default function LogNumbers() {
                     {/* Activity Stats */}
                     <div className="space-y-3 mt-6 pt-4 border-t border-border/50">
                       <div className="flex items-center gap-2 mb-1">
-                        <div className="h-7 w-7 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center">
+                        <div className="h-7 w-7 rounded-lg bg-white dark:bg-card flex items-center justify-center">
                           <Target className="h-4 w-4 text-primary" />
                         </div>
                         <div>

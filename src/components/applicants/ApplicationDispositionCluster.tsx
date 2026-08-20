@@ -258,7 +258,7 @@ function DispositionButton({
     violet: "border-violet-500/50 bg-violet-500/15 text-violet-200",
     emerald: "border-emerald-500/50 bg-emerald-500/15 text-emerald-200",
     rose: "border-rose-500/50 bg-rose-500/15 text-rose-200",
-    "slate-dim": "border-slate-500/30 bg-slate-500/10 text-slate-400",
+    "slate-dim": "border-slate-500/30 bg-slate-500/10 text-muted-foreground",
   };
 
   const slug = label.toLowerCase().replace(/[^a-z0-9]/g, "-");

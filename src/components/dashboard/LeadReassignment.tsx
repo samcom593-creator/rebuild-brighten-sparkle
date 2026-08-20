@@ -187,7 +187,7 @@ export function LeadReassignment() {
       closed: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
       rejected: "bg-red-500/20 text-red-400 border-red-500/30",
     };
-    return colors[status] || "bg-gray-500/20 text-gray-400 border-gray-500/30";
+    return colors[status] || "bg-gray-500/20 text-muted-foreground border-gray-500/30";
   };
 
   return (

@@ -68,7 +68,7 @@ export function OffersTiles() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h3 className="font-bold text-base text-white tracking-wide uppercase">Offers · click → pay</h3>
-          <p className="text-xs text-slate-400">All 7 live SKUs · Stripe acct_1TKTj3C3Khd8IPVm</p>
+          <p className="text-xs text-muted-foreground">All 7 live SKUs · Stripe acct_1TKTj3C3Khd8IPVm</p>
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -77,19 +77,19 @@ export function OffersTiles() {
             key={sku.id}
             onClick={() => buy(sku)}
             disabled={busy !== null}
-            className={`group relative text-left p-3 rounded-md bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700 hover:border-emerald-400/60 transition-all overflow-hidden disabled:opacity-50`}
+            className={`group relative text-left p-3 rounded-md bg-white dark:bg-background/60 border border-slate-200 dark:border-border hover:border-emerald-400/60 transition-all overflow-hidden disabled:opacity-50`}
           >
             <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full  ${sku.accent} opacity-20 blur-2xl group-hover:opacity-40 transition-opacity`} />
             <div className="relative space-y-2">
               <div className="flex items-center gap-2">
                 <sku.Icon className="h-5 w-5 text-emerald-400" />
-                <span className="text-[10px] uppercase tracking-wider text-slate-400">{sku.category}</span>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{sku.category}</span>
               </div>
               <div className="font-bold text-sm text-white leading-tight">{sku.name}</div>
-              <div className="text-[11px] text-slate-400 leading-snug min-h-[28px]">{sku.blurb}</div>
+              <div className="text-[11px] text-muted-foreground leading-snug min-h-[28px]">{sku.blurb}</div>
               <div className="flex items-baseline justify-between pt-1">
                 <span className="font-black text-xl text-white">{fmt$(sku.amount)}</span>
-                <span className="text-[10px] text-slate-400 uppercase">{sku.cadence}</span>
+                <span className="text-[10px] text-muted-foreground uppercase">{sku.cadence}</span>
               </div>
               <div className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider pt-1">
                 {busy === sku.id ? <Loader2 className="h-3 w-3 inline animate-spin" /> : "tap to pay →"}

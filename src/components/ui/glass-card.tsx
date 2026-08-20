@@ -14,7 +14,7 @@ interface GlassCardProps extends HTMLAttributes<HTMLDivElement> {
  * "Apex still looks glassy / nothing like AgentLink" complaint.
  * Every GlassCard usage inherited:
  *   - backdrop-blur-[12px]   (smoky glass · banned per v22 §10.7)
- *   - border-slate-800       (hard-coded slate hex, not theme-aware)
+ *   - border-border       (hard-coded slate hex, not theme-aware)
  *   - hover:-translate-y-1   (Y-axis lift on every card · banned per v22 §10.5)
  *   - shadow-[0_8px_30px ...]  (colored glow shadow · banned per v22 §10.7)
  *
@@ -25,9 +25,9 @@ interface GlassCardProps extends HTMLAttributes<HTMLDivElement> {
 export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
   ({ className, variant = "default", hoverEffect = false, children, ...props }, ref) => {
     const variants = {
-      default: "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm",
-      strong:  "bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-sm",
-      subtle:  "bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800",
+      default: "bg-white dark:bg-card border border-slate-200 dark:border-border shadow-sm",
+      strong:  "bg-white dark:bg-card border border-slate-300 dark:border-border shadow-sm",
+      subtle:  "bg-slate-50 dark:bg-card/50 border border-slate-200 dark:border-border",
     };
 
     return (
@@ -36,7 +36,7 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
         className={cn(
           "rounded-md transition-base",
           variants[variant],
-          hoverEffect && "hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer",
+          hoverEffect && "hover:bg-slate-50 dark:hover:bg-muted/50 cursor-pointer",
           className,
         )}
         {...props}

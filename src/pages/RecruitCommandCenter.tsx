@@ -189,7 +189,7 @@ export default function RecruitCommandCenter() {
 
       {/* Today's target + progress */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <GlassCard className="p-4 bg-white dark:bg-slate-900 border-rose-500/30 win-glow">
+        <GlassCard className="p-4 bg-white dark:bg-card border-rose-500/30 win-glow">
           <div className="flex items-center gap-2 mb-1"><Target className="h-4 w-4 text-rose-400" /><span className="text-[10px] uppercase tracking-wider text-rose-300">Target Today</span></div>
           <div className="text-3xl font-bold tabular-nums text-rose-300">{targetToday}</div>
           <div className="text-[11px] text-muted-foreground">close today</div>
@@ -248,7 +248,7 @@ export default function RecruitCommandCenter() {
               )}>
                 <div className="flex items-start gap-3 flex-wrap">
                   <div className="shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center font-bold text-sm text-slate-900 dark:text-white">
+                    <div className="h-10 w-10 rounded-full bg-white dark:bg-card flex items-center justify-center font-bold text-sm text-slate-900 dark:text-white">
                       {a.first_name?.[0]}{a.last_name?.[0]}
                     </div>
                   </div>

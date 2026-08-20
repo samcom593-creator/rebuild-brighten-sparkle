@@ -419,7 +419,7 @@ export default function AgentPortal() {
   // Show login screen for unauthenticated users
   if (!user) {
     return (
-      <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white dark:bg-card flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -477,7 +477,7 @@ export default function AgentPortal() {
           {/* Agent Info Bar */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-3">
-              <div className="relative h-12 w-12 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
+              <div className="relative h-12 w-12 rounded-full bg-white dark:bg-card flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
                 {profile?.full_name?.charAt(0).toUpperCase() || "A"}
               </div>
               <div>

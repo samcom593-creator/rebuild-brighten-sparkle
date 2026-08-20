@@ -121,7 +121,7 @@ export function MyReferralLinkCard() {
   if (!agentQ.data) return null;
 
   return (
-    <Card className="border-emerald-500/30 bg-white dark:bg-slate-900">
+    <Card className="border-emerald-500/30 bg-white dark:bg-card">
       <CardContent className="space-y-3 p-4">
         <div className="flex items-center justify-between">
           <div>

@@ -123,7 +123,7 @@ export function SuppressionDialog({ open, onOpenChange, target, onSuppressed }: 
           <DialogTitle className="inline-flex items-center gap-2 text-slate-100">
             <ShieldOff className="h-4 w-4 text-rose-300" /> Suppress {targetName}
           </DialogTitle>
-          <DialogDescription className="text-slate-400 text-xs">
+          <DialogDescription className="text-muted-foreground text-xs">
             Suppressed records stay visible so managers can audit the rate — pick the real reason.
           </DialogDescription>
         </DialogHeader>
@@ -146,7 +146,7 @@ export function SuppressionDialog({ open, onOpenChange, target, onSuppressed }: 
 
           {reason === "other" && (
             <div>
-              <Label htmlFor="mp257-suppress-other" className="text-[10px] uppercase tracking-widest text-slate-500">
+              <Label htmlFor="mp257-suppress-other" className="text-[10px] uppercase tracking-widest text-muted-foreground">
                 Describe the reason
               </Label>
               <Textarea
@@ -154,7 +154,7 @@ export function SuppressionDialog({ open, onOpenChange, target, onSuppressed }: 
                 value={otherText}
                 onChange={(e) => setOtherText(e.target.value)}
                 placeholder="Wrong person — this record was created for a different applicant with same first name."
-                className="mt-1 min-h-[70px] bg-white/[0.03] border-white/10 text-slate-100 placeholder:text-slate-500"
+                className="mt-1 min-h-[70px] bg-white/[0.03] border-white/10 text-slate-100 placeholder:text-muted-foreground"
               />
             </div>
           )}
@@ -165,7 +165,7 @@ export function SuppressionDialog({ open, onOpenChange, target, onSuppressed }: 
             type="button"
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="text-slate-400 hover:text-slate-100"
+            className="text-muted-foreground hover:text-slate-100"
           >
             Cancel
           </Button>

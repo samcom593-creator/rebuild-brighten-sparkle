@@ -48,7 +48,7 @@ const offerCards = [
     action: "waitlist",
     gradient: "from-amber-500/15 to-orange-500/10",
     border: "border-amber-500/30",
-    iconBg: "bg-white dark:bg-slate-900",
+    iconBg: "bg-white dark:bg-card",
     iconColor: "text-white",
     glow: "hover:",
     accentColor: "text-amber-500",
@@ -60,7 +60,7 @@ const offerCards = [
     href: "/schedule-call",
     gradient: "from-rose-500/15 to-pink-500/10",
     border: "border-rose-500/30",
-    iconBg: "bg-white dark:bg-slate-900",
+    iconBg: "bg-white dark:bg-card",
     iconColor: "text-white",
     glow: "hover:",
     accentColor: "text-rose-500",
@@ -112,7 +112,7 @@ export default function LinksPage() {
       <div className="relative z-10 flex flex-col items-center px-4 py-12 max-w-md mx-auto min-h-screen">
         {/* Avatar / Brand */}
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5 }} className="mb-6 text-center">
-          <div className="w-24 h-24 rounded-full bg-white dark:bg-slate-900 mx-auto mb-4 flex items-center justify-center shadow-lg glow-teal">
+          <div className="w-24 h-24 rounded-full bg-white dark:bg-card mx-auto mb-4 flex items-center justify-center shadow-lg glow-teal">
             <Crown className="h-12 w-12 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold gradient-text">APEX Financial</h1>
@@ -200,7 +200,7 @@ export default function LinksPage() {
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-amber-500/20 mb-5">
+                    <div className="p-3 rounded-lg bg-white dark:bg-card border border-amber-500/20 mb-5">
                       <p className="text-sm text-muted-foreground leading-relaxed">
                         <span className="font-semibold text-foreground">Body, mind, and money.</span> A small circle that holds you to the standard while you rebuild all three.
                       </p>

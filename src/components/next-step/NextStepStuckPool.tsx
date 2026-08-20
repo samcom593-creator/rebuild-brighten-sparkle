@@ -53,7 +53,7 @@ export function NextStepStuckPool({ ownerUserId, limit = 8, heading, subheading 
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <Card className="p-5 sm:p-6 border border-amber-500/30 bg-white dark:bg-slate-900">
+      <Card className="p-5 sm:p-6 border border-amber-500/30 bg-white dark:bg-card">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-start gap-3 min-w-0">
             <div className="rounded-md bg-amber-500/15 p-3 border border-amber-500/30 shrink-0">

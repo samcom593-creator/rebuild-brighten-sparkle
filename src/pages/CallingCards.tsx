@@ -18,7 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 const TEMPLATES = [
-  { key: "classic",  label: "Classic Black",  bg: "bg-slate-900",                 accent: "text-amber-400" },
+  { key: "classic",  label: "Classic Black",  bg: "bg-card",                 accent: "text-amber-400" },
   { key: "amber",    label: "APEX Amber",     bg: "bg-gradient-to-br from-amber-500 to-amber-700", accent: "text-white" },
   { key: "emerald",  label: "Producer Green", bg: "bg-gradient-to-br from-emerald-600 to-emerald-800", accent: "text-white" },
   { key: "white",    label: "Clean White",    bg: "bg-white text-slate-900 border border-slate-200", accent: "text-amber-600" },

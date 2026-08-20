@@ -103,7 +103,7 @@ export function CourseVideoPlayer({
 
 function VideoComingSoonCard({ channelUrl, onMarkWatched }: { channelUrl: string; onMarkWatched: () => void }) {
   return (
-    <div className="relative w-full aspect-video rounded-md overflow-hidden bg-white dark:bg-slate-900 flex flex-col items-center justify-center text-center px-6">
+    <div className="relative w-full aspect-video rounded-md overflow-hidden bg-white dark:bg-card flex flex-col items-center justify-center text-center px-6">
       <div className="absolute top-4 left-4">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/15 px-3 py-1 text-xs font-medium text-amber-300 border border-amber-600/40">
           <Clock className="h-3 w-3" /> Recording in progress
@@ -309,7 +309,7 @@ function YouTubePlayer({
       )}
 
       {/* Progress overlay */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-white dark:bg-slate-900 pointer-events-none">
+      <div className="absolute bottom-0 left-0 right-0 p-4 bg-white dark:bg-card pointer-events-none">
         <div className="flex items-center gap-2">
           <Progress value={localProgress} className="flex-1 h-2" />
           <span className="text-xs text-white/80">{localProgress}% watched</span>
@@ -460,7 +460,7 @@ function NativeVideoPlayer({
         ))}
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 p-3 bg-white dark:bg-slate-900 pointer-events-none">
+      <div className="absolute bottom-0 left-0 right-0 p-3 bg-white dark:bg-card pointer-events-none">
         <div className="flex items-center gap-2">
           <Progress value={localProgress} className="flex-1 h-2" />
           <span className="text-xs text-white/80">{localProgress}%</span>

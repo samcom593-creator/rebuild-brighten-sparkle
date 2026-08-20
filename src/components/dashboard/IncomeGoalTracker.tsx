@@ -189,7 +189,7 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
       <div className="p-4 sm:p-6 border-b border-border/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white dark:bg-slate-900 border border-primary/20">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white dark:bg-card border border-primary/20">
               <Target className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -331,25 +331,25 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
 
               {/* Stats Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="text-center p-3 rounded-md bg-white dark:bg-slate-900 border border-primary/10">
+                <div className="text-center p-3 rounded-md bg-white dark:bg-card border border-primary/10">
                   <p className="text-xl sm:text-2xl font-bold text-primary">
                     ${incomeGoal.toLocaleString()}
                   </p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Goal</p>
                 </div>
-                <div className="text-center p-3 rounded-md bg-white dark:bg-slate-900 border border-violet-500/10">
+                <div className="text-center p-3 rounded-md bg-white dark:bg-card border border-violet-500/10">
                   <p className="text-xl sm:text-2xl font-bold text-primary">
                     ${requiredALP.toLocaleString()}
                   </p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">ALP Needed</p>
                 </div>
-                <div className="text-center p-3 rounded-md bg-white dark:bg-slate-900 border border-amber-500/10">
+                <div className="text-center p-3 rounded-md bg-white dark:bg-card border border-amber-500/10">
                   <p className="text-xl sm:text-2xl font-bold text-amber-400">
                     {Math.ceil(dealsNeeded)}
                   </p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Deals</p>
                 </div>
-                <div className="text-center p-3 rounded-md bg-white dark:bg-slate-900 border border-emerald-500/10">
+                <div className="text-center p-3 rounded-md bg-white dark:bg-card border border-emerald-500/10">
                   <p className="text-xl sm:text-2xl font-bold text-emerald-400">
                     {Math.ceil(presentationsNeeded)}
                   </p>

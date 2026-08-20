@@ -284,8 +284,8 @@ export function RecognitionQueue() {
             <DialogTitle>Plaque Preview</DialogTitle>
           </DialogHeader>
           {previewCandidate && (
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-lg text-center space-y-4">
-              <p className="text-xs uppercase tracking-widest text-gray-400">
+            <div className="bg-white dark:bg-card p-6 rounded-lg text-center space-y-4">
+              <p className="text-xs uppercase tracking-widest text-muted-foreground">
                 {achievementConfig[previewCandidate.achievement].label}
               </p>
               <h2 className="text-2xl font-serif font-bold text-white">
@@ -294,9 +294,9 @@ export function RecognitionQueue() {
               <div className="text-4xl font-bold text-amber-400">
                 ${previewCandidate.amount.toLocaleString()}
               </div>
-              <p className="text-sm text-gray-400">{previewCandidate.periodLabel}</p>
-              <div className="pt-4 border-t border-gray-800">
-                <p className="text-xs text-gray-500">APEX FINANCIAL GROUP</p>
+              <p className="text-sm text-muted-foreground">{previewCandidate.periodLabel}</p>
+              <div className="pt-4 border-t border-border">
+                <p className="text-xs text-muted-foreground">APEX FINANCIAL GROUP</p>
               </div>
             </div>
           )}

@@ -289,12 +289,12 @@ function PreviewTile({ label, value, hint, tone = "slate" }: PreviewTileProps) {
   };
   return (
     <div className={cn(
-      "rounded-md border p-3 bg-slate-950/60",
+      "rounded-md border p-3 bg-background/60",
       toneMap[tone],
     )}>
-      <div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-1 text-lg font-semibold">{value}</div>
-      {hint && <div className="text-[11px] text-slate-500 truncate" title={hint}>{hint}</div>}
+      {hint && <div className="text-[11px] text-muted-foreground truncate" title={hint}>{hint}</div>}
     </div>
   );
 }
@@ -453,7 +453,7 @@ export function CallCenterFilters({
       {/* Header */}
       <motion.div variants={itemVariants} className="text-center mb-6">
         <motion.div
-          className="relative inline-flex items-center justify-center w-16 h-16 rounded-md bg-slate-900 border border-teal-500/30 mb-3"
+          className="relative inline-flex items-center justify-center w-16 h-16 rounded-md bg-card border border-teal-500/30 mb-3"
           whileHover={{ scale: 1.05, rotate: 3 }}
           transition={{ type: "spring", stiffness: 400, damping: 20 }}
         >
@@ -469,7 +469,7 @@ export function CallCenterFilters({
         >
           Call Center
         </motion.h1>
-        <motion.p variants={itemVariants} className="text-sm text-slate-400">
+        <motion.p variants={itemVariants} className="text-sm text-muted-foreground">
           Process leads one at a time with AI-powered note taking
         </motion.p>
       </motion.div>
@@ -490,12 +490,12 @@ export function CallCenterFilters({
               const Icon = filter.icon;
               return (
                 <motion.div key={filter.label} variants={itemVariants}>
-                  <label className="text-xs font-medium mb-1.5 flex items-center gap-1.5 text-slate-400">
+                  <label className="text-xs font-medium mb-1.5 flex items-center gap-1.5 text-muted-foreground">
                     {Icon && <Icon className="h-3.5 w-3.5" />}
                     {filter.label}
                   </label>
                   <Select value={filter.value} onValueChange={filter.onChange}>
-                    <SelectTrigger className="bg-slate-950/50 border-white/10 hover:border-teal-500/40 transition-colors">
+                    <SelectTrigger className="bg-background/50 border-white/10 hover:border-teal-500/40 transition-colors">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-[300px]">
@@ -518,7 +518,7 @@ export function CallCenterFilters({
                 <Eye className="h-4 w-4 text-teal-300" />
                 Queue Preview
                 {previewQ.isFetching && (
-                  <span className="text-[11px] text-slate-500 font-normal">Refreshing…</span>
+                  <span className="text-[11px] text-muted-foreground font-normal">Refreshing…</span>
                 )}
               </div>
               <Button
@@ -610,28 +610,28 @@ export function CallCenterFilters({
       {/* Keyboard Hints */}
       <motion.p
         variants={itemVariants}
-        className="text-xs text-slate-500 text-center mt-4"
+        className="text-xs text-muted-foreground text-center mt-4"
       >
         Keyboard shortcuts inside workflow:{" "}
-        <span className="text-slate-400">1</span> Hired ·{" "}
-        <span className="text-slate-400">2</span> Contracted ·{" "}
-        <span className="text-slate-400">3</span> Not a Fit ·{" "}
-        <span className="text-slate-400">4</span> No Pickup ·{" "}
-        <span className="text-slate-400">5</span> Contacted ·{" "}
-        <span className="text-slate-400">6</span> Reschedule ·{" "}
-        <span className="text-slate-400">7</span> Bad Number ·{" "}
-        <span className="text-slate-400">8</span> Follow-Up ·{" "}
-        <span className="text-slate-400">N</span> Next ·{" "}
-        <span className="text-slate-400">P</span> Prev ·{" "}
-        <span className="text-slate-400">ESC</span> Exit
+        <span className="text-muted-foreground">1</span> Hired ·{" "}
+        <span className="text-muted-foreground">2</span> Contracted ·{" "}
+        <span className="text-muted-foreground">3</span> Not a Fit ·{" "}
+        <span className="text-muted-foreground">4</span> No Pickup ·{" "}
+        <span className="text-muted-foreground">5</span> Contacted ·{" "}
+        <span className="text-muted-foreground">6</span> Reschedule ·{" "}
+        <span className="text-muted-foreground">7</span> Bad Number ·{" "}
+        <span className="text-muted-foreground">8</span> Follow-Up ·{" "}
+        <span className="text-muted-foreground">N</span> Next ·{" "}
+        <span className="text-muted-foreground">P</span> Prev ·{" "}
+        <span className="text-muted-foreground">ESC</span> Exit
       </motion.p>
 
       {/* Preview Queue Drawer */}
       <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md bg-slate-950 border-white/10">
+        <SheetContent side="right" className="w-full sm:max-w-md bg-background border-white/10">
           <SheetHeader>
             <SheetTitle className="text-slate-100">Queue Preview</SheetTitle>
-            <SheetDescription className="text-slate-400">
+            <SheetDescription className="text-muted-foreground">
               Snapshot of the {stats?.matching ?? 0} leads matching your current filter selection.
             </SheetDescription>
           </SheetHeader>
@@ -663,7 +663,7 @@ export function CallCenterFilters({
               <PreviewTile label="No-contact" value={stats?.noContact ?? 0} tone="gold" />
             </div>
 
-            <div className="rounded-md border border-white/10 bg-slate-900/60 p-3 text-xs text-slate-400">
+            <div className="rounded-md border border-white/10 bg-card/60 p-3 text-xs text-muted-foreground">
               <div className="font-medium text-slate-200 mb-1">Filter Summary</div>
               <ul className="space-y-0.5">
                 <li>Source: {sourceFilter.replace("_", " ")}</li>

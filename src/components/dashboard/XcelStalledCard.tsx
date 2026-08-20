@@ -99,7 +99,7 @@ export function XcelStalledCard() {
 
       <div className="relative flex items-start justify-between gap-3 flex-wrap mb-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center ">
+          <div className="h-10 w-10 rounded-full bg-white dark:bg-card flex items-center justify-center ">
             <GraduationCap className="h-5 w-5 text-zinc-950" />
           </div>
           <div>
@@ -136,7 +136,7 @@ export function XcelStalledCard() {
           return (
             <div
               key={row.student_email}
-              className="flex items-center gap-3 rounded-md border border-zinc-800/80 bg-white dark:bg-zinc-900/60 p-3 hover:border-purple-400/40 hover:bg-white dark:bg-zinc-900/80 transition-colors"
+              className="flex items-center gap-3 rounded-md border border-border/80 bg-white dark:bg-card/60 p-3 hover:border-purple-400/40 hover:bg-white dark:bg-card/80 transition-colors"
             >
               <span className={cn(
                 "h-2.5 w-2.5 rounded-full flex-shrink-0",

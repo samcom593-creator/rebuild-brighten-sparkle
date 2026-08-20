@@ -174,7 +174,7 @@ export default function Install() {
         <Card className="glass border-border">
           <CardHeader className="text-center pb-2">
             <div className="flex justify-center mb-4">
-              <div className="w-20 h-20 rounded-md bg-white dark:bg-slate-900 flex items-center justify-center shadow-lg">
+              <div className="w-20 h-20 rounded-md bg-white dark:bg-card flex items-center justify-center shadow-lg">
                 <Crown className="w-10 h-10 text-primary-foreground" />
               </div>
             </div>

@@ -49,9 +49,9 @@ function SectionFallback() {
       aria-live="polite"
       aria-busy="true"
     >
-      <div className="h-40 rounded-md border border-primary/15 bg-white dark:bg-slate-900 motion-safe:animate-pulse" />
-      <div className="h-40 rounded-md border border-primary/15 bg-white dark:bg-slate-900 motion-safe:animate-pulse" />
-      <div className="h-24 rounded-md border border-primary/15 bg-white dark:bg-slate-900 motion-safe:animate-pulse" />
+      <div className="h-40 rounded-md border border-primary/15 bg-white dark:bg-card motion-safe:animate-pulse" />
+      <div className="h-40 rounded-md border border-primary/15 bg-white dark:bg-card motion-safe:animate-pulse" />
+      <div className="h-24 rounded-md border border-primary/15 bg-white dark:bg-card motion-safe:animate-pulse" />
       <span className="sr-only">Loading page sections…</span>
     </div>
   );

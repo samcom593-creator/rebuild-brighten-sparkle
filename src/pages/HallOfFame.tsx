@@ -307,7 +307,7 @@ export default function HallOfFame() {
               const medal = place === 1
                 ? { label: "1st", icon: Crown, color: "text-amber-500 dark:text-amber-400", ring: "ring-amber-500/60", bg: "from-amber-500/15", badge: "bg-amber-500" }
                 : place === 2
-                ? { label: "2nd", icon: Medal, color: "text-slate-400 dark:text-slate-300", ring: "ring-slate-400/60", bg: "from-slate-400/15", badge: "bg-slate-400" }
+                ? { label: "2nd", icon: Medal, color: "text-muted-foreground dark:text-slate-300", ring: "ring-slate-400/60", bg: "from-slate-400/15", badge: "bg-slate-400" }
                 : { label: "3rd", icon: Medal, color: "text-orange-500 dark:text-orange-400", ring: "ring-orange-500/60", bg: "from-orange-500/15", badge: "bg-orange-500" };
               const Medallion = medal.icon;
               return (
@@ -507,7 +507,7 @@ function PlaqueCard({ plaque, onClick, delay }: PlaqueCardProps) {
       transition={{ delay: Math.min(delay, 0.25), duration: 0.3 }}
       className="group relative text-left rounded-md overflow-hidden border border-border/60 bg-card/95 hover:border-primary/50 hover:shadow-[0_8px_30px_hsl(168_80%_50%/0.12)] transition-all"
     >
-      <div className="aspect-[3/4] relative bg-white dark:bg-slate-900 overflow-hidden">
+      <div className="aspect-[3/4] relative bg-white dark:bg-card overflow-hidden">
         {img ? (
           <img
             src={img}
@@ -532,7 +532,7 @@ function PlaqueCard({ plaque, onClick, delay }: PlaqueCardProps) {
             </Badge>
           </div>
         )}
-        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-white dark:bg-slate-900" />
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-white dark:bg-card" />
       </div>
       <div className="p-2.5 space-y-1">
         <div className="flex items-center gap-2 min-w-0">
@@ -632,7 +632,7 @@ function PlaqueDetail({ plaque, onClose }: PlaqueDetailProps) {
 
   return (
     <div className="flex flex-col">
-      <div className="aspect-[3/4] sm:aspect-square relative bg-white dark:bg-slate-900">
+      <div className="aspect-[3/4] sm:aspect-square relative bg-white dark:bg-card">
         {img ? (
           <img src={img} alt={plaque.badge_label ?? plaque.milestone_type} className="w-full h-full object-cover" />
         ) : (

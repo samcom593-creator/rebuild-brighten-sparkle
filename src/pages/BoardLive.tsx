@@ -88,7 +88,7 @@ export default function BoardLive() {
   const pct = leader && milestone ? Math.min(100, (leader.apNum / milestone) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 px-4 py-8 sm:px-8">
+    <div className="min-h-screen bg-background text-slate-100 px-4 py-8 sm:px-8">
       <div className="mx-auto w-full max-w-5xl">
         {/* header */}
         <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-6">
@@ -106,7 +106,7 @@ export default function BoardLive() {
           </div>
           <div className="grid w-full grid-cols-3 gap-3 sm:flex sm:w-auto sm:gap-8">
             <div>
-              <div className="text-[9px] uppercase tracking-widest text-slate-400 sm:text-[11px]">Total AP</div>
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[11px]">Total AP</div>
               <div className="text-lg font-black tabular-nums text-white sm:text-3xl">
                 <AnimatedCounter value={totalAp} prefix="$" />
               </div>
@@ -115,13 +115,13 @@ export default function BoardLive() {
               {/* Labeled "Est." on purpose: no actual paid-commission feed exists yet
                   (agentlink_commissions + insuracloud_payouts are empty), so this is
                   contract-level math, not money confirmed paid. */}
-              <div className="text-[9px] uppercase tracking-widest text-slate-400 sm:text-[11px]">Est. earnings</div>
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[11px]">Est. earnings</div>
               <div className="text-lg font-black tabular-nums text-emerald-400 sm:text-3xl">
                 <AnimatedCounter value={totalEst} prefix="$" />
               </div>
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-widest text-slate-400 sm:text-[11px]">Policies</div>
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[11px]">Policies</div>
               <div className="text-lg font-black tabular-nums text-white sm:text-3xl">
                 <AnimatedCounter value={totalDeals} />
               </div>
@@ -158,7 +158,7 @@ export default function BoardLive() {
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <div className="rounded-xl border border-white/10 bg-white/5 p-10 text-center text-slate-400">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-10 text-center text-muted-foreground">
               No production posted for {bounds.label} yet.
             </div>
           ) : (
@@ -181,7 +181,7 @@ export default function BoardLive() {
                       <div
                         className={cn(
                           "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border text-base font-black tabular-nums sm:h-11 sm:w-11 sm:text-lg",
-                          style ? style.badge : "border-white/10 bg-white/5 text-slate-400"
+                          style ? style.badge : "border-white/10 bg-white/5 text-muted-foreground"
                         )}
                       >
                         {rank}
@@ -194,7 +194,7 @@ export default function BoardLive() {
                           <span className="whitespace-nowrap rounded-md border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
                             {r.tenure_label ?? "New"}
                           </span>
-                          <span className="whitespace-nowrap text-xs text-slate-400 tabular-nums">
+                          <span className="whitespace-nowrap text-xs text-muted-foreground tabular-nums">
                             {r.dealsNum} policies
                           </span>
                         </div>
@@ -204,19 +204,19 @@ export default function BoardLive() {
                     {/* stats — even 3-up grid on mobile, right-aligned row on desktop */}
                     <div className="grid grid-cols-3 gap-2 border-t border-white/5 pt-3 sm:flex sm:shrink-0 sm:items-center sm:gap-8 sm:border-0 sm:pt-0">
                       <div className="sm:text-right">
-                        <div className="text-[9px] uppercase tracking-widest text-slate-500 sm:text-[10px]">Production</div>
+                        <div className="text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[10px]">Production</div>
                         <div className="text-base font-black tabular-nums text-white sm:text-2xl">
                           <AnimatedCounter value={r.apNum} prefix="$" />
                         </div>
                       </div>
                       <div className="sm:text-right">
-                        <div className="text-[9px] uppercase tracking-widest text-slate-500 sm:text-[10px]">Est. income</div>
+                        <div className="text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[10px]">Est. income</div>
                         <div className="text-base font-black tabular-nums text-emerald-400 sm:text-2xl">
                           <AnimatedCounter value={r.estNum} prefix="$" />
                         </div>
                       </div>
                       <div className="sm:text-right">
-                        <div className="text-[9px] uppercase tracking-widest text-slate-500 sm:text-[10px]">Lead spend</div>
+                        <div className="text-[9px] uppercase tracking-widest text-muted-foreground sm:text-[10px]">Lead spend</div>
                         <div className="text-base font-bold tabular-nums text-slate-300 sm:text-2xl">
                           ${money(r.leadNum)}
                         </div>
@@ -229,7 +229,7 @@ export default function BoardLive() {
           )}
         </div>
 
-        <p className="mt-8 border-t border-white/10 pt-4 text-[11px] leading-relaxed text-slate-500">
+        <p className="mt-8 border-t border-white/10 pt-4 text-[11px] leading-relaxed text-muted-foreground">
           Production is actual posted annual premium from the carrier book. Est. income is an
           estimate based on each producer&rsquo;s contract levels and is gross of chargebacks,
           advances and overrides — individual results vary.

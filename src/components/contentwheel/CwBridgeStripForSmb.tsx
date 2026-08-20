@@ -59,7 +59,7 @@ export function CwBridgeStripForSmb() {
   const split = data.audience_split;
 
   return (
-    <div className="rounded-md border border-amber-500/30 bg-white dark:bg-slate-900 p-4">
+    <div className="rounded-md border border-amber-500/30 bg-white dark:bg-card p-4">
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex items-start gap-3 min-w-0">
           <div className="rounded-lg bg-amber-500/15 p-2 border border-amber-500/30 shrink-0">

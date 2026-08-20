@@ -69,8 +69,8 @@ export function RecentApplicantsTicker() {
             </span>
           ))}
         </div>
-        <div className="absolute inset-y-0 left-0 w-12 bg-white dark:bg-slate-900" />
-        <div className="absolute inset-y-0 right-0 w-12 bg-white dark:bg-slate-900" />
+        <div className="absolute inset-y-0 left-0 w-12 bg-white dark:bg-card" />
+        <div className="absolute inset-y-0 right-0 w-12 bg-white dark:bg-card" />
       </div>
     </div>
   );

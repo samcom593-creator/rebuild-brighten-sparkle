@@ -254,7 +254,7 @@ function Surface({
   return (
     <section
       className={cn(
-        "rounded-md border border-white/10 bg-white dark:bg-slate-950/70 p-4 shadow-[0_18px_50px_rgba(2,6,23,0.35)]",
+        "rounded-md border border-white/10 bg-white dark:bg-background/70 p-4 shadow-[0_18px_50px_rgba(2,6,23,0.35)]",
         className
       )}
     >
@@ -284,7 +284,7 @@ export default function ApexControl() {
                   <Gauge className="h-5 w-5 text-emerald-300" />
                   <h2 className="text-lg font-bold">What is happening right now</h2>
                 </div>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Static v1. It shows the current operating mode. Live file sync comes next.
                 </p>
               </div>
@@ -373,7 +373,7 @@ export default function ApexControl() {
                     <Monitor className="h-4 w-4 text-emerald-300" />
                     <p className="text-sm font-bold text-white">{name}</p>
                   </div>
-                  <p className="mt-2 text-sm text-slate-400">{use}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{use}</p>
                 </div>
               ))}
             </div>
@@ -384,7 +384,7 @@ export default function ApexControl() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-bold">Copy prompts</h2>
-              <p className="mt-1 text-sm text-slate-400">Each card says exactly where it goes.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Each card says exactly where it goes.</p>
             </div>
             <Badge className="border-white/10 bg-white/[0.05] text-slate-600 dark:text-slate-300">
               No Notes folder needed
@@ -399,7 +399,7 @@ export default function ApexControl() {
                     <prompt.icon className="mt-1 h-5 w-5 flex-shrink-0 text-emerald-300" />
                     <div>
                       <h3 className="text-base font-bold">{prompt.title}</h3>
-                      <p className="mt-1 text-sm text-slate-400">{prompt.where}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{prompt.where}</p>
                     </div>
                   </div>
                   <Button

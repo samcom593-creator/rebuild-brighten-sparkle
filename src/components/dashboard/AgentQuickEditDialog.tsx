@@ -627,7 +627,7 @@ export function AgentQuickEditDialog({
           {/* Current Agent Info */}
           <div className="p-3 rounded-lg bg-muted/50 border border-border">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-full bg-white dark:bg-card flex items-center justify-center">
                 <User className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>

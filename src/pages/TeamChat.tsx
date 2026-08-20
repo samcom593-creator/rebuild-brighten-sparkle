@@ -83,7 +83,7 @@ export default function TeamChat() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto h-[calc(100vh-6rem)] flex flex-col">
       <div className="flex items-center gap-3 mb-4">
-        <div className="h-11 w-11 rounded-md bg-white dark:bg-slate-900 flex items-center justify-center">
+        <div className="h-11 w-11 rounded-md bg-white dark:bg-card flex items-center justify-center">
           <MessageSquare className="h-5 w-5 text-primary" />
         </div>
         <div className="flex-1">
@@ -113,7 +113,7 @@ export default function TeamChat() {
                   {!grouped && (
                     m.author_avatar
                       ? <img src={m.author_avatar} alt="" className="h-9 w-9 rounded-full object-cover" />
-                      : <div className="h-9 w-9 rounded-full bg-white dark:bg-slate-900 flex items-center justify-center text-xs font-bold text-white">
+                      : <div className="h-9 w-9 rounded-full bg-white dark:bg-card flex items-center justify-center text-xs font-bold text-white">
                           {m.author_name.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase()}
                         </div>
                   )}
@@ -128,7 +128,7 @@ export default function TeamChat() {
                   <div className={cn(
                     "px-3.5 py-2 rounded-md text-sm leading-relaxed break-words bounce-in",
                     mine
-                      ? "bg-white dark:bg-slate-900 text-gray-950 rounded-br-md"
+                      ? "bg-white dark:bg-card text-gray-950 rounded-br-md"
                       : "bg-muted/40 text-foreground rounded-bl-md",
                   )}>
                     {m.body}

@@ -44,8 +44,8 @@ export default function Storefront() {
   }, [paid]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 text-white">
-      <header className="border-b border-slate-200 dark:border-slate-800/60">
+    <div className="min-h-screen bg-white dark:bg-card text-white">
+      <header className="border-b border-slate-200 dark:border-border/60">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 font-bold">
             <Crown className="h-6 w-6 text-emerald-400" /> APEX Financial
@@ -58,7 +58,7 @@ export default function Storefront() {
 
       <main className="max-w-3xl mx-auto px-4 py-12 md:py-16">
         {paid ? (
-          <Card className="border-emerald-500/40 bg-white dark:bg-slate-900 reveal">
+          <Card className="border-emerald-500/40 bg-white dark:bg-card reveal">
             <CardHeader className="text-center">
               <div className="mx-auto h-16 w-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-3">
                 <CheckCircle2 className="h-9 w-9 text-emerald-400" />
@@ -92,17 +92,17 @@ export default function Storefront() {
           <>
             <div className="text-center mb-10">
               <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">APEX Storefront</h1>
-              <p className="text-slate-400 mt-3 text-lg">Pick the package that matches your hustle.</p>
+              <p className="text-muted-foreground mt-3 text-lg">Pick the package that matches your hustle.</p>
             </div>
             <div className="grid gap-5 md:grid-cols-2">
               {SKUS.map((s) => (
-                <Card key={s.name} className="border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:border-emerald-500/50 transition-colors">
+                <Card key={s.name} className="border-slate-200 dark:border-border bg-white dark:bg-card/60 hover:border-emerald-500/50 transition-colors">
                   <CardHeader>
                     <h2 className="text-xl font-bold text-white">{s.name}</h2>
                     <div className="text-2xl font-extrabold text-emerald-400 pt-1">{s.price}</div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-slate-400 mb-5">{s.blurb}</p>
+                    <p className="text-sm text-muted-foreground mb-5">{s.blurb}</p>
                     <Button asChild className="w-full bg-emerald-500 hover:bg-emerald-600 text-white">
                       <a href={s.href} target="_blank" rel="noopener noreferrer" className="gap-2">
                         Subscribe <ArrowRight className="h-4 w-4" />

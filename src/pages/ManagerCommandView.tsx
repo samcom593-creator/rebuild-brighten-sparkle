@@ -164,22 +164,22 @@ export default function ManagerCommandView() {
       <div className="grid gap-3 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4">
-            <p className="text-12 text-slate-500 uppercase tracking-wider">Downline production · This month</p>
+            <p className="text-12 text-muted-foreground uppercase tracking-wider">Downline production · This month</p>
             <p className="text-28 font-bold tabular-nums mt-1">{money(monthlyTotal)}</p>
-            <p className="text-12 text-slate-500 mt-1">
+            <p className="text-12 text-muted-foreground mt-1">
               {agentRows.reduce((s, a) => s + a.monthly_deals, 0)} deals across {agentRows.length} agents
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-12 text-slate-500 uppercase tracking-wider flex items-center gap-1">
+            <p className="text-12 text-muted-foreground uppercase tracking-wider flex items-center gap-1">
               <Trophy className="h-3 w-3 text-amber-500" /> Top 3 this month
             </p>
             {downlineProd.isLoading ? (
               <Skeleton className="h-20 w-full mt-2" />
             ) : topProducers.length === 0 || topProducers[0].monthly_premium === 0 ? (
-              <p className="text-12 text-slate-500 mt-3">No deals logged this month yet.</p>
+              <p className="text-12 text-muted-foreground mt-3">No deals logged this month yet.</p>
             ) : (
               <div className="space-y-1.5 mt-2">
                 {topProducers.map((a, i) => (
@@ -194,7 +194,7 @@ export default function ManagerCommandView() {
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-12 text-slate-500 uppercase tracking-wider">Stuck applicants · 7d+ silent</p>
+            <p className="text-12 text-muted-foreground uppercase tracking-wider">Stuck applicants · 7d+ silent</p>
             {stuck.isLoading ? (
               <Skeleton className="h-9 w-20 mt-1" />
             ) : (
@@ -219,13 +219,13 @@ export default function ManagerCommandView() {
           {calls.isLoading ? (
             <Skeleton className="h-12 w-full" />
           ) : (calls.data?.length ?? 0) === 0 ? (
-            <p className="text-12 text-slate-500 py-4 text-center">No calls scheduled yet. Your assistant can add events via Google Calendar.</p>
+            <p className="text-12 text-muted-foreground py-4 text-center">No calls scheduled yet. Your assistant can add events via Google Calendar.</p>
           ) : (
             calls.data?.map((c: any) => (
-              <div key={c.id} className="flex items-center justify-between p-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800">
+              <div key={c.id} className="flex items-center justify-between p-2 rounded-md hover:bg-slate-50 dark:hover:bg-muted">
                 <div>
                   <p className="text-14 font-medium">{c.prospect_name ?? "Untitled"}</p>
-                  <p className="text-11 text-slate-500">
+                  <p className="text-11 text-muted-foreground">
                     {formatDistanceToNowStrict(new Date(c.start_at), { addSuffix: true })}
                     {c.prospect_phone ? ` · ${c.prospect_phone}` : ""}
                   </p>
@@ -254,18 +254,18 @@ export default function ManagerCommandView() {
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
             </div>
           ) : agentRows.length === 0 ? (
-            <p className="text-12 text-slate-500 py-4 text-center">No agents in your downline yet.</p>
+            <p className="text-12 text-muted-foreground py-4 text-center">No agents in your downline yet.</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {agentRows.map((a) => (
                 <Link
                   key={a.id}
                   to={`/dashboard/agent-management?agent=${a.id}`}
-                  className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-base"
+                  className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted transition-base"
                 >
                   <div className="min-w-0">
                     <p className="text-14 font-medium truncate">{a.display_name ?? "Unnamed"}</p>
-                    <p className="text-11 text-slate-500">
+                    <p className="text-11 text-muted-foreground">
                       {a.al_user_id == null ? "AgentLink mapping pending" : `${a.monthly_deals} deals this month`}
                     </p>
                   </div>

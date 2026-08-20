@@ -143,7 +143,7 @@ export default function CommissionRecovery() {
                   <div className="font-medium truncate">{row.agent_display}</div>
                   <Badge variant="outline">{asNum(row.total_to_recover)} policies</Badge>
                 </div>
-                <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-slate-400">
+                <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
                   <span>{asNum(row.not_yet_emailed)} not emailed</span>
                   <span>{asNum(row.emailed)} emailed</span>
                   <span>{asNum(row.responded)} replied</span>
@@ -172,7 +172,7 @@ export default function CommissionRecovery() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-white/[0.03] text-xs text-slate-400">
+                  <thead className="bg-white/[0.03] text-xs text-muted-foreground">
                     <tr>
                       <th className="text-left p-3">Client</th>
                       <th className="text-left p-3">Carrier</th>
@@ -218,7 +218,7 @@ function Metric({ label, value, tone }: { label: string; value: number; tone: st
     <Card>
       <CardContent className="p-4">
         <div className={`text-3xl font-bold tabular-nums ${tone}`}>{value}</div>
-        <div className="text-xs text-slate-400 mt-1">{label}</div>
+        <div className="text-xs text-muted-foreground mt-1">{label}</div>
       </CardContent>
     </Card>
   );

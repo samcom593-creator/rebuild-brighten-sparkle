@@ -46,14 +46,14 @@ export function CarrierBreakdownCard() {
   const max = Math.max(...rows.map((r) => Number(r.total_premium ?? 0)), 1);
 
   return (
-    <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+    <Card className="bg-white dark:bg-card border-slate-200 dark:border-border">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-16 flex items-center gap-2">
             <Trophy className="h-4 w-4 text-amber-500" />
             Top carriers
           </CardTitle>
-          <span className="text-12 text-slate-500">All-time book</span>
+          <span className="text-12 text-muted-foreground">All-time book</span>
         </div>
       </CardHeader>
       <CardContent className="pt-0 space-y-2">
@@ -64,19 +64,19 @@ export function CarrierBreakdownCard() {
             <Skeleton className="h-8 w-full" />
           </>
         ) : rows.length === 0 ? (
-          <p className="text-12 text-slate-500 py-4 text-center">No carrier data yet.</p>
+          <p className="text-12 text-muted-foreground py-4 text-center">No carrier data yet.</p>
         ) : (
           rows.map((row, i) => {
             const pct = max > 0 ? (Number(row.total_premium ?? 0) / max) * 100 : 0;
             return (
               <div key={row.carrier_id} className="space-y-1">
                 <div className="flex items-center gap-2 text-12">
-                  <span className="text-slate-400 w-4 tabular-nums">{i + 1}</span>
+                  <span className="text-muted-foreground w-4 tabular-nums">{i + 1}</span>
                   <span className="font-medium truncate flex-1">{row.carrier_name ?? "—"}</span>
-                  <span className="tabular-nums text-slate-600 dark:text-slate-400">{row.deal_count}</span>
+                  <span className="tabular-nums text-slate-600 dark:text-muted-foreground">{row.deal_count}</span>
                   <span className="tabular-nums font-semibold w-16 text-right">{money(row.total_premium)}</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div className="h-1.5 rounded-full bg-slate-100 dark:bg-muted overflow-hidden">
                   <div className="h-full bg-emerald-500 rounded-full transition-base" style={{ width: `${pct}%` }} />
                 </div>
               </div>

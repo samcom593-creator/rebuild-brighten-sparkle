@@ -40,7 +40,7 @@ const STATUS_META: Record<string, { color: string; icon: any; label: string }> =
   healthy: { color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30", icon: CheckCircle2,   label: "Healthy" },
   flaky:   { color: "bg-amber-500/10 text-amber-400 border-amber-500/30",       icon: AlertTriangle,  label: "Flaky" },
   broken:  { color: "bg-red-500/10 text-red-400 border-red-500/40",             icon: XCircle,        label: "Broken" },
-  stale:   { color: "bg-gray-500/10 text-gray-400 border-gray-500/30",          icon: Clock,          label: "Stale" },
+  stale:   { color: "bg-gray-500/10 text-muted-foreground border-gray-500/30",          icon: Clock,          label: "Stale" },
 };
 
 const JOB_REGISTRY: Record<string, { fn: string; body?: any; description: string; schedule: string }> = {

@@ -530,7 +530,7 @@ export default function AgentNumbersLogin() {
                 <form onSubmit={setPasswordForm.handleSubmit(handleSetPasswordSubmit)} className="space-y-5">
                   {/* Welcome banner with name */}
                   {agentName && (
-                    <div className="p-4 rounded-lg bg-white dark:bg-slate-900 border border-primary/20 text-center">
+                    <div className="p-4 rounded-lg bg-white dark:bg-card border border-primary/20 text-center">
                       <CheckCircle className="h-5 w-5 inline mr-2 text-primary" />
                       <span className="font-medium">We found you, {agentName}!</span>
                     </div>

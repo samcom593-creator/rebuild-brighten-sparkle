@@ -27,7 +27,7 @@ type Stage =
   | "inactive";
 
 const STAGE_META: Record<Stage, { label: string; color: string; order: number }> = {
-  signed_up: { label: "Signed Up", color: "bg-gray-500/20 text-gray-400 border-gray-500/30", order: 1 },
+  signed_up: { label: "Signed Up", color: "bg-gray-500/20 text-muted-foreground border-gray-500/30", order: 1 },
   onboarding: { label: "Onboarding", color: "bg-blue-500/20 text-blue-400 border-blue-500/30", order: 2 },
   licensing: { label: "Licensing", color: "bg-amber-500/20 text-amber-400 border-amber-500/30", order: 3 },
   contracting: { label: "Contracting", color: "bg-violet-500/20 text-violet-400 border-violet-500/30", order: 4 },
@@ -215,7 +215,7 @@ export default function GettingStarted() {
     return (
       <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4 page-enter">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-md bg-white dark:bg-slate-900 border border-primary/30">
+          <div className="p-2.5 rounded-md bg-white dark:bg-card border border-primary/30">
             <Rocket className="h-6 w-6 text-primary" />
           </div>
           <div>

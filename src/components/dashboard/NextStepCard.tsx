@@ -46,8 +46,8 @@ export function NextStepCard({ application_id, agent_id, compact = false }: Prop
     : "No deadline";
 
   const borderClass = isUrgent
-    ? "border-rose-500/40 bg-white dark:bg-slate-900"
-    : "border-blue-500/40 bg-white dark:bg-slate-900";
+    ? "border-rose-500/40 bg-white dark:bg-card"
+    : "border-blue-500/40 bg-white dark:bg-card";
 
   const accent = isUrgent ? "text-rose-300" : "text-blue-300";
 

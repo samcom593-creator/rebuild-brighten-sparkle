@@ -266,7 +266,7 @@ export function GlobalSidebar({
             ? "text-primary bg-primary/[0.12] border-l-2 border-primary"
             : item.special
               ? "text-amber-400 border-l-2 border-amber-400 hover:bg-white/[0.04]"
-              : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]",
+              : "text-muted-foreground hover:text-slate-100 hover:bg-white/[0.04]",
           isCollapsed && "justify-center px-2 border-l-0",
         )}
         style={{ touchAction: "manipulation" }}
@@ -322,7 +322,7 @@ export function GlobalSidebar({
       >
         <div className="flex flex-col h-full">
           <div className={cn(
-            "flex items-center border-b border-slate-800 transition-all",
+            "flex items-center border-b border-border transition-all",
             isCollapsed ? "justify-center p-4" : "justify-between px-4 py-4",
           )}>
             {!isCollapsed && (
@@ -359,7 +359,7 @@ export function GlobalSidebar({
             <div className="flex items-center gap-1">
               {!isCollapsed && (
                 <ConditionalTooltip label="Inbox">
-                  <NotificationBell className="h-7 w-7 text-slate-400 hover:text-amber-400" />
+                  <NotificationBell className="h-7 w-7 text-muted-foreground hover:text-amber-400" />
                 </ConditionalTooltip>
               )}
               <ConditionalTooltip label={isCollapsed ? "Expand" : "Collapse"}>
@@ -368,7 +368,7 @@ export function GlobalSidebar({
                   size="icon"
                   aria-label="Toggle sidebar width"
                   onClick={onToggle}
-                  className="h-7 w-7 text-slate-400 hover:text-slate-300"
+                  className="h-7 w-7 text-muted-foreground hover:text-slate-300"
                   style={{ touchAction: "manipulation" }}
                 >
                   {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -378,14 +378,14 @@ export function GlobalSidebar({
           </div>
 
           {(isAdmin || isManager) && (
-            <div className="px-2 py-2 border-b border-slate-800" ref={searchRef}>
+            <div className="px-2 py-2 border-b border-border" ref={searchRef}>
               {isCollapsed ? (
                 <ConditionalTooltip label="Search Agents">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => { onToggle(); setTimeout(() => setShowSearch(true), 200); }}
-                    className="w-full justify-center text-slate-400 hover:text-slate-300"
+                    className="w-full justify-center text-muted-foreground hover:text-slate-300"
                     style={{ touchAction: "manipulation" }}
                   >
                     <Search className="h-4 w-4" />
@@ -400,7 +400,7 @@ export function GlobalSidebar({
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
                       onFocus={() => setShowSearch(true)}
-                      className="h-8 pl-8 pr-8 text-sm bg-white dark:bg-slate-900 border-slate-800 text-slate-300 placeholder:text-slate-700"
+                      className="h-8 pl-8 pr-8 text-sm bg-white dark:bg-card border-border text-slate-300 placeholder:text-slate-700"
                     />
                     {searchQuery && (
                       <Button
@@ -415,11 +415,11 @@ export function GlobalSidebar({
                     )}
                   </div>
                   {showSearch && searchResults.length > 0 && (
-                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-800 rounded-lg shadow-lg max-h-[24rem] overflow-y-auto">
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-card border border-border rounded-lg shadow-lg max-h-[24rem] overflow-y-auto">
                       {searchResults.map((result) => (
                         <div
                           key={`${result.kind}:${result.id}`}
-                          className="px-2 py-1.5 hover:bg-white/[0.04] transition-colors flex items-center gap-2 border-b border-slate-800/50 last:border-b-0"
+                          className="px-2 py-1.5 hover:bg-white/[0.04] transition-colors flex items-center gap-2 border-b border-border/50 last:border-b-0"
                         >
                           <button
                             type="button"
@@ -454,7 +454,7 @@ export function GlobalSidebar({
                             </span>
                             <span className="min-w-0 flex-1">
                               <p className="text-sm font-medium truncate text-slate-200">{result.name}</p>
-                              <p className="text-xs text-slate-400 truncate">
+                              <p className="text-xs text-muted-foreground truncate">
                                 {result.email || result.phone || "—"}
                                 {result.licenseStatus ? ` · ${result.licenseStatus}` : ""}
                               </p>
@@ -527,7 +527,7 @@ export function GlobalSidebar({
                         onClick={() => toggleGroup(section.label)}
                         aria-expanded={!groupCollapsed}
                         aria-controls={`sidebar-group-${section.label}`}
-                        className="w-full flex items-center justify-between px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500 hover:text-slate-400 transition-colors"
+                        className="w-full flex items-center justify-between px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground hover:text-muted-foreground transition-colors"
                         style={{ touchAction: "manipulation" }}
                       >
                         <span>{section.label}</span>
@@ -539,13 +539,13 @@ export function GlobalSidebar({
                         />
                       </button>
                     ) : (
-                      <div className="px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500">
+                      <div className="px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                         {section.label}
                       </div>
                     )
                   )}
                   {isCollapsed && sIdx > 0 && (
-                    <div className="my-2 mx-2 border-t border-slate-800/50" />
+                    <div className="my-2 mx-2 border-t border-border/50" />
                   )}
                   {!groupCollapsed && (
                     <div
@@ -576,7 +576,7 @@ export function GlobalSidebar({
             />
           </nav>
 
-          <div className="border-t border-slate-800 p-2">
+          <div className="border-t border-border p-2">
             {user && (
               <div className={cn("mb-2 grid gap-1", isCollapsed ? "px-0" : "px-2")} aria-label="Global actions">
                 {(isAdmin || isManager || isVaManager || isVa) && (
@@ -625,7 +625,7 @@ export function GlobalSidebar({
                 <p className="text-sm font-medium truncate text-slate-200">
                   {user.user_metadata?.full_name || user.email}
                 </p>
-                <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
               </div>
             )}
 
@@ -633,7 +633,7 @@ export function GlobalSidebar({
               "flex items-center mb-2",
               isCollapsed ? "justify-center px-2" : "justify-between px-3",
             )}>
-              {!isCollapsed && <span className="text-sm text-slate-400">Theme</span>}
+              {!isCollapsed && <span className="text-sm text-muted-foreground">Theme</span>}
               <ThemeToggle />
             </div>
 
@@ -671,7 +671,7 @@ export function GlobalSidebar({
                 size="sm"
                 onClick={handleLogout}
                 className={cn(
-                  "w-full text-slate-400 hover:text-red-400 hover:bg-red-500/10",
+                  "w-full text-muted-foreground hover:text-red-400 hover:bg-red-500/10",
                   isCollapsed ? "justify-center" : "justify-start px-3",
                 )}
                 style={{ touchAction: "manipulation" }}
@@ -682,7 +682,7 @@ export function GlobalSidebar({
             </ConditionalTooltip>
 
             {!isCollapsed && (
-              <div className="mt-3 pt-3 border-t border-slate-800/50 text-center">
+              <div className="mt-3 pt-3 border-t border-border/50 text-center">
                 <p className="text-[9px] text-slate-600 uppercase tracking-widest">
                   Powered by <span className="font-semibold text-amber-400/80">Apex Financial</span>{" "}<span className="tabular-nums opacity-60">· b{typeof __BUILD_ID__ === "undefined" ? "dev" : __BUILD_ID__}</span>
                 </p>

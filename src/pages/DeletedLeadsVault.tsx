@@ -196,7 +196,7 @@ export default function DeletedLeadsVault() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="p-2.5 rounded-md bg-white dark:bg-slate-900 border border-destructive/30">
+          <div className="p-2.5 rounded-md bg-white dark:bg-card border border-destructive/30">
             <Trash2 className="h-6 w-6 text-destructive" />
           </div>
           <div>
@@ -309,7 +309,7 @@ export default function DeletedLeadsVault() {
                         className={
                           lead.license_status === "licensed"
                             ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                            : "bg-gray-500/20 text-gray-400 border-gray-500/30"
+                            : "bg-gray-500/20 text-muted-foreground border-gray-500/30"
                         }
                       >
                         {lead.license_status || "—"}

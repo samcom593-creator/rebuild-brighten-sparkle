@@ -163,7 +163,7 @@ export function CallCenterLeadCard({
       exit="exit"
       className={cn(
         "relative overflow-hidden rounded-md",
-        "bg-white dark:bg-slate-900",
+        "bg-white dark:bg-card",
         " border border-border/50",
         "shadow-2xl shadow-black/20",
         "transition-all duration-300",
@@ -172,7 +172,7 @@ export function CallCenterLeadCard({
       )}
     >
       {/* Ambient glow effect */}
-      <div className="absolute inset-0 bg-white dark:bg-slate-900 pointer-events-none opacity-40" />
+      <div className="absolute inset-0 bg-white dark:bg-card pointer-events-none opacity-40" />
 
       {/* Recording indicator overlay */}
       {isRecording && (
@@ -215,7 +215,7 @@ export function CallCenterLeadCard({
                   "text-xs px-3 py-1 rounded-full font-medium",
                   lead.licenseStatus === "licensed"
                     ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                    : "bg-slate-500/20 text-slate-400 border border-slate-500/30"
+                    : "bg-slate-500/20 text-muted-foreground border border-slate-500/30"
                 )}
               >
                 {lead.licenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
@@ -351,7 +351,7 @@ export function CallCenterLeadCard({
               whileTap={{ scale: 0.99 }}
               className={cn(
                 "relative flex items-center gap-4 p-4 rounded-md w-full text-left transition-all overflow-hidden min-h-[60px]",
-                "bg-white dark:bg-slate-900",
+                "bg-white dark:bg-card",
                 "border border-green-500/30 hover:border-green-500/50",
                 "hover:from-green-500/20 hover:to-emerald-500/20",
                 "group"

@@ -221,7 +221,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
                 <span className="text-[10px] text-slate-600 dark:text-slate-300 truncate">{ev.product_sold ?? "Life"}</span>
               </div>
               {ev.draft_hook && (
-                <p className="text-[10px] text-slate-400 leading-snug line-clamp-2">{ev.draft_hook}</p>
+                <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2">{ev.draft_hook}</p>
               )}
               {ev.draft_id && ev.draft_status === "awaiting_approval" ? (
                 <Button
@@ -235,7 +235,7 @@ function CultureFeed({ onApproveDraft }: { onApproveDraft: (id: number) => void 
               ) : ev.draft_status === "approved" ? (
                 <Badge variant="outline" className="text-[10px] text-amber-300 border-amber-500/30 w-fit">approved</Badge>
               ) : ev.draft_status === "shipped" ? (
-                <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-600 w-fit">shipped</Badge>
+                <Badge variant="outline" className="text-[10px] text-muted-foreground border-slate-600 w-fit">shipped</Badge>
               ) : null}
             </div>
           ))}
@@ -767,7 +767,7 @@ function Metric({ label, value, tone }: { label: string; value: number; tone: st
     <Card>
       <CardContent className="p-4">
         <div className={cn("text-3xl font-bold tabular-nums", tone)}>{value}</div>
-        <div className="text-xs text-slate-400 mt-1">{label}</div>
+        <div className="text-xs text-muted-foreground mt-1">{label}</div>
       </CardContent>
     </Card>
   );
@@ -913,7 +913,7 @@ function PoolOverview({
     { label: "Outliers", value: data?.outliers, hint: "cw_outliers", tone: "text-cyan-300" },
     { label: "Drafts awaiting", value: draftAwait, hint: "social_bot_drafts", tone: "text-amber-300" },
     { label: "Approved to post", value: draftApproved, hint: "social_bot_drafts", tone: "text-emerald-300" },
-    { label: "Shipped", value: draftShipped, hint: "social_bot_drafts + cw_posts", tone: "text-slate-400" },
+    { label: "Shipped", value: draftShipped, hint: "social_bot_drafts + cw_posts", tone: "text-muted-foreground" },
   ];
 
   return (
@@ -921,19 +921,19 @@ function PoolOverview({
       <CardContent className="p-3 md:p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] font-mono uppercase tracking-wider text-slate-600 dark:text-slate-300">Full content flow</span>
-          <span className="text-[10px] text-slate-400">read-only · pulls live</span>
+          <span className="text-[10px] text-muted-foreground">read-only · pulls live</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
           {pools.map((p, i) => (
             <div key={p.label} className="rounded-md border border-white/5 bg-white/[0.02] p-2.5">
               <div className="flex items-center gap-1.5 mb-1">
                 <span className={cn("text-[9px] font-mono", p.tone)}>{i + 1}</span>
-                <span className="text-[10px] text-slate-400 truncate">{p.label}</span>
+                <span className="text-[10px] text-muted-foreground truncate">{p.label}</span>
               </div>
               <div className={cn("text-xl font-bold tabular-nums leading-tight", p.tone)}>
-                {p.value === null || p.value === undefined ? <span className="text-slate-400">—</span> : p.value}
+                {p.value === null || p.value === undefined ? <span className="text-muted-foreground">—</span> : p.value}
               </div>
-              <div className="text-[9px] text-slate-400 font-mono mt-0.5 truncate" title={p.hint}>{p.hint}</div>
+              <div className="text-[9px] text-muted-foreground font-mono mt-0.5 truncate" title={p.hint}>{p.hint}</div>
             </div>
           ))}
         </div>

@@ -262,7 +262,7 @@ export default function PurchaseLeads() {
         {/* Live Counter + Timer Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Live Lead Counter */}
-          <Card className="p-6 bg-white dark:bg-slate-900 border-primary/20">
+          <Card className="p-6 bg-white dark:bg-card border-primary/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-md bg-primary/20">
@@ -325,7 +325,7 @@ export default function PurchaseLeads() {
           </Card>
 
           {/* Timer */}
-          <Card className="p-6 bg-white dark:bg-slate-900 border-amber-500/20">
+          <Card className="p-6 bg-white dark:bg-card border-amber-500/20">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-md bg-amber-500/20">
                 <Clock className="h-6 w-6 text-amber-500" />
@@ -363,7 +363,7 @@ export default function PurchaseLeads() {
               className={cn(
                 "relative overflow-hidden transition-all duration-300 hover:scale-[1.02]",
                 pkg.popular
-                  ? "border-primary/40 bg-white dark:bg-slate-900"
+                  ? "border-primary/40 bg-white dark:bg-card"
                   : "border-border/50"
               )}
             >

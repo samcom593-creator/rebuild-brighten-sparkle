@@ -15,7 +15,7 @@ export function DormantBadge({ lastContactedAt, contactedAt, createdAt }: Dorman
   if (daysSince < FOLLOWUP_TIMING.dormantDays) return null;
 
   return (
-    <Badge className="text-[9px] border px-1.5 py-0 bg-slate-500/20 text-slate-400 border-slate-500/30 gap-0.5">
+    <Badge className="text-[9px] border px-1.5 py-0 bg-slate-500/20 text-muted-foreground border-slate-500/30 gap-0.5">
       <Moon className="h-2 w-2" />
       Dormant
     </Badge>

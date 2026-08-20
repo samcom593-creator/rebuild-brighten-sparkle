@@ -533,7 +533,7 @@ export function InterviewRecorder({
             <AnimatePresence>
               {callSummary && (
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                  className="rounded-md bg-white dark:bg-slate-900 border border-primary/20 overflow-hidden mb-4">
+                  className="rounded-md bg-white dark:bg-card border border-primary/20 overflow-hidden mb-4">
                   <div className="p-4 border-b border-border/30 bg-primary/5">
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-primary" />

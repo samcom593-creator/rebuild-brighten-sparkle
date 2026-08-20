@@ -311,7 +311,7 @@ function WhaleRow({ row, agent }: { row: WhaleRow & { stage: string; heat: Heat 
     : row.phone;
 
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30">
+    <div className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-muted/30">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
           <p className="text-14 font-semibold truncate">{name}</p>
@@ -323,7 +323,7 @@ function WhaleRow({ row, agent }: { row: WhaleRow & { stage: string; heat: Heat 
         </div>
         {/* wave-83 audit fix: 5 Lucide meta icons (Phone/Mail/Users/TrendingUp/Calendar)
             collapsed — text is fully self-describing, 3x3 icons added noise without aiding scan */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-12 text-slate-500">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-12 text-muted-foreground">
           {formattedPhone && (
             <a href={`tel:${row.phone}`} className="hover:text-emerald-600">{formattedPhone}</a>
           )}
@@ -345,7 +345,7 @@ function WhaleRow({ row, agent }: { row: WhaleRow & { stage: string; heat: Heat 
           <p className="text-11 text-slate-700 dark:text-slate-300 mt-1 italic">Next: {row.next_action}</p>
         )}
         {row.referral_source && (
-          <p className="text-11 text-slate-500 mt-1">Source: {row.referral_source}</p>
+          <p className="text-11 text-muted-foreground mt-1">Source: {row.referral_source}</p>
         )}
       </div>
       <div className="shrink-0 flex flex-col gap-1">

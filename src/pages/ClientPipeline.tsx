@@ -117,8 +117,8 @@ interface Client {
 // v24 palette restraint: 4 colors total — slate (inactive/working) +
 // amber (in-flight/needs-attention) + emerald (sold) + rose (risk/follow-up).
 const TINT = {
-  slate:       "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700",
-  slateMuted:  "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-800",
+  slate:       "bg-slate-100 text-slate-700 dark:bg-muted dark:text-slate-300 border-slate-300 dark:border-border",
+  slateMuted:  "bg-slate-100 text-slate-600 dark:bg-muted dark:text-muted-foreground border-slate-200 dark:border-border",
   amber:       "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 border-amber-200 dark:border-amber-800",
   emerald:     "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
   rose:        "bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300 border-rose-200 dark:border-rose-800",

@@ -165,7 +165,7 @@ const PRIORITY_META: Record<Priority, { label: string; tone: string; ring: strin
   today:    { label: "Today",    tone: "bg-teal-500/15 text-teal-300 border-teal-500/40",   ring: "before:bg-teal-400" },
   stale:    { label: "Stale",    tone: "bg-orange-500/15 text-orange-300 border-orange-500/40", ring: "before:bg-orange-400" },
   watch:    { label: "Watch",    tone: "bg-slate-500/15 text-slate-300 border-slate-500/40", ring: "before:bg-slate-500" },
-  low:      { label: "Low",      tone: "bg-slate-500/10 text-slate-400 border-slate-500/30", ring: "before:bg-slate-600" },
+  low:      { label: "Low",      tone: "bg-slate-500/10 text-muted-foreground border-slate-500/30", ring: "before:bg-slate-600" },
 };
 
 const LICENSE_STAGES: { key: string; label: string }[] = [
@@ -372,7 +372,7 @@ function MilestoneChip({ date, label, done }: { date: string | null; label: stri
       <TooltipTrigger asChild>
         <span className={cn(
           "inline-flex items-center gap-1 rounded border px-1 py-0.5 text-[10px]",
-          done ? "border-teal-500/40 bg-teal-500/10 text-teal-300" : "border-slate-500/30 bg-slate-500/10 text-slate-400"
+          done ? "border-teal-500/40 bg-teal-500/10 text-teal-300" : "border-slate-500/30 bg-slate-500/10 text-muted-foreground"
         )}>
           <span className={cn("h-1.5 w-1.5 rounded-full", done ? "bg-teal-400" : "bg-slate-500")} />
           {label}
@@ -483,7 +483,7 @@ function RowActions({ row, onOpen, onMarkContacted, onMarkPhoneBad, onSetStage, 
         </Tooltip>
         {/* palette-allow:apex-panel-dark — matches AppShell popover surface tone */}
         <PopoverContent align="end" className="w-56 p-1 bg-[#0B1118] border-white/10" onClick={stop}>
-          <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-slate-500">Set license stage</div>
+          <div className="px-2 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">Set license stage</div>
           {LICENSE_STAGES.map((s) => (
             <button
               key={s.key}
@@ -1139,14 +1139,14 @@ export default function RecoveryQueue() {
                   <div className={cn("inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-black/30", meta.accent)}>
                     <Icon className="h-3.5 w-3.5" />
                   </div>
-                  <span className="text-[10px] uppercase tracking-wide text-slate-500">{meta.short}</span>
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{meta.short}</span>
                 </div>
                 <div className="mt-2">
                   <div className="text-2xl font-semibold text-slate-100">
                     <AnimatedCounter value={count} duration={0.4} />
                   </div>
                   <div className="mt-0.5 text-[11px] font-medium text-slate-300">{meta.label}</div>
-                  <div className="mt-1 text-[10px] leading-tight text-slate-500">{meta.help}</div>
+                  <div className="mt-1 text-[10px] leading-tight text-muted-foreground">{meta.help}</div>
                 </div>
               </button>
             );
@@ -1157,12 +1157,12 @@ export default function RecoveryQueue() {
         <div className="sticky top-0 z-20 -mx-4 border-y border-white/10 bg-black/60 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[220px]">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search name, phone, email, state, manager"
-                className="h-9 border-white/10 bg-white/[0.04] pl-9 text-sm text-slate-100 placeholder:text-slate-500 focus-visible:ring-teal-400/70"
+                className="h-9 border-white/10 bg-white/[0.04] pl-9 text-sm text-slate-100 placeholder:text-muted-foreground focus-visible:ring-teal-400/70"
               />
             </div>
 
@@ -1171,7 +1171,7 @@ export default function RecoveryQueue() {
                 <Button variant="outline" size="sm" className="h-9 gap-1.5 border-white/10 bg-white/[0.04] hover:bg-white/[0.08]">
                   <Filter className="h-3.5 w-3.5" />
                   Sort
-                  <span className="ml-1 text-slate-400">
+                  <span className="ml-1 text-muted-foreground">
                     {sort === "priority" ? "Highest priority"
                       : sort === "closest" ? "Closest to licensed"
                       : sort === "stale" ? "Most stale"
@@ -1222,14 +1222,14 @@ export default function RecoveryQueue() {
                 variant="ghost"
                 size="sm"
                 onClick={resetFilters}
-                className="h-8 gap-1 text-slate-400 hover:text-slate-100"
+                className="h-8 gap-1 text-muted-foreground hover:text-slate-100"
               >
                 <X className="h-3.5 w-3.5" />
                 Reset
               </Button>
             )}
 
-            <div className="ml-auto text-xs text-slate-500">
+            <div className="ml-auto text-xs text-muted-foreground">
               {filtered.length} of {rows.length}
               {powerHour && <span className="ml-2 rounded bg-teal-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-teal-300">POWER HOUR</span>}
             </div>
@@ -1280,7 +1280,7 @@ export default function RecoveryQueue() {
                   size="sm"
                   variant="ghost"
                   onClick={clearSelection}
-                  className="h-8 gap-1 text-slate-400 hover:text-slate-100"
+                  className="h-8 gap-1 text-muted-foreground hover:text-slate-100"
                 >
                   <X className="h-3.5 w-3.5" />
                   Cancel
@@ -1364,7 +1364,7 @@ export default function RecoveryQueue() {
                       <div className="flex items-center gap-2">
                         <div className="truncate text-sm font-semibold text-slate-100">{r.name}</div>
                         {r.state && (
-                          <span className="inline-flex items-center gap-0.5 text-[11px] text-slate-400">
+                          <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
                             <MapPin className="h-3 w-3" />
                             {r.state}
                           </span>
@@ -1378,7 +1378,7 @@ export default function RecoveryQueue() {
                           "inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px]",
                           stale >= 30 ? "border-rose-500/40 bg-rose-500/10 text-rose-300"
                             : stale >= 7 ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
-                            : "border-white/10 bg-white/[0.04] text-slate-400"
+                            : "border-white/10 bg-white/[0.04] text-muted-foreground"
                         )}>
                           Stale {stale}d
                         </span>
@@ -1397,10 +1397,10 @@ export default function RecoveryQueue() {
                         <ArrowRight className={cn("h-3 w-3", meta.accent)} />
                         <span>{meta.action}</span>
                         {r.phone && (
-                          <span className="ml-2 text-slate-500">·</span>
+                          <span className="ml-2 text-muted-foreground">·</span>
                         )}
                         {r.phone && (
-                          <span className="text-slate-400">{formatPhone(r.phone)}</span>
+                          <span className="text-muted-foreground">{formatPhone(r.phone)}</span>
                         )}
                       </div>
                     </div>
@@ -1476,7 +1476,7 @@ export default function RecoveryQueue() {
                 ))}
               </div>
               <div className="mt-3 flex justify-end">
-                <Button size="sm" variant="ghost" onClick={() => setBulkStageOpen(false)} className="h-8 text-slate-400 hover:text-slate-100">
+                <Button size="sm" variant="ghost" onClick={() => setBulkStageOpen(false)} className="h-8 text-muted-foreground hover:text-slate-100">
                   Cancel
                 </Button>
               </div>
@@ -1492,7 +1492,7 @@ export default function RecoveryQueue() {
               <AlertDialogTitle className="text-slate-100">
                 Apply to {selectedIds.size} records?
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-slate-400">
+              <AlertDialogDescription className="text-muted-foreground">
                 You are about to run &quot;{bulkConfirm?.label}&quot; on {selectedIds.size} people at once. This cannot be undone with one click.
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -1561,7 +1561,7 @@ function PowerHourBar({
               <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-teal-300">
                 <Timer className="h-3 w-3" />
                 Power Hour · {Math.min(session.index + 1, session.total)} / {session.total}
-                <span className="text-slate-500">·</span>
+                <span className="text-muted-foreground">·</span>
                 <span className="tabular-nums text-slate-300">{formatElapsed(elapsed)}</span>
               </div>
               <div className="mt-1 truncate text-sm font-semibold text-slate-100">{currentName}</div>
@@ -1614,7 +1614,7 @@ function PowerHourBar({
             )}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button size="sm" variant="ghost" onClick={onExit} className="h-8 gap-1 text-slate-400 hover:text-slate-100">
+                <Button size="sm" variant="ghost" onClick={onExit} className="h-8 gap-1 text-muted-foreground hover:text-slate-100">
                   <RotateCcw className="h-3.5 w-3.5" />
                   Exit
                 </Button>
@@ -1642,7 +1642,7 @@ function PowerHourBar({
                   >
                     <Icon className="h-3.5 w-3.5" />
                     <span>{o.short}</span>
-                    <span className="ml-1 rounded bg-black/30 px-1 text-[10px] font-mono text-slate-400">{o.shortcut}</span>
+                    <span className="ml-1 rounded bg-black/30 px-1 text-[10px] font-mono text-muted-foreground">{o.shortcut}</span>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>{o.label}</TooltipContent>

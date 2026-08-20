@@ -156,13 +156,13 @@ function TodaySection({ today }: { today: string }) {
           <CalIcon className="w-5 h-5 text-amber-400" />
           TODAY · {new Date(today + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </CardTitle>
-        <div className="text-sm text-slate-400">
+        <div className="text-sm text-muted-foreground">
           {(tasks ?? []).filter(t => t.status === "done").length} / {(tasks ?? []).length} done
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {(tasks ?? []).length === 0 && (
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             No tasks set for today yet — hit <span className="text-amber-300 font-medium">add</span> under
             MUST/SHOULD/COULD to plan your day. (This checklist is empty, not broken.)
           </p>
@@ -303,10 +303,10 @@ function ThisWeekSection({ today }: { today: string }) {
                 "rounded-md p-2.5 text-center border transition-colors",
                 isToday ? "border-amber-400 bg-amber-400/10" : "border-white/10 bg-white/[0.02]"
               )}>
-                <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">{dowLabel(d.date)}</div>
+                <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">{dowLabel(d.date)}</div>
                 <div className="text-xl font-bold mt-1">{new Date(d.date + "T12:00:00").getDate()}</div>
                 <div className="text-xs mt-1.5 text-slate-600 dark:text-slate-300">
-                  {total > 0 ? `${done}/${total}` : <span className="text-slate-400">—</span>}
+                  {total > 0 ? `${done}/${total}` : <span className="text-muted-foreground">—</span>}
                 </div>
               </div>
             );
@@ -352,7 +352,7 @@ function ShippedSection() {
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <div>
-          <div className="text-xs font-mono text-slate-400 mb-1.5">RECENT HIRES (last 5)</div>
+          <div className="text-xs font-mono text-muted-foreground mb-1.5">RECENT HIRES (last 5)</div>
           {!hires?.length && <div className="text-xs text-slate-600 dark:text-slate-300">No hires loaded yet</div>}
           <ul className="space-y-1">
             {(hires ?? []).map((h, i) => (
@@ -447,11 +447,11 @@ function ContentCommandSection() {
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-md border border-white/10 bg-white/[0.03] p-3">
             <div className="text-2xl font-bold text-amber-300">{awaiting}</div>
-            <div className="text-xs text-slate-400">need Sam stamp</div>
+            <div className="text-xs text-muted-foreground">need Sam stamp</div>
           </div>
           <div className="rounded-md border border-white/10 bg-white/[0.03] p-3">
             <div className="text-2xl font-bold text-emerald-300">{approved}</div>
-            <div className="text-xs text-slate-400">approved to post</div>
+            <div className="text-xs text-muted-foreground">approved to post</div>
           </div>
         </div>
         {(drafts ?? []).length === 0 ? (
@@ -577,7 +577,7 @@ function LeaksSection() {
           {tiles.map(t => (
             <a key={t.label} href={t.href} className="rounded-md border border-white/10 bg-white/[0.02] p-3 hover:border-white/20 transition-colors">
               <div className={cn("text-2xl font-bold tabular-nums", t.color)}>{t.value}</div>
-              <div className="text-xs text-slate-400 mt-1">{t.label}</div>
+              <div className="text-xs text-muted-foreground mt-1">{t.label}</div>
             </a>
           ))}
         </div>
@@ -628,7 +628,7 @@ function BotsSection() {
         {bots.map(b => (
           <div key={b.key} className="flex items-center justify-between py-1 border-b border-white/5 last:border-b-0">
             <div className="flex items-center gap-2">
-              <b.icon className="w-3.5 h-3.5 text-slate-400" />
+              <b.icon className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="font-medium">{b.label}</span>
             </div>
             <span className="text-xs text-slate-600 dark:text-slate-300">{b.note}</span>
@@ -687,7 +687,7 @@ export default function SamHQ() {
         <BotsSection />
       </div>
 
-      <div className="text-center text-xs text-slate-400 pt-4 pb-8 italic">
+      <div className="text-center text-xs text-muted-foreground pt-4 pb-8 italic">
         Hold the Standard. Average is the disease.
       </div>
     </div>
@@ -747,7 +747,7 @@ function TelegramStatusTile() {
                 {data.greenCount}/{data.total} proven
               </Badge>
             </div>
-            <div className="text-xs text-slate-400 mt-0.5">
+            <div className="text-xs text-muted-foreground mt-0.5">
               {allGreen ? (
                 <span className="text-emerald-300">All 5 activation steps green. Bot is live.</span>
               ) : (

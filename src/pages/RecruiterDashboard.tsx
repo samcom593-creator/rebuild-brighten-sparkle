@@ -258,7 +258,7 @@ function XPBar({ xp }: { xp: number }) {
         </div>
         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-white dark:bg-slate-900 rounded-full"
+            className="h-full bg-white dark:bg-card rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${pct}%` }}
             transition={{ duration: 0.8, ease: "easeOut" }}
@@ -1133,7 +1133,7 @@ function RecruiterDashboardInner() {
             initial={{ opacity: 0, y: -20, x: "-50%" }}
             animate={{ opacity: 1, y: 0, x: "-50%" }}
             exit={{ opacity: 0, y: -20, x: "-50%" }}
-            className="fixed top-20 left-1/2 z-50 bg-white dark:bg-slate-900 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg pointer-events-none"
+            className="fixed top-20 left-1/2 z-50 bg-white dark:bg-card text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg pointer-events-none"
           >
             {xpToast}
           </motion.div>
@@ -1141,7 +1141,7 @@ function RecruiterDashboardInner() {
       </AnimatePresence>
 
       {/* ── Header ── */}
-      <div className="relative overflow-hidden rounded-md border border-pink-500/20 bg-white dark:bg-slate-900 p-3">
+      <div className="relative overflow-hidden rounded-md border border-pink-500/20 bg-white dark:bg-card p-3">
         <div className="flex flex-col md:flex-row md:items-center gap-2">
           <div className="flex-1">
             <div className="flex items-center gap-3">

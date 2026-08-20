@@ -164,7 +164,7 @@ function OverviewPanel() {
       iconColor: "bg-purple-500/15 text-purple-400 ring-purple-500/30" },
     { label: "Last vault capture", value: fmtAge(data.last_vault_capture), icon: RefreshCw,
       gradient: "from-slate-500/15 via-slate-500/5 to-transparent border-slate-500/30",
-      iconColor: "bg-slate-500/15 text-slate-400 ring-slate-500/30" },
+      iconColor: "bg-slate-500/15 text-muted-foreground ring-slate-500/30" },
   ];
   return (
     <div className="space-y-4">

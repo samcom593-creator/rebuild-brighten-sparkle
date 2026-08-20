@@ -206,7 +206,7 @@ export function CallCenterActions({
                 "w-full h-20 md:h-20 relative overflow-hidden rounded-md transition-all duration-200",
                 // Flat-fill tint per wave-59 pattern — bg-gradient-cards gate
                 // blocks multi-stop gradients on card-style outer wrappers.
-                "border bg-slate-900/60 hover:bg-slate-900",
+                "border bg-card/60 hover:bg-card",
                 action.color,
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 activeKey === action.key && "ring-2 ring-white/20"

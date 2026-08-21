@@ -6,6 +6,7 @@ import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useBrand } from "@/hooks/useBrand";
 import {
   AGENT_CLOUD_ACCOUNT_NAV,
   AGENT_CLOUD_PRIMARY_NAV,
@@ -24,6 +25,7 @@ interface GlobalSidebarProps {
 }
 
 export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarProps) {
+  const brand = useBrand();
   const { pathname } = useLocation();
   const { isAdmin } = useAuth();
   const isTouch = useIsTouchDevice();
@@ -129,7 +131,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
             </span>
             {!collapsed && (
               <span className="min-w-0 leading-none">
-                <span className="block truncate text-[15px] font-semibold tracking-tight text-white">APEX Financial</span>
+                <span className="block truncate text-[15px] font-semibold tracking-tight text-white">{brand.legalName}</span>
                 <span className="mt-1 block text-[8px] font-semibold uppercase tracking-[0.22em] text-[#9A9A9A]">By Agent Cloud</span>
               </span>
             )}

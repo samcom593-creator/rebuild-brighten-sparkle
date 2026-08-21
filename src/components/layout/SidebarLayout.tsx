@@ -11,6 +11,7 @@ import { useSidebarState } from "@/hooks/useSidebarState";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigationGuard } from "@/hooks/useNavigationGuard";
 import { cn } from "@/lib/utils";
+import { useBrand } from "@/hooks/useBrand";
 
 interface SidebarLayoutProps {
   children: ReactNode;
@@ -26,6 +27,7 @@ const PageContent = memo(({ children, showPhoneBanner }: { children: ReactNode; 
 ));
 
 export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayoutProps) {
+  const brand = useBrand();
   const { isOpen, isFullscreen, toggleSidebar, toggleFullscreen, sidebarWidth } = useSidebarState();
   const location = useLocation();
   const prevPathRef = useRef(location.pathname);
@@ -55,7 +57,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
         <div className="flex h-[60px] items-center justify-between px-3 pt-[env(safe-area-inset-top)]">
           <Link to="/dashboard" className="flex items-center gap-2">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#C9A961] text-[#0A0A0A]"><Cloud className="h-[18px] w-[18px]" /></span>
-            <span className="text-sm font-semibold text-white">APEX Financial</span>
+            <span className="text-sm font-semibold text-white">{brand.legalName}</span>
           </Link>
           <div className="flex items-center gap-2">
             <Button

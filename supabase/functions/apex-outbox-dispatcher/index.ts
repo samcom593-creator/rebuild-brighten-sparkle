@@ -553,11 +553,24 @@ Deno.serve(async (req) => {
     retried: 0,
     deadLettered: 0,
     persistenceFailures: 0,
+    // MP-314: a send that happened but could not be fully recorded. Counted
+    // separately from persistenceFailures because the operator question is
+    // different: not "did a write fail" but "is there a delivery the audit log
+    // cannot fully account for, which nothing will retry".
+    strandedAfterDispatch: 0,
   };
   const receipts: Array<Record<string, unknown>> = [];
 
   for (const event of claimed ?? []) {
     const attemptNumber = Number(event.attempts);
+    // MP-314: the catch below could not tell "the provider was never called"
+    // from "the provider succeeded and only the bookkeeping failed", and treated
+    // both as retryable. claim_apex_outbox_events re-claims status='failed', so
+    // a failed audit-row write re-ran dispatch() and duplicated the side effect.
+    // dispatchCompleted marks the instant a provider side effect may exist;
+    // parentSettled marks the instant outbox_events holds the terminal truth.
+    let dispatchCompleted = false;
+    let parentSettled = false;
     const { data: attempt, error: attemptError } = await sb
       .from("delivery_attempts")
       .insert({
@@ -578,6 +591,9 @@ Deno.serve(async (req) => {
         if (processingError) throw processingError;
       }
       const result = await dispatch(sb, event);
+      // Set BEFORE any bookkeeping. Everything past this line is recording, not
+      // sending: if any of it throws, the send has already left the building.
+      dispatchCompleted = true;
       if (result.state === "manual_action_required") {
         const { error: manualError } = await sb.from("outbox_events").update({
           status: "manual_action_required",
@@ -596,6 +612,7 @@ Deno.serve(async (req) => {
         }).eq("id", event.id);
         if (deliveredError) throw deliveredError;
       }
+      parentSettled = true;
       if (attempt.id) {
         // MP-313: this used to say "delivered" unconditionally -- including on
         // the manual_action_required branch three lines above, for the same
@@ -628,6 +645,68 @@ Deno.serve(async (req) => {
       }
     } catch (error) {
       const message = redactError(error);
+      if (dispatchCompleted) {
+        // MP-314: the provider side effect already exists. Re-arming this event
+        // does not retry a failed send, it repeats a successful one. Email/SMS
+        // survive that (resendEmail carries a stable `apex-contact-${id}`
+        // idempotency key), but the Discord webhook and POST /api/deals do not:
+        // a duplicate deal lands in agentlink_book, the book Sam's commissions
+        // are computed from. So this branch never writes available_at and never
+        // writes 'failed'.
+        const persistenceErrors: string[] = [];
+        if (!parentSettled) {
+          // The parent is stranded at 'processing' with locked_at set, and the
+          // claim function re-claims a stale 'processing' row after 10 minutes,
+          // so leaving it alone re-sends just as surely as marking it failed.
+          // manual_action_required is terminal by construction and already in
+          // this column's vocabulary (checked live before writing it -- MP-313
+          // shipped because a CHECK rejected exactly this kind of honest word).
+          const { error: strandedError } = await sb.from("outbox_events").update({
+            status: "manual_action_required",
+            processed_at: new Date().toISOString(),
+            locked_at: null,
+            last_error_redacted: `Provider dispatch completed; outbox state could not be recorded: ${message}`,
+          }).eq("id", event.id);
+          if (strandedError) persistenceErrors.push(redactError(strandedError));
+          if (attempt?.id) {
+            const { error: strandedAttemptError } = await sb.from("delivery_attempts").update({
+              status: "manual_action_required",
+              error_redacted: message,
+              finished_at: new Date().toISOString(),
+            }).eq("id", attempt.id);
+            if (strandedAttemptError) persistenceErrors.push(redactError(strandedAttemptError));
+          }
+        }
+        // When parentSettled is true the ONLY statement that can have thrown is
+        // the child update, so the child is deliberately left at 'started' with
+        // a null finished_at. That is the honest residue -- "this attempt never
+        // got a terminal record" -- and re-issuing the write that just failed
+        // would be guessing. The parent already holds the truth; overwriting it
+        // is the bug this branch exists to stop.
+        summary.strandedAfterDispatch += 1;
+        if (persistenceErrors.length) summary.persistenceFailures += 1;
+        console.error("[apex-outbox-dispatcher] dispatch completed but bookkeeping failed", {
+          eventId: event.id,
+          destination: event.destination,
+          parentSettled,
+          message,
+          persistenceErrors,
+        });
+        if (event.aggregate_type === "contact_action") {
+          // Do NOT touch apex_contact_actions here. deliverContactAction already
+          // set it to 'provider_accepted' and throws if that write fails, so on
+          // this path it is correct and terminal. The old code overwrote it with
+          // 'retrying' -- a second wrong word promising a retry that will not
+          // happen, the same class MP-313 closed one table over.
+          receipts.push({
+            actionId: event.aggregate_id,
+            status: "delivered_record_incomplete",
+            error: "The provider accepted this send; its delivery record could not be completed. It will NOT be retried.",
+            deliveryConfirmed: false,
+          });
+        }
+        continue;
+      }
       const exhausted = attemptNumber >= MAX_ATTEMPTS;
       const retryAt = new Date(Date.now() + Math.min(60, 2 ** attemptNumber) * 60_000).toISOString();
       const persistenceErrors: string[] = [];
@@ -706,5 +785,10 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ ok: summary.persistenceFailures === 0, ...summary, receipts });
+  // A run that sent something it could not account for is not an ok run.
+  return json({
+    ok: summary.persistenceFailures === 0 && summary.strandedAfterDispatch === 0,
+    ...summary,
+    receipts,
+  });
 });

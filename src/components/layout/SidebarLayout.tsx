@@ -7,7 +7,6 @@ import { TopBar } from "./TopBar";
 import { ScrollProgress } from "./ScrollProgress";
 import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
 import { Button } from "@/components/ui/button";
-import { RolePreviewBubbles } from "@/components/layout/RolePreviewBubbles";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigationGuard } from "@/hooks/useNavigationGuard";
@@ -144,7 +143,6 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
         }}
       >
         <TopBar />
-        <RolePreviewBubbles />
         <div className="apex-content-frame p-4 lg:p-5">
           <PageContent showPhoneBanner={showPhoneBanner}>
             {children}

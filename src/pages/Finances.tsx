@@ -1,23 +1,28 @@
-// Finances · mirrors AgentLink's "Finances" sidebar item
+// Finances — Agent Cloud parity page.
 //
-// Surfaces the CFO-bot snapshot already running on cron:
-//   - v_cfo_snapshot           : top-line health row (10 metrics)
-//   - v_cfo_dup_charge_watch   : duplicate-charge anomalies
-//   - v_cfo_ica_paid_stuck     : ICA-paid but stuck-in-pipeline apps
-//   - v_cfo_agent_activation_watch : idle active agents
-//   - commission_ledger        : recent commission earnings
-//   - cfo_approval_requests    : pending CFO approval items
+// Overview tab mirrors AC's Finances anatomy exactly (captured at
+// ~/business-ops/agentcloud-reference/pages/finances.png): scope chips
+// (Mine / Agency / Total IMO), KPI row (Today / Forecast 90-day / MTD / YTD),
+// Commission Types quad, 12-month rolling forecast chart, Scheduled Payouts
+// with month pager + CSV export, and Breakdown tabs — all fed by ONE RPC,
+// finances_overview, whose est-earnings basis is identical to
+// leaderboard_board (AP x agent_comp_levels.avg_comp_pct, default 63) so
+// Finances and the Leaderboard can never disagree.
 //
-// READ-ONLY view of the finance-bot's live state. The bot itself
-// runs at ~/business-ops/finance-bot/ on launchd. This page lets
-// Sam check the snapshot from anywhere without opening the terminal.
+// Reconciliation tab preserves the CFO-bot cockpit that used to be this whole
+// page: leak detection, dup charges, stuck ICA, idle agents, commission
+// ledger, pending approvals. Nothing was deleted, it moved one tab over.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   DollarSign, AlertTriangle, TrendingUp, TrendingDown, RefreshCw,
   Activity, ShieldCheck, ShieldAlert, Users, Clock, CheckCircle2,
+  ChevronLeft, ChevronRight, Download, Info,
 } from "lucide-react";
+import {
+  Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis,
+} from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
@@ -26,6 +31,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
+import { cn } from "@/lib/utils";
 
 interface CfoSnapshot {
   ghost_ap_at_risk: string | number;
@@ -130,18 +137,292 @@ function syncChipClass(v: string): string {
     : "bg-destructive/15 text-destructive border-destructive/30";
 }
 
-export default function Finances() {
-  usePageTitle("Finances · APEX");
-  const [tab, setTab] = useState<"overview"|"anomalies"|"commissions"|"approvals">("overview");
 
-  const snapshot = useQuery({
+// ── AC Overview types ────────────────────────────────────────────────────
+type FinScope = "mine" | "agency" | "imo";
+
+interface FinOverview {
+  scope: string;
+  as_of: string;
+  comp_note: string;
+  kpis: { today: number; forecast_90d: number; mtd: number; ytd: number };
+  commission_types: { direct_ytd: number; override_pending: number; trail_pending: number; renewal_pending: number };
+  forecast: Array<{ month: string; direct: number; override: number; trail: number; renewal: number }>;
+  payouts: { month: string; total: number; rows: Array<{ date: string; agent: string | null; client: string | null; carrier: string | null; product: string | null; ap: number; est: number }> };
+  breakdown: Record<"by_carrier" | "by_product" | "by_month" | "by_agent_overrides", Array<{ name: string; deals: number; ap: number; est: number }>>;
+}
+
+const money = (n: number | null | undefined) => `$${Math.round(Number(n ?? 0)).toLocaleString()}`;
+
+function monthLabel(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+function monthShort(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, 1).toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+}
+
+const SCOPES: Array<{ key: FinScope; label: string }> = [
+  { key: "mine", label: "Mine" },
+  { key: "agency", label: "Agency" },
+  { key: "imo", label: "Total IMO" },
+];
+
+function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub: string; accent?: boolean }) {
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className={cn("mt-2 text-3xl font-bold tabular-nums", accent ? "text-primary" : "text-foreground")}>{value}</p>
+        <p className="mt-1.5 text-xs text-muted-foreground">{sub}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TypeCard({ icon: Icon, label, value, sub, tone }: { icon: React.ElementType; label: string; value: string; sub: string; tone: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-background/40 p-4">
+      <p className={cn("flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide", tone)}>
+        <Icon className="h-3.5 w-3.5" /> {label}
+      </p>
+      <p className="mt-2 text-2xl font-bold tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
+    </div>
+  );
+}
+
+function OverviewTab({ scope }: { scope: FinScope }) {
+  const [month, setMonth] = useState<Date>(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const monthIso = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}-01`;
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["finances-overview", scope, monthIso],
+    staleTime: 120_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("finances_overview" as never, {
+        p_scope: scope === "imo" ? "agency" : scope,
+        p_month: monthIso,
+      } as never);
+      if (error) throw error;
+      return data as unknown as FinOverview;
+    },
+  });
+
+  const chart = useMemo(() => (data?.forecast ?? []).map((f) => ({ ...f, name: monthShort(f.month) })), [data]);
+  const payoutRows = data?.payouts?.rows ?? [];
+  const [breakTab, setBreakTab] = useState<string>("by_carrier");
+
+  const exportCsv = () => {
+    const head = "date,agent,client,carrier,product,annual_premium,est_commission";
+    const lines = payoutRows.map((r) =>
+      [r.date, r.agent, r.client, r.carrier, r.product, r.ap, r.est]
+        .map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(","));
+    const blob = new Blob([[head, ...lines].join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `apex-payouts-${data?.payouts?.month ?? "month"}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  if (isLoading || !data) {
+    return (
+      <div className="space-y-5">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={/* stable-key-allow:skeleton-static-array */ i} className="h-28 rounded-lg" />)}
+        </div>
+        <Skeleton className="h-40 rounded-lg" />
+        <Skeleton className="h-72 rounded-lg" />
+      </div>
+    );
+  }
+
+  const k = data.kpis; const q = data.commission_types;
+
+  return (
+    <div className="space-y-5">
+      {/* KPI row — AC: Today / Forecast 90-day / MTD / YTD */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="Today" value={money(k.today)} sub={new Date().toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })} accent />
+        <KpiCard label="Forecast 90-day" value={money(k.forecast_90d)} sub="Run rate of the last 90 days" accent />
+        <KpiCard label="Month-to-date (MTD)" value={money(k.mtd)} sub={new Date().toLocaleDateString(undefined, { month: "long", year: "numeric" })} />
+        <KpiCard label="Year-to-date (YTD)" value={money(k.ytd)} sub="Since Jan 1" />
+      </div>
+
+      {/* Commission types quad */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Commission types</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <TypeCard icon={DollarSign} label="Direct YTD" value={money(q.direct_ytd)} sub="Advance + trail, estimated" tone="text-primary" />
+          <TypeCard icon={Users} label="Override pending" value={money(q.override_pending)} sub="From downline production" tone="text-success" />
+          <TypeCard icon={Clock} label="Trail pending" value={money(q.trail_pending)} sub="Months 10–12 deferred" tone="text-info" />
+          <TypeCard icon={TrendingUp} label="Renewal pending" value={money(q.renewal_pending)} sub="Years 2+ renewals" tone="text-warning" />
+        </CardContent>
+      </Card>
+
+      {/* 12-month rolling forecast */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">12-month rolling forecast</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chart} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={56} tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`} />
+                <ChartTooltip
+                  formatter={(v: number, n: string) => [money(v), n]}
+                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Area type="monotone" dataKey="direct" name="Direct" stroke="#c9a227" fill="#c9a227" fillOpacity={0.16} strokeWidth={2} />
+                <Area type="monotone" dataKey="override" name="Override" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.12} strokeWidth={2} />
+                <Area type="monotone" dataKey="trail" name="Trail" stroke="hsl(var(--info))" fill="hsl(var(--info))" fillOpacity={0.12} strokeWidth={2} />
+                <Area type="monotone" dataKey="renewal" name="Renewal" stroke="hsl(var(--warning))" fill="hsl(var(--warning))" fillOpacity={0.12} strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* How payouts are calculated */}
+      <details className="rounded-lg border border-border bg-card">
+        <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium text-foreground">
+          <Info className="h-4 w-4 text-muted-foreground" /> How payouts are calculated
+        </summary>
+        <div className="border-t border-border px-4 py-3 text-sm text-muted-foreground space-y-2">
+          <p>{data.comp_note}</p>
+          <p>Direct = annual premium × your saved comp level (63% where no level is on file). Trail pending models the 25% as-earned tail paid in months 10–12. Renewal pending counts policies past year 2 — genuinely $0 until the book ages. These are estimates, not carrier statements.</p>
+        </div>
+      </details>
+
+      {/* Scheduled payouts */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+          <div>
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Scheduled payouts</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">Your upcoming and past commission payments (estimated)</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={exportCsv} disabled={payoutRows.length === 0}>
+            <Download className="mr-1.5 h-3.5 w-3.5" /> Export CSV
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-3 flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} aria-label="Previous month">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="min-w-36 text-center text-sm font-semibold">{monthLabel(data.payouts.month)}</span>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} aria-label="Next month">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <span className="ml-2 text-sm font-bold tabular-nums text-success">{money(data.payouts.total)}</span>
+          </div>
+          {payoutRows.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-sm font-semibold text-foreground">No commission payments scheduled yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Post your first deal to see your payout schedule here.</p>
+              <SubmitDealDialog trigger={<Button className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90">Post a Deal</Button>} />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <th className="py-2 pr-3">Date</th><th className="py-2 pr-3">Agent</th><th className="py-2 pr-3">Client</th>
+                    <th className="py-2 pr-3">Carrier</th><th className="hidden py-2 pr-3 md:table-cell">Product</th>
+                    <th className="py-2 pr-3 text-right">AP</th><th className="py-2 text-right">Est. payout</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {payoutRows.map((r, i) => (
+                    <tr key={`${r.date}|${r.client ?? ""}|${r.agent ?? ""}|${i}`}>
+                      <td className="py-2 pr-3 tabular-nums text-muted-foreground">{r.date}</td>
+                      <td className="max-w-36 truncate py-2 pr-3">{r.agent ?? "—"}</td>
+                      <td className="max-w-36 truncate py-2 pr-3">{r.client ?? "—"}</td>
+                      <td className="max-w-28 truncate py-2 pr-3 text-muted-foreground">{r.carrier ?? "—"}</td>
+                      <td className="hidden max-w-32 truncate py-2 pr-3 text-muted-foreground md:table-cell">{r.product ?? "—"}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{money(r.ap)}</td>
+                      <td className="py-2 text-right font-semibold tabular-nums text-success">{money(r.est)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Breakdown */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={breakTab} onValueChange={setBreakTab}>
+            <TabsList>
+              <TabsTrigger value="by_carrier">By Carrier</TabsTrigger>
+              <TabsTrigger value="by_product">By Product</TabsTrigger>
+              <TabsTrigger value="by_month">By Month</TabsTrigger>
+              <TabsTrigger value="by_agent_overrides">By Agent (Overrides)</TabsTrigger>
+            </TabsList>
+            {(["by_carrier", "by_product", "by_month", "by_agent_overrides"] as const).map((key) => (
+              <TabsContent key={key} value={key} className="mt-4">
+                {(data.breakdown[key] ?? []).length === 0 ? (
+                  <p className="py-10 text-center text-sm text-muted-foreground">
+                    {key === "by_agent_overrides" ? "No override spread in this scope." : "No data in the trailing 12 months."}
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          <th className="py-2 pr-3">{key === "by_month" ? "Month" : key === "by_agent_overrides" ? "Agent" : key === "by_product" ? "Product" : "Carrier"}</th>
+                          <th className="py-2 pr-3 text-right">Deals</th>
+                          <th className="py-2 pr-3 text-right">Annual premium</th>
+                          <th className="py-2 text-right">{key === "by_agent_overrides" ? "Est. override" : "Est. commission"}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {(data.breakdown[key] ?? []).map((row) => (
+                          <tr key={row.name}>
+                            <td className="max-w-52 truncate py-2 pr-3">{key === "by_month" ? monthLabel(row.name) : row.name}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums text-muted-foreground">{row.deals.toLocaleString()}</td>
+                            <td className="py-2 pr-3 text-right tabular-nums">{money(row.ap)}</td>
+                            <td className="py-2 text-right font-semibold tabular-nums text-primary">{money(row.est)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Reconciliation tab: the CFO-bot cockpit, transplanted intact ─────────
+function ReconciliationTab() {
+  const [tab, setTab] = useState<"overview"|"anomalies"|"commissions"|"approvals">("anomalies");
+
+const snapshot = useQuery({
     queryKey: ["cfo-snapshot"],
     queryFn: async () => {
       const { data, error } = await supabase.from("v_cfo_snapshot" as any).select("*").maybeSingle();
       if (error) throw error;
       return data as unknown as CfoSnapshot;
     },
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   // These three CFO views each return ONE aggregate row whose detail lives in a
@@ -207,27 +488,16 @@ export default function Finances() {
   const snap = snapshot.data;
 
   return (
-    <div className="page-enter mx-auto w-full max-w-7xl px-4 sm:px-6 pb-24 space-y-6">
-      <PageHeader
-        eyebrow="Finances · Overview"
-        eyebrowIcon={<DollarSign className="h-3 w-3" />}
-        title="Finances"
-        subtitle="Live CFO snapshot from the finance bot — leak detection, ghost AP, stuck payouts, idle agents, commission ledger, and pending approvals."
-        actions={
-          <div className="flex items-center gap-2">
-            {snap?.as_of && (
-              <Badge variant="outline" className="tabular-nums">
-                Updated {relativeTime(snap.as_of)}
-              </Badge>
-            )}
-            <Button size="sm" onClick={refreshAll}>
-              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${snapshot.isFetching ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-          </div>
-        }
-      />
-
+    <div className="space-y-5">
+      <div className="flex items-center justify-end gap-2">
+        {snap?.as_of && (
+          <Badge variant="outline" className="tabular-nums">Updated {relativeTime(snap.as_of)}</Badge>
+        )}
+        <Button size="sm" variant="outline" onClick={refreshAll}>
+          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${snapshot.isFetching ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
       {/* KPI stat row — the money numbers lead */}
       {snapshot.isLoading ? (
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -441,6 +711,53 @@ export default function Finances() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+export default function Finances() {
+  usePageTitle("Finances · APEX");
+  const [scope, setScope] = useState<FinScope>("agency");
+  const [mainTab, setMainTab] = useState<"overview" | "reconciliation">("overview");
+
+  return (
+    <div className="page-enter mx-auto w-full max-w-7xl px-4 sm:px-6 pb-24 space-y-5">
+      <PageHeader
+        eyebrow="Finances"
+        eyebrowIcon={<DollarSign className="h-3 w-3" />}
+        title="Finances"
+        subtitle="Commissions, forecasts & payouts"
+        actions={
+          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
+            {SCOPES.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setScope(s.key)}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                  scope === s.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
+
+      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as typeof mainTab)}>
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview" className="mt-5">
+          <OverviewTab scope={scope} />
+        </TabsContent>
+        <TabsContent value="reconciliation" className="mt-5">
+          <ReconciliationTab />
         </TabsContent>
       </Tabs>
     </div>

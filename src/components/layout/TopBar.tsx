@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useUIStore } from "@/shared/store/uiStore";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { RolePreviewMenu } from "@/components/layout/RolePreviewBubbles";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -50,6 +51,7 @@ export function TopBar() {
         <Button variant="ghost" size="icon" className="h-8 w-8 text-[#9A9A9A] hover:bg-white/[0.04] hover:text-white" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label="Toggle theme">
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
+        <RolePreviewMenu />
         <SubmitDealDialog trigger={<Button size="sm" className="h-8 rounded-md bg-[#C9A961] px-3 text-xs font-semibold text-[#0A0A0A] shadow-none hover:bg-[#C9A961]/90">Post a Deal</Button>} />
         <Avatar className="ml-1 h-8 w-8 border border-border">
           <AvatarFallback className="bg-card text-[10px] font-semibold text-white">{initials}</AvatarFallback>

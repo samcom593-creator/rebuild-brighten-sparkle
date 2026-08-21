@@ -9,7 +9,7 @@
 -- the book's oldest deal is ~4 months old, no policy has reached year 2.
 create or replace function public.finances_overview(p_scope text default 'agency', p_month date default null)
 returns jsonb
-language plpgsql stable security definer
+language plpgsql volatile security definer
 set search_path to 'public'
 as $fn$
 declare
@@ -33,6 +33,11 @@ begin
     left join public.v_agent_canonical_map m on m.agent_id = a.id
     left join public.profiles pr on pr.id = a.user_id
    where a.user_id = auth.uid()
+   -- deterministic: Sam has duplicate agents rows; an unordered limit 1 made
+   -- 'mine' and agency-scope direct_ytd disagree by $4,640 on the same set.
+   order by (a.insuracloud_user_id is not null) desc,
+            (m.canonical_agent_id is not null) desc,
+            a.id
    limit 1;
 
   -- non-admin, non-manager callers only ever see their own money
@@ -53,8 +58,15 @@ begin
            b.user_id as al_user_id,
            coalesce(c.avg_comp_pct, 63) as comp_pct,
            round(b.annual_premium * coalesce(c.avg_comp_pct, 63) / 100.0, 2) as est,
-           (coalesce(m.canonical_agent_id, b.agent_id) = v_caller_canon
-             or (v_caller_alid is not null and b.user_id = v_caller_alid)) as is_mine
+           -- coalesce: NULL agent_id rows made is_mine NULL, and `delete where
+           -- not is_mine` keeps NULLs — 'mine' silently absorbed $4,640 of
+           -- unattributed deals. Unattributed is NOT mine.
+           coalesce((coalesce(m.canonical_agent_id, b.agent_id) in (
+               select coalesce(m2.canonical_agent_id, a2.id)
+               from public.agents a2
+               left join public.v_agent_canonical_map m2 on m2.agent_id = a2.id
+               where a2.user_id = auth.uid())
+             or (v_caller_alid is not null and b.user_id = v_caller_alid)), false) as is_mine
     from public.agentlink_book b
     left join public.v_agent_canonical_map m on m.agent_id = b.agent_id
     left join public.agent_comp_levels c on c.agent_name = b.agent_name
@@ -163,7 +175,7 @@ begin
              round(sum(ap * greatest(v_caller_comp - comp_pct, 0) / 100.0)) as est
       from _fin_scoped
       where not is_mine and posted_date > v_today - 365
-      group by 1 order by 3 desc limit 20) t), '[]'::jsonb) end
+      group by 1 having sum(ap * greatest(v_caller_comp - comp_pct, 0) / 100.0) > 0 order by 4 desc limit 20) t), '[]'::jsonb) end
   ) into v_breakdown;
 
   return jsonb_build_object(

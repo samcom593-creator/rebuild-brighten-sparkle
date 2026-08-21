@@ -156,7 +156,7 @@ export default function HelpCenter() {
                 <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
               </span>
-              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">KNOWLEDGE BASE · LIVE</p>
+              <p className="text-[11px] uppercase tracking-[0.32em] font-bold text-amber-300">KNOWLEDGE BASE</p>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -178,7 +178,7 @@ export default function HelpCenter() {
             <div>
               <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">LAST UPDATED</p>
               <p className="text-[28px] leading-none font-black tabular-nums text-white">{LAST_UPDATED}</p>
-              <p className="text-[10px] text-white/40 tabular-nums">curated weekly</p>
+              <p className="text-[10px] text-white/40 tabular-nums">content date</p>
             </div>
           </div>
         </div>

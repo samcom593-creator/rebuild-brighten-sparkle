@@ -1274,7 +1274,7 @@ export default function DashboardApplicants() {
           { key: "course_bought", label: "Course Bought", value: coursePurchased, icon: GraduationCap, tone: "neutral", meaning: "Course purchased" },
           { key: "hired", label: "Hired", value: hired, icon: UserCheck, tone: "good", meaning: "Marked hired" },
           { key: "rejected", label: "Rejected", value: rejected, icon: XCircle, tone: "bad", meaning: "Rejected / disqualified" },
-          { key: "needs_followup", label: "Needs Follow-Up", value: needsFollowupCount, icon: Bell, tone: "warn", meaning: "48h+ no contact" },
+          { key: "needs_followup", label: "Follow-Ups", value: needsFollowupCount, icon: Bell, tone: "warn", meaning: "48h+ no contact" },
           { key: "hot", label: "Hot Leads", value: hotLeadsCount, icon: Flame, tone: "warn", meaning: "Hot + warm score" },
           { key: "duplicates", label: "Duplicates", value: activeDuplicateCount, icon: Copy, tone: "warn", meaning: "Flagged is_duplicate" },
         ].map((card) => {

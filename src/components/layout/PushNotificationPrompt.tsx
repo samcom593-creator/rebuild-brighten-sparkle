@@ -40,6 +40,10 @@ export function PushNotificationPrompt() {
       if (elapsed < RE_PROMPT_MS) return; // Still within 24h cooldown
     }
 
+    // Home dashboard only: the 2026-08-20 UI audit saw this fire on all 9
+    // routes it visited in one session, covering page CTAs bottom-right. One
+    // surface is enough to ask on; the Settings page keeps the manual toggle.
+    if (pathname !== "/dashboard") return;
     // Show after the page has settled (not an instant blocking pop).
     const timer = setTimeout(() => setVisible(true), 4000);
     return () => clearTimeout(timer);

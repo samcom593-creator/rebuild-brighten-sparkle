@@ -104,7 +104,7 @@ export function SupabaseHealthBanner() {
     : "Backend is sluggish. Some queries are taking >3s.";
 
   return (
-    <div className="sticky top-0 z-50 bg-amber-500/95 text-amber-950 border-b border-amber-700 px-4 py-2 flex items-center justify-between gap-3 text-sm">
+    <div className="sticky top-0 z-50 lg:ml-[240px] bg-amber-500/95 text-amber-950 border-b border-amber-700 px-4 py-2 flex items-center justify-between gap-3 text-sm">
       <div className="flex items-center gap-2 min-w-0">
         <AlertTriangle className="h-4 w-4 flex-shrink-0" />
         <span className="truncate">

@@ -59,6 +59,12 @@ function fmt$(n: number | null): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
+function displayName(n?: string): string {
+  // Some AgentLink names arrive all-lowercase ("dudley bowman"); normalize for
+  // display only — the underlying row is untouched.
+  return (n ?? "Agent").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export default function AwardsGallery() {
   const { isAdmin } = useAuth();
   const [rows, setRows] = useState<PlaqueRow[]>([]);
@@ -328,12 +334,12 @@ export default function AwardsGallery() {
                     Image pending
                   </div>
                 )}
-                <div className="text-sm font-semibold truncate">{p.agent_name}</div>
+                <div className="text-sm font-semibold truncate">{displayName(p.agent_name)}</div>
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-xs text-muted-foreground">
                     {p.milestone_date ? format(new Date(p.milestone_date), "MMM d, yyyy") : "—"}
                   </span>
-                  <span className="text-sm font-bold tabular-nums text-emerald-400">{fmt$(p.amount)}</span>
+                  <span className="text-sm font-bold tabular-nums text-emerald-400">{p.amount ? fmt$(p.amount) : "—"}</span>
                 </div>
               </GlassCard>
             );

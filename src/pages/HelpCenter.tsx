@@ -146,7 +146,7 @@ export default function HelpCenter() {
       />
 
       {/* Canonical v6 §31 premium gradient hero */}
-      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-[#0a0a0b] via-[#131316] to-[#1a1408] text-white shadow-[0_0_48px_-12px_hsl(46_68%_47%/0.25)]">
+      <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-[#0A0A0A] via-[#0A0A0A] to-[#8A7340]/20 text-white shadow-[0_0_48px_-12px_hsl(46_68%_47%/0.25)]">
         <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-amber-500/8 blur-3xl pointer-events-none" />
         <div className="relative p-5">

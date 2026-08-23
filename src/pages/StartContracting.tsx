@@ -138,9 +138,9 @@ export default function StartContracting() {
     // previous inherited washed-white ground as "looks like a broken unstyled
     // page". Commit to the brand shell explicitly — this page renders dark
     // regardless of the viewer's theme, matching /apply.
-    <div className="dark min-h-screen bg-[#0a0a0b] text-foreground">
+    <div className="dark min-h-screen bg-[#0A0A0A] text-foreground">
       <header className="border-b border-white/10 px-6 py-4">
-        <p className="text-sm font-bold tracking-[0.2em] text-[#c9a227]">APEX FINANCIAL</p>
+        <p className="text-sm font-bold tracking-[0.2em] text-[#C9A961]">APEX FINANCIAL</p>
       </header>
       <div className="mx-auto w-full max-w-lg px-4 py-10 sm:px-6 sm:py-16">
       <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">{heading}</h1>

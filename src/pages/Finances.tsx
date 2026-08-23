@@ -281,7 +281,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area type="monotone" dataKey="direct" name="Direct" stroke="#c9a227" fill="#c9a227" fillOpacity={0.16} strokeWidth={2} />
+                <Area type="monotone" dataKey="direct" name="Direct" stroke="#C9A961" fill="#C9A961" fillOpacity={0.16} strokeWidth={2} />
                 <Area type="monotone" dataKey="override" name="Override" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.12} strokeWidth={2} />
                 <Area type="monotone" dataKey="trail" name="Trail" stroke="hsl(var(--info))" fill="hsl(var(--info))" fillOpacity={0.12} strokeWidth={2} />
                 <Area type="monotone" dataKey="renewal" name="Renewal" stroke="hsl(var(--warning))" fill="hsl(var(--warning))" fillOpacity={0.12} strokeWidth={2} />

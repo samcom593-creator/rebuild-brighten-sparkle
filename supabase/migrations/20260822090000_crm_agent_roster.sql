@@ -14,6 +14,10 @@
 -- PRODUCTION TRUTH: agentlink_book, is_dead IS NOT TRUE, posted_date windows,
 -- America/Phoenix calendar. Never the legacy `deals` table, never effective_date.
 --
+-- GHOST_% rows are deliberately NOT filtered here (they are FLAGGED so a
+-- leader can merge them), but agents Sam has explicitly removed via
+-- roster_exclusions ARE excluded — otherwise CRM shows a person the
+-- leaderboard and production have already dropped.
 -- GHOST_% rows are deliberately NOT filtered here. They are flagged
 -- (is_sync_only) instead: they are real AgentLink downline producers with no
 -- APEX account, and one of them (GHOST_336) is the single largest producer of
@@ -203,7 +207,11 @@ LEFT JOIN downline dl ON dl.agent_id = a.id
 LEFT JOIN contracts ct ON ct.agent_id = a.id
 LEFT JOIN v_agent_training_stage ts ON ts.agent_id = a.id
 LEFT JOIN ident mi ON mi.id = COALESCE(a.manager_id, a.invited_by_manager_id)
-WHERE public.crm_can_read_roster();
+WHERE public.crm_can_read_roster()
+  -- Agents Sam has explicitly removed never appear in CRM either; without
+  -- this the roster would still list a person the leaderboard, production
+  -- and book truth have already dropped.
+  AND NOT public.fn_agent_is_roster_excluded(a.id);
 $$;
 
 COMMENT ON FUNCTION public.crm_agent_roster() IS
@@ -331,7 +339,7 @@ AS $$
   LEFT JOIN profiles pp ON pp.id = a.profile_id
   LEFT JOIN v_agent_training_stage ts ON ts.agent_id = a.id
   CROSS JOIN p
-  WHERE a.id = p_agent_id;
+  WHERE NOT public.fn_agent_is_roster_excluded(a.id) AND a.id = p_agent_id;
 $$;
 
 -- ---------------------------------------------------------------------------

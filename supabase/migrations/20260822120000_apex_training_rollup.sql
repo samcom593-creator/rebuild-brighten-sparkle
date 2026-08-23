@@ -1,3 +1,8 @@
+-- NOTE 2026-08-23: the original draft guarded on 'super_admin'::app_role and
+-- failed at RUNTIME with 22P02 on every call. There are TWO app_role enums in
+-- this database — public.app_role (admin,manager,agent,va_manager,va) and
+-- recruit.app_role (agent,manager,admin,super_admin). public.has_role takes the
+-- PUBLIC one, which has no super_admin. Guard now uses va_manager.
 -- APEX Training — leader rollup + "needs a nudge" list
 --
 -- WHY: the Training Hub has to answer "who actually finished?" for a leader.
@@ -46,7 +51,7 @@ BEGIN
   IF v_uid IS NULL THEN RETURN; END IF;
 
   v_is_admin   := has_role(v_uid, 'admin'::app_role)
-               OR has_role(v_uid, 'super_admin'::app_role);
+               OR has_role(v_uid, 'va_manager'::app_role);
   v_is_manager := has_role(v_uid, 'manager'::app_role);
 
   -- Fail closed: no role, no rows. The caller renders nothing rather than a 0.
@@ -109,7 +114,7 @@ BEGIN
   IF v_uid IS NULL THEN RETURN; END IF;
 
   v_is_admin   := has_role(v_uid, 'admin'::app_role)
-               OR has_role(v_uid, 'super_admin'::app_role);
+               OR has_role(v_uid, 'va_manager'::app_role);
   v_is_manager := has_role(v_uid, 'manager'::app_role);
 
   IF NOT (v_is_admin OR v_is_manager) THEN RETURN; END IF;

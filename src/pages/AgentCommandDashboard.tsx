@@ -923,7 +923,7 @@ function AgencyCommandView() {
       const endDate = periodBounds.endIso.slice(0, 10);
 
       const { data, error } = await supabase
-        .from("agentlink_book" as any)
+        .from("v_agentlink_book_scoped" as any)
         // agentlink_book's key is deal_key, NOT id — selecting id 400'd the query
         // ("column agentlink_book.id does not exist") so Annual Premium fell to $0.
         .select("deal_key, annual_premium, posted_date, user_id, is_dead")
@@ -1007,7 +1007,7 @@ function AgencyCommandView() {
       const startDate = periodBounds.startIso.slice(0, 10);
       const endDate = periodBounds.endIso.slice(0, 10);
       const { data, error } = await supabase
-        .from("agentlink_book" as any)
+        .from("v_agentlink_book_scoped" as any)
         .select("annual_premium")
         .not("is_dead", "is", true)
         .gte("posted_date", startDate)

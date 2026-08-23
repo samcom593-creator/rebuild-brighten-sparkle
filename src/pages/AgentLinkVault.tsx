@@ -103,8 +103,8 @@ function OverviewPanel() {
         // `not("is_dead","is",true)` is PostgREST for `is_dead IS NOT TRUE` —
         // matches false AND null, exactly the predicate v_agentlink_book_truth
         // uses. `.eq("is_dead", false)` would silently drop the null rows.
-        supabase.from("agentlink_book" as any).select("*", { count: "exact", head: true }).not("is_dead", "is", true),
-        supabase.from("agentlink_book" as any).select("*", { count: "exact", head: true }).is("is_dead", true),
+        supabase.from("v_agentlink_book_scoped" as any).select("*", { count: "exact", head: true }).not("is_dead", "is", true),
+        supabase.from("v_agentlink_book_scoped" as any).select("*", { count: "exact", head: true }).is("is_dead", true),
         supabase.from("agentlink_clients" as any).select("*", { count: "exact", head: true }),
         supabase.from("agentlink_contracts" as any).select("*", { count: "exact", head: true }),
         supabase.from("agentlink_contracts" as any).select("*", { count: "exact", head: true }).eq("status", "active"),

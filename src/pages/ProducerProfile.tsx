@@ -7,11 +7,12 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   User as UserIcon, Save, MapPin, Phone, Mail, Instagram, FileText,
   Image as ImageIcon, Calendar, Shield, TrendingUp, RefreshCw,
-  GraduationCap, CheckCircle2, PlayCircle, ArrowRight,
+  GraduationCap, CheckCircle2, PlayCircle, ArrowRight, ArrowLeft,
+  Network, Briefcase, Building2, AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -23,6 +24,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { EmptyState } from "@/components/ui/empty-state";
+import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -82,10 +87,357 @@ function fmtUsd(n: number | null): string {
   return `$${Math.round(v).toLocaleString()}`;
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+   ANY-AGENT PRODUCER PROFILE  ·  /dashboard/profile?agentId=<uuid>
+   ────────────────────────────────────────────────────────────────────────────
+   Without the param this page is what it has always been: the signed-in agent's
+   own editable record. With it, it renders the canonical read-only producer
+   record for ANY agent on the roster, straight out of producer_profile_detail().
+
+   That is the second half of "fix profiles and crm to have all agents" — before
+   this, an agent name on the CRM had nowhere to go, so 180 of 181 producers had
+   no profile a leader could open. Read-only by design: this view must never
+   become a second write path onto someone else's record.
+──────────────────────────────────────────────────────────────────────────── */
+
+interface ProducerDetail {
+  agent: {
+    agent_id: string; full_name: string | null; email: string | null; phone: string | null;
+    avatar_url: string | null; agent_code: string | null; status: string | null;
+    license_status: string | null; license_progress: string | null;
+    onboarding_stage: string | null; training_stage: string | null;
+    manager_id: string | null; manager_name: string | null; downline_count: number | null;
+    contracts_total: number | null; contracts_active: number | null;
+    mtd_alp: number | null; mtd_deals: number | null; l30_alp: number | null; l30_deals: number | null;
+    lifetime_alp: number | null; lifetime_deals: number | null;
+    first_posted_date: string | null; last_posted_date: string | null;
+    last_contacted_at: string | null; created_at: string | null; tenure_days: number | null;
+    is_deactivated: boolean | null; is_inactive: boolean | null; is_sync_only: boolean | null;
+  } | null;
+  upline: { agent_id: string; name: string | null; status: string | null } | null;
+  monthly: Array<{ month: string; alp: number; deals: number }>;
+  carriers: Array<{ carrier: string; alp: number; deals: number }>;
+  downline: Array<{ agent_id: string; name: string | null; status: string | null; mtd_alp?: number | null; lifetime_alp?: number | null }>;
+  contracts: Array<{ carrier?: string | null; status?: string | null; [k: string]: unknown }>;
+  training: { modules_total: number | null; modules_passed: number | null; last_activity: string | null } | null;
+  recent_deals: Array<{ posted_date: string | null; carrier: string | null; product: string | null; annual_premium?: number | null; status: string | null }>;
+}
+
+/** Compact USD that returns null instead of a fake "$0" when nothing is on file. */
+function usdOrNull(v: number | string | null | undefined): string | null {
+  const n = Number(v ?? 0) || 0;
+  if (n <= 0) return null;
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
+  return `$${Math.round(n).toLocaleString()}`;
+}
+
+function NotOnFile({ label = "not on file" }: { label?: string }) {
+  return <span className="text-xs italic text-muted-foreground">{label}</span>;
+}
+
+function StatCard({ label, value, note, tone }: { label: string; value: string | null; note?: string; tone?: string }) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        {value ? (
+          <p className={cn("mt-1 truncate text-xl font-semibold tabular-nums", tone ?? "text-foreground")}>{value}</p>
+        ) : (
+          <p className="mt-1"><NotOnFile /></p>
+        )}
+        {note && <p className="mt-0.5 truncate text-[11px] text-muted-foreground/70">{note}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AgentProducerView({ agentId }: { agentId: string }) {
+  const detail = useQuery({
+    queryKey: ["producer-profile-detail", agentId],
+    queryFn: async (): Promise<ProducerDetail | null> => {
+      const { data, error } = await supabase.rpc("producer_profile_detail" as never, { p_agent_id: agentId } as never);
+      if (error) throw error;
+      return (data as ProducerDetail) ?? null;
+    },
+  });
+
+  if (detail.isLoading) {
+    return (
+      <div className="page-enter space-y-5 px-4 pb-24 sm:px-6">
+        <Skeleton className="h-24" />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {/* stable-key-allow:skeleton-static-array */}
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+        </div>
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
+  // producer_profile_detail() returns SQL NULL for an id that is not on the
+  // roster — including one Sam removed via roster_exclusions. Say so plainly
+  // rather than rendering an empty shell that reads like a broken page.
+  if (detail.isError || !detail.data?.agent) {
+    return (
+      <div className="page-enter space-y-5 px-4 pb-24 sm:px-6">
+        <PageHeader
+          eyebrow="Account"
+          eyebrowIcon={<UserIcon className="h-3 w-3" />}
+          title="Producer Profile"
+          subtitle="Canonical producer record."
+          actions={<Button asChild variant="outline" size="sm"><Link to="/dashboard/team"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back to Team</Link></Button>}
+        />
+        <EmptyState
+          icon={<AlertTriangle className="h-7 w-7" />}
+          variant="warning"
+          title={detail.isError ? "That profile could not be read" : "No producer on the roster with that id"}
+          description={
+            detail.isError
+              ? "producer_profile_detail() did not answer for this agent. Nothing is being shown in its place."
+              : "The roster has no agent under this id. They may have been removed from the roster, in which case this is the correct answer."
+          }
+          actions={<Button asChild variant="outline" size="sm"><Link to="/dashboard/team">Back to Team</Link></Button>}
+        />
+      </div>
+    );
+  }
+
+  const d = detail.data;
+  const a = d.agent!;
+  const monthly = d.monthly ?? [];
+  const peakMonth = monthly.reduce((m, r) => Math.max(m, Number(r.alp) || 0), 0);
+  const carriers = d.carriers ?? [];
+  const downline = d.downline ?? [];
+  const deals = d.recent_deals ?? [];
+  const contracts = d.contracts ?? [];
+
+  return (
+    <div className="page-enter space-y-5 px-4 pb-24 sm:px-6">
+      <PageHeader
+        eyebrow="Agency · Producer"
+        eyebrowIcon={<UserIcon className="h-3 w-3" />}
+        title={a.full_name ?? "Name not on file"}
+        subtitle={
+          [a.agent_code, a.manager_name ? `Upline ${a.manager_name}` : null, a.tenure_days != null ? `${a.tenure_days}d on the roster` : null]
+            .filter(Boolean).join(" · ") || "Canonical producer record."
+        }
+        actions={
+          <>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/dashboard/team"><ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back to Team</Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => detail.refetch()}>
+              <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", detail.isFetching && "animate-spin")} /> Refresh
+            </Button>
+          </>
+        }
+      />
+
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-4 p-5">
+          <AgentAvatar avatarUrl={getAvatarUrl(a.avatar_url ?? undefined)} name={a.full_name ?? "—"} size="lg" className="shrink-0 ring-2 ring-primary/30" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className={cn(
+                "text-[10px] font-bold uppercase tracking-wide",
+                a.status === "active" ? "border-success/30 bg-success/15 text-success"
+                  : a.status === "terminated" ? "border-destructive/30 bg-destructive/10 text-destructive"
+                  : "bg-muted text-muted-foreground",
+              )}>{a.status ?? "status unknown"}</Badge>
+              <Badge variant="outline" className={cn(
+                "text-[10px] font-bold uppercase tracking-wide",
+                a.license_status === "licensed" ? "border-success/30 bg-success/15 text-success" : "bg-muted text-muted-foreground",
+              )}>{a.license_status ?? "license unknown"}</Badge>
+              {a.training_stage && <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wide">{a.training_stage}</Badge>}
+              {a.is_sync_only && <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wide">sync only</Badge>}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{a.email ?? <NotOnFile label="no email" />}</span>
+              <span className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{a.phone ?? <NotOnFile label="no phone" />}</span>
+              <span className="inline-flex items-center gap-1"><Network className="h-3 w-3" />{a.manager_name ?? <NotOnFile label="no upline" />}</span>
+              <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{a.last_contacted_at ? `contacted ${new Date(a.last_contacted_at).toLocaleDateString()}` : <NotOnFile label="never contacted" />}</span>
+            </div>
+          </div>
+          {a.email && (
+            <Button asChild variant="outline" size="sm"><a href={`mailto:${a.email}`}><Mail className="mr-1.5 h-3.5 w-3.5" /> Email</a></Button>
+          )}
+          {a.phone && (
+            <Button asChild variant="outline" size="sm"><a href={`tel:${a.phone}`}><Phone className="mr-1.5 h-3.5 w-3.5" /> Call</a></Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatCard label="Month to date" value={usdOrNull(a.mtd_alp)} note={`${a.mtd_deals ?? 0} deals posted`} tone="text-success" />
+        <StatCard label="Last 30 days" value={usdOrNull(a.l30_alp)} note={`${a.l30_deals ?? 0} deals posted`} />
+        <StatCard label="Lifetime ALP" value={usdOrNull(a.lifetime_alp)} note={`${a.lifetime_deals ?? 0} deals · ${a.first_posted_date ? `since ${a.first_posted_date}` : "never sold"}`} />
+        <StatCard
+          label="Downline"
+          value={(a.downline_count ?? 0) > 0 ? String(a.downline_count) : null}
+          note={`${a.contracts_active ?? 0} of ${a.contracts_total ?? 0} carrier contracts active`}
+        />
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
+          <Card>
+            <CardContent className="p-5">
+              <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold"><TrendingUp className="h-4 w-4 text-muted-foreground" /> Production by month</h3>
+              <p className="mb-3 text-xs text-muted-foreground">Posted ALP per month from the production book.</p>
+              {monthly.length === 0 ? (
+                <p className="text-xs italic text-muted-foreground">No production on file for this producer.</p>
+              ) : (
+                <div className="space-y-2">
+                  {monthly.map((m) => (
+                    <div key={m.month} className="flex items-center gap-3">
+                      <span className="w-16 shrink-0 text-xs tabular-nums text-muted-foreground">{m.month}</span>
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted/40">
+                        <div className="h-full rounded-full bg-primary" style={{ width: peakMonth > 0 ? `${Math.max(2, (Number(m.alp) / peakMonth) * 100)}%` : "0%" }} />
+                      </div>
+                      <span className="w-20 shrink-0 text-right text-xs font-semibold tabular-nums">{usdOrNull(m.alp) ?? "—"}</span>
+                      <span className="w-10 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">×{m.deals}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-5">
+              <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold"><FileText className="h-4 w-4 text-muted-foreground" /> Recent deals</h3>
+              <p className="mb-3 text-xs text-muted-foreground">Newest posted business first.</p>
+              {deals.length === 0 ? (
+                <p className="text-xs italic text-muted-foreground">This producer has no posted deals on file.</p>
+              ) : (
+                <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
+                  <Table className="min-w-[560px]">
+                    <TableHeader>
+                      <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[10px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
+                        <TableHead className="px-2">Posted</TableHead>
+                        <TableHead className="px-2">Carrier</TableHead>
+                        <TableHead className="px-2">Product</TableHead>
+                        <TableHead className="px-2">Status</TableHead>
+                        <TableHead className="px-2 text-right">Premium</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {deals.slice(0, 25).map((dl, i) => (
+                        <TableRow key={`${dl.posted_date ?? "nodate"}-${dl.carrier ?? "nocarrier"}-${dl.product ?? "noproduct"}-${i}`} className="border-b border-border/60">
+                          <TableCell className="px-2 py-2 text-xs tabular-nums">{dl.posted_date ?? "—"}</TableCell>
+                          <TableCell className="px-2 py-2 text-xs">{dl.carrier ?? "—"}</TableCell>
+                          <TableCell className="max-w-[220px] truncate px-2 py-2 text-xs">{dl.product ?? "—"}</TableCell>
+                          <TableCell className="px-2 py-2"><Badge variant="outline" className="text-[10px] uppercase tracking-wide">{dl.status ?? "unknown"}</Badge></TableCell>
+                          <TableCell className="px-2 py-2 text-right text-xs font-semibold tabular-nums">{usdOrNull(dl.annual_premium) ?? "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-5">
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Building2 className="h-4 w-4 text-muted-foreground" /> Carrier mix</h3>
+              {carriers.length === 0 ? (
+                <p className="text-xs italic text-muted-foreground">No carrier production on file.</p>
+              ) : (
+                <div className="space-y-2">
+                  {carriers.map((c) => (
+                    <div key={c.carrier} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="min-w-0 flex-1 truncate">{c.carrier}</span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">×{c.deals}</span>
+                      <span className="w-20 shrink-0 text-right font-semibold tabular-nums">{usdOrNull(c.alp) ?? "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Network className="h-4 w-4 text-muted-foreground" /> Hierarchy</h3>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">Upline</span>
+                  {d.upline?.agent_id ? (
+                    <Link to={`/dashboard/profile?agentId=${d.upline.agent_id}`} className="truncate font-medium underline-offset-2 decoration-dotted hover:text-primary hover:underline">
+                      {d.upline.name ?? "—"}
+                    </Link>
+                  ) : <NotOnFile label="no upline" />}
+                </div>
+                <div className="border-t border-border/40 pt-2">
+                  <p className="mb-1.5 text-muted-foreground">Downline ({downline.length})</p>
+                  {downline.length === 0 ? (
+                    <NotOnFile label="no agents beneath this producer" />
+                  ) : (
+                    <div className="space-y-1">
+                      {downline.slice(0, 12).map((dn) => (
+                        <Link key={dn.agent_id} to={`/dashboard/profile?agentId=${dn.agent_id}`}
+                          className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 hover:bg-muted/40">
+                          <span className="min-w-0 truncate">{dn.name ?? "—"}</span>
+                          <Badge variant="outline" className="shrink-0 text-[10px] uppercase">{dn.status ?? "—"}</Badge>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><Briefcase className="h-4 w-4 text-muted-foreground" /> Contracting &amp; training</h3>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Carrier contracts</span>
+                  <span className="tabular-nums">{a.contracts_active ?? 0} active / {a.contracts_total ?? 0} total</span>
+                </div>
+                {contracts.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {contracts.slice(0, 12).map((c, i) => (
+                      <Badge key={`${String(c.carrier ?? "carrier")}-${i}`} variant="outline" className="text-[10px]">
+                        {String(c.carrier ?? "—")}{c.status ? ` · ${String(c.status)}` : ""}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center justify-between border-t border-border/40 pt-2">
+                  <span className="text-muted-foreground">Course modules</span>
+                  <span className="tabular-nums">{d.training?.modules_passed ?? 0} / {d.training?.modules_total ?? 0} passed</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Last training activity</span>
+                  {d.training?.last_activity
+                    ? <span className="tabular-nums">{new Date(d.training.last_activity).toLocaleDateString()}</span>
+                    : <NotOnFile />}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Onboarding stage</span>
+                  {a.onboarding_stage ? <span>{a.onboarding_stage.replace(/_/g, " ")}</span> : <NotOnFile />}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProducerProfile() {
   usePageTitle("Producer Profile · APEX");
   const { user } = useAuth();
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const viewAgentId = searchParams.get("agentId");
   const userId = (user as any)?.id ?? null;
 
   const profile = useQuery({
@@ -131,7 +483,7 @@ export default function ProducerProfile() {
     queryKey: ["producer-book-rollup", agentId],
     enabled: !!agentId,
     queryFn: async () => {
-      const { data } = await supabase.from("agentlink_book" as any)
+      const { data } = await supabase.from("v_agentlink_book_scoped" as any)
         .select("annual_premium").eq("agent_id", agentId).not("is_dead", "is", true);
       const rows = (data ?? []) as Array<{ annual_premium: number | string | null }>;
       const premium = rows.reduce((s, r) => s + Number(r.annual_premium ?? 0), 0);
@@ -256,6 +608,10 @@ export default function ProducerProfile() {
   });
 
   const ag = agent.data;
+
+  // Branch placed AFTER every hook above so the hook order is identical on both
+  // paths — the self-edit queries are all `enabled: !!userId` and stay cheap.
+  if (viewAgentId) return <AgentProducerView agentId={viewAgentId} />;
 
   return (
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">

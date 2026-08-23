@@ -113,7 +113,7 @@ export default function DashboardToday() {
       // Source from agentlink_book (posted_date) — the SAME truth the leaderboard uses.
       // daily_production was inflated ~2.2x vs the book, so the dashboard revenue
       // disagreed with the leaderboard. One source of truth.
-      const { data, error } = await (supabase as any).from("agentlink_book")
+      const { data, error } = await (supabase as any).from("v_agentlink_book_scoped" as any)
         .select("annual_premium").eq("posted_date", today).not("is_dead", "is", true);
       if (error) throw error;
       const rows = (data ?? []) as Array<{ annual_premium: number | string | null }>;

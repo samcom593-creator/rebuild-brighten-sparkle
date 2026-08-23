@@ -471,7 +471,7 @@ begin
     'beneficiaries', v_benef_rows
   );
 end;
-$function$
+$function$;
 
 REVOKE ALL ON FUNCTION public.submit_apex_deal(uuid, jsonb, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.submit_apex_deal(uuid, jsonb, uuid) TO authenticated;

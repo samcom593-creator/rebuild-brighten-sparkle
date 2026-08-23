@@ -132,7 +132,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
             {!collapsed && (
               <span className="min-w-0 leading-none">
                 <span className="block truncate text-[15px] font-semibold tracking-tight text-white">{brand.legalName}</span>
-                <span className="mt-1 block text-[8px] font-semibold uppercase tracking-[0.22em] text-[#9A9A9A]">By Agent Cloud</span>
+                
               </span>
             )}
           </Link>

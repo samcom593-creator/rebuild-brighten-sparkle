@@ -54,11 +54,12 @@
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Users, Search, Phone, Mail, CalendarClock, AlertTriangle,
   ChevronRight, TrendingUp, BookMarked, Clock, Home, Building2, HelpCircle,
-  Filter, ArrowUpDown, UserPlus, ShieldOff, MailX, RefreshCw,
+  Filter, ArrowUpDown, UserPlus, ShieldOff, MailX, RefreshCw, Plus, Upload,
+  MessageSquare,
 } from "lucide-react";
 import { format, formatDistanceToNow, isBefore } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,14 +71,19 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { FunnelStageCard } from "@/components/recruiting/FunnelStageCard";
 import { FunnelConnector } from "@/components/recruiting/FunnelConnector";
 import { BottleneckCallout } from "@/components/recruiting/BottleneckCallout";
+import { toast } from "sonner";
 
 interface Client {
   id: string;
@@ -114,6 +120,23 @@ interface Client {
   rent_payment: number | string | null;
 }
 
+interface ClientOverride {
+  client_id: string;
+  stage_override: string | null;
+  stage_changed_at: string | null;
+  last_contact_date: string | null;
+  next_action_date: string | null;
+  callback_date: string | null;
+  callback_time: string | null;
+  schedule_overridden: boolean;
+  communication_notes: string | null;
+  reminder_notes: string | null;
+}
+
+function pipelineRpc<T>(name: string, args: Record<string, unknown>) {
+  return (supabase.rpc as unknown as (fn: string, values: Record<string, unknown>) => Promise<{ data: T | null; error: { message?: string } | null }>)(name, args);
+}
+
 // v24 palette restraint: 4 colors total — slate (inactive/working) +
 // amber (in-flight/needs-attention) + emerald (sold) + rose (risk/follow-up).
 const TINT = {
@@ -148,6 +171,13 @@ const FUNNEL_STAGES: Array<{
   { key: "SOLD",          label: "Sold",       verbToNext: "" },
 ];
 
+const WORKSPACE_LANES = [
+  { key: "new", label: "New / Initial", stages: ["NEW_INITIAL", "UNSORTED"] },
+  { key: "callback", label: "Callback", stages: ["WORKING", "PITCHED", "FOLLOW_UP"] },
+  { key: "almost", label: "Almost There", stages: ["ALMOST_THERE"] },
+  { key: "sold", label: "Sold", stages: ["SOLD"] },
+] as const;
+
 // 3-way segment for the (eventual) housing split. Today every client lands in
 // "Unknown" because AgentLink doesn't sync rent_payment / mortgage_payment.
 // The classifier is wired so the moment those columns light up, the tabs
@@ -177,14 +207,17 @@ function fullName(c: Pick<Client, "first_name" | "last_name">): string {
 export default function ClientPipeline() {
   usePageTitle("Client Pipeline · APEX");
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, isAdmin, isManager } = useAuth();
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("__all__");
   const [housingFilter, setHousingFilter] = useState<HousingSegment | "__all__">("__all__");
   const [bookFilter, setBookFilter] = useState<"all" | "hasnt_bought" | "missing">("all");
   const [sortKey, setSortKey] = useState<"recent" | "name" | "stage_changed" | "callback">("recent");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newClient, setNewClient] = useState({ firstName: "", lastName: "", phone: "", email: "" });
 
-  const { data: rows = [], isLoading, refetch, isFetching } = useQuery({
+  const { data: sourceRows = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["client-pipeline", isAdmin],
     enabled: !!user?.id,
     staleTime: 60_000,
@@ -193,13 +226,65 @@ export default function ClientPipeline() {
       const { data, error } = await supabase
         .from("agentlink_clients")
         .select(
-          "id, insuracloud_pipeline_client_id, agent_id, first_name, last_name, phone, email, state, city, date_of_birth, pipeline_stage, created_at, updated_at, stage_changed_at, last_contact_date, next_action_date, callback_date, callback_time, do_not_call, hostile_language_detected, client_health_score, pitch_carrier, pitch_price, product_sold, face_amount, policy_number, policy_start_date, mortgage_payment, rent_payment"
+          "id, insuracloud_pipeline_client_id, agent_id, first_name, last_name, phone, email, state, city, pipeline_stage, created_at, updated_at, stage_changed_at, last_contact_date, next_action_date, callback_date, callback_time, do_not_call, hostile_language_detected, policy_number, mortgage_payment, rent_payment"
         )
         .order("created_at", { ascending: false })
-        .limit(2_000);
+        .limit(1_000);
       if (error) throw error;
       return (data ?? []) as unknown as Client[];
     },
+  });
+
+  const { data: overrides = [] } = useQuery({
+    queryKey: ["client-pipeline-overrides", user?.id],
+    enabled: !!user?.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("client_pipeline_overrides" as never)
+        .select("client_id, stage_override, stage_changed_at, last_contact_date, next_action_date, callback_date, callback_time, schedule_overridden, communication_notes, reminder_notes")
+        .limit(2_000);
+      if (error) throw error;
+      return (data ?? []) as unknown as ClientOverride[];
+    },
+  });
+
+  const rows = useMemo(() => {
+    const byClient = new Map(overrides.map((row) => [row.client_id, row]));
+    return sourceRows.map((client) => {
+      const override = byClient.get(client.id);
+      if (!override) return client;
+      return {
+        ...client,
+        pipeline_stage: override.stage_override ?? client.pipeline_stage,
+        stage_changed_at: override.stage_changed_at ?? client.stage_changed_at,
+        last_contact_date: override.last_contact_date ?? client.last_contact_date,
+        next_action_date: override.schedule_overridden ? override.next_action_date : client.next_action_date,
+        callback_date: override.schedule_overridden ? override.callback_date : client.callback_date,
+        callback_time: override.schedule_overridden ? override.callback_time : client.callback_time,
+      };
+    });
+  }, [overrides, sourceRows]);
+
+  const createClient = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await pipelineRpc<string>("fn_client_pipeline_create", {
+        p_first_name: newClient.firstName,
+        p_last_name: newClient.lastName,
+        p_phone: newClient.phone,
+        p_email: newClient.email || null,
+      });
+      if (error || !data) throw new Error(error?.message || "Client could not be created");
+      return data;
+    },
+    onSuccess: async (clientId) => {
+      await queryClient.invalidateQueries({ queryKey: ["client-pipeline"] });
+      setCreateOpen(false);
+      setNewClient({ firstName: "", lastName: "", phone: "", email: "" });
+      toast.success("Client added to the pipeline");
+      navigate(`/dashboard/clients/${clientId}`);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Client could not be created"),
   });
 
   // Headline numbers come from a server-side, RLS-scoped aggregate — NOT from
@@ -433,6 +518,20 @@ export default function ClientPipeline() {
 
   const scopeLabel = isAdmin ? "agency-wide" : isManager ? "your team" : "your book";
 
+  const workspaceRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((client) => [
+      client.first_name, client.last_name, client.phone, client.email,
+      client.city, client.state, client.policy_number,
+    ].some((value) => String(value ?? "").toLowerCase().includes(q)));
+  }, [rows, search]);
+
+  const workspaceLanes = useMemo(() => WORKSPACE_LANES.map((lane) => ({
+    ...lane,
+    clients: workspaceRows.filter((client) => lane.stages.includes((client.pipeline_stage ?? "UNSORTED") as never)),
+  })), [workspaceRows]);
+
   // Disclosure open state — keeps Recharts / 250-row lists out of first paint.
   const [openFunnel,     setOpenFunnel]     = useState(false);
   const [openHasntBought,setOpenHasntBought]= useState(false);
@@ -445,20 +544,27 @@ export default function ClientPipeline() {
     <div className="page-enter px-4 sm:px-6 pb-24 space-y-5">
       {/* HERO */}
       <PageHeader
-        eyebrow="Book of Business"
+        eyebrow="Clients · Pipeline"
         eyebrowIcon={<BookMarked className="h-3 w-3" />}
-        title="Client Pipeline"
+        title="Pipeline"
         subtitle={
           <>
-            Every client in <span className="text-foreground font-medium">{scopeLabel}</span> —
-            who's bought, who hasn't, and who's gone quiet.
+            Track every client from first contact to sold across <span className="text-foreground font-medium">{scopeLabel}</span>.
           </>
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {isAdmin && (
+              <Button variant="outline" size="sm" onClick={() => navigate("/dashboard/import")}>
+                <Upload className="h-3.5 w-3.5 mr-1.5" /> Import
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
               Refresh
+            </Button>
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Client
             </Button>
             {(() => {
               // Bind to real freshness — this badge used to hardcode "sync live"
@@ -480,7 +586,93 @@ export default function ClientPipeline() {
         }
       />
 
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Client</DialogTitle>
+            <DialogDescription>Add a name and phone to create the card. Complete the remaining details from the client workspace.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="new-client-first">First name</Label>
+              <Input id="new-client-first" value={newClient.firstName} onChange={(event) => setNewClient((value) => ({ ...value, firstName: event.target.value }))} autoComplete="given-name" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-client-last">Last name</Label>
+              <Input id="new-client-last" value={newClient.lastName} onChange={(event) => setNewClient((value) => ({ ...value, lastName: event.target.value }))} autoComplete="family-name" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-client-phone">Phone number</Label>
+              <Input id="new-client-phone" value={newClient.phone} onChange={(event) => setNewClient((value) => ({ ...value, phone: event.target.value }))} type="tel" autoComplete="tel" placeholder="(555) 000-0000" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-client-email">Email (optional)</Label>
+              <Input id="new-client-email" value={newClient.email} onChange={(event) => setNewClient((value) => ({ ...value, email: event.target.value }))} type="email" autoComplete="email" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={() => createClient.mutate()} disabled={createClient.isPending}>Add Client</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AgentLinkConnectionPrompt />
+
+      <section className="overflow-hidden rounded-lg border border-border bg-card">
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">{scopeLabel}</Badge>
+            <span className="text-muted-foreground">{workspaceRows.length.toLocaleString()} loaded</span>
+          </div>
+          <div className="relative w-full lg:max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" placeholder="Search clients, phone, policy…" />
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <div className="grid min-w-[940px] grid-cols-4 divide-x divide-border">
+            {workspaceLanes.map((lane) => (
+              <div key={lane.key} className="min-h-[420px] bg-background/30">
+                <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
+                  <span className="text-xs font-semibold uppercase tracking-wide">{lane.label}</span>
+                  <Badge variant="outline" className="h-5 min-w-6 justify-center px-1.5 text-[10px]">{lane.clients.length}</Badge>
+                </div>
+                <div className="space-y-2 p-2.5">
+                  {isLoading ? (
+                    Array.from({ length: 4 }).map((_, index) => <Skeleton key={/* stable-key-allow:skeleton-static-array */ index} className="h-24 w-full" />)
+                  ) : lane.clients.length === 0 ? (
+                    <div className="grid h-40 place-items-center rounded-md border border-dashed border-border px-4 text-center text-xs text-muted-foreground">
+                      No clients in {lane.label.toLowerCase()}.
+                    </div>
+                  ) : lane.clients.slice(0, 15).map((client) => (
+                    <div key={client.id} className="rounded-md border border-border bg-card p-3 hover:border-primary/50">
+                      <button type="button" className="w-full text-left" onClick={() => navigate(`/dashboard/clients/${client.id}`)}>
+                        <p className="truncate text-sm font-semibold">{fullName(client)}</p>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{fmtPhone(client.phone)}{client.state ? ` · ${client.state}` : ""}</p>
+                        <p className="mt-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {client.next_action_date ? `Next ${format(new Date(client.next_action_date), "MMM d")}` : client.callback_date ? `Callback ${format(new Date(client.callback_date), "MMM d")}` : "Open client workspace"}
+                        </p>
+                      </button>
+                      <div className="mt-2 flex items-center gap-1 border-t border-border pt-2">
+                        {client.phone && !client.do_not_call && <Button asChild size="icon" variant="ghost" className="h-7 w-7" aria-label={`Call ${fullName(client)}`}><a href={`tel:${client.phone}`}><Phone className="h-3.5 w-3.5" /></a></Button>}
+                        {client.phone && <Button asChild size="icon" variant="ghost" className="h-7 w-7" aria-label={`Text ${fullName(client)}`}><a href={`sms:${client.phone}`}><MessageSquare className="h-3.5 w-3.5" /></a></Button>}
+                        {client.email && <Button asChild size="icon" variant="ghost" className="h-7 w-7" aria-label={`Email ${fullName(client)}`}><a href={`mailto:${client.email}`}><Mail className="h-3.5 w-3.5" /></a></Button>}
+                        <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-[11px]" onClick={() => navigate(`/dashboard/clients/${client.id}`)}>Open</Button>
+                      </div>
+                    </div>
+                  ))}
+                  {lane.clients.length > 15 && <p className="py-2 text-center text-xs text-muted-foreground">+{lane.clients.length - 15} more · search to narrow</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <details className="rounded-lg border border-border bg-card/50 px-4 py-3">
+        <summary className="cursor-pointer select-none text-sm font-semibold">Pipeline intelligence and book diagnostics</summary>
+        <div className="mt-4 space-y-5">
 
       {/* PUNCHLINE HERO — 4 huge numbers, phone-first. Matches the recruiting
           /dashboard/recruiting redesign (4e5c515e). text-5xl font-black
@@ -975,6 +1167,8 @@ export default function ClientPipeline() {
             </GlassCard>
           </div>
         )}
+      </details>
+        </div>
       </details>
     </div>
   );

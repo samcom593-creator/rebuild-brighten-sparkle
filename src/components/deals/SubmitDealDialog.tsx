@@ -117,7 +117,14 @@ function rpc<T>(name: string, args: Record<string, unknown>): Promise<{ data: T 
   return (supabase.rpc as unknown as (fn: string, values: Record<string, unknown>) => Promise<{ data: T | null; error: { message?: string } | null }>)(name, args);
 }
 
-export function SubmitDealDialog({ trigger }: { trigger?: ReactNode }) {
+interface InitialDealClient {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  dob: string;
+}
+
+export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNode; initialClient?: InitialDealClient }) {
   const { user, isAdmin, isManager } = useAuth();
   const downline = useMyDownline();
   const queryClient = useQueryClient();
@@ -413,6 +420,15 @@ export function SubmitDealDialog({ trigger }: { trigger?: ReactNode }) {
   };
 
   const handleOpenChange = (next: boolean) => {
+    if (next && initialClient && !draftId) {
+      setForm((current) => ({
+        ...current,
+        clientFirstName: current.clientFirstName || initialClient.firstName,
+        clientLastName: current.clientLastName || initialClient.lastName,
+        clientPhone: current.clientPhone || initialClient.phone,
+        clientDob: current.clientDob || initialClient.dob,
+      }));
+    }
     setOpen(next);
     if (!next) resetAfterClose();
   };

@@ -841,7 +841,6 @@ function ExecutiveDashboard({
       {/* Pinned receipts banner — what shipped to the platform between
           this login and the last one. Sam reported "everything looks the
           same" despite 24+ commits; this makes the delta impossible to miss. */}
-      <LazyPanel minHeight="h-20"><WhatShippedTodayBanner /></LazyPanel>
 
       {/* Funnel-leak command row — biggest two leaks live in one strip
           at the top of every admin dashboard load: unclaimed applicants
@@ -853,9 +852,7 @@ function ExecutiveDashboard({
 
       {/* MP-268: earnings restored to the dashboard. ALP tiles above are premium volume,
           not income — this is the only honest income answer the data supports. */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <LazyPanel minHeight="h-32"><EarningsEstimateCard /></LazyPanel>
-      </div>
+      
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatTile
@@ -920,32 +917,21 @@ function ExecutiveDashboard({
       {/* My Builders — Sam's #1 focus (2026-06-03): hold builders, run the line.
           Shows Sam-direct recruits, their builder tier, onboarding progress,
           producing flag. Reads v_sam_builders_dashboard. */}
-      <LazyPanel minHeight="h-48"><BuilderProgressDashboard /></LazyPanel>
 
       {/* Manager hierarchy MTD + top producers — replaces the weak "Recent deals"
           widget per Sam's 2026-05-22 punch ("dashboard literally empty, leaderboard
           empty, last 8 deals still there, doesn't have pipeline stats"). Reads
           v_manager_hierarchy_mtd + v_top_producers_mtd — real data only. */}
-      <LazyPanel minHeight="h-64"><ManagerHierarchyMtdPanel /></LazyPanel>
 
       {/* Just-hired-direct-to-Sam feed — surfaces last-30d hires routed to Sam
           (no manager). Sam's 2026-05-22 ask: "Just-hired direct-to-Sam feed". */}
-      <LazyPanel minHeight="h-40"><JustHiredPanel /></LazyPanel>
-
-      <LazyPanel minHeight="h-48"><AgentLinkBookTruthCard /></LazyPanel>
 
       {/* v9 audit fix 2026-06-10: AgentLink-style carrier breakdown + by-month trend.
           Two-column grid at desktop, stacked on mobile. */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <LazyPanel minHeight="h-64"><CarrierBreakdownCard /></LazyPanel>
-        <LazyPanel minHeight="h-64"><BookTrendCard /></LazyPanel>
-      </div>
-
-      <WeekProductionCard snapshot={snapshot} />
+      
 
       {/* PL-026: removed "Activity And Referrals" 30-day widget per Sam.
           Recruiting block now spans full width. */}
-      <RecruitingGrid stats={snapshot.recruiting} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Button asChild variant="outline" className="h-10 justify-between sm:h-9">
@@ -1030,9 +1016,9 @@ export default function Dashboard() {
   // - previewRole=admin: ExecutiveDashboard
   if (shouldRenderDefaultAdminCommand) {
     return (
-      <Suspense fallback={<PageLoadingSkeleton />}>
-        <AgentCommandDashboard />
-      </Suspense>
+      <div className="mx-auto w-full max-w-7xl p-4 sm:p-6">
+        <AgentCloudHome />
+      </div>
     );
   }
 

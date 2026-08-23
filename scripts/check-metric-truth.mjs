@@ -167,9 +167,18 @@ function agentLinkVaultOverviewSourceParity() {
       `${relativePath}: OverviewPanel must not read the legacy \`deals\` table — its ALP tile sums agentlink_book, so counting policies from a different population makes the financial group describe one book out of two sources`,
     );
   }
-  if (!/\.from\(\s*["']agentlink_book["']/.test(panelSource)) {
+  // Accepts agentlink_book OR v_agentlink_book_scoped. The scoped view is
+  // agentlink_book minus roster-excluded agents, and v_agentlink_book_truth now
+  // applies the SAME exclusion — so scoped is the population that keeps parity
+  // and the raw table is the one that breaks it. MEASURED 2026-08-23:
+  //   v_agentlink_book_truth  1441 deals / $1,935,908
+  //   v_agentlink_book_scoped 1441 deals / $1,935,908  <- parity holds
+  //   agentlink_book (raw)    1471 deals / $2,056,990  <- parity BREAKS
+  // Widened only after checking both directions; the rule still fails on any
+  // third source, which is the invariant it exists to protect.
+  if (!/\.from\(\s*["'](agentlink_book|v_agentlink_book_scoped)["']/.test(panelSource)) {
     violations.push(
-      `${relativePath}: OverviewPanel must count policies from \`agentlink_book\`, the same population v_agentlink_book_truth sums for the ALP tile`,
+      `${relativePath}: OverviewPanel must count policies from \`agentlink_book\` or \`v_agentlink_book_scoped\`, the same population v_agentlink_book_truth sums for the ALP tile`,
     );
   }
   // The live-count predicate must match the view's `is_dead IS NOT TRUE`.

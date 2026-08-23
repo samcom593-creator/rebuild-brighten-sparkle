@@ -56,8 +56,14 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       <header className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background lg:hidden">
         <div className="flex h-[60px] items-center justify-between px-3 pt-[env(safe-area-inset-top)]">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#C9A961] text-[#0A0A0A]"><Cloud className="h-[18px] w-[18px]" /></span>
-            <span className="text-sm font-semibold text-white">{brand.legalName}</span>
+            {/* 2026-08-23 light/dark wave: the brand name was text-white on a
+                bg-background header. Light mode's background is cream
+                (`44 27% 92%`), so the agency's own name was invisible on the
+                mobile header in light. The mark was the dark-gold literal
+                #C9A961 on #0A0A0A; both are now tokens so the chip tracks the
+                deeper light-mode gold. */}
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground"><Cloud className="h-[18px] w-[18px]" /></span>
+            <span className="text-sm font-semibold text-foreground">{brand.legalName}</span>
           </Link>
           <div className="flex items-center gap-2">
             <Button

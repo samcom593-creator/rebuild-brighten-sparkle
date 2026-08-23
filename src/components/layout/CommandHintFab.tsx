@@ -21,6 +21,11 @@ export function CommandHintFab() {
 
   if (open) return null;
 
+  // 2026-08-23 light/dark wave: this FAB carried the last pre-rebrand teal in
+  // the layout tree — its drop shadow was a literal hsl(168 80% 50%), a teal
+  // glow under a gold-brand button, in BOTH themes. It now rides --primary so
+  // it tracks the light/dark gold. bg-white/hover:bg-slate-50 were the same
+  // cool-grey-on-warm-cream mismatch as GlassCard and are now token pairs.
   return (
     <button
       type="button"
@@ -29,12 +34,11 @@ export function CommandHintFab() {
       className="
         fixed z-30 bottom-4 right-4 lg:bottom-6 lg:right-6
         flex items-center gap-2 px-3 py-2 rounded-full
-        bg-white dark:bg-card
+        bg-card
         border border-primary/40
-        
         text-foreground text-xs font-semibold
-        shadow-[0_8px_24px_hsl(168_80%_50%/0.25),inset_0_1px_0_hsl(0_0%_100%/0.08)]
-        hover:bg-slate-50 dark:hover:bg-muted/50 hover:border-primary/60
+        shadow-[0_8px_24px_hsl(var(--primary)/0.25),inset_0_1px_0_hsl(0_0%_100%/0.08)]
+        hover:bg-muted/50 hover:border-primary/60
         transition-all
         safe-area-bottom
       "

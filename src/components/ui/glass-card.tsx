@@ -24,10 +24,17 @@ interface GlassCardProps extends HTMLAttributes<HTMLDivElement> {
  */
 export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
   ({ className, variant = "default", hoverEffect = false, children, ...props }, ref) => {
+    // 2026-08-23 light/dark wave: the light half of every variant was a COOL
+    // slate literal (bg-white / border-slate-200 / border-slate-300 /
+    // bg-slate-50) while the app's light palette is WARM — --background
+    // `44 27% 92%`, --border `45 24% 86%`. So on light mode 133 cards drew
+    // cool-grey hairlines on a cream page. Note bg-white and light --card are
+    // both #FFFFFF, so card fills are byte-identical before/after; only the
+    // borders and the subtle fill actually move.
     const variants = {
-      default: "bg-white dark:bg-card border border-slate-200 dark:border-border shadow-sm",
-      strong:  "bg-white dark:bg-card border border-slate-300 dark:border-border shadow-sm",
-      subtle:  "bg-slate-50 dark:bg-card/50 border border-slate-200 dark:border-border",
+      default: "bg-card border border-border shadow-sm",
+      strong:  "bg-card border border-foreground/20 shadow-sm",
+      subtle:  "bg-card/50 border border-border",
     };
 
     return (
@@ -36,7 +43,7 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
         className={cn(
           "rounded-md transition-base",
           variants[variant],
-          hoverEffect && "hover:bg-slate-50 dark:hover:bg-muted/50 cursor-pointer",
+          hoverEffect && "hover:bg-muted/50 cursor-pointer",
           className,
         )}
         {...props}

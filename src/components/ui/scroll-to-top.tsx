@@ -27,7 +27,10 @@ export function ScrollToTop({ threshold = 400, className }: ScrollToTopProps) {
         // Stacked above the Lead-Qualification chat launcher (also bottom-6
         // right-6) so the two FABs no longer overlap.
         "fixed bottom-40 right-6 z-50 p-3 rounded-full glass-strong border border-primary/30 shadow-lg",
-        "landing-scale-in hover:bg-slate-50 dark:hover:bg-muted/50 active:scale-95 hover:shadow-primary/20 hover:border-primary/50",
+        // 2026-08-23: hover:bg-slate-50 was a cool-grey literal on a warm
+        // light palette; hover:bg-muted/50 is the token pair and needs no
+        // dark: counterpart.
+        "landing-scale-in hover:bg-muted/50 active:scale-95 hover:shadow-primary/20 hover:border-primary/50",
         "transition-all duration-300 group",
         className,
       )}

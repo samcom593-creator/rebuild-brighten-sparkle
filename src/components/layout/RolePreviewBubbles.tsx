@@ -31,7 +31,11 @@ export function RolePreviewMenu() {
           variant="ghost"
           size="sm"
           className={cn(
-            "h-8 gap-1.5 px-2 text-xs text-[#9A9A9A] hover:bg-white/[0.04] hover:text-white",
+            // 2026-08-23 light/dark wave: was text-[#9A9A9A] with
+            // hover:bg-white/[0.04] hover:text-white — a dark-only hover. On
+            // light the hover painted white text on a cream page, so the
+            // control vanished at the moment the pointer reached it.
+            "h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground",
             effectiveRole !== "admin" && "text-primary hover:text-primary",
           )}
           aria-label="Preview as role"

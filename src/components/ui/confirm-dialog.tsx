@@ -42,8 +42,13 @@ export function ConfirmDialog({ options, onFinish }: ConfirmDialogProps) {
           <AlertDialogAction
             onClick={() => onFinish(true)}
             className={cn(
+              // 2026-08-23: rose-600/rose-500 is legible in both themes, so
+              // this was a brand mismatch rather than a contrast bug — the
+              // destructive token is tuned per theme (`1 65% 54%` light /
+              // `1 60% 52%` dark) and is what every other destructive control
+              // in the app uses.
               tone === "danger" &&
-                "bg-rose-600 text-white hover:bg-rose-500 focus-visible:ring-rose-400",
+                "bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive",
             )}
           >
             {options.confirmText ?? "Confirm"}

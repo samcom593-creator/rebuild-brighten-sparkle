@@ -280,7 +280,7 @@ export default function ProducerProfile() {
       </nav>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {[{ label: "License", value: ag?.license_status ?? "—", note: ag?.agent_code ?? "No agent code" }, { label: "States", value: (ag?.license_states ?? []).length, note: "licensed" }, { label: "Premium", value: fmtUsd(bookRollup.data?.premium ?? 0), note: `${bookRollup.data?.policies ?? 0} policies written` }, { label: "Est. earnings", value: fmtUsd(bookRollup.data?.estEarnings ?? 0), note: "contract estimate" }].map((metric) => <Card key={metric.label}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 truncate text-xl font-semibold tabular-nums capitalize">{metric.value}</p><p className="text-xs text-muted-foreground">{metric.note}</p></CardContent></Card>)}
+        {[{ label: "License", value: ag?.license_status ?? "—", note: ag?.agent_code ?? "No agent code" }, { label: "States", value: ag?.license_states?.length ?? "—", note: ag?.license_states?.length ? "licensed" : "not on file" }, { label: "Premium", value: fmtUsd(bookRollup.data?.premium ?? 0), note: `${bookRollup.data?.policies ?? 0} policies written` }, { label: "Est. earnings", value: fmtUsd(bookRollup.data?.estEarnings ?? 0), note: "contract estimate" }].map((metric) => <Card key={metric.label}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 truncate text-xl font-semibold tabular-nums capitalize">{metric.value}</p><p className="text-xs text-muted-foreground">{metric.note}</p></CardContent></Card>)}
       </div>
 
       {/* COURSE ACCESS / TRAINING · audit: every applicant with licensed_at IS NOT NULL gets course access */}

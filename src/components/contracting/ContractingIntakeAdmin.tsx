@@ -71,7 +71,7 @@ function receiptSummary(row: StatusRow): string | null {
   return null;
 }
 
-export function ContractingIntakeAdmin() {
+export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptyState?: boolean } = {}) {
   const [exporting, setExporting] = useState(false);
 
   const statusQ = useQuery({
@@ -136,8 +136,22 @@ export function ContractingIntakeAdmin() {
   };
 
   // An empty result is the normal state for a non-staff viewer, because the RLS
-  // policy returns no rows. Render nothing rather than an empty admin panel.
-  if (!statusQ.isLoading && !statusQ.error && intakes.length === 0) return null;
+  // policy returns no rows. Render nothing rather than an empty admin panel —
+  // EXCEPT where the page's whole promise is this monitor (the Requests
+  // sub-page), which passes showEmptyState so an admin can see the surface
+  // exists instead of a void under the Start Contracting card.
+  if (!statusQ.isLoading && !statusQ.error && intakes.length === 0) {
+    if (!showEmptyState) return null;
+    return (
+      <GlassCard className="p-6 text-center" data-testid="contracting-intake-admin">
+        <h2 className="text-base font-semibold">Contracting intakes</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          No contracting requests yet. When a recruit submits the Start Contracting
+          form, their intake lands here with per-destination delivery receipts.
+        </p>
+      </GlassCard>
+    );
+  }
 
   return (
     <GlassCard className="p-4 sm:p-5" data-testid="contracting-intake-admin">

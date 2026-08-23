@@ -341,8 +341,8 @@ export default function CarrierContracts() {
         <div className="grid grid-cols-[minmax(0,1fr)_120px_120px] border-b border-border bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><span>Carrier</span><span>Contracting</span><span>Access</span></div>
         {isLoading ? <div className="space-y-2 p-4"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div> : (carriersQ.data ?? []).length === 0 ? <EmptyState icon={<Building2 className="h-7 w-7" />} title="No active carriers" description="No carrier records are currently visible for this workspace." /> : <ul>{(carriersQ.data ?? []).map((carrier) => <li key={carrier.id} className="grid grid-cols-[minmax(0,1fr)_120px_120px] items-center border-b border-border/70 px-4 py-3 text-sm last:border-0"><span className="truncate font-medium">{carrier.name ?? `Carrier ${carrier.id}`}</span><span className={carrier.contract_invite_url ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}>{carrier.contract_invite_url ? "Available" : "Not configured"}</span><span>{(carrier.contract_invite_url || carrier.website) ? <Button asChild size="sm" variant="outline"><a href={carrier.contract_invite_url || carrier.website || "#"} target="_blank" rel="noopener noreferrer">Open <ExternalLink className="ml-1 h-3.5 w-3.5" /></a></Button> : "—"}</span></li>)}</ul>}
       </GlassCard>}
-      {mode === "ops" && <ContractingIntakeAdmin />}
-      {mode === "requests" && <><StartContractingCard masterInvite={asLinkObject((settingsQ.data ?? {}).agentlink_master_invite, "AgentLink master invite")} copyLink={copyLink} copiedId={copiedId} /><ContractingIntakeAdmin /></>}
+      {mode === "ops" && <ContractingIntakeAdmin showEmptyState />}
+      {mode === "requests" && <><StartContractingCard masterInvite={asLinkObject((settingsQ.data ?? {}).agentlink_master_invite, "AgentLink master invite")} copyLink={copyLink} copiedId={copiedId} /><ContractingIntakeAdmin showEmptyState /></>}
       {mode === "documents" && <GlassCard className="overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-border p-4"><div className="relative min-w-56 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={documentSearch} onChange={(event) => setDocumentSearch(event.target.value)} placeholder="Search agent or document type" className="pl-9" /></div>{["all", "pending", "active"].map((status) => <Button key={status} variant={documentStatus === status ? "default" : "outline"} size="sm" onClick={() => setDocumentStatus(status)} className="capitalize">{status === "all" ? "All statuses" : status}</Button>)}</div>
         <div className="grid grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)] border-b border-border bg-muted/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><span>Carrier</span><span>Status</span><span>Contract details</span></div>
@@ -385,7 +385,7 @@ export default function CarrierContracts() {
       {/* Staff-only. v_contracting_intake_status is security_invoker, so a
           non-staff viewer gets zero rows from the database and this renders
           nothing at all — the gate is RLS, not a client-side role check. */}
-      <ContractingIntakeAdmin />
+      <ContractingIntakeAdmin showEmptyState />
 
       {isLoading ? (
         /* Loading — shaped like the real sections: header, description, rows. */

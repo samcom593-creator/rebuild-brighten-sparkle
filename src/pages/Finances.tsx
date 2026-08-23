@@ -275,7 +275,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
               <AreaChart data={chart} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={56} tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={56} domain={[0, (dataMax: number) => Math.ceil((dataMax * 1.25) / 5000) * 5000]} tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`} />
                 <ChartTooltip
                   formatter={(v: number, n: string) => [money(v), n]}
                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}

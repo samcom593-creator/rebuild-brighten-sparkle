@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, ChevronDown, ChevronUp, ClipboardCheck } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, ClipboardCheck, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -43,6 +43,10 @@ export function AgentCloudSetupChecklist() {
   });
 
   const completedSet = useMemo(() => new Set(completed), [completed]);
+  // 2026-08-21 audit: the checklist sat in the corner forever ("1 of 11 done"
+  // on every route) and collided with the chat launcher. Dismiss is permanent
+  // per browser; finishing every step also retires it.
+  const [dismissed, setDismissed] = useState<boolean>(() => window.localStorage.getItem("apex.setup-checklist.dismissed") === "true");
   const progress = Math.round((completedSet.size / STEPS.length) * 100);
 
   const toggle = (id: string, checked: boolean) => {
@@ -53,8 +57,18 @@ export function AgentCloudSetupChecklist() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   };
 
+  if (dismissed || completedSet.size === STEPS.length) return null;
+
   return (
-    <aside className="fixed bottom-4 right-20 z-40 hidden w-80 overflow-hidden rounded-lg border border-border bg-card shadow-lg xl:block" aria-label="Setup checklist">
+    <aside className="fixed bottom-24 right-6 z-40 hidden w-80 overflow-hidden rounded-lg border border-border bg-card shadow-lg xl:block" aria-label="Setup checklist">
+      <button
+        type="button"
+        aria-label="Dismiss setup checklist"
+        className="absolute right-1.5 top-1.5 z-10 rounded p-1 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+        onClick={(e) => { e.stopPropagation(); window.localStorage.setItem("apex.setup-checklist.dismissed", "true"); setDismissed(true); }}
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
       <button
         type="button"
         className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/40"

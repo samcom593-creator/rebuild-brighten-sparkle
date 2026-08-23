@@ -96,7 +96,40 @@ function NotificationSettings() {
   return <div className="max-w-3xl space-y-4"><Section title="Notification preferences" description="Control the operational updates sent to your account.">{items.map(([key, label, description]) => <ToggleRow key={key} label={label} description={description} checked={prefs[key]} onCheckedChange={(value) => setPrefs({ ...prefs, [key]: value })} />)}</Section><Button onClick={() => save.mutate()} disabled={save.isPending || query.isLoading}><Save className="mr-2 h-4 w-4" />Save preferences</Button></div>;
 }
 
-function SecuritySettings() { return <div className="space-y-4"><ProfileSettings /><div className="max-w-4xl space-y-4"><CalendarSyncSection /><IPhoneShortcutsSection /></div></div>; }
+function SecurityControls() {
+  // The audit found the Security tab titled "Security settings" while carrying
+  // zero security controls. These are the two real ones the auth layer offers.
+  const [pw, setPw] = useState({ next: "", confirm: "" });
+  const changePw = useMutation({
+    mutationFn: async () => {
+      if (pw.next.length < 8) throw new Error("Password must be at least 8 characters");
+      if (pw.next !== pw.confirm) throw new Error("Passwords do not match");
+      const { error } = await supabase.auth.updateUser({ password: pw.next });
+      if (error) throw error;
+    },
+    onSuccess: () => { setPw({ next: "", confirm: "" }); toast.success("Password updated"); },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Could not update password"),
+  });
+  const signOutOthers = useMutation({
+    mutationFn: async () => { const { error } = await supabase.auth.signOut({ scope: "others" }); if (error) throw error; },
+    onSuccess: () => toast.success("Signed out of all other devices"),
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Could not sign out other sessions"),
+  });
+  return <div className="max-w-3xl space-y-4">
+    <Section title="Change password" description="Set a new password for signing in with email.">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="block text-xs font-medium">New password<Input className="mt-1.5" type="password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} /></label>
+        <label className="block text-xs font-medium">Confirm password<Input className="mt-1.5" type="password" autoComplete="new-password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} /></label>
+      </div>
+      <Button onClick={() => changePw.mutate()} disabled={changePw.isPending || !pw.next}><Save className="mr-2 h-4 w-4" />{changePw.isPending ? "Updating…" : "Update password"}</Button>
+    </Section>
+    <Section title="Active sessions" description="Sign out everywhere except this device — use after logging in on a shared computer.">
+      <Button variant="outline" onClick={() => signOutOthers.mutate()} disabled={signOutOthers.isPending}><LockKeyhole className="mr-2 h-4 w-4" />{signOutOthers.isPending ? "Signing out…" : "Sign out other devices"}</Button>
+    </Section>
+  </div>;
+}
+
+function SecuritySettings() { return <div className="space-y-4"><SecurityControls /><div className="max-w-4xl space-y-4"><CalendarSyncSection /><IPhoneShortcutsSection /></div></div>; }
 
 function BillingSettings() { const brand = resolveBrand(); return <div className="max-w-3xl"><Section title="Billing & plan" description={`Manage the subscription and billing connection for ${brand.productName}.`}><div className="flex items-start gap-3 rounded-md border border-border p-4"><Database className="mt-0.5 h-5 w-5 text-muted-foreground" /><div><p className="text-sm font-semibold">Billing connection required</p><p className="mt-1 text-xs text-muted-foreground">No verified billing provider is connected to this workspace, so invoices and plan data are intentionally not fabricated.</p></div></div><Button variant="outline" disabled>Open billing portal</Button></Section></div>; }
 
@@ -106,6 +139,6 @@ export default function Settings() {
   const path = useLocation().pathname;
   const mode = useMemo<SettingMode>(() => nav.find(({ key }) => path.endsWith(`/${key}`))?.key ?? "profile", [path]);
   usePageTitle(`${mode === "nova-pro" ? "Assistant" : mode.charAt(0).toUpperCase() + mode.slice(1)} Settings`);
-  const body = mode === "agency" ? <AgencySettings /> : mode === "notifications" ? <NotificationSettings /> : mode === "security" ? <SecuritySettings /> : mode === "billing" ? <BillingSettings /> : mode === "nova-pro" ? <AssistantSettings /> : <SecuritySettings />;
+  const body = mode === "agency" ? <AgencySettings /> : mode === "notifications" ? <NotificationSettings /> : mode === "security" ? <SecuritySettings /> : mode === "billing" ? <BillingSettings /> : mode === "nova-pro" ? <AssistantSettings /> : <div className="space-y-4"><ProfileSettings /><div className="max-w-4xl space-y-4"><CalendarSyncSection /><IPhoneShortcutsSection /></div></div>;
   return <div className="space-y-5"><PageHeader eyebrow="Settings" title={mode === "profile" ? "Account settings" : mode === "nova-pro" ? "AI assistant" : `${mode.charAt(0).toUpperCase() + mode.slice(1)} settings`} subtitle="Configure your workspace without leaving the operating system." /><SettingsNav mode={mode} />{body}</div>;
 }

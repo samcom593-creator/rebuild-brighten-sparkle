@@ -479,16 +479,19 @@ export default function CalendarPage() {
   const { data: calendlySyncStatus } = useQuery({
     queryKey: ["calendar-calendly-sync", user?.id],
     queryFn: async () => {
+      // Sync freshness = when the feed last WROTE an event (created_at), not
+      // starts_at: the old query ordered future bookings desc, so a September
+      // appointment rendered "Live · last Sep 20" and read as a stale sync.
       const { data, error } = await supabase
         .from("calendar_events")
-        .select("id, starts_at, source")
-        .gte("starts_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
-        .order("starts_at", { ascending: false })
+        .select("id, created_at")
+        .order("created_at", { ascending: false })
         .limit(1);
       if (error) return { live: false, lastSync: null as string | null };
       const last = data?.[0];
-      if (!last) return { live: false, lastSync: null };
-      return { live: true, lastSync: last.starts_at };
+      if (!last?.created_at) return { live: false, lastSync: null };
+      const fresh = Date.now() - new Date(last.created_at).getTime() < 7 * 86_400_000;
+      return { live: fresh, lastSync: last.created_at };
     },
     enabled: !!user,
     staleTime: 5 * 60_000,
@@ -499,7 +502,7 @@ export default function CalendarPage() {
       <PageHeader eyebrow="Workspace" eyebrowIcon={<Calendar className="h-4 w-4" />} title="Calendar" subtitle={todayCount > 0 ? `${todayCount} interview${todayCount > 1 ? "s" : ""} today${overdueCount ? ` · ${overdueCount} overdue` : ""}` : "Interviews, follow-ups, policy dates, and client milestones."} actions={<><Button onClick={handleAutoPopulate} variant="outline" size="sm" disabled={autoPopulating}><RefreshCw className={cn("mr-1 h-4 w-4", autoPopulating && "animate-spin")} />Auto-fill</Button><Button onClick={() => setSearchOpen(true)} size="sm"><Plus className="mr-1 h-4 w-4" />Create</Button></>} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {[{ label: "Today", value: todayCount, note: "interviews" }, { label: "This week", value: weekEventCount, note: "scheduled" }, { label: "Open slots", value: openSlotsToday, note: "today · 9a–5p" }, { label: "Calendar sync", value: calendlySyncStatus?.live ? "Live" : "—", note: calendlySyncStatus?.lastSync ? `last ${format(new Date(calendlySyncStatus.lastSync), "MMM d")}` : "no recent feed" }].map((metric) => <Card key={metric.label}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{metric.value}</p><p className="text-xs text-muted-foreground">{metric.note}</p></CardContent></Card>)}
+        {[{ label: "Today", value: todayCount, note: "interviews" }, { label: "This week", value: weekEventCount, note: "scheduled" }, { label: "Open slots", value: openSlotsToday, note: "today · 9a–5p" }, { label: "Calendar sync", value: calendlySyncStatus?.live ? "Live" : "—", note: calendlySyncStatus?.lastSync ? `synced ${format(new Date(calendlySyncStatus.lastSync), "MMM d")}` : "no recent feed" }].map((metric) => <Card key={metric.label}><CardContent className="p-4"><p className="text-xs text-muted-foreground">{metric.label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{metric.value}</p><p className="text-xs text-muted-foreground">{metric.note}</p></CardContent></Card>)}
       </div>
 
       <Card><CardContent className="p-4"><p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Event types</p><div className="flex flex-wrap gap-x-5 gap-y-2 text-xs">{[

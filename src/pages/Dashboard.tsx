@@ -84,6 +84,7 @@ import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@
 import { getCloseRate, getLiveAgentCutoffIso, LIVE_AGENT_DEAL_WINDOW_DAYS, sumAnnualPremium } from "@/lib/metricTruth";
 import { cn } from "@/lib/utils";
 import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
+import { AgentCloudHome } from "@/components/dashboard/AgentCloudHome";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 type IntegrationState = "ok" | "warning" | "critical" | "unavailable";
@@ -824,6 +825,14 @@ function ExecutiveDashboard({
           </>
         }
       />
+
+      {/* THE AGENT CLOUD HOME, mirrored. Sam: "dashboard still not good, mirror
+          agent cloud". Every number here comes from ONE server-side RPC
+          (apex_home_dashboard) that reconciles with the leaderboard, CRM and
+          book truth to the dollar — replacing the per-panel client queries
+          below, which a live measurement caught firing agentlink_deals_snapshot
+          8x and agents 7x on a single load. */}
+      <AgentCloudHome />
 
       {/* Producer recruiting link — unlocks at the production threshold so
           earners can recruit onto their own team instead of the general pool. */}

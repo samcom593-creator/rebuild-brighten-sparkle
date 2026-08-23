@@ -95,6 +95,38 @@ export default function StartContracting() {
       });
 
       if (error) {
+        // submit-contracting-intake answers a validation failure with HTTP 400 and
+        // a body naming the offending field. supabase-js turns EVERY non-2xx into
+        // this `error` with `data` set to null, so that body never reached the
+        // SERVER_ERROR_COPY mapping below — those five field messages were
+        // unreachable code, and a producer whose details the server rejected was
+        // told to check their connection. Read the response the server actually
+        // sent before falling back to a generic message.
+        let serverCode: string | undefined;
+        let serverField: ContractingField | undefined;
+        try {
+          const ctx = (error as { context?: Response }).context;
+          if (ctx && typeof ctx.json === "function") {
+            const parsed = (await ctx.json()) as { error?: { message?: string; field?: string } | string };
+            const detail = typeof parsed?.error === "string" ? { message: parsed.error } : parsed?.error;
+            serverCode = detail?.message;
+            serverField = detail?.field as ContractingField | undefined;
+          }
+        } catch {
+          // Body was absent or not JSON — a genuine transport failure. Leave both
+          // unset so the generic message below is what the producer sees.
+          serverCode = undefined;
+        }
+
+        const mapped = serverCode ? SERVER_ERROR_COPY[serverCode] : undefined;
+        if (mapped) {
+          setErrors({ [mapped.field]: mapped.message });
+          return;
+        }
+        if (serverField) {
+          setErrors({ [serverField]: "Check this field and try again." });
+          return;
+        }
         setFormError("We could not record that. Check your connection and try again.");
         return;
       }

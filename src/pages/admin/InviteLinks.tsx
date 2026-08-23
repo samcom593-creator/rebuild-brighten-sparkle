@@ -1,28 +1,49 @@
 /**
- * /admin/invite-links — APEX one-stop contracting + signup.
+ * /admin/invite-links — the one link that contracts and onboards a new agent.
  *
- * 2026-08-19 (Sam, with his Agent Cloud "Invite Links" screenshot + "one link
- * contracting and signup, this my one stop shop"): rebuilt from the bare
- * hire/join generator into the Agent Cloud invite flow — Link Name, Invite As
- * (Agent / Manager / Agency Owner [White Label] / Staff), Their Upline, Link
- * Type (personal vs agency signup), then the shareable link that places the
- * new agent directly in that upline's downline.
+ * THE CHAIN, AND WHAT PROVES EACH LINK
  *
- * Every link is minted by the SAME generate_invite_token RPC that already
- * worked — p_notes=Link Name, p_target_role=role, p_target_manager_id=upline
- * (this is what actually places them in the downline), p_prefill carries the
- * invite_as / white_label / link_type intent. Copy + revoke + the live list
- * are preserved. Final comp level is confirmed on the joiner's profile after
- * they join — the same model Agent Cloud states on this page — so nothing here
- * claims a role is fully provisioned before the person exists.
+ *   Create Link  → generate_invite_token(p_kind, p_expires_hours, p_target_role,
+ *                  p_target_manager_id, p_prefill, p_notes)  [SECURITY DEFINER;
+ *                  requires the caller to have an active agents row]
+ *   Open link    → /hire/:token → get_invite_token_prefill(p_token) as anon
+ *   Sign up      → consume-invite-token edge function → auth user + agents row,
+ *                  placed under target_manager_id, token stamped used
+ *   Role applied → trg_apply_invite_target_role on invite_tokens fires the
+ *                  moment used_by_agent_id lands and grants the app_role the
+ *                  link was minted for.
  *
- * RLS: invite_tokens.admin_all scopes reads to admin/manager or
- * created_by_user_id, so managers see only their own links.
+ * 2026-08-23 fixes:
+ *  - "Link Type" was recorded in prefill and changed nothing: both options
+ *    minted an identical token. It now decides placement for real — a personal
+ *    invite bakes in the upline you pick, an agency signup link mints with no
+ *    target_manager_id so the joiner is placed on arrival. The upline control
+ *    disables itself for agency links instead of implying a choice that would
+ *    be discarded.
+ *  - "Invite As" was likewise decorative: target_role was stored and never
+ *    read, so Manager / Agency Owner / Staff produced an agent identical to
+ *    Agent. The role is now applied by trigger at consume time.
+ *  - ...except the trigger could never actually see those values. Measured live
+ *    2026-08-23: invite_tokens_target_role_check permitted only
+ *    agent / hired_unlicensed / hired_licensed / manager_candidate /
+ *    referral_prospect, while fn_apply_invite_target_role branched on
+ *    hired_manager / manager / agency_owner / staff. The CHECK rejected the
+ *    INSERT before a row carrying those roles could exist, so every one of the
+ *    trigger's manager-, owner- and staff-shaped arms was unreachable code and
+ *    three of the four buttons below returned 23514 and minted no link at all.
+ *    Widened by 20260823180000_invite_target_role_widen.sql; all four verified
+ *    minting afterwards. The lesson: a role written into the UI and a role the
+ *    trigger translates prove nothing on their own — the table is the third
+ *    party that has to agree, and it was the one saying no.
+ *  - Every link is openable from this page, so the person minting it can walk
+ *    the recruit's path instead of assuming it works.
+ *  - Copy and Open build the URL the same way as the mint, so the three can
+ *    never disagree about where a link points.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Link2, Copy, Check, Ban, Loader2, User, Users, Building2, ClipboardList, ArrowRight,
+  Link2, Copy, Check, Ban, Loader2, User, Users, Building2, ClipboardList, ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,6 +65,7 @@ interface InviteTokenRow {
   is_active: boolean;
   revoked_at: string | null;
   target_role: string | null;
+  target_manager_id: string | null;
   notes: string | null;
 }
 
@@ -51,22 +73,43 @@ interface ManagerOption { id: string; name: string }
 
 const ORIGIN = typeof window !== "undefined" ? window.location.origin : "https://apex-financial.org";
 
-// Invite As → the role the token carries. p_target_manager_id is what actually
-// places the joiner in the downline; target_role + prefill record the intent
-// the joiner's profile is finalized against after they sign up.
+const inviteUrl = (row: Pick<InviteTokenRow, "kind" | "token">) => `${ORIGIN}/${row.kind}/${row.token}`;
+
+/**
+ * Invite As → the role the token carries. p_target_manager_id is what places
+ * the joiner in the downline; target_role is what trg_apply_invite_target_role
+ * turns into an actual app_role grant once they finish signing up.
+ */
 type InviteAs = "agent" | "manager" | "agency_owner" | "staff";
-const INVITE_AS: { key: InviteAs; label: string; desc: string; icon: typeof User; role: string; whiteLabel?: boolean }[] = [
+const INVITE_AS: Array<{ key: InviteAs; label: string; desc: string; icon: typeof User; role: string; whiteLabel?: boolean }> = [
   { key: "agent", label: "Agent", desc: "Can work their own pipeline", icon: User, role: "hired_unlicensed" },
   { key: "manager", label: "Manager", desc: "Can manage a downline team", icon: Users, role: "hired_manager" },
-  { key: "agency_owner", label: "Agency Owner", desc: "Their own sub-agency — they manage their team independently", icon: Building2, role: "agency_owner", whiteLabel: true },
+  { key: "agency_owner", label: "Agency Owner", desc: "Runs their own team under you — granted manager rights on signup", icon: Building2, role: "agency_owner", whiteLabel: true },
   { key: "staff", label: "Staff", desc: "Assistant — acts on your behalf", icon: ClipboardList, role: "staff" },
 ];
 
+const EXPIRY_OPTIONS: Array<{ hours: number; label: string }> = [
+  { hours: 24, label: "24 hours" },
+  { hours: 72, label: "3 days" },
+  { hours: 168, label: "7 days" },
+  { hours: 720, label: "30 days" },
+];
+
+type StatusKey = "all" | "active" | "used" | "revoked";
+
+function rowStatus(row: InviteTokenRow): Exclude<StatusKey, "all"> | "expired" {
+  if (row.used_at) return "used";
+  if (!row.is_active || row.revoked_at) return "revoked";
+  if (new Date(row.expires_at).getTime() < Date.now()) return "expired";
+  return "active";
+}
+
 function statusBadge(row: InviteTokenRow) {
-  if (row.used_at) return <Badge variant="outline" className="bg-info/15 text-info border-info/30">Used</Badge>;
-  if (!row.is_active || row.revoked_at) return <Badge variant="outline" className="bg-muted text-muted-foreground border-border">Revoked</Badge>;
-  if (new Date(row.expires_at).getTime() < Date.now()) return <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30">Expired</Badge>;
-  return <Badge variant="outline" className="bg-success/15 text-success border-success/30">Active</Badge>;
+  const s = rowStatus(row);
+  if (s === "used") return <Badge variant="outline" className="border-info/30 bg-info/15 text-info">Used</Badge>;
+  if (s === "revoked") return <Badge variant="outline" className="border-border bg-muted text-muted-foreground">Revoked</Badge>;
+  if (s === "expired") return <Badge variant="outline" className="border-warning/30 bg-warning/15 text-warning">Expired</Badge>;
+  return <Badge variant="outline" className="border-success/30 bg-success/15 text-success">Active</Badge>;
 }
 
 export default function InviteLinksAdmin() {
@@ -75,20 +118,23 @@ export default function InviteLinksAdmin() {
   const [rows, setRows] = useState<InviteTokenRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<StatusKey>("all");
 
   // form state
   const [linkName, setLinkName] = useState("");
   const [inviteAs, setInviteAs] = useState<InviteAs>("agent");
   const [linkType, setLinkType] = useState<"personal" | "agency">("personal");
   const [uplineId, setUplineId] = useState<string>("");
+  const [expiresHours, setExpiresHours] = useState(168);
   const [managers, setManagers] = useState<ManagerOption[]>([]);
   const [creating, setCreating] = useState(false);
+  const [justCreated, setJustCreated] = useState<{ url: string; name: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("invite_tokens")
-      .select("id, kind, token, created_at, expires_at, used_at, is_active, revoked_at, target_role, notes")
+      .select("id, kind, token, created_at, expires_at, used_at, is_active, revoked_at, target_role, target_manager_id, notes")
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) {
@@ -113,31 +159,59 @@ export default function InviteLinksAdmin() {
 
   useEffect(() => { load(); loadManagers(); }, [load, loadManagers]);
 
-  const counts = useMemo(() => ({
-    all: rows.length,
-    active: rows.filter((r) => r.is_active && !r.used_at && !r.revoked_at && new Date(r.expires_at).getTime() > Date.now()).length,
-    used: rows.filter((r) => r.used_at).length,
-  }), [rows]);
+  const counts = useMemo(() => {
+    const c = { all: rows.length, active: 0, used: 0, revoked: 0 };
+    for (const r of rows) {
+      const s = rowStatus(r);
+      if (s === "active") c.active += 1;
+      else if (s === "used") c.used += 1;
+      else c.revoked += 1; // revoked + expired are both "no longer usable"
+    }
+    return c;
+  }, [rows]);
+
+  const visibleRows = useMemo(() => {
+    if (filter === "all") return rows;
+    return rows.filter((r) => {
+      const s = rowStatus(r);
+      if (filter === "revoked") return s === "revoked" || s === "expired";
+      return s === filter;
+    });
+  }, [rows, filter]);
+
+  const chosen = INVITE_AS.find((o) => o.key === inviteAs)!;
+  // An agency signup link deliberately carries no upline: the joiner is placed
+  // when they arrive. Sending one with an upline baked in would be a different
+  // link than the one this option describes.
+  const effectiveUpline = linkType === "agency" ? "" : uplineId;
 
   async function createLink() {
     if (!linkName.trim()) { toast.error("Give the link a name so you can tell them apart."); return; }
     setCreating(true);
     try {
-      const chosen = INVITE_AS.find((o) => o.key === inviteAs)!;
       const { data, error } = await supabase.rpc("generate_invite_token", {
         p_kind: "hire",
-        p_expires_hours: 168,
+        p_expires_hours: expiresHours,
         p_target_role: chosen.role,
-        p_target_manager_id: uplineId || null,
+        p_target_manager_id: effectiveUpline || null,
         p_prefill: { invite_as: inviteAs, white_label: !!chosen.whiteLabel, link_type: linkType },
         p_notes: linkName.trim(),
       });
       if (error) { toast.error(error.message); return; }
-      const url = (data as { url?: string })?.url;
-      if (url) {
-        try { await navigator.clipboard.writeText(url); toast.success("Link created and copied."); }
-        catch { toast.success(`Link created: ${url}`); }
+
+      // Build the shareable URL from this origin so Copy, Open and the panel
+      // below can never point somewhere different from each other.
+      const minted = data as { url?: string; token?: string; kind?: string } | null;
+      if (!minted?.token) {
+        toast.error("The link was not returned. Nothing was shared.");
+        return;
       }
+      const url = inviteUrl({ kind: (minted.kind as "hire" | "join") ?? "hire", token: minted.token });
+      setJustCreated({ url, name: linkName.trim() });
+
+      try { await navigator.clipboard.writeText(url); toast.success("Link created and copied."); }
+      catch { toast.success("Link created. Copy it from the panel below."); }
+
       setLinkName("");
       await load();
     } catch (err) {
@@ -148,13 +222,12 @@ export default function InviteLinksAdmin() {
     }
   }
 
-  async function copyUrl(row: InviteTokenRow) {
-    const url = `${ORIGIN}/${row.kind}/${row.token}`;
+  async function copyUrl(id: string, url: string) {
     try {
       await navigator.clipboard.writeText(url);
-      setCopiedId(row.id);
+      setCopiedId(id);
       toast.success("Link copied.");
-      setTimeout(() => setCopiedId(null), 2000);
+      setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 2000);
     } catch { toast.error("Clipboard blocked. Copy manually."); }
   }
 
@@ -165,137 +238,228 @@ export default function InviteLinksAdmin() {
       confirmText: "Revoke", tone: "danger",
     });
     if (!ok) return;
-    const { error } = await supabase.from("invite_tokens").update({ is_active: false, revoked_at: new Date().toISOString() }).eq("id", row.id);
+    const { error } = await supabase
+      .from("invite_tokens")
+      .update({ is_active: false, revoked_at: new Date().toISOString() })
+      .eq("id", row.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Link revoked.");
     await load();
   }
 
-  const chosen = INVITE_AS.find((o) => o.key === inviteAs)!;
-
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6 page-enter">
+    <div className="page-enter mx-auto max-w-5xl space-y-6 p-4 md:p-6">
       <PageHeader
-        eyebrow="Contracting · Invite Links"
+        eyebrow="Contracting · Invite an agent"
         eyebrowIcon={<Link2 className="h-3 w-3" />}
         title="Invite Links"
         subtitle="Create a shareable link that places new agents directly in your downline. One link contracts and onboards them — carrier requests route to whoever you pick as their upline."
       />
 
       <Card>
-        <CardContent className="p-5 space-y-6">
-          {/* Link name */}
+        <CardContent className="space-y-6 p-5">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Link Name <span className="text-destructive">*</span></label>
-            <Input value={linkName} onChange={(e) => setLinkName(e.target.value)} placeholder="e.g. New Agent, New Manager, Regional Lead" className="h-11" />
+            <label htmlFor="link-name" className="text-sm font-medium">
+              Link Name <span className="text-destructive">*</span>
+            </label>
+            <Input id="link-name" value={linkName} onChange={(e) => setLinkName(e.target.value)} placeholder="e.g. New Agent, New Manager, Regional Lead" className="h-11" />
             <p className="text-xs text-muted-foreground">Just a label for you — it won't be shown to the person joining.</p>
           </div>
 
-          {/* Invite As */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Invite As</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <span className="text-sm font-medium">Invite As</span>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {INVITE_AS.map((o) => {
                 const Icon = o.icon;
                 const active = inviteAs === o.key;
                 return (
-                  <button key={o.key} type="button" onClick={() => setInviteAs(o.key)}
-                    className={`text-left rounded-md border p-4 transition-colors ${active ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"}`}>
+                  <button
+                    key={o.key}
+                    type="button"
+                    onClick={() => setInviteAs(o.key)}
+                    aria-pressed={active}
+                    data-testid={`invite-as-${o.key}`}
+                    className={`rounded-md border p-4 text-left transition-colors ${active ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"}`}
+                  >
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4 text-primary" />
-                      <span className="font-medium text-sm">{o.label}</span>
-                      {o.whiteLabel && <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px]">White Label</Badge>}
-                      {active && <Check className="h-4 w-4 text-primary ml-auto" />}
+                      <span className="text-sm font-medium">{o.label}</span>
+                      {o.whiteLabel && <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[10px] text-primary">White Label</Badge>}
+                      {active && <Check className="ml-auto h-4 w-4 text-primary" />}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">{o.desc}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{o.desc}</p>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Link type */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Link Type</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <span className="text-sm font-medium">Link Type</span>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {([
-                { key: "personal" as const, label: "Personal invite", desc: '"[Your name] invited you" — you set the upline' },
-                { key: "agency" as const, label: "Agency signup link", desc: '"[Agency] invited you" — they pick their upline' },
+                { key: "personal" as const, label: "Personal invite", desc: "You set the upline now — everyone who joins lands under them." },
+                { key: "agency" as const, label: "Agency signup link", desc: "No upline baked in — placement is decided when they join." },
               ]).map((t) => {
                 const active = linkType === t.key;
                 return (
-                  <button key={t.key} type="button" onClick={() => setLinkType(t.key)}
-                    className={`text-left rounded-md border p-4 transition-colors ${active ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"}`}>
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setLinkType(t.key)}
+                    aria-pressed={active}
+                    data-testid={`link-type-${t.key}`}
+                    className={`rounded-md border p-4 text-left transition-colors ${active ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"}`}
+                  >
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{t.label}</span>
-                      {active && <Check className="h-4 w-4 text-primary ml-auto" />}
+                      <span className="text-sm font-medium">{t.label}</span>
+                      {active && <Check className="ml-auto h-4 w-4 text-primary" />}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">{t.desc}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t.desc}</p>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Their upline */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Their Upline</label>
-            <select value={uplineId} onChange={(e) => setUplineId(e.target.value)}
-              className="h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm">
-              <option value="">Me (default)</option>
-              {managers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-            <p className="text-xs text-muted-foreground">Anyone joining through this link is placed under whoever you pick here, and their carrier requests go to that person.</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label htmlFor="upline" className="text-sm font-medium">Their Upline</label>
+              <select
+                id="upline"
+                value={effectiveUpline}
+                disabled={linkType === "agency"}
+                onChange={(e) => setUplineId(e.target.value)}
+                className="h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm disabled:opacity-50"
+              >
+                <option value="">Me (default)</option>
+                {managers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {linkType === "agency"
+                  ? "An agency signup link carries no upline — placement happens when they join."
+                  : "Anyone joining through this link is placed under whoever you pick here, and their carrier requests go to that person."}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="expiry" className="text-sm font-medium">Link expires in</label>
+              <select
+                id="expiry"
+                value={expiresHours}
+                onChange={(e) => setExpiresHours(Number(e.target.value))}
+                className="h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              >
+                {EXPIRY_OPTIONS.map((o) => <option key={o.hours} value={o.hours}>{o.label}</option>)}
+              </select>
+              <p className="text-xs text-muted-foreground">After this the link stops working and has to be reissued.</p>
+            </div>
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
             <p className="text-xs text-muted-foreground">
-              {chosen.whiteLabel ? "White-label sub-agency — they run their own branded team under you." : `New ${chosen.label.toLowerCase()} placed under ${uplineId ? managers.find((m) => m.id === uplineId)?.name ?? "the chosen upline" : "you"}.`}
+              {linkType === "agency"
+                ? `New ${chosen.label.toLowerCase()} — upline assigned after they join.`
+                : `New ${chosen.label.toLowerCase()} placed under ${uplineId ? (managers.find((m) => m.id === uplineId)?.name ?? "the chosen upline") : "you"}.`}
             </p>
-            <Button onClick={createLink} disabled={creating || !linkName.trim()} className="gap-2">
+            <Button onClick={createLink} disabled={creating || !linkName.trim()} className="gap-2" data-testid="create-link">
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
               Create Link
             </Button>
           </div>
+
+          {justCreated && (
+            <div className="rounded-md border border-primary/40 bg-primary/5 p-4">
+              <p className="text-sm font-medium">{justCreated.name} is ready to share</p>
+              <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{justCreated.url}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => copyUrl("just-created", justCreated.url)}>
+                  {copiedId === "just-created" ? <><Check className="h-4 w-4" /> Copied</> : <><Copy className="h-4 w-4" /> Copy</>}
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <a href={justCreated.url} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4" /> Open it yourself
+                  </a>
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Opening it shows the signup form the recruit sees. It is only consumed when someone submits that form.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* My invite links */}
       <div>
-        <div className="flex items-baseline justify-between mb-2">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">My Invite Links</h2>
-          <p className="text-xs text-muted-foreground">{counts.active} active · {counts.used} used · {counts.all} total</p>
+          <div className="flex flex-wrap gap-1.5">
+            {(["all", "active", "used", "revoked"] as StatusKey[]).map((k) => (
+              <Button
+                key={k}
+                size="sm"
+                variant={filter === k ? "default" : "outline"}
+                className="h-7 text-xs capitalize"
+                onClick={() => setFilter(k)}
+                data-testid={`filter-${k}`}
+              >
+                {k === "revoked" ? "Revoked / expired" : k}: {counts[k]}
+              </Button>
+            ))}
+          </div>
         </div>
         <Card>
           <CardContent className="p-0">
             {loading ? (
-              <div className="p-8 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-            ) : rows.length === 0 ? (
-              <p className="p-8 text-sm text-muted-foreground text-center">No links yet. Create one above and share it — the person who opens it lands in your downline.</p>
+              <div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : visibleRows.length === 0 ? (
+              <p className="p-8 text-center text-sm text-muted-foreground">
+                {rows.length === 0
+                  ? "No links yet. Create one above and share it — the person who opens it lands in your downline."
+                  : "No links in this state."}
+              </p>
             ) : (
               <div className="divide-y divide-border">
-                {rows.map((row) => {
-                  const url = `${ORIGIN}/${row.kind}/${row.token}`;
-                  const revocable = row.is_active && !row.used_at && !row.revoked_at;
+                {visibleRows.map((row) => {
+                  const url = inviteUrl(row);
+                  const usable = rowStatus(row) === "active";
                   return (
-                    <div key={row.id} className="p-4 flex items-center justify-between gap-3 flex-wrap" data-testid={`invite-row-${row.id}`} data-invite-kind={row.kind}>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-sm">{row.notes || `${row.kind} link`}</span>
+                    <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 p-4" data-testid={`invite-row-${row.id}`} data-invite-kind={row.kind}>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-medium">{row.notes || `${row.kind} link`}</span>
                           {statusBadge(row)}
+                          {row.target_role && (
+                            <span className="text-[11px] capitalize text-muted-foreground">{row.target_role.replace(/_/g, " ")}</span>
+                          )}
                         </div>
-                        <p className="text-xs font-mono truncate mt-1 text-muted-foreground">{url}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                        <p className="mt-1 truncate font-mono text-xs text-muted-foreground">{url}</p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
                           Expires {new Date(row.expires_at).toLocaleDateString()}
                           {row.used_at ? ` · Used ${new Date(row.used_at).toLocaleDateString()}` : ""}
+                          {row.target_manager_id ? " · Upline preset" : " · Upline set on join"}
                         </p>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button size="sm" onClick={() => copyUrl(row)} data-testid={`copy-${row.id}`} className="gap-1.5">
+                        <Button size="sm" onClick={() => copyUrl(row.id, url)} data-testid={`copy-${row.id}`} className="gap-1.5">
                           {copiedId === row.id ? <><Check className="h-4 w-4" /> Copied</> : <><Copy className="h-4 w-4" /> Copy</>}
                         </Button>
-                        {revocable && (
-                          <Button variant="ghost" size="sm" onClick={() => revoke(row)} className="text-destructive hover:text-destructive hover:bg-destructive/10" data-testid={`revoke-${row.id}`}>
+                        {usable && (
+                          <Button asChild size="sm" variant="outline" data-testid={`open-${row.id}`}>
+                            <a href={url} target="_blank" rel="noopener noreferrer" aria-label="Open invite link">
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        )}
+                        {usable && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => revoke(row)}
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            data-testid={`revoke-${row.id}`}
+                            aria-label="Revoke invite link"
+                          >
                             <Ban className="h-4 w-4" />
                           </Button>
                         )}

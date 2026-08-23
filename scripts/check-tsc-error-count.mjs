@@ -195,7 +195,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // InviteLinks, LicensingTracker, SamHQ, TelegramBot) that had been hidden
 // behind TS2589 deep-instantiation noise. All 15 fixed with the `as unknown as`
 // intermediate the error itself prescribes; one TS2589 dissolved outright.
-const BASELINE = 228; // 2026-08-20: ratchet drop 229→228 — AgentCloud parity pass fixed query type instantiations in MyDeals and VaOpsCommandCenter.
+const BASELINE = 224; // 2026-08-23: website-wide parity audit removed four generated-client type errors.
 
 const startedAt = Date.now();
 

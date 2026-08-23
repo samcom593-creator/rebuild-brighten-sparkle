@@ -132,6 +132,23 @@ function usdOrNull(v: number | string | null | undefined): string | null {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
+/** agents.performance_tier stores machine tokens ("below_10k", "top_producer").
+ *  They were rendered straight onto the profile, so the badge on Sam's own page
+ *  read "below_10k". Known tokens get a written label; anything new is
+ *  title-cased rather than shown raw. */
+const PERFORMANCE_TIER_LABEL: Record<string, string> = {
+  below_10k: "Under $10K",
+  top_producer: "Top Producer",
+};
+
+function performanceTierLabel(tier: string): string {
+  return PERFORMANCE_TIER_LABEL[tier]
+    ?? tier.replace(/[_-]+/g, " ").trim()
+      .split(/\s+/)
+      .map((w) => (/^\d/.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+      .join(" ");
+}
+
 function NotOnFile({ label = "not on file" }: { label?: string }) {
   return <span className="text-xs italic text-muted-foreground">{label}</span>;
 }
@@ -485,7 +502,7 @@ export default function ProducerProfile() {
     queryFn: async () => {
       const { data } = await supabase.from("v_agentlink_book_scoped" as any)
         .select("annual_premium").eq("agent_id", agentId).not("is_dead", "is", true);
-      const rows = (data ?? []) as Array<{ annual_premium: number | string | null }>;
+      const rows = (data ?? []) as unknown as Array<{ annual_premium: number | string | null }>;
       const premium = rows.reduce((s, r) => s + Number(r.annual_premium ?? 0), 0);
       return { premium, policies: rows.length, estEarnings: Math.round(premium * 0.63) };
     },
@@ -879,7 +896,9 @@ export default function ProducerProfile() {
                   {ag.performance_tier && (
                     <div className="flex justify-between pt-1">
                       <span className="text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Tier</span>
-                      <Badge variant="outline" className="text-11 bg-amber-500/10 border-amber-500/30">{ag.performance_tier}</Badge>
+                      <Badge variant="outline" className="text-11 bg-primary/10 border-primary/30 text-primary">
+                        {performanceTierLabel(ag.performance_tier)}
+                      </Badge>
                     </div>
                   )}
                 </div>

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// route-smoke.mjs — CI smoke test of every public route.
+// route-smoke.mjs — CI smoke test of critical public routes.
 //
 // Catches the bug class from 2026-04-29:
 //   - /agent-signup defined in code but missing from App.tsx → SPA renders
@@ -7,10 +7,14 @@
 //   - /leads /get-leads /dialer crash (React error #306, missing default export)
 //     and ErrorBoundary fallback shows a generic apology screen.
 //
-// Pure fetch — no Playwright dep. Pulls each route's HTML and looks for:
+// Pure fetch — no Playwright dep. It verifies each route is registered in the
+// local React Router source, then pulls the deployed route and looks for:
 //   - non-2xx HTTP
-//   - "404 · NOT FOUND" / "Page not found" markers in the body
-//   - Vite ErrorBoundary fallback marker
+//   - "404 · NOT FOUND" / "Page not found" markers when present in HTML
+//   - ErrorBoundary fallback markers when present in HTML
+//
+// The source check is essential: Vercel's SPA rewrite serves index.html with a
+// 200 for unknown paths, so HTTP status alone cannot prove a route exists.
 //
 // Usage:
 //   BASE=https://apex-financial.org node scripts/route-smoke.mjs
@@ -18,14 +22,22 @@
 //
 // Exit non-zero on any failure so CI / post-build gates can block.
 
+import fs from "node:fs";
+
 const BASE = process.env.BASE || "https://apex-financial.org";
+const appSource = fs.readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+const registeredRoutes = new Set(
+  [...appSource.matchAll(/<Route\s+path=["']([^"']+)["']/g)].map((match) => match[1]),
+);
 
 const PUBLIC_ROUTES = [
-  "/", "/apply", "/get-licensed", "/login", "/signup",
+  "/", "/apply", "/get-licensed", "/start-contracting", "/unlicensed-overview",
+  "/resources/licensing", "/training", "/login", "/reset-password", "/signup",
   "/agent-signup", "/agent-login", "/magic-login",
   "/schedule-call", "/join", "/links", "/seminar",
   "/leads", "/get-leads", "/dialer", "/install",
-  "/privacy", "/terms", "/disclosures",
+  "/contact", "/privacy", "/privacy-policy", "/terms", "/terms-of-service", "/disclosures",
+  "/data-deletion", "/delete-my-data", "/hall-of-fame",
   "/storefront", "/storefront?paid=1",
   "/apply/success", "/apply/success/licensed", "/apply/success/unlicensed",
   "/pending-approval", "/apex-daily-numbers",
@@ -42,6 +54,8 @@ const results = [];
 
 for (const path of PUBLIC_ROUTES) {
   const url = BASE + path;
+  const routePath = path.split("?")[0];
+  const registered = registeredRoutes.has(routePath);
   let httpStatus = 0;
   let bodyPreview = "";
   let netError = null;
@@ -62,12 +76,13 @@ for (const path of PUBLIC_ROUTES) {
   const visual404 = VISUAL_404_RE.test(bodyPreview);
   const errBoundary = ERROR_BOUNDARY_RE.test(bodyPreview);
   // /storefront is fine — it has its own "Payment received" copy that doesn't trip 404 regex
-  const ok = !netError && httpStatus >= 200 && httpStatus < 400 && !visual404 && !errBoundary;
+  const ok = registered && !netError && httpStatus >= 200 && httpStatus < 400 && !visual404 && !errBoundary;
 
   if (!ok) failed++;
 
   let note = "";
-  if (netError) note = `net: ${netError}`;
+  if (!registered) note = "route not registered in src/App.tsx";
+  else if (netError) note = `net: ${netError}`;
   else if (httpStatus >= 400) note = `HTTP ${httpStatus}`;
   else if (visual404) note = "visual 404 in body (route not registered in App.tsx)";
   else if (errBoundary) note = "ErrorBoundary fallback (runtime crash)";

@@ -70,7 +70,7 @@ export function PushNotificationPrompt() {
   return (
     // Non-blocking corner card — does NOT cover the dashboard. Was a full-screen
     // inset-0 overlay that blocked the whole page on every load.
-    <div className="animate-fade-in fixed bottom-4 right-4 z-[60] w-full max-w-sm">
+    <div className="animate-fade-in fixed bottom-4 right-4 z-40 w-full max-w-sm">
       <div className="landing-scale-in w-full rounded-md border border-primary/30 bg-card shadow-2xl">
         {/* Header */}
         <div className="flex flex-col items-center gap-3 p-6 pb-2 text-center">

@@ -2,12 +2,12 @@
 
 ## Current incident finding & remediation status
 
-The August 10, 2026 live request returned `502 Bad Gateway` with connection refused. That proves the upstream application was unavailable, but it does not identify whether the cause was a failed build, crashed runtime, bad route, missing environment value, or platform networking. This slice adds `/healthz` and `/readiness` and completes the APEX function perfection remediation (migration `20260811223000`).
+The August 10, 2026 live request returned `502 Bad Gateway` with connection refused. That proves the upstream application was unavailable, but it does not identify whether the cause was a failed build, crashed runtime, bad route, missing environment value, or platform networking. This slice adds `/healthz` and `/readiness`; the required readiness marker is migration `20260811222000`. The proposed `20260811223000` remediation is preserved only as a rejected audit artifact and is not a deployed migration.
 
 ## Health contract
 
 - `GET /healthz`: process liveness only; no vendor dependency.
-- `GET /readiness`: required Supabase configuration, database reachability, and migration `20260811223000`.
+- `GET /readiness`: required Supabase configuration, database reachability, and migration `20260811222000`.
 - Admin health should separately display optional integration capability, outbox lag, oldest pending event, dead letters, and worker heartbeat.
 - Never return secrets, recipients, message bodies, client identity, policy data, or documents.
 

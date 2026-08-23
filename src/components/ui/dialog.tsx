@@ -18,8 +18,15 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
+    /* A scrim is a DIMMER, not a surface. The 2026-06-09 theme codemod
+     * (ee8b3142) treated it as one: it read the translucent dark value as a
+     * "hardcoded dark utility" and generated an opaque light counterpart,
+     * dropping the alpha. Light mode then painted the whole viewport solid,
+     * so every modal read as a blank page instead of a layer over the app.
+     * Both halves must keep an alpha < 1. Same shape in alert-dialog, sheet
+     * and drawer — fix all four together. */
     className={cn(
-      "fixed inset-0 z-50 bg-white dark:bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/40 dark:bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}

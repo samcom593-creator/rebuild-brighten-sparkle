@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, ChevronLeft, ChevronRight, FileCheck2, Loader2, Save, ShieldCheck, Trophy, Upload } from "lucide-react";
+import { CheckCircle2, FilePlus2, FileCheck2, Loader2, Plus, Search, ShieldCheck, Trash2, UserCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,13 +9,33 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type PremiumMode = "annual" | "semiannual" | "quarterly" | "monthly" | "single_pay" | "other";
+type PaymentMethod = "" | "bank_draft" | "credit_card" | "debit_card" | "direct_express" | "check" | "social_security";
+type PolicyStatus = "Issued, Not Paid" | "Active" | "In Review" | "Pending" | "Approved" | "Lapse Pending" | "Lapsed" | "Cancelled" | "Withdrawn" | "Not Taken" | "Postponed" | "Declined";
 type DealSection = "client" | "policy" | "premium" | "evidence" | "review";
+type ClientMode = "new" | "existing";
+
+interface ClientHit {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  date_of_birth: string | null;
+}
+
+interface BeneficiaryForm {
+  id: string;
+  firstName: string;
+  lastName: string;
+  relationship: string;
+  allocationPct: string;
+}
 
 interface DealForm {
   clientFirstName: string;
@@ -28,7 +48,10 @@ interface DealForm {
   applicationDate: string;
   effectiveDate: string;
   leadSource: string;
+  policyStatus: PolicyStatus;
   premiumMode: PremiumMode;
+  paymentMethod: PaymentMethod;
+  draftDay: string;
   modalPremium: string;
   annualizedPaidPremium: string;
   annualizedCommissionablePremium: string;
@@ -36,6 +59,7 @@ interface DealForm {
   calculationNeedsReview: boolean;
   communityCaption: string;
   notes: string;
+  beneficiaries: BeneficiaryForm[];
 }
 
 interface AgentOption {
@@ -80,7 +104,10 @@ const EMPTY_FORM: DealForm = {
   applicationDate: TODAY,
   effectiveDate: "",
   leadSource: "",
+  policyStatus: "Issued, Not Paid",
   premiumMode: "monthly",
+  paymentMethod: "",
+  draftDay: "",
   modalPremium: "",
   annualizedPaidPremium: "",
   annualizedCommissionablePremium: "",
@@ -88,6 +115,7 @@ const EMPTY_FORM: DealForm = {
   calculationNeedsReview: false,
   communityCaption: "",
   notes: "",
+  beneficiaries: [],
 };
 
 const MODE_FACTOR: Record<PremiumMode, number | null> = {
@@ -113,6 +141,14 @@ function formatMoney(value: string | number): string {
   return amount.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 }
 
+// PostgREST hands .ilike() straight through to SQL LIKE, so an unescaped % or
+// _ typed into the client search stops being a substring match and starts
+// matching everything. Escape the four metacharacters PostgREST honours (it
+// rewrites * to % before SQL) so the box behaves the way a person expects.
+function likeLiteral(term: string): string {
+  return term.replace(/[\\%_*]/g, (character) => `\\${character}`);
+}
+
 function rpc<T>(name: string, args: Record<string, unknown>): Promise<{ data: T | null; error: { message?: string } | null }> {
   return (supabase.rpc as unknown as (fn: string, values: Record<string, unknown>) => Promise<{ data: T | null; error: { message?: string } | null }>)(name, args);
 }
@@ -135,6 +171,11 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
   const [idempotencyKey, setIdempotencyKey] = useState<string>(newIdempotencyKey);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [clientMode, setClientMode] = useState<ClientMode>("new");
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientQuery, setClientQuery] = useState("");
+  const [linkedClient, setLinkedClient] = useState<ClientHit | null>(null);
+  const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [recovering, setRecovering] = useState(false);
@@ -158,20 +199,76 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
     staleTime: 10 * 60_000,
   });
 
+  const carrierProducts = useQuery({
+    queryKey: ["native-deal-carrier-products", form.carrierId],
+    enabled: Boolean(form.carrierId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_carrier_products" as never)
+        .select("product, deals_written")
+        .eq("carrier_id", form.carrierId)
+        .order("deals_written", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{ product: string; deals_written: number }>;
+    },
+    staleTime: 10 * 60_000,
+  });
+
+  // Existing Client mode reads the real client mirror. agentlink_clients is
+  // role-scoped by RLS, so an agent only ever searches clients they can see.
+  const clientHits = useQuery({
+    queryKey: ["native-deal-client-search", clientQuery],
+    enabled: open && clientMode === "existing" && clientQuery.trim().length >= 2,
+    queryFn: async () => {
+      const term = likeLiteral(clientQuery.trim());
+      const digits = clientQuery.replace(/\D/g, "");
+      const filters = [`first_name.ilike.%${term}%`, `last_name.ilike.%${term}%`];
+      if (digits.length >= 4) filters.push(`phone.ilike.%${digits}%`);
+      const { data, error } = await supabase
+        .from("agentlink_clients" as never)
+        .select("id, first_name, last_name, phone, date_of_birth")
+        .or(filters.join(","))
+        .order("last_name")
+        .limit(25);
+      if (error) throw error;
+      return (data ?? []) as unknown as ClientHit[];
+    },
+  });
+
   const ownAgent = useQuery({
     queryKey: ["native-deal-own-agent", user?.id],
     enabled: Boolean(user?.id),
     queryFn: async () => {
+      // agents carries no unique index on user_id. .maybeSingle() returns null
+      // on a duplicated identity, which reads as "this person has no agent
+      // record" and locks them out of posting — take the first row instead.
       const { data, error } = await supabase
         .from("agents")
         .select("id, display_name, manager_id")
         .eq("user_id", user!.id)
         .order("created_at")
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
       if (error) throw error;
-      if (!data) return null;
-      return { id: data.id, displayName: data.display_name || "My agent record", managerId: data.manager_id } as AgentOption;
+      const row = (data ?? [])[0];
+      if (!row) return null;
+      return { id: row.id, displayName: row.display_name || "My agent record", managerId: row.manager_id } as AgentOption;
+    },
+  });
+
+  // Sam removed Alyjah Rowland from the roster (roster_exclusions, "GHOST_336
+  // sync artifact") and he must appear nowhere. The writing-agent picker
+  // filtered on status <> 'terminated', and his row is 'inactive' — so the one
+  // agent who is not supposed to exist was selectable as the writer of a new
+  // deal. Read the canonical exclusion table rather than inventing a second
+  // roster definition.
+  const excludedAgentIds = useQuery({
+    queryKey: ["roster-exclusions"],
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("roster_exclusions" as never).select("agent_id");
+      if (error) throw error;
+      return new Set((data ?? []).map((row) => (row as unknown as { agent_id: string }).agent_id));
     },
   });
 
@@ -197,9 +294,12 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
   });
 
   const availableAgents = useMemo(() => {
-    if (isAdmin || isManager) return agentOptions.data ?? (ownAgent.data ? [ownAgent.data] : []);
-    return ownAgent.data ? [ownAgent.data] : [];
-  }, [agentOptions.data, isAdmin, isManager, ownAgent.data]);
+    const excluded = excludedAgentIds.data ?? new Set<string>();
+    const base = (isAdmin || isManager)
+      ? agentOptions.data ?? (ownAgent.data ? [ownAgent.data] : [])
+      : ownAgent.data ? [ownAgent.data] : [];
+    return base.filter((agent) => !excluded.has(agent.id));
+  }, [agentOptions.data, excludedAgentIds.data, isAdmin, isManager, ownAgent.data]);
 
   const writingAgent = availableAgents.find((agent) => agent.id === selectedAgentId) ?? ownAgent.data ?? null;
   const manager = useQuery({
@@ -210,15 +310,20 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
         .from("agents")
         .select("display_name")
         .eq("id", writingAgent!.managerId!)
-        .maybeSingle();
+        .limit(1);
       if (error) throw error;
-      return data?.display_name || "Assigned manager";
+      return (data ?? [])[0]?.display_name || "Assigned manager";
     },
   });
 
   useEffect(() => {
     if (!selectedAgentId && ownAgent.data?.id) setSelectedAgentId(ownAgent.data.id);
   }, [ownAgent.data, selectedAgentId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setClientQuery(clientSearch), 300);
+    return () => clearTimeout(timer);
+  }, [clientSearch]);
 
   useEffect(() => {
     if (!open || !user?.id || !storageKey) return;
@@ -268,6 +373,19 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
     setForm((current) => ({ ...current, [key]: value }));
   };
 
+  const addBeneficiary = () => {
+    if (form.beneficiaries.length >= 10) return;
+    update("beneficiaries", [...form.beneficiaries, { id: crypto.randomUUID(), firstName: "", lastName: "", relationship: "", allocationPct: "" }]);
+  };
+
+  const updateBeneficiary = (index: number, patch: Partial<BeneficiaryForm>) => {
+    update("beneficiaries", form.beneficiaries.map((beneficiary, row) => row === index ? { ...beneficiary, ...patch } : beneficiary));
+  };
+
+  const removeBeneficiary = (index: number) => {
+    update("beneficiaries", form.beneficiaries.filter((_, row) => row !== index));
+  };
+
   const validateStep = (index: number): string | null => {
     if (index === 0) {
       if (!form.clientFirstName.trim() || !form.clientLastName.trim()) return "Client first and last name are required.";
@@ -284,6 +402,11 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
       if (calculatedAnnualPaid <= 0) return "Annualized paid premium must be greater than zero.";
       if (calculatedAlp <= 0) return "Annualized commissionable premium must be greater than zero.";
       if (safeNumber(form.faceAmount) <= 0) return "Face amount must be greater than zero.";
+      if (form.draftDay && (!/^\d{1,2}$/.test(form.draftDay) || Number(form.draftDay) < 1 || Number(form.draftDay) > 28)) return "Draft day must be between 1 and 28.";
+      for (const beneficiary of form.beneficiaries) {
+        if (!beneficiary.firstName.trim() || !beneficiary.lastName.trim()) return "Every beneficiary needs a first and last name.";
+        if (beneficiary.allocationPct && (safeNumber(beneficiary.allocationPct) < 0 || safeNumber(beneficiary.allocationPct) > 100)) return "Beneficiary allocation must be between 0 and 100%.";
+      }
     }
     if (index === 3 && evidence.length === 0) return "Upload the policy image or supporting document before review.";
     return null;
@@ -312,14 +435,28 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
     return savedDraftId ?? null;
   };
 
-  const next = async () => {
-    const validation = validateStep(step);
-    if (validation) { toast.error(validation); return; }
-    setSaving(true);
-    const nextSection = SECTIONS[Math.min(step + 1, SECTIONS.length - 1)].key;
-    const saved = await saveSection(nextSection);
-    if (saved) setStep((current) => Math.min(current + 1, SECTIONS.length - 1));
-    setSaving(false);
+  // Pre-flight. Runs the same gates the submit runs, then asks the database the
+  // one question the browser cannot answer on its own: is this application or
+  // policy number already on a deal? submit_apex_deal rejects a duplicate with
+  // 23505, so catching it here turns a failed post into a corrected one before
+  // anything is written.
+  const runCheck = async () => {
+    for (let index = 0; index < 3; index += 1) {
+      const validation = validateStep(index);
+      if (validation) { toast.error(validation); return; }
+    }
+    setChecking(true);
+    const { count, error } = await supabase
+      .from("deals")
+      .select("id", { count: "exact", head: true })
+      .ilike("policy_number", likeLiteral(form.policyNumber.trim()));
+    setChecking(false);
+    if (error) { toast.error(`The duplicate check could not run: ${error.message}`); return; }
+    if ((count ?? 0) > 0) {
+      toast.error(`Policy number ${form.policyNumber.trim()} is already on a deal. Change it before posting.`);
+      return;
+    }
+    toast.success(`Ready to post — ${formatMoney(calculatedAnnualPaid)} annual, policy number is unused.`);
   };
 
   const uploadEvidence = async (file: File | undefined) => {
@@ -400,7 +537,12 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
     };
     setReceipt(nextReceipt);
     if (storageKey) localStorage.removeItem(storageKey);
+    // Production paints the deal list and the exact header count from two
+    // separate queries. Invalidating only "deals" left the count showing the
+    // pre-submit number until a hard reload — the new row appeared in the list
+    // above a total that disagreed with it.
     queryClient.invalidateQueries({ queryKey: ["deals"] });
+    queryClient.invalidateQueries({ queryKey: ["deals-count"] });
     queryClient.invalidateQueries({ queryKey: ["news-feed"] });
     toast.success("Deal saved. Delivery is queued independently.");
     setSaving(false);
@@ -414,9 +556,27 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
     setEvidence([]);
     setReceipt(null);
     setRecovered(false);
+    setLinkedClient(null);
+    setClientMode("new");
+    setClientSearch("");
+    setClientQuery("");
     const nextKey = newIdempotencyKey();
     setIdempotencyKey(nextKey);
     if (storageKey) localStorage.setItem(storageKey, nextKey);
+  };
+
+  const linkClient = (hit: ClientHit) => {
+    setLinkedClient(hit);
+    setForm((current) => ({
+      ...current,
+      clientFirstName: hit.first_name ?? "",
+      clientLastName: hit.last_name ?? "",
+      clientPhone: hit.phone ?? "",
+      clientDob: hit.date_of_birth ?? "",
+    }));
+    // Never invent the missing half of a record — say it is missing and make
+    // the agent supply it, because DOB is required by the server.
+    if (!hit.date_of_birth) toast.warning("That client has no date of birth on file — add it below before posting.");
   };
 
   const handleOpenChange = (next: boolean) => {
@@ -438,8 +598,8 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
       <DialogTrigger asChild>
         {trigger ?? (
           <Button className="h-11 gap-2 sm:h-10">
-            <Trophy className="h-4 w-4" />
-            Add Deal
+            <FilePlus2 className="h-4 w-4" />
+            Post a Deal
           </Button>
         )}
       </DialogTrigger>
@@ -474,10 +634,28 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
         ) : (
           <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
             <div className="border-b border-border px-5 py-3">
-              <div className="inline-flex gap-1 rounded-full border border-border p-1 text-sm">
-                <span className="rounded-full bg-primary/15 px-4 py-1.5 font-medium text-primary">New Client</span>
-                <span className="rounded-full px-4 py-1.5 text-muted-foreground">Existing Client</span>
-              </div>
+              <RadioGroup
+                value={clientMode}
+                onValueChange={(value) => {
+                  const mode = value as ClientMode;
+                  setClientMode(mode);
+                  if (mode === "new") {
+                    setLinkedClient(null);
+                    setClientSearch("");
+                    setClientQuery("");
+                  }
+                }}
+                className="flex flex-wrap gap-6"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="new" id="deal-client-new" />
+                  <Label htmlFor="deal-client-new" className="cursor-pointer font-normal">New Client</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="existing" id="deal-client-existing" />
+                  <Label htmlFor="deal-client-existing" className="cursor-pointer font-normal">Existing Client</Label>
+                </div>
+              </RadioGroup>
             </div>
 
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
@@ -503,6 +681,50 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
 
               {(
                 <Section title="Client Information" description="Client identity is restricted operational data and is never copied into community posts.">
+                  {clientMode === "existing" && (
+                    <div className="mb-4 space-y-2">
+                      <Label htmlFor="deal-client-search">Find the client</Label>
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          id="deal-client-search"
+                          value={clientSearch}
+                          onChange={(event) => setClientSearch(event.target.value)}
+                          placeholder="Search by name or phone…"
+                          className="h-11 pl-9 sm:h-10"
+                          autoComplete="off"
+                        />
+                      </div>
+                      {clientQuery.trim().length >= 2 && (
+                        <div className="max-h-52 overflow-y-auto rounded-md border border-border">
+                          {clientHits.isLoading && <p className="px-3 py-3 text-sm text-muted-foreground">Searching…</p>}
+                          {!clientHits.isLoading && (clientHits.data ?? []).length === 0 && (
+                            <p className="px-3 py-3 text-sm text-muted-foreground">
+                              No client on file matches “{clientQuery.trim()}”. Switch to New Client to enter them by hand.
+                            </p>
+                          )}
+                          {(clientHits.data ?? []).map((hit) => (
+                            <button
+                              key={hit.id}
+                              type="button"
+                              onClick={() => linkClient(hit)}
+                              className="flex min-h-11 w-full items-center justify-between gap-3 border-b border-border px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted/40"
+                            >
+                              <span className="min-w-0 truncate font-medium">{hit.first_name} {hit.last_name}</span>
+                              <span className="shrink-0 text-xs text-muted-foreground">
+                                {hit.phone || "no phone on file"} · {hit.date_of_birth || "no DOB on file"}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {linkedClient && (
+                        <p className="flex items-center gap-2 text-sm text-success">
+                          <UserCheck className="h-4 w-4" /> Linked {linkedClient.first_name} {linkedClient.last_name}. Confirm the details below.
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="First name" id="deal-first-name" value={form.clientFirstName} onChange={(value) => update("clientFirstName", value)} autoComplete="given-name" />
                     <Field label="Last name" id="deal-last-name" value={form.clientLastName} onChange={(value) => update("clientLastName", value)} autoComplete="family-name" />
@@ -522,23 +744,36 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
                     </Select>
                   </div>
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <Field label="Product sold" id="deal-product" value={form.product} onChange={(value) => update("product", value)} placeholder="Product or plan name" />
+                    <div>
+                      <Field label="Product sold" id="deal-product" value={form.product} onChange={(value) => update("product", value)} placeholder="Select product…" list="deal-product-options" />
+                      <datalist id="deal-product-options">
+                        {(carrierProducts.data ?? []).map((row) => <option key={row.product} value={row.product} />)}
+                      </datalist>
+                    </div>
                     <Field label="Policy number" id="deal-policy" value={form.policyNumber} onChange={(value) => update("policyNumber", value)} placeholder="e.g., POL-123456" autoComplete="off" />
                     <Field label="Effective date" id="deal-effective-date" value={form.effectiveDate} onChange={(value) => update("effectiveDate", value)} type="date" />
                     <div className="space-y-1.5">
                       <Field label="Sale date" id="deal-application-date" value={form.applicationDate} onChange={(value) => update("applicationDate", value)} type="date" max={TODAY} />
                       <p className="text-xs text-muted-foreground">Counts toward this month. Change it to log an older sale.</p>
                     </div>
-                    <Field label="Lead source" id="deal-lead-source" value={form.leadSource} onChange={(value) => update("leadSource", value)} placeholder="Optional" />
-                  </div>
-                </Section>
-              )}
-
-              {(
-                <Section title="Premium & Face" description="Monthly premium annualizes automatically. Change the frequency for annual, single-pay, or other rules.">
-                  <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Face amount" id="deal-face" value={form.faceAmount} onChange={(value) => update("faceAmount", value)} type="number" min="1" step="1" inputMode="decimal" placeholder="e.g., 50000" />
                     <Field label={form.premiumMode === "monthly" ? "Monthly premium" : "Premium (per payment)"} id="deal-modal-premium" value={form.modalPremium} onChange={(value) => update("modalPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="e.g., 99.99" />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="deal-payment-method">Payment method</Label>
+                      <Select value={form.paymentMethod || "not_recorded"} onValueChange={(value) => update("paymentMethod", value === "not_recorded" ? "" : value as PaymentMethod)}>
+                        <SelectTrigger id="deal-payment-method" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="not_recorded">Not set yet</SelectItem>
+                          <SelectItem value="bank_draft">Bank draft</SelectItem>
+                          <SelectItem value="credit_card">Credit card</SelectItem>
+                          <SelectItem value="debit_card">Debit card</SelectItem>
+                          <SelectItem value="direct_express">Direct Express</SelectItem>
+                          <SelectItem value="check">Check</SelectItem>
+                          <SelectItem value="social_security">Social Security</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Field label="Draft day" id="deal-draft-day" value={form.draftDay} onChange={(value) => update("draftDay", value)} type="number" min="1" max="28" step="1" inputMode="numeric" placeholder="Not set yet — 1 to 28" />
                     <div className="space-y-1.5">
                       <Label htmlFor="deal-premium-mode">Payment frequency</Label>
                       <Select value={form.premiumMode} onValueChange={(value) => update("premiumMode", value as PremiumMode)}>
@@ -550,16 +785,62 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
                         </SelectContent>
                       </Select>
                     </div>
+                    <Field label="Lead source" id="deal-lead-source" value={form.leadSource} onChange={(value) => update("leadSource", value)} placeholder="Optional" />
                     {factor === null && (
                       <Field label="Annual paid premium" id="deal-paid-premium" value={form.annualizedPaidPremium} onChange={(value) => update("annualizedPaidPremium", value)} type="number" min="0.01" step="0.01" inputMode="decimal" placeholder="Enter for this frequency" />
                     )}
                   </div>
+                  <div className="mt-4 space-y-1.5">
+                    <Label htmlFor="deal-policy-status">Policy status</Label>
+                    <Select value={form.policyStatus} onValueChange={(value) => update("policyStatus", value as PolicyStatus)}>
+                      <SelectTrigger id="deal-policy-status" className="h-11 sm:h-10"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {(["Issued, Not Paid", "Active", "In Review", "Pending", "Approved", "Lapse Pending", "Lapsed", "Cancelled", "Withdrawn", "Not Taken", "Postponed", "Declined"] as PolicyStatus[]).map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="mt-4 space-y-1">
                     <Label>Annual Premium</Label>
-                    <p className="text-xl font-bold text-success">{formatMoney(calculatedAnnualPaid)} <span className="text-sm font-normal text-muted-foreground">/ year</span></p>
+                    <div className="rounded-md border border-border bg-muted/20 px-3 py-2.5">
+                      <p className="text-xl font-bold text-success">{formatMoney(calculatedAnnualPaid)} <span className="text-sm font-normal text-muted-foreground">/ year</span></p>
+                    </div>
                   </div>
                 </Section>
               )}
+
+              <Section
+                title="Beneficiaries (Optional)"
+                description="Record the beneficiaries attached to this policy. This information stays private to authorized users."
+                action={
+                  <Button type="button" variant="outline" size="sm" className="h-9 gap-2" onClick={addBeneficiary} disabled={form.beneficiaries.length >= 10}>
+                    <Plus className="h-4 w-4" /> Add Beneficiary
+                  </Button>
+                }
+              >
+                <div className="space-y-3">
+                  {form.beneficiaries.length === 0 && (
+                    <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+                      No beneficiaries added. This is optional — the deal posts without them.
+                    </p>
+                  )}
+                  {form.beneficiaries.map((beneficiary, index) => (
+                    <div key={beneficiary.id} className="rounded-lg border border-border bg-muted/10 p-3">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="text-sm font-medium">Beneficiary {index + 1}</p>
+                        <Button type="button" variant="ghost" size="icon" className="h-9 w-9" aria-label={`Remove beneficiary ${index + 1}`} onClick={() => removeBeneficiary(index)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <Field label="First name" id={`deal-beneficiary-first-${index}`} value={beneficiary.firstName} onChange={(value) => updateBeneficiary(index, { firstName: value })} />
+                        <Field label="Last name" id={`deal-beneficiary-last-${index}`} value={beneficiary.lastName} onChange={(value) => updateBeneficiary(index, { lastName: value })} />
+                        <Field label="Relationship" id={`deal-beneficiary-relationship-${index}`} value={beneficiary.relationship} onChange={(value) => updateBeneficiary(index, { relationship: value })} placeholder="e.g., Spouse" />
+                        <Field label="Allocation %" id={`deal-beneficiary-allocation-${index}`} value={beneficiary.allocationPct} onChange={(value) => updateBeneficiary(index, { allocationPct: value })} type="number" min="0" max="100" step="0.01" inputMode="decimal" placeholder="Optional" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Section>
 
               {(
                 <Section title="Notes (Optional)" description="Any additional notes about this deal, client health, or application details.">
@@ -590,9 +871,18 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
               </div>
             </div>
 
-            <DialogFooter className="flex-row items-center justify-end gap-2 border-t border-border px-5 py-4">
+            <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border px-5 py-4 sm:justify-between">
+              {/* Agent Cloud's pre-submit review slot. runCheck() existed in this
+                  file but nothing ever called it — the gates it runs and the
+                  duplicate-policy-number question it asks the database were
+                  dead code, so a duplicate only surfaced as a 23505 AFTER the
+                  agent hit Post. Wired to a real control now. */}
+              <Button type="button" variant="outline" className="h-11 gap-2 sm:h-10" onClick={runCheck} disabled={checking || saving || recovering}>
+                {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                Review before submit
+              </Button>
               <Button type="submit" className="h-11 gap-2 sm:h-10" disabled={saving || recovering}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trophy className="h-4 w-4" />} Post Deal
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus2 className="h-4 w-4" />} Post Deal
               </Button>
             </DialogFooter>
           </form>
@@ -602,8 +892,19 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
   );
 }
 
-function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
-  return <section><h3 className="text-base font-semibold">{title}</h3><p className="mb-4 mt-1 text-sm text-muted-foreground">{description}</p>{children}</section>;
+function Section({ title, description, action, children }: { title: string; description: string; action?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="rounded-lg border border-border bg-card/40 p-4">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold">{title}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
 }
 
 function Field({ label, id, value, onChange, ...props }: { label: string; id: string; value: string; onChange: (value: string) => void } & Omit<React.ComponentProps<typeof Input>, "id" | "value" | "onChange">) {

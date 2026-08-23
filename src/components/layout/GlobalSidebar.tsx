@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Cloud } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Cloud, Star } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   type AgentCloudNavGroup,
   type AgentCloudNavItem,
 } from "./agentCloudNavigation";
+import { useFavoriteRoutes } from "./favoriteRoutes";
 
 interface GlobalSidebarProps {
   isOpen: boolean;
@@ -29,6 +30,9 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
   const { pathname } = useLocation();
   const { isAdmin } = useAuth();
   const isTouch = useIsTouchDevice();
+  // Rendered from the same store the TopBar star writes to, so pinning a page
+  // has a visible result instead of vanishing into localStorage.
+  const favorites = useFavoriteRoutes((state) => state.favorites);
   const collapsed = !isOpen;
   const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>({});
 
@@ -62,11 +66,11 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
           "flex min-h-9 items-center rounded-md text-[13px] font-medium transition-colors",
           collapsed ? "justify-center px-2" : nested ? "gap-2.5 px-3" : "gap-3 px-3",
           active
-            ? "bg-[#C9A961]/15 text-[#C9A961]"
-            : "text-[#9A9A9A] hover:bg-white/[0.045] hover:text-white",
+            ? "bg-primary/15 text-primary"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground",
         )}
       >
-        {Icon && <Icon className={cn("h-[17px] w-[17px] shrink-0", active && "text-[#C9A961]")} />}
+        {Icon && <Icon className={cn("h-[17px] w-[17px] shrink-0", active && "text-primary")} />}
         {!collapsed && <span className="truncate">{item.label}</span>}
       </Link>
     ));
@@ -85,10 +89,10 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
         className={cn(
           "flex min-h-9 w-full items-center rounded-md text-[13px] font-medium transition-colors",
           collapsed ? "justify-center px-2" : "gap-3 px-3",
-          active ? "text-white" : "text-[#9A9A9A] hover:bg-white/[0.045] hover:text-white",
+          active ? "text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
         )}
       >
-        <Icon className={cn("h-[17px] w-[17px] shrink-0", active && "text-[#C9A961]")} />
+        <Icon className={cn("h-[17px] w-[17px] shrink-0", active && "text-primary")} />
         {!collapsed && <span className="flex-1 text-left">{group.label}</span>}
         {!collapsed && <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", !open && "-rotate-90")} />}
       </button>
@@ -100,7 +104,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
         {!collapsed && open && (
           <div className="ml-[20px] space-y-0.5 border-l border-border pl-2">
             {group.kicker && (
-              <div className="px-3 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#9A9A9A]">
+              <div className="px-3 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                 {group.kicker}
               </div>
             )}
@@ -118,7 +122,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-50 overflow-hidden border-r border-border bg-[#0A0A0A] transition-[width,opacity] duration-150",
+        "fixed inset-y-0 left-0 z-50 overflow-hidden border-r border-border bg-sidebar transition-[width,opacity] duration-150",
         isFullscreen && "pointer-events-none opacity-0",
       )}
       style={{ width: isFullscreen ? 0 : collapsed ? 72 : 256 }}
@@ -126,12 +130,12 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
       <div className="flex h-full flex-col">
         <div className={cn("flex h-[60px] shrink-0 items-center border-b border-border", collapsed ? "justify-center" : "px-4")}>
           <Link to="/dashboard" className="flex min-w-0 items-center gap-3">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#C9A961] text-[#0A0A0A]">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Cloud className="h-[18px] w-[18px]" strokeWidth={2.25} />
             </span>
             {!collapsed && (
               <span className="min-w-0 leading-none">
-                <span className="block truncate text-[15px] font-semibold tracking-tight text-white">{brand.legalName}</span>
+                <span className="block truncate text-[15px] font-semibold tracking-tight text-foreground">{brand.legalName}</span>
                 
               </span>
             )}
@@ -139,9 +143,26 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
         </div>
 
         <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:thin]">
+          {favorites.length > 0 && (
+            <div className="mb-3">
+              {!collapsed && (
+                <div className="px-3 pb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Favorites
+                </div>
+              )}
+              <div className="space-y-0.5">
+                {favorites.map((favorite) => (
+                  <div key={favorite.href}>
+                    {renderLeaf({ label: favorite.label, href: favorite.href, icon: Star })}
+                  </div>
+                ))}
+              </div>
+              <div className="my-3 border-t border-border" />
+            </div>
+          )}
           <div className="space-y-0.5">{renderEntries(primary)}</div>
           <div className="my-3 border-t border-border" />
-          {!collapsed && <div className="px-3 pb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-[#9A9A9A]">Account</div>}
+          {!collapsed && <div className="px-3 pb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Account</div>}
           <div className="space-y-0.5">{renderEntries(account)}</div>
         </nav>
 
@@ -150,7 +171,7 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
             variant="ghost"
             size="sm"
             onClick={onToggle}
-            className={cn("h-8 text-[#9A9A9A] hover:bg-white/[0.045] hover:text-white", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
+            className={cn("h-8 text-muted-foreground hover:bg-accent hover:text-foreground", collapsed ? "w-full px-0" : "w-full justify-start gap-3 px-3")}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}

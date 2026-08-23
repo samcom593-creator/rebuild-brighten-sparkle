@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
 
@@ -19,7 +20,8 @@ const BASE = process.env.BASE || "https://apex-financial.org";
 const OUT =
   process.env.OUT ||
   `/Users/samjames/business-ops/website-integrity-bot/ledger/link-audit-${new Date().toISOString().slice(0, 10)}.jsonl`;
-const USER_DATA_DIR = process.env.USER_DATA_DIR || "/tmp/apex-link-audit-chrome";
+const ownsUserDataDir = !process.env.USER_DATA_DIR;
+const USER_DATA_DIR = process.env.USER_DATA_DIR || path.join(os.tmpdir(), `apex-link-audit-chrome-${process.pid}`);
 const CHROME = process.env.CHROME || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const AUTH_TOKEN_FILE = process.env.AUTH_TOKEN_FILE || "";
 const AUTH_STORAGE_KEY = process.env.AUTH_STORAGE_KEY || "sb-xrzweoneiieddzxogewk-auth-token";
@@ -36,11 +38,23 @@ const checkedLinks = new Map();
 const broken = [];
 let authProbeFailed = false;
 
-const staticSeeds = [
+const publicSeeds = [
   "/",
   "/apply",
   "/seminar",
   "/get-licensed",
+  "/schedule-call",
+  "/join",
+  "/links",
+  "/leads",
+  "/contact",
+  "/privacy",
+  "/terms",
+  "/disclosures",
+  "/data-deletion",
+];
+
+const authenticatedSeeds = [
   "/dashboard",
   "/dashboard/today",
   "/dashboard/command",
@@ -54,6 +68,7 @@ const staticSeeds = [
   "/admin/recruiting-inbox",
   "/r/SJAMES01",
 ];
+const publicSeedPaths = new Set(publicSeeds);
 
 function recordBroken(row) {
   broken.push(row);
@@ -122,15 +137,20 @@ async function fetchWithTimeout(url, method) {
 }
 
 async function checkHttp(url, sourcePage, text) {
-  const key = url.href;
+  const requestUrl = new URL(url);
+  requestUrl.hash = "";
+  const key = requestUrl.href;
   if (checkedLinks.has(key)) return checkedLinks.get(key);
 
   const result = resultRow({ sourcePage, href: key, text, method: "HEAD" });
-  let { response, error } = await fetchWithTimeout(url, "HEAD");
+  let { response, error } = await fetchWithTimeout(requestUrl, "HEAD");
 
   if (error || !response || [400, 403, 405, 429].includes(response.status)) {
     result.method = "GET";
-    ({ response, error } = await fetchWithTimeout(url, "GET"));
+    ({ response, error } = await fetchWithTimeout(requestUrl, "GET"));
+  }
+  if (error) {
+    ({ response, error } = await fetchWithTimeout(requestUrl, "GET"));
   }
 
   if (response) result.status = response.status;
@@ -157,8 +177,21 @@ async function installAuth(context) {
   return true;
 }
 
-async function probeAuth(page) {
+async function probeAuth(page, authInstalled) {
   const authProbe = new URL("/dashboard/today", baseUrl);
+  if (!authInstalled) {
+    authProbeFailed = true;
+    recordBroken({
+      ...resultRow({
+        sourcePage: authProbe.href,
+        href: authProbe.href,
+        text: "auth probe",
+        method: "BROWSER",
+      }),
+      error: "no logged-in auth state supplied; authenticated routes were not crawled",
+    });
+    return;
+  }
   await page.goto(authProbe.href, { waitUntil: "domcontentloaded" }).catch(() => null);
   await page.waitForTimeout(2500);
   const probeUrl = page.url();
@@ -191,8 +224,6 @@ async function main() {
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   fs.writeFileSync(OUT, "");
 
-  for (const seed of [...staticSeeds, ...readStaticRoutes()]) addPage(seed);
-
   const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
     executablePath: CHROME,
     headless: true,
@@ -200,12 +231,15 @@ async function main() {
     args: ["--profile-directory=Default", "--disable-gpu", "--no-sandbox"],
   });
 
-  await installAuth(context);
+  const authInstalled = await installAuth(context);
+  for (const seed of authInstalled
+    ? [...publicSeeds, ...authenticatedSeeds, ...readStaticRoutes()]
+    : publicSeeds) addPage(seed);
   context.setDefaultNavigationTimeout(NAV_TIMEOUT_MS);
   context.setDefaultTimeout(10000);
 
   const page = await context.newPage();
-  await probeAuth(page);
+  await probeAuth(page, authInstalled);
 
   while (queued.length && seenPages.size < MAX_PAGES) {
     const route = queued.shift();
@@ -235,7 +269,7 @@ async function main() {
       const url = normalizeUrl(anchor.href, pageUrl.href);
       if (!url || !["http:", "https:"].includes(url.protocol)) continue;
       await checkHttp(url, pageUrl.href, anchor.text);
-      if (url.origin === baseUrl.origin) addPage(url.href);
+      if (url.origin === baseUrl.origin && (authInstalled || publicSeedPaths.has(url.pathname))) addPage(url.href);
     }
 
     if (seenPages.size % 20 === 0) {
@@ -246,6 +280,7 @@ async function main() {
   }
 
   await context.close();
+  if (ownsUserDataDir) fs.rmSync(USER_DATA_DIR, { recursive: true, force: true });
   const hardBroken = broken.filter((row) => !(row.method === "BROWSER" && row.text === "auth probe"));
   console.log(
     JSON.stringify(

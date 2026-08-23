@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -60,7 +61,11 @@ function windowFor(key: PeriodKey, custom: { start: string; end: string }): { st
     case "last_30":  return { start: iso(addDays(t, -30)), end: iso(addDays(t, 1)), label: "Last 30 days" };
     case "last_90":  return { start: iso(addDays(t, -90)), end: iso(addDays(t, 1)), label: "Last 90 days" };
     case "ytd":      return { start: iso(new Date(t.getFullYear(), 0, 1)), end: iso(addDays(t, 1)), label: `${t.getFullYear()} to date` };
-    case "custom":   return { start: custom.start, end: custom.end, label: `${custom.start} - ${custom.end}` };
+    case "custom":   return {
+      start: custom.start,
+      end: iso(addDays(new Date(`${custom.end}T12:00:00`), 1)),
+      label: `${custom.start} - ${custom.end}`,
+    };
     default:         return { start: iso(mStart), end: iso(new Date(t.getFullYear(), t.getMonth() + 1, 1)), label: "This month" };
   }
 }
@@ -107,15 +112,63 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 export function AgentCloudHome() {
+  const today = phxToday();
+  const [period, setPeriod] = useState<PeriodKey>("this_month");
+  const [custom, setCustom] = useState({
+    start: iso(addDays(today, -30)),
+    end: iso(today),
+  });
+  const customIsValid = custom.start.length === 10 && custom.end.length === 10 && custom.start <= custom.end;
+  const win = windowFor(period, custom);
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["apex-home-dashboard"],
+    queryKey: ["apex-home-dashboard", win.start, win.end],
     staleTime: 120_000,
+    enabled: period !== "custom" || customIsValid,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("apex_admin_home_dashboard" as never);
+      const { data, error } = await supabase.rpc("apex_admin_home_dashboard" as never, {
+        p_start: win.start,
+        p_end: win.end,
+      } as never);
       if (error) throw error;
       return data as unknown as HomeData;
     },
   });
+
+  const PeriodPicker = (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {period === "custom" && (
+        <div className="flex items-center gap-1.5">
+          <Input
+            aria-label="Start date"
+            className="h-8 w-[132px] text-xs"
+            type="date"
+            value={custom.start}
+            onChange={(event) => setCustom((value) => ({ ...value, start: event.target.value }))}
+          />
+          <span className="text-xs text-muted-foreground">to</span>
+          <Input
+            aria-label="End date"
+            className="h-8 w-[132px] text-xs"
+            type="date"
+            value={custom.end}
+            onChange={(event) => setCustom((value) => ({ ...value, end: event.target.value }))}
+          />
+        </div>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="outline">{PERIODS.find((item) => item.key === period)?.label}</Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {PERIODS.map((item) => (
+            <DropdownMenuItem key={item.key} onSelect={() => setPeriod(item.key)}>
+              {item.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 
   if (isLoading || !data) {
     if (isError) {

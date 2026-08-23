@@ -23,7 +23,7 @@ function AuroraBackgroundImpl() {
       }}
     >
       {/* Single scanline at top — pure CSS, no animation */}
-      <div className="absolute inset-x-0 top-0 h-px bg-white dark:bg-card" />
+      <div className="absolute inset-x-0 top-0 h-px bg-border dark:bg-card" />
     </div>
   );
 }

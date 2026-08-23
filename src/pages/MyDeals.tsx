@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -84,17 +85,47 @@ const POLICY_STATUS: { key: string; label: string; cls: string }[] = [
 export default function MyDeals() {
   const { user, isAdmin, isManager } = useAuth();
   const downline = useMyDownline();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusDealId = searchParams.get("deal");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visible, setVisible] = useState(PAGE);
+  const focusRef = useRef<HTMLDivElement | null>(null);
+  const focusHandled = useRef<string | null>(null);
 
   const { data: agentId } = useQuery({
     queryKey: ["my-agent-id", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const { data } = await supabase.from("agents").select("id").eq("user_id", user.id).maybeSingle();
-      return data?.id ?? null;
+      // agents carries no unique index on user_id, and PostgREST returns
+      // data=null on a multi-row match — so .maybeSingle() reported "this
+      // person has no agent record" for anyone holding two rows, and the
+      // whole page rendered empty for them. Take the first row instead.
+      const { data, error } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", user.id)
+        .order("created_at")
+        .limit(1);
+      if (error) throw error;
+      return (data ?? [])[0]?.id ?? null;
     },
     enabled: !!user?.id,
+  });
+
+  // Sam removed Alyjah Rowland from the roster (roster_exclusions, "GHOST_336
+  // sync artifact") and he must appear nowhere — this list was printing his
+  // name as the writing agent on 30 real deals. The DEALS are real book rows
+  // and are not hidden; the ghost ATTRIBUTION is what gets retired, and it
+  // says so rather than reading "Unassigned", which would look like an
+  // ordinary gap instead of a row that needs re-attributing.
+  const { data: excludedAgentIds } = useQuery({
+    queryKey: ["roster-exclusions"],
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("roster_exclusions" as never).select("agent_id");
+      if (error) throw error;
+      return new Set((data ?? []).map((row) => (row as unknown as { agent_id: string }).agent_id));
+    },
   });
 
   const scopedAgentIds = Array.from(new Set([
@@ -106,8 +137,15 @@ export default function MyDeals() {
 
   // Every deal off the Vantage/AgentLink sync (source=agent_link) plus native
   // APEX submissions — this is the number Discord's live feed celebrates, so
-  // the page must agree with it. Ordered newest first; a generous ceiling
-  // instead of a truncating page-size, and the count below is exact regardless.
+  // the page must agree with it. A generous ceiling instead of a truncating
+  // page-size, and the count below is exact regardless.
+  //
+  // Ordered by POSTED date, not effective_date. Effective date is a future
+  // promise: 23 rows in the book carry an effective_date later than today, so
+  // a deal posted this minute landed at roughly row 24 — below the fold, on
+  // the page whose whole job is to show you the deal you just posted.
+  // posted_at is the documented posted-date truth and is non-null on all
+  // 1,794 rows, so it can carry the sort on its own.
   const { data: deals = [] } = useQuery({
     queryKey: ["deals", isAdmin ? "all" : scopedAgentIds.join(",")],
     queryFn: async () => {
@@ -118,7 +156,7 @@ export default function MyDeals() {
         // PGRST201 and the page rendered "No deals" over 1,780 real rows.
         // Naming the constraint resolves it.
         .select("*, carrier:carriers(name), agent:agents!deals_agent_id_fkey(display_name)")
-        .order("effective_date", { ascending: false })
+        .order("posted_at", { ascending: false })
         .limit(3000);
       if (!isAdmin) query = query.in("agent_id", scopedAgentIds);
       const { data, error } = await query;
@@ -143,6 +181,35 @@ export default function MyDeals() {
     enabled,
   });
 
+  // "View deal" on the post-a-deal receipt navigates here as
+  // /dashboard/production?deal=<id>. Nothing on this page had ever read that
+  // parameter, so the button landed you on an unchanged list and left you to
+  // find the row yourself. Open the row, widen the window far enough to paint
+  // it, and scroll it into view.
+  const focusIndex = useMemo(
+    () => (focusDealId ? deals.findIndex((d) => d.id === focusDealId) : -1),
+    [deals, focusDealId],
+  );
+
+  useEffect(() => {
+    if (!focusDealId || focusIndex < 0) return;
+    if (focusHandled.current === focusDealId) return;
+    focusHandled.current = focusDealId;
+    setExpandedId(focusDealId);
+    setVisible((current) => (focusIndex + 1 > current ? focusIndex + 1 : current));
+  }, [focusDealId, focusIndex]);
+
+  useEffect(() => {
+    if (!focusDealId || focusIndex < 0 || focusIndex + 1 > visible) return;
+    focusRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [focusDealId, focusIndex, visible]);
+
+  const clearFocus = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("deal");
+    setSearchParams(next, { replace: true });
+  };
+
   const latestSync = deals.reduce<string | null>((acc, d) => {
     const t = d.synced_to_insuracloud_at || d.created_at;
     if (!t) return acc;
@@ -162,11 +229,11 @@ export default function MyDeals() {
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_agentlink_book_truth")
+        .from("v_agentlink_book_truth" as never)
         .select("premium_30d, deals_30d, premium_prior_30d, premium_this_month, deals_this_month, total_annual_premium, total_deals")
         .maybeSingle();
       if (error) throw error;
-      return data as {
+      return data as unknown as {
         premium_30d: number; deals_30d: number; premium_prior_30d: number;
         premium_this_month: number; deals_this_month: number;
         total_annual_premium: number; total_deals: number;
@@ -184,9 +251,9 @@ export default function MyDeals() {
     enabled: teamView,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_book_status_tiles").select("bucket, n, alp");
+      const { data, error } = await supabase.from("v_book_status_tiles" as never).select("bucket, n, alp");
       if (error) throw error;
-      return (data ?? []) as Array<{ bucket: string; n: number; alp: number }>;
+      return (data ?? []) as unknown as Array<{ bucket: string; n: number; alp: number }>;
     },
   });
   const statusByBucket = Object.fromEntries(statusTiles.map((t) => [t.bucket, t]));
@@ -198,7 +265,7 @@ export default function MyDeals() {
     enabled: teamView,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_imo_by_agency" as any).select("agency, is_primary, policies, alp, alp_mtd").order("alp", { ascending: false });
+      const { data, error } = await supabase.from("v_imo_by_agency" as never).select("agency, is_primary, policies, alp, alp_mtd").order("alp", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Array<{ agency: string; is_primary: boolean; policies: number; alp: number; alp_mtd: number }>;
     },
@@ -303,11 +370,22 @@ export default function MyDeals() {
             </div>
           </div>
           <div className="flex gap-2">
-            <SubmitDealDialog trigger={<Button size="sm" variant="default">Add Deal</Button>} />
+            <SubmitDealDialog trigger={<Button size="sm" variant="default">Post a Deal</Button>} />
             <Button asChild size="sm" variant="ghost"><a href={AGENTLINK_LINKS.bookOfBusiness} target="_blank" rel="noopener noreferrer">Open AgentLink <ExternalLink className="h-3 w-3 ml-1.5" /></a></Button>
           </div>
         </CardContent>
       </Card>
+
+      {focusDealId && deals.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span>
+            {focusIndex >= 0
+              ? "Showing the deal you just posted, highlighted below."
+              : "That deal is not in this view — it may belong to an agent outside your downline."}
+          </span>
+          <Button size="sm" variant="ghost" onClick={clearFocus}>Show all deals</Button>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -319,15 +397,20 @@ export default function MyDeals() {
         <CardContent className="p-0">
           {deals.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">
-              No deals logged yet. Click "Add Deal" to get started.
+              No deals logged yet. Use “Post a Deal” to record the first one.
             </div>
           ) : (
             <>
               <div className="divide-y divide-border">
                 {deals.slice(0, visible).map((d) => {
                   const isOpen = expandedId === d.id;
+                  const isFocus = focusDealId === d.id;
                   return (
-                    <div key={d.id} className="hover:bg-muted/10">
+                    <div
+                      key={d.id}
+                      ref={isFocus ? focusRef : undefined}
+                      className={isFocus ? "bg-primary/5 ring-1 ring-inset ring-primary/40" : "hover:bg-muted/10"}
+                    >
                       <button
                         type="button"
                         onClick={() => setExpandedId(isOpen ? null : d.id)}
@@ -342,10 +425,17 @@ export default function MyDeals() {
                           <p className="text-xs text-muted-foreground">
                             {d.carrier?.name || "—"} · {d.product_sold} · #{d.policy_number || "no policy #"}
                           </p>
-                          {teamView && <p className="text-[10px] text-muted-foreground">Writing agent: {d.agent?.display_name || "Unassigned"}</p>}
+                          {teamView && (
+                            <p className="text-[10px] text-muted-foreground">
+                              Writing agent: {d.agent_id && excludedAgentIds?.has(d.agent_id)
+                                ? "not on roster — needs re-attribution"
+                                : d.agent?.display_name || "Unassigned"}
+                            </p>
+                          )}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {d.effective_date ? format(new Date(d.effective_date), "MMM d, yyyy") : "—"}
+                          {d.posted_at ? format(new Date(d.posted_at), "MMM d, yyyy") : "not on file"}
+                          <span className="block text-[10px] opacity-70">posted</span>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-sm">{fmtMoney(d.annual_premium)}</p>
@@ -371,8 +461,8 @@ export default function MyDeals() {
                             <p className="font-semibold">{fmtMoney(d.commission_cents ? d.commission_cents / 100 : null)}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Posted</p>
-                            <p className="font-semibold">{d.posted_at ? format(new Date(d.posted_at), "MMM d") : "—"}</p>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Effective</p>
+                            <p className="font-semibold">{d.effective_date ? format(new Date(d.effective_date), "MMM d, yyyy") : "not on file"}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Submitted</p>

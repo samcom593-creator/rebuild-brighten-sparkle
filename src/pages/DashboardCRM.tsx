@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Users, Search, RefreshCw, Clock, AlertTriangle, ChevronRight,
   Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles,
   Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText,
   KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck,
-  MoreHorizontal,
+  MoreHorizontal, TrendingUp, Moon, BadgeCheck, ArrowUpRight, Network,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -356,6 +356,456 @@ function InlineNotesButton({ agent }: { agent: AgentCRM }) {
   );
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+   CANONICAL ROSTER
+   ────────────────────────────────────────────────────────────────────────────
+   Sam: "fix profiles and crm to have all agents". The pipeline view below is a
+   RECRUITING funnel — it merges `agents` with open `applications` rows, so its
+   array length answered "agents + applicants I can see" (664) when the question
+   asked was "how big is the team" (181). That is the same class of defect as
+   deriving a headline from a client array: the number was real, the SENTENCE
+   was false.
+
+   Every number in this panel comes from the canonical roster the backend
+   already owns — crm_roster_segments() for the headline tiles, crm_agent_roster()
+   for the rows. No second roster definition is invented here, and roster_exclusions
+   (Sam removed Alyjah Rowland) is enforced inside those functions, so an excluded
+   agent cannot reappear on this surface by way of a client-side filter someone
+   forgets to copy.
+──────────────────────────────────────────────────────────────────────────── */
+
+interface RosterRow {
+  agent_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  agent_code: string | null;
+  status: string | null;
+  is_deactivated: boolean | null;
+  is_inactive: boolean | null;
+  is_sync_only: boolean | null;
+  license_status: string | null;
+  license_progress: string | null;
+  onboarding_stage: string | null;
+  training_stage: string | null;
+  manager_id: string | null;
+  manager_name: string | null;
+  downline_count: number | null;
+  contracts_total: number | null;
+  contracts_active: number | null;
+  mtd_alp: number | string | null;
+  mtd_deals: number | null;
+  l30_alp: number | string | null;
+  l30_deals: number | null;
+  lifetime_alp: number | string | null;
+  lifetime_deals: number | null;
+  first_posted_date: string | null;
+  last_posted_date: string | null;
+  last_contacted_at: string | null;
+  created_at: string | null;
+  tenure_days: number | null;
+}
+
+interface RosterSegments {
+  total: number; active: number; inactive: number; terminated: number;
+  licensed: number; unlicensed: number; sync_only: number;
+  producing_mtd: number; mtd_alp: number | string; active_mtd_alp: number | string;
+  offroster_mtd_alp: number | string; never_produced: number; dormant_60d: number;
+  no_contact_14d: number; book_last_posted: string | null;
+}
+
+const num = (v: number | string | null | undefined): number => Number(v ?? 0) || 0;
+
+/** Compact USD. Returns null (never "$0") when there is genuinely nothing on file. */
+function usdOrNull(v: number | string | null | undefined): string | null {
+  const n = num(v);
+  if (n <= 0) return null;
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
+  return `$${Math.round(n).toLocaleString()}`;
+}
+
+const daysSince = (iso: string | null): number | null => {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return null;
+  return Math.max(0, Math.floor((Date.now() - t) / 86_400_000));
+};
+
+type RosterSegmentKey =
+  | "all" | "producing" | "active_idle" | "never_produced"
+  | "dormant" | "unlicensed" | "inactive" | "terminated";
+
+/**
+ * Honest segmentation — every predicate reads a column the row actually carries,
+ * and the chip count is the length of the very list the chip renders, so a chip
+ * can never advertise a number the table below disagrees with.
+ */
+const ROSTER_SEGMENTS: Array<{
+  key: RosterSegmentKey; label: string; icon: typeof Users; desc: string;
+  match: (r: RosterRow) => boolean;
+}> = [
+  { key: "all", label: "All agents", icon: Users,
+    desc: "Every agent on the canonical roster — active, inactive, and terminated.",
+    match: () => true },
+  { key: "producing", label: "Producing", icon: TrendingUp,
+    desc: "Wrote business this month. This is the bench the agency's revenue is actually standing on.",
+    match: (r) => num(r.mtd_alp) > 0 },
+  { key: "active_idle", label: "Active · no production", icon: AlertTriangle,
+    desc: "On the active roster with nothing posted this month — the coaching list, longest-idle first.",
+    match: (r) => r.status === "active" && num(r.mtd_alp) <= 0 },
+  { key: "never_produced", label: "Never produced", icon: UserX,
+    desc: "Zero lifetime deals. Every row is a seat that was filled and never activated.",
+    match: (r) => (r.lifetime_deals ?? 0) === 0 },
+  { key: "dormant", label: "Dormant 60d+", icon: Moon,
+    desc: "Has written before, but nothing posted in over 60 days. Silence is the first sign of an agent leaving.",
+    match: (r) => {
+      const d = daysSince(r.last_posted_date);
+      return d !== null && d >= 60;
+    } },
+  { key: "unlicensed", label: "Unlicensed", icon: GraduationCap,
+    desc: "Still working through licensing — these seats cannot legally earn yet.",
+    match: (r) => r.license_status !== "licensed" },
+  { key: "inactive", label: "Inactive", icon: EyeOff,
+    desc: "Dormant or hidden by hand. Confirm they are gone before the seat stops counting.",
+    match: (r) => r.status === "inactive" },
+  { key: "terminated", label: "Terminated", icon: X,
+    desc: "Off the roster. Kept visible so a wrong removal can be caught and reversed.",
+    match: (r) => r.status === "terminated" },
+];
+
+type RosterSortKey = "mtd_desc" | "l30_desc" | "lifetime_desc" | "name" | "stalest" | "newest";
+
+function RosterStatusBadge({ row }: { row: RosterRow }) {
+  const s = row.status ?? "unknown";
+  const tone =
+    s === "active" ? "border-success/30 bg-success/15 text-success"
+    : s === "terminated" ? "border-destructive/30 bg-destructive/10 text-destructive"
+    : "bg-muted text-muted-foreground";
+  return (
+    <Badge variant="outline" className={cn("text-[10px] font-bold uppercase tracking-wide", tone)}>
+      {s}
+    </Badge>
+  );
+}
+
+/**
+ * The four headline tiles. Deliberately the ONLY place a team-level number is
+ * rendered on this page, and every one of them is a server-side aggregate —
+ * so the two view modes below cannot disagree about how big the team is.
+ */
+function RosterKpis({ segments, isLoading }: { segments: RosterSegments | null; isLoading: boolean }) {
+  const tiles = [
+    { label: "Team size", value: segments ? segments.total.toLocaleString() : "—", note: "on the canonical roster", tone: "text-foreground" },
+    { label: "Active", value: segments ? segments.active.toLocaleString() : "—", note: segments ? `${segments.inactive} inactive · ${segments.terminated} terminated` : "not on file", tone: "text-info" },
+    { label: "Producing this month", value: segments ? segments.producing_mtd.toLocaleString() : "—", note: segments ? `of ${segments.active} active` : "not on file", tone: "text-success" },
+    { label: "Month-to-date ALP", value: segments ? (usdOrNull(segments.mtd_alp) ?? "Nothing posted yet") : "—", note: segments?.book_last_posted ? `book through ${segments.book_last_posted}` : "not on file", tone: "text-foreground" },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {tiles.map((t) => (
+        <div key={t.label} className="rounded-md border border-border bg-card p-4">
+          {isLoading && !segments ? (
+            <div className="h-8 w-20 animate-pulse rounded bg-muted/40" />
+          ) : (
+            <p className={cn("truncate text-2xl font-bold tabular-nums", t.tone)}>{t.value}</p>
+          )}
+          <p className="text-xs text-muted-foreground">{t.label}</p>
+          <p className="mt-0.5 truncate text-[11px] text-muted-foreground/70">{t.note}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RosterPanel({ rows, isLoading, isError, onRetry }: {
+  rows: RosterRow[];
+  isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
+}) {
+  const [segment, setSegment] = useState<RosterSegmentKey>("all");
+  const [q, setQ] = useState("");
+  const [managerFilter, setManagerFilter] = useState("all");
+  const [sort, setSort] = useState<RosterSortKey>("mtd_desc");
+
+  const managers = useMemo(() => {
+    const m = new Map<string, string>();
+    rows.forEach((r) => { if (r.manager_id && r.manager_name) m.set(r.manager_id, r.manager_name); });
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rows]);
+
+  const searched = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (managerFilter !== "all" && r.manager_id !== managerFilter) return false;
+      if (!needle) return true;
+      return (
+        (r.full_name ?? "").toLowerCase().includes(needle) ||
+        (r.email ?? "").toLowerCase().includes(needle) ||
+        (r.agent_code ?? "").toLowerCase().includes(needle)
+      );
+    });
+  }, [rows, q, managerFilter]);
+
+  // Chip counts are computed from the SAME searched list the table renders, so a
+  // chip can never claim a number the rows below contradict.
+  const bySegment = useMemo(() => {
+    const m = new Map<RosterSegmentKey, RosterRow[]>();
+    for (const seg of ROSTER_SEGMENTS) m.set(seg.key, searched.filter(seg.match));
+    return m;
+  }, [searched]);
+
+  const visible = useMemo(() => {
+    const list = [...(bySegment.get(segment) ?? [])];
+    switch (sort) {
+      case "mtd_desc": list.sort((a, b) => num(b.mtd_alp) - num(a.mtd_alp)); break;
+      case "l30_desc": list.sort((a, b) => num(b.l30_alp) - num(a.l30_alp)); break;
+      case "lifetime_desc": list.sort((a, b) => num(b.lifetime_alp) - num(a.lifetime_alp)); break;
+      case "name": list.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "")); break;
+      case "newest": list.sort((a, b) => (b.tenure_days ?? -1) === (a.tenure_days ?? -1) ? 0 : (a.tenure_days ?? 1e9) - (b.tenure_days ?? 1e9)); break;
+      case "stalest": list.sort((a, b) => {
+        const at = a.last_posted_date ? new Date(a.last_posted_date).getTime() : 0;
+        const bt = b.last_posted_date ? new Date(b.last_posted_date).getTime() : 0;
+        return at - bt;
+      }); break;
+    }
+    return list;
+  }, [bySegment, segment, sort]);
+
+  const activeSeg = ROSTER_SEGMENTS.find((s) => s.key === segment)!;
+
+  if (isError) {
+    return (
+      <GlassCard className="p-4">
+        <EmptyState
+          icon={<Users className="h-7 w-7" />}
+          variant="warning"
+          title="The roster could not be read"
+          description="crm_agent_roster() did not answer. Nothing is being guessed at in its place — retry, and if it keeps failing the roster functions need looking at."
+          actions={<Button variant="outline" size="sm" onClick={onRetry}>Retry</Button>}
+        />
+      </GlassCard>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <GlassCard className="p-4">
+        <div className="flex flex-col flex-wrap gap-2 sm:flex-row">
+          <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search roster by name, email, or agent code..."
+              aria-label="Search the canonical roster"
+              className="h-10 pl-9 text-sm sm:h-9"
+            />
+          </div>
+          {managers.length > 0 && (
+            <Select value={managerFilter} onValueChange={setManagerFilter}>
+              <SelectTrigger aria-label="Filter roster by upline" className="h-10 w-full text-sm sm:h-9 sm:w-[170px]">
+                <Network className="mr-1.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <SelectValue placeholder="All uplines" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All uplines</SelectItem>
+                {managers.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={sort} onValueChange={(v) => setSort(v as RosterSortKey)}>
+            <SelectTrigger aria-label="Sort the roster" className="h-10 w-full text-sm sm:h-9 sm:w-[180px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="mtd_desc">Month ALP (high → low)</SelectItem>
+              <SelectItem value="l30_desc">Last 30d ALP</SelectItem>
+              <SelectItem value="lifetime_desc">Lifetime ALP</SelectItem>
+              <SelectItem value="stalest">Longest since a sale</SelectItem>
+              <SelectItem value="newest">Newest on the roster</SelectItem>
+              <SelectItem value="name">Name (A → Z)</SelectItem>
+            </SelectContent>
+          </Select>
+          {(q.trim() !== "" || managerFilter !== "all") && (
+            <Button variant="ghost" size="sm" className="h-10 gap-1.5 text-muted-foreground hover:text-foreground sm:ml-auto sm:h-9"
+              onClick={() => { setQ(""); setManagerFilter("all"); }}>
+              <X className="h-4 w-4 shrink-0" /> Clear
+            </Button>
+          )}
+        </div>
+      </GlassCard>
+
+      <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+        <div className="flex min-w-max gap-1.5 rounded-lg border border-border bg-card p-1.5">
+          {ROSTER_SEGMENTS.map((seg) => {
+            const Icon = seg.icon;
+            const count = (bySegment.get(seg.key) ?? []).length;
+            const isActive = seg.key === segment;
+            return (
+              <button
+                key={seg.key}
+                type="button"
+                onClick={() => setSegment(seg.key)}
+                aria-pressed={isActive}
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                  "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                  isActive
+                    ? "bg-primary/10 text-foreground ring-1 ring-primary/60"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {seg.label}
+                <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-bold tabular-nums">{count}</Badge>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <GlassCard className="overflow-hidden p-4">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+            <activeSeg.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate">{activeSeg.label}</span>
+          </h3>
+          <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">{visible.length}</span>
+        </div>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">{activeSeg.desc}</p>
+
+        {isLoading ? (
+          <div className="space-y-2">
+            {[...Array(8)].map((_, i) => (
+              // stable-key-allow:skeleton — static Array(N) decorative loader, no reorder
+              <div key={i} className="h-[56px] animate-pulse rounded-lg bg-muted/30" />
+            ))}
+          </div>
+        ) : visible.length === 0 ? (
+          <EmptyState
+            icon={<Users className="h-7 w-7" />}
+            title="No agents sit in this segment"
+            description={
+              q.trim() || managerFilter !== "all"
+                ? "The search or upline filter may be too tight — clear them to see the whole segment."
+                : "Nothing on the roster matches this definition right now. That is the honest answer, not a loading state."
+            }
+            actions={(q.trim() || managerFilter !== "all") ? (
+              <Button variant="outline" size="sm" onClick={() => { setQ(""); setManagerFilter("all"); }}>Clear filters</Button>
+            ) : undefined}
+          />
+        ) : (
+          <div className="-mx-4 overflow-x-auto sm:mx-0">
+            <Table className="min-w-[980px]">
+              <TableHeader>
+                <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[10px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
+                  <TableHead className="w-[240px] px-2">Agent</TableHead>
+                  <TableHead className="w-[120px] px-2">Upline</TableHead>
+                  <TableHead className="w-[100px] px-2">Status</TableHead>
+                  <TableHead className="w-[100px] px-2">License</TableHead>
+                  <TableHead className="w-[110px] px-2 text-right">Month ALP</TableHead>
+                  <TableHead className="w-[110px] px-2 text-right">Last 30d</TableHead>
+                  <TableHead className="w-[120px] px-2 text-right">Lifetime</TableHead>
+                  <TableHead className="w-[120px] px-2">Last sale</TableHead>
+                  <TableHead className="w-[90px] px-2 text-right">Tenure</TableHead>
+                  <TableHead className="w-[80px] px-2 text-right">Profile</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visible.map((r) => {
+                  const mtd = usdOrNull(r.mtd_alp);
+                  const l30 = usdOrNull(r.l30_alp);
+                  const life = usdOrNull(r.lifetime_alp);
+                  const sinceSale = daysSince(r.last_posted_date);
+                  return (
+                    <TableRow key={r.agent_id} className="border-b border-border/60 transition-colors hover:bg-muted/30">
+                      <TableCell className="px-2 py-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <AgentAvatar avatarUrl={getAvatarUrl(r.avatar_url ?? undefined)} name={r.full_name ?? "—"} size="sm" className="shrink-0 shadow-sm ring-2 ring-background" />
+                          <div className="min-w-0">
+                            <Link
+                              to={`/dashboard/profile?agentId=${r.agent_id}`}
+                              className="block truncate text-sm font-medium text-foreground underline-offset-2 decoration-dotted hover:text-primary hover:underline"
+                            >
+                              {r.full_name ?? "Name not on file"}
+                            </Link>
+                            <p className="truncate text-[11px] text-muted-foreground">
+                              {r.email ?? <span className="italic">no email on file</span>}
+                            </p>
+                            {r.agent_code && (
+                              <p className="truncate text-[11px] tabular-nums text-muted-foreground/70">{r.agent_code}</p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-2 py-2">
+                        <span className="inline-block max-w-[112px] truncate text-[11px] text-muted-foreground">
+                          {r.manager_name ?? "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-2 py-2"><RosterStatusBadge row={r} /></TableCell>
+                      <TableCell className="px-2 py-2">
+                        <Badge variant="outline" className={cn(
+                          "text-[10px] font-bold uppercase tracking-wide",
+                          r.license_status === "licensed" ? "border-success/30 bg-success/15 text-success" : "bg-muted text-muted-foreground",
+                        )}>
+                          {r.license_status ?? "unknown"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-2 py-2 text-right">
+                        <span className={cn("text-sm font-bold tabular-nums", mtd ? "text-success" : "text-muted-foreground")}>
+                          {mtd ?? "—"}
+                        </span>
+                        {(r.mtd_deals ?? 0) > 0 && (
+                          <span className="ml-1 text-[10px] tabular-nums text-muted-foreground">×{r.mtd_deals}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-2 py-2 text-right">
+                        <span className={cn("text-sm tabular-nums", l30 ? "text-foreground" : "text-muted-foreground")}>{l30 ?? "—"}</span>
+                      </TableCell>
+                      <TableCell className="px-2 py-2 text-right">
+                        <span className={cn("text-sm tabular-nums", life ? "text-foreground" : "text-muted-foreground")}>{life ?? "—"}</span>
+                        {(r.lifetime_deals ?? 0) > 0 && (
+                          <span className="ml-1 text-[10px] tabular-nums text-muted-foreground">×{r.lifetime_deals}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-2 py-2">
+                        {r.last_posted_date ? (
+                          <span className={cn(
+                            "text-[11px] font-medium tabular-nums",
+                            sinceSale !== null && sinceSale >= 60 ? "text-rose-600 dark:text-rose-400"
+                              : sinceSale !== null && sinceSale >= 14 ? "text-amber-600 dark:text-amber-400"
+                              : "text-emerald-600 dark:text-emerald-400",
+                          )}>
+                            {r.last_posted_date}{sinceSale !== null && <span className="ml-1 text-muted-foreground">· {sinceSale}d</span>}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] italic text-muted-foreground">never sold</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-2 py-2 text-right">
+                        <span className="text-[11px] tabular-nums text-muted-foreground">
+                          {r.tenure_days === null || r.tenure_days === undefined ? "—" : `${r.tenure_days}d`}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-2 py-2 text-right">
+                        <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={`Open producer profile for ${r.full_name ?? "this agent"}`}>
+                          <Link to={`/dashboard/profile?agentId=${r.agent_id}`}><ArrowUpRight className="h-4 w-4" /></Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </GlassCard>
+    </div>
+  );
+}
+
 export default function DashboardCRM() {
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
   const askConfirm = useConfirm();
@@ -386,6 +836,39 @@ export default function DashboardCRM() {
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [meetingAttendance, setMeetingAttendance] = useState<Map<string, "present" | "absent" | "unmarked">>(new Map());
   const [searchParams] = useSearchParams();
+  const [crmView, setCrmView] = useState<"roster" | "pipeline">(() => {
+    try { return localStorage.getItem("crm.view.v1") === "pipeline" ? "pipeline" : "roster"; }
+    catch { return "roster"; } // empty-catch-allow:localstorage-incognito
+  });
+  useEffect(() => {
+    try { localStorage.setItem("crm.view.v1", crmView); }
+    catch { /* ignore quota / disabled storage */ } // empty-catch-allow:localstorage-incognito
+  }, [crmView]);
+
+  // Canonical roster — the two functions that own "who is on this team".
+  const rosterSegmentsQuery = useQuery({
+    queryKey: ["crm-roster-segments"],
+    enabled: !authLoading && !!user,
+    staleTime: 60_000,
+    queryFn: async (): Promise<RosterSegments | null> => {
+      const { data, error } = await supabase.rpc("crm_roster_segments" as never);
+      if (error) throw error;
+      const value = data as unknown;
+      const row = Array.isArray(value) ? value[0] : value;
+      return (row as RosterSegments) ?? null;
+    },
+  });
+
+  const rosterQuery = useQuery({
+    queryKey: ["crm-agent-roster"],
+    enabled: !authLoading && !!user,
+    staleTime: 60_000,
+    queryFn: async (): Promise<RosterRow[]> => {
+      const { data, error } = await supabase.rpc("crm_agent_roster" as never);
+      if (error) throw error;
+      return ((data as unknown as RosterRow[]) ?? []);
+    },
+  });
 
   const focusAgentId = searchParams.get('focusAgentId');
   useEffect(() => {
@@ -824,7 +1307,13 @@ export default function DashboardCRM() {
   };
 
   const loading = agentsLoading;
-  const fetchAgents = useCallback(() => { queryClient.invalidateQueries({ queryKey: ["crm-agents"] }); }, [queryClient]);
+  const fetchAgents = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
+    // Refresh must move BOTH views, or the header tiles go stale behind a
+    // pipeline that just reloaded and the two start telling different stories.
+    queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
+    queryClient.invalidateQueries({ queryKey: ["crm-roster-segments"] });
+  }, [queryClient]);
 
   // Phase 5: Live updates — invalidate when agents/applications change anywhere
   useRealtimeTable({ table: "agents", channelSuffix: "crm" }, () => {
@@ -1043,16 +1532,12 @@ export default function DashboardCRM() {
     return dupeIds;
   }, [activeAgentsRaw, activeAgents]);
 
-  // AC KPI row — at-a-glance snapshot of the deduped roster the header sits on.
-  // Pure presentation aggregate over already-fetched `activeAgents`; adds no
-  // query and reads no value the table below doesn't already show.
-  const teamKpis = useMemo(() => {
-    const roster = activeAgents;
-    const licensed = roster.filter(a => a.agentLicenseStatus === "licensed").length;
-    const producing = roster.filter(a => (a.monthlyALP ?? 0) > 0).length;
-    const active = roster.filter(a => !a.isDeactivated && !a.isInactive && a.onboardingStage !== "inactive").length;
-    return { total: roster.length, active, producing, licensed };
-  }, [activeAgents]);
+  // 2026-08-23 — the old `teamKpis` memo lived here and rendered "Team size" from
+  // `activeAgents.length`. That array is agents UNION open applications, so the
+  // tile read 664 against a 181-agent roster. Deleted rather than relabelled:
+  // headline team numbers now come from crm_roster_segments() (see RosterKpis),
+  // and there is no longer a second place on this page that can answer the
+  // question differently.
 
   // MP-261 — unified 11-col table shape. Chips filter rows; columns stay stable.
   // Agent / Mentor / Stage / License / Present / Homework / Week ALP / Month ALP /
@@ -1346,27 +1831,58 @@ export default function DashboardCRM() {
           }
         />
 
-        {!loading && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-md border border-border bg-card p-4">
-              <p className="text-2xl font-bold tabular-nums text-foreground">{teamKpis.total.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Team size</p>
-            </div>
-            <div className="rounded-md border border-border bg-card p-4">
-              <p className="text-2xl font-bold tabular-nums text-info">{teamKpis.active.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Active</p>
-            </div>
-            <div className="rounded-md border border-border bg-card p-4">
-              <p className="text-2xl font-bold tabular-nums text-success">{teamKpis.producing.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Producing this month</p>
-            </div>
-            <div className="rounded-md border border-border bg-card p-4">
-              <p className="text-2xl font-bold tabular-nums text-foreground">{teamKpis.licensed.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Licensed</p>
-            </div>
-          </div>
-        )}
+        <RosterKpis segments={rosterSegmentsQuery.data ?? null} isLoading={rosterSegmentsQuery.isLoading} />
 
+        {/* Two questions, two views, one set of headline numbers above.
+            Roster answers "who is on this team" from the canonical roster.
+            Pipeline answers "who is moving through recruiting" and therefore
+            legitimately counts open applications alongside hired agents — which
+            is exactly why its row count must never be labelled "team size". */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border border-border bg-card p-1">
+            {([
+              { key: "roster" as const, label: "Roster", icon: BadgeCheck, count: rosterSegmentsQuery.data?.total ?? null },
+              { key: "pipeline" as const, label: "Recruiting pipeline", icon: Briefcase, count: null },
+            ]).map((m) => {
+              const Icon = m.icon;
+              const isActive = crmView === m.key;
+              return (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => { setCrmView(m.key); playSound("click"); }}
+                  aria-pressed={isActive}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                    "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
+                    isActive ? "bg-primary/10 text-foreground ring-1 ring-primary/60" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {m.label}
+                  {m.count !== null && (
+                    <Badge variant="outline" className="h-4 px-1.5 text-[10px] font-bold tabular-nums">{m.count}</Badge>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {crmView === "roster"
+              ? "Canonical roster — every hired agent, segmented by what they are actually doing."
+              : "Recruiting funnel — hired agents plus open applications, so counts here exceed team size by design."}
+          </p>
+        </div>
+
+        {crmView === "roster" ? (
+          <RosterPanel
+            rows={rosterQuery.data ?? []}
+            isLoading={rosterQuery.isLoading}
+            isError={rosterQuery.isError}
+            onRetry={() => { rosterQuery.refetch(); rosterSegmentsQuery.refetch(); }}
+          />
+        ) : (
+        <>
         {bulkMode && (
           <div className="space-y-2">
             <BulkStageActions
@@ -1654,8 +2170,10 @@ export default function DashboardCRM() {
             })}
           </Tabs>
 
-          
+
           </>
+        )}
+        </>
         )}
       </div>
 

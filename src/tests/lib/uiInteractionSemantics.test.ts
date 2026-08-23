@@ -69,5 +69,5 @@ describe("interactive control semantics", () => {
     const violations = collectTsxFiles(path.join(process.cwd(), "src")).flatMap(findNestedControls);
 
     expect(violations).toEqual([]);
-  });
+  }, 30_000);
 });

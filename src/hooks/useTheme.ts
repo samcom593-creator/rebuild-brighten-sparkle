@@ -15,7 +15,7 @@ type Theme = "light" | "dark";
 const STORAGE_KEY = "apex:theme:v2";
 
 function readStored(): Theme {
-  if (typeof window === "undefined" || !window.localStorage) return "dark";
+  if (typeof window === "undefined") return "dark";
   try {
     const v = window.localStorage.getItem(STORAGE_KEY);
     return v === "light" ? "light" : "dark";

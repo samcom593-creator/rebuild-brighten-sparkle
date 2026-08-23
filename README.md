@@ -1,73 +1,57 @@
-# Welcome to your Lovable project
+# APEX OS
 
-## Project info
+APEX Financial's operating system and public website. The production site is
+[apex-financial.org](https://apex-financial.org).
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack
 
-## How can I edit this code?
+- React 18, TypeScript, and Vite
+- Tailwind CSS and shadcn/ui
+- React Router and TanStack Query
+- Supabase for authentication, data, realtime, and Edge Functions
+- Vercel for the web application and server routes
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Local development
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Fill `.env.local` with the approved development or staging values. Only
+`VITE_*` variables are exposed to the browser; keep service-role and provider
+secrets in the appropriate secret manager.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Verification
 
-**Use GitHub Codespaces**
+Run the same core gate used by CI before merging:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```sh
+npm run verify:core
+npm test
+```
 
-## What technologies are used for this project?
+Useful targeted production checks:
 
-This project is built with:
+```sh
+npm run smoke:prod
+npm run audit:links
+npm run lighthouse:prod
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+The link audit requires Playwright. It first uses the repository dependency and
+then the operations-bot fallback at
+`/tmp/apex-link-audit-playwright/node_modules/playwright`.
 
-## How can I deploy this project?
+## Deployment
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Vercel builds `main` with `vite build` and publishes `dist`; routing, security
+headers, health endpoints, and service-worker cache rules live in
+[`vercel.json`](./vercel.json). The Supabase project is deployed separately, so
+database migrations and Edge Function changes must be applied and verified in
+their own release step.
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Do not publish this repository through Lovable. The remaining
+`@lovable.dev/cloud-auth-js` dependency is an Edge Function AI-gateway
+dependency, not the website host.

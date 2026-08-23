@@ -9,11 +9,13 @@ import {
   GraduationCap,
   Headphones,
   Library,
+  ListChecks,
   Play,
   RefreshCw,
   ScrollText,
   Search,
   Settings,
+  Users,
   Video,
   X,
 } from "lucide-react";
@@ -22,6 +24,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/ui/page-header";
 import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
+import { TrainingPathPanel } from "@/components/training/TrainingPathPanel";
+import { TrainingLeaderPanel } from "@/components/training/TrainingLeaderPanel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,7 +59,7 @@ import {
  * hub_course_progress instead of the legacy site's localStorage-by-typed-email.
  */
 
-type HubTab = "courses" | "recordings" | "library";
+type HubTab = "path" | "courses" | "recordings" | "library" | "team";
 
 const LIBRARY_FILTERS: { key: string; label: string }[] = [
   { key: "all", label: "All" },
@@ -104,15 +108,73 @@ function StatTile({
   );
 }
 
+/* Loading + failure states for the three tabs that depend on the EXTERNAL
+   content library. Kept separate from the Supabase-backed tabs so one
+   origin's outage can never be mistaken for the other's emptiness. */
+function HubSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      {["a", "b", "c"].map((k) => (
+        <Skeleton key={k} className="h-48 rounded-md" />
+      ))}
+    </div>
+  );
+}
+
+function HubUnreachable({
+  refetch,
+  isRefetching,
+}: {
+  refetch: () => void;
+  isRefetching: boolean;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-8 pt-8 text-center">
+        <p className="mb-1 text-lg font-bold">Couldn't reach the content library</p>
+        <p className="mb-4 text-sm text-muted-foreground">
+          The live library didn't respond, so nothing here is confirmed empty — it's unread.
+          Retry, or open the library directly.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button onClick={() => refetch()} disabled={isRefetching} className="gap-2">
+            <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />
+            Retry
+          </Button>
+          <Button asChild variant="outline" className="gap-2">
+            <a href={HUB_ORIGIN} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4" />
+              Open the library
+            </a>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function TrainingHub() {
   usePageTitle("Training Hub · APEX Financial");
-  const { user, isAdmin, isManager } = useAuth();
+  const { user, isAdmin, isManager, isVaManager } = useAuth();
   const { data, isLoading, isError, refetch, isRefetching } = useHubData();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = (["courses", "recordings", "library"].includes(searchParams.get("tab") || "")
-    ? searchParams.get("tab")
-    : "courses") as HubTab;
+  // Mirror the SERVER's gate exactly. Read from pg_get_functiondef, both
+  // apex_training_rollup and apex_training_needs_nudge grant
+  // has_role(admin) OR has_role(va_manager) OR has_role(manager) — va_manager
+  // is folded into the admin branch, so it even gets agency-wide scope. A
+  // client gate of (isAdmin || isManager) hid the tab from the 2 accounts
+  // holding va_manager while the RPC would have answered them in full.
+  // If the gate here is ever narrower than the function's, the UI silently
+  // withholds data the caller is entitled to; if it is wider, the panel
+  // renders nothing because the RPC fails closed. Keep them identical.
+  const isLeader = isAdmin || isVaManager || isManager;
+  // "team" is only a legal tab for a leader. A non-leader who lands on
+  // ?tab=team falls back to their own path instead of an empty pane — the RPC
+  // behind that view fails closed server-side, so this is only the UI half.
+  const requestedTab = searchParams.get("tab") || "";
+  const legalTabs = ["path", "courses", "recordings", "library", ...(isLeader ? ["team"] : [])];
+  const tab = (legalTabs.includes(requestedTab) ? requestedTab : "path") as HubTab;
   const setTab = (next: string) => {
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
@@ -200,79 +262,86 @@ export default function TrainingHub() {
         }
       />
 
-      {isLoading && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {["a", "b", "c"].map((k) => (
-            <Skeleton key={k} className="h-48 rounded-md" />
-          ))}
+      {data && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatTile value={courses.length} label="Courses" />
+          <StatTile value={data.recordings.length} label="Recorded trainings" />
+          <StatTile value={libraryItems.length} label="Library resources" />
+          <StatTile
+            value={completedCourses}
+            label="Courses completed"
+            tone={completedCourses > 0 ? "text-success" : undefined}
+          />
         </div>
       )}
 
-      {isError && !isLoading && (
-        <Card>
-          <CardContent className="p-8 pt-8 text-center">
-            <p className="mb-1 text-lg font-bold">Couldn't reach the content library</p>
-            <p className="mb-4 text-sm text-muted-foreground">
-              The live library at apex-resources.vercel.app didn't respond. Retry, or open the
-              legacy hub directly.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <Button onClick={() => refetch()} disabled={isRefetching} className="gap-2">
-                <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />
-                Retry
-              </Button>
-              <Button asChild variant="outline" className="gap-2">
-                <a href={HUB_ORIGIN} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4" />
-                  Open legacy hub
-                </a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* The tab shell is OUTSIDE the `data &&` guard on purpose. "Your path"
+          and the leader view read Supabase, not the external content library —
+          an outage at apex-resources.vercel.app must not take an agent's own
+          training path off the page with it. */}
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="mb-4 w-full justify-start overflow-x-auto">
+          <TabsTrigger value="path" className="gap-1.5">
+            <ListChecks className="h-4 w-4" />
+            Your path
+          </TabsTrigger>
+          <TabsTrigger value="courses" className="gap-1.5">
+            <GraduationCap className="h-4 w-4" />
+            Courses
+          </TabsTrigger>
+          <TabsTrigger value="recordings" className="gap-1.5">
+            <Headphones className="h-4 w-4" />
+            Recordings
+          </TabsTrigger>
+          <TabsTrigger value="library" className="gap-1.5">
+            <BookOpen className="h-4 w-4" />
+            Library
+          </TabsTrigger>
+          {isLeader && (
+            <TabsTrigger value="team" className="gap-1.5">
+              <Users className="h-4 w-4" />
+              Who's stalled
+            </TabsTrigger>
+          )}
+        </TabsList>
 
-      {data && (
-        <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatTile value={courses.length} label="Courses" />
-            <StatTile value={data.recordings.length} label="Recorded trainings" />
-            <StatTile value={libraryItems.length} label="Library resources" />
-            <StatTile
-              value={completedCourses}
-              label="Courses completed"
-              tone={completedCourses > 0 ? "text-success" : undefined}
-            />
-          </div>
+        <TabsContent value="path">
+          <TrainingPathPanel />
+        </TabsContent>
 
-          <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="mb-4 w-full justify-start overflow-x-auto">
-              <TabsTrigger value="courses" className="gap-1.5">
-                <GraduationCap className="h-4 w-4" />
-                Courses
-              </TabsTrigger>
-              <TabsTrigger value="recordings" className="gap-1.5">
-                <Headphones className="h-4 w-4" />
-                Recordings
-              </TabsTrigger>
-              <TabsTrigger value="library" className="gap-1.5">
-                <BookOpen className="h-4 w-4" />
-                Library
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="courses">
-              <CoursesTab courses={courses} completion={courseCompletion} />
-            </TabsContent>
-            <TabsContent value="recordings">
-              <RecordingsTab data={data} />
-            </TabsContent>
-            <TabsContent value="library">
-              <LibraryTab items={libraryItems} />
-            </TabsContent>
-          </Tabs>
-        </>
-      )}
+        <TabsContent value="courses">
+          {isLoading ? (
+            <HubSkeleton />
+          ) : isError ? (
+            <HubUnreachable refetch={refetch} isRefetching={isRefetching} />
+          ) : (
+            <CoursesTab courses={courses} completion={courseCompletion} />
+          )}
+        </TabsContent>
+        <TabsContent value="recordings">
+          {isLoading ? (
+            <HubSkeleton />
+          ) : isError || !data ? (
+            <HubUnreachable refetch={refetch} isRefetching={isRefetching} />
+          ) : (
+            <RecordingsTab data={data} />
+          )}
+        </TabsContent>
+        <TabsContent value="library">
+          {isLoading ? (
+            <HubSkeleton />
+          ) : isError ? (
+            <HubUnreachable refetch={refetch} isRefetching={isRefetching} />
+          ) : (
+            <LibraryTab items={libraryItems} />
+          )}
+        </TabsContent>
+        {isLeader && (
+          <TabsContent value="team">
+            <TrainingLeaderPanel />
+          </TabsContent>
+        )}
+      </Tabs>
 
       {data && quickLinks.length > 0 && (
         <section>

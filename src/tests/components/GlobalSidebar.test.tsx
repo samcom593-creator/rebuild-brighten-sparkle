@@ -16,6 +16,9 @@ const authState = {
 };
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ ...authState }) }));
+vi.mock("@/hooks/useBrand", () => ({
+  useBrand: () => ({ legalName: "APEX Financial" }),
+}));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     functions: { invoke: vi.fn().mockResolvedValue({ data: null, error: null }) },
@@ -115,8 +118,8 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
 });
 
 describe("GlobalSidebar · recruiting active-state behavior", () => {
-  const ACTIVE_GROUP_CLASS = "text-white";
-  const ACTIVE_LINK_CLASS = "bg-[#C9A961]/15";
+  const ACTIVE_GROUP_CLASS = "text-foreground";
+  const ACTIVE_LINK_CLASS = "bg-primary/15";
 
   it.each([
     "/dashboard/recruiting",

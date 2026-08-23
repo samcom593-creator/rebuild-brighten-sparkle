@@ -32,7 +32,7 @@ export function EmptyState({
     <div
       className={cn(
         "relative overflow-hidden rounded-md border border-border/40 px-6 py-14 text-center ",
-        "bg-white dark:bg-card",
+        "bg-card",
         "animate-fade-in",
         className,
       )}

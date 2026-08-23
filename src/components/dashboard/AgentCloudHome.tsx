@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
-  AlertTriangle, ArrowRight, CheckCircle2, DollarSign, LineChart as LineChartIcon,
+  AlertTriangle, ArrowRight, CheckCircle2, LineChart as LineChartIcon, RefreshCw,
   Shield, TrendingUp, UserPlus, Users,
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
@@ -10,6 +10,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { cn } from "@/lib/utils";
@@ -35,6 +39,39 @@ interface HomeData {
   roster: { total: number; producing: number; in_onboarding: number };
   needs_attention: { lapse_pending: number; in_chargeback_window: number; dormant_producers: number };
 }
+
+// Phoenix-local date maths so the window a user picks is the window the RPC
+// applies. Building these from `new Date()` in the browser's zone would slide
+// the boundary by up to a day for anyone outside Arizona.
+const PHX = "en-CA"; // yyyy-mm-dd
+const phxToday = () => new Date(new Date().toLocaleString("en-US", { timeZone: "America/Phoenix" }));
+const iso = (d: Date) => d.toLocaleDateString(PHX, { timeZone: "America/Phoenix" });
+const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+
+type PeriodKey = "this_month" | "last_month" | "last_30" | "last_90" | "ytd" | "custom";
+function windowFor(key: PeriodKey, custom: { start: string; end: string }): { start: string; end: string; label: string } {
+  const t = phxToday();
+  const mStart = new Date(t.getFullYear(), t.getMonth(), 1);
+  switch (key) {
+    case "last_month": {
+      const s = new Date(t.getFullYear(), t.getMonth() - 1, 1);
+      return { start: iso(s), end: iso(mStart), label: s.toLocaleDateString(undefined, { month: "long", year: "numeric" }) };
+    }
+    case "last_30":  return { start: iso(addDays(t, -30)), end: iso(addDays(t, 1)), label: "Last 30 days" };
+    case "last_90":  return { start: iso(addDays(t, -90)), end: iso(addDays(t, 1)), label: "Last 90 days" };
+    case "ytd":      return { start: iso(new Date(t.getFullYear(), 0, 1)), end: iso(addDays(t, 1)), label: `${t.getFullYear()} to date` };
+    case "custom":   return { start: custom.start, end: custom.end, label: `${custom.start} - ${custom.end}` };
+    default:         return { start: iso(mStart), end: iso(new Date(t.getFullYear(), t.getMonth() + 1, 1)), label: "This month" };
+  }
+}
+const PERIODS: Array<{ key: PeriodKey; label: string }> = [
+  { key: "this_month", label: "This month" },
+  { key: "last_month", label: "Last month" },
+  { key: "last_30", label: "Last 30 days" },
+  { key: "last_90", label: "Last 90 days" },
+  { key: "ytd", label: "Year to date" },
+  { key: "custom", label: "Custom range" },
+];
 
 const money = (n: number | null | undefined) => `$${Math.round(Number(n ?? 0)).toLocaleString()}`;
 const monthShort = (ym: string) => {
@@ -70,17 +107,31 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 export function AgentCloudHome() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["apex-home-dashboard"],
     staleTime: 120_000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("apex_home_dashboard" as never, { p_scope: "agency" } as never);
+      const { data, error } = await supabase.rpc("apex_admin_home_dashboard" as never);
       if (error) throw error;
       return data as unknown as HomeData;
     },
   });
 
   if (isLoading || !data) {
+    if (isError) {
+      return (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <AlertTriangle className="mx-auto h-6 w-6 text-destructive" />
+            <p className="mt-3 font-semibold">The AgentCloud home could not load</p>
+            <p className="mt-1 text-sm text-muted-foreground">No dashboard totals are being guessed. Retry the secured source.</p>
+            <Button variant="outline" className="mt-4 gap-2" onClick={() => void refetch()}>
+              <RefreshCw className="h-4 w-4" /> Retry
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
     return (
       <div className="space-y-5">
         <div className="grid gap-3 lg:grid-cols-[1fr_320px]">
@@ -104,7 +155,10 @@ export function AgentCloudHome() {
     <div className="space-y-5">
       {/* WHAT NEEDS YOU TODAY */}
       <div>
-        <h2 className="mb-2 text-sm font-semibold text-foreground">What needs you today</h2>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-foreground">What needs you today</h2>
+          {PeriodPicker}
+        </div>
         {attention.length === 0 ? (
           <Card className="border-emerald-500/30 bg-emerald-500/[0.06]">
             <CardContent className="flex items-center gap-2.5 p-4">
@@ -133,18 +187,18 @@ export function AgentCloudHome() {
       <div className="grid gap-3 lg:grid-cols-[minmax(0,340px)_1fr]">
         <Card>
           <CardContent className="grid grid-cols-1 gap-0 p-0 sm:grid-cols-2">
-            <Stat label="Personal production" value={money(mtd.personal_ap)} sub="This month" />
+            <Stat label="Personal production" value={money(mtd.personal_ap)} sub={win.label} />
             <Stat label="Total production (team)" value={money(mtd.team_ap)} sub="you + downline" />
-            <Stat label="Total policies (personal)" value={String(mtd.personal_policies)} sub="This month" />
+            <Stat label="Total policies (personal)" value={String(mtd.personal_policies)} sub={win.label} />
             <Stat label="Total policies (team)" value={String(mtd.team_policies)} sub="you + downline" />
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Month-to-date ALP</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{period === "this_month" ? "Month-to-date ALP" : "ALP · " + win.label}</p>
             <p className="mt-1 text-4xl font-bold tabular-nums text-primary">{money(mtd.team_ap)}</p>
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Goal {money(mtd.goal)} · <span className="font-semibold text-foreground">{mtd.pct_to_goal}% there</span> · {mtd.days_left} days left
+              Goal {money(mtd.goal)} · <span className="font-semibold text-foreground">{mtd.pct_to_goal}% there</span>{mtd.days_left > 0 ? ` · ${mtd.days_left} days left` : ""}
             </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, mtd.pct_to_goal)}%` }} />

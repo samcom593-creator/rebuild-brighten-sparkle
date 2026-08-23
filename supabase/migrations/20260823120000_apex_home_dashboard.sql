@@ -14,15 +14,24 @@
 -- agentlink_book with posted_date + America/Phoenix + is_dead filtering, and
 -- honours fn_agent_is_roster_excluded so a removed agent (Alyjah Rowland) is
 -- absent here exactly as he is on every other surface.
-create or replace function public.apex_home_dashboard(p_scope text default 'agency')
+create or replace function public.apex_home_dashboard(
+  p_scope text default 'agency',
+  p_start date default null,
+  p_end   date default null
+)
 returns jsonb
 language plpgsql stable security definer
 set search_path to 'public'
 as $fn$
 declare
   v_today date := (now() at time zone 'America/Phoenix')::date;
-  v_m_start date := date_trunc('month', (now() at time zone 'America/Phoenix'))::date;
-  v_m_end   date := (date_trunc('month', (now() at time zone 'America/Phoenix')) + interval '1 month')::date;
+  -- Sam: "inside the dashboard I should be able to change the date." The window
+  -- is now caller-supplied and every block below reads it, so the KPI row, the
+  -- leaderboard and the goal maths can never describe different periods on one
+  -- screen — the 2026-08-01 launch-guard bug where the header showed the prior
+  -- month while the rows underneath showed the selected one.
+  v_m_start date := coalesce(p_start, date_trunc('month', (now() at time zone 'America/Phoenix'))::date);
+  v_m_end   date := coalesce(p_end,   (date_trunc('month', (now() at time zone 'America/Phoenix')) + interval '1 month')::date);
   v_caller_ids uuid[];
   v_goal numeric;
   v_out jsonb;
@@ -126,7 +135,9 @@ begin
       'goal', v_goal,
       'pct_to_goal', case when v_goal > 0
         then round(((select team_ap from mtd) / v_goal) * 100) else 0 end,
-      'days_left', (v_m_end - v_today)
+      'days_left', greatest(v_m_end - v_today, 0),
+      'window_start', v_m_start,
+      'window_end', v_m_end
     ),
     'lifetime', jsonb_build_object(
       'ap', (select ap from lifetime), 'policies', (select policies from lifetime)),
@@ -147,4 +158,4 @@ begin
 end;
 $fn$;
 
-grant execute on function public.apex_home_dashboard(text) to authenticated;
+grant execute on function public.apex_home_dashboard(text, date, date) to authenticated;

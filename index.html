@@ -66,13 +66,26 @@
       })();
     </script>
     <script>
-      // FORCE DARK MODE (2026-05-17). Light mode was breaking text contrast
-      // on every page Sam looked at. Locked to dark until the next overhaul.
+      // Theme bootstrap. Dark remains the DEFAULT — this only stops dark being
+      // FORCED over a saved light preference.
+      //
+      // History: locked to dark 2026-05-17 because light broke text contrast
+      // everywhere. The shared UI + layout primitives were repaired on
+      // 2026-08-23 (0f998851), so the lock is lifted; dark still wins whenever
+      // nothing is saved, so the default look is unchanged for everyone.
+      //
+      // Two defects in the locked version, both fixed here: it wrote key
+      // 'theme', which NOTHING in the codebase reads (the live key is
+      // 'apex:theme:v2'), and it force-added `dark` at parse time so a
+      // light-mode user got a dark first paint until React corrected it.
+      // Touches ONLY the theme class + theme key — never auth storage
+      // (the 2026-08-04 session-wipe bug came from bootstrap touching auth).
       (function() {
         var root = document.documentElement;
-        root.classList.remove('light');
-        root.classList.add('dark');
-        try { localStorage.setItem('theme', 'dark'); } catch (e) {}
+        var t = null;
+        try { t = localStorage.getItem('apex:theme:v2'); } catch (e) {}
+        root.classList.remove('light', 'dark');
+        root.classList.add(t === 'light' ? 'light' : 'dark');
       })();
     </script>
     <meta charset="UTF-8" />

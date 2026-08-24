@@ -7,13 +7,19 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { OnboardingQuestion } from "@/hooks/useOnboardingCourse";
+import { OnboardingQuestion, MAX_QUIZ_ATTEMPTS } from "@/hooks/useOnboardingCourse";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 
 interface CourseQuizProps {
   questions: OnboardingQuestion[];
   passThreshold: number;
   attempts: number;
+  /**
+   * Total tries allowed. Defaults to the platform cap so the three call sites
+   * (OnboardingCourse, CourseCatalog, TrainingHubCourse) cannot each invent
+   * their own number. public.course_max_attempts() is what enforces it.
+   */
+  maxAttempts?: number;
   onSubmit: (answers: number[], score: number, passed: boolean) => Promise<boolean>;
   onRetry: () => void;
 }
@@ -22,6 +28,7 @@ export function CourseQuiz({
   questions,
   passThreshold,
   attempts,
+  maxAttempts = MAX_QUIZ_ATTEMPTS,
   onSubmit,
   onRetry
 }: CourseQuizProps) {
@@ -40,6 +47,10 @@ export function CourseQuiz({
   const currentQuestion = questions[currentIndex];
   const selectedAnswer = answers[currentIndex];
   const isLastQuestion = currentIndex === questions.length - 1;
+
+  // `attempts` is the count BEFORE this run, so the try in progress is +1.
+  const attemptNumber = Math.min(attempts + 1, maxAttempts);
+  const retakesLeft = Math.max(0, maxAttempts - attemptNumber);
 
   const handleAnswerSelect = (answerIndex: number) => {
     if (showFeedback) return;
@@ -134,14 +145,31 @@ export function CourseQuiz({
             </div>
 
             <div className="text-sm text-muted-foreground mb-6">
-              Attempt #{attempts + 1} • Passing score: {passThreshold}%
+              Attempt {attemptNumber} of {maxAttempts} • Passing score: {passThreshold}%
             </div>
 
             {!passed && (
-              <Button onClick={handleRetry} className="gap-2">
-                <RotateCcw className="h-4 w-4" />
-                Try Again
-              </Button>
+              retakesLeft > 0 ? (
+                <>
+                  <Button onClick={handleRetry} className="gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    Try Again
+                  </Button>
+                  <p className="text-sm text-muted-foreground mt-3">
+                    {retakesLeft} {retakesLeft === 1 ? "retake" : "retakes"} left
+                  </p>
+                </>
+              ) : (
+                // No silent dead button: an agent who is out of tries is told
+                // so, and told what unblocks them (reset_quiz_attempts is a
+                // manager action).
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+                  <p className="font-medium mb-1">You've used all {maxAttempts} attempts</p>
+                  <p className="text-sm text-muted-foreground">
+                    Ask your manager to reset this module so you can take it again.
+                  </p>
+                </div>
+              )
             )}
           </CardContent>
         </Card>
@@ -157,7 +185,7 @@ export function CourseQuiz({
             Question {currentIndex + 1} of {questions.length}
           </span>
           <span className="text-sm text-muted-foreground">
-            {attempts > 0 && `Attempt #${attempts + 1}`}
+            {attempts > 0 && `Attempt ${attemptNumber} of ${maxAttempts}`}
           </span>
         </div>
         <Progress value={((currentIndex + 1) / questions.length) * 100} className="h-2" />

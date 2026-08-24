@@ -62,6 +62,7 @@ const SupabaseHealthBanner = lazy(() =>
 import { initTelemetry } from "@/shared/telemetry/track";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { DemoModeBanner } from "@/components/DemoModeBanner";
 import { RecruitingShortLink } from "@/components/RecruitingShortLink";
 
 initTelemetry();
@@ -356,6 +357,7 @@ const App = () => (
     <AuthProvider>
       <SidebarProvider>
         <DeferredToasters />
+          <DemoModeBanner />
           <Suspense fallback={null}>
             <SupabaseHealthBanner />
           </Suspense>

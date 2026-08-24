@@ -6,6 +6,7 @@ import { installRippleOrigin, installRevealObserver } from "./lib/gameFx";
 import { bootAnalytics } from "./lib/analyticsBoot";
 import { captureAttribution } from "./lib/attribution";
 import { installChunkRecovery } from "./lib/chunkRecovery";
+import { initDemoMode } from "./lib/demoMode";
 
 // FIRST thing on boot, before React mounts and before the router can swallow
 // the query string. A visitor landing on /?utm_source=google&gclid=... then
@@ -13,6 +14,10 @@ import { installChunkRecovery } from "./lib/chunkRecovery";
 // change — which is why 776 of 783 applications recorded utm_source = NULL.
 // This persists the landing signals so the submit path can still read them.
 captureAttribution();
+// Must run before the first query leaves the app, and before the router can
+// swallow ?demo=1 on a client-side navigation — same reason captureAttribution
+// runs here rather than inside React.
+initDemoMode();
 installChunkRecovery();
 
 initWebVitals();

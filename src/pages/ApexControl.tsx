@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
+import { DemoModeCard } from "@/components/admin/DemoModeCard";
 
 const prompts = [
   {
@@ -275,6 +276,10 @@ export default function ApexControl() {
           title="APEX Control"
           subtitle="One clean place for credits, tasks, status, and the prompts Sam actually needs."
         />
+
+        <div className="mt-6">
+          <DemoModeCard />
+        </div>
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <Surface>

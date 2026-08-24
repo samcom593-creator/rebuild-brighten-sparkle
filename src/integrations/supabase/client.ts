@@ -4,6 +4,11 @@ import type { Database } from './types';
 // APEX: cap request concurrency so dashboards stop 500ing under their query burst.
 // If Lovable regenerates this file, RE-ADD these two lines (import + global.fetch).
 import { boundedFetch } from './boundedFetch';
+// APEX: demoFetch wraps boundedFetch (it does not replace it) so demo mode can
+// mask read responses at one seam instead of in 250 components. With demo mode
+// off it is a straight pass-through. If Lovable regenerates this file, keep the
+// demoFetch import and the global.fetch line below.
+import { demoFetch } from './demoFetch';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -17,5 +22,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
   },
-  global: { fetch: boundedFetch },
+  global: { fetch: demoFetch },
 });
+
+// boundedFetch is still the transport — demoFetch calls it. Referenced here so
+// a regeneration that drops the demo layer still fails loudly rather than
+// silently losing the concurrency cap too.
+void boundedFetch;

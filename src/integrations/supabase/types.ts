@@ -4633,6 +4633,7 @@ export type Database = {
       }
       hub_course_progress: {
         Row: {
+          attempts: number
           completed_at: string
           course_id: string
           id: string
@@ -4644,6 +4645,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attempts?: number
           completed_at?: string
           course_id: string
           id?: string
@@ -4655,6 +4657,7 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          attempts?: number
           completed_at?: string
           course_id?: string
           id?: string

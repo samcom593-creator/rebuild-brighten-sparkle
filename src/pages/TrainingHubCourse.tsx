@@ -46,6 +46,7 @@ interface ProgressRow {
   score: number | null;
   passed: boolean | null;
   completed_at: string;
+  attempts: number | null;
 }
 
 export default function TrainingHubCourse() {
@@ -83,7 +84,7 @@ export default function TrainingHubCourse() {
       // from every other agent's completions.
       const { data: rows, error } = await supabase
         .from("hub_course_progress")
-        .select("item_id, kind, score, passed, completed_at")
+        .select("item_id, kind, score, passed, completed_at, attempts")
         .eq("course_id", courseId!)
         .eq("user_id", user!.id);
       if (error) throw error;
@@ -121,7 +122,7 @@ export default function TrainingHubCourse() {
       // practice run must not revoke their own certificate.
       const { data: prev } = await supabase
         .from("hub_course_progress")
-        .select("score, passed, completed_at")
+        .select("score, passed, completed_at, attempts")
         .eq("user_id", user.id)
         .eq("course_id", courseId)
         .eq("item_id", payload.item.id)
@@ -136,6 +137,12 @@ export default function TrainingHubCourse() {
           kind: payload.item.kind,
           score: isQuiz ? Math.max(prev?.score ?? 0, payload.score ?? 0) : null,
           passed: isQuiz ? Boolean(prev?.passed || payload.passed) : null,
+          // Attempts must live in the row, not in component state: the hub quiz
+          // previously counted tries in useState, so a page refresh handed the
+          // agent a fresh set. Only a quiz that has not been passed increments.
+          attempts: isQuiz && !prev?.passed
+            ? (prev?.attempts ?? 0) + 1
+            : (prev?.attempts ?? 0),
           // Preserve the original completion date once earned.
           completed_at: prev?.completed_at ?? new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -273,6 +280,9 @@ export default function TrainingHubCourse() {
           <HubQuiz
             key={activeItem.id}
             item={activeItem}
+            savedAttempts={
+              (progressRows ?? []).find((p) => p.item_id === activeItem.id)?.attempts ?? 0
+            }
             onResult={(score, passed) =>
               markItem.mutateAsync({ item: activeItem, score, passed })
             }
@@ -442,12 +452,17 @@ export default function TrainingHubCourse() {
 
 function HubQuiz({
   item,
+  savedAttempts,
   onResult,
 }: {
   item: HubCourseItem;
+  /** Tries already recorded in hub_course_progress for this item. */
+  savedAttempts: number;
   onResult: (score: number, passed: boolean) => Promise<unknown>;
 }) {
-  const [attempts, setAttempts] = useState(0);
+  // Seeded from the persisted count, so reloading the page no longer resets
+  // the retake budget. The DB trigger is the real cap either way.
+  const [attempts, setAttempts] = useState(savedAttempts);
   const questions: OnboardingQuestion[] = useMemo(
     () =>
       (item.questions ?? []).map((q, idx) => ({

@@ -2,6 +2,17 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * Total tries per module test: the first attempt plus 3 retakes.
+ *
+ * Mirrors public.course_max_attempts(), which is what actually enforces this —
+ * the quiz submits straight through PostgREST and the correct answers are
+ * already in the browser, so a client-side limit alone would be advisory. Keep
+ * the two in step; migration 20260824140000_quiz_retake_cap.sql explains why the
+ * number lives in one place.
+ */
+export const MAX_QUIZ_ATTEMPTS = 4;
+
 export interface OnboardingModule {
   id: string;
   order_index: number;
@@ -163,15 +174,27 @@ export function useOnboardingCourse(agentId: string | null) {
   }, [agentId, progress]);
 
   const submitQuiz = useCallback(async (
-    moduleId: string, 
-    answers: number[], 
-    score: number, 
+    moduleId: string,
+    answers: number[],
+    score: number,
     passed: boolean
   ) => {
     if (!agentId) return false;
 
     const existing = progress[moduleId];
     const attempts = (existing?.attempts || 0) + 1;
+
+    // The database trigger is the real cap (trg_onboarding_attempt_cap); this
+    // is here so an exhausted agent gets a sentence instead of a raw Postgres
+    // error, not because the client is trusted to enforce it.
+    if (!existing?.passed && attempts > MAX_QUIZ_ATTEMPTS) {
+      toast({
+        title: "No attempts left",
+        description: `This test allows ${MAX_QUIZ_ATTEMPTS} tries. Ask your manager to reset it.`,
+        variant: "destructive",
+      });
+      return false;
+    }
 
     const updateData = {
       score,
@@ -239,6 +262,13 @@ export function useOnboardingCourse(agentId: string | null) {
     if (!prevModule) return false;
     return progress[prevModule.id]?.passed === true;
   }, [modules, progress]);
+
+  /** Tries left on this module. 0 means the agent needs a manager reset. */
+  const attemptsRemaining = useCallback((moduleId: string) => {
+    const prog = progress[moduleId];
+    if (prog?.passed) return 0;
+    return Math.max(0, MAX_QUIZ_ATTEMPTS - (prog?.attempts ?? 0));
+  }, [progress]);
 
   const canTakeQuiz = useCallback((moduleId: string) => {
     const prog = progress[moduleId];
@@ -334,6 +364,7 @@ export function useOnboardingCourse(agentId: string | null) {
     submitQuiz,
     isModuleUnlocked,
     canTakeQuiz,
+    attemptsRemaining,
     getOverallProgress,
     isCourseComplete,
     currentModule: modules[currentModuleIndex] || null

@@ -1349,7 +1349,6 @@ export default function DashboardCRM() {
    * applications, etc. Hidden behind VITE_ENABLE_CRM_BULK_DELETE.
    */
   const handleBulkDelete = async () => {
-    if (!ENABLE_BULK_DELETE) return;
     if (selectedAgents.size === 0) return;
     const count = selectedAgents.size;
     const okDeact = await askConfirm({
@@ -1362,10 +1361,15 @@ export default function DashboardCRM() {
     setBulkDeleting(true);
     try {
       const ids = Array.from(selectedAgents);
-      const { error } = await supabase
-        .from("agents")
-        .update({ is_deactivated: true })
-        .in("id", ids);
+      // set_agent_active writes status + is_inactive + is_deactivated together.
+      // Writing only is_deactivated (what this did) left the three fields out of
+      // step, and v_apex_roster reads status — so a deactivated agent kept
+      // appearing in the roster and Sam's clear-house never took effect. One RPC
+      // so those flags cannot drift apart again.
+      const { error } = await supabase.rpc("set_agent_active" as never, {
+        p_agent_ids: ids,
+        p_active: false,
+      } as never);
       if (error) throw error;
       toast.success(`Deactivated ${count} agent${count === 1 ? "" : "s"}`);
       setSelectedAgents(new Set());
@@ -1910,7 +1914,12 @@ export default function DashboardCRM() {
                 >
                   <Send className="h-4 w-4 shrink-0" /> Compose SMS
                 </Button>
-                {ENABLE_BULK_DELETE && isAdmin && (
+                {/* Was gated on VITE_ENABLE_CRM_BULK_DELETE, which defaults to
+                    "false" in .env.example — so the control was invisible in
+                    production and clearing house was impossible from the UI.
+                    Bulk deactivation is reversible (rows stay, flags flip) and
+                    already confirms before running, so admin is the right gate. */}
+                {isAdmin && (
                   <Button
                     size="sm"
                     variant="destructive"

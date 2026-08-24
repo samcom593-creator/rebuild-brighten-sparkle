@@ -285,7 +285,7 @@ export function AgentCloudHome() {
               <p className="text-[11px] text-muted-foreground">active, no production yet</p>
             </CardContent></Card>
           </div>
-          <ImoByAgency />
+          <ImoByAgency windowLabel={win.label} />
         </div>
 
         {/* LEADERBOARD */}

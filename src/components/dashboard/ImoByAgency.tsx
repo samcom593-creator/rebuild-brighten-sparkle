@@ -13,7 +13,7 @@ function fmt(n: number | null | undefined): string {
   return `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
-export function ImoByAgency() {
+export function ImoByAgency({ windowLabel }: { windowLabel?: string } = {}) {
   const { data: imo = [] } = useQuery({
     queryKey: ["imo-by-agency"],
     staleTime: 60_000,
@@ -35,7 +35,7 @@ export function ImoByAgency() {
     <div>
       <div className="mb-2 flex items-baseline justify-between">
         <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Total IMO by Agency</p>
-        <p className="text-xs text-muted-foreground">This month · {fmt(mtdTotal)} ALP</p>
+        <p className="text-xs text-muted-foreground">{windowLabel ?? "This month"} · {fmt(mtdTotal)} ALP</p>
       </div>
       <Card>
         <CardContent className="space-y-3 p-4">
@@ -51,7 +51,7 @@ export function ImoByAgency() {
               <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
                 <div className="h-full rounded-full bg-primary" style={{ width: `${(a.alp / max) * 100}%` }} />
               </div>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">{a.policies.toLocaleString()} policies · {fmt(a.alp_mtd)} this month</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{a.policies.toLocaleString()} policies · {fmt(a.alp_mtd)} {(windowLabel ?? "this month").toLowerCase()}</p>
             </div>
           ))}
         </CardContent>

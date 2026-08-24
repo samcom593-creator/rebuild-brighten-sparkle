@@ -1815,7 +1815,18 @@ export default function DashboardCRM() {
           actions={
             <>
               {(isAdmin || isManager) && (
-                <Button variant={bulkMode ? "secondary" : "outline"} size="sm" aria-pressed={bulkMode} className="h-10 gap-1.5 sm:h-9" onClick={() => { setBulkMode(!bulkMode); setSelectedAgents(new Set()); }}>
+                <Button variant={bulkMode ? "secondary" : "outline"} size="sm" aria-pressed={bulkMode} className="h-10 gap-1.5 sm:h-9" onClick={() => {
+                  const next = !bulkMode;
+                  setBulkMode(next);
+                  setSelectedAgents(new Set());
+                  // The row checkboxes and BulkStageActions live in the
+                  // "pipeline" branch only. The page defaults to "roster", so
+                  // pressing Bulk Actions there entered bulk mode and rendered
+                  // ZERO checkboxes — nothing to select, nothing to deactivate,
+                  // and no way to tell it was the wrong view. Measured live
+                  // before this change: bulkMode true, checkboxes 0.
+                  if (next && crmView === "roster") setCrmView("pipeline");
+                }}>
                   <CheckSquare className="h-4 w-4 shrink-0" /> {bulkMode ? "Exit Bulk" : "Bulk Actions"}
                 </Button>
               )}

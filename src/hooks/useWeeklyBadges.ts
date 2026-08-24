@@ -55,7 +55,7 @@ export function useWeeklyBadges(agentId: string | null) {
     try {
       // The RPC resolves the caller from auth.uid() itself — it deliberately
       // takes no agent id, so one agent cannot ask for another's badges.
-      const { data, error } = await supabase.rpc("my_weekly_badges");
+      const { data, error } = await supabase.rpc("my_weekly_badges" as any);
       if (error) throw error;
 
       setBadges(

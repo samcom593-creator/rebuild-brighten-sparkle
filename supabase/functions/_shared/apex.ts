@@ -115,6 +115,59 @@ export async function resolveDiscordWebhook(
   );
 }
 
+/**
+ * The Discord webhook for an agent's SUB-AGENCY deal feed, or null when the
+ * agent belongs to the primary agency (or the sub-agency has no channel set up).
+ *
+ * Why this exists: Vantage Financial is a real sub-agency inside APEX — 245
+ * policies, $334,172 of ALP — and its deals were posting into APEX's channel
+ * and never into its own. system_settings.discord_webhook_url_subagency_deals
+ * held a valid live webhook the whole time; nothing in the repo or the database
+ * ever read it. A configured credential with no consumer is indistinguishable
+ * from a broken integration when you are the one waiting for the message.
+ *
+ * Membership is NOT decided here. fn_agent_subagency() owns that rule and
+ * v_imo_by_agency reads the same function, so the roster and the routing cannot
+ * disagree — the rule used to be hardcoded inside the view, and a router that
+ * re-implemented it would have drifted the first time the downline changed.
+ *
+ * Deliberately additive: the caller still sends to the main channel. Nobody
+ * loses a feed they have today.
+ */
+export async function resolveSubagencyDealWebhook(
+  supabase: any,
+  agentId: string | null | undefined,
+): Promise<{ slug: string; url: string } | null> {
+  if (!agentId) return null;
+
+  const { data, error } = await supabase.rpc("fn_agent_subagency", { p_agent_id: agentId });
+  if (error) {
+    // Never let a routing lookup lose the main delivery — the caller has
+    // already sent it. Report and move on.
+    console.warn(`[discord] sub-agency lookup failed for ${agentId}: ${error.message}`);
+    return null;
+  }
+
+  const slug = typeof data === "string" ? data.trim() : null;
+  if (!slug) return null;
+
+  // Slug-specific key first, then the legacy generic one. The webhook Sam
+  // configured lives under `discord_webhook_url_subagency_deals`, named back
+  // when there was only ever going to be one sub-agency. Reading the specific
+  // key first means a second sub-agency is a new settings row and no code
+  // change; falling back to the generic one means today's live credential is
+  // not duplicated into two rows that can drift apart.
+  const url =
+    (await readSystemSetting(supabase, `discord_webhook_url_${slug}_deals`)) ??
+    (await readSystemSetting(supabase, "discord_webhook_url_subagency_deals"));
+
+  if (!isDiscordWebhookUrl(url)) {
+    console.warn(`[discord] sub-agency ${slug} has no valid deals webhook configured`);
+    return null;
+  }
+  return { slug, url };
+}
+
 export function getBusinessDayKey(date: Date = new Date()): string {
   return formatInTimeZone(date, BUSINESS_TIMEZONE, "yyyy-MM-dd");
 }

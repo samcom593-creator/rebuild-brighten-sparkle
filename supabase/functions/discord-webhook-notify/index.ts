@@ -18,6 +18,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import {
   getBusinessMonthBounds,
   resolveDiscordWebhook,
+  resolveSubagencyDealWebhook,
   VALID_DEAL_STATUSES,
   type DiscordAudience,
 } from "../_shared/apex.ts";
@@ -495,6 +496,26 @@ Deno.serve(async (req: Request) => {
       throw err;
     }
     await sendToDiscord(webhookUrl, payload);
+
+    // A deal written by a sub-agency also posts into that sub-agency's own
+    // channel. Vantage Financial's 245 policies were landing only in APEX's
+    // feed because nothing had ever read
+    // discord_webhook_url_subagency_deals. Additive: the main send above
+    // already happened, so this can only ADD a delivery, never replace one.
+    // Wrapped because a routing failure must not turn a delivered deal into a
+    // retried one — the outbox would re-send the main post.
+    if (event_type === "deal_closed") {
+      try {
+        const sub = await resolveSubagencyDealWebhook(supabase, details.agent_id ?? null);
+        if (sub && sub.url !== webhookUrl) {
+          await sendToDiscord(sub.url, payload);
+          console.log(`[discord-webhook-notify] also delivered to sub-agency ${sub.slug}`);
+        }
+      } catch (err) {
+        // empty-catch-allow:secondary-feed-must-not-fail-the-primary
+        console.error(`[discord-webhook-notify] sub-agency delivery failed: ${String(err)}`);
+      }
+    }
 
     // After deal_closed: auto-check monthly milestones
     if (event_type === "deal_closed" && details.agent_id && details.aop) {

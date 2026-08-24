@@ -12,9 +12,9 @@
 //     submit_contracting_intake(), which is service-role only, so the shape of
 //     the request cannot widen what actually gets written
 //
-// It answers with the intake id and the durable status. It never reports that
-// an email, a Discord post, a workbook sync or an Ethos row happened — at this
-// point none of them have. Those are enqueued and the dispatcher owns them.
+// It answers with the intake id and durable status. It never reports that the
+// contracting spreadsheet or private Discord delivery happened at enqueue
+// time; the dispatcher owns those two receipts.
 
 // Pinned to 2.90.1 to match apex-outbox-dispatcher, which is verified alive in
 // production. NOT a cosmetic version bump: this function shipped on 2.50.0 and
@@ -33,7 +33,6 @@ import {
   pickAcceptedFields,
   rateLimitVerdict,
 } from "../_shared/intake-guard.ts";
-import { parseSettingUrl } from "../_shared/contracting-delivery.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -62,7 +61,7 @@ Deno.serve(async (req) => {
   //
   // It must NOT answer `status: "accepted"`. Nothing was accepted — there is no
   // intake row, no id, and no queued work — and a client that believes the word
-  // will show a producer a success screen and an AgentLink continuation for a
+  // will show a producer a success screen for a
   // submission that does not exist. That is fake success aimed at ourselves. A
   // 202 with an explicit null id and no continuation is opaque to a bot (it
   // learns nothing from the status code) while remaining literally true.
@@ -134,27 +133,12 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Only now — after a committed intake row — is the AgentLink continuation
-  // handed back. Before durable acceptance there is nothing to continue from.
-  let continueUrl: string | null = null;
-  const { data: setting } = await sb
-    .from("system_settings")
-    .select("value")
-    .eq("key", "agentlink_master_invite")
-    .maybeSingle();
-  // system_settings.value is TEXT and this key holds JSON text
-  // ({"url": "...", "label": "..."}), so a bare typeof-string check would treat
-  // the whole blob as the URL and yield nothing. parseSettingUrl handles both
-  // live shapes and is covered by tests against the real stored value.
-  continueUrl = parseSettingUrl(setting?.value as string | null);
-
   return jsonResponse({
     ok: true,
     intake_id: result.intake_id,
     status: result.status,
     review_reason: result.review_reason ?? null,
     replay: result.replay ?? false,
-    continue_url: continueUrl,
     // Said plainly so no caller can mistake acceptance for delivery.
     delivery: "queued",
   });

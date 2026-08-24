@@ -158,8 +158,6 @@ export const DELIVERY_COPY: Record<DeliveryState, { label: string; tone: "ok" | 
 };
 
 export const DESTINATION_COPY: Record<string, string> = {
-  contracting_email: "Contracting Support email",
   contracting_discord: "Discord · Contracting",
-  contracting_workbook: "Contracting workbook",
-  ethos_sheet: "Ethos Agents sheet",
+  ethos_sheet: "Contracting spreadsheet",
 };

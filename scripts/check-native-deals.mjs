@@ -29,7 +29,7 @@ const requirements = [
   [production, 'count: "exact", head: true', "exact untruncated deal count"],
   [production, ".limit(3000)", "full AgentLink/Vantage book query"],
   [production, "deals.slice(0, visible)", "large-book DOM windowing"],
-  [production, "AgentLink / Vantage sync", "canonical source label"],
+  [production, "Vantage live feed", "canonical source label"],
   [legacyPost, 'source = "apex"', "legacy source constraint compatibility"],
   [dialog, 'title="Beneficiaries (Optional)"', "beneficiary form controls"],
   [dialog, 'id="deal-payment-method"', "payment method control"],

@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-08-24T12:33:27.329Z
+Generated: 2026-08-24T22:52:06.041Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **244**
-- Configured in `config.toml`: **246**
-- Invoked Edge Functions in Source: **101**
-- Invoked RPC Calls in Source: **92**
-- SQL Functions in Migrations: **353**
+- Total Local Edge Functions: **245**
+- Configured in `config.toml`: **247**
+- Invoked Edge Functions in Source: **102**
+- Invoked RPC Calls in Source: **97**
+- SQL Functions in Migrations: **366**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -62,6 +62,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `check-streak-milestones` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `check-team-milestones` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `check-weekly-milestones` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `claim-account` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `confirm-agent-removal` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `consume-invite-token` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `create-agent-from-leaderboard` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -75,7 +76,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `detect-inactive-agents` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `detect-production-gaps` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `discord-leaderboards` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `discord-webhook-notify` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `discord-webhook-notify` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `gcal-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `generate-award-graphics` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `generate-magic-link` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -269,6 +270,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **92**
-- Also declared in this commit's migrations: **81**
+- Invoked RPCs: **97**
+- Also declared in this commit's migrations: **86**
 - Declared only in the database: **11**

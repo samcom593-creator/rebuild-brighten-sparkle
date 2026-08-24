@@ -13,10 +13,8 @@ import {
   type DeliveryState,
 } from "@/lib/contractingIntake";
 import {
-  buildContractingCsv,
   buildEthosCsv,
   ethosCsvFilename,
-  contractingCsvFilename,
   type ContractingExportRow,
 } from "@/lib/contractingExport";
 
@@ -29,7 +27,7 @@ import {
  * this component. Receipts are shown as provider ids and ranges only; the view
  * carries no webhook URL, no API key, and no Google credential.
  *
- * The four destinations are deliberately visually distinct. "Accepted by
+ * The two destinations are deliberately visually distinct. "Accepted by
  * provider" is not "Delivered", and "Not configured" is neither a success nor a
  * failure — collapsing any of those into a green tick is the exact defect this
  * feature exists to avoid.
@@ -100,7 +98,7 @@ export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptySt
     return [...byIntake.values()];
   }, [statusQ.data]);
 
-  const onExport = (variant: "workbook" | "ethos" = "workbook") => {
+  const onExport = () => {
     setExporting(true);
     try {
       const seen = new Set<string>();
@@ -119,15 +117,11 @@ export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptySt
           created_at: head.created_at,
         });
       }
-      // 2026-08-16: same rows, two sheets. Sam keeps an Ethos signup sheet AND
-      // his own contract workbook, with different column orders; exporting only
-      // the workbook meant the Ethos half was always retyped by hand.
-      const useEthos = variant === "ethos";
-      const blob = new Blob([(useEthos ? buildEthosCsv : buildContractingCsv)(rows)], { type: "text/csv;charset=utf-8" });
+      const blob = new Blob([buildEthosCsv(rows)], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = (useEthos ? ethosCsvFilename : contractingCsvFilename)(new Date());
+      a.download = ethosCsvFilename(new Date());
       a.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -167,22 +161,16 @@ export function ContractingIntakeAdmin({ showEmptyState = false }: { showEmptySt
             <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", statusQ.isFetching && "animate-spin")} aria-hidden />
             Refresh
           </Button>
-          <Button size="sm" variant="outline" onClick={() => onExport("workbook")} disabled={exporting || intakes.length === 0}>
+          <Button size="sm" variant="outline" onClick={onExport} disabled={exporting || intakes.length === 0}>
             <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-            Contract workbook
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => onExport("ethos")} disabled={exporting || intakes.length === 0}>
-            <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-            Ethos sheet
+            Export spreadsheet
           </Button>
         </div>
       </div>
 
-      {/* Workbook sync is honestly unconfigured. The export above is the
-          supported path until a hosted destination exists. */}
       <p className="mt-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-        Spreadsheet sync: <span className="font-medium">not configured</span>. No hosted workbook
-        destination is set, so nothing is written to a spreadsheet automatically. Use Export CSV.
+        Workflow: <span className="font-medium">contracting spreadsheet → private Discord</span>.
+        Each step only reports Delivered after its provider confirms it.
       </p>
 
       {statusQ.isLoading ? (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ExternalLink, Loader2, ShieldAlert } from "lucide-react";
+import { CheckCircle2, Loader2, ShieldAlert } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -34,7 +34,6 @@ type Accepted = {
   intake_id: string;
   status: string;
   review_reason: string | null;
-  continue_url: string | null;
 };
 
 const FIELDS: Array<{ name: ContractingField; label: string; type: string; autoComplete: string; inputMode?: "text" | "tel" | "numeric" | "email" }> = [
@@ -57,7 +56,7 @@ export default function StartContracting() {
   const [submitting, setSubmitting] = useState(false);
   const [accepted, setAccepted] = useState<Accepted | null>(null);
 
-  // Reload persistence. A producer who refreshes, or comes back from AgentLink,
+  // Reload persistence. A producer who refreshes
   // must not be shown an empty form as though nothing happened — they would
   // submit again and wonder which one counted.
   useEffect(() => {
@@ -146,7 +145,6 @@ export default function StartContracting() {
         intake_id: result.intake_id,
         status: result.status ?? "accepted",
         review_reason: result.review_reason ?? null,
-        continue_url: result.continue_url ?? null,
       };
       setAccepted(next);
       try {
@@ -207,20 +205,6 @@ export default function StartContracting() {
             </div>
           )}
 
-          {accepted.continue_url && (
-            <div className="mt-5">
-              <p className="text-sm font-medium">Next step</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Finish your carrier contracting on AgentLink.
-              </p>
-              <Button asChild className="mt-3 w-full">
-                <a href={accepted.continue_url} target="_blank" rel="noopener noreferrer">
-                  Continue on AgentLink
-                  <ExternalLink className="ml-2 h-4 w-4" aria-hidden />
-                </a>
-              </Button>
-            </div>
-          )}
         </GlassCard>
       ) : (
         <>

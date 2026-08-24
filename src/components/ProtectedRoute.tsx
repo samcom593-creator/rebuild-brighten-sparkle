@@ -66,9 +66,10 @@ export function ProtectedRoute({
           .from("agents")
           .select("is_presenting")
           .eq("user_id", user.id)
-          .maybeSingle();
+          .eq("is_presenting", true)
+          .limit(1);
         if (!cancelled) {
-          setIsPresenter(Boolean(data?.is_presenting));
+          setIsPresenter(Boolean(data?.length));
           setPresenterCheckedUserId(user.id);
         }
       } catch {

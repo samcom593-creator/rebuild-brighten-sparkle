@@ -159,6 +159,11 @@ const PUBLIC_ALLOWLIST = new Set([
   // 2026-08-19 after it landed in 82c3dc20 without this entry and turned CI
   // red on every subsequent push.
   "site-shell-watch",
+  // Database triggers and durable outbox workers may authenticate with the
+  // rotating bot token rather than a gateway-verifiable JWT. The function
+  // itself fails closed and accepts only that trusted token or a valid user
+  // session, with admin/manager authorization enforced for user calls.
+  "discord-webhook-notify",
   "consume-invite-token",
   "ics-feed",
   "submit-application",

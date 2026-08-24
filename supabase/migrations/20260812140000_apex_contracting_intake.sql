@@ -24,12 +24,11 @@
 --    cannot evidence. This is the 465-fake-success rule expressed in DDL.
 --
 -- 3. 'not_configured' IS A FIRST-CLASS VERDICT, distinct from both success and
---    failure. The Ethos Google Sheets destination has no service credential on
---    this project, and the APEX workbook has no hosted write destination. Those
---    say not_configured forever until a credential is installed. They must never
+--    failure. The contracting Google Sheet has no service credential on this
+--    project, so it says not_configured until that credential is installed. It must never
 --    render as green, and they must never render as a failure that pages anyone.
 --
--- 4. The intake row is created and all four destinations are enqueued inside ONE
+-- 4. The intake row is created and both destinations are enqueued inside ONE
 --    transaction by submit_contracting_intake(). A retry reuses the intake and
 --    cannot enqueue a second set, because outbox_events.idempotency_key is
 --    unique and derived from the intake id plus the destination.
@@ -139,10 +138,8 @@ create table if not exists public.contracting_intake_deliveries (
   intake_id uuid not null references public.contracting_intakes(id) on delete cascade,
 
   destination text not null check (destination in (
-    'contracting_email',     -- Contracting Support email
     'contracting_discord',   -- APEX Discord Contracts / Contracting Support
-    'contracting_workbook',  -- APEX contracting workbook sync/export
-    'ethos_sheet'            -- Ethos Agents sheet upsert
+    'ethos_sheet'            -- contracting spreadsheet upsert
   )),
 
   state text not null default 'queued' check (state in (
@@ -297,9 +294,7 @@ declare
   v_replay boolean := false;
   v_review_reason text := null;
   v_dest text;
-  v_destinations constant text[] := array[
-    'contracting_email', 'contracting_discord', 'contracting_workbook', 'ethos_sheet'
-  ];
+  v_destinations constant text[] := array['ethos_sheet', 'contracting_discord'];
 begin
   if auth.role() <> 'service_role' then
     raise exception 'Service role required' using errcode = '42501';
@@ -491,7 +486,7 @@ comment on function public.submit_contracting_intake(text, text, text, text, tex
 revoke all on function public.submit_contracting_intake(text, text, text, text, text, text, uuid) from public, anon, authenticated;
 
 -- ── Status projection for the UI ─────────────────────────────────────────────
--- Joins the intake to its four verdicts and to the outbox retry state, so the
+-- Joins the intake to its two verdicts and to the outbox retry state, so the
 -- page shows one honest row per destination without the front end having to
 -- know the outbox exists. Carries no credential and no raw provider payload.
 
@@ -527,20 +522,6 @@ comment on view public.v_contracting_intake_status is
   'One row per intake per destination. security_invoker, so the staff-read RLS policy on the base tables governs it.';
 
 grant select on public.v_contracting_intake_status to authenticated;
-
--- ── Configuration ────────────────────────────────────────────────────────────
--- The verified Contracting Support address. agentlink@apex-financial.org is
--- already configured on this project as system_settings.agentlink_email and is a
--- verified sender. Seeded only if an administrator has not already chosen a
--- different internal address; an existing value always wins.
-
--- system_settings.value is TEXT, and this project stores plain scalars bare
--- (agentlink_email) and structured values as JSON text (agentlink_master_invite).
--- Written bare to match the sibling address setting, so a reader does not have
--- to strip quotes that were never meant to be there.
-insert into public.system_settings (key, value)
-select 'contracting_support_email', 'agentlink@apex-financial.org'
-where not exists (select 1 from public.system_settings where key = 'contracting_support_email');
 
 -- Ethos Agents sheet. The sheet id and the fixed APEX configuration values are
 -- not secrets and are recorded here so the dispatcher does not hardcode them.

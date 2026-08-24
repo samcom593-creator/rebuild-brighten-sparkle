@@ -647,7 +647,7 @@ export default function ProducerProfile() {
       <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label="Producer profile sections">
         <Button variant="ghost" className="rounded-none border-b-2 border-primary">Personal info</Button>
         <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/contracting/carriers">Carriers</Link></Button>
-        <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/contracting">Contracts</Link></Button>
+        <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/contracting/contracts">Contracts</Link></Button>
         <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/settings/security">Background</Link></Button>
         <Button asChild variant="ghost" className="rounded-none border-b-2 border-transparent text-muted-foreground"><Link to="/dashboard/contracting/documents">Documents</Link></Button>
       </nav>

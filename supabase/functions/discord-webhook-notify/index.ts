@@ -17,6 +17,7 @@ import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-
 import { corsHeaders } from "../_shared/cors.ts";
 import {
   getBusinessMonthBounds,
+  canPostToDiscord,
   resolveDiscordWebhook,
   resolveSubagencyDealWebhook,
   VALID_DEAL_STATUSES,
@@ -331,11 +332,16 @@ function buildPayload(event_type: string, details: Record<string, unknown>): Rec
 }
 
 // ─── Send to Discord with retry ───────────────────────────────────────────────
-async function sendToDiscord(webhookUrl: string, payload: Record<string, unknown>): Promise<void> {
+async function sendToDiscord(
+  webhookUrl: string,
+  payload: Record<string, unknown>,
+): Promise<{ httpStatus: number; messageId: string | null }> {
   const backoff = [0, 800, 2000, 5000];
   for (let attempt = 0; attempt < 4; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, backoff[attempt]));
-    const res = await fetch(webhookUrl, {
+    const target = new URL(webhookUrl);
+    target.searchParams.set("wait", "true");
+    const res = await fetch(target.toString(), {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(payload),
@@ -346,9 +352,19 @@ async function sendToDiscord(webhookUrl: string, payload: Record<string, unknown
       await new Promise(r => setTimeout(r, wait));
       continue;
     }
-    if (res.ok || res.status === 204) return;
+    if (res.ok || res.status === 204) {
+      const body = await res.text();
+      let messageId: string | null = null;
+      try {
+        messageId = String(JSON.parse(body)?.id ?? "") || null;
+      } catch { // empty-catch-allow:discord-204-has-no-json-body
+        // Discord may return 204 without a response body.
+      }
+      return { httpStatus: res.status, messageId };
+    }
     if (attempt === 3) throw new Error(`Discord ${res.status}: ${await res.text().catch(() => "")}`);
   }
+  throw new Error("Discord retry loop exhausted");
 }
 
 // ─── Resolve webhook URL ──────────────────────────────────────────────────────
@@ -372,7 +388,7 @@ async function checkAndFireMilestone(
     .gte("posted_at", monthBounds.startIso)
     .lt("posted_at", monthBounds.endIso);
 
-  const mtd = (rows ?? []).reduce(
+  const mtd = ((rows ?? []) as Array<{ annual_premium: number | null }>).reduce(
     (sum: number, row: { annual_premium: number | null }) => sum + (Number(row.annual_premium) || 0),
     0,
   );
@@ -463,6 +479,9 @@ Deno.serve(async (req: Request) => {
     const body        = await req.json();
     const event_type  = body.event_type as string;
     const details     = (body.details ?? {}) as Record<string, unknown>;
+    const deliveryScope = body.delivery_scope === "primary" || body.delivery_scope === "subagency"
+      ? body.delivery_scope as "primary" | "subagency"
+      : "both";
     // Merge top-level agent_name into details for convenience
     if (body.agent_name && !details.agent_name) details.agent_name = body.agent_name;
 
@@ -477,70 +496,71 @@ Deno.serve(async (req: Request) => {
     // v26 NO-SPAM RULE · resolveDiscordWebhook throws "DISCORD_SUPPRESSED"
     // when the kill switch is on or rate limit is exceeded. Catch + return
     // ok=false silently — no error to the caller.
-    let webhookUrl: string;
-    try {
-      webhookUrl = await resolveDiscordWebhook(
-        supabase,
-        getDiscordAudience(event_type),
-        event_type === "deal_closed" ? "deal_closed" : getDiscordAudience(event_type),
-        event_type === "deal_closed" ? 1_000 : 5,
-      );
-    } catch (err: any) {
-      if (err?.message === "DISCORD_SUPPRESSED") {
-        console.log(`[discord-webhook-notify] suppressed event_type=${event_type}`);
-        return new Response(
-          JSON.stringify({ ok: true, suppressed: true, event_type }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      throw err;
-    }
-    await sendToDiscord(webhookUrl, payload);
-
-    // A deal written by a sub-agency also posts into that sub-agency's own
-    // channel. Vantage Financial's 245 policies were landing only in APEX's
-    // feed because nothing had ever read
-    // discord_webhook_url_subagency_deals. Additive: the main send above
-    // already happened, so this can only ADD a delivery, never replace one.
-    // Wrapped because a routing failure must not turn a delivered deal into a
-    // retried one — the outbox would re-send the main post.
-    if (event_type === "deal_closed") {
+    let primaryWebhookUrl: string | null = null;
+    let providerMessageId: string | null = null;
+    if (deliveryScope !== "subagency") {
       try {
-        const sub = await resolveSubagencyDealWebhook(supabase, details.agent_id ?? null);
-        if (sub && sub.url !== webhookUrl) {
-          await sendToDiscord(sub.url, payload);
-          console.log(`[discord-webhook-notify] also delivered to sub-agency ${sub.slug}`);
-          // A DURABLE receipt, not just a console line. A webhook is
-          // write-only and this function's console output does not surface in
-          // the queryable log stream, so without this row "did the sub-agency
-          // feed actually fire?" is unanswerable after the fact — which is the
-          // same unobservable-delivery problem that let the feed stay silent
-          // in the first place. sendToDiscord throws on a non-2xx, so reaching
-          // this line means Discord accepted it.
-          try {
-            await supabase.from("discord_event_log").insert({
-              event_type: "deal_closed.subagency",
-              entity_id: String(details.deal_id ?? details.agent_id ?? ""),
-              channel: sub.slug,
-              http_status: 204,
-              payload: { agent_id: details.agent_id ?? null, slug: sub.slug },
-            });
-          } catch (logErr) {
-            // empty-catch-allow:receipt-is-best-effort; the delivery already succeeded
-            console.error(`[discord-webhook-notify] sub-agency receipt insert failed: ${String(logErr)}`);
-          }
+        primaryWebhookUrl = await resolveDiscordWebhook(
+          supabase,
+          getDiscordAudience(event_type),
+          event_type === "deal_closed" ? "deal_closed" : getDiscordAudience(event_type),
+          event_type === "deal_closed" ? 1_000 : 5,
+        );
+      } catch (err: any) {
+        if (err?.message === "DISCORD_SUPPRESSED") {
+          return new Response(
+            JSON.stringify({ ok: true, suppressed: true, event_type, delivery_scope: deliveryScope }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
         }
-      } catch (err) {
-        // empty-catch-allow:secondary-feed-must-not-fail-the-primary
-        console.error(`[discord-webhook-notify] sub-agency delivery failed: ${String(err)}`);
+        throw err;
       }
+      providerMessageId = (await sendToDiscord(primaryWebhookUrl, payload)).messageId;
+    }
+
+    const deliverSubagency = async () => {
+      if (event_type !== "deal_closed") throw new Error("Sub-agency delivery only supports deal_closed");
+      const sub = await resolveSubagencyDealWebhook(
+        supabase,
+        typeof details.agent_id === "string" ? details.agent_id : null,
+      );
+      if (!sub) throw new Error("No sub-agency Discord route is configured for this deal");
+      if (!(await canPostToDiscord(supabase, `deal_closed.${sub.slug}`, 1_000))) {
+        throw new Error("DISCORD_SUPPRESSED");
+      }
+      if (sub.url === primaryWebhookUrl) throw new Error("Sub-agency webhook resolves to the primary channel");
+      const receipt = await sendToDiscord(sub.url, payload);
+      providerMessageId = receipt.messageId;
+      const { error: receiptError } = await supabase.from("discord_event_log").insert({
+        event_type: "deal_closed.subagency",
+        entity_id: String(details.deal_id ?? details.agent_id ?? ""),
+        channel: sub.slug,
+        http_status: receipt.httpStatus,
+        payload: { agent_id: details.agent_id ?? null, slug: sub.slug, delivery_scope: "subagency", message_id: receipt.messageId },
+      });
+      if (receiptError) {
+        // Discord already created the message. Retrying because the secondary
+        // receipt failed would duplicate it; the outbox attempt is still the
+        // durable delivery record, so log this observability gap and succeed.
+        await logAnnounceFailure(supabase, `sub-agency receipt insert failed: ${receiptError.message}`);
+      }
+    };
+
+    if (deliveryScope === "subagency") {
+      await deliverSubagency();
+    } else if (deliveryScope === "both" && event_type === "deal_closed") {
+      // Compatibility for older direct callers. Durable outbox callers use two
+      // separate events, so a Vantage failure cannot replay the main post.
+      await deliverSubagency().catch((err) =>
+        logAnnounceFailure(supabase, `legacy sub-agency fanout failed: ${String(err)}`)
+      );
     }
 
     // After deal_closed: auto-check monthly milestones
-    if (event_type === "deal_closed" && details.agent_id && details.aop) {
+    if (deliveryScope !== "subagency" && primaryWebhookUrl && event_type === "deal_closed" && details.agent_id && details.aop) {
       checkAndFireMilestone(
-        supabase,
-        webhookUrl,
+        supabase as any,
+        primaryWebhookUrl,
         details.agent_id as string,
         Number(details.aop),
       ).catch((err) =>
@@ -552,7 +572,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, event_type }),
+      JSON.stringify({ ok: true, event_type, delivery_scope: deliveryScope, provider_message_id: providerMessageId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

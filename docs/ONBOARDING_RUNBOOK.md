@@ -1,6 +1,6 @@
 # APEX — Onboarding, Head to Toe
 
-*Measured live 2026-08-18. Every count came from the production database.*
+*Measured live 2026-08-18; contracting re-measured and rebuilt 2026-08-24.*
 
 ---
 
@@ -12,7 +12,7 @@
 | 2 | First contact | **VA / you** | No | **415 never contacted** |
 | 3 | Interview | recruiter, in Headhunter | Partly | 244 events |
 | 4 | Licensing | applicant, tracked by system | Partly | 614 unlicensed / 133 licensed / 45 pending |
-| 5 | Contracting | **you, manually** | **No — tooling unused** | 21 in `contracting` |
+| 5 | Contracting | producer + contracting support | **Live flow; Google credential pending** | spreadsheet → private Discord |
 | 6 | Agent created | Add Agent button | Yes | 167 agents / 55 active |
 | 7 | Community | Skool invite | No | 8 members |
 
@@ -91,29 +91,28 @@ Tracked on the application. Automatic transitions that already work:
 
 ---
 
-## Stage 5 — Contracting ← BUILT BUT NEVER USED
+## Stage 5 — Contracting
 
-This is the honest gap. The in-site tooling exists and has **zero rows**:
+The workflow is now connected head to toe:
 
-| Table | Rows |
-|---|---|
-| `contracting_intakes` | **0** |
-| `contracting_links` | **0** |
+- Share `apex-financial.org/start-contracting`.
+- A valid submission becomes one durable `contracting_intakes` row.
+- Exactly two jobs are queued: the contracting spreadsheet and the private
+  contracting Discord. There is no AgentLink invite or handoff.
+- Staff monitor both provider receipts at `/dashboard/contracting`.
+- The spreadsheet write is read back from Google before it reports Delivered;
+  Discord reports Delivered only after the webhook response.
 
-The "one link contracting" flow has never been used once. What you actually do
-today is manual: AgentLink + the Ethos sheet + your contract workbook.
-
-**What exists and is ready:** `/dashboard/contracting` has an admin export with
-two buttons — your workbook column order, and the Ethos A–I column order
+The admin monitor also exports the spreadsheet's A–I column order
 (First, Last, NPN, Agent Number, Phone, Email, blank, Advance, Organization) so a
 row pastes in without retyping.
 
-**What is missing to make it automatic:**
-- a Discord webhook URL for the contracting channel (the `add-agent` function
-  posts a paste-ready Ethos row and reports `not_configured` without it)
-- a Google service-account JSON shared with the Ethos sheet, for direct writes
-
-Until then contracting is a human step and the export is the shortcut.
+**Remaining external credential:** direct spreadsheet writes need a Google service
+account JSON in the Edge Function secret `GOOGLE_SERVICE_ACCOUNT_JSON`, and that
+service account must be Editor on the Agents sheet. Until that credential is
+provided, the delivery receipt says `not_configured`; it never shows fake green.
+Until then, the admin CSV export is the honest fallback and Discord still has
+its own independent receipt.
 
 ---
 
@@ -151,7 +150,7 @@ pipeline.
 3. **You/VA:** `/dashboard` → Recruiting → open them → Call / Text / Email.
 4. Book the interview → runs in Headhunter.
 5. Licensed? → licensing auto-advances them to contracting.
-6. **Manual:** contract them in AgentLink + Ethos. Use `/dashboard/contracting` → Export (Ethos) to paste the row.
+6. Share `/start-contracting` → monitor `/dashboard/contracting` → verify spreadsheet and Discord receipts. Use Export Spreadsheet only while the Google credential is absent.
 7. **Add Agent** → creates the agent, sends course + Discord invite.
 8. `/dashboard/recruiting/training` → complete APEX Training → Certification →
    Launch Ready → First Sale. Each milestone writes a durable journey receipt.
@@ -159,11 +158,10 @@ pipeline.
 
 ---
 
-## The three things blocking full automation
+## Remaining external dependencies
 
 | Blocker | Unlocks | Needs |
 |---|---|---|
-| Discord contracting webhook | auto-post every new agent's Ethos row | webhook URL from channel `1536510983814782996` |
 | Google service-account JSON | direct writes to the Ethos sheet | JSON + share the sheet with it |
 | Skool member export | keeps the active-agent count current | Skool → Members → Export CSV |
 

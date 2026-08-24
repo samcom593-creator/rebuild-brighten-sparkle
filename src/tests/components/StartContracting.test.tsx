@@ -79,7 +79,7 @@ describe("StartContracting · validation before the network", () => {
 describe("StartContracting · after a durable acceptance", () => {
   it("never claims support has been notified", async () => {
     invoke.mockResolvedValue({
-      data: { ok: true, intake_id: "id-1", status: "accepted", continue_url: "https://agentlink.insuracloud.ai/auth?x=1" },
+      data: { ok: true, intake_id: "id-1", status: "accepted" },
       error: null,
     });
     render(<StartContracting />);
@@ -94,25 +94,9 @@ describe("StartContracting · after a durable acceptance", () => {
     expect(screen.queryByText(/sent/i)).toBeNull();
   });
 
-  it("shows the AgentLink continuation only after acceptance", async () => {
+  it("never adds an external contracting continuation", async () => {
     invoke.mockResolvedValue({
-      data: { ok: true, intake_id: "id-1", status: "accepted", continue_url: "https://agentlink.insuracloud.ai/auth?x=1" },
-      error: null,
-    });
-    render(<StartContracting />);
-    expect(screen.queryByRole("link", { name: /Continue on AgentLink/i })).toBeNull();
-
-    fill();
-    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
-
-    const link = await screen.findByRole("link", { name: /Continue on AgentLink/i });
-    expect(link.getAttribute("href")).toBe("https://agentlink.insuracloud.ai/auth?x=1");
-    expect(link.getAttribute("rel")).toContain("noopener");
-  });
-
-  it("offers no continuation when no invite is configured", async () => {
-    invoke.mockResolvedValue({
-      data: { ok: true, intake_id: "id-1", status: "accepted", continue_url: null },
+      data: { ok: true, intake_id: "id-1", status: "accepted", continue_url: "https://example.com/obsolete" },
       error: null,
     });
     render(<StartContracting />);
@@ -120,12 +104,12 @@ describe("StartContracting · after a durable acceptance", () => {
     fireEvent.click(screen.getByRole("button", { name: /submit/i }));
 
     await screen.findByText(/queued/i);
-    expect(screen.queryByRole("link", { name: /Continue on AgentLink/i })).toBeNull();
+    expect(screen.queryByRole("link")).toBeNull();
   });
 
   it("survives a reload", async () => {
     invoke.mockResolvedValue({
-      data: { ok: true, intake_id: "id-1", status: "accepted", continue_url: null },
+      data: { ok: true, intake_id: "id-1", status: "accepted" },
       error: null,
     });
     const first = render(<StartContracting />);
@@ -141,7 +125,7 @@ describe("StartContracting · after a durable acceptance", () => {
 
   it("explains a held review without blaming the producer", async () => {
     invoke.mockResolvedValue({
-      data: { ok: true, intake_id: "id-2", status: "needs_review", review_reason: "email_matches_a_different_npn", continue_url: null },
+      data: { ok: true, intake_id: "id-2", status: "needs_review", review_reason: "email_matches_a_different_npn" },
       error: null,
     });
     render(<StartContracting />);

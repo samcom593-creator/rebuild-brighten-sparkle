@@ -301,7 +301,7 @@ async function deliverContact(
   return { providerMessageId, deliveryConfirmed: false };
 }
 
-async function deliverDiscord(sb: any, event: any): Promise<void> {
+async function deliverDiscord(sb: any, event: any): Promise<string | undefined> {
   const { data: deal, error } = await sb
     .from("deals")
     .select("id, agent_id, carrier_id, product_sold, face_amount, annualized_commissionable_premium, annual_premium, community_caption")
@@ -327,6 +327,7 @@ async function deliverDiscord(sb: any, event: any): Promise<void> {
 
   const response = await callFunction("discord-webhook-notify", {
     event_type: "deal_closed",
+    delivery_scope: event.destination === "discord_subagency" ? "subagency" : "primary",
     details: {
       deal_id: deal.id,
       agent_id: deal.agent_id,
@@ -343,6 +344,8 @@ async function deliverDiscord(sb: any, event: any): Promise<void> {
   if (response?.suppressed === true) {
     throw new Error("Discord delivery was suppressed; the durable outbox will retry it");
   }
+  if (response?.ok !== true) throw new Error("Discord did not confirm delivery");
+  return typeof response.provider_message_id === "string" ? response.provider_message_id : undefined;
 }
 
 async function skoolCapability(sb: any): Promise<"supported" | "not_configured" | "unsupported"> {
@@ -458,9 +461,9 @@ async function dispatch(sb: any, event: any): Promise<DispatchResult> {
     return await deliverContractingIntake(sb, event);
   }
   if (event.destination === "review") return { state: "delivered" };
-  if (event.destination === "discord") {
-    await deliverDiscord(sb, event);
-    return { state: "delivered" };
+  if (event.destination === "discord" || event.destination === "discord_subagency") {
+    const providerMessageId = await deliverDiscord(sb, event);
+    return { state: "delivered", providerMessageId, deliveryConfirmed: true };
   }
   if (event.destination === "insuracloud") {
     // MP-312: the outbox returns HTTP 200 { ok: true } when its guard REFUSES a

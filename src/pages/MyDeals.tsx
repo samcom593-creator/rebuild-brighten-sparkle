@@ -2,51 +2,34 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, CheckCircle2, AlertTriangle, Clock, ExternalLink, Zap, ChevronDown, ChevronRight } from "lucide-react";
+import { DollarSign, Zap, ChevronDown, ChevronRight } from "lucide-react";
 import { format, formatDistanceToNowStrict } from "date-fns";
-import { AGENTLINK_LINKS } from "@/lib/agentlink";
 import { PageHeader } from "@/components/ui/page-header";
 
-type DealRow = Database["public"]["Tables"]["deals"]["Row"] & {
-  carrier: { name: string | null } | null;
-  agent: { display_name: string | null } | null;
-  chargeback_status?: string | null;
-  commission_cents?: number | null;
-  submitted_at?: string | null;
-  version?: number | null;
+type DealRow = {
+  row_key: string;
+  origin: "agentlink" | "apex_native";
+  agent_id: string | null;
+  agent_name: string | null;
+  client_name: string | null;
+  carrier: string | null;
+  product: string | null;
+  policy_number: string | null;
+  annual_premium: number | null;
+  posted_date: string | null;
+  effective_date: string | null;
+  status: string | null;
+  synced_at: string | null;
 };
 
-function SyncStatus({ deal }: { deal: DealRow }) {
-  if (deal.synced_to_insuracloud_at) {
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] text-success" title={`Synced ${deal.synced_to_insuracloud_at}`}>
-        <CheckCircle2 className="h-3 w-3" /> Synced
-      </span>
-    );
-  }
-  if (deal.insuracloud_sync_error) {
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] text-destructive" title={deal.insuracloud_sync_error}>
-        <AlertTriangle className="h-3 w-3" /> Sync failed
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground" title="Queued for AgentLink sync">
-      <Clock className="h-3 w-3" /> Pending sync
-    </span>
-  );
-}
-
-const statusColor = (s: string) => {
-  switch (s) {
+const statusColor = (s: string | null) => {
+  switch ((s ?? "unknown").toLowerCase()) {
     case "active": return "bg-success/15 text-success border-success/30";
     case "submitted": return "bg-primary/15 text-primary border-primary/30";
     case "draft": return "bg-muted text-muted-foreground";
@@ -112,22 +95,6 @@ export default function MyDeals() {
     enabled: !!user?.id,
   });
 
-  // Sam removed Alyjah Rowland from the roster (roster_exclusions, "GHOST_336
-  // sync artifact") and he must appear nowhere — this list was printing his
-  // name as the writing agent on 30 real deals. The DEALS are real book rows
-  // and are not hidden; the ghost ATTRIBUTION is what gets retired, and it
-  // says so rather than reading "Unassigned", which would look like an
-  // ordinary gap instead of a row that needs re-attributing.
-  const { data: excludedAgentIds } = useQuery({
-    queryKey: ["roster-exclusions"],
-    staleTime: 10 * 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("roster_exclusions" as never).select("agent_id");
-      if (error) throw error;
-      return new Set((data ?? []).map((row) => (row as unknown as { agent_id: string }).agent_id));
-    },
-  });
-
   const scopedAgentIds = Array.from(new Set([
     ...(isManager ? downline.data ?? [] : []),
     ...(agentId ? [agentId] : []),
@@ -135,28 +102,16 @@ export default function MyDeals() {
 
   const enabled = Boolean(user?.id) && (isAdmin || (isManager ? downline.isSuccess : Boolean(agentId)));
 
-  // Every deal off the Vantage/AgentLink sync (source=agent_link) plus native
-  // APEX submissions — this is the number Discord's live feed celebrates, so
-  // the page must agree with it. A generous ceiling instead of a truncating
-  // page-size, and the count below is exact regardless.
-  //
-  // Ordered by POSTED date, not effective_date. Effective date is a future
-  // promise: 23 rows in the book carry an effective_date later than today, so
-  // a deal posted this minute landed at roughly row 24 — below the fold, on
-  // the page whose whole job is to show you the deal you just posted.
-  // posted_at is the documented posted-date truth and is non-null on all
-  // 1,794 rows, so it can carry the sort on its own.
+  // One deduped source for imported production and native APEX submissions.
+  // The rows, exact count, KPI totals, status tiles and agency split all read
+  // this same view, so a number cannot be live in one place and stale in another.
   const { data: deals = [] } = useQuery({
     queryKey: ["deals", isAdmin ? "all" : scopedAgentIds.join(",")],
     queryFn: async () => {
       if (!isAdmin && scopedAgentIds.length === 0) return [];
-      let query = supabase.from("deals")
-        // 'agent:agents(display_name)' was AMBIGUOUS — deals has TWO fks to
-        // agents (agent_id + manager_id), so PostgREST returned HTTP 300
-        // PGRST201 and the page rendered "No deals" over 1,780 real rows.
-        // Naming the constraint resolves it.
-        .select("*, carrier:carriers(name), agent:agents!deals_agent_id_fkey(display_name)")
-        .order("posted_at", { ascending: false })
+      let query = (supabase as any).from("v_production_unified")
+        .select("*")
+        .order("posted_date", { ascending: false })
         .limit(3000);
       if (!isAdmin) query = query.in("agent_id", scopedAgentIds);
       const { data, error } = await query;
@@ -172,7 +127,7 @@ export default function MyDeals() {
     queryKey: ["deals-count", isAdmin ? "all" : scopedAgentIds.join(",")],
     queryFn: async () => {
       if (!isAdmin && scopedAgentIds.length === 0) return 0;
-      let query = supabase.from("deals").select("id", { count: "exact", head: true });
+      let query = (supabase as any).from("v_production_unified").select("row_key", { count: "exact", head: true });
       if (!isAdmin) query = query.in("agent_id", scopedAgentIds);
       const { count, error } = await query;
       if (error) throw error;
@@ -187,7 +142,7 @@ export default function MyDeals() {
   // find the row yourself. Open the row, widen the window far enough to paint
   // it, and scroll it into view.
   const focusIndex = useMemo(
-    () => (focusDealId ? deals.findIndex((d) => d.id === focusDealId) : -1),
+    () => (focusDealId ? deals.findIndex((d) => d.row_key === focusDealId) : -1),
     [deals, focusDealId],
   );
 
@@ -211,7 +166,7 @@ export default function MyDeals() {
   };
 
   const latestSync = deals.reduce<string | null>((acc, d) => {
-    const t = d.synced_to_insuracloud_at || d.created_at;
+    const t = d.synced_at;
     if (!t) return acc;
     return !acc || t > acc ? t : acc;
   }, null);
@@ -281,7 +236,7 @@ export default function MyDeals() {
         title={teamView ? "Production" : "My Deals"}
         subtitle={
           <>
-            Source: <span className="font-medium text-foreground">AgentLink / Vantage sync</span> + native APEX
+            Source: <span className="font-medium text-foreground">Vantage live feed</span> + native APEX
             {latestSync && <> · last sync {formatDistanceToNowStrict(new Date(latestSync), { addSuffix: true })}</>}
           </>
         }
@@ -366,13 +321,10 @@ export default function MyDeals() {
             <Zap className="h-5 w-5 text-primary mt-0.5" />
             <div>
               <p className="text-sm font-semibold">Every deal, straight from the book.</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Pulled live from the AgentLink / Vantage sync — the same feed Discord celebrates. Add a native deal here and it reconciles into the book.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Pulled from the same deduped live feed used by every production total and Discord delivery.</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <SubmitDealDialog trigger={<Button size="sm" variant="default">Post a Deal</Button>} />
-            <Button asChild size="sm" variant="ghost"><a href={AGENTLINK_LINKS.bookOfBusiness} target="_blank" rel="noopener noreferrer">Open AgentLink <ExternalLink className="h-3 w-3 ml-1.5" /></a></Button>
-          </div>
+          <SubmitDealDialog trigger={<Button size="sm" variant="default">Post a Deal</Button>} />
         </CardContent>
       </Card>
 
@@ -403,17 +355,17 @@ export default function MyDeals() {
             <>
               <div className="divide-y divide-border">
                 {deals.slice(0, visible).map((d) => {
-                  const isOpen = expandedId === d.id;
-                  const isFocus = focusDealId === d.id;
+                  const isOpen = expandedId === d.row_key;
+                  const isFocus = focusDealId === d.row_key;
                   return (
                     <div
-                      key={d.id}
+                      key={d.row_key}
                       ref={isFocus ? focusRef : undefined}
                       className={isFocus ? "bg-primary/5 ring-1 ring-inset ring-primary/40" : "hover:bg-muted/10"}
                     >
                       <button
                         type="button"
-                        onClick={() => setExpandedId(isOpen ? null : d.id)}
+                        onClick={() => setExpandedId(isOpen ? null : d.row_key)}
                         className="w-full text-left p-3 grid grid-cols-1 md:grid-cols-[20px_1fr_auto_auto_auto] gap-3 items-center"
                         aria-expanded={isOpen}
                       >
@@ -421,71 +373,58 @@ export default function MyDeals() {
                           {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </span>
                         <div>
-                          <p className="font-medium text-sm">{d.client_first_name} {d.client_last_name}</p>
+                          <p className="font-medium text-sm">{d.client_name || "Client not on file"}</p>
                           <p className="text-xs text-muted-foreground">
-                            {d.carrier?.name || "—"} · {d.product_sold} · #{d.policy_number || "no policy #"}
+                            {d.carrier || "—"} · {d.product || "Product not on file"} · #{d.policy_number || "no policy #"}
                           </p>
                           {teamView && (
                             <p className="text-[10px] text-muted-foreground">
-                              Writing agent: {d.agent_id && excludedAgentIds?.has(d.agent_id)
-                                ? "not on roster — needs re-attribution"
-                                : d.agent?.display_name || "Unassigned"}
+                              Writing agent: {d.agent_name || "Unassigned"}
                             </p>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {d.posted_at ? format(new Date(d.posted_at), "MMM d, yyyy") : "not on file"}
+                          {d.posted_date ? format(new Date(`${d.posted_date}T12:00:00`), "MMM d, yyyy") : "not on file"}
                           <span className="block text-[10px] opacity-70">posted</span>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-sm">{fmtMoney(d.annual_premium)}</p>
-                          <p className="text-[10px] text-muted-foreground">${Number(d.monthly_premium ?? 0).toFixed(2)}/mo</p>
+                          <p className="text-[10px] text-muted-foreground">annual premium</p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <Badge variant="outline" className={statusColor(d.status)}>{d.status}</Badge>
-                          <SyncStatus deal={d} />
+                          <Badge variant="outline" className={statusColor(d.status)}>{d.status || "unknown"}</Badge>
                         </div>
                       </button>
                       {isOpen && (
                         <div className="px-4 pb-4 pt-1 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-muted/10">
                           <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Face amount</p>
-                            <p className="font-semibold">{fmtMoney(d.face_amount)}</p>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Producer</p>
+                            <p className="font-semibold">{d.agent_name || "Unassigned"}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Term</p>
-                            <p className="font-semibold">{d.policy_term_months ? `${d.policy_term_months} mo` : "—"}</p>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Policy</p>
+                            <p className="font-semibold">{d.policy_number || "—"}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Commission</p>
-                            <p className="font-semibold">{fmtMoney(d.commission_cents ? d.commission_cents / 100 : null)}</p>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Product</p>
+                            <p className="font-semibold">{d.product || "—"}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Effective</p>
-                            <p className="font-semibold">{d.effective_date ? format(new Date(d.effective_date), "MMM d, yyyy") : "not on file"}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Submitted</p>
-                            <p className="font-semibold">{d.submitted_at ? format(new Date(d.submitted_at), "MMM d") : "—"}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Chargeback</p>
-                            <p className="font-semibold">{d.chargeback_status || "—"}</p>
+                            <p className="font-semibold">{d.effective_date ? format(new Date(`${d.effective_date}T12:00:00`), "MMM d, yyyy") : "not on file"}</p>
                           </div>
                           <div>
                             <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Source</p>
-                            <p className="font-semibold">{d.source === "agent_link" ? "AgentLink / Vantage" : d.source || "manual"}</p>
+                            <p className="font-semibold">{d.origin === "apex_native" ? "APEX native" : "Live production feed"}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">External ID</p>
-                            <p className="font-semibold truncate">{d.external_deal_id || "—"}</p>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Last synced</p>
+                            <p className="font-semibold">{d.synced_at ? format(new Date(d.synced_at), "MMM d, h:mm a") : "—"}</p>
                           </div>
-                          {d.notes && (
-                            <div className="col-span-2 md:col-span-4">
-                              <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Notes</p>
-                              <p className="text-foreground/80 whitespace-pre-wrap">{d.notes}</p>
-                            </div>
-                          )}
+                          <div>
+                            <p className="text-muted-foreground uppercase tracking-wider text-[10px]">Row ID</p>
+                            <p className="font-semibold truncate">{d.row_key}</p>
+                          </div>
                         </div>
                       )}
                     </div>

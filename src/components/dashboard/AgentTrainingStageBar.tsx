@@ -97,11 +97,14 @@ export function AgentTrainingStageBar({ agentId, compact = false }: Props) {
       // agents row for the current auth.uid().
       const { data: au } = await supabase.auth.getUser();
       if (au?.user?.id && next !== "auto") {
-        const { data: me } = await supabase
+        const { data: matches } = await supabase
           .from("agents")
           .select("id")
           .eq("user_id", au.user.id)
-          .maybeSingle();
+          .eq("is_deactivated", false)
+          .order("created_at", { ascending: false })
+          .limit(2);
+        const me = matches?.length === 1 ? matches[0] : null;
         if (me?.id) payload.training_stage_override_by = me.id;
       }
       const { error } = await supabase.from("agents").update(payload).eq("id", agentId);

@@ -16,6 +16,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
+import { ProducerPulse } from "@/components/dashboard/ProducerPulse";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { cn } from "@/lib/utils";
 
@@ -312,6 +313,8 @@ export function AgentCloudHome() {
           </CardContent>
         </Card>
       </div>
+
+      <ProducerPulse />
 
       {/* PRODUCTION TREND */}
       <Card>

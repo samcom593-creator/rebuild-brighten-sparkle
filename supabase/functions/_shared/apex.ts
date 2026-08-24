@@ -78,10 +78,12 @@ export async function canPostToDiscord(
 export async function resolveDiscordWebhook(
   supabase: any,
   audience: DiscordAudience,
+  category: string = audience,
+  maxPerHour: number = 5,
 ): Promise<string> {
   // v26 NO-SPAM RULE · check kill switch + rate limit FIRST. If the guard
   // returns false, throw a sentinel that callers must catch + ignore.
-  if (!(await canPostToDiscord(supabase, audience))) {
+  if (!(await canPostToDiscord(supabase, category, maxPerHour))) {
     throw new Error("DISCORD_SUPPRESSED");
   }
 

@@ -325,7 +325,7 @@ async function deliverDiscord(sb: any, event: any): Promise<void> {
     : (agent as any)?.profile;
   const agentName = profile?.full_name ?? (agent as any)?.display_name ?? "APEX agent";
 
-  await callFunction("discord-webhook-notify", {
+  const response = await callFunction("discord-webhook-notify", {
     event_type: "deal_closed",
     details: {
       deal_id: deal.id,
@@ -340,6 +340,9 @@ async function deliverDiscord(sb: any, event: any): Promise<void> {
       caption: deal.community_caption ?? null,
     },
   });
+  if (response?.suppressed === true) {
+    throw new Error("Discord delivery was suppressed; the durable outbox will retry it");
+  }
 }
 
 async function skoolCapability(sb: any): Promise<"supported" | "not_configured" | "unsupported"> {

@@ -478,7 +478,12 @@ Deno.serve(async (req: Request) => {
     // ok=false silently — no error to the caller.
     let webhookUrl: string;
     try {
-      webhookUrl = await resolveDiscordWebhook(supabase, getDiscordAudience(event_type));
+      webhookUrl = await resolveDiscordWebhook(
+        supabase,
+        getDiscordAudience(event_type),
+        event_type === "deal_closed" ? "deal_closed" : getDiscordAudience(event_type),
+        event_type === "deal_closed" ? 1_000 : 5,
+      );
     } catch (err: any) {
       if (err?.message === "DISCORD_SUPPRESSED") {
         console.log(`[discord-webhook-notify] suppressed event_type=${event_type}`);

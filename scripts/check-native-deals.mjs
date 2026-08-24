@@ -7,6 +7,9 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
 const migration = read("supabase/migrations/20260811221000_apex_native_deal_workflow.sql");
 const parityMigration = read("supabase/migrations/20260823140000_post_a_deal_parity.sql");
 const productsMigration = read("supabase/migrations/20260823152000_carrier_products.sql");
+const discordMigration = read("supabase/migrations/20260824040000_durable_every_deal_discord.sql");
+const dispatcher = read("supabase/functions/apex-outbox-dispatcher/index.ts");
+const discordNotify = read("supabase/functions/discord-webhook-notify/index.ts");
 const dialog = read("src/components/deals/SubmitDealDialog.tsx");
 const production = read("src/pages/MyDeals.tsx");
 const legacyPost = read("supabase/functions/post-deal/index.ts");
@@ -36,6 +39,11 @@ const requirements = [
   [parityMigration, "REVOKE ALL ON FUNCTION public.submit_apex_deal", "submit RPC public revoke"],
   [dialog, 'list="deal-product-options"', "carrier product picker"],
   [productsMigration, "CREATE OR REPLACE VIEW public.v_carrier_products", "carrier product source"],
+  [discordMigration, "'deal.posted:' || new.id::text || ':discord'", "one durable Discord event per deal"],
+  [discordMigration, "after update of source on public.deals", "native deal promotion alert"],
+  [discordMigration, "on conflict (idempotency_key) do nothing", "Discord alert idempotency"],
+  [dispatcher, "response?.suppressed === true", "suppressed Discord delivery remains retryable"],
+  [discordNotify, 'event_type === "deal_closed" ? 1_000 : 5', "deal alerts bypass shared five-per-hour ceiling"],
 ];
 
 const missing = requirements.filter(([source, needle]) => !source.includes(needle));

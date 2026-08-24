@@ -510,6 +510,25 @@ Deno.serve(async (req: Request) => {
         if (sub && sub.url !== webhookUrl) {
           await sendToDiscord(sub.url, payload);
           console.log(`[discord-webhook-notify] also delivered to sub-agency ${sub.slug}`);
+          // A DURABLE receipt, not just a console line. A webhook is
+          // write-only and this function's console output does not surface in
+          // the queryable log stream, so without this row "did the sub-agency
+          // feed actually fire?" is unanswerable after the fact — which is the
+          // same unobservable-delivery problem that let the feed stay silent
+          // in the first place. sendToDiscord throws on a non-2xx, so reaching
+          // this line means Discord accepted it.
+          try {
+            await supabase.from("discord_event_log").insert({
+              event_type: "deal_closed.subagency",
+              entity_id: String(details.deal_id ?? details.agent_id ?? ""),
+              channel: sub.slug,
+              http_status: 204,
+              payload: { agent_id: details.agent_id ?? null, slug: sub.slug },
+            });
+          } catch (logErr) {
+            // empty-catch-allow:receipt-is-best-effort; the delivery already succeeded
+            console.error(`[discord-webhook-notify] sub-agency receipt insert failed: ${String(logErr)}`);
+          }
         }
       } catch (err) {
         // empty-catch-allow:secondary-feed-must-not-fail-the-primary

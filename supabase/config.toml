@@ -247,6 +247,13 @@ verify_jwt = false
 [functions.link-account]
 verify_jwt = false
 
+# Public by design: this is the /claim link the whole team uses to activate a
+# login against the record that already exists for them. It authenticates the
+# CALLER by matching them to an unlinked record, not by a JWT they don't have
+# yet. Guardrails live in the function (see its header).
+[functions.claim-account]
+verify_jwt = false
+
 [functions.send-daily-sales-leaderboard]
 verify_jwt = false
 

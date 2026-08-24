@@ -94,6 +94,7 @@ const ResourcesLicensing = lazy(() => import("./pages/ResourcesLicensing"));
 const TrainingIndex = lazy(() => import("./pages/TrainingIndex"));
 const Signup = lazy(() => import("./pages/Signup"));
 const AgentSignup = lazy(() => import("./pages/AgentSignup"));
+const ClaimAccount = lazy(() => import("./pages/ClaimAccount"));
 const AgentNumbersLogin = lazy(() => import("./pages/AgentNumbersLogin"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const VaManagerPortal = lazy(() => import("./pages/VaManagerPortal"));
@@ -410,6 +411,13 @@ const App = () => (
                       Install.tsx and recruiting CTAs. /join remains the separate
                       combined sign-in / create-account flow used by existing links. */}
                   <Route path="/agent-signup" element={<AgentSignup />} />
+                  {/* /claim — one public link for the whole team at once. Unlike
+                      /agent-signup (needs a ?ref= code, creates a NEW agent row)
+                      this MATCHES the record that already exists and attaches a
+                      login to it. /activate is an alias so either reads fine in
+                      a group message. */}
+                  <Route path="/claim" element={<ClaimAccount />} />
+                  <Route path="/activate" element={<ClaimAccount />} />
                   <Route path="/agent-login" element={<AgentNumbersLogin />} />
                   <Route path="/agent/:userId" element={<PublicAgentLanding />} />
                   <Route path="/magic-login" element={<MagicLogin />} />

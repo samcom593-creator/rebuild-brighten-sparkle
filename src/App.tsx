@@ -481,7 +481,12 @@ const App = () => (
                     <Route path="/dashboard/contracting/documents" element={<ProtectedRoute requireAdmin><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/retention" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />
                     <Route path="/dashboard/production" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
-                    <Route path="/dashboard/analytics" element={<ProtectedRoute><BusinessAnalytics /></ProtectedRoute>} />
+                    {/* Agency-wide business analytics: carrier performance, agents needing
+                      attention, inactive-agent rollups. Had NO admin gate and the page
+                      itself had none either, so any logged-in agent could open it. The
+                      views behind it are staff-guarded now too — this is the second lock,
+                      not the only one. */}
+                  <Route path="/dashboard/analytics" element={<ProtectedRoute requireAdmin allowManagers><BusinessAnalytics /></ProtectedRoute>} />
                     <Route path="/dashboard/community" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
                     <Route path="/dashboard/resources" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/library" />} />
                     <Route path="/dashboard/import" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager"]}><XcelImport /></ProtectedRoute>} />
@@ -583,8 +588,11 @@ const App = () => (
                     <Route path="/dashboard/notifications/mine" element={<ProtectedRoute><MyNotifications /></ProtectedRoute>} />
                     {/* Agents land on the new command dashboard. Legacy
                         portal (heavy card stack) kept at /agent-portal/legacy. */}
-                    <Route path="/agent-portal" element={<AgentCommandDashboard />} />
-                    <Route path="/agent-dashboard" element={<AgentCommandDashboard />} />
+                    {/* Both of these rendered with no auth wrapper whatsoever. The page
+                        branches to the agency command view for admins, so it must at
+                        minimum require a session. */}
+                    <Route path="/agent-portal" element={<ProtectedRoute><AgentCommandDashboard /></ProtectedRoute>} />
+                    <Route path="/agent-dashboard" element={<ProtectedRoute><AgentCommandDashboard /></ProtectedRoute>} />
                     <Route path="/agent-portal/legacy" element={<AgentPortal />} />
                     <Route path="/onboarding-course" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/sales-course" />} />
                     <Route path="/course-catalog" element={<LegacyWorkspaceRedirect to="/dashboard/recruiting/training/sales-course" />} />

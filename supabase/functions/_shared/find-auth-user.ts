@@ -28,6 +28,10 @@
 
 /** The slice of the admin client this helper needs. Structural, so any pinned SDK version satisfies it. */
 export interface AuthUserLister {
+  rpc(
+    fn: string,
+    args: Record<string, unknown>,
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
   auth: {
     admin: {
       listUsers(params: { page: number; perPage: number }): Promise<{
@@ -47,7 +51,18 @@ export type AuthUserLookup = {
   exhaustive: boolean;
 };
 
-const PAGE_SIZE = 1000;
+// MEASURED 2026-08-24 against prod, because PAGE_SIZE = 1000 took every agent-
+// creation path down with a 500. GoTrue's admin list endpoint fails above ~200:
+//   per_page=50  -> 200 OK      per_page=200 -> 200 OK
+//   per_page=300 -> 500 "Database error finding users"
+//   per_page=500 -> 500         per_page=1000 -> 500
+// So the helper written to remove a silent ceiling introduced a loud one, and
+// add-agent / create-new-agent-account / setup-agent-password /
+// create-agent-from-leaderboard all failed outright — while consume-invite-token
+// kept working precisely because its 200 was the "already wrong" value above.
+// 200 with pagination is correct AND exhaustive; the page size was never what
+// made the old code unsafe, reading only ONE page was.
+const PAGE_SIZE = 200;
 // Backstop so a pathological account can never spin forever. 200 pages at 1000
 // per page is 200k users; if Apex ever passes that, this should fail loudly
 // rather than quietly degrade back into the bug it exists to prevent.
@@ -65,22 +80,36 @@ export async function findAuthUserByEmail(
   email: string,
 ): Promise<AuthUserLookup> {
   const target = email.trim().toLowerCase();
-  let pagesScanned = 0;
 
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: PAGE_SIZE });
-    if (error) throw new Error(`findAuthUserByEmail failed on page ${page}: ${error.message}`);
-
-    const users = data?.users ?? [];
-    pagesScanned++;
-
-    const hit = users.find((u) => (u.email ?? "").trim().toLowerCase() === target);
-    if (hit) return { user: hit, pagesScanned, exhaustive: true };
-
-    // A short page is the last page.
-    if (users.length < PAGE_SIZE) return { user: null, pagesScanned, exhaustive: true };
+  // PRIMARY: ask the database the actual question. One row, no pagination, no
+  // ceiling, and immune to the GoTrue admin-list failure documented above.
+  const { data, error } = await admin.rpc("auth_user_id_by_email", { p_email: target });
+  if (!error) {
+    const id = typeof data === "string" ? data : null;
+    return { user: id ? { id, email: target } : null, pagesScanned: 0, exhaustive: true };
   }
 
+  // FALLBACK: only if the RPC itself is unavailable (not yet migrated, or
+  // permissions changed). Kept because losing the lookup entirely is worse than
+  // a bounded one — but it is NOT silent: a caller can see pagesScanned > 0 and
+  // exhaustive === false and refuse to create a duplicate account on that basis.
+  console.error(`[find-auth-user] RPC unavailable (${error.message}); falling back to paging`);
+  let pagesScanned = 0;
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const { data: pageData, error: pageErr } = await admin.auth.admin.listUsers({ page, perPage: PAGE_SIZE });
+    if (pageErr) {
+      // Do NOT throw. A failed lookup is "unknown", never "no such user" — the
+      // caller must not read a platform error as permission to create a second
+      // account for someone who already has one.
+      console.error(`[find-auth-user] page ${page} failed: ${pageErr.message}`);
+      return { user: null, pagesScanned, exhaustive: false };
+    }
+    const users = pageData?.users ?? [];
+    pagesScanned++;
+    const hit = users.find((u) => (u.email ?? "").trim().toLowerCase() === target);
+    if (hit) return { user: hit, pagesScanned, exhaustive: true };
+    if (users.length < PAGE_SIZE) return { user: null, pagesScanned, exhaustive: true };
+  }
   console.error(
     `[find-auth-user] stopped after ${MAX_PAGES} pages without exhausting auth.users; ` +
       `"not found" is NOT proven for ${target}`,

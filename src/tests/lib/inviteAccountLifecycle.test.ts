@@ -30,6 +30,7 @@ describe("invite-created account lifecycle", () => {
     expect(accounts).toContain("max={200}");
     expect(accounts).toContain('"staff_existing_auth_user_ids"');
     expect(accounts).toContain("candidateUserIds.filter((userId) => authUserIds.has(userId))");
+    expect(accounts).toContain('agent.status === "active" && !agent.is_deactivated');
   });
 
   it("does not report success for a role-only login with no profile", () => {

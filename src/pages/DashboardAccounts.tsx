@@ -132,7 +132,7 @@ export default function DashboardAccounts() {
       const [agentsResult, rolesResult] = await Promise.all([
         supabase
           .from("agents")
-          .select("id, user_id, status, created_at, license_status, onboarding_stage, contract_percentage, portal_password_set, has_discord_access, has_training_course")
+          .select("id, user_id, status, is_deactivated, created_at, license_status, onboarding_stage, contract_percentage, portal_password_set, has_discord_access, has_training_course")
           .order("created_at", { ascending: false }),
         supabase.from("user_roles").select("user_id, role"),
       ]);
@@ -142,8 +142,15 @@ export default function DashboardAccounts() {
 
       const validAgents = (agentsResult.data || []).filter(a => a.user_id);
       const agentMap = new Map<string, (typeof validAgents)[number]>();
+      const agentPriority = (agent: (typeof validAgents)[number]) => {
+        if (agent.status === "active" && !agent.is_deactivated) return 4;
+        if (agent.status === "pending" && !agent.is_deactivated) return 3;
+        if (!agent.is_deactivated) return 2;
+        return 1;
+      };
       for (const agent of validAgents) {
-        if (!agentMap.has(agent.user_id!)) agentMap.set(agent.user_id!, agent);
+        const current = agentMap.get(agent.user_id!);
+        if (!current || agentPriority(agent) > agentPriority(current)) agentMap.set(agent.user_id!, agent);
       }
       const candidateUserIds = Array.from(new Set([
         ...agentMap.keys(),

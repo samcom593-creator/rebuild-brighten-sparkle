@@ -12,28 +12,18 @@ import {
   Target,
   Sparkles,
   CheckCircle2,
-  UserPlus,
   ChevronRight,
-  DollarSign
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
-import { BubbleDealEntry } from "@/components/dashboard/BubbleDealEntry";
 import { BubbleStatInput } from "@/components/dashboard/BubbleStatInput";
 import { GradientButton } from "@/components/ui/gradient-button";
 import apexIcon from "@/assets/apex-icon.png";
@@ -55,7 +45,7 @@ interface LeaderboardEntry {
   rank: number;
 }
 
-type Step = "search" | "select" | "new-agent" | "production" | "leaderboard";
+type Step = "search" | "select" | "production" | "leaderboard";
 
 export default function LogNumbers() {
   const { playSound } = useSoundEffects();
@@ -66,15 +56,6 @@ export default function LogNumbers() {
   const [selectedAgent, setSelectedAgent] = useState<MatchedAgent | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   
-  // New agent form
-  const [newAgentForm, setNewAgentForm] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    licenseStatus: "unlicensed" as "licensed" | "unlicensed"
-  });
-  const [creatingAgent, setCreatingAgent] = useState(false);
-
   // Production form
   const [saving, setSaving] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(false);
@@ -138,10 +119,6 @@ export default function LogNumbers() {
     loadExisting();
   }, [selectedAgent, step]);
 
-  const handleALPChange = useCallback((alp: number) => {
-    setProductionData(prev => ({ ...prev, aop: alp }));
-  }, []);
-
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       toast.error("Please enter a name or email"); playSound("error");
@@ -161,12 +138,8 @@ export default function LogNumbers() {
       setMatchedAgents(matches);
 
       if (matches.length === 0) {
-        setNewAgentForm(prev => ({
-          ...prev,
-          fullName: searchQuery.includes("@") ? "" : searchQuery,
-          email: searchQuery.includes("@") ? searchQuery : ""
-        }));
-        setStep("new-agent");
+        toast.error("No agent found. Add the agent in CRM before logging activity.");
+        playSound("error");
       } else if (matches.length === 1) {
         setSelectedAgent(matches[0]);
         setStep("production");
@@ -184,46 +157,6 @@ export default function LogNumbers() {
   const handleSelectAgent = (agent: MatchedAgent) => {
     setSelectedAgent(agent);
     setStep("production");
-  };
-
-  const handleCreateAgent = async () => {
-    if (!newAgentForm.fullName.trim() || !newAgentForm.email.trim() || !newAgentForm.phone.trim()) {
-      toast.error("Please fill in all fields"); playSound("error");
-      return;
-    }
-
-    setCreatingAgent(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("create-agent-from-leaderboard", {
-        body: {
-          fullName: newAgentForm.fullName.trim(),
-          email: newAgentForm.email.trim().toLowerCase(),
-          phone: newAgentForm.phone.trim(),
-          licenseStatus: newAgentForm.licenseStatus,
-        },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      const agentId = data?.agentId || data?.agent_id;
-      if (!agentId) throw new Error("No agent ID returned");
-
-      setSelectedAgent({
-        id: agentId,
-        name: newAgentForm.fullName.trim(),
-        email: newAgentForm.email.trim().toLowerCase(),
-        onboardingStage: "onboarding"
-      });
-
-      toast.success("Agent added to CRM!"); playSound("success");
-      setStep("production");
-    } catch (error: any) {
-      console.error("Create agent error:", error);
-      toast.error(error.message || "Failed to create agent"); playSound("error");
-    } finally {
-      setCreatingAgent(false);
-    }
   };
 
   const handleSubmitProduction = async () => {
@@ -259,15 +192,14 @@ export default function LogNumbers() {
       supabase.functions.invoke("notify-production-submitted", {
         body: { 
           agentId: selectedAgent.id, 
-          agentName: selectedAgent.name,
-          productionData 
+          date: today,
         }
       }).catch(err => console.error("Notification error:", err));
 
       fetchLeaderboard().catch(err => console.error("Leaderboard fetch error:", err));
-    } catch (error: any) {
+    } catch (error) {
       console.error("Save error:", error);
-      toast.error(error.message || "Failed to save numbers"); playSound("error");
+      toast.error(error instanceof Error ? error.message : "Failed to save numbers"); playSound("error");
     } finally {
       setSaving(false);
     }
@@ -307,10 +239,9 @@ export default function LogNumbers() {
     { key: "hours_called", label: "Pages Called", emoji: "📄", step: 1 },
     { key: "referrals_caught", label: "Referrals", emoji: "🤝", step: 1 },
     { key: "referral_presentations", label: "Ref. Pres.", emoji: "📋", step: 1 },
-    { key: "deals_closed", label: "Closes", emoji: "🏆", step: 1 },
   ];
 
-  const steps: Step[] = ["search", "select", "new-agent", "production", "leaderboard"];
+  const steps: Step[] = ["search", "select", "production", "leaderboard"];
   const currentStepIndex = steps.indexOf(step);
 
   return (
@@ -340,7 +271,7 @@ export default function LogNumbers() {
 
         {/* Step Progress Indicator */}
         <div className="flex items-center justify-center gap-1.5 mb-5">
-          {steps.filter(s => s !== "new-agent" || step === "new-agent").map((s, i) => (
+          {steps.map((s, i) => (
             <div
               key={s}
               className={cn(
@@ -434,102 +365,6 @@ export default function LogNumbers() {
             </motion.div>
           )}
 
-          {/* Step 3: New Agent Form */}
-          {step === "new-agent" && (
-            <motion.div
-              key="new-agent"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-            >
-              <GlassCard className="p-6">
-                <h2 className="text-lg font-semibold mb-1">Welcome, New Agent!</h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  We didn't find you in our system. Let's get you set up.
-                </p>
-                
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      placeholder="John Smith"
-                      value={newAgentForm.fullName}
-                      onChange={(e) => setNewAgentForm(prev => ({ ...prev, fullName: e.target.value }))}
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="john@email.com"
-                      value={newAgentForm.email}
-                      onChange={(e) => setNewAgentForm(prev => ({ ...prev, email: e.target.value }))}
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="(555) 123-4567"
-                      value={newAgentForm.phone}
-                      onChange={(e) => setNewAgentForm(prev => ({ ...prev, phone: e.target.value }))}
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="license">License Status</Label>
-                    <Select
-                      value={newAgentForm.licenseStatus}
-                      onValueChange={(v: "licensed" | "unlicensed") => 
-                        setNewAgentForm(prev => ({ ...prev, licenseStatus: v }))
-                      }
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="licensed">Licensed</SelectItem>
-                        <SelectItem value="unlicensed">Unlicensed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <Button 
-                    onClick={handleCreateAgent} 
-                    className="w-full" 
-                    disabled={creatingAgent}
-                  >
-                    {creatingAgent ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <UserPlus className="h-4 w-4 mr-2" />
-                    )}
-                    Continue to Log Numbers
-                  </Button>
-                  
-                  <Button 
-                    variant="ghost" 
-                    className="w-full"
-                    onClick={() => {
-                      setStep("search");
-                      setSearchQuery("");
-                    }}
-                  >
-                    ← Back to Search
-                  </Button>
-                </div>
-              </GlassCard>
-            </motion.div>
-          )}
-
           {/* Step 4: Production Entry */}
           {step === "production" && selectedAgent && (
             <motion.div
@@ -562,18 +397,8 @@ export default function LogNumbers() {
                   </div>
                 ) : (
                   <>
-                    {/* Deal Amounts - Primary Action */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-white dark:bg-card flex items-center justify-center">
-                          <DollarSign className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-bold">💰 Deal Amounts</h3>
-                          <p className="text-[10px] text-muted-foreground">Type amount and tap + Add for each deal</p>
-                        </div>
-                      </div>
-                      <BubbleDealEntry onALPChange={handleALPChange} />
+                    <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+                      Sales, policies, and ALP are synced automatically from Post a Deal and the live production book. Log activity only here.
                     </div>
 
                     {/* Activity Stats */}

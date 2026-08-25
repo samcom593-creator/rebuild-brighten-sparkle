@@ -343,7 +343,7 @@ export default function AdminProducerTrends() {
       return ((data as unknown) as TrendAlertRow[]) ?? [];
     },
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   const newHiresQ = useQuery<NewHireActivationRow[]>({
@@ -357,7 +357,7 @@ export default function AdminProducerTrends() {
       return ((data as unknown) as NewHireActivationRow[]) ?? [];
     },
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   const weeklyQ = useQuery<WeeklyRow[]>({
@@ -371,7 +371,7 @@ export default function AdminProducerTrends() {
       return ((data as unknown) as WeeklyRow[]) ?? [];
     },
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   // Per-manager downline health. Short list by construction — only managers
@@ -387,7 +387,7 @@ export default function AdminProducerTrends() {
       return ((data as unknown) as ManagerScorecardRow[]) ?? [];
     },
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   const agentMetaQ = useQuery<AgentMetaRow[]>({

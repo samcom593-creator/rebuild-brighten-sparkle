@@ -37,7 +37,7 @@ export default function AdminFunnelHealth() {
       return (data as FunnelRow[]) ?? [];
     },
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   const { data: msgStats = [] } = useQuery<MessageStat[]>({
@@ -64,7 +64,7 @@ export default function AdminFunnelHealth() {
       return data as MessageStat[];
     },
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   const totals = useMemo(() => {

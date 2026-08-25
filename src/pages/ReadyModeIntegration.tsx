@@ -183,7 +183,7 @@ export default function ReadyModeIntegration() {
 
   const dormantSeats = useQuery({
     queryKey: ["readymode-dormant-seats"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_dormant_dialer_seats" as any).select("agent_id, agent_name, email, status, is_inactive, is_deactivated, calls_last_30d, last_call_at");

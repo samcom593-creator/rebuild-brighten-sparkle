@@ -42,7 +42,7 @@ export function UnclaimedLeadsCard() {
       return data as unknown as Summary;
     },
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   if (isLoading) {

@@ -433,9 +433,9 @@ const App = () => (
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/disclosures" element={<Disclosures />} />
                   <Route path="/install" element={<Install />} />
-                  {/* /apex-daily-numbers is internal-only — was publicly exposing
-                      production-entry UI. Now requires a logged-in user (any role). */}
-                  <Route path="/apex-daily-numbers" element={<ProtectedRoute><LogNumbers /></ProtectedRoute>} />
+                  {/* Cross-agent search and edits are an admin operation. Agents
+                      record their own activity on /numbers. */}
+                  <Route path="/apex-daily-numbers" element={<ProtectedRoute requireAdmin><LogNumbers /></ProtectedRoute>} />
                   <Route path="/links" element={<LinksPage />} />
                   <Route path="/seminar" element={<SeminarPage />} />
                   <Route path="/leads" element={<LeadsLanding />} />

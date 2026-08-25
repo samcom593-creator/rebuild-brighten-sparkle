@@ -907,13 +907,7 @@ function AgencyCommandView() {
     },
   });
 
-  // Source = agentlink_book by POSTED_DATE (dead-excluded) — the exact truth the
-  // public leaderboard/hero render. Previously this read agentlink_deals_snapshot
-  // filtered by EFFECTIVE_DATE, which buckets July-written policies into the month
-  // their coverage starts, inflating "this month" ~68x at a month rollover
-  // ($76,927/56 vs the real $1,134/1 on 2026-08-03). book.user_id maps to
-  // agents.al_user_id exactly like the snapshot did, so the downstream mapping is
-  // unchanged; only the table + date column move.
+  // Canonical AgentLink + native APEX production, deduped and roster-scoped.
   const periodDeals = useQuery({
     queryKey: ["agency-period-deals-truth", periodBounds.startIso, periodBounds.endIso],
     refetchInterval: 300_000,
@@ -923,50 +917,33 @@ function AgencyCommandView() {
       const endDate = periodBounds.endIso.slice(0, 10);
 
       const { data, error } = await supabase
-        .from("v_agentlink_book_scoped" as any)
-        // agentlink_book's key is deal_key, NOT id — selecting id 400'd the query
-        // ("column agentlink_book.id does not exist") so Annual Premium fell to $0.
-        .select("deal_key, annual_premium, posted_date, user_id, is_dead")
-        .not("is_dead", "is", true)
+        .from("v_production_unified" as any)
+        .select("row_key, annual_premium, posted_date, agent_id")
         .gte("posted_date", startDate)
         .lt("posted_date", endDate);
       if (error) throw error;
 
       const dealRows = (data ?? []) as Array<{
-        deal_key: string | number;
+        row_key: string | number;
         annual_premium: number | string | null;
         posted_date: string | null;
-        user_id: number | null;
+        agent_id: string | null;
       }>;
 
-      const alUserIds = Array.from(new Set(dealRows.map((row) => row.user_id).filter((v): v is number => v != null)));
-      if (alUserIds.length === 0) {
-        // Map empty result into the legacy shape so downstream consumers don't crash
-        return dealRows.map((row) => ({
-          id: String(row.deal_key),
-          annual_premium: row.annual_premium,
-          posted_at: row.posted_date,
-          created_at: row.posted_date,
-          agent_id: null,
-          agent: null,
-        }));
-      }
-
-      // Map agentlink user_id → apex agent + manager via agents.al_user_id
+      const agentIds = Array.from(new Set(dealRows.map((row) => row.agent_id).filter((v): v is string => Boolean(v))));
       const { data: agentRows, error: agentError } = await supabase
         .from("agents")
-        .select("id, al_user_id, display_name, agent_code, manager_id")
-        .in("al_user_id", alUserIds);
+        .select("id, display_name, agent_code, manager_id")
+        .in("id", agentIds.length ? agentIds : ["00000000-0000-0000-0000-000000000000"]);
       if (agentError) throw agentError;
 
       const agents = (agentRows ?? []) as Array<{
         id: string;
-        al_user_id: number | null;
         display_name: string | null;
         agent_code: string | null;
         manager_id: string | null;
       }>;
-      const agentByAlId = new Map(agents.filter((a) => a.al_user_id != null).map((a) => [a.al_user_id as number, a]));
+      const agentById = new Map(agents.map((agent) => [agent.id, agent]));
 
       const managerIds = Array.from(new Set(agents.map((agent) => agent.manager_id).filter(Boolean))) as string[];
       const managerById = new Map<string, { id: string; display_name: string | null }>();
@@ -982,9 +959,9 @@ function AgencyCommandView() {
       }
 
       return dealRows.map((row) => {
-        const agent = row.user_id != null ? agentByAlId.get(row.user_id) ?? null : null;
+        const agent = row.agent_id ? agentById.get(row.agent_id) ?? null : null;
         return {
-          id: String(row.deal_key),
+          id: String(row.row_key),
           annual_premium: row.annual_premium,
           posted_at: row.posted_date,
           created_at: row.posted_date,
@@ -1007,9 +984,8 @@ function AgencyCommandView() {
       const startDate = periodBounds.startIso.slice(0, 10);
       const endDate = periodBounds.endIso.slice(0, 10);
       const { data, error } = await supabase
-        .from("v_agentlink_book_scoped" as any)
+        .from("v_production_unified" as any)
         .select("annual_premium")
-        .not("is_dead", "is", true)
         .gte("posted_date", startDate)
         .lt("posted_date", endDate);
       if (error) throw error;
@@ -1278,7 +1254,7 @@ function AgencyCommandView() {
   // a tab. "Any leaks I need just aren't even there."
   const cfoLive = useQuery({
     queryKey: ["agency-cfo-live"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const { data } = await supabase.from("v_cfo_snapshot" as any).select("*").maybeSingle();
@@ -1377,7 +1353,7 @@ function AgencyCommandView() {
   // PANEL 1 · CARRIER MIX (this month, top 6) — emerald hero · donut + table
   const carrierMix = useQuery({
     queryKey: ["agency-carrier-mix-mtd"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const tzNow = new Date();
@@ -1479,7 +1455,7 @@ function AgencyCommandView() {
   // PANEL 3 · CONVERSION FUNNEL · last 90 days (created → contacted → course → exam → licensed)
   const funnel = useQuery({
     queryKey: ["agency-conversion-funnel-90d"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const since = new Date(Date.now() - 90 * 86_400_000).toISOString();
@@ -1548,7 +1524,7 @@ function AgencyCommandView() {
   // Source attribution is the next-most-valuable hidden dataset per the audit.
   const sourceRoi = useQuery({
     queryKey: ["agency-source-roi-180d"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const since = new Date(Date.now() - 180 * 86_400_000).toISOString();
@@ -1584,7 +1560,7 @@ function AgencyCommandView() {
   // PANEL 6 · MONEY FLOW · commission_ledger this month
   const moneyFlow = useQuery({
     queryKey: ["agency-money-flow-mtd"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const tzNow = new Date();
@@ -1642,7 +1618,7 @@ function AgencyCommandView() {
   // TodayPriorityGrid counts — cheap head:true count queries.
   const priorityCounts = useQuery({
     queryKey: ["mp255-priority-counts"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const [
@@ -1674,7 +1650,7 @@ function AgencyCommandView() {
   // 12-stage pipeline funnel (v_licensing_stage_counts + v_next_step_funnel_health).
   const pipelineStages = useQuery({
     queryKey: ["mp255-pipeline-stages"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const [stagesRes, healthRes] = await Promise.all([
@@ -1694,7 +1670,7 @@ function AgencyCommandView() {
   // Producer risk board — v_producer_trend_alert (WoW ALP direction + reasons).
   const producerRisk = useQuery({
     queryKey: ["mp255-producer-risk"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -1744,7 +1720,7 @@ function AgencyCommandView() {
   // Manager accountability — reads v_manager_hierarchy_mtd (team ALP + count).
   const managerAccountability = useQuery({
     queryKey: ["mp255-manager-accountability"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     staleTime: 4 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -3873,7 +3849,7 @@ function PersonalPacePanel() {
   const pace = useQuery({
     queryKey: ["personal-pace", alUid],
     enabled: !!alUid,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -3987,7 +3963,7 @@ function PersonalPacePanel() {
 function ProductMixPanel() {
   const mix = useQuery({
     queryKey: ["dashboard-product-mix"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -4070,7 +4046,7 @@ function ProductMixPanel() {
 function WeekOverWeekPanel() {
   const wow = useQuery({
     queryKey: ["dashboard-wow"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const today = new Date();
       const start = new Date(today);
@@ -4329,7 +4305,7 @@ function ExtendedParityPanels() {
 function StateProductionPanel() {
   const stateMix = useQuery({
     queryKey: ["state-production-mix"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       // Pull last-30-day deals + their al_user_id
       const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
@@ -4440,7 +4416,7 @@ function StateProductionPanel() {
 function TimeOfDayProductionPanel() {
   const heat = useQuery({
     queryKey: ["time-of-day-production"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
       const { data } = await supabase
@@ -4544,7 +4520,7 @@ function TimeOfDayProductionPanel() {
 function CommissionProjectionPanel() {
   const proj = useQuery({
     queryKey: ["commission-projection"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -4660,7 +4636,7 @@ function CommissionProjectionPanel() {
 function HirePace12WPanel() {
   const pace = useQuery({
     queryKey: ["hire-pace-12w"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const cutoff = new Date(Date.now() - 84 * 86400000).toISOString();
       const { data } = await supabase
@@ -4768,7 +4744,7 @@ function HirePace12WPanel() {
 function AgedLeadsPanel() {
   const leads = useQuery({
     queryKey: ["aged-leads-licensed-bank"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const cutoff7d = new Date(Date.now() - 7 * 86400000).toISOString();
       const [totalRes, licensedRes, unworkedLicensedRes, recent7Res, dialedRes, dncRes, licensedList, recentList] = await Promise.all([
@@ -4918,7 +4894,7 @@ function AgedLeadRowClickable({ l }: { l: AgedLeadRow }) {
 function LowProducersPanel() {
   const low = useQuery({
     queryKey: ["low-producers-7d"],
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
     queryFn: async () => {
       const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
       const { data: dealRows } = await supabase

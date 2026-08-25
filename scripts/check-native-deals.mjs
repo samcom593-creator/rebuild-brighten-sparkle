@@ -13,6 +13,8 @@ const agentlinkDedupeMigration = read("supabase/migrations/20260825034000_agentl
 const singleFeedMigration = read("supabase/migrations/20260825035000_single_deal_feed.sql");
 const agencyPeriodMigration = read("supabase/migrations/20260825033000_imo_agency_period_truth.sql");
 const crmScopeMigration = read("supabase/migrations/20260825010000_crm_production_scope.sql");
+const homeDailyMigration = read("supabase/migrations/20260825060000_home_daily_production_truth.sql");
+const contractingReconcileMigration = read("supabase/migrations/20260825061000_contracting_roster_live_reconcile.sql");
 const dispatcher = read("supabase/functions/apex-outbox-dispatcher/index.ts");
 const discordNotify = read("supabase/functions/discord-webhook-notify/index.ts");
 const dialog = read("src/components/deals/SubmitDealDialog.tsx");
@@ -64,6 +66,11 @@ const requirements = [
   [agencyPeriodMigration, "policies_30d", "agency policy count exposes the rolling 30-day window"],
   [agencyPeriodMigration, "public.imo_by_agency_period", "agency cards support exact selected periods"],
   [agentCloudHome, "start={win.start} end={win.end}", "home period selector reaches the agency query"],
+  [homeDailyMigration, "from public.v_production_unified b", "home uses unified deduplicated production truth"],
+  [homeDailyMigration, "where posted_date = v_today", "home daily totals use Phoenix today"],
+  [contractingReconcileMigration, "'tab', 'agwnts'", "contracting targets the real live Ethos tab"],
+  [agentCloudHome, "Personal ALP today", "home shows personal daily production"],
+  [agentCloudHome, "Agency ALP today", "home shows agency daily production"],
   [imoByAgency, 'rpc("imo_by_agency_period"', "agency component queries the selected period"],
   [dispatcher, "response?.suppressed === true", "suppressed Discord delivery remains retryable"],
   [discordNotify, 'event_type === "deal_closed" ? 1_000 : 5', "deal alerts bypass shared five-per-hour ceiling"],

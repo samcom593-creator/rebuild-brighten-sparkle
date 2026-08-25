@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ExternalLink, GraduationCap, Loader2, ShieldAlert } from "lucide-react";
+import { CheckCircle2, ExternalLink, GraduationCap, Loader2, MessageCircle, ShieldAlert } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -30,6 +30,7 @@ import {
  */
 
 const STORAGE_KEY = "apex.contracting.intake";
+const TEAM_DISCORD_URL = "https://discord.gg/JpUWA73UZX";
 
 type Accepted = {
   intake_id: string;
@@ -220,6 +221,11 @@ export default function StartContracting() {
               <Button asChild size="sm" variant="outline">
                 <a href={EO_COVERAGE_URL} target="_blank" rel="noopener noreferrer">
                   E&O coverage <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+                </a>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <a href={TEAM_DISCORD_URL} target="_blank" rel="noopener noreferrer">
+                  <MessageCircle className="mr-1.5 h-4 w-4" /> Join team Discord
                 </a>
               </Button>
             </div>

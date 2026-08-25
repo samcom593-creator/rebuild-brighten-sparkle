@@ -604,7 +604,7 @@ export default function RecoveryQueue() {
       return (data as unknown as Row[]) ?? [];
     },
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   // Manager profiles batched from visible rows

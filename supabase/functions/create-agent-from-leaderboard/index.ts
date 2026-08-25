@@ -27,6 +27,30 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(authHeader.slice(7));
+    if (authError || !authData.user?.id) {
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: roles, error: roleError } = await supabaseAdmin
+      .from("user_roles").select("role").eq("user_id", authData.user.id);
+    if (roleError) throw roleError;
+    if (!(roles ?? []).some((row) => row.role === "admin")) {
+      return new Response(JSON.stringify({ error: "Administrator access required" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { agentId, email, fullName, phone, instagramHandle }: CreateAgentRequest = await req.json();
 
     console.log(`Creating profile and login for agent ${agentId}`, { email, fullName });
@@ -37,10 +61,6 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
 
     // Check if agent already has a user_id
     const { data: existingAgent, error: agentError } = await supabaseAdmin
@@ -273,6 +293,7 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({
         success: true,
+        agentId,
         userId,
         profileId,
         magicLink,

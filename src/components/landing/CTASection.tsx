@@ -42,7 +42,7 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
     },
     enabled: gateOpen,
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
   // 2026-06-19: feb05b97 truth-floor sync — landing_live_stats now returns
   // 41 active (was 123 due to placeholder pollution). 40 is the cold-render

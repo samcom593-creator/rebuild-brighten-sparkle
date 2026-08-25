@@ -51,7 +51,7 @@ export function RecentHiresTicker() {
     },
     enabled: gateOpen || timerOpen,
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   const rows = data ?? [];

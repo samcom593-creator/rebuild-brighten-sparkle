@@ -62,10 +62,11 @@ export default function BoardLive() {
     // Live-tracker feel: re-pull while the board is on screen.
     refetchInterval: 300_000,
     queryFn: async () => {
-      const { data } = await supabase.rpc("leaderboard_board" as any, {
+      const { data, error } = await supabase.rpc("leaderboard_board" as any, {
         p_start: bounds.start,
         p_end: bounds.end,
       });
+      if (error) throw error;
       return ((data ?? []) as BoardRow[]).map((r) => ({
         ...r,
         apNum: Number(r.ap ?? 0),
@@ -90,6 +91,11 @@ export default function BoardLive() {
   return (
     <div className="min-h-screen bg-background text-slate-100 px-4 py-8 sm:px-8">
       <div className="mx-auto w-full max-w-5xl">
+        {board.isError && (
+          <div role="alert" className="mb-4 rounded-lg border border-rose-500/40 bg-rose-500/10 p-4 text-sm font-semibold text-rose-200">
+            Live production is temporarily unavailable. Do not post this board until it reconnects.
+          </div>
+        )}
         {/* header */}
         <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/10 pb-6">
           <div>

@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 // ~/business-ops/agentcloud-reference/pages/00-home-dashboard-fullpage.png,
 // carrying APEX's real data.
 //
-// EVERY number comes from ONE server-side RPC (apex_home_dashboard). The page
+// EVERY number comes from ONE server-side RPC (apex_admin_home_dashboard). The page
 // this replaces fired ~20 client-side queries — measured on a live load as 33
 // API calls including agentlink_deals_snapshot EIGHT times and agents SEVEN
 // times — several against the legacy `deals` table, and derived headline counts
@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 
 interface HomeData {
   as_of: string;
+  today: { personal_ap: number; personal_policies: number; team_ap: number; team_policies: number };
   mtd: { personal_ap: number; personal_policies: number; team_ap: number; team_policies: number; goal: number; pct_to_goal: number; days_left: number };
   lifetime: { ap: number; policies: number };
   trend: Array<{ m: string; ap: number; policies: number }>;
@@ -59,8 +60,8 @@ function windowFor(key: PeriodKey, custom: { start: string; end: string }): { st
       const s = new Date(t.getFullYear(), t.getMonth() - 1, 1);
       return { start: iso(s), end: iso(mStart), label: s.toLocaleDateString(undefined, { month: "long", year: "numeric" }) };
     }
-    case "last_30":  return { start: iso(addDays(t, -30)), end: iso(addDays(t, 1)), label: "Last 30 days" };
-    case "last_90":  return { start: iso(addDays(t, -90)), end: iso(addDays(t, 1)), label: "Last 90 days" };
+    case "last_30":  return { start: iso(addDays(t, -29)), end: iso(addDays(t, 1)), label: "Last 30 days" };
+    case "last_90":  return { start: iso(addDays(t, -89)), end: iso(addDays(t, 1)), label: "Last 90 days" };
     case "ytd":      return { start: iso(new Date(t.getFullYear(), 0, 1)), end: iso(addDays(t, 1)), label: `${t.getFullYear()} to date` };
     case "custom":   return {
       start: custom.start,
@@ -124,6 +125,7 @@ export function AgentCloudHome() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["apex-home-dashboard", win.start, win.end],
     staleTime: 120_000,
+    refetchInterval: 300_000,
     enabled: period !== "custom" || customIsValid,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("apex_admin_home_dashboard" as never, {
@@ -197,6 +199,9 @@ export function AgentCloudHome() {
   }
 
   const { mtd, needs_attention: na, roster, policy_status } = data;
+  // Zero fallback keeps the page renderable during the short rolling-deploy
+  // window where a browser can still hold the prior RPC response shape.
+  const daily = data.today ?? { personal_ap: 0, personal_policies: 0, team_ap: 0, team_policies: 0 };
   const attention = [
     na.lapse_pending > 0 && { label: `${na.lapse_pending} policies pending lapse`, to: "/dashboard/retention", tone: "text-amber-500" },
     na.dormant_producers > 0 && { label: `${na.dormant_producers} producers dormant 45+ days`, to: "/dashboard/team", tone: "text-rose-400" },
@@ -237,14 +242,29 @@ export function AgentCloudHome() {
         )}
       </div>
 
-      {/* PRODUCTION BLOCK + MTD ALP */}
+      {/* TODAY — fixed Phoenix business-day window, independent of the picker. */}
+      <Card className="border-primary/25 bg-primary/[0.035]">
+        <CardContent className="p-0">
+          <div className="border-b border-border px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Today&rsquo;s production · Phoenix</p>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4">
+            <Stat label="Personal ALP today" value={money(daily.personal_ap)} sub="your sales" />
+            <Stat label="Personal policies today" value={String(daily.personal_policies)} sub="your policies" />
+            <Stat label="Agency ALP today" value={money(daily.team_ap)} sub="you + team" />
+            <Stat label="Agency policies today" value={String(daily.team_policies)} sub="you + team" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* SELECTED PERIOD PRODUCTION + ALP */}
       <div className="grid gap-3 lg:grid-cols-[minmax(0,340px)_1fr]">
         <Card>
           <CardContent className="grid grid-cols-1 gap-0 p-0 sm:grid-cols-2">
-            <Stat label="Personal production" value={money(mtd.personal_ap)} sub={win.label} />
-            <Stat label="Total production (team)" value={money(mtd.team_ap)} sub="you + downline" />
-            <Stat label="Total policies (personal)" value={String(mtd.personal_policies)} sub={win.label} />
-            <Stat label="Total policies (team)" value={String(mtd.team_policies)} sub="you + downline" />
+            <Stat label="Personal ALP · selected period" value={money(mtd.personal_ap)} sub={win.label} />
+            <Stat label="Agency ALP · selected period" value={money(mtd.team_ap)} sub={win.label} />
+            <Stat label="Personal policies · selected period" value={String(mtd.personal_policies)} sub={win.label} />
+            <Stat label="Agency policies · selected period" value={String(mtd.team_policies)} sub={win.label} />
           </CardContent>
         </Card>
         <Card>

@@ -23,4 +23,10 @@ describe("native recruiting interview contract", () => {
     expect(edge).toContain('admin.from("hh_activity").insert');
     expect(edge).toContain("activityLogged: !activityError");
   });
+
+  it("retires the legacy unversioned interview writer", () => {
+    const legacy = read("supabase/functions/interviews-outcome/index.ts");
+    expect(legacy).toContain("INTERVIEW_ENDPOINT_RETIRED");
+    expect(legacy).not.toContain('.from("hh_applicants").update');
+  });
 });

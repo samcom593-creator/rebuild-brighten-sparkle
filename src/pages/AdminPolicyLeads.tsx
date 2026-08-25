@@ -56,7 +56,7 @@ export default function AdminPolicyLeads() {
       return (row as PhcStats) ?? { total: 0, today: 0, uncalled: 0 };
     },
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   const { data: leads = [], isLoading } = useQuery<PhcLead[]>({
@@ -67,7 +67,7 @@ export default function AdminPolicyLeads() {
       return (data as PhcLead[]) ?? [];
     },
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   const filtered = useMemo(() => {

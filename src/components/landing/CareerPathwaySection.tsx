@@ -262,7 +262,7 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
     },
     enabled: gateOpen,
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   // Fall back to the same canonical numbers the LiveStatsCounterStrip uses,

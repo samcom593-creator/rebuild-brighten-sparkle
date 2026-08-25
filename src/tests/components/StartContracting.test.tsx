@@ -108,6 +108,10 @@ describe("StartContracting · after a durable acceptance", () => {
     expect(links.map((link) => link.href)).not.toContain("https://example.com/obsolete");
     expect(screen.getByRole("link", { name: /open onboarding training/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /e&o coverage/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /join team discord/i })).toHaveAttribute(
+      "href",
+      "https://discord.gg/JpUWA73UZX",
+    );
   });
 
   it("survives a reload", async () => {

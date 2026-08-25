@@ -90,7 +90,7 @@ export function LiveStatsCounterStrip() {
     },
     enabled: gateOpen || timerOpen,
     staleTime: 60_000,
-    refetchInterval: 300_000 * 60_000,
+    refetchInterval: 300_000,
   });
 
   const cached = useMemo(() => readCache(), []);

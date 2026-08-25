@@ -27,7 +27,7 @@ function onboardingResources(brandName: string) {
   {
     title: "$50K/month producer training",
     detail: `Open the ${brandName} training content library.`,
-    href: "/dashboard/recruiting/training/content",
+    href: "/dashboard/recruiting/training/library",
     icon: PlayCircle,
     internal: true,
   },

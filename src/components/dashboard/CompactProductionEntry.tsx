@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Save, Loader2, Target, DollarSign, Users, FileText, Home, Handshake, TrendingUp, Sparkles, Check, CalendarIcon, Plus, Link2, Share2 } from "lucide-react";
+import { Save, Loader2, Target, Users, FileText, Handshake, Sparkles, Check, CalendarIcon, Link2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "./ConfettiCelebration";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { format, subDays } from "date-fns";
-import { BubbleDealEntry } from "./BubbleDealEntry";
 import { BubbleStatInput } from "./BubbleStatInput";
 
 interface CompactProductionEntryProps {
@@ -28,8 +27,6 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(true);
-  const [initialDeals, setInitialDeals] = useState<{ id: string; amount: string; frequency: "monthly" | "annual" }[] | undefined>(undefined);
-  const [dealEntryKey, setDealEntryKey] = useState(0);
   const { playSound } = useSoundEffects();
   const formRef = useRef<HTMLFormElement>(null);
   
@@ -69,21 +66,6 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
             aop: data.aop || 0,
           });
 
-          // Reconstruct deal bubbles from existing AOP if there are deals
-          if (data.aop > 0 && data.deals_closed > 0) {
-            // Split AOP evenly across deals as best approximation
-            const perDeal = Math.round(Number(data.aop) / data.deals_closed);
-            const remainder = Number(data.aop) - (perDeal * (data.deals_closed - 1));
-            const deals = Array.from({ length: data.deals_closed }, (_, i) => ({
-              id: crypto.randomUUID(),
-              amount: String(i === data.deals_closed - 1 ? remainder : perDeal),
-              frequency: "annual" as const,
-            }));
-            setInitialDeals(deals);
-          } else {
-            setInitialDeals(undefined);
-          }
-          setDealEntryKey(prev => prev + 1);
         } else {
           // No existing data - reset form
           setFormData({
@@ -96,8 +78,6 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
             deals_closed: 0,
             aop: 0,
           });
-          setInitialDeals(undefined);
-          setDealEntryKey(prev => prev + 1);
         }
       } catch (err) {
         console.error("Error fetching existing production:", err);
@@ -108,12 +88,6 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
 
     fetchExistingData();
   }, [agentId, selectedDate]);
-
-  // Handle ALP from calculator
-  const handleALPChange = useCallback((alp: number) => {
-    setFormData(prev => ({ ...prev, aop: alp }));
-  }, []);
-
 
   const handleFieldChange = (key: string, value: number) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -126,59 +100,17 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
     try {
       const productionDate = format(selectedDate, "yyyy-MM-dd");
       
-      const upsertPayload = {
-        agent_id: agentId,
-        production_date: productionDate,
-        ...formData,
-        hours_called: Number(formData.hours_called),
-        aop: Number(formData.aop),
-      };
-
-      const { error } = await supabase
-        .from("daily_production")
-        .upsert(upsertPayload, {
-          onConflict: "agent_id,production_date",
-        });
-
-      if (error) {
-
-        // Fallback: use the log-production edge function (service role, bypasses RLS)
-        try {
-          const fallbackRes = await supabase.functions.invoke("log-production", {
-            body: {
-              action: "submit",
-              agentId,
-              date: productionDate,
-              productionData: formData,
-            },
-          });
-          if (fallbackRes.error) throw fallbackRes.error;
-          if (fallbackRes.data?.error) throw new Error(fallbackRes.data.error);
-        } catch (fallbackErr: any) {
-          console.error("Edge function fallback also failed:", fallbackErr);
-          toast.error("Failed to save numbers. Please try again or contact your manager.");
-          setSaving(false);
-          return;
-        }
-      }
-
-      // Auto-mark daily_sale attendance if deals > 0
-      if (formData.deals_closed > 0) {
-        try {
-          await supabase
-            .from("agent_attendance")
-            .upsert({
-              agent_id: agentId,
-              attendance_date: productionDate,
-              attendance_type: "daily_sale" as any,
-              status: "present" as any,
-            }, {
-              onConflict: "agent_id,attendance_date,attendance_type",
-            });
-        } catch (attErr) {
-          console.error("Failed to auto-mark daily_sale:", attErr);
-        }
-      }
+      const result = await supabase.functions.invoke("log-production", {
+        body: { action: "submit", agentId, date: productionDate, productionData: formData },
+      });
+      if (result.error) throw result.error;
+      if (result.data?.error) throw new Error(result.data.error);
+      const canonical = result.data?.production ?? { deals_closed: 0, aop: 0 };
+      setFormData((current) => ({
+        ...current,
+        deals_closed: Number(canonical.deals_closed || 0),
+        aop: Number(canonical.aop || 0),
+      }));
 
       // Success flash
       setShowSuccess(true);
@@ -186,7 +118,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
 
       // Celebration!
       setShowConfetti(true);
-      if (formData.aop >= 5000) {
+      if (canonical.aop >= 5000) {
         playSound("celebrate");
       } else {
         playSound("success");
@@ -199,13 +131,13 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
             Numbers Saved!
           </span>
           <span className="text-sm opacity-80">
-            {formData.deals_closed} deals • ${Number(formData.aop).toLocaleString()} ALP
+            {canonical.deals_closed} deals • ${Number(canonical.aop).toLocaleString()} ALP
           </span>
         </div>
       );
 
       // Trigger notifications after confetti completes (deal alerts moved to daily leaderboard)
-      if (formData.deals_closed > 0) {
+      if (canonical.deals_closed > 0) {
         setTimeout(async () => {
           try {
             // // Batch notifications (deal alert removed - now sent as daily leaderboard at 9 PM)
@@ -213,8 +145,8 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
               supabase.functions.invoke("check-daily-awards", {
                 body: {
                   agentId,
-                  alp: Number(formData.aop),
-                  deals: formData.deals_closed,
+                  alp: Number(canonical.aop),
+                  deals: canonical.deals_closed,
                   date: productionDate,
                 },
               }),
@@ -241,8 +173,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
               supabase.functions.invoke("notify-production-submitted", {
                 body: {
                   agentId,
-                  agentName: agentName || "Agent",
-                  productionData: formData,
+                  date: productionDate,
                 },
               }),
             ]);
@@ -255,8 +186,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
         supabase.functions.invoke("notify-production-submitted", {
           body: {
             agentId,
-            agentName: agentName || "Agent",
-            productionData: formData,
+            date: productionDate,
           },
         }).catch(err => console.error("Failed to send notification:", err));
       }
@@ -264,7 +194,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
       onSaved?.();
     } catch (error) {
       console.error("Error saving production:", error);
-      toast.error("Failed to save numbers");
+      toast.error(error instanceof Error ? error.message : "Failed to save numbers");
     } finally {
       setSaving(false);
     }
@@ -276,7 +206,6 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
     { key: "hours_called", label: "Pages Called", icon: FileText, step: 1, emoji: "📄" },
     { key: "referrals_caught", label: "Referrals", icon: Users, emoji: "👥" },
     { key: "referral_presentations", label: "Ref. Pres.", icon: Handshake, emoji: "🤝" },
-    { key: "deals_closed", label: "Closes", icon: TrendingUp, emoji: "🏆" },
   ];
 
   const totalALP = Number(formData.aop) || 0;
@@ -390,21 +319,8 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
               }}
               className="space-y-6"
             >
-              {/* Deal Entry Section - Premium Bubble System */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-white dark:bg-card flex items-center justify-center">
-                    <TrendingUp className="h-4 w-4 text-primary" />
-                  </div>
-                  <h3 className="text-sm font-bold">💰 Deal Amounts</h3>
-                  <p className="text-[10px] text-muted-foreground">Enter each deal amount below</p>
-                </div>
-                
-                <BubbleDealEntry
-                  key={dealEntryKey}
-                  onALPChange={handleALPChange}
-                  initialDeals={initialDeals}
-                />
+              <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+                Sales, policies, and ALP sync automatically from Post a Deal and the live production book. Log activity only here.
               </div>
 
               {/* Activity Stats - Bubble Format */}

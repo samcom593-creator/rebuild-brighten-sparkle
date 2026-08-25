@@ -2,182 +2,115 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
+const url = Deno.env.get("SUPABASE_URL") ?? "";
+const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const resendKey = Deno.env.get("RESEND_API_KEY") ?? "";
+if (!url || !serviceKey) throw new Error("Missing Supabase configuration");
+const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-interface ProductionData {
-  presentations: number;
-  passed_price: number;
-  hours_called: number;
-  referrals_caught: number;
-  booked_inhome_referrals: number;
-  referral_presentations: number;
-  deals_closed: number;
-  aop: number;
+function phoenixToday() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Phoenix", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
-
-interface RequestBody {
-  agentId: string;
-  agentName: string;
-  productionData: ProductionData;
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character] ?? character));
 }
-
-async function sendPush(userIds: string[], title: string, body: string, url: string) {
-  try {
-    const validIds = userIds.filter(Boolean);
-    if (validIds.length === 0) return;
-    await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${serviceRoleKey}` },
-      body: JSON.stringify({ userIds: validIds, title, body, url }),
-    });
-  } catch (e) {
-    console.error("Push failed:", e);
+async function allowedAgentIds(userId: string, roles: Set<string>) {
+  if (roles.has("admin")) return null;
+  const { data: roots, error: rootError } = await admin.from("agents").select("id").eq("user_id", userId);
+  if (rootError) throw rootError;
+  const allowed = new Set((roots ?? []).map((row) => String(row.id)));
+  if (roles.has("manager") && allowed.size) {
+    const { data: agents, error } = await admin.from("agents").select("id,manager_id,invited_by_manager_id").limit(3000);
+    if (error) throw error;
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const agent of agents ?? []) {
+        if (allowed.has(agent.id)) continue;
+        if ((agent.manager_id && allowed.has(agent.manager_id)) || (agent.invited_by_manager_id && allowed.has(agent.invited_by_manager_id))) {
+          allowed.add(agent.id); changed = true;
+        }
+      }
+    }
   }
+  return allowed;
+}
+async function sendPush(userIds: string[], title: string, body: string) {
+  if (!userIds.length) return { skipped: true };
+  const response = await fetch(`${url}/functions/v1/send-push-notification`, {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+    body: JSON.stringify({ userIds: [...new Set(userIds)], title, body, url: "/numbers" }),
+  });
+  if (!response.ok) throw new Error(`Push failed (${response.status})`);
+  return { status: response.status };
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+  let claimId: string | null = null;
   try {
-    const { agentId, agentName, productionData }: RequestBody = await req.json();
-    console.log("Production submitted notification for:", agentName);
+    const header = req.headers.get("Authorization") ?? "";
+    if (!header.startsWith("Bearer ")) return json({ error: "unauthorized" }, 401);
+    const { data: auth, error: authError } = await admin.auth.getUser(header.slice(7));
+    if (authError || !auth.user?.id) return json({ error: "invalid token" }, 401);
+    const { data: roleRows, error: roleError } = await admin.from("user_roles").select("role").eq("user_id", auth.user.id);
+    if (roleError) throw roleError;
+    const roles = new Set((roleRows ?? []).map((row) => String(row.role)));
+    if (!["admin", "manager", "agent"].some((role) => roles.has(role))) return json({ error: "forbidden" }, 403);
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const agentId = String(body.agentId ?? "");
+    const productionDate = String(body.date ?? phoenixToday());
+    if (!/^[0-9a-f-]{36}$/i.test(agentId) || !/^\d{4}-\d{2}-\d{2}$/.test(productionDate)) return json({ error: "invalid request" }, 400);
+    const allowed = await allowedAgentIds(auth.user.id, roles);
+    if (allowed !== null && !allowed.has(agentId)) return json({ error: "forbidden" }, 403);
 
-    // Get agent's user_id and manager
-    const { data: agentRecord } = await supabase
-      .from("agents")
-      .select("user_id, invited_by_manager_id")
-      .eq("id", agentId)
-      .maybeSingle();
+    const { data: claim, error: claimError } = await admin.from("production_submission_notifications")
+      .insert({ agent_id: agentId, production_date: productionDate, status: "pending" }).select("id").maybeSingle();
+    if (claimError?.code === "23505") return json({ success: true, replay: true });
+    if (claimError || !claim) throw claimError ?? new Error("Unable to claim notification");
+    claimId = claim.id;
 
-    // Send push to agent + manager
-    const pushTargets: string[] = [];
-    if (agentRecord?.user_id) pushTargets.push(agentRecord.user_id);
-
+    const [{ data: agent, error: agentError }, { data: daily, error: dailyError }, { data: production, error: productionError }] = await Promise.all([
+      admin.from("agents").select("display_name,user_id,manager_id,invited_by_manager_id").eq("id", agentId).single(),
+      admin.from("daily_production").select("presentations").eq("agent_id", agentId).eq("production_date", productionDate).maybeSingle(),
+      admin.from("v_production_unified").select("annual_premium").eq("agent_id", agentId).eq("posted_date", productionDate).limit(3000),
+    ]);
+    if (agentError) throw agentError;
+    if (dailyError) throw dailyError;
+    if (productionError) throw productionError;
+    const deals = production?.length ?? 0;
+    const alp = (production ?? []).reduce((sum, row) => sum + Number(row.annual_premium || 0), 0);
+    const agentName = String(agent.display_name || "Agent");
+    const managerId = agent.manager_id || agent.invited_by_manager_id;
+    let managerUserId: string | null = null;
     let managerEmail: string | null = null;
-    if (agentRecord?.invited_by_manager_id) {
-      const { data: managerAgent } = await supabase
-        .from("agents")
-        .select("user_id")
-        .eq("id", agentRecord.invited_by_manager_id)
-        .maybeSingle();
-
-      if (managerAgent?.user_id) {
-        pushTargets.push(managerAgent.user_id);
-        const { data: managerProfile } = await supabase
-          .from("profiles")
-          .select("email")
-          .eq("user_id", managerAgent.user_id)
-          .maybeSingle();
-        managerEmail = managerProfile?.email || null;
+    if (managerId) {
+      const { data: manager } = await admin.from("agents").select("user_id").eq("id", managerId).maybeSingle();
+      managerUserId = manager?.user_id ?? null;
+      if (managerUserId) {
+        const { data: profile } = await admin.from("profiles").select("email").eq("user_id", managerUserId).maybeSingle();
+        managerEmail = profile?.email ?? null;
       }
     }
-
-    await sendPush(
-      pushTargets,
-      `📊 Production Submitted`,
-      `${agentName}: ${productionData.deals_closed} deals, $${productionData.aop.toLocaleString()} ALP`,
-      "/numbers"
-    );
-
-    // Get weekly totals
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - dayOfWeek);
-    const weekStartStr = weekStart.toISOString().split("T")[0];
-
-    const { data: weeklyData } = await supabase
-      .from("daily_production")
-      .select("aop, deals_closed, presentations")
-      .eq("agent_id", agentId)
-      .gte("production_date", weekStartStr);
-
-    const weeklyALP = (weeklyData || []).reduce((sum, d) => sum + (Number(d.aop) || 0), 0);
-    const weeklyDeals = (weeklyData || []).reduce((sum, d) => sum + (d.deals_closed || 0), 0);
-    const weeklyPresentations = (weeklyData || []).reduce((sum, d) => sum + (d.presentations || 0), 0);
-    const weeklyCloseRate = weeklyPresentations > 0 ? Math.round((weeklyDeals / weeklyPresentations) * 100) : 0;
-    const todayCloseRate = productionData.presentations > 0 ? Math.round((productionData.deals_closed / productionData.presentations) * 100) : 0;
-
-    const adminEmail = "sam@apex-financial.org";
-    const recipients = managerEmail && managerEmail !== adminEmail
-      ? [adminEmail, managerEmail]
-      : [adminEmail];
-
-    const timestamp = new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "short", timeStyle: "short" });
-
-    const emailResponse = await resend.emails.send({
-      from: "APEX Production <notifications@apex-financial.org>",
-      to: recipients,
-      subject: `🔥 ${agentName} | ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} Production Report`,
-      html: `
-        <!DOCTYPE html>
-        <html><head>
-          <style>
-            body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #0f172a; color: #e2e8f0; margin: 0; padding: 20px; }
-            .container { max-width: 400px; margin: 0 auto; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 20px; padding: 28px; border: 1px solid #334155; }
-            .header { text-align: center; margin-bottom: 24px; }
-            .header h1 { color: #14b8a6; margin: 0; font-size: 28px; font-weight: 800; }
-            .header .date { font-size: 13px; color: #64748b; margin-top: 6px; }
-            .agent-name { font-size: 22px; font-weight: bold; color: #f1f5f9; text-align: center; margin: 20px 0 8px; }
-            .hero-stat { text-align: center; background: linear-gradient(135deg, #14b8a630 0%, #10b98130 100%); border-radius: 16px; padding: 24px; margin-bottom: 20px; border: 1px solid #14b8a640; }
-            .hero-value { font-size: 48px; font-weight: 800; color: #14b8a6; line-height: 1; }
-            .hero-label { font-size: 14px; color: #94a3b8; margin-top: 8px; text-transform: uppercase; letter-spacing: 1px; }
-            .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-            .stat-box { background: #1e293b; border-radius: 12px; padding: 16px 8px; text-align: center; border: 1px solid #334155; }
-            .stat-value { font-size: 24px; font-weight: bold; color: #f1f5f9; }
-            .stat-label { font-size: 10px; color: #94a3b8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-            .weekly-section { background: linear-gradient(135deg, #8b5cf620 0%, #a78bfa20 100%); border-radius: 14px; padding: 18px; border: 1px solid #8b5cf630; margin-bottom: 20px; }
-            .weekly-title { font-size: 13px; font-weight: bold; color: #a78bfa; margin-bottom: 14px; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
-            .weekly-stats { display: flex; justify-content: space-around; }
-            .weekly-stat { text-align: center; }
-            .weekly-value { font-size: 22px; font-weight: bold; color: #f1f5f9; }
-            .weekly-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; }
-            .motivation { text-align: center; padding: 20px; background: linear-gradient(135deg, #f59e0b20 0%, #fbbf2420 100%); border-radius: 14px; border: 1px solid #f59e0b30; }
-            .motivation-text { font-size: 16px; color: #fbbf24; font-weight: 600; }
-            .motivation-sub { font-size: 12px; color: #94a3b8; margin-top: 8px; }
-            .footer { text-align: center; margin-top: 24px; font-size: 11px; color: #475569; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header"><h1>🔥 PRODUCTION REPORT</h1><div class="date">${timestamp} CST</div></div>
-            <div class="agent-name">${agentName}</div>
-            <div class="hero-stat"><div class="hero-value">$${productionData.aop.toLocaleString()}</div><div class="hero-label">Today's ALP</div></div>
-            <div class="stats-grid">
-              <div class="stat-box"><div class="stat-value">${productionData.deals_closed}</div><div class="stat-label">Deals</div></div>
-              <div class="stat-box"><div class="stat-value">${productionData.presentations}</div><div class="stat-label">Presents</div></div>
-              <div class="stat-box"><div class="stat-value">${todayCloseRate}%</div><div class="stat-label">Close Rate</div></div>
-            </div>
-            <div class="weekly-section">
-              <div class="weekly-title">📈 Week Running Total</div>
-              <div class="weekly-stats">
-                <div class="weekly-stat"><div class="weekly-value">$${weeklyALP.toLocaleString()}</div><div class="weekly-label">Week ALP</div></div>
-                <div class="weekly-stat"><div class="weekly-value">${weeklyDeals}</div><div class="weekly-label">Deals</div></div>
-                <div class="weekly-stat"><div class="weekly-value">${weeklyCloseRate}%</div><div class="weekly-label">Close %</div></div>
-              </div>
-            </div>
-            <div class="motivation"><div class="motivation-text">Great work today! Keep crushing it! 🚀</div><div class="motivation-sub">Every day you show up is a day closer to your goals.</div></div>
-            <div class="footer">APEX Financial Group | Production Tracker</div>
-          </div>
-        </body></html>
-      `,
-    });
-
-    console.log("Notification sent:", emailResponse);
-    return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
-  } catch (error: any) {
-    console.error("Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    const push = await sendPush([agent.user_id, managerUserId].filter(Boolean) as string[], "Production submitted", `${agentName}: ${deals} policies, $${alp.toLocaleString()} ALP`);
+    let email: unknown = { skipped: true };
+    if (resendKey) {
+      email = await new Resend(resendKey).emails.send({
+        from: "APEX Production <notifications@apex-financial.org>",
+        to: [...new Set(["sam@apex-financial.org", managerEmail].filter(Boolean))] as string[],
+        subject: `${agentName} | Production report`,
+        html: `<h1>Production report</h1><p><strong>${escapeHtml(agentName)}</strong></p><p>${deals} policies · $${alp.toLocaleString()} ALP · ${Number(daily?.presentations || 0)} presentations</p><p>${productionDate} · America/Phoenix</p>`,
+      });
+    }
+    await admin.from("production_submission_notifications").update({ status: "delivered", completed_at: new Date().toISOString(), receipt: { push, email, deals, alp } }).eq("id", claim.id);
+    return json({ success: true, deals, alp, source: "v_production_unified" });
+  } catch (error) {
+    console.error("notify-production-submitted error", error);
+    if (claimId) await admin.from("production_submission_notifications").update({ status: "unknown_outcome", completed_at: new Date().toISOString() }).eq("id", claimId);
+    return json({ error: "request failed" }, 500);
   }
 });

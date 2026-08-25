@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@4.0.0";
-import { findAuthUserByEmail } from "../_shared/find-auth-user.ts";
+import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -87,7 +87,11 @@ const handler = async (req: Request): Promise<Response> => {
       // auth.users held 531 rows when that was measured (2026-08-12). So it could
       // only ever see the first 50 accounts and answered "no such user" for the
       // other 481, then created a duplicate. Not a future ceiling; already wrong.
-      const emailUser = (await findAuthUserByEmail(supabaseAdmin, email)).user;
+      const authLookup = await findAuthUserByEmail(supabaseAdmin as unknown as AuthUserLister, email);
+      if (!authLookup.exhaustive) {
+        throw new Error("Account lookup could not be completed. No account was created; please retry.");
+      }
+      const emailUser = authLookup.user;
 
       if (emailUser) {
         userId = emailUser.id;

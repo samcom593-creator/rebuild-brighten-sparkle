@@ -20,7 +20,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { findAuthUserByEmail } from "../_shared/find-auth-user.ts";
+import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -135,6 +135,27 @@ serve(async (req) => {
     );
   }
 
+  // Resolve the upline once and fail closed when a manager-scoped token points
+  // at a missing/deactivated row. Silently falling back to the default manager
+  // makes the recruit disappear from the link creator's account.
+  let targetManager: { id: string; user_id: string | null } | null = null;
+  if (tokenRow.target_manager_id) {
+    const { data: managerRow, error: managerErr } = await admin
+      .from("agents")
+      .select("id, user_id, is_deactivated")
+      .eq("id", tokenRow.target_manager_id)
+      .maybeSingle();
+
+    if (managerErr) {
+      console.error("target_manager_lookup_failed", managerErr);
+      return json({ ok: false, error: "target_manager_lookup_failed" }, 500);
+    }
+    if (!managerRow?.id || managerRow.is_deactivated === true) {
+      return json({ ok: false, error: "target_manager_unavailable" }, 409);
+    }
+    targetManager = { id: managerRow.id, user_id: managerRow.user_id };
+  }
+
   // ─── kind='join' branch ────────────────────────────────────────────────
   // Prospect capture: creates a public.applications row and lets the
   // existing DB triggers fan out (calendly + prospect_whatsapp for
@@ -157,6 +178,10 @@ serve(async (req) => {
         license_status: licensedJoin ? "licensed" : "unlicensed",
         nipr_number,
         status: "new",
+        assigned_agent_id: targetManager?.id ?? null,
+        referral_manager_id: targetManager?.id ?? null,
+        recruiter_id: targetManager?.id ?? null,
+        hiring_manager_user_id: targetManager?.user_id ?? null,
         referral_source: `magic_join_link:${(tokenRow.created_by ?? "unknown").toString().slice(0, 8)}`,
       })
       .select("id")
@@ -218,8 +243,14 @@ serve(async (req) => {
   //    A comment cannot notice that it has expired; the pagination can't expire.
   let authUserId: string | null = null;
   try {
-    const lookup = await findAuthUserByEmail(admin, email);
-    if (lookup.user) authUserId = lookup.user.id;
+    // This function's newer supabase-js release types rpc() as a thenable
+    // PostgREST builder; the shared helper intentionally stays SDK-agnostic.
+    const authLookup = await findAuthUserByEmail(admin as unknown as AuthUserLister, email);
+    if (!authLookup.exhaustive) {
+      console.error("auth_lookup_incomplete", { email, pagesScanned: authLookup.pagesScanned });
+      return json({ ok: false, error: "lookup_failed" }, 500);
+    }
+    if (authLookup.user) authUserId = authLookup.user.id;
   } catch (e) {
     // The old code logged the list failure and carried on with "not found",
     // which turns a transient auth outage into a duplicate account. A dedupe
@@ -275,9 +306,10 @@ serve(async (req) => {
       .update({
         status: "active",
         license_status: licensed ? "licensed" : "unlicensed",
-        onboarding_stage: licensed ? "live" : "pre_licensed",
+        onboarding_stage: licensed ? "onboarding" : "pre_licensed",
         display_name: full_name,
-        manager_id: tokenRow.target_manager_id ?? null,
+        manager_id: targetManager?.id ?? null,
+        invited_by_manager_id: targetManager?.id ?? null,
         start_date: new Date().toISOString().slice(0, 10),
         ...(nipr_number ? { nipr_number } : {}),
       })
@@ -297,9 +329,10 @@ serve(async (req) => {
         user_id: authUserId,
         status: "active",
         license_status: licensed ? "licensed" : "unlicensed",
-        onboarding_stage: licensed ? "live" : "pre_licensed",
+        onboarding_stage: licensed ? "onboarding" : "pre_licensed",
         display_name: full_name,
-        manager_id: tokenRow.target_manager_id ?? null,
+        manager_id: targetManager?.id ?? null,
+        invited_by_manager_id: targetManager?.id ?? null,
         start_date: new Date().toISOString().slice(0, 10),
         ...(nipr_number ? { nipr_number } : {}),
       })

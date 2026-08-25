@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { emailPattern } from "../_shared/like-escape.ts";
 import { resolveOne } from "../_shared/resolve-one.ts";
-import { findAuthUserByEmail } from "../_shared/find-auth-user.ts";
+import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -177,7 +177,10 @@ const handler = async (req: Request): Promise<Response> => {
     // Check if auth user already exists. Pages until found or the table ends;
     // a single page of 1000 was one growth spurt from reading "no account" for
     // somebody who has one, and then trying to create it again.
-    const authLookup = await findAuthUserByEmail(supabaseAdmin, normalizedEmail);
+    const authLookup = await findAuthUserByEmail(supabaseAdmin as unknown as AuthUserLister, normalizedEmail);
+    if (!authLookup.exhaustive) {
+      throw new Error("Account lookup could not be completed. No account was created; please retry.");
+    }
     const existingAuthUser = authLookup.user;
 
     let userId: string;

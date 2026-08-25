@@ -36,6 +36,7 @@ type Accepted = {
   intake_id: string;
   status: string;
   review_reason: string | null;
+  onboarding_email_sent?: boolean;
 };
 
 const FIELDS: Array<{ name: ContractingField; label: string; type: string; autoComplete: string; inputMode?: "text" | "tel" | "numeric" | "email" }> = [
@@ -147,6 +148,7 @@ export default function StartContracting() {
         intake_id: result.intake_id,
         status: result.status ?? "accepted",
         review_reason: result.review_reason ?? null,
+        onboarding_email_sent: result.onboarding_email_sent === true,
       };
       setAccepted(next);
       try {
@@ -161,7 +163,7 @@ export default function StartContracting() {
   };
 
   const heading = useMemo(
-    () => (accepted ? "You're in the queue" : "Start contracting with APEX"),
+    () => (accepted ? "Your account is ready" : "Start contracting with APEX"),
     [accepted],
   );
 
@@ -182,14 +184,10 @@ export default function StartContracting() {
           <div className="flex items-start gap-3">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" aria-hidden />
             <div className="min-w-0">
-              {/* Says only what is true at this moment: the intake is durably
-                  saved and the support work is queued. Nothing has been sent
-                  yet — the dispatcher has not run — so this must not claim
-                  support "has been notified". Per-destination states live on
-                  the staff view, where the receipts are. */}
               <p className="text-sm">
-                Your details are saved. Contracting support work is queued and a
-                person will pick it up.
+                {accepted.status === "needs_review"
+                  ? "We found conflicting identity details. Correct the email or NPN before account access can be issued."
+                  : `Your profile is active and contracting has started. ${accepted.onboarding_email_sent ? "A secure one-click training login was sent to your email." : "Continue directly into onboarding—there is no approval queue."}`}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
                 Reference <span className="font-mono">{accepted.intake_id.slice(0, 8)}</span>
@@ -207,15 +205,15 @@ export default function StartContracting() {
             </div>
           )}
 
-          <div className="mt-5 border-t border-border pt-5">
-            <p className="text-sm font-semibold">Next: finish setup, then training</p>
+          {accepted.status !== "needs_review" && <div className="mt-5 border-t border-border pt-5">
+            <p className="text-sm font-semibold">Next: start onboarding now</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Prepare your EFT bank letter or voided check and your active E&O certificate. Enter banking details only in a secure carrier portal.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button asChild size="sm">
-                <a href="https://apex-financial.org/dashboard/recruiting/training?tab=path">
-                  <GraduationCap className="mr-1.5 h-4 w-4" /> Open onboarding training
+                <a href="https://apex-financial.org/login">
+                  <GraduationCap className="mr-1.5 h-4 w-4" /> Sign in to onboarding
                 </a>
               </Button>
               <Button asChild size="sm" variant="outline">
@@ -229,7 +227,7 @@ export default function StartContracting() {
                 </a>
               </Button>
             </div>
-          </div>
+          </div>}
 
         </GlassCard>
       ) : (

@@ -33,9 +33,82 @@ import {
   pickAcceptedFields,
   rateLimitVerdict,
 } from "../_shared/intake-guard.ts";
+import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const DEFAULT_MANAGER_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
+
+async function provisionOnboarding(
+  // supabase-js does not carry this project's generated database schema inside
+  // edge functions, so an inferred generic collapses table writes to `never`.
+  // Runtime validation remains in Postgres; keep this boundary SDK-agnostic.
+  sb: any,
+  payload: { first_name: string; last_name: string; email: string; phone: string; npn: string },
+) {
+  const email = payload.email.trim().toLowerCase();
+  const fullName = `${payload.first_name.trim()} ${payload.last_name.trim()}`.trim();
+  const authLookup = await findAuthUserByEmail(sb as unknown as AuthUserLister, email);
+  if (!authLookup.exhaustive) throw new Error("account_lookup_incomplete");
+
+  let userId = authLookup.user?.id ?? null;
+  if (!userId) {
+    const { data: created, error } = await sb.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: { full_name: fullName, source: "contracting_one_link" },
+    });
+    if (error || !created.user) throw new Error(error?.message ?? "account_create_failed");
+    userId = created.user.id;
+  }
+
+  const { data: profile, error: profileError } = await sb
+    .from("profiles")
+    .upsert({ user_id: userId, email, phone: payload.phone, full_name: fullName }, { onConflict: "user_id" })
+    .select("id")
+    .single();
+  if (profileError || !profile?.id) throw new Error(profileError?.message ?? "profile_create_failed");
+
+  const { error: roleError } = await sb
+    .from("user_roles")
+    .upsert({ user_id: userId, role: "agent" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+  if (roleError) throw new Error(roleError.message);
+
+  const { data: existing, error: existingError } = await sb
+    .from("agents")
+    .select("id,manager_id,invited_by_manager_id")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (existingError) throw new Error(existingError.message);
+
+  let agentId = existing?.id ?? null;
+  const agentPatch = {
+    user_id: userId,
+    profile_id: profile.id,
+    display_name: fullName,
+    status: "active",
+    license_status: "licensed",
+    onboarding_stage: "onboarding",
+    has_training_course: true,
+    nipr_number: payload.npn,
+    manager_id: existing?.manager_id ?? DEFAULT_MANAGER_ID,
+    invited_by_manager_id: existing?.invited_by_manager_id ?? DEFAULT_MANAGER_ID,
+    start_date: new Date().toISOString().slice(0, 10),
+  };
+
+  if (agentId) {
+    const { error } = await sb.from("agents").update(agentPatch).eq("id", agentId);
+    if (error) throw new Error(error.message);
+  } else {
+    const { data: inserted, error } = await sb.from("agents").insert(agentPatch).select("id").single();
+    if (error || !inserted?.id) throw new Error(error?.message ?? "agent_create_failed");
+    agentId = inserted.id;
+  }
+
+  return { agentId };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -133,13 +206,70 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Submission is the activation event. Create/repair the licensed producer's
+  // account and issue a one-click course login in this same request. Only an
+  // identity collision is held; auto-login would otherwise expose one
+  // producer's account to another.
+  let onboarding: { agentId: string } | null = null;
+  let onboardingEmailSent = false;
+  if (result.status !== "needs_review") {
+    try {
+      onboarding = await provisionOnboarding(sb, payload);
+      // The public intake proves possession of an NPN, not possession of the
+      // email account. Send the one-click course login to that inbox instead
+      // of returning an authentication bearer token to an unauthenticated
+      // browser. The recruit still moves immediately; account access stays
+      // protected by email ownership.
+      const courseResponse = await fetch(`${SUPABASE_URL}/functions/v1/send-course-enrollment-email`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${SERVICE_KEY}`, "content-type": "application/json" },
+        body: JSON.stringify({ agentId: onboarding.agentId }),
+      });
+      let courseResult: Record<string, unknown> | null = null;
+      try {
+        courseResult = await courseResponse.json();
+      } catch (courseParseError) {
+        console.error("[submit-contracting-intake] course response was not JSON:", courseParseError);
+      }
+      if (!courseResponse.ok || courseResult?.success !== true) {
+        throw new Error(String(courseResult?.message ?? `course email returned ${courseResponse.status}`));
+      }
+      onboardingEmailSent = true;
+    } catch (provisionError) {
+      console.error("[submit-contracting-intake] onboarding provisioning failed:", provisionError);
+      return jsonResponse({ ok: false, error: "onboarding_provision_failed", intake_id: result.intake_id }, 502);
+    }
+  }
+
+  // Deliver this intake immediately. The cron is recovery, not the normal
+  // recruit experience. The filtered claim prevents unrelated work from being
+  // drained by a public submission.
+  let delivery: Record<string, unknown> | null = null;
+  try {
+    const dispatch = await fetch(`${SUPABASE_URL}/functions/v1/apex-outbox-dispatcher`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${SERVICE_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({ contractingIntakeId: result.intake_id }),
+    });
+    try {
+      delivery = await dispatch.json();
+    } catch (dispatchParseError) {
+      console.error("[submit-contracting-intake] dispatcher response was not JSON:", dispatchParseError);
+    }
+    if (!dispatch.ok) console.error("[submit-contracting-intake] immediate dispatch failed", dispatch.status, delivery);
+  } catch (dispatchError) {
+    console.error("[submit-contracting-intake] immediate dispatch unavailable:", dispatchError);
+  }
+
   return jsonResponse({
     ok: true,
     intake_id: result.intake_id,
     status: result.status,
     review_reason: result.review_reason ?? null,
     replay: result.replay ?? false,
-    // Said plainly so no caller can mistake acceptance for delivery.
-    delivery: "queued",
+    agent_id: onboarding?.agentId ?? null,
+    onboarding_ready: Boolean(onboarding?.agentId && onboardingEmailSent),
+    onboarding_email_sent: onboardingEmailSent,
+    delivery,
   });
 });

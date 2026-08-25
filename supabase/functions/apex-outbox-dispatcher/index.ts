@@ -545,10 +545,12 @@ Deno.serve(async (req) => {
 
   let requestedLimit = 20;
   let contactActionId: string | null = null;
+  let contractingIntakeId: string | null = null;
   try {
     const body = await req.json();
     requestedLimit = Number(body?.limit ?? 20);
     contactActionId = typeof body?.contactActionId === "string" ? body.contactActionId : null;
+    contractingIntakeId = typeof body?.contractingIntakeId === "string" ? body.contractingIntakeId : null;
   } catch { // empty-catch-allow:empty-cron-body
     // Empty body is valid for cron invocation.
   }
@@ -569,7 +571,13 @@ Deno.serve(async (req) => {
     }
   }
 
-  const claim = contactActionId
+  if (contractingIntakeId && !authorization.canDispatchAll) {
+    return json({ ok: false, error: "Contracting intake dispatch requires service role" }, 403);
+  }
+
+  const claim = contractingIntakeId
+    ? await sb.rpc("claim_contracting_intake_events", { p_intake_id: contractingIntakeId })
+    : contactActionId
     ? await sb.rpc("claim_apex_contact_action_event", { p_action_id: contactActionId })
     : await sb.rpc("claim_apex_outbox_events", { p_limit: limit });
   const { data: claimed, error: claimError } = claim;

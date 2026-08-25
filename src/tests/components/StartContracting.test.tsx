@@ -77,7 +77,7 @@ describe("StartContracting · validation before the network", () => {
 });
 
 describe("StartContracting · after a durable acceptance", () => {
-  it("never claims support has been notified", async () => {
+  it("activates the profile without exposing an internal queue", async () => {
     invoke.mockResolvedValue({
       data: { ok: true, intake_id: "id-1", status: "accepted" },
       error: null,
@@ -86,12 +86,9 @@ describe("StartContracting · after a durable acceptance", () => {
     fill();
     fireEvent.click(screen.getByRole("button", { name: /submit/i }));
 
-    await waitFor(() => expect(screen.getByText(/queued/i)).toBeTruthy());
-    // Nothing has been sent at this point — the dispatcher has not run. Saying
-    // "notified" would report a side effect that has not happened.
+    await waitFor(() => expect(screen.getByText(/profile is active/i)).toBeTruthy());
+    expect(screen.queryByText(/queued/i)).toBeNull();
     expect(screen.queryByText(/has been notified/i)).toBeNull();
-    expect(screen.queryByText(/delivered/i)).toBeNull();
-    expect(screen.queryByText(/sent/i)).toBeNull();
   });
 
   it("ignores an obsolete external continuation and shows only approved next steps", async () => {
@@ -103,10 +100,10 @@ describe("StartContracting · after a durable acceptance", () => {
     fill();
     fireEvent.click(screen.getByRole("button", { name: /submit/i }));
 
-    await screen.findByText(/queued/i);
+    await screen.findByText(/profile is active/i);
     const links = screen.getAllByRole("link") as HTMLAnchorElement[];
     expect(links.map((link) => link.href)).not.toContain("https://example.com/obsolete");
-    expect(screen.getByRole("link", { name: /open onboarding training/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /sign in to onboarding/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /e&o coverage/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /join team discord/i })).toHaveAttribute(
       "href",
@@ -122,12 +119,12 @@ describe("StartContracting · after a durable acceptance", () => {
     const first = render(<StartContracting />);
     fill();
     fireEvent.click(screen.getByRole("button", { name: /submit/i }));
-    await screen.findByText(/queued/i);
+    await screen.findByText(/profile is active/i);
     first.unmount();
 
     // A producer who refreshes must not see an empty form and submit again.
     render(<StartContracting />);
-    expect(screen.getByText(/queued/i)).toBeTruthy();
+    expect(screen.getByText(/profile is active/i)).toBeTruthy();
   });
 
   it("explains a held review without blaming the producer", async () => {

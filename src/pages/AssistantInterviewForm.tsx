@@ -180,6 +180,9 @@ export default function AssistantInterviewForm() {
         ok?: boolean;
         interview_id?: string;
         calendar_template_url?: string;
+        pipeline_added?: boolean;
+        confirmation_sent?: boolean;
+        warning?: string | null;
         error?: string;
       };
 
@@ -207,8 +210,9 @@ export default function AssistantInterviewForm() {
         ].slice(0, 3),
       );
       toast({
-        title: "Booked",
-        description: "Calendar event ready to add.",
+        title: body.pipeline_added === false ? "Booked · staff review needed" : "Booked into the interview queue",
+        description: body.warning ?? (body.confirmation_sent ? "Candidate confirmation delivered; calendar event ready." : "Calendar event ready to add."),
+        variant: body.pipeline_added === false ? "destructive" : undefined,
       });
 
       // Clear form for the next entry

@@ -260,6 +260,13 @@ export default function ApexCareerToolkit() {
       }),
     };
   }), [completedByAgent, journeysByAgent, matchingAgents]);
+  const pipelineStats = useMemo(() => lifecycleRows.reduce((stats, row) => {
+    if (row.snapshot.percentComplete >= 100) stats.ready += 1;
+    else if (row.snapshot.percentComplete <= 0) stats.notStarted += 1;
+    else stats.inProgress += 1;
+    if (row.snapshot.risk.tone === "failed") stats.atRisk += 1;
+    return stats;
+  }, { notStarted: 0, inProgress: 0, ready: 0, atRisk: 0 }), [lifecycleRows]);
 
   const path = selectedAgent
     ? journeysByAgent.get(subjectKey(selectedAgent))?.path ?? inferredPath(selectedAgent)
@@ -355,6 +362,17 @@ export default function ApexCareerToolkit() {
             {(toolkit.error as Error | null)?.message ?? "The Supabase workflow tables did not respond."}
           </p>
         </GlassCard>
+      )}
+
+      {!toolkit.isLoading && !toolkit.isError && lifecycleRows.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { label: "Not started", value: pipelineStats.notStarted, note: "needs first milestone", tone: "text-muted-foreground" },
+            { label: "In progress", value: pipelineStats.inProgress, note: "moving through the path", tone: "text-amber-500" },
+            { label: "Launch ready", value: pipelineStats.ready, note: "journey complete", tone: "text-emerald-500" },
+            { label: "At risk", value: pipelineStats.atRisk, note: "14+ days without progress", tone: "text-rose-500" },
+          ].map((item) => <GlassCard key={item.label} className="p-4"><p className={cn("text-2xl font-bold tabular-nums", item.tone)}>{item.value.toLocaleString()}</p><p className="mt-1 text-sm font-semibold">{item.label}</p><p className="text-xs text-muted-foreground">{item.note}</p></GlassCard>)}
+        </div>
       )}
 
       {!toolkit.isLoading && !toolkit.isError && lifecycleRows.length > 0 && (

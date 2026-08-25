@@ -1067,25 +1067,26 @@ export default function DashboardApplicants() {
       .map(([key, apps]) => ({ key, apps }));
   }, [duplicatesOnly, activeApplications]);
 
-  // 2026-07-08 MP-256: Speed-to-Lead queue — hot/new/follow-up-due-today sorted by priority signal count.
+  // Recruiting push queue — untouched applicants first, then hot/warm and due
+  // follow-ups. last_contacted_at is the only trusted contact receipt.
   const speedQueue = useMemo(() => {
-    if (!speedActive) return [] as Application[];
     const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999);
     const eligible = activeApplications.filter((app) => {
-      const isNew = !app.contacted_at && !app.terminated_at && !app.closed_at;
+      const isNew = !(app as any).last_contacted_at && !app.terminated_at && !app.closed_at;
       const isHot = app.ai_score_tier === "hot" || app.ai_score_tier === "warm";
       const nextDue = (app as any).next_action_due_at as string | null | undefined;
       const dueToday = nextDue ? new Date(nextDue) <= endOfToday : false;
-      return isNew || isHot || dueToday;
+      const reachable = (app.phone ?? "").replace(/\D/g, "").length >= 10 && !(app as any).phone_bad_at;
+      return reachable && (isNew || isHot || dueToday);
     });
     return eligible.sort((a, b) => {
       const rank = (x: Application) =>
         (x.ai_score_tier === "hot" ? 3 : x.ai_score_tier === "warm" ? 2 : 0) +
-        (!x.contacted_at ? 2 : 0);
+        (!(x as any).last_contacted_at ? 2 : 0);
       return rank(b) - rank(a);
     });
-  }, [speedActive, activeApplications]);
+  }, [activeApplications]);
 
   useEffect(() => {
     if (!speedActive) return;
@@ -1553,11 +1554,11 @@ export default function DashboardApplicants() {
             }
           }}
           className="h-10 gap-1.5 whitespace-nowrap sm:h-9"
-          aria-label={speedActive ? "Exit Speed-to-Lead workflow" : "Start Speed-to-Lead workflow"}
-          title="Auto-focus hottest, newest, and follow-up-due-today applicants back-to-back"
+          aria-label={speedActive ? "Exit recruiting push" : `Start recruiting push with ${speedQueue.length} callable applicants`}
+          title="Work untouched, hot, and follow-up-due applicants back-to-back"
         >
           <Rocket className="h-4 w-4 shrink-0" />
-          {speedActive ? "Exit Speed-to-Lead" : "Start Speed-to-Lead"}
+          {speedActive ? "Exit recruiting push" : `Recruiting push · ${speedQueue.length}`}
         </Button>
         {activeFilterChips.length > 0 && (
           <Button

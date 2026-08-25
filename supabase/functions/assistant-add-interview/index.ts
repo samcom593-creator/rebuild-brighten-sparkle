@@ -28,7 +28,7 @@
 // Token is validated via service-role client; assistant_share_tokens.is_active
 // must be true and last_used_at is bumped on every successful POST.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -194,6 +194,63 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  // The public intake used to stop at manual_interview_entries, while the live
+  // Interviews page reads hh_applicants. Mirror by an immutable import key so a
+  // retry cannot create a second candidate in the working queue.
+  let pipelineWarning: string | null = null;
+  const { data: ownerAuth } = await supabase.auth.admin.getUserById(tokenRow.owner_user_id);
+  const ownerEmail = ownerAuth.user?.email?.trim().toLowerCase() ?? "";
+  const { data: hhOwner } = ownerEmail
+    ? await supabase.from("hh_users").select("id").eq("email", ownerEmail).eq("active", true).maybeSingle()
+    : { data: null };
+  const { error: pipelineError } = await supabase.from("hh_applicants").upsert({
+    name: candidateName,
+    phone: phone || null,
+    email: email || null,
+    instagram: instagramHandle || null,
+    appointment_at: startDate.toISOString(),
+    stage: "appointment_set",
+    interview_result: "pending",
+    notes: notes || null,
+    recruiter_id: hhOwner?.id ?? null,
+    created_by: hhOwner?.id ?? null,
+    import_key: `assistant:${inserted.id}`,
+  }, { onConflict: "import_key" });
+  if (pipelineError) {
+    console.error("[assistant-add-interview] pipeline mirror failed", pipelineError.message);
+    pipelineWarning = "Booked, but the hiring queue mirror needs staff review.";
+  }
+
+  // Confirmation is evidence-based: only a verified response from the existing
+  // mail function is reported as sent. Booking remains durable if email fails.
+  let confirmationSent = false;
+  let confirmationWarning: string | null = email ? null : "No email supplied; confirmation was not sent.";
+  if (email) {
+    try {
+      const confirmationResponse = await fetch(`${SUPABASE_URL}/functions/v1/send-candidate-confirmation`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "apikey": SUPABASE_SERVICE_ROLE_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          interview_id: inserted.id,
+          candidate_email: email,
+          candidate_name: candidateName,
+          scheduled_at: startDate.toISOString(),
+        }),
+      });
+      const confirmation = await confirmationResponse.json().catch(() => ({})) as { ok?: boolean; sent?: boolean; error?: string; warning?: string };
+      confirmationSent = confirmationResponse.ok && confirmation.ok === true && confirmation.sent === true;
+      if (!confirmationSent) confirmationWarning = "Booked, but email confirmation needs staff review.";
+      else if (confirmation.warning) confirmationWarning = confirmation.warning;
+    } catch (error) {
+      console.error("[assistant-add-interview] confirmation failed", error);
+      confirmationWarning = "Booked, but email confirmation needs staff review.";
+    }
+  }
+
   // Bump last_used_at — fire-and-forget; failure here does not fail the request
   await supabase
     .from("assistant_share_tokens")
@@ -224,5 +281,8 @@ Deno.serve(async (req: Request) => {
     ok: true,
     interview_id: inserted.id,
     calendar_template_url: calendarTemplateUrl,
+    pipeline_added: !pipelineWarning,
+    confirmation_sent: confirmationSent,
+    warning: [pipelineWarning, confirmationWarning].filter(Boolean).join(" ") || null,
   });
 });

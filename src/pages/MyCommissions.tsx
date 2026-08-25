@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Wallet, Loader2, AlertCircle } from "lucide-react";
@@ -25,12 +26,30 @@ type LedgerRow = {
   source?: "ledger" | "estimate";
 };
 
+type CommissionTypes = {
+  direct_ytd: number;
+  override_pending: number;
+  trail_pending: number;
+  renewal_pending: number;
+};
+
 export default function MyCommissions() {
   const { user } = useAuth();
   const [agentId, setAgentId] = useState<string | null>(null);
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(100);
+  const commissionTypes = useQuery({
+    queryKey: ["my-commission-types", user?.id],
+    enabled: Boolean(user?.id),
+    staleTime: 120_000,
+    queryFn: async () => {
+      const month = new Date().toISOString().slice(0, 7) + "-01";
+      const { data, error } = await supabase.rpc("finances_overview" as never, { p_scope: "mine", p_month: month } as never);
+      if (error) throw error;
+      return (data as unknown as { commission_types?: CommissionTypes })?.commission_types ?? null;
+    },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -165,6 +184,20 @@ export default function MyCommissions() {
               </div>
             </GlassCard>
           )}
+
+          <div>
+            <div className="mb-2 flex items-end justify-between gap-3"><div><h2 className="text-sm font-semibold">Commission types</h2><p className="text-xs text-muted-foreground">Live source-backed estimates; payout ledger receipts remain authoritative.</p></div></div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+              {[
+                ["Direct YTD", commissionTypes.data?.direct_ytd, "saved comp level"],
+                ["Advance pay", commissionTypes.data ? commissionTypes.data.direct_ytd * 0.75 : null, "75% estimate"],
+                ["Overrides", commissionTypes.data?.override_pending, "team spread pending"],
+                ["Trail", commissionTypes.data?.trail_pending, "as-earned tail"],
+                ["Renewal", commissionTypes.data?.renewal_pending, "renewal estimate"],
+                ["Chargebacks", totalClawed, `${clawed.length} ledger row${clawed.length === 1 ? "" : "s"}`],
+              ].map(([label, value, detail]) => <GlassCard key={String(label)} className="p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-bold tabular-nums">{value === null || value === undefined ? "—" : `$${Number(value).toLocaleString(undefined,{maximumFractionDigits:0})}`}</p><p className="mt-1 text-[10px] text-muted-foreground">{detail}</p></GlassCard>)}
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <GlassCard className="p-4">

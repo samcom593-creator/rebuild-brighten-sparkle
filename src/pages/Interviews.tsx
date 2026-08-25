@@ -4,6 +4,7 @@ import { format, isPast, differenceInCalendarDays } from "date-fns";
 import {
   Building2, CalendarClock, CheckCircle2, ChevronDown, Instagram, Mail,
   MessageSquare, Phone, RefreshCw, RotateCcw, Search, UserCheck, UserX,
+  Copy, ExternalLink, Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -145,6 +146,20 @@ export default function Interviews() {
     staleTime: 60_000,
   });
 
+  const shareToken = useQuery({
+    queryKey: ["assistant-interview-share-token"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("assistant_share_tokens" as never)
+        .select("token,label,last_used_at").eq("is_active", true).limit(1).maybeSingle();
+      if (error) throw error;
+      return data as unknown as { token: string; label: string; last_used_at: string | null } | null;
+    },
+    staleTime: 5 * 60_000,
+  });
+  const shareUrl = shareToken.data?.token
+    ? `${window.location.origin}/assistant/interviews?t=${shareToken.data.token}`
+    : null;
+
   const now = new Date();
   const applicants = pipeline.data?.applicants ?? [];
   const overdue = applicants.filter((row) => row.appointment_at && isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage) && row.stage !== "interview_complete");
@@ -202,6 +217,22 @@ export default function Interviews() {
           { label: "Hired", value: pipeline.data?.counts.hired ?? 0, detail: "onboarding handoff", tone: "text-success" },
         ].map((item) => <div key={item.label} className="rounded-lg border border-border bg-card p-4"><p className={`text-3xl font-bold tabular-nums ${item.tone}`}>{item.value.toLocaleString()}</p><p className="mt-1 text-sm font-semibold">{item.label}</p><p className="text-xs text-muted-foreground">{item.detail}</p></div>)}
       </div>
+
+      {shareUrl && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-sm font-semibold"><Link2 className="h-4 w-4 text-primary" /> Candidate booking link</p>
+              <p className="mt-1 text-xs text-muted-foreground">Send one link. The candidate enters their details, lands in this queue, and receives an email confirmation when delivery succeeds.</p>
+              <p className="mt-2 truncate font-mono text-[11px] text-muted-foreground">{shareUrl}</p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button variant="outline" onClick={async () => { await navigator.clipboard.writeText(shareUrl); toast.success("Candidate link copied"); }}><Copy className="h-4 w-4" /> Copy link</Button>
+              <Button asChild><a href={shareUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Open</a></Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:w-80">

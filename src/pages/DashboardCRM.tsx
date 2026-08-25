@@ -7,7 +7,7 @@ import {
   Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles,
   Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText,
   KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck,
-  MoreHorizontal, TrendingUp, Moon, BadgeCheck, ArrowUpRight, Network,
+  MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -434,8 +434,8 @@ const daysSince = (iso: string | null): number | null => {
 };
 
 type RosterSegmentKey =
-  | "all" | "producing" | "active_idle" | "never_produced"
-  | "dormant" | "unlicensed" | "inactive" | "terminated";
+  | "all" | "producing" | "never_produced"
+  | "no_longer_here" | "unlicensed" | "inactive" | "terminated";
 
 /**
  * Honest segmentation — every predicate reads a column the row actually carries,
@@ -447,22 +447,19 @@ const ROSTER_SEGMENTS: Array<{
   match: (r: RosterRow) => boolean;
 }> = [
   { key: "all", label: "All agents", icon: Users,
-    desc: "Every agent on the canonical roster — active, inactive, and terminated.",
-    match: () => true },
+    desc: "Active agents who have produced. Never-produced and departed seats stay in their own review queues.",
+    match: (r) => r.status === "active" && (r.lifetime_deals ?? 0) > 0 },
   { key: "producing", label: "Producing", icon: TrendingUp,
     desc: "Wrote business this month. This is the bench the agency's revenue is actually standing on.",
-    match: (r) => num(r.mtd_alp) > 0 },
-  { key: "active_idle", label: "Active · no production", icon: AlertTriangle,
-    desc: "On the active roster with nothing posted this month — the coaching list, longest-idle first.",
-    match: (r) => r.status === "active" && num(r.mtd_alp) <= 0 },
+    match: (r) => r.status === "active" && num(r.mtd_alp) > 0 },
   { key: "never_produced", label: "Never produced", icon: UserX,
-    desc: "Zero lifetime deals. Every row is a seat that was filled and never activated.",
-    match: (r) => (r.lifetime_deals ?? 0) === 0 },
-  { key: "dormant", label: "Dormant 60d+", icon: Moon,
-    desc: "Has written before, but nothing posted in over 60 days. Silence is the first sign of an agent leaving.",
+    desc: "Active roster seats with zero lifetime deals — the activation and coaching queue.",
+    match: (r) => r.status === "active" && (r.lifetime_deals ?? 0) === 0 },
+  { key: "no_longer_here", label: "No longer here", icon: EyeOff,
+    desc: "Previously produced but no business in 60+ days. Review these seats before formally marking them inactive or terminated.",
     match: (r) => {
       const d = daysSince(r.last_posted_date);
-      return d !== null && d >= 60;
+      return r.status === "active" && (r.lifetime_deals ?? 0) > 0 && d !== null && d >= 60;
     } },
   { key: "unlicensed", label: "Unlicensed", icon: GraduationCap,
     desc: "Still working through licensing — these seats cannot legally earn yet.",

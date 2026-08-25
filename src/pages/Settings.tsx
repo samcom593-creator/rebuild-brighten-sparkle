@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 
 type SettingMode = "profile" | "agency" | "notifications" | "security" | "billing" | "nova-pro";
 type AgencyState = { name: string; subdomain: string; accent: string; personalDeals: boolean; leaderboard: boolean; recruiting: boolean };
+type AgencyBranding = { display_name: string; subdomain: string; accent_color: string; show_personal_deals: boolean; show_leaderboard: boolean; show_recruiting: boolean; can_edit: boolean };
 type NotificationState = { achievement_alert: boolean; deal_celebration: boolean; discord_enabled: boolean; morning_huddle: boolean; weekly_summary: boolean };
 
 const nav: Array<{ key: SettingMode; label: string; icon: typeof Building2 }> = [
@@ -29,9 +30,6 @@ const nav: Array<{ key: SettingMode; label: string; icon: typeof Building2 }> = 
   { key: "billing", label: "Billing", icon: CreditCard },
   { key: "nova-pro", label: "Assistant", icon: Bot },
 ];
-
-const agencyKeys = ["agentcloud_agency_name", "agentcloud_subdomain", "agentcloud_accent_color", "agentcloud_show_personal_deals", "agentcloud_show_leaderboard", "agentcloud_show_recruiting"];
-const bool = (value: string | undefined, fallback: boolean) => value === undefined ? fallback : value === "true";
 
 function SettingsNav({ mode }: { mode: SettingMode }) {
   return <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label="Settings sections">
@@ -49,38 +47,37 @@ function ToggleRow({ label, description, checked, onCheckedChange }: { label: st
 
 function AgencySettings() {
   const brand = resolveBrand();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<AgencyState>({ name: brand.legalName, subdomain: "apex", accent: "#d4a900", personalDeals: true, leaderboard: true, recruiting: true });
   const [samplePreview, setSamplePreview] = useState(() => window.localStorage.getItem("agentcloud_sample_preview") === "true");
   const settings = useQuery({
-    queryKey: ["agentcloud-agency-settings"],
-    queryFn: async () => { const { data, error } = await supabase.from("system_settings").select("key,value").in("key", agencyKeys); if (error) throw error; return data; },
+    queryKey: ["agency-branding", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => { const { data, error } = await supabase.rpc("get_my_agency_branding" as never); if (error) throw error; return data as unknown as AgencyBranding; },
   });
   useEffect(() => {
     if (!settings.data) return;
-    const map = Object.fromEntries(settings.data.map(({ key, value }) => [key, value]));
-    setForm({ name: map.agentcloud_agency_name ?? brand.legalName, subdomain: map.agentcloud_subdomain ?? "apex", accent: map.agentcloud_accent_color ?? "#d4a900", personalDeals: bool(map.agentcloud_show_personal_deals, true), leaderboard: bool(map.agentcloud_show_leaderboard, true), recruiting: bool(map.agentcloud_show_recruiting, true) });
+    setForm({ name: settings.data.display_name ?? brand.legalName, subdomain: settings.data.subdomain ?? "apex", accent: settings.data.accent_color ?? "#d4a900", personalDeals: settings.data.show_personal_deals ?? true, leaderboard: settings.data.show_leaderboard ?? true, recruiting: settings.data.show_recruiting ?? true });
   }, [settings.data, brand.legalName]);
   const save = useMutation({
-    mutationFn: async () => { const rows = [
-      { key: agencyKeys[0], value: form.name }, { key: agencyKeys[1], value: form.subdomain }, { key: agencyKeys[2], value: form.accent },
-      { key: agencyKeys[3], value: String(form.personalDeals) }, { key: agencyKeys[4], value: String(form.leaderboard) }, { key: agencyKeys[5], value: String(form.recruiting) },
-    ]; const { error } = await supabase.from("system_settings").upsert(rows, { onConflict: "key" }); if (error) throw error; },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["agentcloud-agency-settings"] }); toast.success("Agency settings saved"); },
+    mutationFn: async () => { const { error } = await supabase.rpc("save_my_agency_branding" as never, { p_display_name: form.name, p_subdomain: form.subdomain, p_accent_color: form.accent, p_show_personal_deals: form.personalDeals, p_show_leaderboard: form.leaderboard, p_show_recruiting: form.recruiting } as never); if (error) throw error; },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["agency-branding"] }); toast.success("Agency settings saved"); },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Could not save settings"),
   });
   return <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
     <div className="space-y-4">
+      {!settings.isLoading && !settings.data?.can_edit && <div className="rounded-md border border-border bg-muted/30 p-3 text-xs text-muted-foreground">You are viewing your agency's live branding. Only the pre-wired agency owner can change it.</div>}
       <Section title="Agency identity" description="The name and color your team sees throughout the operating system.">
-        <label className="block text-xs font-medium">Agency name<Input className="mt-1.5" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
-        <div className="grid gap-4 sm:grid-cols-2"><label className="block text-xs font-medium">Workspace subdomain<Input className="mt-1.5" value={form.subdomain} onChange={(e) => setForm({ ...form, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })} /></label><label className="block text-xs font-medium">Accent color<div className="mt-1.5 flex gap-2"><Input type="color" className="h-10 w-14 p-1" value={form.accent} onChange={(e) => setForm({ ...form, accent: e.target.value })} /><Input value={form.accent} onChange={(e) => setForm({ ...form, accent: e.target.value })} /></div></label></div>
+        <label className="block text-xs font-medium">Agency name<Input disabled={!settings.data?.can_edit} className="mt-1.5" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+        <div className="grid gap-4 sm:grid-cols-2"><label className="block text-xs font-medium">Workspace subdomain<Input disabled={!settings.data?.can_edit} className="mt-1.5" value={form.subdomain} onChange={(e) => setForm({ ...form, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })} /></label><label className="block text-xs font-medium">Accent color<div className="mt-1.5 flex gap-2"><Input disabled={!settings.data?.can_edit} type="color" className="h-10 w-14 p-1" value={form.accent} onChange={(e) => setForm({ ...form, accent: e.target.value })} /><Input disabled={!settings.data?.can_edit} value={form.accent} onChange={(e) => setForm({ ...form, accent: e.target.value })} /></div></label></div>
       </Section>
       <Section title="Workspace visibility" description="Choose which operating areas appear for producers.">
         <ToggleRow label="Personal deals" description="Allow producers to see and manage their own deal pipeline." checked={form.personalDeals} onCheckedChange={(value) => setForm({ ...form, personalDeals: value })} />
         <ToggleRow label="Leaderboard" description="Show team production rankings and recognition." checked={form.leaderboard} onCheckedChange={(value) => setForm({ ...form, leaderboard: value })} />
         <ToggleRow label="Recruiting" description="Expose recruiting pipeline and funnel tools to permitted roles." checked={form.recruiting} onCheckedChange={(value) => setForm({ ...form, recruiting: value })} />
       </Section>
-      <Button onClick={() => save.mutate()} disabled={save.isPending || settings.isLoading}><Save className="mr-2 h-4 w-4" />{save.isPending ? "Saving…" : "Save agency settings"}</Button>
+      <Button onClick={() => save.mutate()} disabled={!settings.data?.can_edit || save.isPending || settings.isLoading}><Save className="mr-2 h-4 w-4" />{save.isPending ? "Saving…" : "Save agency settings"}</Button>
     </div>
     <div className="space-y-4"><Section title="White-label readiness" description="Agency-level branding controls are connected. Custom domains and outbound email branding require DNS verification."><div className="grid h-28 place-items-center rounded-md border border-dashed border-border" style={{ borderTopColor: form.accent, borderTopWidth: 4 }}><div className="text-center"><Palette className="mx-auto h-5 w-5 text-muted-foreground" /><p className="mt-2 text-sm font-semibold">{form.name || brand.legalName}</p><p className="text-xs text-muted-foreground">{form.subdomain || "workspace"}.agency</p></div></div><Button variant="outline" className="w-full" disabled>Connect custom domain</Button></Section><Section title="Add sample data" description="Preview a labelled example workspace without writing fake policies, applicants, or revenue to production."><ToggleRow label="Sample preview" description={samplePreview ? "Labelled sample preview is on for this browser." : "Production data remains unchanged."} checked={samplePreview} onCheckedChange={(value) => { setSamplePreview(value); window.localStorage.setItem("agentcloud_sample_preview", String(value)); toast.success(value ? "Sample preview enabled" : "Sample preview disabled"); }} /></Section></div>
   </div>;

@@ -97,7 +97,7 @@ export const ETHOS_COLUMNS = [
   "Agent Number",
   "Phone",
   "Email",
-  "",
+  "Comp Level",
   "Advance",
   "Organization",
 ] as const;

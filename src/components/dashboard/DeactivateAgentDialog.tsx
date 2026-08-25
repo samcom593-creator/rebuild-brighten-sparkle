@@ -116,22 +116,6 @@ export function DeactivateAgentDialog({
     }
   };
 
-  const performDirectDelete = async (targetAgentId: string) => {
-    await Promise.all([
-      supabase.from('agent_notes').delete().eq('agent_id', targetAgentId),
-      supabase.from('agent_attendance').delete().eq('agent_id', targetAgentId),
-      supabase.from('agent_goals').delete().eq('agent_id', targetAgentId),
-      supabase.from('agent_ratings').delete().eq('agent_id', targetAgentId),
-      supabase.from('onboarding_progress').delete().eq('agent_id', targetAgentId),
-      supabase.from('agent_onboarding').delete().eq('agent_id', targetAgentId),
-      supabase.from('daily_production').delete().eq('agent_id', targetAgentId),
-      supabase.from('agent_achievements').delete().eq('agent_id', targetAgentId),
-      supabase.from('plaque_awards').delete().eq('agent_id', targetAgentId),
-      supabase.from('contact_history').delete().eq('agent_id', targetAgentId),
-    ]);
-    await supabase.from('agents').delete().eq('id', targetAgentId);
-  };
-
   const handleAction = async (action: "bad_business" | "inactive" | "switch_teams" | "remove_from_system") => {
     if (action === "switch_teams" && !selectedManagerId) {
       toast.error("Please select a manager to transfer to");
@@ -167,11 +151,19 @@ export function DeactivateAgentDialog({
         playSound("success");
         toast.success(`${agentName} added to inactive agents`);
       } else if (action === "remove_from_system") {
-        // Admin bypass - direct delete without email approval
+        // Preserve production, notes, training, and audit history. "Remove"
+        // means remove from the active roster; it never hard-deletes the agent.
         if (isAdmin) {
-          await performDirectDelete(agentId);
+          const { error } = await supabase.from("agents").update({
+            status: "terminated",
+            is_deactivated: true,
+            is_inactive: true,
+            deactivation_reason: "inactive",
+            updated_at: new Date().toISOString(),
+          }).eq("id", agentId);
+          if (error) throw error;
           playSound("success");
-          toast.success(`${agentName} permanently removed from system`);
+          toast.success(`${agentName} removed from the active roster; history preserved`);
         } else {
           // Non-admins need email approval
           const { data: profile } = await supabase
@@ -326,9 +318,9 @@ export function DeactivateAgentDialog({
                   disabled={loading}
                 >
                   <Trash2 className="h-4 w-4" />
-                  Remove from System
+                  Remove from Active Roster
                   <span className="ml-auto text-xs text-muted-foreground">
-                    {isAdmin ? "Immediate" : "Email approval"}
+                    {isAdmin ? "Immediate · reversible" : "Email approval"}
                   </span>
                 </Button>
 

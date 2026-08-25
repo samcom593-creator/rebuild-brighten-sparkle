@@ -18,6 +18,7 @@ import {
 import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
 import { ProducerPulse } from "@/components/dashboard/ProducerPulse";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
+import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
 import { cn } from "@/lib/utils";
 
 // The Agent Cloud home, mirrored 1:1 against
@@ -199,9 +200,6 @@ export function AgentCloudHome() {
   }
 
   const { mtd, needs_attention: na, roster, policy_status } = data;
-  // Zero fallback keeps the page renderable during the short rolling-deploy
-  // window where a browser can still hold the prior RPC response shape.
-  const daily = data.today ?? { personal_ap: 0, personal_policies: 0, team_ap: 0, team_policies: 0 };
   const attention = [
     na.lapse_pending > 0 && { label: `${na.lapse_pending} policies pending lapse`, to: "/dashboard/retention", tone: "text-amber-500" },
     na.dormant_producers > 0 && { label: `${na.dormant_producers} producers dormant 45+ days`, to: "/dashboard/team", tone: "text-rose-400" },
@@ -212,6 +210,8 @@ export function AgentCloudHome() {
 
   return (
     <div className="space-y-5">
+      <ScopedProductionScoreboard />
+
       {/* WHAT NEEDS YOU TODAY */}
       <div>
         <div className="mb-2 flex items-center justify-between gap-3">
@@ -242,31 +242,8 @@ export function AgentCloudHome() {
         )}
       </div>
 
-      {/* TODAY — fixed Phoenix business-day window, independent of the picker. */}
-      <Card className="border-primary/25 bg-primary/[0.035]">
-        <CardContent className="p-0">
-          <div className="border-b border-border px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Today&rsquo;s production · Phoenix</p>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4">
-            <Stat label="Personal ALP today" value={money(daily.personal_ap)} sub="your sales" />
-            <Stat label="Personal policies today" value={String(daily.personal_policies)} sub="your policies" />
-            <Stat label="Agency ALP today" value={money(daily.team_ap)} sub="you + team" />
-            <Stat label="Agency policies today" value={String(daily.team_policies)} sub="you + team" />
-          </div>
-        </CardContent>
-      </Card>
-
       {/* SELECTED PERIOD PRODUCTION + ALP */}
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,340px)_1fr]">
-        <Card>
-          <CardContent className="grid grid-cols-1 gap-0 p-0 sm:grid-cols-2">
-            <Stat label="Personal ALP · selected period" value={money(mtd.personal_ap)} sub={win.label} />
-            <Stat label="Agency ALP · selected period" value={money(mtd.team_ap)} sub={win.label} />
-            <Stat label="Personal policies · selected period" value={String(mtd.personal_policies)} sub={win.label} />
-            <Stat label="Agency policies · selected period" value={String(mtd.team_policies)} sub={win.label} />
-          </CardContent>
-        </Card>
+      <div>
         <Card>
           <CardContent className="p-5">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{period === "this_month" ? "Month-to-date ALP" : "ALP · " + win.label}</p>

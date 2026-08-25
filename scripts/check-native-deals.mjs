@@ -14,12 +14,14 @@ const singleFeedMigration = read("supabase/migrations/20260825035000_single_deal
 const agencyPeriodMigration = read("supabase/migrations/20260825033000_imo_agency_period_truth.sql");
 const crmScopeMigration = read("supabase/migrations/20260825010000_crm_production_scope.sql");
 const homeDailyMigration = read("supabase/migrations/20260825060000_home_daily_production_truth.sql");
+const scopedScoreboardMigration = read("supabase/migrations/20260825065000_scoped_production_scoreboard.sql");
 const contractingReconcileMigration = read("supabase/migrations/20260825061000_contracting_roster_live_reconcile.sql");
 const dispatcher = read("supabase/functions/apex-outbox-dispatcher/index.ts");
 const discordNotify = read("supabase/functions/discord-webhook-notify/index.ts");
 const dialog = read("src/components/deals/SubmitDealDialog.tsx");
 const production = read("src/pages/MyDeals.tsx");
 const agentCloudHome = read("src/components/dashboard/AgentCloudHome.tsx");
+const scopedScoreboard = read("src/components/dashboard/ScopedProductionScoreboard.tsx");
 const imoByAgency = read("src/components/dashboard/ImoByAgency.tsx");
 const legacyPost = read("supabase/functions/post-deal/index.ts");
 
@@ -69,8 +71,11 @@ const requirements = [
   [homeDailyMigration, "from public.v_production_unified b", "home uses unified deduplicated production truth"],
   [homeDailyMigration, "where posted_date = v_today", "home daily totals use Phoenix today"],
   [contractingReconcileMigration, "'tab', 'agwnts'", "contracting targets the real live Ethos tab"],
-  [agentCloudHome, "Personal ALP today", "home shows personal daily production"],
-  [agentCloudHome, "Agency ALP today", "home shows agency daily production"],
+  [scopedScoreboardMigration, "from public.v_production_unified u", "login scoreboard uses unified production truth"],
+  [scopedScoreboardMigration, "with recursive caller_canon", "login scoreboard follows recursive hierarchy"],
+  [scopedScoreboard, "My personal production", "home shows scoped personal production"],
+  [scopedScoreboard, "My team production", "home shows scoped team production"],
+  [scopedScoreboard, "My estimated earnings", "home shows personal estimated earnings"],
   [imoByAgency, 'rpc("imo_by_agency_period"', "agency component queries the selected period"],
   [dispatcher, "response?.suppressed === true", "suppressed Discord delivery remains retryable"],
   [discordNotify, 'event_type === "deal_closed" ? 1_000 : 5', "deal alerts bypass shared five-per-hour ceiling"],

@@ -85,6 +85,7 @@ import { getCloseRate, getLiveAgentCutoffIso, LIVE_AGENT_DEAL_WINDOW_DAYS, sumAn
 import { cn } from "@/lib/utils";
 import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
 import { AgentCloudHome } from "@/components/dashboard/AgentCloudHome";
+import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 
 type IntegrationState = "ok" | "warning" | "critical" | "unavailable";
@@ -1028,12 +1029,15 @@ export default function Dashboard() {
 
   if (effectiveRole === "agent") {
     return (
-      <div className="space-y-2">
+      <div className="space-y-5">
         {isPreviewing && (
           <div className="px-4 pt-4 sm:px-6">
             <Badge variant="outline">Previewing Agent View from {actualRole}</Badge>
           </div>
         )}
+        <div className="px-4 pt-4 sm:px-6">
+          <ScopedProductionScoreboard />
+        </div>
         <Suspense fallback={<PageLoadingSkeleton />}>
           <AgentCommandDashboard />
         </Suspense>
@@ -1043,12 +1047,15 @@ export default function Dashboard() {
 
   if (effectiveRole === "manager") {
     return (
-      <div className="space-y-2">
+      <div className="space-y-5">
         {isPreviewing && (
           <div className="px-4 pt-4 sm:px-6">
             <Badge variant="outline">Previewing Manager View from {actualRole}</Badge>
           </div>
         )}
+        <div className="px-4 pt-4 sm:px-6">
+          <ScopedProductionScoreboard />
+        </div>
         <Suspense fallback={<PageLoadingSkeleton />}>
           <ManagerCommandView />
         </Suspense>

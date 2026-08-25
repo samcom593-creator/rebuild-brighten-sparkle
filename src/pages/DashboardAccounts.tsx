@@ -145,10 +145,27 @@ export default function DashboardAccounts() {
       for (const agent of validAgents) {
         if (!agentMap.has(agent.user_id!)) agentMap.set(agent.user_id!, agent);
       }
-      const userIds = Array.from(new Set([
+      const candidateUserIds = Array.from(new Set([
         ...agentMap.keys(),
         ...(rolesResult.data || []).map((role) => role.user_id),
       ]));
+
+      // Profiles/roles can survive an auth deletion. Intersect the visible
+      // candidates with auth.users through a staff-only security-definer RPC;
+      // otherwise 44 legacy records currently inflate this screen.
+      const { data: authRows, error: authError } = await (supabase.rpc as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => ReturnType<typeof supabase.rpc>)("staff_existing_auth_user_ids", {
+        p_user_ids: candidateUserIds,
+      });
+      if (authError) throw authError;
+      const authUserIds = new Set(
+        (Array.isArray(authRows) ? authRows : [])
+          .map((row) => row && typeof row === "object" && "user_id" in row ? String(row.user_id) : "")
+          .filter(Boolean),
+      );
+      const userIds = candidateUserIds.filter((userId) => authUserIds.has(userId));
 
       const profilesResult = userIds.length > 0
         ? await supabase.from("profiles").select("user_id, full_name, email, created_at").in("user_id", userIds)
@@ -212,7 +229,7 @@ export default function DashboardAccounts() {
         .sort((a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0));
 
       setAccounts(accountList);
-      setUnlinkedRecords(userIds.length - accountList.length);
+      setUnlinkedRecords(candidateUserIds.length - accountList.length);
       setStats({
         totalAccounts: accountList.length,
         managers: managersCount,
@@ -622,7 +639,7 @@ export default function DashboardAccounts() {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
           <div>
             <p className="font-medium">{unlinkedRecords} legacy record{unlinkedRecords === 1 ? "" : "s"} excluded from account totals</p>
-            <p className="mt-1 text-xs text-muted-foreground">These records have no login profile, so they cannot sign in or receive account email. Producer history remains in CRM.</p>
+            <p className="mt-1 text-xs text-muted-foreground">These records have no complete auth login/profile, so they cannot sign in or receive account email. Producer history remains in CRM.</p>
           </div>
         </div>
       )}

@@ -28,6 +28,8 @@ describe("invite-created account lifecycle", () => {
     }
     expect(accounts).toContain("parsedContractPercentage > 200");
     expect(accounts).toContain("max={200}");
+    expect(accounts).toContain('"staff_existing_auth_user_ids"');
+    expect(accounts).toContain("candidateUserIds.filter((userId) => authUserIds.has(userId))");
   });
 
   it("does not report success for a role-only login with no profile", () => {

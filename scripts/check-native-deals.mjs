@@ -16,6 +16,7 @@ const crmScopeMigration = read("supabase/migrations/20260825010000_crm_productio
 const homeDailyMigration = read("supabase/migrations/20260825060000_home_daily_production_truth.sql");
 const scopedScoreboardMigration = read("supabase/migrations/20260825065000_scoped_production_scoreboard.sql");
 const savedCompScoreboardMigration = read("supabase/migrations/20260825121500_scoreboard_saved_comp_truth.sql");
+const accountAuthTruthMigration = read("supabase/migrations/20260825122500_accounts_auth_truth.sql");
 const contractingReconcileMigration = read("supabase/migrations/20260825061000_contracting_roster_live_reconcile.sql");
 const dispatcher = read("supabase/functions/apex-outbox-dispatcher/index.ts");
 const discordNotify = read("supabase/functions/discord-webhook-notify/index.ts");
@@ -75,6 +76,8 @@ const requirements = [
   [scopedScoreboardMigration, "from public.v_production_unified u", "login scoreboard uses unified production truth"],
   [scopedScoreboardMigration, "with recursive caller_canon", "login scoreboard follows recursive hierarchy"],
   [savedCompScoreboardMigration, "a.contract_percentage between 0 and 200", "estimated earnings use saved producer comp"],
+  [accountAuthTruthMigration, "from auth.users u", "account totals require a real auth identity"],
+  [read("src/pages/DashboardAccounts.tsx"), '"staff_existing_auth_user_ids"', "accounts intersect role/agent rows with auth truth"],
   [scopedScoreboard, "My personal production", "home shows scoped personal production"],
   [scopedScoreboard, "My team production", "home shows scoped team production"],
   [scopedScoreboard, "My estimated earnings", "home shows personal estimated earnings"],

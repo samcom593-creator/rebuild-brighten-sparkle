@@ -49,7 +49,7 @@ import { execFileSync } from "node:child_process";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const SRC = join(ROOT, "src");
-const BASELINE = 524;
+const BASELINE = 517;
 const EXEMPT = new Set(["src/config/brand.ts"]);
 /** Test files never ship to a user, so brand literals in them block nothing. */
 const IS_TEST = /(\.test\.tsx?$|\.spec\.tsx?$|__tests__\/|^src\/tests\/)/;

@@ -302,12 +302,33 @@ async function deliverContact(
 }
 
 async function deliverDiscord(sb: any, event: any): Promise<string | undefined> {
-  const { data: deal, error } = await sb
-    .from("deals")
-    .select("id, agent_id, carrier_id, product_sold, face_amount, annualized_commissionable_premium, annual_premium, community_caption")
-    .eq("id", event.aggregate_id)
-    .single();
-  if (error || !deal) throw new Error(error?.message ?? "Deal no longer exists");
+  const bookPayload = event.aggregate_type === "agentlink_book_deal"
+    ? (event.payload ?? {}) as Record<string, unknown>
+    : null;
+  let deal: any;
+  if (bookPayload) {
+    if (typeof bookPayload.agentId !== "string" || !bookPayload.agentId) {
+      throw new Error("AgentLink deal event is missing its agent");
+    }
+    deal = {
+      id: event.aggregate_id,
+      agent_id: bookPayload.agentId,
+      carrier_id: null,
+      product_sold: bookPayload.productCategory ?? null,
+      face_amount: bookPayload.faceAmount ?? null,
+      annualized_commissionable_premium: bookPayload.annualPremium ?? null,
+      annual_premium: bookPayload.annualPremium ?? null,
+      community_caption: null,
+    };
+  } else {
+    const { data, error } = await sb
+      .from("deals")
+      .select("id, agent_id, carrier_id, product_sold, face_amount, annualized_commissionable_premium, annual_premium, community_caption")
+      .eq("id", event.aggregate_id)
+      .single();
+    if (error || !data) throw new Error(error?.message ?? "Deal no longer exists");
+    deal = data;
+  }
 
   const [{ data: agent }, { data: carrier }] = await Promise.all([
     sb
@@ -315,7 +336,9 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
       .select("display_name, profile:profiles(full_name, instagram_handle, avatar_url)")
       .eq("id", deal.agent_id)
       .maybeSingle(),
-    deal.carrier_id
+    bookPayload
+      ? Promise.resolve({ data: { name: bookPayload.carrier ?? null } })
+      : deal.carrier_id
       ? sb.from("carriers").select("name").eq("id", deal.carrier_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
@@ -635,6 +658,7 @@ Deno.serve(async (req) => {
         // drifted into 36 false pages a day.
         const { error: attemptUpdateError } = await sb.from("delivery_attempts").update({
           status: result.state === "manual_action_required" ? "manual_action_required" : "delivered",
+          provider_message_id: result.providerMessageId ?? null,
           finished_at: new Date().toISOString(),
         }).eq("id", attempt.id);
         if (attemptUpdateError) throw attemptUpdateError;

@@ -19,6 +19,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     functions: {
       invoke: vi.fn(),
     },
+    rpc: vi.fn(),
     from: vi.fn(() => ({
       select: vi.fn().mockReturnThis(),
       insert: vi.fn().mockReturnThis(),

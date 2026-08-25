@@ -134,20 +134,20 @@ describe("ProtectedRoute — manager bypass", () => {
 
 describe("ProtectedRoute — presenter bypass", () => {
   it("queries agents table when allowPresenters=true and user is not admin/manager", async () => {
-    const mockMaybeSingle = vi.fn().mockResolvedValue({
-      data: { is_presenting: true },
+    const mockLimit = vi.fn().mockResolvedValue({
+      data: [{ is_presenting: true }],
       error: null,
     });
     vi.mocked(supabase.from).mockReturnValue({
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
-      maybeSingle: mockMaybeSingle,
+      limit: mockLimit,
     } as any);
 
     renderRoute("/seminar", { requireAdmin: true, allowPresenters: true });
 
     await waitFor(() => {
-      expect(mockMaybeSingle).toHaveBeenCalled();
+      expect(mockLimit).toHaveBeenCalledWith(1);
     });
   });
 
@@ -155,8 +155,8 @@ describe("ProtectedRoute — presenter bypass", () => {
     vi.mocked(supabase.from).mockReturnValue({
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn().mockResolvedValue({
-        data: { is_presenting: true },
+      limit: vi.fn().mockResolvedValue({
+        data: [{ is_presenting: true }],
         error: null,
       }),
     } as any);
@@ -172,8 +172,8 @@ describe("ProtectedRoute — presenter bypass", () => {
     vi.mocked(supabase.from).mockReturnValue({
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn().mockResolvedValue({
-        data: { is_presenting: false },
+      limit: vi.fn().mockResolvedValue({
+        data: [],
         error: null,
       }),
     } as any);
@@ -189,7 +189,7 @@ describe("ProtectedRoute — presenter bypass", () => {
     vi.mocked(supabase.from).mockReturnValue({
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn().mockRejectedValue(new Error("DB error")),
+      limit: vi.fn().mockRejectedValue(new Error("DB error")),
     } as any);
 
     renderRoute("/seminar", { requireAdmin: true, allowPresenters: true });

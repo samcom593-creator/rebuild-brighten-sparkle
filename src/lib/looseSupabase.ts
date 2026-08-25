@@ -12,6 +12,8 @@ interface LooseUpdateBuilder<T> {
 interface LooseQuery<T> {
   select(columns: string): LooseQuery<T>;
   eq(column: string, value: unknown): LooseQuery<T>;
+  is(column: string, value: null | boolean): LooseQuery<T>;
+  gte(column: string, value: string | number): LooseQuery<T>;
   in(column: string, values: unknown[]): LooseQuery<T>;
   order(column: string, options?: Record<string, unknown>): LooseQuery<T>;
   limit(count: number): Promise<LooseResult<T[]>>;

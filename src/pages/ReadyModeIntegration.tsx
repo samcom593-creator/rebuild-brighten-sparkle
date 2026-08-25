@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { looseSupabase } from "@/lib/looseSupabase";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -137,7 +138,7 @@ export default function ReadyModeIntegration() {
     refetchInterval: 300_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("v_readymode_today" as any).select("id, agent_name, campaign_name, lead_phone, lead_first_name, lead_last_name, disposition, duration_seconds, recording_url, call_started_at, matched_application_id")
+        .from("v_readymode_today" as any).select("id, agent_id, agent_name, campaign_name, lead_phone, lead_first_name, lead_last_name, disposition, duration_seconds, recording_url, call_started_at, matched_application_id")
         .limit(200);
       if (error) throw error;
       return (data ?? []) as unknown as CallRow[];
@@ -153,6 +154,21 @@ export default function ReadyModeIntegration() {
         .order("calls_today", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as AgentRow[];
+    },
+  });
+
+  const unmappedAgentCalls = useQuery({
+    queryKey: ["readymode-unmapped-agent-calls-24h"],
+    refetchInterval: 300_000,
+    queryFn: async () => {
+      const { data, error } = await looseSupabase
+        .from<{ agent_raw: string | null }>("readymode_dialer_calls")
+        .select("agent_raw")
+        .is("agent_id", null)
+        .gte("call_started_at", new Date(Date.now() - 24 * 60 * 60_000).toISOString())
+        .limit(2000);
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -231,6 +247,8 @@ export default function ReadyModeIntegration() {
   const terminatedDormants = (dormantSeats.data ?? []).filter((s) => s.status === "terminated" || s.is_deactivated);
   const inactiveDormants = (dormantSeats.data ?? []).filter((s) => !s.is_deactivated && s.is_inactive);
   const activeDormants = (dormantSeats.data ?? []).filter((s) => !s.is_inactive && !s.is_deactivated && s.calls_last_30d === 0);
+  const unmappedCalls = unmappedAgentCalls.data ?? [];
+  const unmappedNames = Array.from(new Set(unmappedCalls.map((call) => call.agent_raw).filter(Boolean))) as string[];
   const cancellationText = useMemo(() => {
     if (terminatedDormants.length === 0) return "";
     const lines = terminatedDormants.map((s, i) => `${i + 1}. ${s.agent_name} — ${s.email ?? "(no email)"}`).join("\n");
@@ -306,7 +324,7 @@ export default function ReadyModeIntegration() {
       />
 
       {/* Connection status */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <StatusTile
           label="Credentials"
           status={hasCredentials && syncEnabled ? "ok" : "missing"}
@@ -332,6 +350,12 @@ export default function ReadyModeIntegration() {
           errText="0"
         />
         <StatusTile
+          label="Agent mapped"
+          status={unmappedCalls.length === 0 ? "ok" : "missing"}
+          okText="ALL"
+          errText={`${unmappedCalls.length} unmapped`}
+        />
+        <StatusTile
           label="Cancel"
           status={terminatedDormants.length === 0 ? "ok" : "missing"}
           okText="0 dormant"
@@ -347,6 +371,18 @@ export default function ReadyModeIntegration() {
               <p className="font-semibold text-rose-500 dark:text-rose-400">Last sync error</p>
               <p className="text-muted-foreground mt-1">{lastError.error_message ?? "unknown"}</p>
               <p className="text-xs text-muted-foreground mt-1">{format(parseISO(lastError.started_at), "PPp")}</p>
+            </div>
+          </div>
+        </GlassCard>
+      )}
+
+      {unmappedCalls.length > 0 && (
+        <GlassCard className="p-4 border-l-4 border-amber-500">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
+            <div className="text-sm">
+              <p className="font-semibold text-amber-600 dark:text-amber-400">{unmappedCalls.length} calls belong to unknown dialer users</p>
+              <p className="mt-1 text-muted-foreground">{unmappedNames.join(", ")}. These names do not uniquely match an active agent profile, so their activity is intentionally not credited to the wrong person.</p>
             </div>
           </div>
         </GlassCard>

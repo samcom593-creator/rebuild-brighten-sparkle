@@ -44,14 +44,14 @@ function fmtMoney(n: number | null | undefined): string {
   return `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
-// How many rows to paint at once. The header count is the TRUE total (every
-// deal off the AgentLink/Vantage sync); the list windows the DOM and grows on
+// How many rows to paint at once. The header count is the TRUE total (imported
+// Vantage production plus native APEX posts); the list windows the DOM and grows on
 // demand so a 1,700-row book never has to render all at once, and never gets
 // silently truncated to a fixed number the way the old .limit(100) did.
 const PAGE = 60;
 
-// Agent Cloud's POLICY STATUS 10-tile grid, sourced from the real book
-// (v_book_status_tiles over agentlink_book) with semantic tints.
+// Agent Cloud's POLICY STATUS 10-tile grid, sourced from the unified book
+// (v_book_status_tiles over v_production_unified) with semantic tints.
 const POLICY_STATUS: { key: string; label: string; cls: string }[] = [
   { key: "active", label: "Active", cls: "border-success/30 bg-success/10 text-success" },
   { key: "issued_not_paid", label: "Issued, Not Paid", cls: "border-success/30 bg-success/10 text-success" },
@@ -172,14 +172,17 @@ export default function MyDeals() {
   }, null);
 
   const teamView = isAdmin || isManager;
+  const productionTitle = isAdmin ? "Agency Production" : isManager ? "Team Production" : "My Deals";
+  const productionListLabel = isAdmin ? "Agency production" : isManager ? "Team production" : "My deals";
+  const productionScopeKey = isAdmin ? "agency" : scopedAgentIds.join(",") || "self-unresolved";
 
-  // Agency production dollars, straight from the book-truth view (Phoenix tz,
+  // Scoped production dollars, straight from the unified book-truth view (Phoenix tz,
   // posted-date, dead excluded — the documented source of truth). The header's
   // deal COUNT is every row; these are the ALP totals. Rolling 30d is the
   // number Sam reads production by (~$305k) — calendar MTD understates it
-  // mid-month. Admin/manager only; the view is agency-wide, not agent-scoped.
+  // mid-month. RLS gives admins the agency and managers only their team.
   const { data: book } = useQuery({
-    queryKey: ["book-truth-production"],
+    queryKey: ["book-truth-production", productionScopeKey],
     enabled: teamView,
     staleTime: 60_000,
     queryFn: async () => {
@@ -202,7 +205,7 @@ export default function MyDeals() {
 
   // Policy-status tiles from the real book (Active / In Review / Lapsed / …).
   const { data: statusTiles = [] } = useQuery({
-    queryKey: ["book-status-tiles"],
+    queryKey: ["book-status-tiles", productionScopeKey],
     enabled: teamView,
     staleTime: 60_000,
     queryFn: async () => {
@@ -213,10 +216,10 @@ export default function MyDeals() {
   });
   const statusByBucket = Object.fromEntries(statusTiles.map((t) => [t.bucket, t]));
 
-  // TOTAL IMO BY AGENCY — APEX (direct) vs Vantage (KJ Vaughn's sub-agency),
-  // rolled up from the real hierarchy in agentlink_book (v_imo_by_agency).
+  // APEX (direct) vs Vantage production, rolled up from the same scoped,
+  // unified hierarchy used by the rows and headline totals.
   const { data: imo = [] } = useQuery({
-    queryKey: ["imo-by-agency"],
+    queryKey: ["imo-by-agency", productionScopeKey],
     enabled: teamView,
     staleTime: 60_000,
     queryFn: async () => {
@@ -231,9 +234,9 @@ export default function MyDeals() {
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter max-w-5xl">
       <PageHeader
-        eyebrow="Production · My Deals"
+        eyebrow={isAdmin ? "Production · Agency" : isManager ? "Production · Team" : "Production · My Deals"}
         eyebrowIcon={<DollarSign className="h-3 w-3" />}
-        title={teamView ? "Production" : "My Deals"}
+        title={productionTitle}
         subtitle={
           <>
             Source: <span className="font-medium text-foreground">Vantage live feed</span> + native APEX
@@ -290,7 +293,7 @@ export default function MyDeals() {
       {teamView && imo.length > 0 && (
         <div>
           <div className="mb-2 flex items-baseline justify-between">
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Total IMO by Agency</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Production by Agency</p>
             <p className="text-xs text-muted-foreground">This month · {fmtMoney(imoMtdTotal)} ALP</p>
           </div>
           <Card>
@@ -300,7 +303,7 @@ export default function MyDeals() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2 font-medium">
                       {a.agency}
-                      {a.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-primary text-[10px]">YOU</Badge>}
+                      {a.is_primary && <Badge variant="outline" className="border-primary/30 bg-primary/15 text-primary text-[10px]">PRIMARY</Badge>}
                     </span>
                     <span className="font-semibold tabular-nums">{fmtMoney(a.alp)}</span>
                   </div>
@@ -342,7 +345,7 @@ export default function MyDeals() {
       <Card>
         <CardHeader>
           <CardTitle className="text-sm flex items-baseline gap-2">
-            {teamView ? "Agency production" : "My deals"}
+            {productionListLabel}
             <span className="text-muted-foreground font-normal">· {totalDeals.toLocaleString()} deals</span>
           </CardTitle>
         </CardHeader>

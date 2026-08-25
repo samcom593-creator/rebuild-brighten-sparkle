@@ -8,6 +8,7 @@ const migration = read("supabase/migrations/20260811221000_apex_native_deal_work
 const parityMigration = read("supabase/migrations/20260823140000_post_a_deal_parity.sql");
 const productsMigration = read("supabase/migrations/20260823152000_carrier_products.sql");
 const discordMigration = read("supabase/migrations/20260824040000_durable_every_deal_discord.sql");
+const crmScopeMigration = read("supabase/migrations/20260825010000_crm_production_scope.sql");
 const dispatcher = read("supabase/functions/apex-outbox-dispatcher/index.ts");
 const discordNotify = read("supabase/functions/discord-webhook-notify/index.ts");
 const dialog = read("src/components/deals/SubmitDealDialog.tsx");
@@ -44,6 +45,11 @@ const requirements = [
   [discordMigration, "on conflict (idempotency_key) do nothing", "Discord alert idempotency"],
   [dispatcher, "response?.suppressed === true", "suppressed Discord delivery remains retryable"],
   [discordNotify, 'event_type === "deal_closed" ? 1_000 : 5', "deal alerts bypass shared five-per-hour ceiling"],
+  [crmScopeMigration, "from public.v_production_unified b", "CRM uses unified production truth"],
+  [crmScopeMigration, "and public.crm_can_read_agent_scope(a.id)", "manager CRM is team scoped"],
+  [crmScopeMigration, "v_self or public.crm_can_read_agent_scope(p_agent_id)", "producer profiles are team scoped"],
+  [production, 'isManager ? "Team Production"', "manager production title"],
+  [production, '"book-truth-production", productionScopeKey', "production cache is scope keyed"],
 ];
 
 const missing = requirements.filter(([source, needle]) => !source.includes(needle));

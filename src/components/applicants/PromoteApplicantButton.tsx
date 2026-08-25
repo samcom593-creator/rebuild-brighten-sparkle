@@ -13,13 +13,9 @@ import { toast } from "sonner";
  * I took the applicant and pushed them through whatever process I need to,
  * etcetera, in the full range of optimization."
  *
- * Calls the promote_applicant_to_agent(uuid, uuid) RPC shipped in migration
- * 20260618040000. The RPC:
- *  - Creates profiles row from name/email/phone
- *  - Creates agents row · status=active · default manager=SJAMES01
- *  - Flips applications.status to 'hired'
- *  - Auto-fires existing INSERT trigger → queues course + Discord emails
- *    (only if license_status='licensed' — Sam's rule)
+ * Calls the account-owning add-agent edge function with the source application.
+ * One tap creates/repairs auth + profile + agent, preserves hierarchy, records
+ * the hire receipt, and queues the canonical contracting workflow when licensed.
  *
  * Idempotent — taps after the first one just open the existing agent.
  */
@@ -52,17 +48,64 @@ export function PromoteApplicantButton({
   const handle = async () => {
     setBusy(true);
     try {
-      const { data, error } = await (supabase as any).rpc("promote_applicant_to_agent", {
-        p_application_id: applicationId,
-        p_manager_id: managerId ?? null,
+      const [{ data: auth }, { data: app, error: appError }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from("applications").select(
+          "id,first_name,last_name,email,phone,city,state,instagram_handle,license_status,nipr_number,assigned_agent_id",
+        ).eq("id", applicationId).maybeSingle(),
+      ]);
+      if (appError || !app) throw new Error(appError?.message || "Application was not found");
+      if (!auth.user) throw new Error("Your session expired. Sign in and try again.");
+
+      const { data: actorAgent, error: actorError } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", auth.user.id)
+        .eq("is_deactivated", false)
+        .limit(1)
+        .maybeSingle();
+      if (actorError) throw actorError;
+      const resolvedManagerId = managerId ?? actorAgent?.id ?? app.assigned_agent_id;
+      if (!resolvedManagerId) throw new Error("Assign a hiring manager before creating the account");
+
+      const { data, error } = await supabase.functions.invoke("add-agent", {
+        body: {
+          firstName: app.first_name,
+          lastName: app.last_name,
+          email: app.email,
+          phone: app.phone || "",
+          managerId: resolvedManagerId,
+          licenseStatus: app.license_status,
+          niprNumber: app.nipr_number || undefined,
+          city: app.city || undefined,
+          state: app.state || undefined,
+          instagramHandle: app.instagram_handle || undefined,
+          hasTrainingCourse: app.license_status === "licensed",
+          sourceApplicationId: applicationId,
+        },
       });
-      if (error) throw error;
-      const newAgentId = (data as string | null) || null;
+      if (error) {
+        let message = error.message;
+        const context = (error as { context?: Response }).context;
+        if (context) {
+          let payload: { error?: string } | null = null;
+          try {
+            payload = await context.clone().json() as { error?: string };
+          } catch (parseError) {
+            console.error("[PromoteApplicantButton] could not parse add-agent error response", parseError);
+          }
+          message = payload?.error || message;
+        }
+        throw new Error(message);
+      }
+      if (data?.error) throw new Error(String(data.error));
+      const newAgentId = (data?.agentId as string | null) || null;
       if (!newAgentId) {
         toast.error("Promote returned no agent_id");
         return;
       }
-      toast.success(`${applicantName ?? "Applicant"} promoted to Agent`);
+      if (data?.partial) toast.warning(data.message || `${applicantName ?? "Applicant"} hired; one follow-up needs attention`);
+      else toast.success(data?.message || `${applicantName ?? "Applicant"} hired and account created`);
       onPromoted?.(newAgentId);
       // Invalidate caches that show applicants/agents.
       await Promise.all([
@@ -72,10 +115,12 @@ export function PromoteApplicantButton({
         qc.invalidateQueries({ queryKey: ["interviews-unified"] }),
         qc.invalidateQueries({ queryKey: ["interviews-pipeline"] }),
       ]);
-      // Open the new agent's drawer so Sam can immediately tap Send Course Link.
+      // Open the complete account immediately for comp, Discord, training, and
+      // contracting readiness follow-through.
       openAgent(newAgentId);
-    } catch (e: any) {
-      toast.error(`Promote failed: ${e?.message?.slice(0, 120) ?? "unknown"}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "unknown";
+      toast.error(`Promote failed: ${message.slice(0, 120)}`);
     } finally {
       setBusy(false);
     }
@@ -89,7 +134,8 @@ export function PromoteApplicantButton({
         className="h-7 w-7"
         disabled={busy}
         onClick={handle}
-        title="Promote applicant to Agent"
+        title="Hire and create account"
+        aria-label={`Hire ${applicantName ?? "applicant"} and create account`}
       >
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
       </Button>
@@ -105,7 +151,7 @@ export function PromoteApplicantButton({
       onClick={handle}
     >
       {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
-      <span className="text-xs">{label}</span>
+      <span className="text-xs">{label === "Promote" ? "Hire & create account" : label}</span>
     </Button>
   );
 }

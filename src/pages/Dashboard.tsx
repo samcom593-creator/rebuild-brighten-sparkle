@@ -116,6 +116,7 @@ interface DashboardSnapshot {
     icaSent: number;
     licensed: number;
     contracted: number;
+    hired: number;
     activated: number;
     firstSale: number;
   };
@@ -254,11 +255,11 @@ function isContractedApplication(app: any): boolean {
 async function loadApplications(role: RolePreview, userId: string, scopedAgentIds: string[]): Promise<any[]> {
   const q: any = supabase;
   if (role === "admin") {
-    return getRows(q.from("applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").eq("record_type", APPLICATION_RECORD_TYPE).is("terminated_at", null).limit(2_000), "applications-admin");
+    return getRows(q.from("applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, closed_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").eq("record_type", APPLICATION_RECORD_TYPE).is("terminated_at", null).limit(2_000), "applications-admin");
   }
 
   const visibleViaView = await getRows(
-    q.from("v_my_applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").is("terminated_at", null).limit(2_000),
+    q.from("v_my_applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, closed_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").is("terminated_at", null).limit(2_000),
     "visible-applications-view",
   );
   if (visibleViaView.length > 0) return visibleViaView;
@@ -272,7 +273,7 @@ async function loadApplications(role: RolePreview, userId: string, scopedAgentId
   filters.push(`hiring_manager_user_id.eq.${userId}`);
 
   return getRows(
-    q.from("applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").eq("record_type", APPLICATION_RECORD_TYPE).is("terminated_at", null).or(filters.join(",")).limit(2_000),
+    q.from("applications").select("id, email, status, contacted_at, last_contacted_at, first_contact_attempt_at, qualified_at, reviewed_at, contracted_at, closed_at, licensed_at, license_status, license_progress, first_deal_at, start_date, terminated_at").eq("record_type", APPLICATION_RECORD_TYPE).is("terminated_at", null).or(filters.join(",")).limit(2_000),
     "applications-scoped-fallback",
   );
 }
@@ -309,6 +310,12 @@ async function loadDashboardSnapshot(
 
   const applications = await loadApplications(role, userId, agentScope ?? []);
   const applicationIds = new Set(applications.map((app) => app.id).filter(Boolean));
+  const promotedAgents = applicationIds.size > 0
+    ? await getRows(
+        q.from("agents").select("source_application_id, user_id, first_deal_at").in("source_application_id", Array.from(applicationIds)),
+        "application-agent-lifecycle",
+      )
+    : [];
   const applicationEmails = new Set(
     applications
       .map((app) => String(app.email ?? "").toLowerCase())
@@ -508,8 +515,12 @@ async function loadDashboardSnapshot(
       icaSent: applications.filter((app) => app.status === "contracting" || app.status === "approved" || app.contracted_at).length,
       licensed: applications.filter(isLicensedApplication).length,
       contracted: applications.filter(isContractedApplication).length,
-      activated: applications.filter((app) => app.first_deal_at || app.start_date).length,
-      firstSale: applications.filter((app) => app.first_deal_at).length,
+      hired: applications.filter((app) => app.closed_at).length,
+      activated: promotedAgents.filter((agent) => agent.user_id).length,
+      // applications.first_deal_at was bulk-backfilled and is explicitly not
+      // usable as a per-recruit milestone. agents.first_deal_at is the clean
+      // producer event and source_application_id keeps it in this exact scope.
+      firstSale: promotedAgents.filter((agent) => agent.first_deal_at).length,
     },
     referrals: {
       caught: weekProduction.reduce((sum, row) => sum + Number(row.referrals_caught ?? 0), 0),
@@ -669,7 +680,8 @@ function RecruitingGrid({ stats }: { stats: DashboardSnapshot["recruiting"] }) {
     ["Advanced", stats.advanced],
     ["Contract sent", stats.icaSent],
     ["Contracted", stats.contracted],
-    ["Activated", stats.activated],
+    ["Hired", stats.hired],
+    ["Account created", stats.activated],
     ["First sale", stats.firstSale],
   ];
 

@@ -23,9 +23,24 @@ describe("invite-created account lifecycle", () => {
 
   it("surfaces account readiness and editable comp in the admin account screen", () => {
     const accounts = source("pages/DashboardAccounts.tsx");
-    for (const phrase of ["Setup readiness", "Needs Setup", "Comp Percentage", "portal_password_set", "has_discord_access", "has_training_course"]) {
+    for (const phrase of ["Setup readiness", "Needs Setup", "Comp Percentage", "portal_password_set", "has_discord_access", "has_training_course", "legacy record", "md:hidden"]) {
       expect(accounts).toContain(phrase);
     }
+    expect(accounts).toContain("parsedContractPercentage > 200");
+    expect(accounts).toContain("max={200}");
+  });
+
+  it("does not report success for a role-only login with no profile", () => {
+    const accounts = source("pages/DashboardAccounts.tsx");
+    expect(accounts).toContain("if (!editingAccount.hasProfile)");
+    expect(accounts).toContain('.select("user_id")');
+    expect(accounts).toContain("disabled={!hasReachableEmail(account)}");
+
+    const edge = source("../supabase/functions/update-user-email/index.ts");
+    expect(edge).toContain('.upsert({');
+    expect(edge).toContain('{ onConflict: "user_id" }');
+    expect(edge).toContain("auth rollback both failed");
+    expect(edge).toContain("profileSynchronized: true");
   });
 
   it("fails every account-creation path closed when auth lookup is incomplete", () => {

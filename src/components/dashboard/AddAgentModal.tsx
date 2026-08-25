@@ -179,7 +179,8 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
 
     // Licensed => NPN required. Mirrors HireLink's >= 4-digit rule so the same
     // producer can't be added with proof on one surface and none on the other.
-    if (licenseStatus === "licensed" && npn.replace(/\D+/g, "").length < 4) {
+    const normalizedNpnLength = npn.replace(/\D+/g, "").length;
+    if (licenseStatus === "licensed" && (normalizedNpnLength < 5 || normalizedNpnLength > 10)) {
       toast.error("NPN is required for a licensed agent — look it up free at nipr.com");
       return;
     }

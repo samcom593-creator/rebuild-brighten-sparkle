@@ -588,81 +588,6 @@ export default function DashboardApplicants() {
     return `${Math.floor(diffDays / 7)} week(s) ago`;
   };
 
-  const handleMarkAsHired = async (id: string) => {
-    const app = applications.find(a => a.id === id);
-    if (!app) return;
-
-    const { error } = await supabase
-      .from("applications")
-      .update({ 
-        closed_at: new Date().toISOString(),
-        contacted_at: app.contacted_at || new Date().toISOString(),
-      })
-      .eq("id", id);
-
-    if (error) {
-      toast.error("Failed to mark as hired");
-      playSound("error");
-      return;
-    }
-    
-    toast.success("Marked as hired!");
-    playSound("celebrate");
-    fetchApplications();
-    
-    supabase.functions.invoke("send-post-call-followup", {
-      body: {
-        firstName: app.first_name,
-        email: app.email,
-        licenseStatus: app.license_status,
-        actionType: "hired",
-        agentId: agentId,
-      }
-    }).then(({ error: emailErr }) => {
-      if (emailErr) console.error("Failed to send hire email:", emailErr);
-    });
-
-    supabase.functions.invoke("notify-hire-announcement", {
-      body: { applicationId: id, agentId }
-    }).then(({ error: announceErr }) => {
-      if (announceErr) console.error("Failed to send hire announcement:", announceErr);
-    });
-
-    if (app.license_status === "licensed") {
-      supabase.functions.invoke("add-agent", {
-        body: {
-          firstName: app.first_name,
-          lastName: app.last_name,
-          email: app.email,
-          phone: app.phone || "",
-          managerId: agentId,
-          licenseStatus: "licensed",
-          hasTrainingCourse: true,
-          city: app.city || undefined,
-          state: app.state || undefined,
-          instagramHandle: app.instagram_handle || undefined,
-        }
-      }).then(({ data, error: addErr }) => {
-        if (addErr) {
-          console.error("Failed to auto-create agent:", addErr);
-        } else {
-          toast.success(`${app.first_name} added as agent & enrolled in course!`);
-        }
-      });
-    } else {
-      supabase.functions.invoke("send-licensing-instructions", {
-        body: {
-          email: app.email,
-          firstName: app.first_name,
-          licenseStatus: app.license_status,
-          state: app.state,
-        }
-      }).then(({ error: licenseErr }) => {
-        if (licenseErr) console.error("Failed to send licensing instructions:", licenseErr);
-      });
-    }
-  };
-
   const handleTerminate = async () => {
     if (!terminateApp) return;
     
@@ -2074,18 +1999,6 @@ export default function DashboardApplicants() {
                                       displayMode="icon"
                                       className="h-8 w-8 text-muted-foreground hover:text-primary"
                                     />
-                                  )}
-                                  {status !== "hired" && status !== "contracted" && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-primary"
-                                      onClick={() => handleMarkAsHired(app.id)}
-                                      title="Hired"
-                                      aria-label={`Mark ${app.first_name} ${app.last_name} as hired`}
-                                    >
-                                      <UserCheck className="h-3.5 w-3.5" />
-                                    </Button>
                                   )}
                                   {status !== "hired" && status !== "contracted" && (
                                     <Button

@@ -16,6 +16,7 @@ const supabaseAdmin = createClient(
 interface UpdateEmailRequest {
   newEmail: string;
   targetUserId?: string; // Optional: Admin can change email for another user
+  fullName?: string;
 }
 
 function sanitizeHtml(str: string): string {
@@ -85,9 +86,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Parse request body
-    const { newEmail, targetUserId }: UpdateEmailRequest = await req.json();
+    const { newEmail, targetUserId, fullName }: UpdateEmailRequest = await req.json();
+    const normalizedEmail = typeof newEmail === "string" ? newEmail.trim().toLowerCase() : "";
+    const normalizedName = typeof fullName === "string" ? fullName.trim().slice(0, 120) : "";
 
-    if (!newEmail || !newEmail.includes("@")) {
+    if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       return new Response(
         JSON.stringify({ error: "Valid email address is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -121,58 +124,82 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const oldEmail = currentUserData.user.email;
-    console.log(`Updating email from ${oldEmail} to ${newEmail}`);
+    console.log(`Updating account email for user ${userIdToUpdate}`);
 
-    // Check if the new email is the same as the current one
-    if (oldEmail === newEmail) {
-      return new Response(
-        JSON.stringify({ error: "New email is the same as current email" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    const authEmailChanged = oldEmail?.trim().toLowerCase() !== normalizedEmail;
+
+    // Update the auth identity only when it actually changed. A same-email call
+    // is still useful: it repairs the legacy role-without-profile state below.
+    if (authEmailChanged) {
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        userIdToUpdate,
+        {
+          email: normalizedEmail,
+          email_confirm: true,
+        }
       );
-    }
 
-    // Update the email using Admin API (bypasses confirmation requirement)
-    const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      userIdToUpdate,
-      { 
-        email: newEmail,
-        email_confirm: true // Mark as confirmed immediately
+      if (updateError) {
+        console.error("Error updating email:", updateError);
+        return new Response(
+          JSON.stringify({ error: updateError.message || "Failed to update email" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-    );
-
-    if (updateError) {
-      console.error("Error updating email:", updateError);
-      return new Response(
-        JSON.stringify({ error: updateError.message || "Failed to update email" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
 
     console.log("Auth email updated successfully for user:", userIdToUpdate);
 
-    // Update the profiles table
+    // UPSERT, not UPDATE. One live legacy login has a role but no profile; an
+    // UPDATE affects zero rows and the old function still returned success,
+    // leaving every account screen blank forever.
+    const profileName = normalizedName
+      || String(currentUserData.user.user_metadata?.full_name ?? "").trim().slice(0, 120)
+      || null;
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
-      .update({ email: newEmail })
-      .eq("user_id", userIdToUpdate);
+      .upsert({
+        user_id: userIdToUpdate,
+        email: normalizedEmail,
+        ...(profileName ? { full_name: profileName } : {}),
+      }, { onConflict: "user_id" });
 
     if (profileError) {
       console.error("Error updating profile email:", profileError);
-      // Don't fail the request, the auth email is already updated
-    } else {
-      console.log("Profile email updated successfully for user:", userIdToUpdate);
+      // Do not claim success with auth and profile disagreeing. Roll auth back
+      // when possible; if rollback also fails, report the partial state loudly.
+      if (authEmailChanged && oldEmail) {
+        const { error: rollbackError } = await supabaseAdmin.auth.admin.updateUserById(
+          userIdToUpdate,
+          { email: oldEmail, email_confirm: true },
+        );
+        if (rollbackError) {
+          console.error("CRITICAL: profile sync and auth rollback both failed", rollbackError);
+          return new Response(
+            JSON.stringify({ error: "Auth email changed but profile synchronization failed; administrator repair required" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      }
+      return new Response(
+        JSON.stringify({ error: "Profile synchronization failed; no account change was kept" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
+    console.log("Profile email synchronized successfully for user:", userIdToUpdate);
 
     // Log the activity
     const { error: logError } = await supabaseAdmin
       .from("activity_logs")
       .insert({
         user_id: userId, // Who made the change
-        action: targetUserId && targetUserId !== userId ? "admin_email_changed" : "email_changed",
+        action: authEmailChanged
+          ? (targetUserId && targetUserId !== userId ? "admin_email_changed" : "email_changed")
+          : "account_profile_repaired",
         entity_type: "user",
         entity_id: userIdToUpdate, // Whose email was changed
         old_values: { email: oldEmail },
-        new_values: { email: newEmail, changed_by: userId },
+        new_values: { email: normalizedEmail, changed_by: userId },
       });
 
     if (logError) {
@@ -181,7 +208,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send notification emails
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    if (resendApiKey) {
+    if (resendApiKey && authEmailChanged) {
       const resend = new Resend(resendApiKey);
 
       // Get target user's name for the email
@@ -194,7 +221,7 @@ const handler = async (req: Request): Promise<Response> => {
       const userName = profile?.full_name || "Team Member";
       const isAdminChange = targetUserId && targetUserId !== userId;
       const sanitizedOldEmail = sanitizeHtml(oldEmail || "");
-      const sanitizedNewEmail = sanitizeHtml(newEmail);
+      const sanitizedNewEmail = sanitizeHtml(normalizedEmail);
       const sanitizedName = sanitizeHtml(userName);
 
       // Send alert to OLD email
@@ -230,7 +257,7 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         await resend.emails.send({
           from: "APEX Financial <notifications@apex-financial.org>",
-          to: [newEmail],
+          to: [normalizedEmail],
           subject: "Welcome! Your APEX Financial email has been updated",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -242,11 +269,11 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
           `,
         });
-        console.log("Confirmation sent to new email:", newEmail);
+        console.log("Confirmation sent to new email");
       } catch (emailError) {
         console.error("Error sending confirmation to new email:", emailError);
       }
-    } else {
+    } else if (!resendApiKey && authEmailChanged) {
       console.log("RESEND_API_KEY not configured, skipping email notifications");
     }
 
@@ -254,7 +281,8 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         message: "Email updated successfully",
-        newEmail: newEmail
+        newEmail: normalizedEmail,
+        profileSynchronized: true,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

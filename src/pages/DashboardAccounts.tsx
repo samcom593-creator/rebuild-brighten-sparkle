@@ -78,6 +78,7 @@ const errorMessage = (error: unknown, fallback: string) => error instanceof Erro
 interface AccountInfo {
   id: string;
   hasAgentRecord: boolean;
+  hasProfile: boolean;
   userId: string;
   name: string;
   email: string;
@@ -107,6 +108,7 @@ export default function DashboardAccounts() {
     pendingApproval: 0,
     needsSetup: 0,
   });
+  const [unlinkedRecords, setUnlinkedRecords] = useState(0);
 
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -174,10 +176,15 @@ export default function DashboardAccounts() {
       let pendingCount = 0;
       let needsSetupCount = 0;
 
-      const accountList: AccountInfo[] = userIds.map(userId => {
+      const accountList = userIds.map((userId): AccountInfo | null => {
         const agent = agentMap.get(userId);
         const profile = profileMap.get(userId);
         const role = (roleMap.get(userId) || "agent") as AccountRole;
+
+        // A role or legacy agent row is not itself a login. Three live legacy
+        // producer rows and one role row point at no profile/auth identity;
+        // counting them as accounts made this dashboard overstate access.
+        if (!profile) return null;
 
         if (role === "manager" || role === "va_manager") managersCount++;
         if (role === "agent" || role === "va") agentsCount++;
@@ -187,9 +194,10 @@ export default function DashboardAccounts() {
         return {
           id: agent?.id ?? userId,
           hasAgentRecord: Boolean(agent),
+          hasProfile: true,
           userId,
-          name: profile?.full_name || "—",
-          email: profile?.email || "—",
+          name: profile.full_name || "Name missing",
+          email: profile.email || "Email missing",
           role,
           status: agent?.status ?? "account only",
           createdAt: agent?.created_at ?? profile?.created_at ?? null,
@@ -200,9 +208,11 @@ export default function DashboardAccounts() {
           hasDiscordAccess: agent?.has_discord_access === true,
           hasTrainingCourse: agent?.has_training_course === true,
         };
-      }).sort((a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0));
+      }).filter((account): account is AccountInfo => account !== null)
+        .sort((a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0));
 
       setAccounts(accountList);
+      setUnlinkedRecords(userIds.length - accountList.length);
       setStats({
         totalAccounts: accountList.length,
         managers: managersCount,
@@ -221,8 +231,8 @@ export default function DashboardAccounts() {
   const handleEditAccount = (account: AccountInfo) => {
     playSound("click");
     setEditingAccount(account);
-    setEditName(account.name);
-    setEditEmail(account.email);
+    setEditName(account.hasProfile ? account.name : "");
+    setEditEmail(account.hasProfile ? account.email : "");
     setEditRole(account.role);
     setEditContractPercentage(account.contractPercentage == null ? "" : String(account.contractPercentage));
     setEditDialogOpen(true);
@@ -249,9 +259,10 @@ export default function DashboardAccounts() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
           },
-          body: JSON.stringify({ 
-            newEmail: editEmail,
-            targetUserId: editingAccount.userId
+          body: JSON.stringify({
+            newEmail: editEmail.trim().toLowerCase(),
+            targetUserId: editingAccount.userId,
+            fullName: editName.trim() || undefined,
           }),
         }
       );
@@ -261,7 +272,13 @@ export default function DashboardAccounts() {
 
       playSound("success");
       toast.success(`Email updated to ${editEmail}`);
-      fetchAccounts();
+      setEditingAccount((current) => current ? {
+        ...current,
+        hasProfile: true,
+        email: editEmail.trim().toLowerCase(),
+        name: editName.trim() || current.name,
+      } : current);
+      await fetchAccounts();
     } catch (err: unknown) {
       playSound("error");
       console.error("Error updating email:", err);
@@ -273,20 +290,27 @@ export default function DashboardAccounts() {
 
   const handleSaveEdit = async () => {
     if (!editingAccount) return;
+    if (!editingAccount.hasProfile) {
+      toast.error("Add a valid email first so this login has a complete profile");
+      return;
+    }
     const parsedContractPercentage = editContractPercentage.trim() === "" ? null : Number(editContractPercentage);
-    if (parsedContractPercentage != null && (!Number.isFinite(parsedContractPercentage) || parsedContractPercentage < 0 || parsedContractPercentage > 100)) {
-      toast.error("Comp percentage must be between 0 and 100");
+    if (parsedContractPercentage != null && (!Number.isFinite(parsedContractPercentage) || parsedContractPercentage < 0 || parsedContractPercentage > 200)) {
+      toast.error("Comp percentage must be between 0 and 200");
       return;
     }
     setIsSaving(true);
 
     try {
-      const { error: profileError } = await supabase
+      const { data: updatedProfile, error: profileError } = await supabase
         .from("profiles")
         .update({ full_name: editName })
-        .eq("user_id", editingAccount.userId);
+        .eq("user_id", editingAccount.userId)
+        .select("user_id")
+        .maybeSingle();
 
       if (profileError) throw profileError;
+      if (!updatedProfile) throw new Error("Account profile is missing; add an email before saving");
 
       if (editingAccount.hasAgentRecord) {
         const { error: agentError } = await supabase
@@ -443,15 +467,85 @@ export default function DashboardAccounts() {
   };
 
   const readinessFor = (account: AccountInfo) => {
-    if (!account.hasAgentRecord) return { checks: [], complete: 0 };
     const checks = [
+      { label: "Profile", done: account.hasProfile, icon: UserCheck },
+      ...(account.hasAgentRecord ? [
       { label: "Password", done: account.portalPasswordSet, icon: LockKeyhole },
       { label: "Discord", done: account.hasDiscordAccess, icon: MessageCircle },
       { label: "Training", done: account.licenseStatus !== "licensed" || account.hasTrainingCourse, icon: GraduationCap },
       { label: "Comp", done: account.contractPercentage != null, icon: BadgeDollarSign },
+      ] : []),
     ];
     return { checks, complete: checks.filter((check) => check.done).length };
   };
+
+  const hasReachableEmail = (account: AccountInfo) => account.hasProfile && account.email.includes("@");
+
+  const renderAccountActions = (account: AccountInfo) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label={`Actions for ${account.name}`} className="h-8 w-8">
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => handleEditAccount(account)}>
+          <Edit className="mr-2 h-4 w-4" />
+          Edit Account
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!hasReachableEmail(account)}
+          onClick={async () => {
+            try {
+              const { error } = await supabase.functions.invoke("send-password-reset", {
+                body: { email: account.email, type: "reset" },
+              });
+              if (error) throw error;
+              playSound("success");
+              toast.success(`Password reset email sent to ${account.email}`);
+            } catch (err: unknown) {
+              playSound("error");
+              toast.error(errorMessage(err, "Failed to send password reset"));
+            }
+          }}
+        >
+          <Key className="mr-2 h-4 w-4" />
+          Send Password Reset
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!hasReachableEmail(account)}
+          onClick={async () => {
+            try {
+              const { error } = await supabase.functions.invoke("generate-magic-link", {
+                body: { email: account.email, destination: "portal" },
+              });
+              if (error) throw error;
+              playSound("success");
+              toast.success(`Magic login link sent to ${account.email}`);
+            } catch (err: unknown) {
+              playSound("error");
+              toast.error(errorMessage(err, "Failed to send login link"));
+            }
+          }}
+        >
+          <Link2 className="mr-2 h-4 w-4" />
+          Send Magic Login Link
+        </DropdownMenuItem>
+        {account.hasAgentRecord && <DropdownMenuSeparator />}
+        {account.hasAgentRecord && (account.status === "active" ? (
+          <DropdownMenuItem onClick={() => handleToggleStatus(account)} className="text-destructive focus:text-destructive">
+            <UserX className="mr-2 h-4 w-4" />
+            Deactivate Account
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onClick={() => handleToggleStatus(account)} className="text-emerald-500 focus:text-emerald-500">
+            <UserCheck className="mr-2 h-4 w-4" />
+            Reactivate Account
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   if (authLoading) {
     return (
@@ -523,6 +617,16 @@ export default function DashboardAccounts() {
         ))}
       </div>
 
+      {isAdmin && unlinkedRecords > 0 && (
+        <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+          <div>
+            <p className="font-medium">{unlinkedRecords} legacy record{unlinkedRecords === 1 ? "" : "s"} excluded from account totals</p>
+            <p className="mt-1 text-xs text-muted-foreground">These records have no login profile, so they cannot sign in or receive account email. Producer history remains in CRM.</p>
+          </div>
+        </div>
+      )}
+
       {/* Search */}
       <div
         className="mb-6"
@@ -593,7 +697,60 @@ export default function DashboardAccounts() {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="space-y-3 md:hidden">
+              {filteredAccounts.map((account) => {
+                const readiness = readinessFor(account);
+                const complete = readiness.complete === readiness.checks.length;
+                return (
+                  <div key={account.id} className="rounded-lg border border-border bg-background/40 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{account.name}</p>
+                        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                          <Mail className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{account.email}</span>
+                        </div>
+                      </div>
+                      {renderAccountActions(account)}
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {getRoleBadge(account.role)}
+                      {getStatusBadge(account.status)}
+                      <Badge variant="outline" className={account.licenseStatus === "licensed" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : ""}>
+                        {account.licenseStatus}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Onboarding</p>
+                        <p className="mt-1 truncate capitalize">{account.onboardingStage.replaceAll("_", " ")}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Comp</p>
+                        <p className={cn("mt-1 font-semibold tabular-nums", account.hasAgentRecord && account.contractPercentage == null && "text-amber-400")}>
+                          {!account.hasAgentRecord ? "—" : account.contractPercentage == null ? "Not set" : `${account.contractPercentage}%`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 border-t border-border pt-3" title={readiness.checks.filter((check) => !check.done).map((check) => check.label).join(", ") || "Complete"}>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Setup readiness</span>
+                        <span className={complete ? "text-emerald-400" : "text-amber-400"}>{readiness.complete}/{readiness.checks.length} · {complete ? "Ready" : "Needs setup"}</span>
+                      </div>
+                      <div className="mt-2 flex gap-1">
+                        {readiness.checks.map((check) => <span key={check.label} className={cn("h-1.5 flex-1 rounded-full", check.done ? "bg-emerald-500" : "bg-muted")} />)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
               <Table className="min-w-[1080px]">
                 <TableHeader>
                   <TableRow>
@@ -653,80 +810,13 @@ export default function DashboardAccounts() {
                           {account.createdAt ? new Date(account.createdAt).toLocaleDateString() : "—"}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" aria-label="Account actions" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditAccount(account)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Account
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                            onClick={async () => {
-                                try {
-                                  const { error } = await supabase.functions.invoke("send-password-reset", {
-                                    body: { email: account.email, type: "reset" },
-                                  });
-                                  if (error) throw error;
-                                  playSound("success");
-                                  toast.success(`Password reset email sent to ${account.email}`);
-                                } catch (err: unknown) {
-                                  playSound("error");
-                                  toast.error(errorMessage(err, "Failed to send password reset"));
-                                }
-                              }}
-                            >
-                              <Key className="h-4 w-4 mr-2" />
-                              Send Password Reset
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={async () => {
-                                try {
-                                  const { error } = await supabase.functions.invoke("generate-magic-link", {
-                                    body: { email: account.email, destination: "portal" }
-                                  });
-                                  if (error) throw error;
-                                  playSound("success");
-                                  toast.success(`Magic login link sent to ${account.email}`);
-                                } catch (err: unknown) {
-                                  playSound("error");
-                                  toast.error(errorMessage(err, "Failed to send login link"));
-                                }
-                              }}
-                            >
-                              <Link2 className="h-4 w-4 mr-2" />
-                              Send Magic Login Link
-                            </DropdownMenuItem>
-                            {account.hasAgentRecord && <DropdownMenuSeparator />}
-                            {account.hasAgentRecord && (account.status === "active" ? (
-                              <DropdownMenuItem 
-                                onClick={() => handleToggleStatus(account)}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <UserX className="h-4 w-4 mr-2" />
-                                Deactivate Account
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem 
-                                onClick={() => handleToggleStatus(account)}
-                                className="text-emerald-500 focus:text-emerald-500"
-                              >
-                                <UserCheck className="h-4 w-4 mr-2" />
-                                Reactivate Account
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                      <TableCell>{renderAccountActions(account)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </GlassCard>
       </div>
@@ -782,12 +872,12 @@ export default function DashboardAccounts() {
                     id="edit-contract-percentage"
                     inputMode="decimal"
                     min={0}
-                    max={100}
+                    max={200}
                     step="0.01"
                     type="number"
                     value={editContractPercentage}
                     onChange={(e) => setEditContractPercentage(e.target.value)}
-                    placeholder="Example: 80"
+                    placeholder="Example: 120"
                   />
                   <p className="text-xs text-muted-foreground">Used for the producer's estimated earnings and commission views.</p>
                 </div>}

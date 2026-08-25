@@ -16,7 +16,7 @@ interface AddAgentRequest {
   email: string;
   phone: string;
   managerId: string;
-  licenseStatus?: "licensed" | "unlicensed" | "in_progress";
+  licenseStatus?: "licensed" | "unlicensed" | "pending" | "in_progress";
   builderTrack?: "agent" | "manager_track" | "agency_owner_track";
   notes?: string;
   startDate?: string;
@@ -33,6 +33,7 @@ interface AddAgentRequest {
   licenseNumber?: string;
   licenseStates?: string[];
   licenseExpiresAt?: string;
+  sourceApplicationId?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -105,9 +106,17 @@ const handler = async (req: Request): Promise<Response> => {
       licenseNumber,
       licenseStates,
       licenseExpiresAt,
+      sourceApplicationId,
     } = body;
 
     const normalizedNpn = (niprNumber ?? "").replace(/\D+/g, "");
+    const agentLicenseStatus = licenseStatus === "in_progress" ? "pending" : licenseStatus;
+    if (!["licensed", "unlicensed", "pending"].includes(agentLicenseStatus)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid license status." }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     const allowedBuilderTracks = new Set(["agent", "manager_track", "agency_owner_track"]);
     if (!allowedBuilderTracks.has(requestedBuilderTrack)) {
@@ -126,6 +135,25 @@ const handler = async (req: Request): Promise<Response> => {
 
     const builderTrack = isAdmin ? requestedBuilderTrack : "agent";
 
+    // Managers may add only to their own hierarchy. The old endpoint trusted a
+    // caller-supplied managerId while using the service role, so any manager
+    // could attach a recruit to another agency branch.
+    if (!isAdmin) {
+      const { data: actorAgent, error: actorAgentError } = await supabaseAdmin
+        .from("agents")
+        .select("id")
+        .eq("user_id", requestingUserId)
+        .eq("is_deactivated", false)
+        .limit(1)
+        .maybeSingle();
+      if (actorAgentError || !actorAgent || actorAgent.id !== managerId) {
+        return new Response(
+          JSON.stringify({ error: "Managers can add agents only to their own team." }),
+          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
+
     // Validate required fields
     if (!firstName || !lastName || !email || !phone || !managerId) {
       return new Response(
@@ -137,7 +165,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Server-side mirror of the modal's rule. The modal can be bypassed (this
     // fn is callable directly), so the "licensed needs an NPN" invariant has to
     // hold here too or the untrusted-license problem just moves one layer down.
-    if (licenseStatus === "licensed" && normalizedNpn.length < 4) {
+    if (agentLicenseStatus === "licensed" && (normalizedNpn.length < 5 || normalizedNpn.length > 10)) {
       return new Response(
         JSON.stringify({ error: "NPN is required for a licensed agent. Look it up free at nipr.com." }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -146,6 +174,68 @@ const handler = async (req: Request): Promise<Response> => {
 
     const normalizedEmail = email.toLowerCase().trim();
     console.log(`Adding new agent: ${firstName} ${lastName} (${normalizedEmail})`);
+
+    let sourceApplication: {
+      id: string;
+      assigned_agent_id: string | null;
+      referral_manager_id: string | null;
+      recruiter_id: string | null;
+      hiring_manager_user_id: string | null;
+    } | null = null;
+    let sourceAgent: { id: string; user_id: string | null } | null = null;
+    if (sourceApplicationId) {
+      const { data, error } = await supabaseAdmin
+        .from("applications")
+        .select("id, assigned_agent_id, referral_manager_id, recruiter_id, hiring_manager_user_id")
+        .eq("id", sourceApplicationId)
+        .maybeSingle();
+      if (error || !data) {
+        return new Response(
+          JSON.stringify({ error: "Source application was not found." }),
+          { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      const managerOwnsApplication = isAdmin || data.hiring_manager_user_id === requestingUserId || [
+        data.assigned_agent_id,
+        data.referral_manager_id,
+        data.recruiter_id,
+      ].includes(managerId);
+      if (!managerOwnsApplication) {
+        return new Response(
+          JSON.stringify({ error: "This application is outside your hiring scope." }),
+          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      sourceApplication = data;
+
+      const { data: linkedAgent, error: linkedAgentError } = await supabaseAdmin
+        .from("agents")
+        .select("id, user_id")
+        .eq("source_application_id", sourceApplicationId)
+        .limit(1)
+        .maybeSingle();
+      if (linkedAgentError) throw linkedAgentError;
+      sourceAgent = linkedAgent;
+    }
+
+    if (sourceApplication && sourceAgent?.user_id) {
+      const { error: receiptError } = await supabaseAdmin
+        .from("applications")
+        .update({ status: "onboarding", closed_at: new Date().toISOString(), assigned_agent_id: managerId })
+        .eq("id", sourceApplication.id);
+      if (receiptError) throw receiptError;
+      return new Response(
+        JSON.stringify({
+          success: true,
+          existing: true,
+          agentId: sourceAgent.id,
+          userId: sourceAgent.user_id,
+          message: `${firstName} ${lastName} already has an active agent account`,
+          partial: false,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
 
     // Check if email already exists in profiles.
     //
@@ -223,15 +313,12 @@ const handler = async (req: Request): Promise<Response> => {
       console.log(`Created auth user: ${userId}`);
     }
 
-    // Delete any trigger-created records to avoid conflicts
-    await supabaseAdmin.from("profiles").delete().eq("user_id", userId);
-    await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
-    await supabaseAdmin.from("agents").delete().eq("user_id", userId);
-
-    // Create profile record and get its id for profile_id link
+    // Converge with the auth trigger instead of deleting everything it made.
+    // The old cleanup also deleted an existing agent/role when an auth identity
+    // predated its profile, turning a repair attempt into account loss.
     const { data: newProfile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .insert({
+      .upsert({
         user_id: userId,
         email: normalizedEmail,
         full_name: `${firstName} ${lastName}`,
@@ -239,7 +326,7 @@ const handler = async (req: Request): Promise<Response> => {
         city: city || null,
         state: state || null,
         instagram_handle: instagramHandle || null,
-      })
+      }, { onConflict: "user_id" })
       .select("id")
       .single();
 
@@ -261,20 +348,28 @@ const handler = async (req: Request): Promise<Response> => {
     // Add agent role
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
-      .insert({ user_id: userId, role: "agent" });
+      .upsert({ user_id: userId, role: "agent" }, { onConflict: "user_id,role", ignoreDuplicates: true });
 
     if (roleError) {
       console.error("Error adding agent role:", roleError);
+      return new Response(
+        JSON.stringify({ error: `Failed to grant agent access: ${roleError.message ?? "unknown"}`, stage: "user_roles.upsert" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     // Create agent record
     const agentInsert: Record<string, unknown> = {
       user_id: userId,
       profile_id: profileId,
+      manager_id: managerId,
       invited_by_manager_id: managerId,
+      source_application_id: sourceApplication?.id ?? null,
       status: "active",
-      license_status: licenseStatus,
-      onboarding_stage: hasTrainingCourse ? "training_online" : "onboarding",
+      license_status: agentLicenseStatus,
+      onboarding_stage: agentLicenseStatus === "licensed"
+        ? (hasTrainingCourse ? "training_online" : "onboarding")
+        : "pre_licensed",
       has_training_course: hasTrainingCourse || false,
       start_date: startDate || null,
       builder_track: builderTrack,
@@ -303,13 +398,30 @@ const handler = async (req: Request): Promise<Response> => {
       agentInsert.license_expires_at = licenseExpiresAt;
     }
 
-    const { data: newAgent, error: agentError } = await supabaseAdmin
-      .from("agents")
-      .insert(agentInsert)
-      .select("id")
-      .single();
+    let newAgent: { id: string } | null = null;
+    let agentError: { message?: string } | null = null;
+    if (sourceAgent) {
+      const result = await supabaseAdmin
+        .from("agents")
+        .update(agentInsert)
+        .eq("id", sourceAgent.id)
+        .is("user_id", null)
+        .select("id")
+        .maybeSingle();
+      newAgent = result.data;
+      agentError = result.error;
+      if (!agentError && !newAgent) agentError = { message: "Application was promoted by another request" };
+    } else {
+      const result = await supabaseAdmin
+        .from("agents")
+        .insert(agentInsert)
+        .select("id")
+        .single();
+      newAgent = result.data;
+      agentError = result.error;
+    }
 
-    if (agentError) {
+    if (agentError || !newAgent) {
       console.error("Error creating agent:", agentError);
       return new Response(
         JSON.stringify({
@@ -322,6 +434,22 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log(`Created agent record: ${newAgent.id}`);
+
+    let applicationLinkStatus: { ok: boolean; skipped?: boolean; error?: string } = { ok: true, skipped: true };
+    if (sourceApplication) {
+      const { error: applicationError } = await supabaseAdmin
+        .from("applications")
+        .update({
+          status: "onboarding",
+          closed_at: new Date().toISOString(),
+          assigned_agent_id: managerId,
+        })
+        .eq("id", sourceApplication.id);
+      applicationLinkStatus = applicationError
+        ? { ok: false, error: applicationError.message ?? String(applicationError) }
+        : { ok: true };
+      if (applicationError) console.error("[add-agent] application promotion update failed:", applicationError);
+    }
 
     // Add initial note if provided
     if (notes?.trim() && newAgent) {
@@ -385,33 +513,9 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Fetch contracting link from manager's saved links
-    let contractingLink: string | undefined;
-    if (managerId) {
-      const { data: links } = await supabaseAdmin
-        .from("contracting_links")
-        .select("url")
-        .eq("manager_id", managerId)
-        .limit(1);
-      if (links?.length) {
-        contractingLink = links[0].url;
-      }
-    }
-    // Fall back to agent's own crm_setup_link
-    if (!contractingLink && crmSetupLink) {
-      contractingLink = crmSetupLink;
-    }
-    // 2026-08-19 Sam ("ensure the contract is working when I click add agent"):
-    // contracting_links is empty and there is no crm_setup_link, so contractingLink
-    // was undefined and welcome-new-agent SKIPPED its entire "Start Your Contracting"
-    // step — every new agent got a welcome email with no way to begin contracting.
-    // APEX owns a public, purpose-built contracting intake at /start-contracting; a
-    // manager-specific saved link still wins, but no agent should ever be sent
-    // without a working contracting destination. Anchored to the production origin
-    // rather than a request header so a preview host can't leak into the email.
-    if (!contractingLink) {
-      contractingLink = "https://apex-financial.org/start-contracting";
-    }
+    // One contracting path only: APEX intake -> Ethos spreadsheet -> private
+    // contracting Discord. Manager-specific AgentLink URLs are retired.
+    const contractingLink = "https://apex-financial.org/start-contracting";
 
     // wave-p1j (audit L151): the previous fire-and-forget `.catch(console.log)`
     // pattern silently swallowed welcome + course email failures — the modal
@@ -460,85 +564,32 @@ const handler = async (req: Request): Promise<Response> => {
         ? { ok: false, error: [transferNoteError, transferStampError].filter(Boolean).join("; ") }
         : { ok: true };
 
-    // ── Contracting channel post (Discord) + Ethos paste-row ────────────────
-    // 2026-08-14 Sam: added agents were reaching neither the team Discord nor
-    // the Ethos contracting sheet. The Ethos sheet is a third party's private
-    // Google Sheet owned by the upline (Level 8 Financial), shared read/edit
-    // with Sam — an unattended service-role API write into someone else's
-    // multi-tab sheet is unsafe, so we hand a human a perfect paste instead.
-    // 2026-08-19 Sam ("use the ethos spreadsheet"): the previous row left
-    // columns D (Direct Upline NPN) and G (Comp Level) BLANK, so a paste landed
-    // one/two columns short of the real sheet. Verified against the live
-    // "(Samuel James) Apex Financial Empire | Ethos Agent Portal Signup" Agents
-    // tab — its GREEN (agent-filled) columns are A..L: First, Last, NPN,
-    // Direct-Upline-NPN, Mobile, Email, Comp-Level, Advance-Tier, Sub-Agency,
-    // Sub-Agent-Head?, Life-Licensed?, $1M-E&O?. Every existing row parents to
-    // Sam's NPN 21346366 (he is the sub-agency principal under Level 8), so that
-    // is the correct Direct Upline NPN regardless of internal team manager.
-    // Ethos fills the RED columns (portal id/code, invite link). Webhook key is
-    // discord_webhook_url_contracting — RAW text, never JSON-quoted (that exact
-    // bug killed Discord automation on 2026-07-31), and per the standing rule
-    // this NEVER falls back to another channel: unset = honest not_configured.
-    const ETHOS_UPLINE_NPN = "21346366"; // Samuel James Jr — Apex Financial Empire principal
-    const ETHOS_DEFAULT_COMP = "Level 12"; // most common comp on the sheet; Ethos/upline adjusts
-    let contractingPostStatus: SideEffectStatus;
-    try {
-      const { data: whRow } = await supabaseAdmin
-        .from("system_settings")
-        .select("value")
-        .eq("key", "discord_webhook_url_contracting")
-        .maybeSingle();
-      const webhook = (whRow?.value ?? "").toString().trim();
-      if (!webhook.startsWith("https://discord.com/api/webhooks/")) {
-        contractingPostStatus = { ok: false, error: "not_configured: system_settings.discord_webhook_url_contracting is empty — create a webhook in the contracting channel and store its URL (raw text)" };
-      } else {
-        const ethosRow = [
-          firstName,                                       // A First Name
-          lastName,                                        // B Last Name
-          normalizedNpn || "",                             // C NPN
-          ETHOS_UPLINE_NPN,                                // D Direct Upline NPN
-          phone ?? "",                                     // E Mobile
-          normalizedEmail,                                 // F Email
-          ETHOS_DEFAULT_COMP,                              // G Comp Level
-          "6 Month Advance",                               // H Advance Pay Tier
-          "Apex Financial Empire",                         // I Sub-Agency Name
-          "",                                              // J Sub-Agent Head?
-          licenseStatus === "licensed" ? "Yes" : "No",     // K Life Licensed?
-          "",                                              // L $1M in E&O coverage?
-        ].join("\t");
-        const res = await fetch(webhook, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            embeds: [{
-              title: `🆕 New agent: ${firstName} ${lastName}`,
-              description: [
-                `NPN: **${normalizedNpn || "—"}**`,
-                `Phone: ${phone ?? "—"} · Email: ${normalizedEmail}`,
-                "",
-                "**Ethos sheet — copy the line below, click the last row of the Agents tab, paste:**",
-                "```", ethosRow, "```",
-                "[Open Ethos sheet](https://docs.google.com/spreadsheets/d/1R5ZEjfDai0dFp1z8xbfpaFGbOAEiXzPc0F1KxnWPSMY/edit?gid=517020732#gid=517020732)",
-              ].join("\n"),
-              color: 0xf5a623,
-              footer: { text: "APEX · add-agent → contracting" },
-              timestamp: new Date().toISOString(),
-            }],
-          }),
-        });
-        contractingPostStatus = (res.status === 204 || res.ok)
-          ? { ok: true }
-          : { ok: false, error: `discord webhook HTTP ${res.status}` };
-      }
-    } catch (e) {
-      contractingPostStatus = { ok: false, error: `contracting post: ${e instanceof Error ? e.message : String(e)}` };
+    // Licensed direct-adds already contain the exact five contracting fields.
+    // Route them through the same idempotent intake used by the public page so
+    // the real Ethos write and private Discord receipt stay one workflow.
+    let contractingPostStatus: SideEffectStatus = { ok: true, skipped: true };
+    if (agentLicenseStatus === "licensed") {
+      const { data: intakeData, error: intakeError } = await supabaseAdmin.rpc("submit_contracting_intake", {
+        p_first_name: firstName,
+        p_last_name: lastName,
+        p_email: normalizedEmail,
+        p_phone: phone,
+        p_npn: normalizedNpn,
+        p_source: "add_agent",
+        p_submitted_by: requestingUserId,
+      });
+      const intake = intakeData as { ok?: boolean; error?: string; intake_id?: string } | null;
+      contractingPostStatus = intakeError || !intake?.ok
+        ? { ok: false, error: intakeError?.message ?? intake?.error ?? "contracting intake failed" }
+        : { ok: true };
     }
 
     const sideEffectFailures: string[] = [];
     if (!welcomeEmailStatus.ok) sideEffectFailures.push("welcome email");
     if (!courseEmailStatus.ok) sideEffectFailures.push("course enrollment email");
     if (!transferStatus.ok) sideEffectFailures.push("transfer note");
-    if (!contractingPostStatus.ok) sideEffectFailures.push("contracting channel post");
+    if (!contractingPostStatus.ok) sideEffectFailures.push("contracting spreadsheet/Discord queue");
+    if (!applicationLinkStatus.ok) sideEffectFailures.push("application promotion receipt");
 
     const message = sideEffectFailures.length
       ? `Agent ${firstName} ${lastName} added, but ${sideEffectFailures.join(" and ")} failed — resend manually.`
@@ -556,6 +607,7 @@ const handler = async (req: Request): Promise<Response> => {
           courseEmail: courseEmailStatus,
           transferBlock: transferStatus,
           contractingPost: contractingPostStatus,
+          applicationPromotion: applicationLinkStatus,
         },
         partial: sideEffectFailures.length > 0,
       }),

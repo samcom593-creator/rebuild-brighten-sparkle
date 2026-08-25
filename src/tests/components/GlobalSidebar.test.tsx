@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import fs from "node:fs";
@@ -32,7 +33,9 @@ vi.mock("@/hooks/useSoundEffects", () => ({ useSoundEffects: () => ({ playSound:
 vi.mock("@/components/layout/NotificationBell", () => ({ NotificationBell: () => null }));
 vi.mock("@/components/ThemeToggle", () => ({ ThemeToggle: () => null }));
 vi.mock("@/components/onboarding/QuickAddAgentDialog", () => ({ QuickAddAgentDialog: () => null }));
-vi.mock("@/components/dashboard/AddAgentModal", () => ({ AddAgentModal: () => null }));
+vi.mock("@/components/dashboard/AddAgentModal", () => ({
+  AddAgentModal: ({ trigger }: { trigger?: ReactNode }) => trigger ?? null,
+}));
 vi.mock("@/components/deals/SubmitDealDialog", () => ({ SubmitDealDialog: () => null }));
 vi.mock("@/stores/agentProfileDrawer", () => ({
   useAgentProfileDrawer: (selector: (s: { openAgent: () => void }) => unknown) =>
@@ -114,6 +117,12 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     for (const label of ["Home", "Reports", "Finances", "Resources", "Nova", "Producer Profile"]) {
       expect(link(label)).toBeTruthy();
     }
+  });
+
+  it("keeps the canonical Add Agent action pinned at the bottom for hiring roles", () => {
+    setRoles({ isManager: true });
+    renderSidebar();
+    expect(screen.getByRole("button", { name: "Add Agent" })).toBeTruthy();
   });
 });
 

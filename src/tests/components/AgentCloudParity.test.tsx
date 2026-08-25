@@ -50,4 +50,30 @@ describe("AgentCloud parity surfaces", () => {
       expect(toolkit).toContain(phrase);
     }
   });
+
+  it("keeps one-link contracting inside the canonical Add Agent flow", () => {
+    const addAgent = source("components/dashboard/AddAgentModal.tsx");
+    expect(addAgent).toContain("One-link contracting");
+    expect(addAgent).toContain("https://apex-financial.org/start-contracting");
+    expect(addAgent).toContain("contracting spreadsheet and private support Discord");
+  });
+
+  it("makes every recruiting invite branch by license and auto-queues licensed contracting", () => {
+    const inviteLinks = source("pages/admin/InviteLinks.tsx");
+    const hire = source("pages/HireLink.tsx");
+    const consumer = source("../supabase/functions/consume-invite-token/index.ts");
+    expect(inviteLinks).toContain("License status is always required");
+    expect(hire).toContain("Are you licensed?");
+    expect(hire).toContain("licensed: licensedHire === true");
+    expect(consumer).toContain('"submit_contracting_intake"');
+    expect(consumer).toContain("licensed_contracting_enqueue_failed");
+  });
+
+  it("shows today's sale state and current streak on every Team roster row", () => {
+    const crm = source("pages/DashboardCRM.tsx");
+    expect(crm).toContain('supabase.rpc("crm_agent_sales_pulse"');
+    expect(crm).toContain("Sold today");
+    expect(crm).toContain("No sale today");
+    expect(crm).toContain("selling_streak_days");
+  });
 });

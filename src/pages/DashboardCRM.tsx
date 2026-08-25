@@ -7,7 +7,7 @@ import {
   Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles,
   Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText,
   KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck,
-  MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck,
+  MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck, Flame,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
@@ -396,6 +396,9 @@ interface RosterRow {
   contracts_active: number | null;
   mtd_alp: number | string | null;
   mtd_deals: number | null;
+  today_alp: number | string | null;
+  today_deals: number | null;
+  selling_streak_days: number | null;
   l30_alp: number | string | null;
   l30_deals: number | null;
   lifetime_alp: number | string | null;
@@ -475,7 +478,7 @@ const ROSTER_SEGMENTS: Array<{
     match: (r) => r.status === "terminated" },
 ];
 
-type RosterSortKey = "mtd_desc" | "l30_desc" | "lifetime_desc" | "name" | "stalest" | "newest";
+type RosterSortKey = "mtd_desc" | "l30_desc" | "lifetime_desc" | "streak_desc" | "name" | "stalest" | "newest";
 
 function RosterStatusBadge({ row }: { row: RosterRow }) {
   const s = row.status ?? "unknown";
@@ -568,6 +571,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
       case "mtd_desc": list.sort((a, b) => num(b.mtd_alp) - num(a.mtd_alp)); break;
       case "l30_desc": list.sort((a, b) => num(b.l30_alp) - num(a.l30_alp)); break;
       case "lifetime_desc": list.sort((a, b) => num(b.lifetime_alp) - num(a.lifetime_alp)); break;
+      case "streak_desc": list.sort((a, b) => num(b.selling_streak_days) - num(a.selling_streak_days) || num(b.today_alp) - num(a.today_alp)); break;
       case "name": list.sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "")); break;
       case "newest": list.sort((a, b) => (b.tenure_days ?? -1) === (a.tenure_days ?? -1) ? 0 : (a.tenure_days ?? 1e9) - (b.tenure_days ?? 1e9)); break;
       case "stalest": list.sort((a, b) => {
@@ -627,6 +631,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
               <SelectItem value="mtd_desc">Month ALP (high → low)</SelectItem>
               <SelectItem value="l30_desc">Last 30d ALP</SelectItem>
               <SelectItem value="lifetime_desc">Lifetime ALP</SelectItem>
+              <SelectItem value="streak_desc">Current sales streak</SelectItem>
               <SelectItem value="stalest">Longest since a sale</SelectItem>
               <SelectItem value="newest">Newest on the roster</SelectItem>
               <SelectItem value="name">Name (A → Z)</SelectItem>
@@ -702,13 +707,15 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
           />
         ) : (
           <div className="-mx-4 overflow-x-auto sm:mx-0">
-            <Table className="min-w-[980px]">
+            <Table className="min-w-[1160px]">
               <TableHeader>
                 <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[10px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
                   <TableHead className="w-[240px] px-2">Agent</TableHead>
                   <TableHead className="w-[120px] px-2">Upline</TableHead>
                   <TableHead className="w-[100px] px-2">Status</TableHead>
                   <TableHead className="w-[100px] px-2">License</TableHead>
+                  <TableHead className="w-[120px] px-2">Today</TableHead>
+                  <TableHead className="w-[90px] px-2 text-center">Streak</TableHead>
                   <TableHead className="w-[110px] px-2 text-right">Month ALP</TableHead>
                   <TableHead className="w-[110px] px-2 text-right">Last 30d</TableHead>
                   <TableHead className="w-[120px] px-2 text-right">Lifetime</TableHead>
@@ -757,6 +764,31 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                         )}>
                           {r.license_status ?? "unknown"}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="px-2 py-2">
+                        {(r.today_deals ?? 0) > 0 ? (
+                          <div>
+                            <Badge variant="outline" className="border-success/30 bg-success/15 text-[10px] font-bold uppercase tracking-wide text-success">
+                              Sold today
+                            </Badge>
+                            <p className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">
+                              {usdOrNull(r.today_alp) ?? "$0"} · {r.today_deals} {r.today_deals === 1 ? "deal" : "deals"}
+                            </p>
+                          </div>
+                        ) : (
+                          <Badge variant="outline" className="bg-muted text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            No sale today
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="px-2 py-2 text-center">
+                        {(r.selling_streak_days ?? 0) > 0 ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-1 text-[11px] font-bold tabular-nums text-warning">
+                            <Flame className="h-3.5 w-3.5" /> {r.selling_streak_days}d
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="px-2 py-2 text-right">
                         <span className={cn("text-sm font-bold tabular-nums", mtd ? "text-success" : "text-muted-foreground")}>
@@ -869,9 +901,22 @@ export default function DashboardCRM() {
     enabled: !authLoading && !!user,
     staleTime: 60_000,
     queryFn: async (): Promise<RosterRow[]> => {
-      const { data, error } = await supabase.rpc("crm_agent_roster" as never);
-      if (error) throw error;
-      return ((data as unknown as RosterRow[]) ?? []);
+      const [rosterResult, pulseResult] = await Promise.all([
+        supabase.rpc("crm_agent_roster" as never),
+        supabase.rpc("crm_agent_sales_pulse" as never),
+      ]);
+      if (rosterResult.error) throw rosterResult.error;
+      if (pulseResult.error) throw pulseResult.error;
+      const pulseByAgent = new Map(
+        ((pulseResult.data as unknown as Array<Pick<RosterRow, "agent_id" | "today_alp" | "today_deals" | "selling_streak_days">>) ?? [])
+          .map((row) => [row.agent_id, row] as const),
+      );
+      return ((rosterResult.data as unknown as RosterRow[]) ?? []).map((row) => ({
+        ...row,
+        today_alp: pulseByAgent.get(row.agent_id)?.today_alp ?? 0,
+        today_deals: pulseByAgent.get(row.agent_id)?.today_deals ?? 0,
+        selling_streak_days: pulseByAgent.get(row.agent_id)?.selling_streak_days ?? 0,
+      }));
     },
   });
 

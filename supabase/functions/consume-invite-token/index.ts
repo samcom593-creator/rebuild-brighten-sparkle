@@ -84,7 +84,7 @@ serve(async (req) => {
   const full_name = (body.full_name || "").trim();
   const phone_digits = digitsOnly(body.phone || "");
   const email = (body.email || "").trim().toLowerCase();
-  const nipr_number = (body.nipr_number || "").trim() || null;
+  const nipr_number = digitsOnly(body.nipr_number || "") || null;
 
   if (!token || token.length < 8) {
     return json({ ok: false, error: "invalid_token" }, 400);
@@ -231,7 +231,14 @@ serve(async (req) => {
 
   // ─── kind='hire' branch (existing) ─────────────────────────────────────
   const targetRole: string = tokenRow.target_role ?? "hired_unlicensed";
-  const licensed = targetRole === "hired_licensed" || body.licensed === true;
+  // The recruit's explicit answer wins. target_role remains the compatibility
+  // fallback for old links that predated the required license question.
+  const licensed = typeof body.licensed === "boolean"
+    ? body.licensed
+    : targetRole === "hired_licensed";
+  if (licensed && (!nipr_number || !/^\d{5,10}$/.test(nipr_number))) {
+    return json({ ok: false, error: "npn_required_for_licensed_hire" }, 422);
+  }
 
   // 2. Dedupe by email — if an active agent already owns this email, bail with a clear signal.
   //    We look up the auth user first (canonical), then agents.
@@ -346,6 +353,31 @@ serve(async (req) => {
       );
     }
     agentId = inserted.id;
+  }
+
+  // A licensed hire is not "done" when the profile row exists. Queue the
+  // canonical contracting intake in the same request so the Ethos spreadsheet
+  // and private contracting Discord start automatically. The intake dedupes by
+  // NPN, making browser retries safe; if this leg fails the invite remains
+  // unused and the recruit can retry without creating a second agent.
+  if (licensed) {
+    const nameParts = full_name.split(/\s+/).filter(Boolean);
+    const { data: contractingResult, error: contractingError } = await admin.rpc(
+      "submit_contracting_intake",
+      {
+        p_first_name: nameParts[0],
+        p_last_name: nameParts.slice(1).join(" "),
+        p_email: email,
+        p_phone: phone_digits,
+        p_npn: nipr_number,
+        p_source: "magic_hire_link",
+        p_submitted_by: authUserId,
+      },
+    );
+    if (contractingError || contractingResult?.ok !== true) {
+      console.error("licensed_contracting_enqueue_failed", contractingError ?? contractingResult);
+      return json({ ok: false, error: "contracting_enqueue_failed" }, 500);
+    }
   }
 
   // 6. Mark invite consumed. Idempotency safety: only mark if still unused.

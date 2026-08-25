@@ -43,7 +43,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Link2, Copy, Check, Ban, Loader2, User, Users, Building2, ClipboardList, ExternalLink,
+  Link2, Copy, Check, Ban, Loader2, User, Users, Building2, ClipboardList, ExternalLink, ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -253,7 +253,7 @@ export default function InviteLinksAdmin() {
         eyebrow="Contracting · Invite an agent"
         eyebrowIcon={<Link2 className="h-3 w-3" />}
         title="Invite Links"
-        subtitle="Create a shareable link that places new agents directly in your downline. One link contracts and onboards them — carrier requests route to whoever you pick as their upline."
+        subtitle="Create one shareable recruiting link. Every recruit confirms licensed or unlicensed; licensed hires start contracting automatically, while unlicensed hires start the licensing roadmap."
       />
 
       <Card>
@@ -319,6 +319,18 @@ export default function InviteLinksAdmin() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          <div className="rounded-md border border-primary/35 bg-primary/5 p-4" data-testid="license-routing">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div>
+                <p className="text-sm font-semibold">License status is always required</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  The recruit chooses Licensed or Unlicensed on the invite. Licensed routes immediately to the contracting spreadsheet and private support Discord; unlicensed routes to the licensing roadmap.
+                </p>
+              </div>
             </div>
           </div>
 

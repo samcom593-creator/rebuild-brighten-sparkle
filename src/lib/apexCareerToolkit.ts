@@ -49,9 +49,9 @@ export interface ApexJourneyStep {
 const SHARED_ACTIVATION_STEPS: ApexJourneyStep[] = [
   {
     key: "agentlink",
-    label: "AgentLink",
-    description: "Complete the profile and confirm access.",
-    successCondition: "AgentLink access confirmed",
+    label: "Profile & documents",
+    description: "Complete the APEX profile, EFT details, E&O coverage, and required documents.",
+    successCondition: "Required profile and document fields confirmed",
   },
   {
     key: "signatures",
@@ -61,9 +61,9 @@ const SHARED_ACTIVATION_STEPS: ApexJourneyStep[] = [
   },
   {
     key: "contracting",
-    label: "Carrier / GCR",
-    description: "Complete carrier and contracting requirements.",
-    successCondition: "No required contracting item outstanding",
+    label: "Contracting",
+    description: "Track carrier requirements through the contracting spreadsheet and private support Discord.",
+    successCondition: "Every required carrier is active, submitted, or has a recorded next action",
   },
   {
     key: "community",

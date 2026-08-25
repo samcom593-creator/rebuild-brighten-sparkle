@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, Cloud, Star } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Cloud, Star, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   type AgentCloudNavItem,
 } from "./agentCloudNavigation";
 import { useFavoriteRoutes } from "./favoriteRoutes";
+import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 
 interface GlobalSidebarProps {
   isOpen: boolean;
@@ -28,7 +29,7 @@ interface GlobalSidebarProps {
 export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarProps) {
   const brand = useBrand();
   const { pathname } = useLocation();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isManager } = useAuth();
   const isTouch = useIsTouchDevice();
   // Rendered from the same store the TopBar star writes to, so pinning a page
   // has a visible result instead of vanishing into localStorage.
@@ -165,6 +166,23 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
           {!collapsed && <div className="px-3 pb-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Account</div>}
           <div className="space-y-0.5">{renderEntries(account)}</div>
         </nav>
+
+        {(isAdmin || isManager) && (
+          <div className="shrink-0 border-t border-border p-2">
+            <AddAgentModal
+              trigger={(
+                <Button
+                  size="sm"
+                  className={cn("h-9 gap-2", collapsed ? "w-full px-0" : "w-full justify-start px-3")}
+                  aria-label="Add Agent"
+                >
+                  <UserPlus className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span>Add Agent</span>}
+                </Button>
+              )}
+            />
+          </div>
+        )}
 
         <div className="flex h-12 shrink-0 items-center border-t border-border px-2">
           <Button

@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, type ReactNode } from "react";
-import { ArrowLeft, Crown, GraduationCap, Loader2, ShieldCheck, User, UserPlus, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Check, Copy, Crown, ExternalLink, GraduationCap, Link2, Loader2, ShieldCheck, User, UserPlus, Users, type LucideIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +42,8 @@ type FunctionErrorContext = {
 };
 type FunctionError = Error & { context?: FunctionErrorContext };
 
+export const CONTRACTING_INTAKE_URL = "https://apex-financial.org/start-contracting";
+
 const BUILDER_TRACK_OPTIONS: Array<{
   value: BuilderTrack;
   label: string;
@@ -63,6 +65,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingManagers, setLoadingManagers] = useState(false);
+  const [contractingLinkCopied, setContractingLinkCopied] = useState(false);
   const [managers, setManagers] = useState<Manager[]>([]);
 
   // Simplified form state - essentials only
@@ -151,6 +154,16 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhoneNumber(e.target.value);
     setPhone(formatted);
+  };
+
+  const copyContractingLink = async () => {
+    try {
+      await navigator.clipboard.writeText(CONTRACTING_INTAKE_URL);
+      setContractingLinkCopied(true);
+      toast.success("One-link contracting intake copied");
+    } catch {
+      toast.error(`Copy failed — open ${CONTRACTING_INTAKE_URL}`);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -324,6 +337,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     setCarriers("");
     setWritingNumbers("");
     setPreviousUpline("");
+    setContractingLinkCopied(false);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -386,6 +400,30 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                 <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Needs the course. Start licensing now.</span>
                 <span className="mt-4 block text-xs font-semibold text-amber-500">Choose unlicensed →</span>
               </button>
+              <div className="rounded-xl border border-primary/35 bg-primary/5 p-4 sm:col-span-2">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary">
+                    <Link2 className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold">One-link contracting</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      Send one link to any licensed hire. Their intake queues the contracting spreadsheet and private support Discord.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button type="button" size="sm" onClick={() => void copyContractingLink()} className="gap-1.5">
+                        {contractingLinkCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                        {contractingLinkCopied ? "Copied" : "Copy link"}
+                      </Button>
+                      <Button asChild type="button" size="sm" variant="outline" className="gap-1.5">
+                        <a href={CONTRACTING_INTAKE_URL} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-3.5 w-3.5" /> Open
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
           </div>
         ) : (
         <form onSubmit={handleSubmit} className="mt-3 space-y-4">
@@ -396,6 +434,31 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Change licensed status
           </button>
+
+          {licenseStatus === "licensed" ? (
+            <div className="rounded-lg border border-primary/35 bg-primary/5 p-3">
+              <div className="flex items-start gap-2.5">
+                <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">Prefer one link?</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Skip manual entry and send the contracting intake. It queues the spreadsheet and support Discord after submission.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button type="button" size="sm" onClick={() => void copyContractingLink()} className="h-9 gap-1.5">
+                      {contractingLinkCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {contractingLinkCopied ? "Copied" : "Copy contracting link"}
+                    </Button>
+                    <Button asChild type="button" size="sm" variant="outline" className="h-9 gap-1.5">
+                      <a href={CONTRACTING_INTAKE_URL} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-3.5 w-3.5" /> Open
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {/* Name Row */}
           <div className="grid grid-cols-2 gap-3">

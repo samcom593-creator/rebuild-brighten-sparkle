@@ -100,7 +100,7 @@ describe("buildRecruitLifecycleSnapshot", () => {
     expect(snapshot.certification.label).toBe("Passed");
     expect(snapshot.launchReady.label).toBe("Ready");
     expect(snapshot.firstSale.label).toBe("No");
-    expect(snapshot.nextAction).toBe("AgentLink");
+    expect(snapshot.nextAction).toBe("Profile & documents");
   });
 
   it("shows failed exams and a truthful stalled-risk state", () => {

@@ -2,7 +2,7 @@
  * /hire/:token — MP-233 magic hire link.
  *
  * Public, token-gated. Prospect lands here after Sam pastes their link.
- * Three fields (name, phone, email), one CTA — "Join APEX."
+ * Name, phone, email, and an explicit license branch, one CTA — "Join APEX."
  *
  * On submit → POST /functions/v1/consume-invite-token → agent row created,
  * magic-login token minted, redirect to /magic-login?token=... (or /agent-hub).
@@ -59,7 +59,7 @@ export default function HireLink() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [nipr, setNipr] = useState("");
-  const [licensedHire, setLicensedHire] = useState(false);
+  const [licensedHire, setLicensedHire] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -111,8 +111,11 @@ export default function HireLink() {
       fullName.trim().split(/\s+/).filter(Boolean).length >= 2 &&
       phone.replace(/\D+/g, "").length >= 10 &&
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
-      // Licensed producers must give their NPN — it's the proof of licensure.
-      (!licensedHire || nipr.replace(/\D+/g, "").length >= 4)
+      licensedHire !== null &&
+      // Licensed producers must give the same 5–10 digit NPN accepted by the
+      // contracting intake. One validation contract prevents a hire from
+      // activating successfully and then failing silently downstream.
+      (licensedHire !== true || /^\d{5,10}$/.test(nipr.replace(/\D+/g, "")))
     );
   }, [fullName, phone, email, licensedHire, nipr]);
 
@@ -130,6 +133,7 @@ export default function HireLink() {
             phone: phone.replace(/\D+/g, ""),
             email: email.trim().toLowerCase(),
             nipr_number: nipr.trim() || undefined,
+            licensed: licensedHire === true,
           },
         },
       );
@@ -252,22 +256,52 @@ export default function HireLink() {
               />
             </div>
 
-            <div>
-              <Label htmlFor="hire-npn" className="text-xs uppercase tracking-wide">
-                NPN {licensedHire ? <span className="text-rose-400">*</span> : <span className="normal-case text-muted-foreground">(if you&rsquo;re licensed)</span>}
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide">
+                Are you licensed? <span className="text-rose-400">*</span>
               </Label>
-              <Input
-                id="hire-npn"
-                inputMode="numeric"
-                value={nipr}
-                onChange={(e) => setNipr(e.target.value)}
-                placeholder="National Producer Number"
-                className="mt-1 h-11 text-base"
-              />
-              {licensedHire && (
-                <p className="mt-1 text-[11px] text-muted-foreground">Required — this confirms your license. Look it up free at nipr.com.</p>
-              )}
+              <div className="grid grid-cols-2 gap-2" role="group" aria-label="License status">
+                <button
+                  type="button"
+                  onClick={() => setLicensedHire(true)}
+                  aria-pressed={licensedHire === true}
+                  data-testid="hire-licensed"
+                  className={`rounded-lg border p-3 text-left transition-colors ${licensedHire === true ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"}`}
+                >
+                  <span className="block text-sm font-semibold">Yes, licensed</span>
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">Start contracting now</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setLicensedHire(false); setNipr(""); }}
+                  aria-pressed={licensedHire === false}
+                  data-testid="hire-unlicensed"
+                  className={`rounded-lg border p-3 text-left transition-colors ${licensedHire === false ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"}`}
+                >
+                  <span className="block text-sm font-semibold">Not yet</span>
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">Start licensing roadmap</span>
+                </button>
+              </div>
             </div>
+
+            {licensedHire === true && (
+              <div>
+                <Label htmlFor="hire-npn" className="text-xs uppercase tracking-wide">
+                  NPN <span className="text-rose-400">*</span>
+                </Label>
+                <Input
+                  id="hire-npn"
+                  inputMode="numeric"
+                  value={nipr}
+                  onChange={(e) => setNipr(e.target.value)}
+                  placeholder="National Producer Number"
+                  className="mt-1 h-11 text-base"
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Required. Submission starts the contracting spreadsheet and private support Discord automatically.
+                </p>
+              </div>
+            )}
 
             <GradientButton
               type="submit"

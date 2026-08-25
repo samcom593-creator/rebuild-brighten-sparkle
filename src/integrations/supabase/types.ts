@@ -1419,12 +1419,20 @@ export type Database = {
           comp_percentage: number
           contract_percentage: number | null
           contracted_at: string | null
+          contracting_contact_name: string | null
           created_at: string
           crm_setup_link: string | null
           deactivation_reason:
             | Database["public"]["Enums"]["deactivation_reason"]
             | null
           display_name: string | null
+          eft_ready: boolean
+          eo_aggregate_limit: number | null
+          eo_certificate_url: string | null
+          eo_deductible: number | null
+          eo_expires_at: string | null
+          eo_per_claim_limit: number | null
+          eo_policy_number: string | null
           evaluated_at: string | null
           evaluated_by: string | null
           evaluation_result: string | null
@@ -1492,12 +1500,20 @@ export type Database = {
           comp_percentage?: number
           contract_percentage?: number | null
           contracted_at?: string | null
+          contracting_contact_name?: string | null
           created_at?: string
           crm_setup_link?: string | null
           deactivation_reason?:
             | Database["public"]["Enums"]["deactivation_reason"]
             | null
           display_name?: string | null
+          eft_ready?: boolean
+          eo_aggregate_limit?: number | null
+          eo_certificate_url?: string | null
+          eo_deductible?: number | null
+          eo_expires_at?: string | null
+          eo_per_claim_limit?: number | null
+          eo_policy_number?: string | null
           evaluated_at?: string | null
           evaluated_by?: string | null
           evaluation_result?: string | null
@@ -1565,12 +1581,20 @@ export type Database = {
           comp_percentage?: number
           contract_percentage?: number | null
           contracted_at?: string | null
+          contracting_contact_name?: string | null
           created_at?: string
           crm_setup_link?: string | null
           deactivation_reason?:
             | Database["public"]["Enums"]["deactivation_reason"]
             | null
           display_name?: string | null
+          eft_ready?: boolean
+          eo_aggregate_limit?: number | null
+          eo_certificate_url?: string | null
+          eo_deductible?: number | null
+          eo_expires_at?: string | null
+          eo_per_claim_limit?: number | null
+          eo_policy_number?: string | null
           evaluated_at?: string | null
           evaluated_by?: string | null
           evaluation_result?: string | null
@@ -3280,21 +3304,30 @@ export type Database = {
           id: string
           insuracloud_carrier_id: number | null
           is_active: boolean | null
+          logo_url: string | null
           name: string
+          phone: string | null
+          website: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           insuracloud_carrier_id?: number | null
           is_active?: boolean | null
+          logo_url?: string | null
           name: string
+          phone?: string | null
+          website?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           insuracloud_carrier_id?: number | null
           is_active?: boolean | null
+          logo_url?: string | null
           name?: string
+          phone?: string | null
+          website?: string | null
         }
         Relationships: []
       }

@@ -7,7 +7,7 @@ import {
   Mail, Phone, UserX, Filter, GraduationCap, Briefcase, Sparkles,
   Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText,
   KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck,
-  MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network,
+  MoreHorizontal, TrendingUp, BadgeCheck, ArrowUpRight, Network, UserCheck,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,

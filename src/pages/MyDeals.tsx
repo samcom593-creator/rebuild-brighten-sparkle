@@ -223,9 +223,18 @@ export default function MyDeals() {
     enabled: teamView,
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("v_imo_by_agency" as never).select("agency, is_primary, policies, alp, alp_mtd").order("alp", { ascending: false });
+      const { data, error } = await supabase.from("v_imo_by_agency" as never).select("agency, is_primary, policies, alp, alp_mtd, policies_mtd, policies_30d, alp_30d").order("alp", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as Array<{ agency: string; is_primary: boolean; policies: number; alp: number; alp_mtd: number }>;
+      return (data ?? []) as unknown as Array<{
+        agency: string;
+        is_primary: boolean;
+        policies: number;
+        alp: number;
+        alp_mtd: number;
+        policies_mtd: number;
+        policies_30d: number;
+        alp_30d: number;
+      }>;
     },
   });
   const imoMax = Math.max(1, ...imo.map((a) => a.alp));
@@ -310,7 +319,10 @@ export default function MyDeals() {
                   <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
                     <div className="h-full rounded-full bg-primary" style={{ width: `${(a.alp / imoMax) * 100}%` }} />
                   </div>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{a.policies.toLocaleString()} policies · {fmtMoney(a.alp_mtd)} this month</p>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    <p>{a.policies_30d.toLocaleString()} policies · {fmtMoney(a.alp_30d)} last 30 days</p>
+                    <p>{a.policies_mtd.toLocaleString()} policies · {fmtMoney(a.alp_mtd)} calendar MTD</p>
+                  </div>
                 </div>
               ))}
             </CardContent>

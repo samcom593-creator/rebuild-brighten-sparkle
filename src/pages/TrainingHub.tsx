@@ -26,6 +26,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
 import { TrainingPathPanel } from "@/components/training/TrainingPathPanel";
 import { TrainingLeaderPanel } from "@/components/training/TrainingLeaderPanel";
+import { RequiredOnboardingResources } from "@/components/training/RequiredOnboardingResources";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -306,7 +307,10 @@ export default function TrainingHub() {
         </TabsList>
 
         <TabsContent value="path">
-          <TrainingPathPanel />
+          <div className="space-y-6">
+            <RequiredOnboardingResources />
+            <TrainingPathPanel />
+          </div>
         </TabsContent>
 
         <TabsContent value="courses">

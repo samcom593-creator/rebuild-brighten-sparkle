@@ -9,11 +9,16 @@ const parityMigration = read("supabase/migrations/20260823140000_post_a_deal_par
 const productsMigration = read("supabase/migrations/20260823152000_carrier_products.sql");
 const discordMigration = read("supabase/migrations/20260824040000_durable_every_deal_discord.sql");
 const agentlinkDiscordMigration = read("supabase/migrations/20260825030000_agentlink_discord_gap_closure.sql");
+const agentlinkDedupeMigration = read("supabase/migrations/20260825034000_agentlink_discord_dedupe_identity.sql");
+const singleFeedMigration = read("supabase/migrations/20260825035000_single_deal_feed.sql");
+const agencyPeriodMigration = read("supabase/migrations/20260825033000_imo_agency_period_truth.sql");
 const crmScopeMigration = read("supabase/migrations/20260825010000_crm_production_scope.sql");
 const dispatcher = read("supabase/functions/apex-outbox-dispatcher/index.ts");
 const discordNotify = read("supabase/functions/discord-webhook-notify/index.ts");
 const dialog = read("src/components/deals/SubmitDealDialog.tsx");
 const production = read("src/pages/MyDeals.tsx");
+const agentCloudHome = read("src/components/dashboard/AgentCloudHome.tsx");
+const imoByAgency = read("src/components/dashboard/ImoByAgency.tsx");
 const legacyPost = read("supabase/functions/post-deal/index.ts");
 
 const requirements = [
@@ -48,8 +53,18 @@ const requirements = [
   [agentlinkDiscordMigration, "'agentlink_book_deal'", "AgentLink durable outbox aggregate"],
   [agentlinkDiscordMigration, "public.fn_agent_is_roster_excluded", "departed agents never receive fresh alerts"],
   [agentlinkDiscordMigration, "'discord_subagency'", "Vantage receives an independent channel event"],
+  [agentlinkDedupeMigration, "agentlink_discord_policy_ledger", "AgentLink refreshes announce each real policy once"],
+  [agentlinkDedupeMigration, "fn_agentlink_policy_fingerprint", "duplicate upstream rows share one Discord identity"],
+  [agentlinkDedupeMigration, "fn_canonical_agent_id(new.agent_id)", "departed duplicate identities cannot receive alerts"],
+  [singleFeedMigration, "one durable main-channel event", "deal notifications use one feed"],
+  [singleFeedMigration, "destination = 'discord_subagency'", "Vantage deal-channel queue is disabled"],
   [dispatcher, 'event.aggregate_type === "agentlink_book_deal"', "dispatcher reads canonical AgentLink payloads"],
   [dispatcher, "provider_message_id: result.providerMessageId ?? null", "Discord provider receipt is persisted"],
+  [agencyPeriodMigration, "policies_mtd", "agency policy count uses the same MTD window as ALP"],
+  [agencyPeriodMigration, "policies_30d", "agency policy count exposes the rolling 30-day window"],
+  [agencyPeriodMigration, "public.imo_by_agency_period", "agency cards support exact selected periods"],
+  [agentCloudHome, "start={win.start} end={win.end}", "home period selector reaches the agency query"],
+  [imoByAgency, 'rpc("imo_by_agency_period"', "agency component queries the selected period"],
   [dispatcher, "response?.suppressed === true", "suppressed Discord delivery remains retryable"],
   [discordNotify, 'event_type === "deal_closed" ? 1_000 : 5', "deal alerts bypass shared five-per-hour ceiling"],
   [crmScopeMigration, "from public.v_production_unified b", "CRM uses unified production truth"],

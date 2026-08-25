@@ -5,6 +5,7 @@ import {
   GraduationCap,
   ListChecks,
   TrendingUp,
+  Trophy,
   Users,
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ const VIEWS = [
   { label: "Team progress", href: `${BASE}/progress`, icon: Users, staffOnly: true },
   { label: "Course content", href: `${BASE}/content`, icon: ListChecks, staffOnly: true },
   { label: "Annuities", href: `${BASE}/annuities`, icon: TrendingUp },
+  { label: "Weekly leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
 ] as const;
 
 /** AgentCloud-style section switcher shared by every APEX Training surface. */

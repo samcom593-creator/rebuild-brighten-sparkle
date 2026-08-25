@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { ContractingReadinessCard } from "@/components/contracting/ContractingReadinessCard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -295,6 +296,8 @@ function AgentProducerView({ agentId }: { agentId: string }) {
           note={`${a.contracts_active ?? 0} of ${a.contracts_total ?? 0} carrier contracts active`}
         />
       </div>
+
+      <ContractingReadinessCard />
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">

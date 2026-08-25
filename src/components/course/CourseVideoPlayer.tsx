@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Play, CheckCircle, Clock, Loader2 } from "lucide-react";
+import { Play, CheckCircle, Clock, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { resolveBrand } from "@/config/brand";
 
 interface CourseVideoPlayerProps {
   videoUrl: string;
@@ -66,6 +67,7 @@ export function CourseVideoPlayer({
 }: CourseVideoPlayerProps & { playbackRate?: number; onPlaybackRateChange?: (rate: number) => void }) {
   const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
   const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null;
+  const driveId = videoUrl.match(/drive\.google\.com\/file\/d\/([^/?#]+)/)?.[1] ?? null;
   // Sam-feedback 2026-06-01: 11 modules pointed at the @SamuelJamesHQ channel
   // home as a placeholder, which couldn't be embedded. Detect channel/home
   // URLs and show a "Recording in progress" CTA instead of a broken player.
@@ -89,6 +91,18 @@ export function CourseVideoPlayer({
     );
   }
 
+  if (driveId) {
+    return (
+      <DriveResourcePlayer
+        driveId={driveId}
+        originalUrl={videoUrl}
+        watchedPercent={watchedPercent}
+        onProgressUpdate={onProgressUpdate}
+        onVideoComplete={onVideoComplete}
+      />
+    );
+  }
+
   return (
     <NativeVideoPlayer
       videoUrl={videoUrl}
@@ -96,6 +110,49 @@ export function CourseVideoPlayer({
       watchedPercent={watchedPercent}
       onVideoComplete={onVideoComplete}
     />
+  );
+}
+
+function DriveResourcePlayer({
+  driveId,
+  originalUrl,
+  watchedPercent,
+  onProgressUpdate,
+  onVideoComplete,
+}: {
+  driveId: string;
+  originalUrl: string;
+  watchedPercent: number;
+  onProgressUpdate: (percent: number) => void;
+  onVideoComplete: () => void;
+}) {
+  const complete = watchedPercent >= UNLOCK_THRESHOLD;
+  const markComplete = () => {
+    onProgressUpdate(100);
+    onVideoComplete();
+  };
+  return (
+    <div className="space-y-3">
+      <div className="aspect-video overflow-hidden rounded-md border border-border bg-black">
+        <iframe
+          src={`https://drive.google.com/file/d/${driveId}/preview`}
+          title={`${resolveBrand().shortName} training resource`}
+          className="h-full w-full"
+          allow="autoplay; encrypted-media; fullscreen"
+          sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+        />
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button asChild variant="outline" size="sm">
+          <a href={originalUrl} target="_blank" rel="noopener noreferrer">
+            Open in Google Drive <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+          </a>
+        </Button>
+        <Button size="sm" onClick={markComplete} disabled={complete} className="gap-1.5">
+          <CheckCircle className="h-4 w-4" /> {complete ? "Completed" : "Mark watched"}
+        </Button>
+      </div>
+    </div>
   );
 }
 

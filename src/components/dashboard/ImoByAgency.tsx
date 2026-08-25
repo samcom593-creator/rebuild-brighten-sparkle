@@ -6,21 +6,43 @@ import { Badge } from "@/components/ui/badge";
 // TOTAL IMO BY AGENCY — Agent Cloud's home-dashboard block. APEX (your direct
 // book) vs each sub-agency (Vantage = KJ Vaughn's team), rolled up from the real
 // hierarchy via v_imo_by_agency. Shared by the Home dashboard and Production.
-type Row = { agency: string; is_primary: boolean; policies: number; alp: number; alp_mtd: number };
+type Row = {
+  agency: string;
+  is_primary: boolean;
+  policies: number;
+  alp: number;
+  alp_mtd?: number;
+  policies_mtd?: number;
+  policies_30d?: number;
+  alp_30d?: number;
+};
 
 function fmt(n: number | null | undefined): string {
   if (n === null || n === undefined) return "—";
   return `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
-export function ImoByAgency({ windowLabel }: { windowLabel?: string } = {}) {
+export function ImoByAgency({
+  start,
+  end,
+  windowLabel,
+}: { start?: string; end?: string; windowLabel?: string } = {}) {
+  const exactWindow = Boolean(start && end);
   const { data: imo = [] } = useQuery({
-    queryKey: ["imo-by-agency"],
+    queryKey: ["imo-by-agency", start ?? "summary", end ?? "summary"],
     staleTime: 60_000,
     queryFn: async () => {
+      if (start && end) {
+        const { data, error } = await supabase.rpc("imo_by_agency_period" as never, {
+          p_start: start,
+          p_end: end,
+        } as never);
+        if (error) throw error;
+        return (data ?? []) as unknown as Row[];
+      }
       const { data, error } = await supabase
         .from("v_imo_by_agency")
-        .select("agency, is_primary, policies, alp, alp_mtd")
+        .select("agency, is_primary, policies, alp, alp_mtd, policies_mtd, policies_30d, alp_30d")
         .order("alp", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Row[];
@@ -29,13 +51,14 @@ export function ImoByAgency({ windowLabel }: { windowLabel?: string } = {}) {
 
   if (imo.length === 0) return null;
   const max = Math.max(1, ...imo.map((a) => a.alp));
-  const mtdTotal = imo.reduce((s, a) => s + (a.alp_mtd || 0), 0);
+  const periodTotal = imo.reduce((sum, agency) => sum + (exactWindow ? agency.alp : agency.alp_mtd ?? 0), 0);
+  const periodLabel = exactWindow ? (windowLabel ?? "Selected period") : "Calendar MTD";
 
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between">
         <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Total IMO by Agency</p>
-        <p className="text-xs text-muted-foreground">{windowLabel ?? "This month"} · {fmt(mtdTotal)} ALP</p>
+        <p className="text-xs text-muted-foreground">{periodLabel} · {fmt(periodTotal)} ALP</p>
       </div>
       <Card>
         <CardContent className="space-y-3 p-4">
@@ -51,7 +74,16 @@ export function ImoByAgency({ windowLabel }: { windowLabel?: string } = {}) {
               <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
                 <div className="h-full rounded-full bg-primary" style={{ width: `${(a.alp / max) * 100}%` }} />
               </div>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">{a.policies.toLocaleString()} policies · {fmt(a.alp_mtd)} {(windowLabel ?? "this month").toLowerCase()}</p>
+              {exactWindow ? (
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {a.policies.toLocaleString()} policies · {(windowLabel ?? "selected period").toLowerCase()}
+                </p>
+              ) : (
+                <div className="mt-0.5 text-[11px] text-muted-foreground">
+                  <p>{(a.policies_30d ?? 0).toLocaleString()} policies · {fmt(a.alp_30d)} last 30 days</p>
+                  <p>{(a.policies_mtd ?? 0).toLocaleString()} policies · {fmt(a.alp_mtd)} calendar MTD</p>
+                </div>
+              )}
             </div>
           ))}
         </CardContent>

@@ -1,10 +1,9 @@
 // post-deal — PL-074
 //
-// One endpoint to log a deal in three places at once:
+// One endpoint to log a deal in two systems with one durable notification:
 //   1. Apex DB (deals table) — source of truth for the agent's pipeline.
-//   2. Discord (via existing discord-webhook-notify fn, event=deal_closed)
-//      with milestone + streak detection already baked in.
-//   3. AgentLink mirror — best-effort POST to the AgentLink API when a
+//      The database trigger queues the single Discord event transactionally.
+//   2. AgentLink mirror — best-effort POST to the AgentLink API when a
 //      token is present. Logged as a warning on failure (never blocks).
 //
 // Auth: caller must be authenticated. The agent_id is resolved from the
@@ -83,47 +82,7 @@ Deno.serve(async (req) => {
   }).select("id, agent_id, annual_premium, posted_at").single();
   if (insErr || !deal) return json({ ok: false, error: insErr?.message ?? "insert failed" }, 500);
 
-  // 2) Discord broadcast — non-blocking, log on failure
-  let discordOk = false;
-  try {
-    const { data: agentInfo } = await sb
-      .from("agents")
-      .select("display_name, profile:profiles(full_name, instagram_handle, avatar_url)")
-      .eq("id", agentId)
-      .maybeSingle();
-    const agentName =
-      (agentInfo as any)?.profile?.full_name
-      ?? (agentInfo as any)?.display_name
-      ?? "an Apex agent";
-    const instagram = (agentInfo as any)?.profile?.instagram_handle ?? null;
-    // PL-AVATAR fix: Discord embed thumbnail. agents table has NO photo_url
-    // column — verified 2026-05-22. Avatar lives on profiles.avatar_url via
-    // the agents.profile_id FK.
-    const photo_url = (agentInfo as any)?.profile?.avatar_url ?? null;
-
-    const r = await fetch(`${SUPABASE_URL}/functions/v1/discord-webhook-notify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SERVICE_KEY}` },
-      body: JSON.stringify({
-        event_type: "deal_closed",
-        agent_name: agentName,
-        details: {
-          agent_id: agentId,
-          agent_name: agentName,
-          aop: Number(annual_premium),
-          product_type: product_sold ?? "Life",
-          instagram,
-          photo_url,
-        },
-      }),
-    });
-    discordOk = r.ok;
-    if (!r.ok) console.error("discord fire non-ok", r.status, await r.text());
-  } catch (e) {
-    console.error("discord fire error", e);
-  }
-
-  // 3) AgentLink mirror — best-effort, skip if no token
+  // 2) AgentLink mirror — best-effort, skip if no token
   let agentlinkOk = false;
   let agentlinkSkipped = false;
   if (!AGENTLINK_TOKEN) {
@@ -156,7 +115,7 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     deal,
-    discord: discordOk,
+    discord: "queued_by_database",
     agentlink: agentlinkSkipped ? "skipped_no_token" : agentlinkOk ? "ok" : "failed",
   });
 });

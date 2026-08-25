@@ -53,8 +53,8 @@ export function ApplicationConfirmationV2({
   // click — point and clear."
   //
   // The action_link is a Supabase NATIVE magic link — clicking it auto-logs
-  // the applicant in and redirects to /onboarding-course (unlicensed) or
-  // /dashboard (licensed). If the mint fails for any reason we fall back to
+  // the applicant in and redirects to the licensing roadmap (unlicensed) or
+  // contracting intake (licensed). If the mint fails for any reason we fall back to
   // the regular non-authenticated CTAs below — never break the flow.
   const [autoLoginUrl, setAutoLoginUrl] = useState<string | null>(null);
   useEffect(() => {
@@ -68,7 +68,7 @@ export function ApplicationConfirmationV2({
     // The edge fn looks up email by applicationId server-side — we don't
     // need to wait for the status snapshot to load.
     const redirectPath =
-      license === "licensed" ? "/dashboard" : "/onboarding-course";
+      license === "licensed" ? "/start-contracting" : "/get-licensed";
 
     (async () => {
       try {
@@ -156,7 +156,7 @@ function UnlicensedBody({
 
   // Primary CTA: when the magic-link mint succeeded, clicking the button
   // auto-logs the applicant in and drops them straight onto
-  // /onboarding-course. When it failed (or hasn't returned yet) we fall
+  // the licensing roadmap. When it failed (or hasn't returned yet) we fall
   // back to the legacy /get-licensed link so the page never blocks.
   const primaryHref = autoLoginUrl ?? courseUrl;
   const primaryIsExternal = !!autoLoginUrl;
@@ -167,8 +167,8 @@ function UnlicensedBody({
       <div className="rounded-md border border-border/40 bg-muted/20 p-4 sm:p-5 space-y-3">
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Your 3-step path</p>
         <Step done label="Application received" />
-        <Step current label="Start your prelicensing course" detail={autoLoginUrl ? "One click. You're already logged in." : "~$120, refundable when you produce. 2-4 weeks to licensed."} />
-        <Step label="Hire call unlocks the moment you pass" />
+        <Step current label="Activate your APEX account" detail={autoLoginUrl ? "One click signs you in and opens your licensing roadmap." : "Your licensing roadmap is ready."} />
+        <Step label="Complete course → exam → fingerprints → license" />
       </div>
 
       {/* Primary CTA — auto-login + course when the magic link is ready */}
@@ -176,14 +176,14 @@ function UnlicensedBody({
         <GradientButton asChild className="w-full text-base h-14" size="lg">
           <a href={primaryHref} className="block">
             <Sparkles className="h-5 w-5 mr-2" />
-            Start the course
+            Activate account &amp; open roadmap
           </a>
         </GradientButton>
       ) : (
         <GradientButton asChild className="w-full text-base h-14" size="lg">
           <Link to={primaryHref} className="block">
             <Sparkles className="h-5 w-5 mr-2" />
-            Start your prelicensing course
+            Open your licensing roadmap
           </Link>
         </GradientButton>
       )}
@@ -226,7 +226,7 @@ function LicensedBody({
         <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Activation path</p>
         <Step done label="Application received" />
         <Step current label="Book your hire call" detail="The fastest path to your first check." />
-        <Step label="Contracting + Discord invite arrive same day" />
+        <Step label="Activate portal → submit contracting → complete training" />
       </div>
 
       {/* Host disclosure — applicant should know whose calendar this is */}
@@ -257,7 +257,7 @@ function LicensedBody({
         <GradientButton asChild variant="outline" className="w-full" size="lg">
           <a href={autoLoginUrl} className="block">
             <Sparkles className="h-4 w-4 mr-2" />
-            Enter your APEX portal
+            Activate portal &amp; start contracting
           </a>
         </GradientButton>
       ) : null}

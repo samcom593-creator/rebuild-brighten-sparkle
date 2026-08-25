@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Loader2, ShieldAlert } from "lucide-react";
+import { CheckCircle2, ExternalLink, GraduationCap, Loader2, ShieldAlert } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GlassCard } from "@/components/ui/glass-card";
+import { EO_COVERAGE_URL } from "@/components/contracting/ContractingReadinessCard";
 import {
   validateIntake,
   SERVER_ERROR_COPY,
@@ -205,11 +206,30 @@ export default function StartContracting() {
             </div>
           )}
 
+          <div className="mt-5 border-t border-border pt-5">
+            <p className="text-sm font-semibold">Next: finish setup, then training</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Prepare your EFT bank letter or voided check and your active E&O certificate. Enter banking details only in a secure carrier portal.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button asChild size="sm">
+                <a href="https://apex-financial.org/dashboard/recruiting/training?tab=path">
+                  <GraduationCap className="mr-1.5 h-4 w-4" /> Open onboarding training
+                </a>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <a href={EO_COVERAGE_URL} target="_blank" rel="noopener noreferrer">
+                  E&O coverage <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+                </a>
+              </Button>
+            </div>
+          </div>
+
         </GlassCard>
       ) : (
         <>
           <p className="mt-2 text-sm text-muted-foreground">
-            Five details and you're done. We'll take it from there.
+            Five details route your request to the contracting spreadsheet and private support channel. Then you'll prepare EFT and E&O for carrier setup.
           </p>
 
           <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">

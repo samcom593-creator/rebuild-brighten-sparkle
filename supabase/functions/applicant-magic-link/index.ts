@@ -37,6 +37,8 @@ const DEFAULT_REDIRECT_PATH = "/dashboard";
 const ALLOWED_REDIRECT_PATHS = new Set<string>([
   "/dashboard",
   "/onboarding-course",
+  "/get-licensed",
+  "/start-contracting",
   "/apex-daily-numbers",
   "/dashboard/clients",
   "/agent-portal",

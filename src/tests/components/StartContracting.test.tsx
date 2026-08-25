@@ -94,7 +94,7 @@ describe("StartContracting · after a durable acceptance", () => {
     expect(screen.queryByText(/sent/i)).toBeNull();
   });
 
-  it("never adds an external contracting continuation", async () => {
+  it("ignores an obsolete external continuation and shows only approved next steps", async () => {
     invoke.mockResolvedValue({
       data: { ok: true, intake_id: "id-1", status: "accepted", continue_url: "https://example.com/obsolete" },
       error: null,
@@ -104,7 +104,10 @@ describe("StartContracting · after a durable acceptance", () => {
     fireEvent.click(screen.getByRole("button", { name: /submit/i }));
 
     await screen.findByText(/queued/i);
-    expect(screen.queryByRole("link")).toBeNull();
+    const links = screen.getAllByRole("link") as HTMLAnchorElement[];
+    expect(links.map((link) => link.href)).not.toContain("https://example.com/obsolete");
+    expect(screen.getByRole("link", { name: /open onboarding training/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /e&o coverage/i })).toBeTruthy();
   });
 
   it("survives a reload", async () => {

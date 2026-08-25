@@ -1,6 +1,6 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-08-25T22:38:03.944Z
+Generated: 2026-08-25T23:29:59.290Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
@@ -8,8 +8,8 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 - Total Local Edge Functions: **245**
 - Configured in `config.toml`: **247**
 - Invoked Edge Functions in Source: **102**
-- Invoked RPC Calls in Source: **108**
-- SQL Functions in Migrations: **386**
+- Invoked RPC Calls in Source: **109**
+- SQL Functions in Migrations: **388**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -270,6 +270,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **108**
-- Also declared in this commit's migrations: **97**
+- Invoked RPCs: **109**
+- Also declared in this commit's migrations: **98**
 - Declared only in the database: **11**

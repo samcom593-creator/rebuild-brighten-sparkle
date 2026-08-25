@@ -42,6 +42,7 @@ import { BulkComposeDrawer } from "@/components/dashboard/BulkComposeDrawer";
 import { AgentCredentialsPanel } from "@/components/dashboard/AgentCredentialsPanel";
 import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
 import { AgentTrainingStageBar } from "@/components/dashboard/AgentTrainingStageBar";
+import { ProductionMetricsCard } from "@/components/dashboard/ProductionMetricsCard";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { getBusinessDayKey, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
@@ -497,35 +498,6 @@ function RosterStatusBadge({ row }: { row: RosterRow }) {
     <Badge variant="outline" className={cn("text-[10px] font-bold uppercase tracking-wide", tone)}>
       {s}
     </Badge>
-  );
-}
-
-/**
- * The four headline tiles. Deliberately the ONLY place a team-level number is
- * rendered on this page, and every one of them is a server-side aggregate —
- * so the two view modes below cannot disagree about how big the team is.
- */
-function RosterKpis({ segments, isLoading }: { segments: RosterSegments | null; isLoading: boolean }) {
-  const tiles = [
-    { label: "Team size", value: segments ? segments.total.toLocaleString() : "—", note: "on the canonical roster", tone: "text-foreground" },
-    { label: "Active", value: segments ? segments.active.toLocaleString() : "—", note: segments ? `${segments.inactive} inactive · ${segments.terminated} terminated` : "not on file", tone: "text-info" },
-    { label: "Producing this month", value: segments ? segments.producing_mtd.toLocaleString() : "—", note: segments ? `of ${segments.active} active` : "not on file", tone: "text-success" },
-    { label: "Month-to-date ALP", value: segments ? (usdOrNull(segments.mtd_alp) ?? "Nothing posted yet") : "—", note: segments?.book_last_posted ? `book through ${segments.book_last_posted}` : "not on file", tone: "text-foreground" },
-  ];
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {tiles.map((t) => (
-        <div key={t.label} className="rounded-md border border-border bg-card p-4">
-          {isLoading && !segments ? (
-            <div className="h-8 w-20 animate-pulse rounded bg-muted/40" />
-          ) : (
-            <p className={cn("truncate text-2xl font-bold tabular-nums", t.tone)}>{t.value}</p>
-          )}
-          <p className="text-xs text-muted-foreground">{t.label}</p>
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground/70">{t.note}</p>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -1918,7 +1890,7 @@ export default function DashboardCRM() {
           }
         />
 
-        <RosterKpis segments={rosterSegmentsQuery.data ?? null} isLoading={rosterSegmentsQuery.isLoading} />
+        <ProductionMetricsCard snapshot={rosterSegmentsQuery.data ?? null} isLoading={rosterSegmentsQuery.isLoading} />
 
         {/* Two questions, two views, one set of headline numbers above.
             Roster answers "who is on this team" from the canonical roster.

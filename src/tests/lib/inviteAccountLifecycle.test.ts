@@ -17,8 +17,19 @@ describe("invite-created account lifecycle", () => {
   it("starts licensed hires in onboarding and preserves both hierarchy keys", () => {
     const edge = source("../supabase/functions/consume-invite-token/index.ts");
     expect(edge).not.toContain('onboarding_stage: licensed ? "live"');
-    expect(edge.match(/onboarding_stage: licensed \? "onboarding" : "pre_licensed"/g)).toHaveLength(2);
-    expect(edge.match(/invited_by_manager_id: targetManager\?\.id \?\? null/g)).toHaveLength(2);
+    expect(edge).toContain('onboarding_stage: licensed ? "onboarding" : "pre_licensed"');
+    expect(edge).toContain("invited_by_manager_id: targetManager.id");
+    expect(edge).toContain("license_progress: licensed ? \"licensed\"");
+  });
+
+  it("upgrades an existing unlicensed identity in place without regressing tenure", () => {
+    const edge = source("../supabase/functions/consume-invite-token/index.ts");
+    expect(edge).toContain('const candidates = new Map<string, ExistingAgent>()');
+    expect(edge).toContain('.eq("nipr_number", nipr_number)');
+    expect(edge).toContain('licensed = licensed || existingAgent?.license_status === "licensed"');
+    expect(edge).toContain("agentId = existingAgent.id");
+    const updateBranch = edge.slice(edge.indexOf("if (existingAgent?.id)"), edge.indexOf("} else {\n    // Fresh insert."));
+    expect(updateBranch).not.toContain("start_date:");
   });
 
   it("surfaces account readiness and editable comp in the admin account screen", () => {

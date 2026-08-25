@@ -87,6 +87,11 @@ describe("StartContracting · after a durable acceptance", () => {
     fireEvent.click(screen.getByRole("button", { name: /submit/i }));
 
     await waitFor(() => expect(screen.getByText(/profile is active/i)).toBeTruthy());
+    expect(screen.getByRole("heading", { name: "Contracting Initiated — Fast Track Active" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /book instant onboarding/i })).toHaveAttribute(
+      "href",
+      "https://calendly.com/apexfinancialempire/1on1-call-clone",
+    );
     expect(screen.queryByText(/queued/i)).toBeNull();
     expect(screen.queryByText(/has been notified/i)).toBeNull();
   });

@@ -517,6 +517,7 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
     const { data, error } = await rpc<{
       dealId?: string;
       status?: string;
+      dealStatus?: string;
       downstreamState?: string;
       correlationId?: string;
     }>("submit_apex_deal", {
@@ -544,7 +545,11 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
     queryClient.invalidateQueries({ queryKey: ["deals"] });
     queryClient.invalidateQueries({ queryKey: ["deals-count"] });
     queryClient.invalidateQueries({ queryKey: ["news-feed"] });
-    toast.success("Deal saved. Delivery is queued independently.");
+    if (data.status === "already_recorded") {
+      toast.info("That carrier, policy number, and writing NPN are already recorded. Nothing was posted twice.");
+    } else {
+      toast.success("Deal saved. Delivery is queued independently.");
+    }
     setSaving(false);
   };
 

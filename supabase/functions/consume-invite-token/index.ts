@@ -84,7 +84,7 @@ serve(async (req) => {
   const full_name = (body.full_name || "").trim();
   const phone_digits = digitsOnly(body.phone || "");
   const email = (body.email || "").trim().toLowerCase();
-  const nipr_number = digitsOnly(body.nipr_number || "") || null;
+  let nipr_number = digitsOnly(body.nipr_number || "") || null;
 
   if (!token || token.length < 8) {
     return json({ ok: false, error: "invalid_token" }, 400);
@@ -233,15 +233,17 @@ serve(async (req) => {
   const targetRole: string = tokenRow.target_role ?? "hired_unlicensed";
   // The recruit's explicit answer wins. target_role remains the compatibility
   // fallback for old links that predated the required license question.
-  const licensed = typeof body.licensed === "boolean"
+  let licensed = typeof body.licensed === "boolean"
     ? body.licensed
     : targetRole === "hired_licensed";
   if (licensed && (!nipr_number || !/^\d{5,10}$/.test(nipr_number))) {
     return json({ ok: false, error: "npn_required_for_licensed_hire" }, 422);
   }
 
-  // 2. Dedupe by email — if an active agent already owns this email, bail with a clear signal.
-  //    We look up the auth user first (canonical), then agents.
+  // 2. Resolve identity before creating anything. A licensed hire may be the
+  //    same person who joined while unlicensed; email, profile, auth user, and
+  //    NPN are identity signals for an in-place upgrade, not permission to mint
+  //    a second agent/account.
   //    listUsers has no server-side email filter, so this pages until it finds
   //    the address or reaches the end of the table. It used to read one page of
   //    200 under a comment saying "small-N lookup is fine while we're early" —
@@ -266,7 +268,108 @@ serve(async (req) => {
     return json({ ok: false, error: "lookup_failed" }, 500);
   }
 
-  // 3. Create or reuse auth user.
+  type ExistingAgent = {
+    id: string;
+    user_id: string | null;
+    profile_id: string | null;
+    status: string | null;
+    license_status: string | null;
+    license_progress: string | null;
+    onboarding_stage: string | null;
+    canonical_agent_id: string | null;
+    nipr_number: string | null;
+  };
+  const agentColumns = "id, user_id, profile_id, status, license_status, license_progress, onboarding_stage, canonical_agent_id, nipr_number";
+  const candidates = new Map<string, ExistingAgent>();
+
+  if (authUserId) {
+    const { data, error } = await admin.from("agents").select(agentColumns).eq("user_id", authUserId).limit(5);
+    if (error) {
+      console.error("agent_auth_identity_lookup_failed", error);
+      return json({ ok: false, error: "lookup_failed" }, 500);
+    }
+    for (const row of (data ?? []) as ExistingAgent[]) candidates.set(row.id, row);
+  }
+
+  // A legacy unlicensed row can be linked through profiles even when its auth
+  // linkage was never copied onto agents.user_id.
+  const { data: profileMatches, error: profileMatchError } = await admin
+    .from("profiles")
+    .select("id, user_id")
+    .eq("email", email)
+    .limit(5);
+  if (profileMatchError) {
+    console.error("profile_identity_lookup_failed", profileMatchError);
+    return json({ ok: false, error: "lookup_failed" }, 500);
+  }
+  const profileIds = (profileMatches ?? []).map((row) => row.id).filter(Boolean);
+  if (profileIds.length) {
+    const { data, error } = await admin.from("agents").select(agentColumns).in("profile_id", profileIds).limit(5);
+    if (error) {
+      console.error("agent_profile_identity_lookup_failed", error);
+      return json({ ok: false, error: "lookup_failed" }, 500);
+    }
+    for (const row of (data ?? []) as ExistingAgent[]) candidates.set(row.id, row);
+  }
+
+  if (nipr_number) {
+    const { data, error } = await admin.from("agents").select(agentColumns).eq("nipr_number", nipr_number).limit(5);
+    if (error) {
+      console.error("agent_npn_identity_lookup_failed", error);
+      return json({ ok: false, error: "lookup_failed" }, 500);
+    }
+    for (const row of (data ?? []) as ExistingAgent[]) candidates.set(row.id, row);
+  }
+
+  // Collapse historical duplicate aliases onto their canonical agent before
+  // deciding whether the intake is ambiguous.
+  const resolvedCandidates = new Map<string, ExistingAgent>();
+  for (const candidate of candidates.values()) {
+    let resolved = candidate;
+    if (candidate.canonical_agent_id) {
+      const { data: canonical, error } = await admin
+        .from("agents")
+        .select(agentColumns)
+        .eq("id", candidate.canonical_agent_id)
+        .maybeSingle();
+      if (error) {
+        console.error("canonical_agent_identity_lookup_failed", error);
+        return json({ ok: false, error: "lookup_failed" }, 500);
+      }
+      if (canonical) resolved = canonical as ExistingAgent;
+    }
+    resolvedCandidates.set(resolved.id, resolved);
+  }
+
+  if (resolvedCandidates.size > 1) {
+    return json({ ok: false, error: "identity_conflict" }, 409);
+  }
+  let existingAgent = resolvedCandidates.values().next().value as ExistingAgent | undefined;
+
+  // Never regress a licensed producer because an old invite link defaulted to
+  // unlicensed. The explicit licensed answer can only advance this state.
+  licensed = licensed || existingAgent?.license_status === "licensed";
+  nipr_number = nipr_number ?? existingAgent?.nipr_number ?? null;
+
+  if (existingAgent?.user_id) {
+    const { data: linkedAuth, error: linkedAuthError } = await admin.auth.admin.getUserById(existingAgent.user_id);
+    if (!linkedAuthError && linkedAuth?.user) {
+      const linkedEmail = (linkedAuth.user.email ?? "").trim().toLowerCase();
+      if (linkedEmail && linkedEmail !== email) {
+        return json({ ok: false, error: "identity_conflict" }, 409);
+      }
+      if (authUserId && authUserId !== existingAgent.user_id) {
+        return json({ ok: false, error: "identity_conflict" }, 409);
+      }
+      authUserId = existingAgent.user_id;
+    } else {
+      // The agent points at an auth identity that no longer exists. Repair the
+      // same agent below after creating the replacement auth user.
+      existingAgent = { ...existingAgent, user_id: null };
+    }
+  }
+
+  // 3. Create an auth user only when no existing identity can be reused.
   if (!authUserId) {
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email,
@@ -284,8 +387,9 @@ serve(async (req) => {
     authUserId = created.user.id;
   }
 
-  // 4. Upsert profile row (best-effort; do not block hire on this).
-  await admin
+  // 4. The profile and agent must agree on the same auth identity. A partial
+  //    profile update is not a successful hire, so fail closed here.
+  const { data: profileRow, error: profileError } = await admin
     .from("profiles")
     .upsert(
       {
@@ -295,29 +399,52 @@ serve(async (req) => {
         full_name,
       },
       { onConflict: "user_id" },
-    );
+    )
+    .select("id")
+    .single();
+  if (profileError || !profileRow?.id) {
+    console.error("profile_sync_failed", profileError);
+    return json({ ok: false, error: "profile_sync_failed" }, 500);
+  }
 
-  // 5. Look up existing agent by user_id.
-  const { data: existingAgent } = await admin
-    .from("agents")
-    .select("id, status, license_status, onboarding_stage")
-    .eq("user_id", authUserId)
-    .maybeSingle();
+  // A concurrent request may have created the row after our first lookup.
+  if (!existingAgent) {
+    const { data: byUser, error } = await admin
+      .from("agents")
+      .select(agentColumns)
+      .eq("user_id", authUserId)
+      .maybeSingle();
+    if (error) {
+      console.error("agent_recheck_failed", error);
+      return json({ ok: false, error: "lookup_failed" }, 500);
+    }
+    existingAgent = (byUser as ExistingAgent | null) ?? undefined;
+  }
 
   let agentId: string;
   if (existingAgent?.id) {
     agentId = existingAgent.id;
-    // Update to activate + fire the enqueue trigger chain.
+    const nextOnboardingStage = licensed
+      ? (existingAgent.onboarding_stage && !["pre_licensed", "applied"].includes(existingAgent.onboarding_stage)
+        ? existingAgent.onboarding_stage
+        : "onboarding")
+      : (existingAgent.onboarding_stage ?? "pre_licensed");
+    // Upgrade the canonical row in place. Do not reset tenure or advanced
+    // onboarding stages, and do not erase an existing upline with a null token.
     const { error: updErr } = await admin
       .from("agents")
       .update({
+        user_id: authUserId,
+        profile_id: profileRow.id,
         status: "active",
         license_status: licensed ? "licensed" : "unlicensed",
-        onboarding_stage: licensed ? "onboarding" : "pre_licensed",
+        license_progress: licensed ? "licensed" : (existingAgent.license_progress ?? "unlicensed"),
+        onboarding_stage: nextOnboardingStage,
         display_name: full_name,
-        manager_id: targetManager?.id ?? null,
-        invited_by_manager_id: targetManager?.id ?? null,
-        start_date: new Date().toISOString().slice(0, 10),
+        ...(targetManager ? {
+          manager_id: targetManager.id,
+          invited_by_manager_id: targetManager.id,
+        } : {}),
         ...(nipr_number ? { nipr_number } : {}),
       })
       .eq("id", agentId);
@@ -334,8 +461,10 @@ serve(async (req) => {
       .from("agents")
       .insert({
         user_id: authUserId,
+        profile_id: profileRow.id,
         status: "active",
         license_status: licensed ? "licensed" : "unlicensed",
+        license_progress: licensed ? "licensed" : "unlicensed",
         onboarding_stage: licensed ? "onboarding" : "pre_licensed",
         display_name: full_name,
         manager_id: targetManager?.id ?? null,

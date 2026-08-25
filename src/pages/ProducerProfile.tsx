@@ -495,19 +495,18 @@ export default function ProducerProfile() {
   const userEmail: string | null = (profile.data?.email ?? null) || ((user as any)?.email ?? null);
   const agentId: string | null = (agent.data?.id ?? null) || null;
 
-  // agents.total_premium/total_earnings/total_policies are dead columns (always
-  // null → $0). Compute the real lifetime rollup from agentlink_book (the source
-  // the leaderboard/hero use). Earnings is a contract-level estimate (no paid-
-  // commission feed exists), same 63% basis as the board.
+  // Dead cached totals are intentionally ignored. This is the same unified,
+  // deduped production + resolved-comp truth used by Finances and Leaderboard.
   const bookRollup = useQuery({
     queryKey: ["producer-book-rollup", agentId],
     enabled: !!agentId,
     queryFn: async () => {
-      const { data } = await supabase.from("v_agentlink_book_scoped" as any)
-        .select("annual_premium").eq("agent_id", agentId).not("is_dead", "is", true);
-      const rows = (data ?? []) as unknown as Array<{ annual_premium: number | string | null }>;
+      const { data } = await supabase.from("v_production_comp_truth" as any)
+        .select("annual_premium, direct_estimate").eq("agent_id", agentId);
+      const rows = (data ?? []) as unknown as Array<{ annual_premium: number | string | null; direct_estimate: number | string | null }>;
       const premium = rows.reduce((s, r) => s + Number(r.annual_premium ?? 0), 0);
-      return { premium, policies: rows.length, estEarnings: Math.round(premium * 0.63) };
+      const estEarnings = rows.reduce((sum, row) => sum + Number(row.direct_estimate ?? 0), 0);
+      return { premium, policies: rows.length, estEarnings: Math.round(estEarnings) };
     },
   });
 

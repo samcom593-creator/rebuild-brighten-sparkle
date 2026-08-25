@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Trophy, Medal, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { scoreboardWindow } from "@/lib/scoreboardPeriod";
 
 type Period = "today" | "mtd" | "ytd";
 
@@ -17,8 +18,6 @@ interface Row {
   agent_id: string;
   agent_name: string;
   amount: number;
-  direct: number;
-  override: number;
   isYou: boolean;
 }
 
@@ -27,55 +26,30 @@ export function LiveCommissionsLeaderboard() {
   const [period, setPeriod] = useState<Period>("mtd");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["insuracloud", "leaderboard", period, user?.id],
+    queryKey: ["finance-truth", "leaderboard", period, user?.id],
     queryFn: async () => {
-      // Get latest snapshot per agent
-      const cutoff = new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString().slice(0, 10);
-      const { data: snaps, error } = await supabase
-        .from("insuracloud_snapshots")
-        .select("agent_id, today_earnings, mtd_earnings, ytd_earnings, direct_commissions, override_commissions, snapshot_date")
-        .gte("snapshot_date", cutoff)
-        .not("agent_id", "is", null)
-        .order("snapshot_date", { ascending: false });
+      const through = new Date().toLocaleDateString("en-CA", { timeZone: "America/Phoenix" });
+      const window = scoreboardWindow(period === "today" ? "day" : period === "mtd" ? "month" : "year", through);
+      const { data: board, error } = await supabase.rpc("leaderboard_board" as never, {
+        p_start: window.start,
+        p_end: window.end,
+      } as never);
       if (error) throw error;
 
-      // Dedupe to latest per agent
-      const seen = new Map<string, any>();
-      for (const r of snaps ?? []) {
-        if (!seen.has(r.agent_id!)) seen.set(r.agent_id!, r);
-      }
-      const agentIds = [...seen.keys()];
-      if (agentIds.length === 0) return [] as Row[];
-
-      // Look up agent display names + user_id (to flag "YOU")
-      const { data: agents } = await supabase
+      const { data: mine } = await supabase
         .from("agents")
-        .select("id, user_id, display_name, profiles:profile_id(full_name)")
-        .in("id", agentIds);
+        .select("id")
+        .eq("user_id", user?.id ?? "00000000-0000-0000-0000-000000000000");
+      const myIds = new Set((mine ?? []).map((agent) => agent.id));
 
-      const nameMap = new Map<string, { name: string; userId: string | null }>();
-      for (const a of (agents ?? []) as any[]) {
-        nameMap.set(a.id, {
-          name: a.display_name ?? a.profiles?.full_name ?? "—",
-          userId: a.user_id ?? null,
-        });
-      }
-
-      const rows: Row[] = [...seen.values()].map((s: any) => {
-        const meta = nameMap.get(s.agent_id) ?? { name: "—", userId: null };
-        const amount =
-          period === "today"
-            ? Number(s.today_earnings ?? 0)
-            : period === "mtd"
-              ? Number(s.mtd_earnings ?? 0)
-              : Number(s.ytd_earnings ?? 0);
+      const rows: Row[] = ((board ?? []) as Array<Record<string, unknown>>).map((item) => {
+        const agentId = String(item.agent_id ?? item.agent_key ?? "unmapped");
+        const amount = Number(item.est_earnings ?? 0);
         return {
-          agent_id: s.agent_id,
-          agent_name: meta.name,
+          agent_id: agentId,
+          agent_name: String(item.agent_name ?? "Unmapped producer"),
           amount,
-          direct: Number(s.direct_commissions ?? 0),
-          override: Number(s.override_commissions ?? 0),
-          isYou: !!user?.id && meta.userId === user.id,
+          isYou: myIds.has(agentId),
         };
       });
 
@@ -85,7 +59,7 @@ export function LiveCommissionsLeaderboard() {
     staleTime: 30_000,
   });
 
-  const rows = data ?? [];
+  const rows = useMemo(() => data ?? [], [data]);
   const totalLive = useMemo(() => rows.reduce((s, r) => s + r.amount, 0), [rows]);
 
   return (
@@ -99,7 +73,7 @@ export function LiveCommissionsLeaderboard() {
           </TabsList>
         </Tabs>
         <Badge variant="outline" className="text-[10px]">
-          {rows.length} synced · {fmt(totalLive)}
+          {rows.length} producers · {fmt(totalLive)} estimated
         </Badge>
       </div>
 
@@ -112,8 +86,7 @@ export function LiveCommissionsLeaderboard() {
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-600 dark:text-amber-400">
-          No commissions data synced yet. Use <span className="font-semibold">Sync All</span> on the
-          Team Commissions card above.
+          No valid posted production exists in this period.
         </div>
       ) : (
         <div className="space-y-2 overflow-y-auto scrollbar-custom max-h-[60vh]">
@@ -159,7 +132,7 @@ export function LiveCommissionsLeaderboard() {
                     )}
                   </div>
                   <div className="text-[11px] text-muted-foreground tabular-nums">
-                    Direct {fmt(r.direct)} · Override {fmt(r.override)}
+                    Unified production estimate
                   </div>
                 </div>
 

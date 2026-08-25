@@ -146,9 +146,11 @@ interface FinOverview {
   as_of: string;
   comp_note: string;
   kpis: { today: number; forecast_90d: number; mtd: number; ytd: number };
+  team_kpis: { today: number; mtd: number; ytd: number };
+  production: { policies: number; alp: number; producers: number; last_synced_at: string | null };
   commission_types: { direct_ytd: number; override_pending: number; trail_pending: number; renewal_pending: number };
   forecast: Array<{ month: string; direct: number; override: number; trail: number; renewal: number }>;
-  payouts: { month: string; total: number; rows: Array<{ date: string; agent: string | null; client: string | null; carrier: string | null; product: string | null; ap: number; est: number }> };
+  payouts: { month: string; total: number; rows: Array<{ date: string; agent: string | null; client: string | null; carrier: string | null; product: string | null; ap: number; est: number; component: "direct" | "override" | "team_direct" }> };
   breakdown: Record<"by_carrier" | "by_product" | "by_month" | "by_agent_overrides", Array<{ name: string; deals: number; ap: number; est: number }>>;
 }
 
@@ -164,9 +166,9 @@ function monthShort(ym: string): string {
 }
 
 const SCOPES: Array<{ key: FinScope; label: string }> = [
-  { key: "mine", label: "Mine" },
-  { key: "agency", label: "Agency" },
-  { key: "imo", label: "Total IMO" },
+  { key: "mine", label: "My direct" },
+  { key: "agency", label: "My + overrides" },
+  { key: "imo", label: "Team gross" },
 ];
 
 function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub: string; accent?: boolean }) {
@@ -197,12 +199,12 @@ function OverviewTab({ scope }: { scope: FinScope }) {
   const [month, setMonth] = useState<Date>(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const monthIso = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}-01`;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["finances-overview", scope, monthIso],
     staleTime: 120_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("finances_overview" as never, {
-        p_scope: scope === "imo" ? "agency" : scope,
+        p_scope: scope,
         p_month: monthIso,
       } as never);
       if (error) throw error;
@@ -227,6 +229,19 @@ function OverviewTab({ scope }: { scope: FinScope }) {
     URL.revokeObjectURL(a.href);
   };
 
+  if (isError) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <AlertTriangle className="mx-auto h-5 w-5 text-destructive" />
+          <p className="mt-2 font-semibold">Finance truth could not load</p>
+          <p className="mt-1 text-xs text-muted-foreground">{error instanceof Error ? error.message : "Unknown secured-source error"}</p>
+          <Button className="mt-3" onClick={() => void refetch()} size="sm" variant="outline">Retry</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (isLoading || !data) {
     return (
       <div className="space-y-5">
@@ -249,6 +264,15 @@ function OverviewTab({ scope }: { scope: FinScope }) {
         <KpiCard label="Forecast 90-day" value={money(k.forecast_90d)} sub="Run rate of the last 90 days" accent />
         <KpiCard label="Month-to-date (MTD)" value={money(k.mtd)} sub={new Date().toLocaleDateString(undefined, { month: "long", year: "numeric" })} />
         <KpiCard label="Year-to-date (YTD)" value={money(k.ytd)} sub="Since Jan 1" />
+      </div>
+
+      <div className="flex flex-col gap-1 rounded-lg border border-border bg-card px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <span>
+          Unified ledger: <strong className="text-foreground">{data.production.policies.toLocaleString()} policies</strong> · {money(data.production.alp)} AP · {data.production.producers.toLocaleString()} producers
+        </span>
+        <span>
+          Team gross MTD: <strong className="text-foreground">{money(data.team_kpis.mtd)}</strong>
+        </span>
       </div>
 
       {/* Commission types quad */}
@@ -298,7 +322,7 @@ function OverviewTab({ scope }: { scope: FinScope }) {
         </summary>
         <div className="border-t border-border px-4 py-3 text-sm text-muted-foreground space-y-2">
           <p>{data.comp_note}</p>
-          <p>Direct = annual premium × your saved comp level (63% where no level is on file). Trail pending models the 25% as-earned tail paid in months 10–12. Renewal pending counts policies past year 2 — genuinely $0 until the book ages. These are estimates, not carrier statements.</p>
+          <p>Direct = annual premium × the resolved producer comp. Override = your positive comp spread on downline production. Trail and renewal remain estimates until a carrier-paid feed is connected.</p>
         </div>
       </details>
 
@@ -306,8 +330,8 @@ function OverviewTab({ scope }: { scope: FinScope }) {
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
           <div>
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Scheduled payouts</CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">Your upcoming and past commission payments (estimated)</p>
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">Estimated commission activity</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">Posted production for this scope; not a carrier-paid receipt</p>
           </div>
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={payoutRows.length === 0}>
             <Download className="mr-1.5 h-3.5 w-3.5" /> Export CSV
@@ -344,7 +368,10 @@ function OverviewTab({ scope }: { scope: FinScope }) {
                   {payoutRows.map((r, i) => (
                     <tr key={`${r.date}|${r.client ?? ""}|${r.agent ?? ""}|${i}`}>
                       <td className="py-2 pr-3 tabular-nums text-muted-foreground">{r.date}</td>
-                      <td className="max-w-36 truncate py-2 pr-3">{r.agent ?? "—"}</td>
+                      <td className="max-w-36 py-2 pr-3">
+                        <span className="block truncate">{r.agent ?? "—"}</span>
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{r.component.replace("team_", "")}</span>
+                      </td>
                       <td className="max-w-36 truncate py-2 pr-3">{r.client ?? "—"}</td>
                       <td className="max-w-28 truncate py-2 pr-3 text-muted-foreground">{r.carrier ?? "—"}</td>
                       <td className="hidden max-w-32 truncate py-2 pr-3 text-muted-foreground md:table-cell">{r.product ?? "—"}</td>

@@ -6,7 +6,6 @@ import { Wallet, Loader2, AlertCircle } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 import { PageHeader } from "@/components/ui/page-header";
 
 type LedgerRow = {
@@ -56,7 +55,7 @@ export default function MyCommissions() {
     (async () => {
       if (!user?.id) { if (!cancelled) { setAgentId(null); setLoading(false); } return; }
       const { data: agent } = await supabase.from("agents")
-        .select("id, contract_percentage").eq("user_id", user.id)
+        .select("id").eq("user_id", user.id)
         .order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (cancelled) return;
       if (!agent?.id) { setAgentId(null); setLoading(false); return; }
@@ -88,29 +87,28 @@ export default function MyCommissions() {
       }));
 
       if (mapped.length === 0) {
-        const { data: deals } = await supabase
-          .from("deals")
-          .select("id, annual_premium, product_sold, client_first_name, client_last_name, posted_at, created_at, status")
-          .eq("agent_id", agent.id)
-          .in("status", DEAL_TRUTH_STATUS_FILTER)
-          .order("posted_at", { ascending: false, nullsFirst: false })
-          .limit(250);
-        const ratePct = Number(agent.contract_percentage ?? 65);
-        mapped = ((deals as any[]) ?? []).map((deal) => {
+        const { data: estimates } = await supabase
+          .from("v_production_comp_truth" as any)
+          .select("row_key, annual_premium, direct_estimate, seller_comp_pct, status, posted_date, client_name, product, carrier")
+          .or(`agent_id.eq.${agent.id},raw_agent_id.eq.${agent.id}`)
+          .order("posted_date", { ascending: false })
+          .limit(500);
+        mapped = ((estimates as any[]) ?? []).map((deal) => {
           const annualPremium = Number(deal.annual_premium ?? 0);
           return {
-            id: `estimate-${deal.id}`,
-            deal_id: deal.id,
+            id: `estimate-${deal.row_key}`,
+            deal_id: String(deal.row_key),
             annual_premium: annualPremium,
-            rate_pct: ratePct,
-            rate_source: "agent contract percentage estimate",
-            amount: annualPremium * (ratePct / 100),
+            rate_pct: Number(deal.seller_comp_pct ?? 60),
+            rate_source: "unified production estimate",
+            amount: Number(deal.direct_estimate ?? 0),
             status: "pending",
             expected_paid_date: null,
             actual_paid_date: null,
-            created_at: deal.posted_at ?? deal.created_at,
-            client_name: `${deal.client_first_name ?? ""} ${deal.client_last_name ?? ""}`.trim(),
-            product: deal.product_sold,
+            created_at: `${deal.posted_date}T12:00:00Z`,
+            carrier_name: deal.carrier ?? undefined,
+            client_name: deal.client_name ?? undefined,
+            product: deal.product ?? undefined,
             source: "estimate",
           } satisfies LedgerRow;
         });

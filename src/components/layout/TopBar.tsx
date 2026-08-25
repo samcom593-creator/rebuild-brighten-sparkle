@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Command, Home, Menu, Moon, Search, Star, Sun, UserPlus } from "lucide-react";
+import { Command, HelpCircle, Home, Menu, Moon, Search, Star, Sun, UserPlus } from "lucide-react";
 // 2026-08-23 light/dark wave: this file used to import useTheme from
 // "next-themes". No <ThemeProvider> is mounted anywhere in this app, and
 // next-themes' hook falls back to a stub context when the provider is absent
@@ -77,6 +77,9 @@ export function TopBar() {
           <Star className={cn("h-4 w-4", isFavorite && "fill-current")} />
         </Button>
         <NotificationBell className="h-8 w-8 text-muted-foreground" />
+        <Button asChild variant="ghost" size="icon" aria-label="Open support desk" className="h-8 w-8 text-muted-foreground hover:bg-accent hover:text-foreground">
+          <Link to="/dashboard/help?tab=desk" aria-label="Open support desk"><HelpCircle className="h-4 w-4" /></Link>
+        </Button>
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => setTheme(isDark ? "light" : "dark")} aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}>
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>

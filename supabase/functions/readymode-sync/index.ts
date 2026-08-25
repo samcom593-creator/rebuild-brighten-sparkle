@@ -164,11 +164,17 @@ Deno.serve(async (req) => {
       ? await pullViaApi(config, since)
       : await pullViaBrowserLogin(config, since, until, maxPages);
 
-    const rows = pulled.rows
+    const normalizedRows = pulled.rows
       .map((r) => pulled.source === "api"
         ? normalizeApiCall(r)
         : normalizeBrowserCall(r, config.baseUrl, until.getUTCFullYear()))
       .filter((r): r is NormalizedCall => !!r?.external_call_id);
+    // ReadyMode can repeat a call at page boundaries. PostgreSQL rejects an
+    // upsert batch containing the same conflict key twice, so collapse those
+    // overlaps before the single atomic write (latest copy wins).
+    const rows = Array.from(
+      new Map(normalizedRows.map((row) => [row.external_call_id, row])).values(),
+    );
 
     let upserted = 0;
     if (rows.length > 0) {
@@ -204,10 +210,22 @@ Deno.serve(async (req) => {
     if (rows.length) statePatch.last_ingest_at = new Date().toISOString();
     await sb.from("readymode_bot_state").update(statePatch).eq("id", 1);
 
-    await finish("ok", {
+    // A zero-row pull is not proof that the integration is healthy. If the
+    // prior real ingest is already stale, log an error so the dashboard cannot
+    // show a green sync simply because the poller itself ran.
+    const { data: currentState } = await sb
+      .from("readymode_bot_state")
+      .select("last_ingest_at")
+      .eq("id", 1)
+      .maybeSingle();
+    const lastRealIngest = (currentState as { last_ingest_at?: string | null } | null)?.last_ingest_at;
+    const staleZeroPull = rows.length === 0 && (!lastRealIngest || Date.now() - new Date(lastRealIngest).getTime() > 2 * 3600_000);
+
+    await finish(staleZeroPull ? "error" : "ok", {
       pulled_count: pulled.rows.length,
       inserted_count: upserted,
       matched_count: matched,
+      error_message: staleZeroPull ? `ReadyMode returned 0 calls; last real ingest ${lastRealIngest ?? "never"}` : null,
       raw: {
         source: pulled.source,
         endpoint: pulled.endpoint ?? null,
@@ -217,7 +235,7 @@ Deno.serve(async (req) => {
     });
 
     return Response.json({
-      ok: true,
+      ok: !staleZeroPull,
       source: pulled.source,
       pulled: pulled.rows.length,
       inserted: upserted,

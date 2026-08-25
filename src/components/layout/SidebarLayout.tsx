@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect, useRef, memo } from "react";
-import { Cloud, Menu, Search, UserPlus } from "lucide-react";
+import { Cloud, HandCoins, HelpCircle, Menu, Search, UserPlus } from "lucide-react";
 import { useUIStore } from "@/shared/store/uiStore";
 import { Link, useLocation } from "react-router-dom";
 import { GlobalSidebar } from "./GlobalSidebar";
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useBrand } from "@/hooks/useBrand";
 import { useAuth } from "@/hooks/useAuth";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
+import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 
 interface SidebarLayoutProps {
   children: ReactNode;
@@ -69,6 +70,9 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
             <span className="text-sm font-semibold text-foreground">{brand.legalName}</span>
           </Link>
           <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="icon" aria-label="Open support desk">
+              <Link to="/dashboard/help?tab=desk" aria-label="Open support desk"><HelpCircle className="h-5 w-5" /></Link>
+            </Button>
             {(isAdmin || isManager) && (
               <AddAgentModal
                 trigger={(
@@ -78,6 +82,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
                 )}
               />
             )}
+            <SubmitDealDialog trigger={<Button variant="ghost" size="icon" aria-label="Post a deal"><HandCoins className="h-5 w-5" /></Button>} />
             <Button
               variant="ghost"
               size="icon"

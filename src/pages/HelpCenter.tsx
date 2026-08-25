@@ -1,9 +1,10 @@
-// HelpCenter · mirrors AgentLink's "Help Center / FAQ"
+// APEX Help Center + tracked support desk.
 //
 // Static FAQ + how-to library covering APEX's most-asked questions.
 // Curated as code so we don't need a CMS round-trip. Easy to extend.
 
 import { useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   HelpCircle, Search, ChevronDown, BookOpen, DollarSign, Phone,
   Shield, Users, FileText, GraduationCap, Briefcase, Wrench, Sparkles,
@@ -13,6 +14,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { SupportDesk } from "@/components/support/SupportDesk";
 
 interface FaqItem {
   q: string;
@@ -25,9 +27,9 @@ const FAQ: FaqItem[] = [
   { category: "Getting Started", q: "I just got hired. What's the very first thing I do?",
     a: "1) Schedule your prelicensing course immediately. 2) Pass your state exam (most people do it in 14 days if serious). 3) The day you're licensed, your manager onboards you, runs your carrier contracts, and gives you your first lead block. Until you're licensed you can't write business, so don't waste days." },
   { category: "Getting Started", q: "Where do I find my carrier contracting links?",
-    a: "Go to /dashboard/contracts. Each carrier card on /dashboard/carriers also has a 'Contract' button that drops you straight to the request flow." },
+    a: "Go to /dashboard/contracting. Your contracting profile, carrier checklist, status, writing numbers, E&O, EFT readiness, and issues are tracked there." },
   { category: "Getting Started", q: "What's the agent code on my profile?",
-    a: "Your APEX agent code is your internal identifier across our systems. It links your deals in AgentLink to your record in our admin dashboards. You can see it on /dashboard/profile." },
+    a: "Your agent code is your internal identifier across recruiting, contracting, production, and reporting. You can see it on /dashboard/profile." },
 
   // Licensing
   { category: "Licensing", q: "How long does prelicensing take?",
@@ -53,17 +55,17 @@ const FAQ: FaqItem[] = [
   { category: "Commission + Payouts", q: "What's a chargeback and how do I avoid them?",
     a: "If a policy lapses within the first 6-12 months, the carrier claws back the commission. To avoid: solid fact-finding + realistic budgeting + post-sale check-in calls at 30/60/90 days." },
   { category: "Commission + Payouts", q: "Where do I see my real numbers?",
-    a: "/dashboard/book-of-business for all your deals. /dashboard/business-analytics for trophy cabinet, challenges, and personal stats. AgentLink (agentlink.insuracloud.ai) is the carrier source of truth." },
+    a: "Use /dashboard/production for policies and production, /dashboard/analytics for performance, and the home scoreboard for personal production, team production, policies, and estimated earnings based on your saved comp." },
 
   // Carriers
   { category: "Carriers", q: "How do I request a carrier contract?",
-    a: "/dashboard/carriers → click the carrier card → 'Contract' button. The contracting team approves you in 24-48 hours." },
+    a: "/dashboard/contracting → open your carrier checklist and complete the required profile, E&O, and EFT readiness. The site tracks sent, action-required, submitted, active, and issue statuses without an AgentLink handoff." },
   { category: "Carriers", q: "Which carrier is best for diabetic clients?",
     a: "Depends on A1C, age, and other conditions. Generally: American Home Life or Royal Neighbors for milder cases. For guaranteed issue, look at our GI carriers. The Carrier Resources page shows 'Best For' tags per carrier." },
 
   // Tools
   { category: "Tools", q: "How do I use the dialer?",
-    a: "Login at readymode.apex (your credentials are emailed on day 1). If you don't have access, check /dashboard/inbound-leads to see whether your dialer login is provisioned." },
+    a: "Open /dashboard/readymode for live sync health and management, or /dashboard/call-center for your call queue. If access or call data is missing, submit a ReadyMode request in the Support Desk on this page." },
   { category: "Tools", q: "Where's the AI assistant?",
     a: "Ask Apex AI is the floating dock at the bottom-right of every dashboard route. Hit it anytime — it knows your data and can answer questions about your book or our products." },
   { category: "Tools", q: "How do I share an APEX win on social?",
@@ -122,6 +124,8 @@ function FaqRow({ item, open, onToggle }: { item: FaqItem; open: boolean; onTogg
 
 export default function HelpCenter() {
   usePageTitle("Help Center · APEX");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") === "desk" ? "desk" : "faq";
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState<string>("All");
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -141,9 +145,16 @@ export default function HelpCenter() {
         eyebrow="Support"
         eyebrowIcon={<HelpCircle className="h-3 w-3" />}
         title="Help Center"
-        subtitle="The questions you ask most, answered. Searchable. Mirrors AgentLink's Help Center."
+        subtitle="Answers plus one tracked place for website, contracting, ReadyMode, recruiting, training, sales, and account questions."
         actions={<Badge variant="outline" className="text-11">{FAQ.length} FAQ</Badge>}
       />
+
+      <div className="flex w-fit rounded-lg border border-border bg-card p-1">
+        <button type="button" onClick={() => setSearchParams({})} className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${activeTab === "faq" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>FAQ</button>
+        <button type="button" onClick={() => setSearchParams({ tab: "desk" })} className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${activeTab === "desk" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>Support Desk</button>
+      </div>
+
+      {activeTab === "desk" ? <SupportDesk /> : <>
 
       {/* Canonical v6 §31 premium gradient hero */}
       <div className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-[#0A0A0A] via-[#0A0A0A] to-[#8A7340]/20 text-white shadow-[0_0_48px_-12px_hsl(46_68%_47%/0.25)]">
@@ -245,6 +256,7 @@ export default function HelpCenter() {
           </div>
         </CardContent>
       </Card>
+      </>}
     </div>
   );
 }

@@ -19,6 +19,7 @@ import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
 import { ProducerPulse } from "@/components/dashboard/ProducerPulse";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
+import { OperationsCommandCenter } from "@/components/dashboard/OperationsCommandCenter";
 import { cn } from "@/lib/utils";
 
 // The Agent Cloud home, mirrored 1:1 against
@@ -211,6 +212,7 @@ export function AgentCloudHome() {
   return (
     <div className="space-y-5">
       <ScopedProductionScoreboard />
+      <OperationsCommandCenter />
 
       {/* WHAT NEEDS YOU TODAY */}
       <div>

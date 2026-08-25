@@ -26,6 +26,20 @@ describe("scoped production scoreboard", () => {
     expect(migration).toContain("revoke all on function public.scoped_production_scoreboard(date, date) from public, anon");
   });
 
+  it("separates direct and override earnings without trusting the legacy 120 placeholder", () => {
+    const migration = source("../supabase/migrations/20260825211500_scoreboard_earnings_breakdown.sql");
+    expect(migration).toContain("a.contract_percentage <> 120");
+    expect(migration).toContain("greatest(v_caller_comp - seller_comp, 0)");
+    expect(migration).toContain("'direct', (select direct from earnings)");
+    expect(migration).toContain("'override', (select override from earnings)");
+    expect(migration).toContain("alter column contract_percentage set default 60");
+
+    const component = source("components/dashboard/ScopedProductionScoreboard.tsx");
+    expect(component).toContain("query.data.earnings.direct");
+    expect(component).toContain("query.data.earnings.override");
+    expect(component).toContain("query.data.earnings.team_estimated");
+  });
+
   it("places the same scoreboard before agent and manager command views", () => {
     const dashboard = source("pages/Dashboard.tsx");
     expect(dashboard.match(/<ScopedProductionScoreboard \/>/g)).toHaveLength(2);

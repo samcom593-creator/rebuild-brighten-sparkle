@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, CircleDollarSign, RefreshCw, TrendingUp, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, CircleDollarSign, RefreshCw, TrendingUp, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +24,13 @@ interface ScoreboardData {
   downline_agents: number;
   personal: { ap: number; policies: number };
   team: { ap: number; policies: number };
-  earnings: { estimated: number; basis: string };
+  earnings: {
+    estimated: number;
+    direct: number;
+    override: number;
+    team_estimated: number;
+    basis: string;
+  };
   last_synced_at: string | null;
   source: string;
 }
@@ -168,11 +175,22 @@ export function ScopedProductionScoreboard() {
             />
             <ScoreTile
               accent
-              detail="Estimate from personal production and saved compensation"
+              detail={`${money(query.data.earnings.direct)} direct + ${money(query.data.earnings.override)} override`}
               icon={CircleDollarSign}
               label="My estimated earnings"
               value={money(query.data.earnings.estimated)}
             />
+          </div>
+        )}
+
+        {query.data?.has_producer_profile && (
+          <div className="flex flex-col gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              Team estimated gross commission: <strong className="font-semibold text-foreground">{money(query.data.earnings.team_estimated)}</strong>
+            </span>
+            <Link className="inline-flex items-center gap-1 font-semibold text-primary hover:underline" to="/dashboard/finances">
+              Commission breakdown <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
         )}
       </CardContent>

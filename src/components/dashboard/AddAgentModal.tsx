@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, type ReactNode } from "react";
-import { Check, Copy, Crown, Link2, Loader2, User, UserPlus, Users, type LucideIcon } from "lucide-react";
+import { Check, Copy, Crown, GraduationCap, Link2, Loader2, ShieldCheck, User, UserPlus, Users, type LucideIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -379,9 +379,56 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Agent</DialogTitle>
+          <DialogTitle>{licenseStatus === "licensed" ? "Add Licensed Agent" : "Add Unlicensed Recruit"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          {/* Two explicit functions, not a buried dropdown. Licensed starts
+              contracting immediately; unlicensed starts the licensing/course
+              journey. The backend already enforces both paths independently. */}
+          <div className="space-y-2">
+            <Label>Choose onboarding path *</Label>
+            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Agent license path">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={licenseStatus === "licensed"}
+                data-testid="add-agent-path-licensed"
+                onClick={() => setLicenseStatus("licensed")}
+                className={[
+                  "rounded-xl border p-3 text-left transition",
+                  licenseStatus === "licensed"
+                    ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/40"
+                    : "border-border bg-background hover:border-emerald-500/50",
+                ].join(" ")}
+              >
+                <ShieldCheck className="h-5 w-5 text-emerald-500" />
+                <span className="mt-2 block text-sm font-bold">Licensed Agent</span>
+                <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
+                  Verify NPN, create account, and send to contracting.
+                </span>
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={licenseStatus === "unlicensed"}
+                data-testid="add-agent-path-unlicensed"
+                onClick={() => setLicenseStatus("unlicensed")}
+                className={[
+                  "rounded-xl border p-3 text-left transition",
+                  licenseStatus === "unlicensed"
+                    ? "border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/40"
+                    : "border-border bg-background hover:border-amber-500/50",
+                ].join(" ")}
+              >
+                <GraduationCap className="h-5 w-5 text-amber-500" />
+                <span className="mt-2 block text-sm font-bold">Unlicensed Recruit</span>
+                <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
+                  Create account and start the XCEL licensing journey.
+                </span>
+              </button>
+            </div>
+          </div>
+
           {/* Name Row */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -455,20 +502,6 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                     </SelectItem>
                   ))
                 )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* License status */}
-          <div className="space-y-1.5">
-            <Label htmlFor="licenseStatus">License status *</Label>
-            <Select value={licenseStatus} onValueChange={(v: "licensed" | "unlicensed") => setLicenseStatus(v)}>
-              <SelectTrigger id="licenseStatus">
-                <SelectValue placeholder="Pick one" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="licensed">✅ Licensed (ready to contract)</SelectItem>
-                <SelectItem value="unlicensed">📚 Unlicensed (sends XCEL course link)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -676,10 +709,10 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Adding...
+                {licenseStatus === "licensed" ? "Adding licensed agent..." : "Adding unlicensed recruit..."}
               </>
             ) : (
-              "Add Agent"
+              licenseStatus === "licensed" ? "Add Licensed Agent" : "Add Unlicensed Recruit"
             )}
           </Button>
         </form>

@@ -64,6 +64,7 @@ import { Badge } from "@/components/ui/badge";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { AgentTrainingStageBar } from "@/components/dashboard/AgentTrainingStageBar";
 import { AgentOnboardingEmailStatus } from "@/components/dashboard/AgentOnboardingEmailStatus";
+import { AgentOnboardingCommandCenter } from "@/components/dashboard/AgentOnboardingCommandCenter";
 import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton";
 import { AgentCredentialsPanel } from "@/components/dashboard/AgentCredentialsPanel";
 import { AgentNotes } from "@/components/dashboard/AgentNotes";
@@ -812,6 +813,12 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 course_sent_at. Resend-now button manually fires for THIS agent
                 via the send-agent-onboarding-email edge fn. */}
             <AgentOnboardingEmailStatus agentId={agent.id} />
+
+            {/* Complete onboarding + carrier-contract workflow. This is the
+                tap-agent operating surface: account, license, contracting,
+                training, Discord, field training and first-deal state, plus
+                Sam's auditable per-carrier sent/submitted/active controls. */}
+            <AgentOnboardingCommandCenter agentId={agent.id} agentName={name} />
 
             {/* 2026-06-17 Sam directive: "change the manager's things" —
                 inline manager reassign on every agent. */}

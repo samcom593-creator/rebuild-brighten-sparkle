@@ -1,5 +1,5 @@
 /**
- * AgentTrainingStageBar — 4-dot stage tracker (test → classroom → field → active).
+ * AgentTrainingStageBar — 4-step release tracker.
  *
  * 2026-06-15 — Sam directive (voice): "It should have systems where it's easy
  * to see, check whether they're in field training, on court [classroom], in
@@ -18,7 +18,7 @@
 
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, GraduationCap, BookOpen, Compass, Briefcase, RefreshCw } from "lucide-react";
+import { Check, GraduationCap, BookOpenCheck, Compass, Briefcase, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
@@ -37,8 +37,8 @@ type Stage = "test" | "classroom" | "field" | "active" | "unknown";
 const ORDERED: Stage[] = ["test", "classroom", "field", "active"];
 
 const META: Record<Stage, { label: string; icon: any; color: string; ring: string; dot: string }> = {
-  test:      { label: "Test",       icon: BookOpen,     color: "text-amber-600 dark:text-amber-400",   ring: "ring-amber-500/30",   dot: "bg-amber-500" },
-  classroom: { label: "Classroom",  icon: GraduationCap, color: "text-info dark:text-info",       ring: "ring-sky-500/30",     dot: "bg-info" },
+  test:      { label: "Onboarding",        icon: GraduationCap, color: "text-amber-600 dark:text-amber-400", ring: "ring-amber-500/30", dot: "bg-amber-500" },
+  classroom: { label: "Training Complete", icon: BookOpenCheck, color: "text-info dark:text-info", ring: "ring-sky-500/30", dot: "bg-info" },
   field:     { label: "Field",      icon: Compass,      color: "text-violet-600 dark:text-violet-400", ring: "ring-violet-500/30",  dot: "bg-violet-500" },
   active:    { label: "Active",     icon: Briefcase,    color: "text-emerald-600 dark:text-emerald-400", ring: "ring-emerald-500/30", dot: "bg-emerald-500" },
   unknown:   { label: "Pending",    icon: RefreshCw,    color: "text-muted-foreground",                ring: "ring-border",         dot: "bg-muted" },
@@ -69,7 +69,7 @@ interface Props {
 }
 
 export function AgentTrainingStageBar({ agentId, compact = false }: Props) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isManager } = useAuth();
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery<ViewRow | null>({
@@ -90,24 +90,10 @@ export function AgentTrainingStageBar({ agentId, compact = false }: Props) {
 
   const setOverride = useMutation({
     mutationFn: async (next: Stage | "auto") => {
-      const payload: any = next === "auto"
-        ? { training_stage_override: null, training_stage_override_at: null, training_stage_override_by: null }
-        : { training_stage_override: next, training_stage_override_at: new Date().toISOString() };
-      // training_stage_override_by is best-effort — only set if we have an
-      // agents row for the current auth.uid().
-      const { data: au } = await supabase.auth.getUser();
-      if (au?.user?.id && next !== "auto") {
-        const { data: matches } = await supabase
-          .from("agents")
-          .select("id")
-          .eq("user_id", au.user.id)
-          .eq("is_deactivated", false)
-          .order("created_at", { ascending: false })
-          .limit(2);
-        const me = matches?.length === 1 ? matches[0] : null;
-        if (me?.id) payload.training_stage_override_by = me.id;
-      }
-      const { error } = await supabase.from("agents").update(payload).eq("id", agentId);
+      const { error } = await (supabase as any).rpc("set_agent_training_stage", {
+        p_agent_id: agentId,
+        p_stage: next === "auto" ? null : next,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -152,7 +138,7 @@ export function AgentTrainingStageBar({ agentId, compact = false }: Props) {
             <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">manual</Badge>
           )}
         </div>
-        {isAdmin && (
+        {(isAdmin || isManager) && (
           <Select
             value={data?.training_stage_override ?? "auto"}
             onValueChange={(v) => setOverride.mutate(v as Stage | "auto")}
@@ -163,8 +149,8 @@ export function AgentTrainingStageBar({ agentId, compact = false }: Props) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="auto">Auto (derived)</SelectItem>
-              <SelectItem value="test">Test</SelectItem>
-              <SelectItem value="classroom">Classroom</SelectItem>
+              <SelectItem value="test">Onboarding</SelectItem>
+              <SelectItem value="classroom">Training Complete</SelectItem>
               <SelectItem value="field">Field</SelectItem>
               <SelectItem value="active">Active</SelectItem>
             </SelectContent>

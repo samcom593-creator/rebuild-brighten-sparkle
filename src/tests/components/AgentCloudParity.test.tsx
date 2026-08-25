@@ -76,4 +76,33 @@ describe("AgentCloud parity surfaces", () => {
     expect(crm).toContain("No sale today");
     expect(crm).toContain("selling_streak_days");
   });
+
+  it("shows direct contacts and keeps Team scoped to the recursive hierarchy", () => {
+    const crm = source("pages/DashboardCRM.tsx");
+    const app = source("App.tsx");
+    const migration = source("../supabase/migrations/20260825223500_team_hierarchy_contacts_training.sql");
+    expect(crm).toContain('supabase.rpc("crm_agent_contacts"');
+    expect(crm).toContain("mailto:${r.email}");
+    expect(crm).toContain("tel:${r.phone}");
+    expect(app).toContain('<Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />');
+    expect(migration).toContain("child.invited_by_manager_id = parent.id");
+    expect(migration).toContain("public.apex_can_read_agent(p_agent_id)");
+  });
+
+  it("uses the operational onboarding to active release stages", () => {
+    const stages = source("components/dashboard/AgentTrainingStageBar.tsx");
+    expect(stages).toContain('label: "Onboarding"');
+    expect(stages).toContain('label: "Training Complete"');
+    expect(stages).toContain('(supabase as any).rpc("set_agent_training_stage"');
+  });
+
+  it("sends one idempotent daily numbers reminder at 6pm Chicago time", () => {
+    const reminder = source("../supabase/functions/numbers-reminder/index.ts");
+    const schedule = source("../supabase/migrations/20260825224500_numbers_reminder_6pm_ct.sql");
+    expect(reminder).toContain('timeZone: "America/Chicago"');
+    expect(reminder).toContain('chicago.hour !== 18');
+    expect(reminder).toContain('from("v_production_unified")');
+    expect(reminder).toContain('from("numbers_reminder_delivery_log")');
+    expect(schedule).toContain("primary key (business_date, agent_id)");
+  });
 });

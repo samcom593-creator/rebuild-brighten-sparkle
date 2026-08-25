@@ -410,6 +410,13 @@ interface RosterRow {
   tenure_days: number | null;
 }
 
+interface RosterContact {
+  agent_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
 interface RosterSegments {
   total: number; active: number; inactive: number; terminated: number;
   licensed: number; unlicensed: number; sync_only: number;
@@ -710,7 +717,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
             <Table className="min-w-[1160px]">
               <TableHeader>
                 <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[10px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
-                  <TableHead className="w-[240px] px-2">Agent</TableHead>
+                  <TableHead className="w-[270px] px-2">Agent &amp; contact</TableHead>
                   <TableHead className="w-[120px] px-2">Upline</TableHead>
                   <TableHead className="w-[100px] px-2">Status</TableHead>
                   <TableHead className="w-[100px] px-2">License</TableHead>
@@ -742,9 +749,16 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                             >
                               {r.full_name ?? "Name not on file"}
                             </Link>
-                            <p className="truncate text-[11px] text-muted-foreground">
-                              {r.email ?? <span className="italic">no email on file</span>}
-                            </p>
+                            {r.email ? (
+                              <a href={`mailto:${r.email}`} className="block truncate text-[11px] text-muted-foreground hover:text-primary hover:underline">
+                                <Mail className="mr-1 inline h-3 w-3" />{r.email}
+                              </a>
+                            ) : <p className="truncate text-[11px] italic text-muted-foreground">No email on file</p>}
+                            {r.phone ? (
+                              <a href={`tel:${r.phone}`} className="block truncate text-[11px] tabular-nums text-muted-foreground hover:text-primary hover:underline">
+                                <Phone className="mr-1 inline h-3 w-3" />{r.phone}
+                              </a>
+                            ) : <p className="truncate text-[11px] italic text-muted-foreground">No phone on file</p>}
                             {r.agent_code && (
                               <p className="truncate text-[11px] tabular-nums text-muted-foreground/70">{r.agent_code}</p>
                             )}
@@ -901,18 +915,26 @@ export default function DashboardCRM() {
     enabled: !authLoading && !!user,
     staleTime: 60_000,
     queryFn: async (): Promise<RosterRow[]> => {
-      const [rosterResult, pulseResult] = await Promise.all([
+      const [rosterResult, pulseResult, contactResult] = await Promise.all([
         supabase.rpc("crm_agent_roster" as never),
         supabase.rpc("crm_agent_sales_pulse" as never),
+        supabase.rpc("crm_agent_contacts" as never),
       ]);
       if (rosterResult.error) throw rosterResult.error;
       if (pulseResult.error) throw pulseResult.error;
+      if (contactResult.error) throw contactResult.error;
       const pulseByAgent = new Map(
         ((pulseResult.data as unknown as Array<Pick<RosterRow, "agent_id" | "today_alp" | "today_deals" | "selling_streak_days">>) ?? [])
           .map((row) => [row.agent_id, row] as const),
       );
+      const contactByAgent = new Map(
+        ((contactResult.data as unknown as RosterContact[]) ?? []).map((row) => [row.agent_id, row] as const),
+      );
       return ((rosterResult.data as unknown as RosterRow[]) ?? []).map((row) => ({
         ...row,
+        full_name: contactByAgent.get(row.agent_id)?.full_name ?? row.full_name,
+        email: contactByAgent.get(row.agent_id)?.email ?? row.email,
+        phone: contactByAgent.get(row.agent_id)?.phone ?? row.phone,
         today_alp: pulseByAgent.get(row.agent_id)?.today_alp ?? 0,
         today_deals: pulseByAgent.get(row.agent_id)?.today_deals ?? 0,
         selling_streak_days: pulseByAgent.get(row.agent_id)?.selling_streak_days ?? 0,

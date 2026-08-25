@@ -1,9 +1,7 @@
 // numbers-reminder
 //
-// Fires at 5pm Eastern, Monday–Friday (apex-numbers-reminder cron).
-// Finds licensed/active agents who have NOT logged production for today
-// and pings them with an SMS via the carrier-gateway pattern (cheap, no
-// Twilio) + an email backup.
+// Fires once at 6pm America/Chicago every day. Finds present licensed agents
+// who have not logged progress or posted production and sends one email.
 //
 // Body: {} — payload optional.
 // Returns: { reminded: N, skipped: M, errors: K }
@@ -20,14 +18,14 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-const CARRIER_GATEWAYS: Record<string, string> = {
-  att: "txt.att.net", verizon: "vtext.com", tmobile: "tmomail.net",
-  sprint: "messaging.sprintpcs.com", uscellular: "email.uscc.net",
-  cricket: "sms.cricketwireless.net", metro: "mymetropcs.com", boost: "sms.myboostmobile.com",
-};
-
-function cleanPhone(p: string | null | undefined): string {
-  return String(p ?? "").replace(/\D/g, "").slice(-10);
+function chicagoParts(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Chicago",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? "";
+  return { date: `${value("year")}-${value("month")}-${value("day")}`, hour: Number(value("hour")) };
 }
 
 Deno.serve(async (req) => {
@@ -40,9 +38,14 @@ Deno.serve(async (req) => {
   );
 
   try {
-    // Today in business-day terms — server runs UTC, agents are US.
-    // For now use UTC date; if Sam wants Eastern, switch to Intl.DateTimeFormat.
-    const today = new Date().toISOString().slice(0, 10);
+    const requestPayload = await req.json().catch(() => ({})) as { force?: boolean };
+    const chicago = chicagoParts();
+    if (!requestPayload.force && chicago.hour !== 18) {
+      return new Response(JSON.stringify({ ok: true, skipped: "outside_6pm_chicago_window" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const today = chicago.date;
 
     // ── 1. Agents who already logged today ──────────────────────────────
     const { data: logged } = await sb
@@ -53,11 +56,9 @@ Deno.serve(async (req) => {
 
     // Also count any deal posted today as activity
     const { data: dealsToday } = await sb
-      .from("deals")
+      .from("v_production_unified")
       .select("agent_id")
-      .gte("posted_at", `${today}T00:00:00Z`)
-      .lt("posted_at", `${today}T23:59:59Z`)
-      .in("status", ["submitted", "active"]);
+      .eq("posted_date", today);
     for (const d of (dealsToday ?? []) as Array<{ agent_id: string | null }>) {
       if (d.agent_id) loggedIds.add(d.agent_id);
     }
@@ -65,31 +66,44 @@ Deno.serve(async (req) => {
     // ── 2. Active licensed agents (not deactivated/inactive) ────────────
     const { data: agents, error: agentsErr } = await sb
       .from("agents")
-      .select(`
-        id, user_id,
-        profile:profiles(full_name, email, phone, carrier)
-      `)
+      .select("id, user_id, display_name")
+      .eq("status", "active")
       .eq("is_deactivated", false)
       .eq("is_inactive", false)
       .eq("license_status", "licensed")
       .limit(500);
     if (agentsErr) throw agentsErr;
 
-    const reminders: Array<{ agent_id: string; name: string; email: string | null; phone: string | null; carrier: string | null }> = [];
+    const userIds = (agents ?? []).map((a: { user_id: string | null }) => a.user_id).filter(Boolean) as string[];
+    const { data: profiles } = await sb
+      .from("profiles")
+      .select("user_id, full_name, email")
+      .in("user_id", userIds.length ? userIds : ["00000000-0000-0000-0000-000000000000"]);
+    const profileByUser = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
+
+    const { data: exclusions } = await sb.from("roster_exclusions").select("agent_id");
+    const excludedIds = new Set((exclusions ?? []).map((row: { agent_id: string }) => row.agent_id));
+
+    const { data: delivered } = await sb
+      .from("numbers_reminder_delivery_log")
+      .select("agent_id")
+      .eq("business_date", today);
+    const alreadyReminded = new Set((delivered ?? []).map((row: { agent_id: string }) => row.agent_id));
+
+    const reminders: Array<{ agent_id: string; name: string; email: string | null }> = [];
     for (const a of (agents ?? []) as any[]) {
-      if (loggedIds.has(a.id)) continue;
+      if (loggedIds.has(a.id) || alreadyReminded.has(a.id) || excludedIds.has(a.id)) continue;
+      const profile = profileByUser.get(a.user_id) as any;
       reminders.push({
         agent_id: a.id,
-        name: a.profile?.full_name ?? "Agent",
-        email: a.profile?.email ?? null,
-        phone: a.profile?.phone ?? null,
-        carrier: a.profile?.carrier ?? null,
+        name: profile?.full_name ?? a.display_name ?? "Agent",
+        email: profile?.email ?? null,
       });
     }
 
-    // ── 3. Send SMS + email ────────────────────────────────────────────
+    // ── 3. Send exactly one email per agent/business day ───────────────
     const subject = "Apex · log your numbers";
-    const body = `Quick reminder — log today's calls, presentations, and deals before close of business.\n\nhttps://apex-financial.org/numbers`;
+    const messageBody = `Quick reminder — log today's calls, presentations, and deals before close of business.\n\nhttps://apex-financial.org/numbers`;
     const html = `
       <p>Hey ${"{{first_name}}"} — quick reminder.</p>
       <p>Log today's calls, presentations, and deals before close of business so your stats stay accurate:</p>
@@ -97,35 +111,28 @@ Deno.serve(async (req) => {
       <p style="font-size:12px;color:#64748b">Sam — Apex Financial</p>
     `;
 
-    let smsSent = 0, emailsSent = 0, errors = 0;
+    let emailsSent = 0, errors = 0;
     for (const r of reminders) {
-      // SMS via carrier gateway
-      const digits = cleanPhone(r.phone);
-      const carrierGateway = r.carrier ? CARRIER_GATEWAYS[r.carrier.toLowerCase()] : undefined;
-      if (digits.length === 10 && carrierGateway) {
-        try {
-          const result = await sendEmail({
-            to: `${digits}@${carrierGateway}`,
-            subject: "",
-            text: body,
-            tagName: "numbers-reminder-sms",
-          });
-          if (result.ok) smsSent++; else errors++;
-        } catch { errors++; }
-      }
-      // Email (always)
-      if (r.email && !(await isUnsubscribed(r.email, sb))) {
+      if (r.email && !(await isUnsubscribed(sb, r.email))) {
         try {
           const personalizedHtml = html.replace("{{first_name}}", r.name.split(" ")[0]);
           const result = await sendEmail({
             to: r.email,
             subject,
             html: personalizedHtml,
-            text: body,
+            text: messageBody,
             unsubscribe_token: r.agent_id,
             tagName: "numbers-reminder",
           });
-          if (result.ok) emailsSent++; else errors++;
+          if (result.ok) {
+            emailsSent++;
+            await sb.from("numbers_reminder_delivery_log").upsert({
+              business_date: today,
+              agent_id: r.agent_id,
+              email: r.email,
+              sent_at: new Date().toISOString(),
+            }, { onConflict: "business_date,agent_id" });
+          } else errors++;
         } catch { errors++; }
       }
     }
@@ -141,7 +148,7 @@ Deno.serve(async (req) => {
     await sb.from("automation_run_log").insert({
       job_name: "numbers-reminder",
       status: "ok",
-      message: `Reminded ${reminders.length} agents · ${smsSent} SMS · ${emailsSent} email · ${errors} errors`,
+      message: `6pm CT: ${emailsSent} email · ${errors} errors`,
     });
 
     return new Response(JSON.stringify({
@@ -149,7 +156,6 @@ Deno.serve(async (req) => {
       candidates: agents?.length ?? 0,
       already_logged: loggedIds.size,
       reminded: reminders.length,
-      sms_sent: smsSent,
       emails_sent: emailsSent,
       errors,
     }), {

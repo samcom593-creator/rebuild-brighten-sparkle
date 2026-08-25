@@ -132,7 +132,7 @@ export default function InviteLinksAdmin() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("invite_tokens")
       .select("id, kind, token, created_at, expires_at, used_at, is_active, revoked_at, target_role, target_manager_id, notes")
       .order("created_at", { ascending: false })
@@ -189,7 +189,7 @@ export default function InviteLinksAdmin() {
     if (!linkName.trim()) { toast.error("Give the link a name so you can tell them apart."); return; }
     setCreating(true);
     try {
-      const { data, error } = await supabase.rpc("generate_invite_token", {
+      const { data, error } = await (supabase as any).rpc("generate_invite_token", {
         p_kind: "hire",
         p_expires_hours: expiresHours,
         p_target_role: chosen.role,
@@ -238,7 +238,7 @@ export default function InviteLinksAdmin() {
       confirmText: "Revoke", tone: "danger",
     });
     if (!ok) return;
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("invite_tokens")
       .update({ is_active: false, revoked_at: new Date().toISOString() })
       .eq("id", row.id);

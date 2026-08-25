@@ -71,7 +71,7 @@ export default function HireLink() {
         return;
       }
       try {
-        const { data, error } = await supabase.rpc("get_invite_token_prefill", {
+        const { data, error } = await (supabase as any).rpc("get_invite_token_prefill", {
           p_token: token,
         });
         if (cancelled) return;
@@ -80,7 +80,7 @@ export default function HireLink() {
           setLoadingPrefill(false);
           return;
         }
-        const resp = (data ?? {}) as PrefillResponse;
+        const resp = (data ?? {}) as unknown as PrefillResponse;
         if (!resp.ok) {
           setInvalid(resp.reason ?? "invalid_or_used");
           setLoadingPrefill(false);

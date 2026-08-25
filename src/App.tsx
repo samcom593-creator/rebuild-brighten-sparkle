@@ -473,7 +473,10 @@ const App = () => (
                     <Route path="/dashboard/recruiting/training/progress" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><CourseProgress /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/training/content" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><CourseContent /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/training/annuities" element={<ProtectedRoute><AnnuityTraining /></ProtectedRoute>} />
-                    <Route path="/dashboard/team" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardCRM /></ProtectedRoute>} />
+                    {/* Every authenticated agent can open Team. Server RPCs scope
+                        the roster to self + recursive downline; staff keep their
+                        agency-wide operating view. */}
+                    <Route path="/dashboard/team" element={<ProtectedRoute><DashboardCRM /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/contracts" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />
                     <Route path="/dashboard/contracting/carriers" element={<ProtectedRoute><CarrierContracts /></ProtectedRoute>} />

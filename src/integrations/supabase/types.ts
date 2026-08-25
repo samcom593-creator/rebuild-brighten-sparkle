@@ -1413,6 +1413,10 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_status"]
             | null
           builder_track: "agent" | "manager_track" | "agency_owner_track"
+          comp_approval_status: string
+          comp_approved_at: string | null
+          comp_approved_by: string | null
+          comp_percentage: number
           contract_percentage: number | null
           contracted_at: string | null
           created_at: string
@@ -1482,6 +1486,10 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_status"]
             | null
           builder_track?: "agent" | "manager_track" | "agency_owner_track"
+          comp_approval_status?: string
+          comp_approved_at?: string | null
+          comp_approved_by?: string | null
+          comp_percentage?: number
           contract_percentage?: number | null
           contracted_at?: string | null
           created_at?: string
@@ -1551,6 +1559,10 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_status"]
             | null
           builder_track?: "agent" | "manager_track" | "agency_owner_track"
+          comp_approval_status?: string
+          comp_approved_at?: string | null
+          comp_approved_by?: string | null
+          comp_percentage?: number
           contract_percentage?: number | null
           contracted_at?: string | null
           created_at?: string

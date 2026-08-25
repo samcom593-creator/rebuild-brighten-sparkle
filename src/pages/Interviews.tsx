@@ -24,6 +24,7 @@ import {
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { PromoteApplicantButton } from "@/components/applicants/PromoteApplicantButton";
 import { phoneHref, smsHref } from "@/lib/phone";
+import { promoteApplicationToAgent } from "@/lib/hireToOnboarding";
 
 type ActorRole = "executive" | "recruiter" | "va";
 type InterviewAction =
@@ -36,6 +37,7 @@ type Applicant = {
   notes: string | null; reschedule_count: number | null; va_name: string | null;
   recruiter_name: string | null; version: number; created_at: string | null; updated_at: string | null;
   application_id: string | null; onboarding_status: string;
+  application_license_status: string | null; application_npn: string | null;
 };
 type PipelineResponse = {
   applicants: Applicant[]; counts: Record<string, number>; total: number;
@@ -134,6 +136,7 @@ export default function Interviews() {
   const [pending, setPending] = useState<{ row: Applicant; action: InterviewAction } | null>(null);
   const [appointmentAt, setAppointmentAt] = useState("");
   const [reason, setReason] = useState("");
+  const [hireNpn, setHireNpn] = useState("");
   const [saving, setSaving] = useState(false);
 
   const pipeline = useQuery<PipelineResponse>({
@@ -181,15 +184,30 @@ export default function Interviews() {
     setPending({ row, action });
     setAppointmentAt("");
     setReason("");
+    setHireNpn(row.application_npn ?? "");
   };
   const saveAction = async () => {
     if (!pending) return;
     setSaving(true);
     try {
-      const result = await invokeAction(pending.row, pending.action, appointmentAt, reason);
+      const selected = pending;
+      const result = await invokeAction(selected.row, selected.action, appointmentAt, reason);
       const receiptTime = format(new Date(result.receipt.persistedAt), "h:mm a");
       if (result.receipt.warning) toast.warning(result.receipt.warning);
-      else toast.success(`${ACTION_LABEL[pending.action]} saved · ${receiptTime}`);
+      else toast.success(`${ACTION_LABEL[selected.action]} saved · ${receiptTime}`);
+
+      // "Hire" is the action, not the first half of a two-click workflow.
+      // Immediately create the canonical account and let add-agent start the
+      // correct licensed/unlicensed onboarding path.
+      if (selected.action === "hire") {
+        if (!selected.row.application_id) {
+          toast.warning("Hire saved, but no matching APEX application exists. Add the person with Add Agent to start onboarding.");
+        } else {
+          const hire = await promoteApplicationToAgent(selected.row.application_id, { npn: hireNpn });
+          if (hire.partial) toast.warning(hire.message);
+          else toast.success("Agent account created · onboarding started");
+        }
+      }
       setPending(null);
       await pipeline.refetch();
     } catch (error) {
@@ -323,12 +341,12 @@ export default function Interviews() {
           </DialogHeader>
           {pending?.action === "reschedule" && <div className="space-y-2"><Label htmlFor="interview-reschedule-at">New appointment time</Label><Input id="interview-reschedule-at" type="datetime-local" value={appointmentAt} onChange={(event) => setAppointmentAt(event.target.value)} /></div>}
           {pending?.action === "unqualified" && <div className="space-y-2"><Label htmlFor="interview-unqualified-reason">Reason</Label><Textarea id="interview-unqualified-reason" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Why this candidate is not qualified" /></div>}
-          {pending?.action === "hire" && <div className="rounded-lg border border-success/30 bg-success/5 p-3 text-sm"><p className="flex items-center gap-2 font-semibold text-success"><UserCheck className="h-4 w-4" /> Hire decision</p><p className="mt-1 text-muted-foreground">After the receipt is saved, use Start onboarding on the row to create or open the linked APEX agent.</p></div>}
+          {pending?.action === "hire" && <div className="space-y-3 rounded-lg border border-success/30 bg-success/5 p-3 text-sm"><div><p className="flex items-center gap-2 font-semibold text-success"><UserCheck className="h-4 w-4" /> Hire and start onboarding</p><p className="mt-1 text-muted-foreground">Saving creates the agent account and automatically starts the correct contracting or licensing path.</p></div>{pending.row.application_license_status === "licensed" && <div className="space-y-1.5"><Label htmlFor="interview-hire-npn">NPN *</Label><Input id="interview-hire-npn" inputMode="numeric" value={hireNpn} onChange={(event) => setHireNpn(event.target.value)} placeholder="5–10 digit NPN" /><p className="text-xs text-muted-foreground">Required to start contracting without a broken handoff.</p></div>}</div>}
           {pending?.action === "not_hired" && <p className="flex items-center gap-2 text-sm text-muted-foreground"><UserX className="h-4 w-4" /> The candidate remains in history and can be reopened.</p>}
           {pending?.action === "reopen" && <p className="flex items-center gap-2 text-sm text-muted-foreground"><RotateCcw className="h-4 w-4" /> This returns the interview to Confirmed with its outcome pending.</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPending(null)} disabled={saving}>Cancel</Button>
-            <Button onClick={() => void saveAction()} disabled={saving || (pending?.action === "reschedule" && !appointmentAt) || (pending?.action === "unqualified" && !reason.trim())}>
+            <Button onClick={() => void saveAction()} disabled={saving || (pending?.action === "reschedule" && !appointmentAt) || (pending?.action === "unqualified" && !reason.trim()) || (pending?.action === "hire" && pending.row.application_license_status === "licensed" && !/^\d{5,10}$/.test(hireNpn.replace(/\D+/g, "")))}>
               {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />} Save with receipt
             </Button>
           </DialogFooter>

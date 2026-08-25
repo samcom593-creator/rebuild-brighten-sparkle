@@ -1,8 +1,9 @@
 import { useCallback, useState, useEffect, type ReactNode } from "react";
-import { Check, Copy, Crown, GraduationCap, Link2, Loader2, ShieldCheck, User, UserPlus, Users, type LucideIcon } from "lucide-react";
+import { ArrowLeft, Crown, GraduationCap, Loader2, ShieldCheck, User, UserPlus, Users, type LucideIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -30,7 +31,7 @@ interface Manager {
 }
 
 interface AddAgentModalProps {
-  onAgentAdded?: () => void;
+  onAgentAdded?: (agentId?: string) => void;
   trigger?: ReactNode;
 }
 
@@ -70,7 +71,10 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [managerId, setManagerId] = useState("");
-  const [licenseStatus, setLicenseStatus] = useState<"licensed" | "unlicensed">("unlicensed");
+  // No hidden default: Add Agent always starts by asking which journey this
+  // person belongs in. That prevents an accidental unlicensed add when the
+  // operator moves quickly through the form.
+  const [licenseStatus, setLicenseStatus] = useState<"licensed" | "unlicensed" | null>(null);
   // Sam 2026-08-06: capture the NPN at add time. agents.nipr_number has existed
   // since the original schema but no UI ever wrote to it — 0 of 178 agent rows
   // had an NPN. Same discipline as Apply.tsx / HireLink.tsx: an agent marked
@@ -80,6 +84,8 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const [licenseNumber, setLicenseNumber] = useState("");
   const [licenseStates, setLicenseStates] = useState("");
   const [licenseExpiresAt, setLicenseExpiresAt] = useState("");
+  const [compPercentage, setCompPercentage] = useState("60");
+  const [samApprovalRequested, setSamApprovalRequested] = useState(false);
   const [builderTrack, setBuilderTrack] = useState<BuilderTrack>("agent");
   // Sam-feedback 2026-06-03: Transfer needed = ON → collect carriers,
   // writing numbers, previous upline. Otherwise skip those entirely.
@@ -87,12 +93,6 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const [carriers, setCarriers] = useState("");
   const [writingNumbers, setWritingNumbers] = useState("");
   const [previousUpline, setPreviousUpline] = useState("");
-  // Sam 2026-07-21: self-signup link. Generate a /hire/:token invite that
-  // auto-creates the recruit's account (via consume-invite-token) when opened.
-  const [inviteUrl, setInviteUrl] = useState("");
-  const [generatingLink, setGeneratingLink] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
-
   const fetchManagers = useCallback(async () => {
     setLoadingManagers(true);
     try {
@@ -161,6 +161,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     // "Add Agent button not working" but the real issue was a missed field
     // on a tall form that they didn't scroll back to.
     const missing: string[] = [];
+    if (!licenseStatus) missing.push("Licensed or unlicensed path");
     if (!firstName.trim()) missing.push("First name");
     if (!lastName.trim()) missing.push("Last name");
     if (!email.trim()) missing.push("Email");
@@ -184,6 +185,15 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
       toast.error("NPN is required for a licensed agent — look it up free at nipr.com");
       return;
     }
+    const normalizedComp = Number(compPercentage);
+    if (licenseStatus === "licensed" && (!Number.isFinite(normalizedComp) || normalizedComp < 50 || normalizedComp > 200)) {
+      toast.error("Comp must be between 50% and 200%.");
+      return;
+    }
+    if (licenseStatus === "licensed" && normalizedComp > 100 && !samApprovalRequested) {
+      toast.error("Check 'Request approval from Sam' for comp above 100%.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -203,11 +213,12 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
             .map((s) => s.trim().toUpperCase())
             .filter(Boolean),
           licenseExpiresAt: licenseExpiresAt || undefined,
-          // P0 fix: the "Unlicensed (sends XCEL course link)" option promises a
-          // course email, but the add-agent edge fn gates send-course-enrollment-
-          // email on hasTrainingCourse (default false). Without this flag every
-          // unlicensed add silently skipped the course link. Derive it here.
-          hasTrainingCourse: licenseStatus === "unlicensed",
+          // Both paths enter training. Unlicensed hires receive XCEL; licensed
+          // hires receive the licensed onboarding curriculum while contracting
+          // is queued in the same canonical server transaction.
+          hasTrainingCourse: true,
+          compPercentage: licenseStatus === "licensed" ? normalizedComp : 60,
+          samApprovalRequested: licenseStatus === "licensed" && normalizedComp > 100 && samApprovalRequested,
           builderTrack: isAdmin ? builderTrack : undefined,
           // Sam-feedback 2026-06-03: Transfer block — only sent when ON
           transferNeeded,
@@ -285,7 +296,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
 
       setOpen(false);
       resetForm();
-      onAgentAdded?.();
+      onAgentAdded?.(isRecord(data) && typeof data.agentId === "string" ? data.agentId : undefined);
     } catch (error: unknown) {
       console.error("Error adding agent:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to add agent";
@@ -301,74 +312,27 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     setEmail("");
     setPhone("");
     setManagerId("");
-    setLicenseStatus("unlicensed");
+    setLicenseStatus(null);
     setNpn("");
     setLicenseNumber("");
     setLicenseStates("");
     setLicenseExpiresAt("");
+    setCompPercentage("60");
+    setSamApprovalRequested(false);
     setBuilderTrack("agent");
     setTransferNeeded(false);
     setCarriers("");
     setWritingNumbers("");
     setPreviousUpline("");
-    setInviteUrl("");
-    setLinkCopied(false);
   };
 
-  // Sam 2026-07-21: mint a shareable self-signup link. Reuses the existing
-  // generate_invite_token('hire') RPC + consume-invite-token edge fn, so
-  // opening /hire/:token creates the recruit's auth user + agents row under
-  // the selected manager. No manual add needed.
-  const handleGenerateInvite = async () => {
-    if (!managerId) {
-      toast.error("Pick a manager first so the link places them on the right team");
-      return;
-    }
-    setGeneratingLink(true);
-    try {
-      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-      const prefill: Record<string, string> = {};
-      if (fullName) prefill.full_name = fullName;
-      if (email.trim()) prefill.email = email.trim();
-      if (phone.trim()) prefill.phone = phone.trim();
-
-      // generate_invite_token exists in the DB but isn't in the generated
-      // Supabase types yet, so cast to keep tsc green (TS2345 on the fn name).
-      const { data, error } = await (supabase.rpc as (fn: string, args: Record<string, unknown>) => ReturnType<typeof supabase.rpc>)("generate_invite_token", {
-        p_kind: "hire",
-        p_target_role: licenseStatus === "licensed" ? "hired_licensed" : "hired_unlicensed",
-        p_target_manager_id: managerId,
-        p_prefill: prefill,
-      });
-
-      if (error) throw error;
-      const url = isRecord(data) && typeof data.url === "string" ? data.url : "";
-      if (!url) throw new Error("No link returned from server");
-
-      setInviteUrl(url);
-      setLinkCopied(false);
-      playSound("celebrate");
-      toast.success("Invite link ready — send it to the recruit");
-    } catch (err: unknown) {
-      console.error("[AddAgentModal] generate invite failed:", err);
-      toast.error(err instanceof Error ? err.message : "Couldn't generate invite link");
-    } finally {
-      setGeneratingLink(false);
-    }
-  };
-
-  const copyInvite = async () => {
-    try {
-      await navigator.clipboard.writeText(inviteUrl);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch {
-      toast.error("Copy failed — select the link and copy manually");
-    }
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen && !loading) resetForm();
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger ?? (
           <Button className="gap-2">
@@ -377,57 +341,61 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[460px]">
         <DialogHeader>
-          <DialogTitle>{licenseStatus === "licensed" ? "Add Licensed Agent" : "Add Unlicensed Recruit"}</DialogTitle>
+          <DialogTitle>
+            {!licenseStatus ? "Add Agent" : licenseStatus === "licensed" ? "Add Licensed Agent" : "Add Unlicensed Recruit"}
+          </DialogTitle>
+          <DialogDescription>
+            {!licenseStatus
+              ? "First choose the correct journey. APEX will run the matching onboarding process inside this window."
+              : licenseStatus === "licensed"
+                ? "Create portal access and queue the agent for the contracting spreadsheet and Discord."
+                : "Create portal access, send the XCEL course, and add the recruit to the licensing tracker."}
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          {/* Two explicit functions, not a buried dropdown. Licensed starts
-              contracting immediately; unlicensed starts the licensing/course
-              journey. The backend already enforces both paths independently. */}
-          <div className="space-y-2">
-            <Label>Choose onboarding path *</Label>
-            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Agent license path">
+        {!licenseStatus ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Agent license path">
               <button
                 type="button"
                 role="radio"
-                aria-checked={licenseStatus === "licensed"}
+                aria-checked="false"
                 data-testid="add-agent-path-licensed"
                 onClick={() => setLicenseStatus("licensed")}
-                className={[
-                  "rounded-xl border p-3 text-left transition",
-                  licenseStatus === "licensed"
-                    ? "border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500/40"
-                    : "border-border bg-background hover:border-emerald-500/50",
-                ].join(" ")}
+                className="rounded-xl border border-border bg-background p-4 text-left transition hover:border-emerald-500 hover:bg-emerald-500/10 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
               >
-                <ShieldCheck className="h-5 w-5 text-emerald-500" />
-                <span className="mt-2 block text-sm font-bold">Licensed Agent</span>
-                <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
-                  Verify NPN, create account, and send to contracting.
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-500/15">
+                  <ShieldCheck className="h-5 w-5 text-emerald-500" />
                 </span>
+                <span className="mt-3 block text-base font-bold">Licensed Agent</span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Has an NPN. Start contracting now.</span>
+                <span className="mt-4 block text-xs font-semibold text-emerald-500">Choose licensed →</span>
               </button>
               <button
                 type="button"
                 role="radio"
-                aria-checked={licenseStatus === "unlicensed"}
+                aria-checked="false"
                 data-testid="add-agent-path-unlicensed"
                 onClick={() => setLicenseStatus("unlicensed")}
-                className={[
-                  "rounded-xl border p-3 text-left transition",
-                  licenseStatus === "unlicensed"
-                    ? "border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/40"
-                    : "border-border bg-background hover:border-amber-500/50",
-                ].join(" ")}
+                className="rounded-xl border border-border bg-background p-4 text-left transition hover:border-amber-500 hover:bg-amber-500/10 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
               >
-                <GraduationCap className="h-5 w-5 text-amber-500" />
-                <span className="mt-2 block text-sm font-bold">Unlicensed Recruit</span>
-                <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
-                  Create account and start the XCEL licensing journey.
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-amber-500/15">
+                  <GraduationCap className="h-5 w-5 text-amber-500" />
                 </span>
+                <span className="mt-3 block text-base font-bold">Unlicensed Recruit</span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Needs the course. Start licensing now.</span>
+                <span className="mt-4 block text-xs font-semibold text-amber-500">Choose unlicensed →</span>
               </button>
-            </div>
           </div>
+        ) : (
+        <form onSubmit={handleSubmit} className="mt-3 space-y-4">
+          <button
+            type="button"
+            onClick={() => setLicenseStatus(null)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Change licensed status
+          </button>
 
           {/* Name Row */}
           <div className="grid grid-cols-2 gap-3">
@@ -509,15 +477,11 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           {/* License details. NPN is the only field that gates submit, and only
               when "Licensed" is picked — everything else is optional so an
               unlicensed add stays a 5-field form. */}
-          <div className="space-y-3 rounded-lg border border-border/40 bg-muted/20 p-3">
+          {licenseStatus === "licensed" ? <div className="space-y-3 rounded-lg border border-border/40 bg-muted/20 p-3">
             <div className="space-y-1.5">
               <Label htmlFor="agent-npn">
                 NPN{" "}
-                {licenseStatus === "licensed" ? (
-                  <span className="text-rose-400">*</span>
-                ) : (
-                  <span className="text-xs font-normal text-muted-foreground">(if they already have one)</span>
-                )}
+                <span className="text-rose-400">*</span>
               </Label>
               <Input
                 id="agent-npn"
@@ -527,9 +491,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                 placeholder="National Producer Number"
               />
               <p className="text-[11px] text-muted-foreground">
-                {licenseStatus === "licensed"
-                  ? "Required — this is the proof of licensure. Free lookup at nipr.com."
-                  : "Optional now. Add it when their license comes back and Sam gets the alert."}
+                Required — this is the proof of licensure. Free lookup at nipr.com.
               </p>
             </div>
 
@@ -563,7 +525,37 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                 placeholder="TX, LA, MS"
               />
             </div>
-          </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="agent-comp-percentage">Comp percentage *</Label>
+              <Input
+                id="agent-comp-percentage"
+                type="number"
+                min={50}
+                max={200}
+                step="0.1"
+                value={compPercentage}
+                onChange={(event) => {
+                  setCompPercentage(event.target.value);
+                  if (Number(event.target.value) <= 100) setSamApprovalRequested(false);
+                }}
+              />
+              <p className="text-[11px] text-muted-foreground">50–100% is approved automatically. Default is 60%.</p>
+            </div>
+
+            {Number(compPercentage) > 100 ? (
+              <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3">
+                <Checkbox
+                  id="agent-comp-sam-approval"
+                  checked={samApprovalRequested}
+                  onCheckedChange={(value) => setSamApprovalRequested(value === true)}
+                />
+                <Label htmlFor="agent-comp-sam-approval" className="cursor-pointer text-sm leading-snug">
+                  Request approval from Sam. This comp stays pending and emails Sam before it is approved.
+                </Label>
+              </div>
+            ) : null}
+          </div> : null}
 
           {isAdmin ? (
             <div className="space-y-2 rounded-lg border border-border/40 bg-muted/20 p-3">
@@ -602,7 +594,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
 
           {/* Sam-feedback 2026-06-03: Transfer needed toggle. Off = simple
               4-field add. On = collect carrier transfer info upline cares about. */}
-          <div className="space-y-3 rounded-lg border border-border/40 bg-muted/20 p-3">
+          {licenseStatus === "licensed" ? <div className="space-y-3 rounded-lg border border-border/40 bg-muted/20 p-3">
             <div className="flex items-center gap-2">
               <Checkbox
                 id="transferNeeded"
@@ -644,65 +636,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                 </div>
               </div>
             ) : null}
-          </div>
-
-          {/* Sam 2026-07-21: self-signup link. Send it to the recruit and their
-              account is created automatically when they open it — under the
-              selected manager. Backed by generate_invite_token + consume-invite-token. */}
-          <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
-            <div className="flex items-center gap-2">
-              <Link2 className="h-4 w-4 text-primary" />
-              <Label className="text-sm font-medium">Or send a self-signup link</Label>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              The recruit opens the link and their account is created automatically
-              under the selected manager — no manual add needed. Name/email/phone above
-              (if filled) pre-fill their signup.
-            </p>
-            {inviteUrl ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <Input
-                    readOnly
-                    value={inviteUrl}
-                    className="text-xs"
-                    onFocus={(e) => e.currentTarget.select()}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={copyInvite}
-                    aria-label="Copy invite link"
-                  >
-                    {linkCopied ? (
-                      <Check className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Expires in 7 days · one-time use · creates the account on open.
-                </p>
-              </>
-            ) : (
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full gap-2"
-                disabled={generatingLink}
-                onClick={handleGenerateInvite}
-              >
-                {generatingLink ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Link2 className="h-4 w-4" />
-                )}
-                {generatingLink ? "Generating…" : "Generate invite link"}
-              </Button>
-            )}
-          </div>
+          </div> : null}
 
           {/* Single primary action — dialog X closes if user wants out. */}
           <Button type="submit" disabled={loading} className="w-full">
@@ -716,6 +650,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
             )}
           </Button>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

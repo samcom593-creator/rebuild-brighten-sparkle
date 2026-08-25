@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect, useRef, memo } from "react";
-import { Cloud, Menu, Search } from "lucide-react";
+import { Cloud, Menu, Search, UserPlus } from "lucide-react";
 import { useUIStore } from "@/shared/store/uiStore";
 import { Link, useLocation } from "react-router-dom";
 import { GlobalSidebar } from "./GlobalSidebar";
@@ -12,6 +12,8 @@ import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigationGuard } from "@/hooks/useNavigationGuard";
 import { cn } from "@/lib/utils";
 import { useBrand } from "@/hooks/useBrand";
+import { useAuth } from "@/hooks/useAuth";
+import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 
 interface SidebarLayoutProps {
   children: ReactNode;
@@ -28,6 +30,7 @@ const PageContent = memo(({ children, showPhoneBanner }: { children: ReactNode; 
 
 export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayoutProps) {
   const brand = useBrand();
+  const { isAdmin, isManager } = useAuth();
   const { isOpen, isFullscreen, toggleSidebar, toggleFullscreen, sidebarWidth } = useSidebarState();
   const location = useLocation();
   const prevPathRef = useRef(location.pathname);
@@ -66,6 +69,15 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
             <span className="text-sm font-semibold text-foreground">{brand.legalName}</span>
           </Link>
           <div className="flex items-center gap-2">
+            {(isAdmin || isManager) && (
+              <AddAgentModal
+                trigger={(
+                  <Button variant="ghost" size="icon" aria-label="Add agent">
+                    <UserPlus className="h-5 w-5" />
+                  </Button>
+                )}
+              />
+            )}
             <Button
               variant="ghost"
               size="icon"

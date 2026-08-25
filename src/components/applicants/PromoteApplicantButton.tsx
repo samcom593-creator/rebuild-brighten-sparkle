@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 import { toast } from "sonner";
+import { promoteApplicationToAgent } from "@/lib/hireToOnboarding";
 
 /**
  * PromoteApplicantButton — one-tap convert applications row to agents row.
@@ -48,64 +48,10 @@ export function PromoteApplicantButton({
   const handle = async () => {
     setBusy(true);
     try {
-      const [{ data: auth }, { data: app, error: appError }] = await Promise.all([
-        supabase.auth.getUser(),
-        supabase.from("applications").select(
-          "id,first_name,last_name,email,phone,city,state,instagram_handle,license_status,nipr_number,assigned_agent_id",
-        ).eq("id", applicationId).maybeSingle(),
-      ]);
-      if (appError || !app) throw new Error(appError?.message || "Application was not found");
-      if (!auth.user) throw new Error("Your session expired. Sign in and try again.");
-
-      const { data: actorAgent, error: actorError } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", auth.user.id)
-        .eq("is_deactivated", false)
-        .limit(1)
-        .maybeSingle();
-      if (actorError) throw actorError;
-      const resolvedManagerId = managerId ?? actorAgent?.id ?? app.assigned_agent_id;
-      if (!resolvedManagerId) throw new Error("Assign a hiring manager before creating the account");
-
-      const { data, error } = await supabase.functions.invoke("add-agent", {
-        body: {
-          firstName: app.first_name,
-          lastName: app.last_name,
-          email: app.email,
-          phone: app.phone || "",
-          managerId: resolvedManagerId,
-          licenseStatus: app.license_status,
-          niprNumber: app.nipr_number || undefined,
-          city: app.city || undefined,
-          state: app.state || undefined,
-          instagramHandle: app.instagram_handle || undefined,
-          hasTrainingCourse: app.license_status === "licensed",
-          sourceApplicationId: applicationId,
-        },
-      });
-      if (error) {
-        let message = error.message;
-        const context = (error as { context?: Response }).context;
-        if (context) {
-          let payload: { error?: string } | null = null;
-          try {
-            payload = await context.clone().json() as { error?: string };
-          } catch (parseError) {
-            console.error("[PromoteApplicantButton] could not parse add-agent error response", parseError);
-          }
-          message = payload?.error || message;
-        }
-        throw new Error(message);
-      }
-      if (data?.error) throw new Error(String(data.error));
-      const newAgentId = (data?.agentId as string | null) || null;
-      if (!newAgentId) {
-        toast.error("Promote returned no agent_id");
-        return;
-      }
-      if (data?.partial) toast.warning(data.message || `${applicantName ?? "Applicant"} hired; one follow-up needs attention`);
-      else toast.success(data?.message || `${applicantName ?? "Applicant"} hired and account created`);
+      const receipt = await promoteApplicationToAgent(applicationId, { managerId });
+      const newAgentId = receipt.agentId;
+      if (receipt.partial) toast.warning(receipt.message || `${applicantName ?? "Applicant"} hired; one follow-up needs attention`);
+      else toast.success(receipt.message || `${applicantName ?? "Applicant"} hired and account created`);
       onPromoted?.(newAgentId);
       // Invalidate caches that show applicants/agents.
       await Promise.all([

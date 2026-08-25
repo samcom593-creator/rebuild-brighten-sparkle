@@ -8,8 +8,10 @@ const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 describe("one-tap hiring lifecycle", () => {
   it("creates the account through one canonical path", () => {
     const promote = read("src/components/applicants/PromoteApplicantButton.tsx");
-    expect(promote).toContain('functions.invoke("add-agent"');
-    expect(promote).toContain("sourceApplicationId: applicationId");
+    const canonical = read("src/lib/hireToOnboarding.ts");
+    expect(promote).toContain("promoteApplicationToAgent(applicationId");
+    expect(canonical).toContain('functions.invoke("add-agent"');
+    expect(canonical).toContain("sourceApplicationId: app.id");
     expect(promote).not.toContain('rpc("promote_applicant_to_agent"');
 
     const applicants = read("src/pages/DashboardApplicants.tsx");

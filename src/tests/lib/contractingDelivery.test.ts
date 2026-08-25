@@ -223,6 +223,18 @@ describe("contracting delivery · Discord", () => {
     expect(serialized).not.toContain("@here");
   });
 
+  it("allows only the configured numeric John member id to be mentioned", () => {
+    const payload = buildDiscordPayload(INTAKE, "123456789012345678");
+    expect(payload.content).toBe("<@123456789012345678>");
+    expect(payload.allowed_mentions).toEqual({
+      parse: [],
+      users: ["123456789012345678"],
+    });
+    const unsafe = buildDiscordPayload(INTAKE, "John");
+    expect(unsafe.content).toBeUndefined();
+    expect(unsafe.allowed_mentions).toEqual({ parse: [] });
+  });
+
   it("escapes markdown so a crafted name cannot reshape the post", () => {
     expect(escapeDiscord("**bold**")).toBe("\\*\\*bold\\*\\*");
     expect(escapeDiscord("under_score")).toBe("under\\_score");

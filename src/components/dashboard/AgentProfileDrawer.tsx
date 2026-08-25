@@ -51,6 +51,8 @@ import {
   UserCheck,
   Trash2,
   Link as LinkIcon,
+  Edit2,
+  ListTodo,
 } from "lucide-react";
 import {
   Sheet,
@@ -67,6 +69,8 @@ import { AgentOnboardingEmailStatus } from "@/components/dashboard/AgentOnboardi
 import { AgentOnboardingCommandCenter } from "@/components/dashboard/AgentOnboardingCommandCenter";
 import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton";
 import { AgentCredentialsPanel } from "@/components/dashboard/AgentCredentialsPanel";
+import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
+import { AgentTaskManager } from "@/components/dashboard/AgentTaskManager";
 import { AgentNotes } from "@/components/dashboard/AgentNotes";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,6 +87,7 @@ interface AgentRow {
   agent_code: string | null;
   status: string | null;
   license_status: string | null;
+  nipr_number: string | null;
   start_date: string | null;
   total_policies: number | null;
   total_premium: number | null;
@@ -228,6 +233,7 @@ export function AgentProfileDrawer() {
   // MP-234 magic join/prospect link — one-tap generate + copy to clipboard.
   const [joinLinkLoading, setJoinLinkLoading] = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [quickEditOpen, setQuickEditOpen] = useState(false);
 
   // Close on route change happens automatically because the Sheet primitive
   // is portaled — but we reset on unmount just in case.
@@ -245,7 +251,7 @@ export function AgentProfileDrawer() {
       const { data, error } = await supabase
         .from("agents")
         .select(
-          `id, user_id, agent_code, status, license_status, start_date,
+          `id, user_id, agent_code, status, license_status, nipr_number, start_date,
            total_policies, total_premium, total_earnings, manager_id,
            display_name, is_deactivated, is_inactive, onboarding_stage,
            first_deal_at, contracted_at, notes,
@@ -508,6 +514,17 @@ const qnum = (v: number | string | null | undefined): number | null => {
         }}
       />
     )}
+    {agent && (
+      <AgentQuickEditDialog
+        open={quickEditOpen}
+        onOpenChange={setQuickEditOpen}
+        agentId={agent.id}
+        currentName={name}
+        production={agent.total_premium ?? 0}
+        deals={agent.total_policies ?? 0}
+        onUpdate={() => qc.invalidateQueries({ queryKey: ["agent-profile-drawer"] })}
+      />
+    )}
     <Sheet open={open} onOpenChange={(o) => { if (!o) close(); }}>
       <SheetContent
         side="right"
@@ -651,35 +668,14 @@ const qnum = (v: number | string | null | undefined): number | null => {
                     </button>
                   ) : (
                     <button
-                      onClick={async () => {
-                        if (!agent?.id) return;
-                        const ok = await askConfirm({
-                          title: `Mark ${agent.display_name ?? "this agent"} as LICENSED?`,
-                          description: "This flips license status, stamps licensed_at, moves them to onboarding, and fires the course email.",
-                          confirmText: "Mark licensed",
-                        });
-                        if (!ok) return;
-                        const { error } = await (supabase as any)
-                          .from("agents")
-                          .update({
-                            license_status: "licensed",
-                            licensed_at: new Date().toISOString(),
-                            onboarding_stage: "onboarding",
-                            updated_at: new Date().toISOString(),
-                          })
-                          .eq("id", agent.id);
-                        if (error) toast.error(`Update failed: ${error.message.slice(0, 80)}`);
-                        else {
-                          toast.success(`✅ ${agent.display_name} → LICENSED · course email queued`);
-                          // Drain the queue immediately
-                          await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
-                          qc.invalidateQueries({ queryKey: ["agent-profile-drawer"] });
-                        }
+                      onClick={() => {
+                        setQuickEditOpen(true);
+                        toast.info("Enter or verify the NPN, choose Licensed, then save. Contracting and onboarding will start automatically.");
                       }}
                       className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
-                      title="Tap to mark licensed (fires course email)"
+                      title="Open license and onboarding controls"
                     >
-                      <ShieldAlert className="h-3 w-3 mr-0.5" /> {formatEnumLabel(agent.license_status, "Unlicensed")} <span className="ml-1 opacity-60">→ tap to flip</span>
+                      <ShieldAlert className="h-3 w-3 mr-0.5" /> {formatEnumLabel(agent.license_status, "Unlicensed")} <span className="ml-1 opacity-60">→ verify NPN</span>
                     </button>
                   )}
                   {agent.is_deactivated && (
@@ -839,7 +835,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
 
 
             {/* One-tap actions */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -874,6 +870,14 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 onClick={() => { close(); navigate(`/dashboard/agent/${agent.id}`); }}
               >
                 <ExternalLink className="h-3.5 w-3.5" /> Full page
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5"
+                onClick={() => setQuickEditOpen(true)}
+              >
+                <Edit2 className="h-3.5 w-3.5" /> Edit &amp; access
               </Button>
             </div>
 
@@ -1349,6 +1353,15 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 </p>
               </div>
             )}
+
+            <details className="rounded-xl border border-border bg-card/60">
+              <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-wide">
+                <ListTodo className="h-4 w-4 text-amber-500" /> Work assignments
+              </summary>
+              <div className="border-t border-border p-3">
+                <AgentTaskManager agentFilter={agent.id} compact />
+              </div>
+            </details>
 
             {/* Credentials (admin only — the existing AgentCredentialsPanel
                 already hides itself for non-admins). */}

@@ -105,9 +105,18 @@ export function escapeDiscord(value: unknown): string {
  * intake fields — support staff cannot act without them. Every value is escaped
  * and allowed_mentions is emptied, so no crafted field can notify anyone.
  */
-export function buildDiscordPayload(intake: IntakeRow): Record<string, unknown> {
+export function buildDiscordPayload(
+  intake: IntakeRow,
+  mentionUserId?: string | null,
+): Record<string, unknown> {
+  const safeMentionId = /^\d{16,22}$/.test(mentionUserId ?? "")
+    ? mentionUserId
+    : null;
   return {
-    allowed_mentions: { parse: [] },
+    ...(safeMentionId ? { content: `<@${safeMentionId}>` } : {}),
+    allowed_mentions: safeMentionId
+      ? { parse: [], users: [safeMentionId] }
+      : { parse: [] },
     embeds: [{
       title: "New contracting intake",
       color: 0x1d9bf0,
@@ -180,10 +189,14 @@ export async function deliverContractingDiscord(
   }
 
   const intake = await deps.loadIntake(intakeId);
+  // Discord mentions require the immutable numeric member ID. A display name
+  // is deliberately never interpolated because it cannot create a reliable
+  // ping and could resolve to the wrong person.
+  const mentionUserId = await deps.readSetting("contracting_discord_mention_user_id");
   const response = await deps.fetchImpl(`${webhook.trim()}?wait=true`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(buildDiscordPayload(intake)),
+    body: JSON.stringify(buildDiscordPayload(intake, mentionUserId)),
   });
 
   const body = await response.text();

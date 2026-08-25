@@ -38,6 +38,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/dateUtils";
+import { createCanonicalHire, promoteApplicationToAgent } from "@/lib/hireToOnboarding";
 
 /**
  * /admin/licensed-inbox: immediate-call surface for licensed applicants and
@@ -341,6 +342,21 @@ export default function LicensedInbox() {
     const key = `${licensedRowKey(row)}:${outcome}`;
     setBusy(key);
     try {
+      let hireReceipt: Awaited<ReturnType<typeof promoteApplicationToAgent>> | null = null;
+      if (outcome === "hired") {
+        hireReceipt = row.origin === "application"
+          ? await promoteApplicationToAgent(row.id, { npn: row.npn })
+          : await createCanonicalHire({
+              firstName: row.first_name || "",
+              lastName: row.last_name || "",
+              email: row.email || "",
+              phone: row.phone || "",
+              licenseStatus: "licensed",
+              npn: row.npn,
+              city: row.city,
+              state: row.state,
+            });
+      }
       const { data, error } = await (supabase.rpc as unknown as (
         fn: string,
         args: Record<string, unknown>,
@@ -349,13 +365,18 @@ export default function LicensedInbox() {
         { p_subject_kind: row.origin, p_subject_id: row.id, p_outcome: outcome },
       );
       if (error || !data?.ok) throw new Error(error?.message || "Disposition could not be recorded");
-      toast.success(`Recorded: ${outcome}`);
+      if (hireReceipt?.partial) toast.warning(hireReceipt.message);
+      else toast.success(outcome === "hired" ? "Hired · account and onboarding started" : `Recorded: ${outcome}`);
       if (data.terminal) {
         qc.setQueryData<LicensedRow[]>(["licensed-inbox"], (prev) =>
           (prev ?? []).filter((candidate) => licensedRowKey(candidate) !== licensedRowKey(row)),
         );
       }
       void qc.invalidateQueries({ queryKey: ["licensed-inbox"] });
+      if (outcome === "hired") {
+        void qc.invalidateQueries({ queryKey: ["agents"] });
+        void qc.invalidateQueries({ queryKey: ["apex-career-toolkit"] });
+      }
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "Disposition failed");
     } finally {

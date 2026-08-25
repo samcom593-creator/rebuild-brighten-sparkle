@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { emailPattern } from "../_shared/like-escape.ts";
 import { resolveOne } from "../_shared/resolve-one.ts";
 import { findAuthUserByEmail, type AuthUserLister } from "../_shared/find-auth-user.ts";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,6 +35,8 @@ interface AddAgentRequest {
   licenseStates?: string[];
   licenseExpiresAt?: string;
   sourceApplicationId?: string;
+  compPercentage?: number;
+  samApprovalRequested?: boolean;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -107,7 +110,23 @@ const handler = async (req: Request): Promise<Response> => {
       licenseStates,
       licenseExpiresAt,
       sourceApplicationId,
+      compPercentage = 60,
+      samApprovalRequested = false,
     } = body;
+
+    const normalizedComp = Number(compPercentage);
+    if (!Number.isFinite(normalizedComp) || normalizedComp < 50 || normalizedComp > 200) {
+      return new Response(
+        JSON.stringify({ error: "Comp percentage must be between 50 and 200." }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+    if (normalizedComp > 100 && samApprovalRequested !== true) {
+      return new Response(
+        JSON.stringify({ error: "Comp above 100% requires a Sam approval request." }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
 
     const normalizedNpn = (niprNumber ?? "").replace(/\D+/g, "");
     const agentLicenseStatus = licenseStatus === "in_progress" ? "pending" : licenseStatus;
@@ -362,6 +381,10 @@ const handler = async (req: Request): Promise<Response> => {
     const agentInsert: Record<string, unknown> = {
       user_id: userId,
       profile_id: profileId,
+      // Several roster and production surfaces intentionally fall back to the
+      // agent row when a profile join is unavailable. Persist the name in both
+      // canonical places so a successful add never looks blank elsewhere.
+      display_name: `${firstName} ${lastName}`.trim(),
       manager_id: managerId,
       invited_by_manager_id: managerId,
       source_application_id: sourceApplication?.id ?? null,
@@ -373,6 +396,10 @@ const handler = async (req: Request): Promise<Response> => {
       has_training_course: hasTrainingCourse || false,
       start_date: startDate || null,
       builder_track: builderTrack,
+      comp_percentage: normalizedComp,
+      comp_approval_status: normalizedComp > 100 ? "pending_sam" : "approved",
+      comp_approved_at: normalizedComp > 100 ? null : new Date().toISOString(),
+      comp_approved_by: normalizedComp > 100 ? null : requestingUserId,
     };
 
     if (crmSetupLink) {
@@ -437,13 +464,15 @@ const handler = async (req: Request): Promise<Response> => {
 
     let applicationLinkStatus: { ok: boolean; skipped?: boolean; error?: string } = { ok: true, skipped: true };
     if (sourceApplication) {
+      const applicationPromotionPatch: Record<string, unknown> = {
+        status: "onboarding",
+        closed_at: new Date().toISOString(),
+        assigned_agent_id: managerId,
+      };
+      if (normalizedNpn) applicationPromotionPatch.nipr_number = normalizedNpn;
       const { error: applicationError } = await supabaseAdmin
         .from("applications")
-        .update({
-          status: "onboarding",
-          closed_at: new Date().toISOString(),
-          assigned_agent_id: managerId,
-        })
+        .update(applicationPromotionPatch)
         .eq("id", sourceApplication.id);
       applicationLinkStatus = applicationError
         ? { ok: false, error: applicationError.message ?? String(applicationError) }
@@ -558,6 +587,32 @@ const handler = async (req: Request): Promise<Response> => {
         })
       : { ok: true, skipped: true };
 
+    let compApprovalEmailStatus: SideEffectStatus = { ok: true, skipped: true };
+    if (normalizedComp > 100) {
+      const resendKey = Deno.env.get("RESEND_API_KEY") ?? "";
+      if (!resendKey) {
+        compApprovalEmailStatus = { ok: false, error: "RESEND_API_KEY missing" };
+      } else {
+        try {
+          const resend = new Resend(resendKey);
+          const { data: approvalEmail, error: approvalEmailError } = await resend.emails.send({
+            from: "APEX Hiring <notifications@apex-financial.org>",
+            to: ["info@kingofsales.net"],
+            subject: `Comp approval needed · ${firstName} ${lastName} · ${normalizedComp}%`,
+            html: `<p><strong>${firstName} ${lastName}</strong> was added at <strong>${normalizedComp}% comp</strong>.</p><p>The account remains pending Sam approval because the requested comp is above 100%.</p><p><a href="https://apex-financial.org/dashboard/crm">Open the agent profile to approve or change comp</a></p>`,
+          });
+          compApprovalEmailStatus = approvalEmailError || !approvalEmail?.id
+            ? { ok: false, error: approvalEmailError?.message ?? "email provider returned no id" }
+            : { ok: true };
+        } catch (error) {
+          compApprovalEmailStatus = {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      }
+    }
+
     const transferStatus: SideEffectStatus = !transferNeeded
       ? { ok: true, skipped: true }
       : transferNoteError || transferStampError
@@ -587,6 +642,7 @@ const handler = async (req: Request): Promise<Response> => {
     const sideEffectFailures: string[] = [];
     if (!welcomeEmailStatus.ok) sideEffectFailures.push("welcome email");
     if (!courseEmailStatus.ok) sideEffectFailures.push("course enrollment email");
+    if (!compApprovalEmailStatus.ok) sideEffectFailures.push("Sam comp approval email");
     if (!transferStatus.ok) sideEffectFailures.push("transfer note");
     if (!contractingPostStatus.ok) sideEffectFailures.push("contracting spreadsheet/Discord queue");
     if (!applicationLinkStatus.ok) sideEffectFailures.push("application promotion receipt");
@@ -605,6 +661,7 @@ const handler = async (req: Request): Promise<Response> => {
         sideEffects: {
           welcomeEmail: welcomeEmailStatus,
           courseEmail: courseEmailStatus,
+          compApprovalEmail: compApprovalEmailStatus,
           transferBlock: transferStatus,
           contractingPost: contractingPostStatus,
           applicationPromotion: applicationLinkStatus,

@@ -203,7 +203,7 @@ async function listApplicants(actor: Actor) {
 
   const [{ data: applicants, error }, { data: applicationRows, error: applicationsError }] = await Promise.all([
     query,
-    admin.from("applications").select("id,email,phone,status,closed_at,contracted_at").eq("record_type", "application").limit(2000),
+    admin.from("applications").select("id,email,phone,status,closed_at,contracted_at,license_status,nipr_number").eq("record_type", "application").limit(2000),
   ]);
   if (error) throw error;
   if (applicationsError) throw applicationsError;
@@ -221,6 +221,7 @@ async function listApplicants(actor: Actor) {
   const mainRows = (applicationRows ?? []) as Array<{
     id: string; email: string | null; phone: string | null; status: string | null;
     closed_at: string | null; contracted_at: string | null;
+    license_status: string | null; nipr_number: string | null;
   }>;
   const byEmail = buildUniqueMap(mainRows, "email");
   const byPhone = buildUniqueMap(mainRows, "phone");
@@ -239,6 +240,8 @@ async function listApplicants(actor: Actor) {
       recruiter_name: row.recruiter_id ? owners[row.recruiter_id] ?? null : null,
       application_id: applicationId,
       onboarding_status: onboardingStatus,
+      application_license_status: application?.license_status ?? null,
+      application_npn: application?.nipr_number ?? null,
     };
   });
   return json({ applicants: applicantsOut, counts, total: rows.length, role: actor.role, generatedAt: new Date().toISOString() });

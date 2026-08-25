@@ -44,10 +44,15 @@ ${inner}
 }
 
 async function postDiscord(alert: any): Promise<boolean> {
+  // License-returned alerts are contracting work, not production/numbers chat.
+  // Keep all other Pulse alerts on the existing production route.
+  const discordSettingKey = alert?.event_type === "agent_license_returned"
+    ? "discord_webhook_url_contracting"
+    : "discord_webhook_url";
   const { data } = await supabase
     .from("system_settings")
     .select("value")
-    .eq("key", "discord_webhook_url")
+    .eq("key", discordSettingKey)
     .maybeSingle();
   const url = (data as any)?.value;
   if (!url) return false;

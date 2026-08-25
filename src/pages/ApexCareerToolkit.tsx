@@ -45,6 +45,7 @@ import {
 } from "@/lib/apexCareerToolkit";
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAgentProfileDrawer } from "@/stores/agentProfileDrawer";
 
 interface ToolkitAgent {
   id: string;
@@ -133,6 +134,7 @@ export default function ApexCareerToolkit() {
   const trainingLabel = `${brand.platformName} Training`;
   usePageTitle(`${trainingLabel} ${brand.titleSuffix}`);
   const queryClient = useQueryClient();
+  const openAgent = useAgentProfileDrawer((state) => state.openAgent);
   const [searchParams, setSearchParams] = useSearchParams();
   const [agentSearch, setAgentSearch] = useState("");
   const [busyStep, setBusyStep] = useState<string | null>(null);
@@ -307,7 +309,8 @@ export default function ApexCareerToolkit() {
   const handleAdded = async (agentId: string) => {
     await queryClient.invalidateQueries({ queryKey: ["apex-career-toolkit"] });
     await queryClient.invalidateQueries({ queryKey: ["licensed-inbox"] });
-    selectAgent(`toolkit_agent:${agentId}`);
+    await queryClient.invalidateQueries({ queryKey: ["agents"] });
+    openAgent(agentId);
   };
 
   const toggleStep = async (step: ApexJourneyStep) => {

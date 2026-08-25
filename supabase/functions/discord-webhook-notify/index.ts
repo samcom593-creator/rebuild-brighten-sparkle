@@ -70,7 +70,9 @@ function rankEmoji(i: number): string {
   return i < 3 ? RANK_MEDALS[i] : `${i + 1}.`;
 }
 
-const RECRUITING_EVENTS = new Set(["new_application", "agent_activated", "pipeline_leaderboard"]);
+// New applications are visible growth wins for the whole production/numbers
+// room. Pipeline operations remain in the private recruiting channel.
+const RECRUITING_EVENTS = new Set(["agent_activated", "pipeline_leaderboard"]);
 
 function getDiscordAudience(eventType: string): DiscordAudience {
   return RECRUITING_EVENTS.has(eventType) ? "recruiting" : "production";
@@ -135,8 +137,8 @@ function embedNewApplication(d: Record<string, unknown>) {
   const insta = ig(d.instagram as string);
   return {
     embeds: [{
-      title:       "📥 New Application",
-      description: `**${name}${insta}** just applied from **${state}**`,
+      title:       "🌱 New Growth — Application In",
+      description: `**${name}${insta}** just applied from **${state}**. The team is growing — invite someone who should build with us.`,
       color:       CLR.blue,
       footer:      { text: "No personal information shared" },
       timestamp:   new Date().toISOString(),

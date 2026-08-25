@@ -56,12 +56,14 @@ interface AgentTaskManagerProps {
   viewMode?: "board" | "list";
   agentFilter?: string;
   showAssignButton?: boolean;
+  compact?: boolean;
 }
 
 export function AgentTaskManager({
   viewMode: defaultView = "board",
   agentFilter,
   showAssignButton = true,
+  compact = false,
 }: AgentTaskManagerProps) {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<AgentTask[]>([]);
@@ -81,6 +83,10 @@ export function AgentTaskManager({
 
   useEffect(() => {
     loadData();
+  }, [agentFilter]);
+
+  useEffect(() => {
+    if (agentFilter) setFormAgentId(agentFilter);
   }, [agentFilter]);
 
   const loadData = async () => {
@@ -203,7 +209,7 @@ export function AgentTaskManager({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        {!compact && <div className="flex items-center gap-2">
           <Button
             variant={view === "board" ? "default" : "ghost"}
             size="sm"
@@ -218,7 +224,7 @@ export function AgentTaskManager({
           >
             <ListTodo className="h-4 w-4 mr-1" /> List
           </Button>
-        </div>
+        </div>}
 
         {showAssignButton && (
           <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
@@ -232,7 +238,7 @@ export function AgentTaskManager({
                 <DialogTitle>Assign Task</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
-                <Select value={formAgentId} onValueChange={setFormAgentId}>
+                {!agentFilter && <Select value={formAgentId} onValueChange={setFormAgentId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Agent" />
                   </SelectTrigger>
@@ -243,7 +249,7 @@ export function AgentTaskManager({
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
+                </Select>}
                 <Input
                   placeholder="Task title"
                   value={formTitle}
@@ -291,8 +297,31 @@ export function AgentTaskManager({
         )}
       </div>
 
+      {compact && (
+        <div className="space-y-2">
+          {tasks.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">No work assigned yet.</div>
+          ) : tasks.map((task) => (
+            <div key={task.id} className="rounded-lg border border-border bg-background/60 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{task.title}</p>
+                  {task.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>}
+                </div>
+                <Badge variant={priorityColor(task.priority)} className="shrink-0 text-[10px]">{task.priority}</Badge>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1">{statusIcon(task.status)} {columnLabels[task.status] ?? task.status}</span>
+                {task.due_date && <span>Due {new Date(task.due_date).toLocaleDateString()}</span>}
+                {task.status !== "completed" && <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs text-emerald-500" onClick={() => updateTaskStatus(task.id, "completed")}>Complete</Button>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Board View */}
-      {view === "board" && (
+      {!compact && view === "board" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {columns.map((col) => {
             const colTasks = tasks.filter((t) => t.status === col);
@@ -351,7 +380,7 @@ export function AgentTaskManager({
       )}
 
       {/* List View */}
-      {view === "list" && (
+      {!compact && view === "list" && (
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/30">

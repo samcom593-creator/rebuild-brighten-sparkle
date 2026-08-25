@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Command, Home, Menu, Moon, Search, Star, Sun } from "lucide-react";
+import { Command, Home, Menu, Moon, Search, Star, Sun, UserPlus } from "lucide-react";
 // 2026-08-23 light/dark wave: this file used to import useTheme from
 // "next-themes". No <ThemeProvider> is mounted anywhere in this app, and
 // next-themes' hook falls back to a stub context when the provider is absent
@@ -17,6 +17,7 @@ import { useUIStore } from "@/shared/store/uiStore";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { RolePreviewMenu } from "@/components/layout/RolePreviewBubbles";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
+import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { agentCloudBreadcrumb } from "./agentCloudNavigation";
@@ -25,7 +26,7 @@ import { cn } from "@/lib/utils";
 
 export function TopBar() {
   const { pathname } = useLocation();
-  const { user } = useAuth();
+  const { user, isAdmin, isManager } = useAuth();
   const { theme, setTheme } = useTheme();
   const { toggleSidebar } = useSidebarState();
   const setSearchOpen = useUIStore((state) => state.setCommandPaletteOpen);
@@ -80,6 +81,16 @@ export function TopBar() {
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
         <RolePreviewMenu />
+        {(isAdmin || isManager) && (
+          <AddAgentModal
+            trigger={(
+              <Button size="sm" variant="outline" className="h-8 gap-1.5 rounded-md px-2.5 text-xs font-semibold">
+                <UserPlus className="h-3.5 w-3.5" />
+                <span className="hidden 2xl:inline">Add Agent</span>
+              </Button>
+            )}
+          />
+        )}
         <SubmitDealDialog trigger={<Button size="sm" className="h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-none hover:bg-primary/90">Post a Deal</Button>} />
         <Avatar className="ml-1 h-8 w-8 border border-border">
           <AvatarFallback className="bg-card text-[10px] font-semibold text-foreground">{initials}</AvatarFallback>

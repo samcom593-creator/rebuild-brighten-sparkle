@@ -23,7 +23,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -62,6 +70,11 @@ interface AgentData {
   profile_id: string | null;
   display_name: string | null;
   invited_by_manager_id: string | null;
+  license_status: string;
+  nipr_number: string | null;
+  onboarding_stage: string | null;
+  comp_percentage: number;
+  comp_approval_status: string;
 }
 
 export function AgentQuickEditDialog({
@@ -101,6 +114,11 @@ export function AgentQuickEditDialog({
   const [resettingPassword, setResettingPassword] = useState(false);
   const [sendingLogin, setSendingLogin] = useState(false);
   const [sendingLoginToManager, setSendingLoginToManager] = useState(false);
+  const [licenseStatus, setLicenseStatus] = useState("unlicensed");
+  const [npn, setNpn] = useState("");
+  const [onboardingStage, setOnboardingStage] = useState("pre_licensed");
+  const [compPercentage, setCompPercentage] = useState("60");
+  const [compApproved, setCompApproved] = useState(true);
 
   useEffect(() => {
     if (open && agentId) {
@@ -115,6 +133,11 @@ export function AgentQuickEditDialog({
       setInstagram("");
       setNewEmail("");
       setNewPassword("");
+      setLicenseStatus("unlicensed");
+      setNpn("");
+      setOnboardingStage("pre_licensed");
+      setCompPercentage("60");
+      setCompApproved(true);
       fetchAgentData();
       fetchPossibleMatches();
     }
@@ -130,6 +153,11 @@ export function AgentQuickEditDialog({
           profile_id,
           display_name,
           invited_by_manager_id,
+          license_status,
+          nipr_number,
+          onboarding_stage,
+          comp_percentage,
+          comp_approval_status,
           profile:profiles!agents_profile_id_fkey(full_name, email, phone, instagram_handle)
         `)
         .eq("id", agentId)
@@ -141,7 +169,17 @@ export function AgentQuickEditDialog({
           profile_id: agent.profile_id,
           display_name: agent.display_name,
           invited_by_manager_id: agent.invited_by_manager_id,
+          license_status: agent.license_status,
+          nipr_number: agent.nipr_number,
+          onboarding_stage: agent.onboarding_stage,
+          comp_percentage: Number(agent.comp_percentage ?? 60),
+          comp_approval_status: agent.comp_approval_status ?? "approved",
         });
+        setLicenseStatus(agent.license_status || "unlicensed");
+        setNpn(agent.nipr_number || "");
+        setOnboardingStage(agent.onboarding_stage || "pre_licensed");
+        setCompPercentage(String(agent.comp_percentage ?? 60));
+        setCompApproved((agent.comp_approval_status ?? "approved") === "approved");
 
         if (agent.profile) {
           const profile = agent.profile as { full_name?: string; email?: string; phone?: string; instagram_handle?: string };
@@ -245,10 +283,28 @@ export function AgentQuickEditDialog({
 
     setSaving(true);
     try {
+      const cleanedNpn = npn.replace(/\D+/g, "");
+      const normalizedComp = Number(compPercentage);
+      if (licenseStatus === "licensed" && (cleanedNpn.length < 5 || cleanedNpn.length > 10)) {
+        throw new Error("A valid 5–10 digit NPN is required before marking an agent licensed.");
+      }
+      if (!Number.isFinite(normalizedComp) || normalizedComp < 50 || normalizedComp > 200) {
+        throw new Error("Comp percentage must be between 50 and 200.");
+      }
       // Update agent display name
       const { error } = await supabase
         .from("agents")
-        .update({ display_name: displayName.trim() })
+        .update({
+          display_name: displayName.trim(),
+          license_status: licenseStatus as "licensed" | "unlicensed" | "pending",
+          nipr_number: cleanedNpn || null,
+          onboarding_stage: onboardingStage as any,
+          licensed_at: licenseStatus === "licensed" ? new Date().toISOString() : null,
+          comp_percentage: normalizedComp,
+          comp_approval_status: normalizedComp <= 100 || compApproved ? "approved" : "pending_sam",
+          comp_approved_at: normalizedComp <= 100 || compApproved ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", agentId);
 
       if (error) throw error;
@@ -335,9 +391,29 @@ export function AgentQuickEditDialog({
         }
       }
 
+      let contractingWarning: string | null = null;
+      if (licenseStatus === "licensed" && cleanedNpn) {
+        const nameParts = displayName.trim().split(/\s+/);
+        const firstName = nameParts.shift() || "";
+        const lastName = nameParts.join(" ");
+        const { data: contracting, error: contractingError } = await supabase.functions.invoke("submit-contracting-intake", {
+          body: {
+            first_name: firstName,
+            last_name: lastName,
+            email: email.trim(),
+            phone: phone.trim(),
+            npn: cleanedNpn,
+          },
+        });
+        if (contractingError || !contracting?.ok) {
+          contractingWarning = "Profile saved, but contracting could not be queued. Check name, email, phone, and NPN.";
+        }
+      }
+
       toast({
         title: "Changes saved",
-        description: `Agent "${displayName.trim()}" updated successfully.`,
+        description: contractingWarning ?? `Agent "${displayName.trim()}" updated successfully.`,
+        variant: contractingWarning ? "destructive" : undefined,
       });
       
       onUpdate?.();
@@ -346,7 +422,7 @@ export function AgentQuickEditDialog({
       console.error("Error saving changes:", error);
       toast({
         title: "Error",
-        description: "Failed to save changes. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to save changes. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -667,6 +743,59 @@ export function AgentQuickEditDialog({
               placeholder="Enter agent name"
             />
           </div>
+
+          {isAdmin && (
+            <div className="space-y-3 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3">
+              <Label className="text-amber-600 dark:text-amber-400">License &amp; onboarding control</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={licenseStatus} onValueChange={setLicenseStatus}>
+                  <SelectTrigger><SelectValue placeholder="License status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unlicensed">Unlicensed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="licensed">Licensed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={onboardingStage} onValueChange={setOnboardingStage}>
+                  <SelectTrigger><SelectValue placeholder="Onboarding stage" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pre_licensed">Pre-licensed</SelectItem>
+                    <SelectItem value="onboarding">Onboarding</SelectItem>
+                    <SelectItem value="training_online">Online training</SelectItem>
+                    <SelectItem value="in_field_training">Field training</SelectItem>
+                    <SelectItem value="evaluated">Evaluated</SelectItem>
+                    <SelectItem value="live">Live</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="agent-edit-npn">NPN {licenseStatus === "licensed" ? "*" : ""}</Label>
+                <Input id="agent-edit-npn" inputMode="numeric" value={npn} onChange={(event) => setNpn(event.target.value)} placeholder="5–10 digit NPN" />
+                <p className="text-[11px] text-muted-foreground">Saving Licensed automatically queues the contracting spreadsheet and Discord workflow.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="agent-edit-comp">Comp percentage</Label>
+                <Input
+                  id="agent-edit-comp"
+                  type="number"
+                  min={50}
+                  max={200}
+                  step="0.1"
+                  value={compPercentage}
+                  onChange={(event) => {
+                    setCompPercentage(event.target.value);
+                    if (Number(event.target.value) <= 100) setCompApproved(true);
+                  }}
+                />
+                {Number(compPercentage) > 100 ? (
+                  <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2">
+                    <Checkbox id="agent-edit-comp-approved" checked={compApproved} onCheckedChange={(value) => setCompApproved(value === true)} />
+                    <Label htmlFor="agent-edit-comp-approved" className="cursor-pointer text-xs">Approved by Sam</Label>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="agentPhone" className="flex items-center gap-2">

@@ -20,6 +20,7 @@ import { getNextBestAction } from "@/lib/nextBestAction";
 import { priorityBadgeClasses } from "@/lib/priority";
 import { openGoogleVoice } from "@/lib/phone";
 import { cn } from "@/lib/utils";
+import { createCanonicalHire, promoteApplicationToAgent } from "@/lib/hireToOnboarding";
 import {
   CallCenterFilters,
   CallCenterLeadCard,
@@ -542,9 +543,7 @@ export default function CallCenter() {
           last_contacted_at: nowIso,
         };
 
-        if (actionId === "hired") {
-          updateData.status = "reviewing";
-        } else if (actionId === "bad_applicant") {
+        if (actionId === "bad_applicant") {
           updateData.status = "rejected";
         } else if (actionId === "no_pickup") {
           updateData.status = "no_pickup";
@@ -664,9 +663,37 @@ export default function CallCenter() {
     }
   }, [currentLead, leads.length, currentTranscription, currentIndex, logContactAttempt]);
 
-  const handleHireConfirm = useCallback(async (boughtCourse: boolean) => {
+  const handleHireConfirm = useCallback(async (boughtCourse: boolean, npn: string) => {
+    if (!currentLead) return;
     setShowHireConfirm(false);
-    await executeAction("hired");
+    try {
+      const licenseStatus = currentLead.licenseStatus === "licensed"
+        ? "licensed"
+        : currentLead.licenseStatus === "pending"
+          ? "pending"
+          : "unlicensed";
+      const receipt = currentLead.source === "applications"
+        ? await promoteApplicationToAgent(currentLead.id, { managerId: agentId, npn })
+        : await createCanonicalHire({
+            firstName: currentLead.firstName,
+            lastName: currentLead.lastName || "",
+            email: currentLead.email,
+            phone: currentLead.phone || "",
+            licenseStatus,
+            npn,
+            city: currentLead.city,
+            state: currentLead.state,
+            licenseStates: currentLead.licensedStates,
+            instagramHandle: currentLead.instagramHandle,
+            managerId: agentId,
+          });
+      if (receipt.partial) toast.warning(receipt.message);
+      else toast.success("Agent account created · onboarding started");
+      await executeAction("hired");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Hire could not start onboarding");
+      return;
+    }
 
     // Log course purchase activity if checked
     if (boughtCourse && currentLead) {
@@ -689,7 +716,7 @@ export default function CallCenter() {
           });
       }
     }
-  }, [executeAction, currentLead]);
+  }, [agentId, executeAction, currentLead]);
 
   const handleContractedSuccess = useCallback(() => {
     // Remove lead from list after successful contracting
@@ -1321,6 +1348,7 @@ export default function CallCenter() {
           onConfirm={handleHireConfirm}
           applicantName={`${currentLead.firstName} ${currentLead.lastName || ""}`.trim()}
           isUnlicensed={currentLead.licenseStatus !== "licensed"}
+          initialNpn={currentLead.niprNumber || ""}
         />
       )}
 

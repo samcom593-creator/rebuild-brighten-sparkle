@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, BookOpen } from "lucide-react";
 import {
   AlertDialog,
@@ -12,13 +12,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 interface HireConfirmModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (boughtCourse: boolean) => void;
+  onConfirm: (boughtCourse: boolean, npn: string) => void | Promise<void>;
   applicantName: string;
   isUnlicensed: boolean;
+  initialNpn?: string;
 }
 
 export function HireConfirmModal({
@@ -27,11 +29,18 @@ export function HireConfirmModal({
   onConfirm,
   applicantName,
   isUnlicensed,
+  initialNpn = "",
 }: HireConfirmModalProps) {
   const [boughtCourse, setBoughtCourse] = useState(false);
+  const [npn, setNpn] = useState(initialNpn);
+
+  useEffect(() => {
+    if (open) setNpn(initialNpn);
+  }, [initialNpn, open]);
 
   const handleConfirm = () => {
-    onConfirm(boughtCourse);
+    if (!isUnlicensed && !/^\d{5,10}$/.test(npn.replace(/\D+/g, ""))) return;
+    void onConfirm(boughtCourse, npn);
     setBoughtCourse(false);
   };
 
@@ -48,6 +57,19 @@ export function HireConfirmModal({
             {isUnlicensed && (
               <div className="p-2 rounded-full bg-amber-500/10">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
+              </div>
+            )}
+            {!isUnlicensed && (
+              <div className="space-y-1.5">
+                <Label htmlFor="hire-confirm-npn">NPN *</Label>
+                <Input
+                  id="hire-confirm-npn"
+                  inputMode="numeric"
+                  value={npn}
+                  onChange={(event) => setNpn(event.target.value)}
+                  placeholder="5–10 digit NPN"
+                />
+                <p className="text-xs text-muted-foreground">Required to create the account and start contracting.</p>
               </div>
             )}
             <AlertDialogTitle>
@@ -86,7 +108,11 @@ export function HireConfirmModal({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm} className="bg-emerald-600 hover:bg-emerald-700">
+          <AlertDialogAction
+            onClick={handleConfirm}
+            disabled={!isUnlicensed && !/^\d{5,10}$/.test(npn.replace(/\D+/g, ""))}
+            className="bg-emerald-600 hover:bg-emerald-700"
+          >
             Yes, Mark as Hired
           </AlertDialogAction>
         </AlertDialogFooter>

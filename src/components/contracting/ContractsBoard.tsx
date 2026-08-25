@@ -6,13 +6,9 @@
  * "Showing X of Y contracts" readout, and one row per contract showing carrier,
  * producer, commission level, status and writing number.
  *
- * WHAT THIS REPLACED
- *
- * The page's only contract source was v_my_carrier_contracts filtered
- * `.eq("user_id", user.id)`. That view has 0 of 21 rows with a non-null
- * user_id, so the filter matched nothing for every viewer, every time — while
- * agentlink_contracts held 467 real rows nothing displayed. The Documents tab's
- * search box and status buttons were filtering that permanently empty array.
+ * Runtime source: APEX carrier appointments + the local carrier catalog. The
+ * contracting flow itself is profile data, Ethos sheet, and private Discord;
+ * no AgentLink invite or contract lookup is required.
  *
  * EVERY NUMBER HERE IS AGGREGATED IN THE DATABASE.
  * apex_contracts_summary returns the counts; the row list is a separate,

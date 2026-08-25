@@ -75,6 +75,14 @@ interface AgentData {
   onboarding_stage: string | null;
   comp_percentage: number;
   comp_approval_status: string;
+  license_states: string[] | null;
+  eo_certificate_url: string | null;
+  eo_policy_number: string | null;
+  eo_expires_at: string | null;
+  eo_per_claim_limit: number | null;
+  eo_aggregate_limit: number | null;
+  eft_ready: boolean;
+  contracting_contact_name: string | null;
 }
 
 export function AgentQuickEditDialog({
@@ -112,6 +120,7 @@ export function AgentQuickEditDialog({
   const [newPassword, setNewPassword] = useState("");
   const [updatingEmail, setUpdatingEmail] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [sendingResetLink, setSendingResetLink] = useState(false);
   const [sendingLogin, setSendingLogin] = useState(false);
   const [sendingLoginToManager, setSendingLoginToManager] = useState(false);
   const [licenseStatus, setLicenseStatus] = useState("unlicensed");
@@ -119,6 +128,14 @@ export function AgentQuickEditDialog({
   const [onboardingStage, setOnboardingStage] = useState("pre_licensed");
   const [compPercentage, setCompPercentage] = useState("60");
   const [compApproved, setCompApproved] = useState(true);
+  const [licenseStates, setLicenseStates] = useState("");
+  const [eoCertificateUrl, setEoCertificateUrl] = useState("");
+  const [eoPolicyNumber, setEoPolicyNumber] = useState("");
+  const [eoExpiresAt, setEoExpiresAt] = useState("");
+  const [eoPerClaimLimit, setEoPerClaimLimit] = useState("");
+  const [eoAggregateLimit, setEoAggregateLimit] = useState("");
+  const [eftReady, setEftReady] = useState(false);
+  const [contractingContact, setContractingContact] = useState("");
 
   useEffect(() => {
     if (open && agentId) {
@@ -138,6 +155,14 @@ export function AgentQuickEditDialog({
       setOnboardingStage("pre_licensed");
       setCompPercentage("60");
       setCompApproved(true);
+      setLicenseStates("");
+      setEoCertificateUrl("");
+      setEoPolicyNumber("");
+      setEoExpiresAt("");
+      setEoPerClaimLimit("");
+      setEoAggregateLimit("");
+      setEftReady(false);
+      setContractingContact("");
       fetchAgentData();
       fetchPossibleMatches();
     }
@@ -158,6 +183,14 @@ export function AgentQuickEditDialog({
           onboarding_stage,
           comp_percentage,
           comp_approval_status,
+          license_states,
+          eo_certificate_url,
+          eo_policy_number,
+          eo_expires_at,
+          eo_per_claim_limit,
+          eo_aggregate_limit,
+          eft_ready,
+          contracting_contact_name,
           profile:profiles!agents_profile_id_fkey(full_name, email, phone, instagram_handle)
         `)
         .eq("id", agentId)
@@ -174,12 +207,28 @@ export function AgentQuickEditDialog({
           onboarding_stage: agent.onboarding_stage,
           comp_percentage: Number(agent.comp_percentage ?? 60),
           comp_approval_status: agent.comp_approval_status ?? "approved",
+          license_states: agent.license_states ?? null,
+          eo_certificate_url: agent.eo_certificate_url ?? null,
+          eo_policy_number: agent.eo_policy_number ?? null,
+          eo_expires_at: agent.eo_expires_at ?? null,
+          eo_per_claim_limit: agent.eo_per_claim_limit == null ? null : Number(agent.eo_per_claim_limit),
+          eo_aggregate_limit: agent.eo_aggregate_limit == null ? null : Number(agent.eo_aggregate_limit),
+          eft_ready: agent.eft_ready ?? false,
+          contracting_contact_name: agent.contracting_contact_name ?? null,
         });
         setLicenseStatus(agent.license_status || "unlicensed");
         setNpn(agent.nipr_number || "");
         setOnboardingStage(agent.onboarding_stage || "pre_licensed");
         setCompPercentage(String(agent.comp_percentage ?? 60));
         setCompApproved((agent.comp_approval_status ?? "approved") === "approved");
+        setLicenseStates((agent.license_states ?? []).join(", "));
+        setEoCertificateUrl(agent.eo_certificate_url ?? "");
+        setEoPolicyNumber(agent.eo_policy_number ?? "");
+        setEoExpiresAt(agent.eo_expires_at ?? "");
+        setEoPerClaimLimit(agent.eo_per_claim_limit == null ? "" : String(agent.eo_per_claim_limit));
+        setEoAggregateLimit(agent.eo_aggregate_limit == null ? "" : String(agent.eo_aggregate_limit));
+        setEftReady(agent.eft_ready ?? false);
+        setContractingContact(agent.contracting_contact_name ?? "");
 
         if (agent.profile) {
           const profile = agent.profile as { full_name?: string; email?: string; phone?: string; instagram_handle?: string };
@@ -303,6 +352,14 @@ export function AgentQuickEditDialog({
           comp_percentage: normalizedComp,
           comp_approval_status: normalizedComp <= 100 || compApproved ? "approved" : "pending_sam",
           comp_approved_at: normalizedComp <= 100 || compApproved ? new Date().toISOString() : null,
+          license_states: licenseStates.split(",").map((state) => state.trim().toUpperCase()).filter(Boolean),
+          eo_certificate_url: eoCertificateUrl.trim() || null,
+          eo_policy_number: eoPolicyNumber.trim() || null,
+          eo_expires_at: eoExpiresAt || null,
+          eo_per_claim_limit: eoPerClaimLimit ? Number(eoPerClaimLimit) : null,
+          eo_aggregate_limit: eoAggregateLimit ? Number(eoAggregateLimit) : null,
+          eft_ready: eftReady,
+          contracting_contact_name: contractingContact.trim() || null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", agentId);
@@ -392,6 +449,7 @@ export function AgentQuickEditDialog({
       }
 
       let contractingWarning: string | null = null;
+      const becameLicensed = licenseStatus === "licensed" && agentData?.license_status !== "licensed";
       if (licenseStatus === "licensed" && cleanedNpn) {
         const nameParts = displayName.trim().split(/\s+/);
         const firstName = nameParts.shift() || "";
@@ -407,6 +465,15 @@ export function AgentQuickEditDialog({
         });
         if (contractingError || !contracting?.ok) {
           contractingWarning = "Profile saved, but contracting could not be queued. Check name, email, phone, and NPN.";
+        }
+      }
+
+      if (becameLicensed) {
+        const { data: onboarding, error: onboardingError } = await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
+        if (onboardingError || onboarding?.ok === false) {
+          contractingWarning = contractingWarning
+            ? `${contractingWarning} Onboarding email is still queued for retry.`
+            : "Profile and contracting saved. Onboarding email is queued for retry.";
         }
       }
 
@@ -439,7 +506,6 @@ export function AgentQuickEditDialog({
 
     setUpdatingEmail(true);
     try {
-      const { data: session } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke("update-user-email", {
         body: { newEmail: newEmail.trim(), targetUserId: agentData.user_id },
       });
@@ -463,6 +529,26 @@ export function AgentQuickEditDialog({
       });
     } finally {
       setUpdatingEmail(false);
+    }
+  };
+
+  const handleSendResetLink = async () => {
+    if (!email.trim()) {
+      toast({ title: "No email on file", variant: "destructive" });
+      return;
+    }
+    setSendingResetLink(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-password-reset", {
+        body: { email: email.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Reset link sent ✅", description: `Sent to ${email.trim()}.` });
+    } catch (error: any) {
+      toast({ title: "Reset link failed", description: error?.message || "Could not send the reset link.", variant: "destructive" });
+    } finally {
+      setSendingResetLink(false);
     }
   };
 
@@ -684,7 +770,7 @@ export function AgentQuickEditDialog({
   };
 
   const hasExistingLogin = !!agentData?.user_id;
-  const isBusy = saving || merging || creating || deleting || updatingEmail || resettingPassword || sendingLogin || sendingLoginToManager;
+  const isBusy = saving || merging || creating || deleting || updatingEmail || resettingPassword || sendingResetLink || sendingLogin || sendingLoginToManager;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -794,6 +880,27 @@ export function AgentQuickEditDialog({
                   </div>
                 ) : null}
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="agent-edit-states">Licensed states</Label>
+                <Input id="agent-edit-states" value={licenseStates} onChange={(event) => setLicenseStates(event.target.value)} placeholder="FL, OH, TX" />
+              </div>
+              <details className="rounded-md border border-border bg-background/60 p-2">
+                <summary className="cursor-pointer text-xs font-semibold">E&amp;O, EFT &amp; contracting details</summary>
+                <div className="mt-3 space-y-2">
+                  <Input value={eoCertificateUrl} onChange={(event) => setEoCertificateUrl(event.target.value)} placeholder="E&O certificate Drive/PDF URL" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input value={eoPolicyNumber} onChange={(event) => setEoPolicyNumber(event.target.value)} placeholder="E&O policy #" />
+                    <Input type="date" value={eoExpiresAt} onChange={(event) => setEoExpiresAt(event.target.value)} aria-label="E&O expiration" />
+                    <Input type="number" value={eoPerClaimLimit} onChange={(event) => setEoPerClaimLimit(event.target.value)} placeholder="Per-claim limit" />
+                    <Input type="number" value={eoAggregateLimit} onChange={(event) => setEoAggregateLimit(event.target.value)} placeholder="Aggregate limit" />
+                  </div>
+                  <Input value={contractingContact} onChange={(event) => setContractingContact(event.target.value)} placeholder="Contracting contact / placeholder" />
+                  <div className="flex items-center gap-2 rounded-md border border-border p-2">
+                    <Checkbox id="agent-edit-eft" checked={eftReady} onCheckedChange={(value) => setEftReady(value === true)} />
+                    <Label htmlFor="agent-edit-eft" className="cursor-pointer text-xs">EFT/banking information ready</Label>
+                  </div>
+                </div>
+              </details>
             </div>
           )}
 
@@ -875,6 +982,16 @@ export function AgentQuickEditDialog({
                     {resettingPassword ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSendResetLink}
+                  disabled={isBusy || !email.trim()}
+                  className="w-full"
+                >
+                  {sendingResetLink ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Mail className="mr-2 h-3.5 w-3.5" />}
+                  Send password-reset link
+                </Button>
               </div>
 
               {/* Send Login Button */}

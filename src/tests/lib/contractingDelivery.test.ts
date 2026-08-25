@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 
 // The SAME functions the dispatcher runs, driven against stubbed providers.
 import {
-  parseSettingUrl,
   escapeDiscord,
   buildDiscordPayload,
   deliverContractingEmail,
@@ -48,91 +47,13 @@ function deps(overrides: Partial<DeliveryDeps> = {}): DeliveryDeps {
   };
 }
 
-describe("contracting delivery · agentlink_master_invite parsing", () => {
-  it("reads the live JSON-text shape this project actually stores", () => {
-    // system_settings.value is TEXT and agentlink_master_invite holds JSON text.
-    // A plain `typeof value === "string"` check treats the whole blob as a URL,
-    // fails the https test, and silently yields no link — the AgentLink
-    // continuation would never appear for any producer.
-    const live = '{"url": "https://agentlink.insuracloud.ai/auth?inviteCode=0f3d", "added": "2026-06-14", "label": "Master"}';
-    expect(parseSettingUrl(live)).toBe("https://agentlink.insuracloud.ai/auth?inviteCode=0f3d");
-  });
-
-  it("reads a bare URL string, the other shape in use", () => {
-    expect(parseSettingUrl("https://agentlink.insuracloud.ai/auth?inviteCode=abc"))
-      .toBe("https://agentlink.insuracloud.ai/auth?inviteCode=abc");
-  });
-
-  it("reads a JSON-quoted string", () => {
-    expect(parseSettingUrl('"https://agentlink.insuracloud.ai/x"')).toBe("https://agentlink.insuracloud.ai/x");
-  });
-
-  it("returns null rather than a broken link", () => {
-    expect(parseSettingUrl(null)).toBeNull();
-    expect(parseSettingUrl("")).toBeNull();
-    expect(parseSettingUrl("not a url")).toBeNull();
-    expect(parseSettingUrl('{"label":"no url here"}')).toBeNull();
-    expect(parseSettingUrl("http://insecure.example.com")).toBeNull();
-    expect(parseSettingUrl("{broken json")).toBeNull();
-  });
-});
-
-describe("contracting delivery · email is accepted, never delivered", () => {
-  it("records accepted with the provider message id as the receipt", async () => {
-    const sendEmail = vi.fn<SendEmailFn>(async () => "re_abc123");
+describe("contracting delivery · email/AgentLink is disabled", () => {
+  it("never sends and directs the workflow to sheet + private Discord", async () => {
+    const sendEmail = vi.fn<SendEmailFn>(async () => "should-not-send");
     const outcome = await deliverContractingEmail(INTAKE.id, deps({ sendEmail }));
-
-    expect(outcome.state).toBe("accepted");
-    expect(outcome.receipt).toMatchObject({ provider: "resend", message_id: "re_abc123" });
-    // Resend taking custody is not the email arriving. Bounces and suppressions
-    // all happen after that 2xx.
-    expect(outcome.receipt?.delivery_confirmed).toBe(false);
-    expect(outcome.state).not.toBe("delivered");
-  });
-
-  it("sends exactly one email per intake, keyed for idempotent retry", async () => {
-    const sendEmail = vi.fn<SendEmailFn>(async () => "re_abc123");
-    await deliverContractingEmail(INTAKE.id, deps({ sendEmail }));
-    expect(sendEmail).toHaveBeenCalledTimes(1);
-    // The key is derived from the intake, so a retry reuses Resend's own
-    // idempotency rather than mailing the support desk a second copy.
-    expect(sendEmail.mock.calls[0][1]).toBe(`contracting-intake-${INTAKE.id}`);
-  });
-
-  it("uses the same idempotency key across retries of the same intake", async () => {
-    const sendEmail = vi.fn<SendEmailFn>(async () => "re_abc123");
-    await deliverContractingEmail(INTAKE.id, deps({ sendEmail }));
-    await deliverContractingEmail(INTAKE.id, deps({ sendEmail }));
-    expect(sendEmail.mock.calls[0][1]).toBe(sendEmail.mock.calls[1][1]);
-  });
-
-  it("routes to the configured support address", async () => {
-    const sendEmail = vi.fn<SendEmailFn>(async () => "re_x");
-    await deliverContractingEmail(INTAKE.id, deps({
-      sendEmail,
-      readSetting: async (k) => (k === "contracting_support_email" ? "contracting@apex-financial.org" : null),
-    }));
-    expect(sendEmail.mock.calls[0][0].to).toEqual(["contracting@apex-financial.org"]);
-  });
-
-  it("falls back to the verified address when none is configured", async () => {
-    const sendEmail = vi.fn<SendEmailFn>(async () => "re_x");
-    await deliverContractingEmail(INTAKE.id, deps({ sendEmail }));
-    expect(sendEmail.mock.calls[0][0].to).toEqual(["agentlink@apex-financial.org"]);
-  });
-
-  it("warns the support desk when the intake is held for review", async () => {
-    const sendEmail = vi.fn<SendEmailFn>(async () => "re_x");
-    await deliverContractingEmail(INTAKE.id, deps({
-      sendEmail,
-      loadIntake: async () => ({ ...INTAKE, status: "needs_review" }),
-    }));
-    expect(String(sendEmail.mock.calls[0][0].text)).toContain("HELD FOR REVIEW");
-  });
-
-  it("propagates a provider failure instead of claiming acceptance", async () => {
-    const sendEmail = vi.fn<SendEmailFn>(async () => { throw new Error("Resend returned 500"); });
-    await expect(deliverContractingEmail(INTAKE.id, deps({ sendEmail }))).rejects.toThrow(/500/);
+    expect(outcome.state).toBe("not_configured");
+    expect(outcome.note).toMatch(/Ethos sheet.*private contracting Discord/i);
+    expect(sendEmail).not.toHaveBeenCalled();
   });
 });
 
@@ -288,7 +209,7 @@ describe("contracting delivery · routing", () => {
   it("routes each known destination to its own handler", async () => {
     const sendEmail = vi.fn<SendEmailFn>(async () => "re_1");
     const email = await deliverContractingDestination("contracting_email", INTAKE.id, deps({ sendEmail }));
-    expect(email.state).toBe("accepted");
+    expect(email.state).toBe("not_configured");
 
     const workbook = await deliverContractingDestination("contracting_workbook", INTAKE.id, deps());
     expect(workbook.state).toBe("not_configured");

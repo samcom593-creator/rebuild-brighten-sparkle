@@ -1,17 +1,14 @@
 // Onboarding Ladder — the month-agnostic home for "which agents are stuck, and on what".
 //
 // WHY THIS PAGE EXISTS:
-//   Every hire climbs the same 8 rungs: intake → AgentLink invite → carrier
+//   Every hire climbs the same 8 rungs: intake → contracting profile → carrier
 //   contracting → appointment → Discord → training → launch ready → first sale.
 //   Until now the only surface that showed the gaps was the June Hires Punch
 //   List, which was hard-locked to June 2026 and rendered stale rows as if they
 //   were current. It was removed; this page replaces it with no month lock.
 //
-//   Measured 2026-07-25: 57 agents sit on rung 2 waiting for a manager to send
-//   an AgentLink invite, 31 on rung 3 (carrier contracting), 21 on rung 1.
-//   Rung 2 is a one-click fix and it is the single biggest throughput block in
-//   the business, so it gets a dedicated call-out wired straight to the page
-//   that already owns the fix (/admin/missing-al-link).
+//   Rung 2 now means the APEX profile has the NPN and compensation needed to
+//   start contracting. The fix route is the native contracting workspace.
 //
 // Reads public.v_onboarding_sequence — one row per active agent, one query,
 // server-side sorted. No per-row fetches.
@@ -90,7 +87,7 @@ interface Rung {
  *  renders the view's own `next_missing_step` so the two can never drift. */
 const RUNGS: Rung[] = [
   { n: 1, field: "r1_intake", label: "Intake / profile" },
-  { n: 2, field: "r2_agentlink", label: "AgentLink invite" },
+  { n: 2, field: "r2_agentlink", label: "Contracting profile" },
   { n: 3, field: "r3_contracted", label: "Carrier contracting" },
   { n: 4, field: "r4_appointment", label: "Carrier appointment" },
   { n: 5, field: "r5_discord", label: "Discord access" },
@@ -100,11 +97,11 @@ const RUNGS: Rung[] = [
 ];
 
 /** Rung 2 is the only rung with a one-click fix already built. */
-const AGENTLINK_RUNG = 2;
-const AGENTLINK_FIX_ROUTE = "/admin/missing-al-link";
+const CONTRACTING_PROFILE_RUNG = 2;
+const CONTRACTING_FIX_ROUTE = "/dashboard/contracting";
 
 /** Which rung a row is parked on. The view prefixes the step with its number
- *  ("2. AgentLink invite (manager sends)"); fall back to the first unfinished
+ *  ("2. Contracting profile"); fall back to the first unfinished
  *  rung if that ever stops being true. */
 function stuckRung(row: LadderRow): number | null {
   const parsed = Number.parseInt(row.next_missing_step ?? "", 10);
@@ -229,7 +226,7 @@ export default function OnboardingLadder() {
     [scoped, rungFilter],
   );
 
-  const agentLinkCount = summary.counts.get(AGENTLINK_RUNG) ?? 0;
+  const contractingProfileCount = summary.counts.get(CONTRACTING_PROFILE_RUNG) ?? 0;
   const filtered = rungFilter !== null || managerFilter !== "all";
 
   return (
@@ -394,16 +391,16 @@ export default function OnboardingLadder() {
           {/* ------------------------------------------------------------ */}
           {/* The one-click bottleneck. Rung 2 already has a fix surface.    */}
           {/* ------------------------------------------------------------ */}
-          {agentLinkCount > 0 && (
+          {contractingProfileCount > 0 && (
             <div className="rounded-lg border border-rose-500/35 bg-rose-500/5 p-3 sm:p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-start gap-3">
                   <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">
-                      {agentLinkCount === 1
-                        ? "1 agent is waiting on an AgentLink invite"
-                        : `${agentLinkCount} agents are waiting on an AgentLink invite`}
+                      {contractingProfileCount === 1
+                        ? "1 agent needs contracting profile data"
+                        : `${contractingProfileCount} agents need contracting profile data`}
                     </p>
                     <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                       A manager has to send it. Contracting, appointments, and first deals all sit
@@ -412,7 +409,7 @@ export default function OnboardingLadder() {
                   </div>
                 </div>
                 <Button asChild size="sm" className="h-10 w-full sm:h-9 sm:w-auto">
-                  <Link to={AGENTLINK_FIX_ROUTE}>
+                  <Link to={CONTRACTING_FIX_ROUTE}>
                     Send invites <ArrowRight className="ml-1.5 h-4 w-4" />
                   </Link>
                 </Button>

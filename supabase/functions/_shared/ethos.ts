@@ -4,20 +4,9 @@
 // vitest suite share ONE implementation. A test that reimplements the mapping it
 // is checking proves nothing about the code that touches the live sheet.
 //
-// THE COLUMN CONTRACT IS MEASURED, NOT ASSUMED. It comes from the verified
-// export in ~/Downloads:
-//
-//   ETHOS-agents-paste-A-to-I.tsv   188 rows, headerless, columns A..I
-//   ETHOS-comments-col-S.tsv        188 rows, the Comments column, column S
-//
-// So the sheet's writable contract is A..I plus S — NOT a contiguous block.
-// Columns J..R exist in the live sheet and are none of our business; a blanket
-// row write across A..L would silently overwrite three of them. Every write
-// here is therefore two targeted ranges, never one row-shaped blob.
-//
-// There is no "Life Licensed" and no "E&O" column anywhere in the verified
-// export. Earlier notes claimed both. They are not written, not read, and not
-// invented.
+// The live sheet was re-measured on 2026-08-25. A..I is identity/comp,
+// K=Life Licensed, L=$1M E&O, and S=Comments. J and M..R belong to other
+// workflows, so writes remain targeted ranges instead of a destructive row.
 
 export type EthosIntake = {
   first_name: string;
@@ -25,6 +14,15 @@ export type EthosIntake = {
   email: string;
   phone_e164: string;
   npn: string;
+  comp_percentage?: number | string | null;
+  license_status?: string | null;
+  license_states?: string[] | null;
+  eo_certificate_url?: string | null;
+  eo_expires_at?: string | null;
+  eo_per_claim_limit?: number | string | null;
+  eo_aggregate_limit?: number | string | null;
+  eft_ready?: boolean | null;
+  contracting_contact_name?: string | null;
 };
 
 export type EthosConfig = {
@@ -93,10 +91,8 @@ export function normalizePhoneForCompare(value: unknown): string {
 /**
  * Build the A..I values for a producer.
  *
- * Comp Level (column G) is returned EMPTY, always, matching every one of the
- * 188 verified rows. It is negotiated, not derivable from a five-field intake,
- * and a guessed level has real money consequences. A blank a human fills in
- * from authoritative evidence is safe; a plausible number is not.
+ * Comp comes only from the linked APEX profile. A public submission without a
+ * linked profile remains blank instead of guessing a money field.
  */
 export function buildEthosAiRow(intake: EthosIntake, config: EthosConfig): string[] {
   const row = new Array<string>(ETHOS_AI_COLUMNS.length).fill("");
@@ -106,15 +102,31 @@ export function buildEthosAiRow(intake: EthosIntake, config: EthosConfig): strin
   row[COL_UPLINE] = config.direct_upline_npn;
   row[COL_PHONE] = formatUsPhoneForSheet(intake.phone_e164);
   row[COL_EMAIL] = intake.email;
-  row[COL_COMP_LEVEL] = "";
+  const comp = Number(intake.comp_percentage);
+  row[COL_COMP_LEVEL] = Number.isFinite(comp) ? String(comp) : "";
   row[COL_ADVANCE] = config.advance_pay_tier;
   row[COL_SUBAGENCY] = config.sub_agency_name;
   return row;
 }
 
 /** The Comments cell (column S), carrying the APEX intake id for traceability. */
-export function buildEthosComment(config: EthosConfig, intakeId: string): string {
-  return `${config.comment_prefix} · APEX Intake ${intakeId}`;
+export function buildEthosComment(config: EthosConfig, value: (EthosIntake & { id?: string }) | string): string {
+  const intake = typeof value === "string" ? { id: value } : value;
+  const parts = [`${config.comment_prefix} · APEX Intake ${intake.id ?? "—"}`];
+  if ("eo_certificate_url" in intake && intake.eo_certificate_url) parts.push(`E&O: ${intake.eo_certificate_url}`);
+  if ("eo_expires_at" in intake && intake.eo_expires_at) parts.push(`expires ${intake.eo_expires_at}`);
+  if ("contracting_contact_name" in intake && intake.contracting_contact_name) parts.push(`contact: ${intake.contracting_contact_name}`);
+  if ("eft_ready" in intake && intake.eft_ready !== null && intake.eft_ready !== undefined) parts.push(`EFT ${intake.eft_ready ? "ready" : "pending"}`);
+  return parts.join(" · ");
+}
+
+export function buildEthosKlRow(intake: EthosIntake): string[] {
+  const licensed = (intake.license_status ?? "").toLowerCase() === "licensed";
+  const expiry = intake.eo_expires_at ? new Date(`${intake.eo_expires_at}T00:00:00Z`).getTime() : 0;
+  const current = Boolean(intake.eo_certificate_url) && expiry >= Date.now();
+  const covered = Number(intake.eo_per_claim_limit ?? 0) >= 1_000_000
+    && Number(intake.eo_aggregate_limit ?? 0) >= 1_000_000;
+  return [licensed ? "Yes" : "No", current && covered ? "Yes" : "No"];
 }
 
 /**
@@ -213,6 +225,10 @@ export function aiRangeForRow(tab: string, rowNumber: number): string {
 /** A1-notation range for one producer's Comments cell. */
 export function commentRangeForRow(tab: string, rowNumber: number): string {
   return `${tab}!${COMMENTS_COLUMN}${rowNumber}:${COMMENTS_COLUMN}${rowNumber}`;
+}
+
+export function klRangeForRow(tab: string, rowNumber: number): string {
+  return `${tab}!K${rowNumber}:L${rowNumber}`;
 }
 
 /** Parse the row number back out of a Google updatedRange receipt. */

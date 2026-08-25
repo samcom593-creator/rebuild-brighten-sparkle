@@ -51,6 +51,7 @@ import {
   UserCheck,
   Trash2,
   Link as LinkIcon,
+  KeyRound,
   Edit2,
   ListTodo,
 } from "lucide-react";
@@ -698,6 +699,17 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 </div>
               </div>
             </div>
+
+            {isAdmin && (
+              <Button
+                size="sm"
+                className="h-11 w-full gap-2 bg-amber-500 font-bold text-black hover:bg-amber-400"
+                onClick={() => setQuickEditOpen(true)}
+              >
+                <KeyRound className="h-4 w-4" />
+                Owner controls — login, email, password &amp; profile
+              </Button>
+            )}
 
             {/* 2026-06-18 — pace verdict from v_agent_20k_target_leaderboard.
                 Instant visual: 🔥 hit_20k · 📈 on_pace_20k · 📉 below_pace ·
@@ -1406,12 +1418,16 @@ const qnum = (v: number | string | null | undefined): number | null => {
               variant="outline"
               className="h-9 gap-1.5"
               onClick={() => {
-                close();
-                navigate(`/agent/${agent.id}`);
+                if (isAdmin) setQuickEditOpen(true);
+                else {
+                  close();
+                  navigate(`/agent/${agent.id}`);
+                }
               }}
-              title="Open full CRM page"
+              title={isAdmin ? "Manage login, email, password, profile and access" : "Open full CRM page"}
             >
-              <ExternalLink className="h-3.5 w-3.5" /> CRM
+              {isAdmin ? <KeyRound className="h-3.5 w-3.5" /> : <ExternalLink className="h-3.5 w-3.5" />}
+              {isAdmin ? "Controls" : "CRM"}
             </Button>
             <Button
               size="sm"

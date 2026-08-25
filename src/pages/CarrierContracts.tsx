@@ -25,20 +25,15 @@ import {
 /**
  * Contracting — carrier appointments, commission levels, writing numbers.
  *
- * 2026-08-23: the Contracts view showed a grid of share links and not one
- * contract. Its only contract source was v_my_carrier_contracts filtered
- * `.eq("user_id", user.id)`, and that view carries 0 of 21 rows with a
- * non-null user_id — so it returned nothing for every viewer since the day it
- * shipped. agentlink_contracts held 467 real rows that no screen displayed.
- * Contracts and Documents now read the real book through
- * apex_contracts_list / apex_contracts_summary (server-aggregated counts,
- * scope-resolved in one place so rows and headline cannot disagree).
+ * Contracts are APEX-native: full producer profile → Ethos sheet + private
+ * contracting Discord → local appointment/checklist records. AgentLink is not
+ * a contracting dependency.
  *
  * The share-link grid was not deleted — it moved to Requests, where sending a
  * link is the action, instead of standing in for the contracts themselves.
  */
 
-type Carrier = { id: number; name: string | null; website: string | null };
+type Carrier = { id: string; name: string | null; website: string | null };
 
 export default function CarrierContracts() {
   const pathname = useLocation().pathname;
@@ -68,7 +63,7 @@ export default function CarrierContracts() {
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<Carrier[]> => {
       const { data, error } = await supabase
-        .from("agentlink_carriers" as never)
+        .from("carriers" as never)
         .select("id, name, website")
         .eq("is_active", true)
         .order("name", { ascending: true });

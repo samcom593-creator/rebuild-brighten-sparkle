@@ -434,7 +434,7 @@ const daysSince = (iso: string | null): number | null => {
 };
 
 type RosterSegmentKey =
-  | "all" | "producing" | "never_produced"
+  | "all" | "new_hires" | "producing" | "never_produced"
   | "no_longer_here" | "unlicensed" | "inactive" | "terminated";
 
 /**
@@ -449,6 +449,9 @@ const ROSTER_SEGMENTS: Array<{
   { key: "all", label: "All agents", icon: Users,
     desc: "Active agents who have produced. Never-produced and departed seats stay in their own review queues.",
     match: (r) => r.status === "active" && (r.lifetime_deals ?? 0) > 0 },
+  { key: "new_hires", label: "New hires", icon: UserCheck,
+    desc: "Joined in the last 30 days. Open a profile to control login, licensing, onboarding, contracting, and assigned work.",
+    match: (r) => r.status === "active" && r.tenure_days !== null && r.tenure_days <= 30 },
   { key: "producing", label: "Producing", icon: TrendingUp,
     desc: "Wrote business this month. This is the bench the agency's revenue is actually standing on.",
     match: (r) => r.status === "active" && num(r.mtd_alp) > 0 },
@@ -541,7 +544,12 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
       return (
         (r.full_name ?? "").toLowerCase().includes(needle) ||
         (r.email ?? "").toLowerCase().includes(needle) ||
-        (r.agent_code ?? "").toLowerCase().includes(needle)
+        (r.phone ?? "").toLowerCase().includes(needle) ||
+        (r.agent_code ?? "").toLowerCase().includes(needle) ||
+        (r.manager_name ?? "").toLowerCase().includes(needle) ||
+        (r.license_status ?? "").toLowerCase().includes(needle) ||
+        (r.onboarding_stage ?? "").toLowerCase().includes(needle) ||
+        (r.status ?? "").toLowerCase().includes(needle)
       );
     });
   }, [rows, q, managerFilter]);
@@ -596,7 +604,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search roster by name, email, or agent code..."
+              placeholder="Search name, email, phone, code, upline, or status..."
               aria-label="Search the canonical roster"
               className="h-10 pl-9 text-sm sm:h-9"
             />

@@ -321,7 +321,7 @@ async function drainQueue(sb: ReturnType<typeof createClient>, settings: Setting
     // Fetch agent + profile for each row (small N, simpler than batch join).
     const { data: agentRow } = await sb
       .from("agents")
-      .select("id, user_id, agent_code, license_status")
+      .select("id, user_id, agent_code, license_status, status, is_deactivated, is_inactive")
       .eq("id", row.agent_id)
       .maybeSingle();
 
@@ -335,6 +335,18 @@ async function drainQueue(sb: ReturnType<typeof createClient>, settings: Setting
         .eq("id", row.id);
       result.failed += 1;
       result.errors.push({ queue_id: row.id, agent_id: row.agent_id, kind: row.email_kind, error: "agent missing user_id" });
+      continue;
+    }
+
+    if (agentRow.status !== "active" || agentRow.is_deactivated || agentRow.is_inactive) {
+      await sb
+        .from("agent_onboarding_queue")
+        .update({
+          attempt_count: 5,
+          last_error: `terminal_inactive_agent: status=${agentRow.status ?? "null"}`,
+        })
+        .eq("id", row.id);
+      result.skipped_wrong_cohort += 1;
       continue;
     }
 

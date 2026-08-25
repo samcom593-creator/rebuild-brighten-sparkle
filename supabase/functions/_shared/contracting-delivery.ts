@@ -9,7 +9,9 @@ import {
   aiRangeForRow,
   buildEthosAiRow,
   buildEthosComment,
+  buildEthosKlRow,
   commentRangeForRow,
+  klRangeForRow,
   matchEthosRow,
   rowNumberFromRange,
   verifyReadBack,
@@ -56,35 +58,6 @@ export type DeliveryDeps = {
 };
 
 /**
- * Read a URL out of a system_settings value.
- *
- * system_settings.value is TEXT, and this project stores some settings bare
- * ("agentlink@apex-financial.org") and others as JSON text
- * ('{"url": "https://...", "label": "..."}'). agentlink_master_invite is the
- * second kind, so a plain `typeof value === "string"` check treats the entire
- * JSON blob as the URL, fails the https test, and silently yields no link —
- * the AgentLink continuation would never appear for any producer.
- */
-export function parseSettingUrl(raw: string | null | undefined): string | null {
-  const value = (raw ?? "").trim();
-  if (value === "") return null;
-
-  let candidate: unknown = value;
-  if (value.startsWith("{") || value.startsWith('"')) {
-    try {
-      const parsed = JSON.parse(value);
-      candidate = typeof parsed === "string" ? parsed : (parsed as { url?: unknown })?.url;
-    } catch {
-      // Not JSON after all; fall through and judge the raw string.
-      candidate = value;
-    }
-  }
-  return typeof candidate === "string" && /^https:\/\//i.test(candidate.trim())
-    ? candidate.trim()
-    : null;
-}
-
-/**
  * Escape a value for a Discord embed.
  *
  * An unescaped producer name containing backticks or underscores mangles the
@@ -101,8 +74,8 @@ export function escapeDiscord(value: unknown): string {
 /**
  * Build the private support post.
  *
- * This is a dedicated, private contracting channel, so it carries all five
- * intake fields — support staff cannot act without them. Every value is escaped
+ * This is a dedicated, private contracting channel, so it carries the complete
+ * linked profile — support staff cannot act without it. Every value is escaped
  * and allowed_mentions is emptied, so no crafted field can notify anyone.
  */
 export function buildDiscordPayload(
@@ -111,6 +84,9 @@ export function buildDiscordPayload(
 ): Record<string, unknown> {
   const safeMentionId = /^\d{16,22}$/.test(mentionUserId ?? "")
     ? mentionUserId
+    : null;
+  const safeEoUrl = /^https:\/\//i.test(intake.eo_certificate_url ?? "")
+    ? String(intake.eo_certificate_url)
     : null;
   return {
     ...(safeMentionId ? { content: `<@${safeMentionId}>` } : {}),
@@ -127,6 +103,11 @@ export function buildDiscordPayload(
         { name: "Email", value: escapeDiscord(intake.email), inline: false },
         { name: "Phone", value: escapeDiscord(intake.phone_e164), inline: true },
         { name: "Status", value: escapeDiscord(intake.status), inline: true },
+        ...(intake.comp_percentage != null ? [{ name: "Comp", value: `${escapeDiscord(intake.comp_percentage)}%`, inline: true }] : []),
+        ...(intake.license_states?.length ? [{ name: "Licensed states", value: escapeDiscord(intake.license_states.join(", ")), inline: true }] : []),
+        ...(safeEoUrl ? [{ name: "E&O", value: `[Certificate](${safeEoUrl})${intake.eo_expires_at ? ` · expires ${escapeDiscord(intake.eo_expires_at)}` : ""}`, inline: false }] : []),
+        { name: "EFT", value: intake.eft_ready ? "Ready" : "Pending", inline: true },
+        ...(intake.contracting_contact_name ? [{ name: "Contracting contact", value: escapeDiscord(intake.contracting_contact_name), inline: true }] : []),
       ],
       footer: { text: `APEX Intake ${intake.id}` },
     }],
@@ -134,40 +115,13 @@ export function buildDiscordPayload(
 }
 
 export async function deliverContractingEmail(
-  intakeId: string,
-  deps: DeliveryDeps,
+  _intakeId: string,
+  _deps: DeliveryDeps,
 ): Promise<DeliveryOutcome> {
-  const intake = await deps.loadIntake(intakeId);
-  const to = (await deps.readSetting("contracting_support_email"))
-    ?? "agentlink@apex-financial.org";
-
-  const lines = [
-    `NPN: ${intake.npn}`,
-    `Name: ${intake.first_name} ${intake.last_name}`,
-    `Email: ${intake.email}`,
-    `Phone: ${intake.phone_e164}`,
-    `APEX Intake ID: ${intake.id}`,
-  ];
-  if (intake.status === "needs_review") {
-    lines.push("", "HELD FOR REVIEW: the submitted email is already on a different NPN. Do not add this producer to Ethos until a person confirms who owns the address.");
-  }
-
-  // The idempotency key is derived from the intake, so a retry reuses Resend's
-  // own idempotency and the support desk cannot receive a second copy of the
-  // same producer.
-  const messageId = await deps.sendEmail({
-    to: [to],
-    subject: `Contracting intake · ${intake.first_name} ${intake.last_name} · NPN ${intake.npn}`,
-    text: lines.join("\n"),
-  }, `contracting-intake-${intakeId}`);
-
-  // ACCEPTED, not delivered. Resend has custody and gave us an id; nothing here
-  // knows whether it reached a mailbox. Only a delivery webhook could say that,
-  // and this project has none wired.
   return {
-    state: "accepted",
-    receipt: { provider: "resend", message_id: messageId, delivery_confirmed: false },
-    note: null,
+    state: "not_configured",
+    receipt: null,
+    note: "Contracting email/AgentLink delivery is disabled. Use the Ethos sheet and private contracting Discord.",
   };
 }
 
@@ -284,8 +238,7 @@ export async function deliverEthosSheet(
   const token = await exchange(deps.googleCredential, deps.now(), deps.fetchImpl);
   const sheets = createSheetsClient(config.sheet_id, token, deps.fetchImpl);
 
-  // Read ONLY A..I. The verified export proves the writable contract is A..I
-  // plus Comments at S; J..R are other people's columns.
+  // Read identity A..I. Writes target A..I, K:L and S; J/M..R are untouched.
   const rows = await sheets.getRange(`${config.tab}!A:I`);
   const match = matchEthosRow(rows, intake);
 
@@ -308,11 +261,13 @@ export async function deliverEthosSheet(
   const check = verifyReadBack(written[0] ?? [], intake);
   if (!check.ok) throw new Error(`Ethos read-back mismatch on ${check.mismatches.join(", ")}`);
 
-  // Comments is a separate cell nine columns away, so a separate write, and it
-  // runs only after the producer row is verified.
+  // License/E&O and Comments are targeted writes after identity read-back.
   const landedRow = rowNumberFromRange(aiReceipt);
+  const klReceipt = landedRow
+    ? await sheets.updateRange(klRangeForRow(config.tab, landedRow), [buildEthosKlRow(intake)])
+    : null;
   const commentReceipt = landedRow
-    ? await sheets.updateRange(commentRangeForRow(config.tab, landedRow), [[buildEthosComment(config, intake.id)]])
+    ? await sheets.updateRange(commentRangeForRow(config.tab, landedRow), [[buildEthosComment(config, intake)]])
     : null;
 
   return {
@@ -320,6 +275,7 @@ export async function deliverEthosSheet(
     receipt: {
       provider: "google_sheets",
       updated_range: aiReceipt,
+      license_eo_range: klReceipt,
       comment_range: commentReceipt,
       action: match.action,
       read_back_verified: true,

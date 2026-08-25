@@ -10,12 +10,14 @@ import {
   COL_COMP_LEVEL,
   buildEthosAiRow,
   buildEthosComment,
+  buildEthosKlRow,
   matchEthosRow,
   verifyReadBack,
   formatUsPhoneForSheet,
   detectDataStartRow,
   aiRangeForRow,
   commentRangeForRow,
+  klRangeForRow,
   rowNumberFromRange,
   type EthosConfig,
   type EthosIntake,
@@ -55,11 +57,8 @@ describe("ethos · measured column contract", () => {
     expect(ETHOS_AI_COLUMNS[COL_PHONE]).toBe("Agent Mobile Number");
   });
 
-  it("does not invent Life Licensed or E&O columns", () => {
-    // Earlier notes claimed both. Neither appears anywhere in the verified
-    // export, so neither is written, read, or guessed at.
-    expect(ETHOS_AI_COLUMNS as readonly string[]).not.toContain("Life Licensed");
-    expect(ETHOS_AI_COLUMNS as readonly string[]).not.toContain("E&O");
+  it("targets the measured Life Licensed and E&O cells without touching J/M..R", () => {
+    expect(klRangeForRow("Agents", 42)).toBe("Agents!K42:L42");
   });
 
   it("targets Comments at column S, nine clear of the A..I block", () => {
@@ -87,6 +86,20 @@ describe("ethos · row mapping", () => {
     // Comp level is negotiated, not derivable from a five-field intake, and a
     // guessed level has real money consequences.
     expect(buildEthosAiRow(INTAKE, CONFIG)[COL_COMP_LEVEL]).toBe("");
+  });
+
+  it("writes linked profile comp and derives licensed/E&O from evidence", () => {
+    const enriched = {
+      ...INTAKE,
+      comp_percentage: 60,
+      license_status: "licensed",
+      eo_certificate_url: "https://drive.google.com/cert",
+      eo_expires_at: "2030-01-01",
+      eo_per_claim_limit: 1_000_000,
+      eo_aggregate_limit: 1_000_000,
+    };
+    expect(buildEthosAiRow(enriched, CONFIG)[COL_COMP_LEVEL]).toBe("60");
+    expect(buildEthosKlRow(enriched)).toEqual(["Yes", "Yes"]);
   });
 
   it("builds a Comments cell carrying the intake id", () => {

@@ -211,6 +211,11 @@ async function raiseEscalation(chat_id: number, reason: string, ctx: Record<stri
     .eq("chat_id", chat_id)
     .is("resolved_at", null)
     .gt("created_at", since)
+    // chat_id is not unique — a chat can have >1 open escalation in 24h, and a
+    // bare .maybeSingle() would read that ambiguity as "none" and open a
+    // duplicate. Take the most recent open one and fold into it.
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (existing) {
     await sb.from("telegram_escalations").update({ trigger_context: { ...ctx, also_triggered: reason } }).eq("id", existing.id);

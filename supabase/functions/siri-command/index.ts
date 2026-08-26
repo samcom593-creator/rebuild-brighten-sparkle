@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
         source:       "siri",
         raw_command:  command,
         status:       "scheduled",
-      }).select().maybeSingle();
+      }).select().limit(1).maybeSingle();
       saved = { event: row };
       const whenPretty = when.toLocaleString("en-US", {
         timeZone: "America/Chicago", weekday: "short", month: "short", day: "numeric",

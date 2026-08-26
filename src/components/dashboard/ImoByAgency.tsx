@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 
 // TOTAL IMO BY AGENCY — Agent Cloud's home-dashboard block. APEX (your direct
 // book) vs each sub-agency (Vantage = KJ Vaughn's team), rolled up from the real
@@ -27,6 +28,7 @@ export function ImoByAgency({
   end,
   windowLabel,
 }: { start?: string; end?: string; windowLabel?: string } = {}) {
+  const queryClient = useQueryClient();
   const exactWindow = Boolean(start && end);
   const { data: imo = [] } = useQuery({
     queryKey: ["imo-by-agency", start ?? "summary", end ?? "summary"],
@@ -48,6 +50,19 @@ export function ImoByAgency({
       return (data ?? []) as Row[];
     },
   });
+
+  const invalidateProduction = () => {
+    queryClient.invalidateQueries({ queryKey: ["imo-by-agency"] });
+    queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
+    queryClient.invalidateQueries({ queryKey: ["apex-home-dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["scoped-production-scoreboard"] });
+  };
+  useRealtimeTable({ table: "deals", channelSuffix: "imo-agency" }, invalidateProduction);
+  useRealtimeTable({ table: "agentlink_book", channelSuffix: "imo-agency" }, invalidateProduction);
+  useRealtimeTable(
+    { table: "production_external_daily_snapshots", channelSuffix: "imo-agency" },
+    invalidateProduction,
+  );
 
   if (imo.length === 0) return null;
   const max = Math.max(1, ...imo.map((a) => a.alp));

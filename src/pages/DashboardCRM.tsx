@@ -1403,6 +1403,17 @@ export default function DashboardCRM() {
     queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
     queryClient.invalidateQueries({ queryKey: ["crm-roster-segments"] });
   });
+  useRealtimeTable({ table: "agentlink_book", channelSuffix: "crm-production" }, () => {
+    queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
+    queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
+    queryClient.invalidateQueries({ queryKey: ["crm-roster-segments"] });
+  });
+  useRealtimeTable(
+    { table: "production_external_daily_snapshots", channelSuffix: "crm-production" },
+    () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
+    },
+  );
 
   const handleBulkSendPortalLogins = async () => {
     const ok = await askConfirm({

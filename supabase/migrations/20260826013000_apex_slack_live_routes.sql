@@ -25,7 +25,7 @@ begin
     'T0BSN03M2AJ',
     'Apex Financial',
     'SLACK_BOT_TOKEN',
-    array['chat:write', 'channels:read', 'groups:read'],
+    array['chat:write', 'chat:write.public', 'channels:read', 'groups:read'],
     'not_configured'
   )
   on conflict (provider, environment, workspace_id) do update set

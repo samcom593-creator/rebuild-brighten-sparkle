@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle, ArrowRight, CheckCircle2, LineChart as LineChartIcon, RefreshCw,
@@ -21,6 +21,7 @@ import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
 import { OperationsCommandCenter } from "@/components/dashboard/OperationsCommandCenter";
 import { cn } from "@/lib/utils";
+import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 
 // The Agent Cloud home, mirrored 1:1 against
 // ~/business-ops/agentcloud-reference/pages/00-home-dashboard-fullpage.png,
@@ -116,6 +117,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 }
 
 export function AgentCloudHome() {
+  const queryClient = useQueryClient();
   const today = phxToday();
   const [period, setPeriod] = useState<PeriodKey>("this_month");
   const [custom, setCustom] = useState({
@@ -138,6 +140,18 @@ export function AgentCloudHome() {
       return data as unknown as HomeData;
     },
   });
+
+  const invalidateProduction = () => {
+    queryClient.invalidateQueries({ queryKey: ["apex-home-dashboard"] });
+    queryClient.invalidateQueries({ queryKey: ["scoped-production-scoreboard"] });
+    queryClient.invalidateQueries({ queryKey: ["imo-by-agency"] });
+  };
+  useRealtimeTable({ table: "deals", channelSuffix: "agent-cloud-home" }, invalidateProduction);
+  useRealtimeTable({ table: "agentlink_book", channelSuffix: "agent-cloud-home" }, invalidateProduction);
+  useRealtimeTable(
+    { table: "production_external_daily_snapshots", channelSuffix: "agent-cloud-home" },
+    invalidateProduction,
+  );
 
   const PeriodPicker = (
     <div className="flex flex-wrap items-center justify-end gap-2">

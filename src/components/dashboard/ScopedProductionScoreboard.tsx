@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { scoreboardWindow, type ScoreboardPeriod } from "@/lib/scoreboardPeriod";
+import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -96,6 +97,14 @@ export function ScopedProductionScoreboard() {
       return data as unknown as ScoreboardData;
     },
   });
+
+  const refreshProduction = () => { void query.refetch(); };
+  useRealtimeTable({ table: "deals", channelSuffix: "production-scoreboard" }, refreshProduction);
+  useRealtimeTable({ table: "agentlink_book", channelSuffix: "production-scoreboard" }, refreshProduction);
+  useRealtimeTable(
+    { table: "production_external_daily_snapshots", channelSuffix: "production-scoreboard" },
+    refreshProduction,
+  );
 
   return (
     <Card className="overflow-hidden border-primary/35 bg-primary/[0.035]">

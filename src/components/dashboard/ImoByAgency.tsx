@@ -63,6 +63,10 @@ export function ImoByAgency({
     { table: "production_external_daily_snapshots", channelSuffix: "imo-agency" },
     invalidateProduction,
   );
+  useRealtimeTable(
+    { table: "production_external_deals", channelSuffix: "imo-agency" },
+    invalidateProduction,
+  );
 
   if (imo.length === 0) return null;
   const max = Math.max(1, ...imo.map((a) => a.alp));

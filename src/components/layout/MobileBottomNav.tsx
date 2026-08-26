@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, Briefcase, Home, LayoutDashboard, Library, Settings, User, Users } from "lucide-react";
+import { BarChart3, Briefcase, CalendarClock, Home, LayoutDashboard, Library, Settings, User, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,19 +32,33 @@ const managerNavItems = [
   { path: "/dashboard/resources",     icon: Library,    label: "Resources" },
 ];
 
+const staffNavItems = [
+  { path: "/dashboard",                        icon: LayoutDashboard, label: "Home" },
+  { path: "/dashboard/recruiting",             icon: Briefcase,       label: "Recruiting" },
+  { path: "/dashboard/recruiting/interviews",  icon: CalendarClock,   label: "Interviews" },
+  { path: "/dashboard/team",                   icon: Users,           label: "Team" },
+  { path: "/dashboard/resources",              icon: Library,         label: "Resources" },
+];
+
 export function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { isAdmin, isManager } = useAuth();
+  const { isAdmin, isManager, isVaManager, isVa } = useAuth();
 
-  const navItems = isAdmin ? adminNavItems : isManager ? managerNavItems : agentNavItems;
+  const navItems = isAdmin
+    ? adminNavItems
+    : isManager
+      ? managerNavItems
+      : (isVaManager || isVa)
+        ? staffNavItems
+        : agentNavItems;
 
   if (!isMobile) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-background/95  safe-area-bottom">
-      <div className="flex items-center justify-around h-16 px-2">
+    <nav aria-label="Primary mobile navigation" className="safe-area-bottom fixed inset-x-0 bottom-0 z-50 border-t border-border/80 bg-background/95 shadow-[0_-10px_28px_hsl(var(--background)/0.72)] backdrop-blur-xl lg:hidden">
+      <div className="flex h-16 items-center justify-around px-1">
         {navItems.map((item) => {
           const isActive = item.path === "/dashboard"
             ? location.pathname === item.path
@@ -53,8 +67,9 @@ export function MobileBottomNav() {
             <button
               key={item.label}
               onClick={() => navigate(item.path)}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex flex-col items-center justify-center gap-0.5 min-w-[48px] min-h-[48px] w-16 h-14 rounded-md transition-all",
+                "flex h-14 min-h-[48px] min-w-[52px] flex-1 flex-col items-center justify-center gap-0.5 rounded-md transition-colors",
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"

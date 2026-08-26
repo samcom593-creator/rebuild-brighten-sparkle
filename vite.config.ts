@@ -152,16 +152,11 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      // 2026-08-20: self-destroying. The SW precached index.html, so every
-      // deploy left installed clients on a stale shell whose lazy-chunk hashes
-      // no longer existed — routes went blank until the SW update cycle caught
-      // up ("almost all pages don't work"). A live-data admin dashboard gets
-      // nothing from shell precaching: Vercel already serves index.html with
-      // max-age=0 must-revalidate and content-hashed /assets/ as immutable.
-      // selfDestroying ships a kill-switch SW that unregisters itself on every
-      // installed client, ending the stale-shell class permanently.
-      // chunkRecovery in main.tsx stays as the belt-and-braces reload path.
-      selfDestroying: true,
+      // Keep an active worker for installability and push notifications, but
+      // never precache the HTML/navigation shell. Documents stay network-only;
+      // only immutable hashed assets are cached. This preserves the stale-shell
+      // fix while allowing APEX to install and launch as a real app.
+      selfDestroying: false,
       registerType: "autoUpdate",
       // wave-45 (2026-06-09): live mobile Lighthouse for e1530c22 (HEAD) found
       // registerSW.js as the #3 cold-landing long task (112ms) on the main
@@ -177,15 +172,17 @@ export default defineConfig(({ mode }) => ({
       injectRegister: false,
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
       manifest: {
-        name: "APEX Financial - Daily Numbers",
-        short_name: "APEX Numbers",
-        description: "Track your daily production, see your ranking, and compete on the leaderboard.",
+        id: "/",
+        name: "APEX Financial OS",
+        short_name: "APEX OS",
+        description: "Run recruiting, contracting, training, production, and agency operations from your phone.",
         theme_color: "#0a0f1a",
         background_color: "#0a0f1a",
-        display: "browser",
+        display: "standalone",
+        display_override: ["window-controls-overlay", "standalone", "minimal-ui"],
         orientation: "portrait",
         scope: "/",
-        start_url: "/",
+        start_url: "/dashboard?source=pwa",
         icons: [
           {
             src: "/pwa-192x192.png",
@@ -206,13 +203,12 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        navigateFallbackDenylist: [/^\/~oauth/],
+        navigateFallback: null,
         // Precache the boot shell, not every one of the 300+ lazy admin
         // chunks. The old broad glob installed ~6.5 MB after first load and
         // competed with real navigation on mobile. Visited route chunks are
         // cached by the /assets/ CacheFirst rule below.
         globPatterns: [
-          "index.html",
           "assets/index-*.{js,css}",
           "assets/rolldown-runtime-*.js",
           "assets/vendor-{router,react,react-dom,icons-landing}-*.js",

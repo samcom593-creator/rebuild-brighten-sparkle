@@ -38,7 +38,7 @@ const MATRIX_OUTPUT = path.join(REPO_ROOT, "docs/audits/apex-function-contract-m
 const BASELINES = {
   missing_config_block: 2,
   missing_local_source: 2,
-  unallowlisted_public: 218,
+  unallowlisted_public: 217,
 };
 
 const buckets = { missing_config_block: [], missing_local_source: [], unallowlisted_public: [] };
@@ -192,6 +192,12 @@ const PUBLIC_ALLOWLIST = new Set([
   // service-role bearer.
   "free-leads-weekly-alerts",
   "onboarding-call-invites",
+  // Scheduled numbers delivery and the Slack identity bridge cannot rely on a
+  // user JWT. Both accept only the rotating APEX bot token or service-role
+  // bearer in-code, fail closed when configuration is missing, and expose no
+  // anonymous success path.
+  "numbers-reminder",
+  "slack-identity-admin",
 ]);
 
 // Rule 4: verify_jwt status. Ratcheted, not absolute. Flipping the ~236 legacy

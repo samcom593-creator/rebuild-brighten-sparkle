@@ -153,6 +153,10 @@ export function AgentCloudHome() {
     { table: "production_external_daily_snapshots", channelSuffix: "agent-cloud-home" },
     invalidateProduction,
   );
+  useRealtimeTable(
+    { table: "production_external_deals", channelSuffix: "agent-cloud-home" },
+    invalidateProduction,
+  );
 
   const PeriodPicker = (
     <div className="flex flex-wrap items-center justify-end gap-2">

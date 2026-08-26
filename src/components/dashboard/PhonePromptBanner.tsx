@@ -28,8 +28,8 @@ export function PhonePromptBanner() {
 
   return (
     <div className="animate-fade-in mb-6 relative overflow-hidden rounded-md bg-white dark:bg-card border border-amber-500/30">
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col items-start justify-between gap-3 p-4 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
           <div className="p-2 rounded-full bg-amber-500/20">
             <Phone className="h-5 w-5 text-amber-400" />
           </div>
@@ -42,8 +42,8 @@ export function PhonePromptBanner() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button asChild size="sm" className="bg-amber-500 hover:bg-amber-600 text-black">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <Button asChild size="sm" className="flex-1 bg-amber-500 text-black hover:bg-amber-600 sm:flex-none">
             <Link to="/dashboard/settings">
               Add Phone
               <ArrowRight className="h-4 w-4 ml-1" />

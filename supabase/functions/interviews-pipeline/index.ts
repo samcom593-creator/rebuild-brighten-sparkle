@@ -57,6 +57,16 @@ function normalizedPhone(value: string | null | undefined) {
   const digits = (value ?? "").replace(/\D/g, "");
   return digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
 }
+function normalizedInstagram(value: string | null | undefined) {
+  const handle = (value ?? "")
+    .trim()
+    .replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//i, "")
+    .replace(/^@+/, "")
+    .split(/[/?#]/, 1)[0]
+    .trim()
+    .toLowerCase();
+  return /^[a-z0-9._]{1,30}$/i.test(handle) ? handle : "";
+}
 function actorRole(roles: Set<string>): ActorRole | null {
   if (roles.has("admin")) return "executive";
   if (roles.has("manager")) return "recruiter";
@@ -105,6 +115,7 @@ function patchFor(action: InterviewAction, current: ApplicantRow, body: Record<s
       const raw = typeof body.appointmentAt === "string" ? body.appointmentAt : "";
       const appointment = new Date(raw);
       if (!raw || Number.isNaN(appointment.getTime())) throw new Error("Rescheduling requires a valid date");
+      if (appointment.getTime() <= Date.now()) throw new Error("Rescheduling requires a future date");
       if (current.appointment_at && appointment.getTime() === new Date(current.appointment_at).getTime()) {
         throw new Error("Rescheduling requires a new date");
       }
@@ -146,6 +157,16 @@ async function updateApplicant(req: Request, actor: Actor, body: Record<string, 
   if (!(LEGAL_BY_STAGE[current.stage] ?? []).includes(action)) {
     return json({ error: `${action.replace(/_/g, " ")} is not available from ${current.stage.replace(/_/g, " ")}` }, 422);
   }
+  if (action === "hire") {
+    const identity = resolveApplicationIdentity(current, buildIdentityMaps(await fetchApplications()));
+    if (!identity.applicationId) {
+      return json({
+        error: identity.identityConflict
+          ? "Candidate identity conflicts across APEX applications. Resolve the email, phone, or Instagram match before hiring."
+          : "Link an APEX application before hiring so the agent account and onboarding can be created.",
+      }, 422);
+    }
+  }
 
   let patch: Record<string, unknown>;
   try { patch = patchFor(action, current, body); }
@@ -185,29 +206,86 @@ async function updateApplicant(req: Request, actor: Actor, body: Record<string, 
   }});
 }
 
-function buildUniqueMap(rows: Array<{ id: string; email: string | null; phone: string | null }>, key: "email" | "phone") {
+type ApplicationRow = {
+  id: string; email: string | null; phone: string | null; instagram_handle: string | null;
+  status: string | null; closed_at: string | null; contracted_at: string | null;
+  license_status: string | null; nipr_number: string | null;
+};
+
+function buildUniqueMap(rows: ApplicationRow[], key: "email" | "phone" | "instagram") {
   const map = new Map<string, string | null>();
   for (const row of rows) {
-    const value = key === "email" ? (row.email ?? "").trim().toLowerCase() : normalizedPhone(row.phone);
+    const value = key === "email"
+      ? (row.email ?? "").trim().toLowerCase()
+      : key === "phone"
+        ? normalizedPhone(row.phone)
+        : normalizedInstagram(row.instagram_handle);
     if (!value) continue;
     map.set(value, map.has(value) ? null : row.id);
   }
   return map;
 }
 
-async function listApplicants(actor: Actor) {
-  let query = admin.from("hh_applicants")
-    .select("id,name,phone,email,instagram,company,appointment_at,stage,interview_result,unqualified_reason,notes,va_id,recruiter_id,version,reschedule_count,created_at,updated_at")
-    .eq("archived", false).order("appointment_at", { ascending: true, nullsFirst: false }).limit(2000);
-  if (actor.role === "va" && actor.hhUser) query = query.eq("va_id", actor.hhUser.id);
+type IdentityMaps = {
+  byEmail: Map<string, string | null>;
+  byPhone: Map<string, string | null>;
+  byInstagram: Map<string, string | null>;
+};
 
-  const [{ data: applicants, error }, { data: applicationRows, error: applicationsError }] = await Promise.all([
-    query,
-    admin.from("applications").select("id,email,phone,status,closed_at,contracted_at,license_status,nipr_number").eq("record_type", "application").limit(2000),
-  ]);
-  if (error) throw error;
-  if (applicationsError) throw applicationsError;
-  const rows = (applicants ?? []) as ApplicantRow[];
+function buildIdentityMaps(rows: ApplicationRow[]): IdentityMaps {
+  return {
+    byEmail: buildUniqueMap(rows, "email"),
+    byPhone: buildUniqueMap(rows, "phone"),
+    byInstagram: buildUniqueMap(rows, "instagram"),
+  };
+}
+
+function resolveApplicationIdentity(row: ApplicantRow, maps: IdentityMaps) {
+  const emailId = row.email ? maps.byEmail.get(row.email.trim().toLowerCase()) : undefined;
+  const phoneId = row.phone ? maps.byPhone.get(normalizedPhone(row.phone)) : undefined;
+  const instagramId = row.instagram ? maps.byInstagram.get(normalizedInstagram(row.instagram)) : undefined;
+  const signalIds = Array.from(new Set([emailId, phoneId, instagramId].filter(Boolean) as string[]));
+  return {
+    applicationId: signalIds.length === 1 ? signalIds[0] : null,
+    identityConflict: signalIds.length > 1,
+  };
+}
+
+const PAGE_SIZE = 1000;
+
+async function fetchApplicants(actor: Actor): Promise<ApplicantRow[]> {
+  const rows: ApplicantRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    let query = admin.from("hh_applicants")
+      .select("id,name,phone,email,instagram,company,appointment_at,stage,interview_result,unqualified_reason,notes,va_id,recruiter_id,version,reschedule_count,created_at,updated_at")
+      .eq("archived", false)
+      .order("appointment_at", { ascending: true, nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (actor.role === "va" && actor.hhUser) query = query.eq("va_id", actor.hhUser.id);
+    const { data, error } = await query;
+    if (error) throw error;
+    rows.push(...((data ?? []) as ApplicantRow[]));
+    if ((data?.length ?? 0) < PAGE_SIZE) return rows;
+  }
+}
+
+async function fetchApplications(): Promise<ApplicationRow[]> {
+  const rows: ApplicationRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await admin.from("applications")
+      .select("id,email,phone,instagram_handle,status,closed_at,contracted_at,license_status,nipr_number")
+      .eq("record_type", "application")
+      .order("id", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    rows.push(...((data ?? []) as ApplicationRow[]));
+    if ((data?.length ?? 0) < PAGE_SIZE) return rows;
+  }
+}
+
+async function listApplicants(actor: Actor) {
+  const [rows, mainRows] = await Promise.all([fetchApplicants(actor), fetchApplications()]);
   const counts: Record<string, number> = {};
   for (const row of rows) counts[row.stage] = (counts[row.stage] ?? 0) + 1;
 
@@ -218,18 +296,10 @@ async function listApplicants(actor: Actor) {
     for (const user of users ?? []) owners[user.id as string] = (user.name || user.email || "") as string;
   }
 
-  const mainRows = (applicationRows ?? []) as Array<{
-    id: string; email: string | null; phone: string | null; status: string | null;
-    closed_at: string | null; contracted_at: string | null;
-    license_status: string | null; nipr_number: string | null;
-  }>;
-  const byEmail = buildUniqueMap(mainRows, "email");
-  const byPhone = buildUniqueMap(mainRows, "phone");
+  const identityMaps = buildIdentityMaps(mainRows);
   const mainById = new Map(mainRows.map((row) => [row.id, row]));
   const applicantsOut = rows.map((row) => {
-    const emailId = row.email ? byEmail.get(row.email.trim().toLowerCase()) : undefined;
-    const phoneId = row.phone ? byPhone.get(normalizedPhone(row.phone)) : undefined;
-    const applicationId = emailId && phoneId && emailId !== phoneId ? null : (emailId || phoneId || null);
+    const { applicationId, identityConflict } = resolveApplicationIdentity(row, identityMaps);
     const application = applicationId ? mainById.get(applicationId) : null;
     const onboardingStatus = !application ? "application_link_needed"
       : application.contracted_at ? "contracted"
@@ -242,6 +312,7 @@ async function listApplicants(actor: Actor) {
       onboarding_status: onboardingStatus,
       application_license_status: application?.license_status ?? null,
       application_npn: application?.nipr_number ?? null,
+      identity_conflict: identityConflict,
     };
   });
   return json({ applicants: applicantsOut, counts, total: rows.length, role: actor.role, generatedAt: new Date().toISOString() });
@@ -276,6 +347,12 @@ async function listOnboardingCalls(actor: Actor) {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "GET" && req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Allow": "GET, POST, OPTIONS", ...corsHeaders },
+    });
+  }
   try {
     const actor = await authenticate(req);
     if (actor instanceof Response) return actor;

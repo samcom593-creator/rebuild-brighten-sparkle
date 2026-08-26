@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Cloud,
   ContactRound,
+  Download,
   FileSearch,
   FileText,
   FolderKanban,
@@ -44,7 +45,8 @@ export interface AgentCloudNavGroup {
 
 export type AgentCloudNavEntry = AgentCloudNavItem | AgentCloudNavGroup;
 
-const trainingLabel = `${resolveBrand().platformName} Training`;
+const BRAND = resolveBrand();
+const trainingLabel = `${BRAND.platformName} Training`;
 
 export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
   { label: "Home", href: "/dashboard", icon: LayoutGrid },
@@ -122,6 +124,7 @@ export const AGENT_CLOUD_ACCOUNT_NAV: AgentCloudNavEntry[] = [
       { label: "Billing", href: "/dashboard/settings/billing", icon: WalletCards, adminOnly: true },
       { label: "Nova Pro", href: "/dashboard/settings/nova-pro", icon: Sparkles },
       { label: "Support desk", href: "/dashboard/help?tab=desk", icon: HelpCircle },
+      { label: `Install ${BRAND.shortName} app`, href: "/install", icon: Download },
     ],
   },
   { label: "Producer Profile", href: "/dashboard/profile", icon: IdCard },

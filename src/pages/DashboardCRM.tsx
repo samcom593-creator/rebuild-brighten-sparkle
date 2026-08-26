@@ -249,6 +249,28 @@ function ContactActions({ agent, onViewApp, onEditLogin, onDeactivate, onAgentUp
           <a href={`mailto:${agent.email}`}><Mail className="h-3 w-3" /> Email</a>
         </Button>
       )}
+      {agent.applicationId && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-10 gap-1 border-emerald-500/30 text-xs text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400 sm:h-8"
+          onClick={async () => {
+            const checkedInAt = new Date().toISOString();
+            const { error } = await supabase
+              .from("applications")
+              .update({ last_contacted_at: checkedInAt })
+              .eq("id", agent.applicationId!);
+            if (error) {
+              toast.error("Could not record the check-in");
+              return;
+            }
+            onAgentUpdate(agent.id, { lastContactedAt: checkedInAt, lastActivityAt: checkedInAt });
+            toast.success(`${agent.name} marked checked in`);
+          }}
+        >
+          <CircleCheck className="h-3 w-3" /> Checked in
+        </Button>
+      )}
       {agent.instagramHandle && (
         <Button variant="outline" size="sm" className="h-10 gap-1 text-xs sm:h-8" asChild>
           <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
@@ -898,7 +920,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
 }
 
 export default function DashboardCRM() {
-  const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
+  const { user, isAdmin, isManager, isVaManager, isVa, isLoading: authLoading } = useAuth();
   const askConfirm = useConfirm();
   const { playSound } = useSoundEffects();
   const queryClient = useQueryClient();
@@ -1079,7 +1101,11 @@ export default function DashboardCRM() {
     } catch (error) { console.error("Error fetching managers:", error); }
     try {
       const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).maybeSingle();
-      if (!currentAgent && !isAdmin) { return []; }
+      // VA staff are operators, not producers, so they legitimately have no
+      // agents row. The route and roster RPC already authorize va_manager/va;
+      // returning here made Milver's Team screen empty despite that access.
+      const canWorkAgencyRoster = isAdmin || isVaManager || isVa;
+      if (!currentAgent && !canWorkAgencyRoster) { return []; }
       if (currentAgent) setCurrentAgentId(currentAgent.id);
 
       let query = supabase.from("agents").select("*").eq("status", "active").order("sort_order", { ascending: true, nullsFirst: false });
@@ -1352,7 +1378,7 @@ export default function DashboardCRM() {
         // invisible on the CRM (~627 rows). Removed here and from the OR clause below.
         .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier, assigned_agent_id, referral_manager_id, recruiter_id, hiring_manager_user_id, created_at")
         .is("terminated_at", null).neq("license_status", "licensed");
-      if (!isAdmin) {
+      if (!canWorkAgencyRoster) {
         // Visibility OR — applicant is the user themselves, OR I am the
         // assigned agent, referral manager, recruiter (any of the three agent
         // attribution columns), OR I am the hiring manager (auth.uid). This
@@ -1402,10 +1428,10 @@ export default function DashboardCRM() {
 
       return [...crmAgents, ...newApplicants];
     } catch (error) { console.error("Error fetching CRM agents:", error); toast.error("Failed to load agents"); return []; }
-  }, [user?.id, isAdmin, isManager]);
+  }, [user?.id, isAdmin, isManager, isVaManager, isVa]);
 
   const { data: agentsData, isLoading: agentsLoading } = useQuery({
-    queryKey: ["crm-agents", user?.id, isAdmin, isManager],
+    queryKey: ["crm-agents", user?.id, isAdmin, isManager, isVaManager, isVa],
     queryFn: fetchAgentsQuery,
     enabled: !authLoading && !!user,
     staleTime: 60000,
@@ -1486,6 +1512,14 @@ export default function DashboardCRM() {
     { table: "production_external_daily_snapshots", channelSuffix: "crm-production" },
     () => {
       queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
+    },
+  );
+  useRealtimeTable(
+    { table: "production_external_deals", channelSuffix: "crm-production" },
+    () => {
+      queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-roster-segments"] });
     },
   );
 

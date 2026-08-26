@@ -223,6 +223,10 @@ export function ScopedProductionScoreboard() {
     { table: "production_external_daily_snapshots", channelSuffix: "production-scoreboard" },
     refreshProduction,
   );
+  useRealtimeTable(
+    { table: "production_external_deals", channelSuffix: "production-scoreboard" },
+    refreshProduction,
+  );
   useRealtimeTable({ table: "agent_contract_levels", channelSuffix: "production-scoreboard" }, refreshProduction);
 
   const data = query.data;

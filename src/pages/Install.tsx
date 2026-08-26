@@ -15,7 +15,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function Install() {
-  usePageTitle("Install Apex Numbers");
+  usePageTitle("Install APEX Financial OS");
   const navigate = useNavigate();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -24,15 +24,13 @@ export default function Install() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     // Check if user is already logged in
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate("/agent-portal", { replace: true });
-        return;
-      }
+      setIsAuthenticated(Boolean(session));
       setCheckingAuth(false);
     };
     checkAuth();
@@ -178,14 +176,18 @@ export default function Install() {
                 <Crown className="w-10 h-10 text-primary-foreground" />
               </div>
             </div>
-            <h1 className="text-2xl font-bold gradient-text">APEX Numbers</h1>
+            <h1 className="text-2xl font-bold gradient-text">APEX Financial OS</h1>
             <CardDescription>
-              Enter your email to access your portal
+              Install your agency operating system for one-tap phone access.
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Email Login Form */}
+            {isAuthenticated ? (
+              <Button asChild className="h-12 w-full text-base font-semibold">
+                <Link to="/dashboard">Open Dashboard</Link>
+              </Button>
+            ) : (
             <form onSubmit={handleEmailLogin} className="space-y-4">
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -214,6 +216,7 @@ export default function Install() {
                 )}
               </Button>
             </form>
+            )}
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -267,7 +270,7 @@ export default function Install() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-4">
-          Works offline • Fast loading • One-tap access
+          Home-screen launch • Push notifications • One-tap access
         </p>
       </motion.div>
     </main>

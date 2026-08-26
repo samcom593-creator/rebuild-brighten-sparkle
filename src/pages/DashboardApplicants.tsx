@@ -41,7 +41,6 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { AgentNameLink } from "@/components/dashboard/AgentNameLink";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -85,6 +84,7 @@ import { phoneHref, smsHref } from "@/lib/phone";
 import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
+import { RecruitingCommandHero } from "@/components/recruiting/RecruitingCommandHero";
 
 interface Application {
   id: string;
@@ -117,6 +117,9 @@ interface Application {
   lead_score: number | null;
   ai_score_tier: string | null;
   course_purchased_at?: string | null;
+  course_started_at?: string | null;
+  first_deal_at?: string | null;
+  last_contacted_at?: string | null;
   is_duplicate?: boolean;
   is_ghosted?: boolean;
   first_contact_attempt_at?: string | null;
@@ -450,7 +453,7 @@ export default function DashboardApplicants() {
         .from("interview_events")
         .select("application_id, scheduled_at, canceled_at")
         .is("canceled_at", null)
-        .not("scheduled_at", "is", null);
+        .gte("scheduled_at", new Date().toISOString());
       if (interviewErr) {
         // Don't fail the page over an interview lookup. Log + continue.
         console.warn("[DashboardApplicants] interview_events lookup failed:", interviewErr);
@@ -1067,29 +1070,42 @@ export default function DashboardApplicants() {
   const counterTotal = statusFilter === "terminated" ? terminatedApplications.length : activeApplications.length;
   const counterLabel = statusFilter === "terminated" ? "terminated applications" : "active applications";
 
-  const { totalLeads, hired, coursePurchased, inFunnel, rejected, todayCount, hiredThisMonth } = useMemo(() => {
+  const { totalLeads, inFunnel, todayCount, hiredThisMonth } = useMemo(() => {
     const tzNow = new Date();
     const todayDate = new Date(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate());
     const todayIso = todayDate.toISOString().slice(0, 10);
     const monthStartMs = new Date(tzNow.getFullYear(), tzNow.getMonth(), 1).getTime();
-    let hired = 0, coursePurchased = 0, inFunnel = 0, rejected = 0, todayCount = 0, hiredThisMonth = 0;
+    let inFunnel = 0, todayCount = 0, hiredThisMonth = 0;
     // wave-p1q: count off activeApplications ONLY — this is the population
     // the click-filter operates on (baseApplications = activeApplications
     // for every non-terminated filter). Counting off active+terminated
     // was the root cause of card N -> click -> fewer-than-N rows.
     for (const a of activeApplications) {
-      if (CARD_PREDICATES.hired(a)) hired++;
       if (a.closed_at) {
         const t = new Date(a.closed_at).getTime();
         if (!Number.isNaN(t) && t >= monthStartMs) hiredThisMonth++;
       }
-      if (CARD_PREDICATES.course_bought(a)) coursePurchased++;
       if (CARD_PREDICATES.in_funnel(a)) inFunnel++;
-      if (CARD_PREDICATES.rejected(a)) rejected++;
       if (a.created_at && a.created_at.slice(0, 10) === todayIso) todayCount++;
     }
-    return { totalLeads: activeApplications.length, hired, coursePurchased, inFunnel, rejected, todayCount, hiredThisMonth };
+    return { totalLeads: activeApplications.length, inFunnel, todayCount, hiredThisMonth };
   }, [activeApplications]);
+
+  const selectMetric = (key: string) => {
+    setMetricFilter(key);
+    setStatusFilter("all");
+    setHotLeadsOnly(false);
+    setNeedsFollowupOnly(false);
+    setDuplicatesOnly(false);
+    setInterviewFilter("all");
+    if (key === "in_funnel") setStatusFilter("in_funnel");
+    else if (key === "course_bought") setStatusFilter("course_bought");
+    else if (key === "hired") setStatusFilter("hired");
+    else if (key === "rejected") setStatusFilter("rejected");
+    else if (key === "needs_followup") setNeedsFollowupOnly(true);
+    else if (key === "hot") setHotLeadsOnly(true);
+    else if (key === "duplicates") setDuplicatesOnly(true);
+  };
 
   if (isLoading && applications.length === 0) {
     return <PageLoadingSkeleton variant="cards" />;
@@ -1097,30 +1113,96 @@ export default function DashboardApplicants() {
 
   return (
     <div className="apex-fullbleed-page -mx-4 sm:-mx-6 lg:-mx-8 w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)]">
-      {/* Root wrapper padding is px-4 sm:px-6 so PageHeader's -mx-4 sm:-mx-6 cancels exactly.
-          The full-bleed opt-out above is deliberate (11-column table on ultrawide). */}
+      {/* The full-bleed opt-out is deliberate for the 11-column operating table. */}
       <div className="page-enter w-full space-y-5 px-4 pb-24 sm:px-6">
       <RecruitingWorkspaceNav />
-      <PageHeader
-        accent="cyan"
-        eyebrow="Recruiting · Applicants"
-        eyebrowIcon={<Users className="h-3 w-3" />}
-        title="Applicants"
-        subtitle="Every applicant. Assigned, referred, recruited."
+      <RecruitingCommandHero
+        eyebrow={statusFilter === "hired" ? "Recruiting · Hire launchpad" : "Recruiting · Pipeline control"}
+        title={statusFilter === "hired" ? "Get every hire into the field faster." : "Know who to contact—and what to do next."}
+        subtitle={statusFilter === "hired"
+          ? "Track the handoff from hire to license, contracting, training, onboarding call, and first production."
+          : "A single live command center for new applicants, overdue follow-ups, scheduled interviews, and hires."}
+        statusLabel={queryError ? "Last good roster" : "Live recruiting roster"}
         actions={
-          (isAdmin || isManager) && agentId
-            ? <Button
-                variant={myDirectsOnly ? "default" : "outline"}
+          <>
+            {(isAdmin || isManager) && agentId && (
+              <Button
+                variant="outline"
                 size="sm"
                 aria-pressed={myDirectsOnly}
-                className="h-10 w-full gap-1.5 sm:h-9 sm:w-auto"
+                className="h-10 border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:text-white"
                 onClick={() => setMyDirectsOnly(!myDirectsOnly)}
               >
                 <Users className="h-4 w-4 shrink-0" />
-                {myDirectsOnly ? "My Directs" : "Full Team"}
+                {myDirectsOnly ? "My directs" : "Full team"}
               </Button>
-            : null
+            )}
+            <Button
+              size="sm"
+              className="h-10 bg-[#C9A961] font-bold text-black hover:bg-[#8A7340]"
+              disabled={speedQueue.length === 0}
+              onClick={() => {
+                setSpeedIndex(0);
+                setSpeedActive(true);
+              }}
+            >
+              <Rocket className="h-4 w-4" /> Work next {speedQueue.length}
+            </Button>
+          </>
         }
+        metrics={[
+          {
+            label: "New today",
+            value: queryError && applications.length === 0 ? null : todayCount,
+            detail: "Fresh applicants waiting for speed-to-lead",
+            icon: Sparkles,
+            tone: "gold",
+            active: metricFilter === "total" && sortOrder === "newest",
+            onClick: () => {
+              selectMetric("total");
+              setSortOrder("newest");
+            },
+          },
+          {
+            label: "Follow-ups due",
+            value: queryError && applications.length === 0 ? null : needsFollowupCount,
+            detail: "Overdue or untouched long enough to go cold",
+            icon: Bell,
+            tone: "bad",
+            active: needsFollowupOnly,
+            onClick: () => selectMetric("needs_followup"),
+          },
+          {
+            label: "Interviews booked",
+            value: queryError && applications.length === 0 ? null : interviewByAppId.size,
+            detail: "Candidates with an active scheduled interview",
+            icon: Calendar,
+            tone: "info",
+            active: interviewFilter === "scheduled",
+            onClick: () => {
+              selectMetric("total");
+              setInterviewFilter("scheduled");
+            },
+          },
+          {
+            label: "Hired this month",
+            value: queryError && applications.length === 0 ? null : hiredThisMonth,
+            detail: "New people now entering onboarding",
+            icon: UserCheck,
+            tone: "good",
+            active: statusFilter === "hired",
+            onClick: () => selectMetric("hired"),
+          },
+          {
+            label: "Active pipeline",
+            value: queryError && applications.length === 0 ? null : inFunnel,
+            detail: `${totalLeads.toLocaleString()} total active · ${hotLeadsCount.toLocaleString()} hot`,
+            icon: Columns3,
+            tone: "neutral",
+            active: statusFilter === "in_funnel",
+            onClick: () => selectMetric("in_funnel"),
+          },
+        ]}
       />
 
       {(isAdmin || isManager) && agentId && (
@@ -1191,72 +1273,6 @@ export default function DashboardApplicants() {
           </div>
         </div>
       )}
-
-      {/* 2026-07-08 MP-256: 8-card applicant metric grid — each card is a click-filter. */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-        {[
-          { key: "total", label: "Total Active", value: totalLeads, icon: Users, tone: "neutral", meaning: "All active applicants" },
-          { key: "in_funnel", label: "In Funnel", value: inFunnel, icon: Filter, tone: "neutral", meaning: "Not hired, not terminated" },
-          { key: "course_bought", label: "Course Bought", value: coursePurchased, icon: GraduationCap, tone: "neutral", meaning: "Course purchased" },
-          { key: "hired", label: "Hired", value: hired, icon: UserCheck, tone: "good", meaning: "Marked hired" },
-          { key: "rejected", label: "Rejected", value: rejected, icon: XCircle, tone: "bad", meaning: "Rejected / disqualified" },
-          { key: "needs_followup", label: "Follow-Ups", value: needsFollowupCount, icon: Bell, tone: "warn", meaning: "48h+ no contact" },
-          { key: "hot", label: "Hot Leads", value: hotLeadsCount, icon: Flame, tone: "warn", meaning: "Hot + warm score" },
-          { key: "duplicates", label: "Duplicates", value: activeDuplicateCount, icon: Copy, tone: "warn", meaning: "Flagged is_duplicate" },
-        ].map((card) => {
-          const active = metricFilter === card.key;
-          const Icon = card.icon;
-          const toneValue: Record<string, string> = {
-            neutral: "text-foreground",
-            good: "text-emerald-600 dark:text-emerald-400",
-            warn: "text-amber-600 dark:text-amber-400",
-            bad: "text-rose-600 dark:text-rose-400",
-          };
-          const toneIcon: Record<string, string> = {
-            neutral: "text-muted-foreground",
-            good: "text-emerald-600 dark:text-emerald-400",
-            warn: "text-amber-600 dark:text-amber-400",
-            bad: "text-rose-600 dark:text-rose-400",
-          };
-          return (
-            <button
-              key={card.key}
-              type="button"
-              onClick={() => {
-                setMetricFilter(card.key);
-                // Reset dependent filters first
-                setStatusFilter("all");
-                setHotLeadsOnly(false);
-                setNeedsFollowupOnly(false);
-                setDuplicatesOnly(false);
-                if (card.key === "in_funnel") setStatusFilter("in_funnel");
-                else if (card.key === "course_bought") setStatusFilter("course_bought");
-                else if (card.key === "hired") setStatusFilter("hired");
-                else if (card.key === "rejected") setStatusFilter("rejected");
-                else if (card.key === "needs_followup") setNeedsFollowupOnly(true);
-                else if (card.key === "hot") setHotLeadsOnly(true);
-                else if (card.key === "duplicates") setDuplicatesOnly(true);
-              }}
-              title={card.meaning}
-              aria-pressed={active}
-              aria-label={`Filter to ${card.label} — ${card.meaning}`}
-              className={cn(
-                "min-w-0 rounded-lg border bg-card px-3 py-2.5 text-left transition-colors hover:bg-muted/40",
-                "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
-                active ? "border-primary/40 ring-2 ring-primary/60" : "border-border"
-              )}
-            >
-              <div className="flex min-w-0 items-center gap-2">
-                <Icon className={cn("h-4 w-4 shrink-0", toneIcon[card.tone] || "text-muted-foreground")} />
-                <span className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{card.label}</span>
-              </div>
-              <div className={cn("mt-1.5 text-2xl font-bold leading-none tabular-nums", toneValue[card.tone] || "text-foreground")}>
-                {card.value.toLocaleString()}
-              </div>
-            </button>
-          );
-        })}
-      </div>
 
       {/* MP-268 pipeline ladder — one chip per captured recruiting stage, mutually exclusive
           so the counts sum to the active roster. See PIPELINE_STAGES for why fingerprints,
@@ -1562,6 +1578,7 @@ export default function DashboardApplicants() {
         <PipelineView
           applications={filteredApplications}
           getStatus={getApplicationStatus}
+          interviews={interviewByAppId}
           onCardClick={(id) => setDetailAppId(id)}
         />
       ) : (
@@ -2282,23 +2299,44 @@ function DupMiniCard({ app, onOpen, onMarkDup }: { app: Application; onOpen: () 
 interface PipelineViewProps {
   applications: Application[];
   getStatus: (app: Application) => string;
+  interviews: Map<string, string>;
   onCardClick: (id: string) => void;
 }
 
-function PipelineView({ applications, getStatus, onCardClick }: PipelineViewProps) {
-  const columns: Array<{ key: string; label: string; match: (a: Application) => boolean }> = [
-    { key: "applied", label: "Applied", match: (a) => getStatus(a) === "new" },
-    { key: "contacted", label: "Contacted", match: (a) => getStatus(a) === "contacted" && !a.course_purchased_at },
-    { key: "interview", label: "Interview Scheduled", match: (a) => Boolean((a as any).interview_scheduled_at) },
-    { key: "course_bought", label: "Course Bought", match: (a) => Boolean(a.course_purchased_at) && a.license_progress !== "passed_test" && a.license_progress !== "waiting_on_license" && a.license_progress !== "licensed" },
-    { key: "course_started", label: "Course Started", match: (a) => Boolean((a as any).course_started_at) && a.license_progress !== "passed_test" && a.license_progress !== "licensed" },
-    { key: "course_complete", label: "Course Complete", match: (a) => a.license_progress === "passed_test" },
-    { key: "licensed", label: "Licensed", match: (a) => a.license_status === "licensed" && !a.contracted_at },
-    { key: "contracted", label: "Contracted", match: (a) => Boolean(a.contracted_at) && !(a as any).first_deal_at },
-    { key: "producing", label: "Producing", match: (a) => Boolean((a as any).first_deal_at) },
-    { key: "rejected", label: "Rejected", match: (a) => (a.status ?? "").toLowerCase() === "rejected" || (a.status ?? "").toLowerCase() === "disqualified" },
-  ];
-  const buckets = columns.map((c) => ({ ...c, apps: applications.filter(c.match) }));
+function PipelineView({ applications, getStatus, interviews, onCardClick }: PipelineViewProps) {
+  const columns = [
+    { key: "applied", label: "Applied" },
+    { key: "contacted", label: "Contacted" },
+    { key: "interview", label: "Interview Booked" },
+    { key: "hired", label: "Hired · Onboarding" },
+    { key: "course_bought", label: "Course Bought" },
+    { key: "course_started", label: "Course Started" },
+    { key: "course_complete", label: "Exam Passed" },
+    { key: "licensed", label: "Licensed" },
+    { key: "contracted", label: "Contracted" },
+    { key: "producing", label: "Producing" },
+    { key: "rejected", label: "Closed" },
+  ] as const;
+
+  const stageOf = (a: Application): typeof columns[number]["key"] => {
+    const status = (a.status ?? "").toLowerCase();
+    if (status === "rejected" || status === "disqualified" || a.terminated_at) return "rejected";
+    if (a.first_deal_at) return "producing";
+    if (a.contracted_at) return "contracted";
+    if (a.license_status === "licensed" || a.license_progress === "licensed") return "licensed";
+    if (a.license_progress === "passed_test" || a.license_progress === "waiting_on_license") return "course_complete";
+    if (a.course_started_at || a.started_training) return "course_started";
+    if (a.course_purchased_at) return "course_bought";
+    if (a.closed_at) return "hired";
+    if (interviews.get(a.id) === "scheduled") return "interview";
+    if (getStatus(a) === "contacted" || a.contacted_at || a.last_contacted_at) return "contacted";
+    return "applied";
+  };
+
+  const buckets = columns.map((column) => ({
+    ...column,
+    apps: applications.filter((application) => stageOf(application) === column.key),
+  }));
   return (
     <div className="-mx-4 w-auto overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
       <div className="flex min-w-max gap-3">

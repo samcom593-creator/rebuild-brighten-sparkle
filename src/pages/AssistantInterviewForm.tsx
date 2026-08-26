@@ -8,7 +8,7 @@
 //
 // Route: /assistant/interviews?t=<token>  (NO ProtectedRoute wrapper)
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Calendar, CheckCircle2, Copy, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,8 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { useToast } from "@/hooks/use-toast";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { resolveBrand } from "@/config/brand";
+import { instagramProfileLink } from "@/lib/instagram";
 
 type RecentEntry = {
   id: string;
@@ -42,6 +44,7 @@ const INTERVIEW_TYPES: Array<{ value: string; label: string }> = [
   { value: "final_expense_review", label: "Final-expense review" },
   { value: "callback", label: "Callback" },
 ];
+const BRAND = resolveBrand();
 
 const SUPABASE_URL =
   import.meta.env.VITE_SUPABASE_URL ??
@@ -69,6 +72,11 @@ function formatScheduled(iso: string): string {
   }
 }
 
+function minimumLocalDateTime(): string {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
 export default function AssistantInterviewForm() {
   usePageTitle("APEX Interview Intake");
   const [searchParams] = useSearchParams();
@@ -77,7 +85,10 @@ export default function AssistantInterviewForm() {
 
   const [checking, setChecking] = useState(true);
   const [tokenOk, setTokenOk] = useState(false);
+  const [tokenCheckFailed, setTokenCheckFailed] = useState(false);
+  const [checkNonce, setCheckNonce] = useState(0);
   const [tokenLabel, setTokenLabel] = useState<string>("");
+  const pendingRequest = useRef<{ fingerprint: string; id: string } | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [candidateName, setCandidateName] = useState("");
@@ -110,6 +121,7 @@ export default function AssistantInterviewForm() {
       if (!token) {
         setChecking(false);
         setTokenOk(false);
+        setTokenCheckFailed(false);
         return;
       }
       try {
@@ -124,13 +136,16 @@ export default function AssistantInterviewForm() {
         if (cancelled) return;
         if (res.ok && body.ok) {
           setTokenOk(true);
+          setTokenCheckFailed(false);
           setTokenLabel(body.label ?? "Assistant interview share link");
         } else {
           setTokenOk(false);
+          setTokenCheckFailed(false);
         }
       } catch (_e) {
         if (cancelled) return;
         setTokenOk(false);
+        setTokenCheckFailed(true);
       } finally {
         if (!cancelled) setChecking(false);
       }
@@ -139,7 +154,7 @@ export default function AssistantInterviewForm() {
     return () => {
       cancelled = true;
     };
-  }, [token, baseHeaders]);
+  }, [token, baseHeaders, checkNonce]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -153,12 +168,25 @@ export default function AssistantInterviewForm() {
       setErrorMsg("Pick a date and time.");
       return;
     }
+    const instagram = igHandle.trim() ? instagramProfileLink(igHandle) : null;
+    if (igHandle.trim() && !instagram) {
+      setErrorMsg("Enter a valid Instagram handle.");
+      return;
+    }
+    if (!phone.trim() && !email.trim() && !instagram) {
+      setErrorMsg("Add a phone, email, or Instagram handle so the candidate can be identified.");
+      return;
+    }
 
     setSubmitting(true);
     try {
       // datetime-local is naive (no timezone). Treat it as the assistant's
       // local time, which is what they meant when they picked it.
       const iso = new Date(scheduledAt).toISOString();
+      if (new Date(iso).getTime() <= Date.now()) {
+        setErrorMsg("Pick a future date and time.");
+        return;
+      }
       const payload: Record<string, unknown> = {
         token,
         candidate_name: candidateName.trim(),
@@ -168,8 +196,13 @@ export default function AssistantInterviewForm() {
       };
       if (phone.trim()) payload.phone = phone.trim();
       if (email.trim()) payload.email = email.trim();
-      if (igHandle.trim()) payload.instagram_handle = igHandle.trim();
+      if (instagram) payload.instagram_handle = instagram.handle;
       if (notes.trim()) payload.notes = notes.trim();
+      const fingerprint = JSON.stringify(payload);
+      if (!pendingRequest.current || pendingRequest.current.fingerprint !== fingerprint) {
+        pendingRequest.current = { fingerprint, id: crypto.randomUUID() };
+      }
+      payload.request_id = pendingRequest.current.id;
 
       const res = await fetch(FN_URL, {
         method: "POST",
@@ -184,6 +217,7 @@ export default function AssistantInterviewForm() {
         confirmation_sent?: boolean;
         warning?: string | null;
         error?: string;
+        receipt?: { request_id: string; persisted_at: string; replayed: boolean };
       };
 
       if (!res.ok || !body.ok) {
@@ -210,10 +244,13 @@ export default function AssistantInterviewForm() {
         ].slice(0, 3),
       );
       toast({
-        title: body.pipeline_added === false ? "Booked · staff review needed" : "Booked into the interview queue",
+        title: body.receipt?.replayed
+          ? "Booking already saved · receipt recovered"
+          : body.pipeline_added === false ? "Booked · staff review needed" : "Booked into the interview queue",
         description: body.warning ?? (body.confirmation_sent ? "Candidate confirmation delivered; calendar event ready." : "Calendar event ready to add."),
         variant: body.pipeline_added === false ? "destructive" : undefined,
       });
+      pendingRequest.current = null;
 
       // Clear form for the next entry
       setCandidateName("");
@@ -252,11 +289,9 @@ export default function AssistantInterviewForm() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="max-w-md w-full rounded-3xl border border-border/40 bg-card/40 px-6 py-7 text-center">
-          <h1 className="text-xl font-semibold mb-2">This link isn't active</h1>
-          <p className="text-sm text-muted-foreground">
-            Ask Sam for a fresh link. The one you used has been disabled or
-            doesn't exist.
-          </p>
+          <h1 className="text-xl font-semibold mb-2">{tokenCheckFailed ? "We couldn't check this link" : "This link isn't active"}</h1>
+          <p className="text-sm text-muted-foreground">{tokenCheckFailed ? `The connection failed before ${BRAND.shortName} could verify the link.` : "Ask Sam for a fresh link. The one you used has been disabled or doesn't exist."}</p>
+          {tokenCheckFailed && <Button className="mt-4" onClick={() => { setChecking(true); setTokenCheckFailed(false); setCheckNonce((value) => value + 1); }}>Try again</Button>}
         </div>
       </div>
     );
@@ -286,6 +321,7 @@ export default function AssistantInterviewForm() {
                 placeholder="e.g. Jordan Smith"
                 className="text-base h-12"
                 autoComplete="name"
+                maxLength={160}
                 required
               />
             </div>
@@ -301,6 +337,7 @@ export default function AssistantInterviewForm() {
                   className="text-base h-12"
                   inputMode="tel"
                   autoComplete="tel"
+                  maxLength={32}
                 />
               </div>
               <div className="space-y-2">
@@ -313,6 +350,7 @@ export default function AssistantInterviewForm() {
                   placeholder="name@example.com"
                   className="text-base h-12"
                   autoComplete="email"
+                  maxLength={254}
                 />
               </div>
             </div>
@@ -322,12 +360,12 @@ export default function AssistantInterviewForm() {
               <Input
                 id="ig"
                 value={igHandle}
-                onChange={(e) =>
-                  setIgHandle(e.target.value.replace(/^@+/, ""))
-                }
-                placeholder="@handle"
+                onChange={(e) => setIgHandle(e.target.value)}
+                placeholder="@handle or Instagram profile URL"
                 className="text-base h-12"
+                maxLength={120}
               />
+              <p className="text-xs text-muted-foreground">Add at least one phone, email, or Instagram handle so {BRAND.shortName} can match the right person.</p>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
@@ -338,11 +376,13 @@ export default function AssistantInterviewForm() {
                 <Input
                   id="scheduled"
                   type="datetime-local"
+                  min={minimumLocalDateTime()}
                   value={scheduledAt}
                   onChange={(e) => setScheduledAt(e.target.value)}
                   className="text-base h-12"
                   required
                 />
+                <p className="text-xs text-muted-foreground">Uses this device's time zone.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="duration">Duration (minutes)</Label>
@@ -389,12 +429,13 @@ export default function AssistantInterviewForm() {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Source, context, anything Sam should know."
                 className="text-base min-h-24"
+                maxLength={4000}
               />
             </div>
           </div>
 
           {errorMsg && (
-            <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 text-rose-200 px-4 py-3 text-sm">
+            <div role="alert" className="rounded-2xl border border-rose-500/40 bg-rose-500/10 text-rose-200 px-4 py-3 text-sm">
               {errorMsg}
             </div>
           )}

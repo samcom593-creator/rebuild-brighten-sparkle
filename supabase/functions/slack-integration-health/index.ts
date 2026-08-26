@@ -31,6 +31,7 @@ type DestinationRow = {
   channel_name: string | null;
   is_enabled: boolean;
   verified_at: string | null;
+  privacy_level: string;
 };
 
 type RouteRow = {
@@ -65,6 +66,7 @@ type SlackConversationResult = {
     name?: string;
     is_archived?: boolean;
     is_member?: boolean;
+    is_private?: boolean;
   };
 };
 
@@ -87,6 +89,10 @@ const noStoreHeaders = { "Cache-Control": "no-store" };
 // The dispatcher runs every minute and retries with min(60, 2^attempt) minute
 // backoff, so anything past 30 minutes has failed at least twice.
 const OUTBOX_STALE_SECONDS = 30 * 60;
+const LEGACY_CANDIDATE_CHANNELS = [
+  { channel_id: "C0BSTVB98DA", name: "apex-recruiting-growth" },
+  { channel_id: "C0BS9F2V3M5", name: "licensing-academy-support" },
+] as const;
 
 async function callSlack<T>(
   method: string,
@@ -183,7 +189,7 @@ Deno.serve(async (request) => {
   const { data: destinationData, error: destinationError } = installation
     ? await admin
       .from("messaging_destinations")
-      .select("id, purpose, channel_id, channel_name, is_enabled, verified_at")
+      .select("id, purpose, channel_id, channel_name, is_enabled, verified_at, privacy_level")
       .eq("installation_id", installation.id)
       .order("purpose")
     : { data: [], error: null };
@@ -211,6 +217,7 @@ Deno.serve(async (request) => {
         purpose: destination.purpose,
         channel_id: destination.channel_id,
         configured_name: destination.channel_name,
+        intended_privacy: destination.privacy_level,
         status: "disabled",
       });
       continue;
@@ -221,6 +228,7 @@ Deno.serve(async (request) => {
         purpose: destination.purpose,
         channel_id: destination.channel_id,
         configured_name: destination.channel_name,
+        intended_privacy: destination.privacy_level,
         status: "not_tested",
         error: connectivityError,
       });
@@ -246,8 +254,10 @@ Deno.serve(async (request) => {
         channel_id: destination.channel_id,
         configured_name: destination.channel_name,
         reported_name: channel?.name ?? null,
+        intended_privacy: destination.privacy_level,
         status,
         is_member: channel?.is_member ?? null,
+        is_private: channel?.is_private ?? null,
         verified_at: destination.verified_at,
         error: result.body.ok ? null : result.body.error ?? "slack_channel_check_failed",
         retry_after_seconds: result.retryAfterSeconds,
@@ -257,6 +267,7 @@ Deno.serve(async (request) => {
         purpose: destination.purpose,
         channel_id: destination.channel_id,
         configured_name: destination.channel_name,
+        intended_privacy: destination.privacy_level,
         status: "unreachable",
         error: "slack_unreachable",
       });
@@ -377,12 +388,132 @@ Deno.serve(async (request) => {
     outbox_slack: outboxSlack,
   };
 
+  // ── Operating layer ──────────────────────────────────────────────────────
+  // Transport health alone is a false green for a primary workspace. Grade the
+  // approved hired-agent audience, private candidate routes, verified links,
+  // durable invitation receipts, and explicit Slack-only exclusions together.
+  const [eligibilityResult, identityResult, exclusionResult, inviteResult, numbersResult] = await Promise.all([
+    admin.from("v_slack_invite_eligibility")
+      .select("agent_id, is_eligible, eligibility_status")
+      .eq("is_eligible", true),
+    installation
+      ? admin.from("messaging_identity_links")
+        .select("agent_id, verification_status, revoked_at")
+        .eq("installation_id", installation.id)
+      : Promise.resolve({ data: [], error: null }),
+    admin.from("messaging_audience_exclusions")
+      .select("agent_id, is_active")
+      .eq("provider", "slack")
+      .eq("is_active", true),
+    admin.from("outbox_events")
+      .select("aggregate_type, aggregate_id, status, created_at")
+      .eq("event_type", "recruiting.slack_invite_requested")
+      .eq("destination", "application_slack_invite"),
+    admin.from("numbers_reminder_delivery_log")
+      .select("business_date, slack_status, sent_at")
+      .order("business_date", { ascending: false })
+      .limit(500),
+  ]);
+
+  const operatingErrors = [
+    eligibilityResult.error,
+    identityResult.error,
+    exclusionResult.error,
+    inviteResult.error,
+    numbersResult.error,
+  ].filter(Boolean);
+  const eligibleIds = new Set((eligibilityResult.data ?? []).map((row: any) => String(row.agent_id)));
+  const excludedIds = new Set((exclusionResult.data ?? []).map((row: any) => String(row.agent_id)));
+  const verifiedIds = new Set(
+    (identityResult.data ?? [])
+      .filter((row: any) => row.verification_status === "verified" && !row.revoked_at && row.agent_id)
+      .map((row: any) => String(row.agent_id)),
+  );
+  const inviteRows = inviteResult.data ?? [];
+  const deliveredInviteIds = new Set(
+    inviteRows
+      .filter((row: any) => row.aggregate_type === "agent" && row.status === "delivered")
+      .map((row: any) => String(row.aggregate_id)),
+  );
+  const inviteFailureStates = new Set(["failed", "dead_letter", "manual_action_required"]);
+  const hiredInviteFailures = inviteRows.filter((row: any) =>
+    row.aggregate_type === "agent" && inviteFailureStates.has(String(row.status))
+  ).length;
+  const applicantInvitesDelivered = inviteRows.filter((row: any) =>
+    row.aggregate_type === "application" && row.status === "delivered"
+  ).length;
+  const uncoveredEligible = [...eligibleIds].filter((id) => !verifiedIds.has(id) && !deliveredInviteIds.has(id));
+  const excludedLinked = [...excludedIds].filter((id) => verifiedIds.has(id));
+  const candidateChannels = channels.filter((channel) =>
+    channel.purpose === "recruiting_growth" || channel.purpose === "licensing_support"
+  );
+  const candidatePrivacyOk = candidateChannels.length === 2 && candidateChannels.every((channel) =>
+    channel.intended_privacy === "private" && channel.is_private === true && channel.status === "reachable"
+  );
+  const latestNumbersDate = (numbersResult.data ?? [])[0]?.business_date ?? null;
+  const latestNumbers = latestNumbersDate
+    ? (numbersResult.data ?? []).filter((row: any) => row.business_date === latestNumbersDate)
+    : [];
+  const legacyCandidateChannels: Array<Record<string, unknown>> = [];
+  if (token && authResult?.body.ok) {
+    for (const legacy of LEGACY_CANDIDATE_CHANNELS) {
+      try {
+        const result = await callSlack<SlackConversationResult>("conversations.info", token, {
+          channel: legacy.channel_id,
+        });
+        legacyCandidateChannels.push({
+          ...legacy,
+          is_archived: result.body.channel?.is_archived ?? null,
+          is_private: result.body.channel?.is_private ?? null,
+          locked: result.body.ok === true
+            && (result.body.channel?.is_archived === true || result.body.channel?.is_private === true),
+          error: result.body.ok ? null : result.body.error ?? "slack_channel_check_failed",
+        });
+      } catch {
+        legacyCandidateChannels.push({ ...legacy, locked: false, error: "slack_unreachable" });
+      }
+    }
+  }
+  const legacyCandidateChannelsLocked = legacyCandidateChannels.length === LEGACY_CANDIDATE_CHANNELS.length
+    && legacyCandidateChannels.every((channel) => channel.locked === true);
+  const operatingReasons: string[] = [];
+  if (excludedIds.size !== 8) operatingReasons.push(`expected 8 active Slack exclusions; found ${excludedIds.size}`);
+  if (excludedLinked.length > 0) operatingReasons.push(`${excludedLinked.length} excluded agent(s) have verified Slack links`);
+  if (!candidatePrivacyOk) operatingReasons.push("candidate routes are not both verified private staff channels");
+  if (!legacyCandidateChannelsLocked) operatingReasons.push("legacy public candidate channels are not archived or private");
+  if (applicantInvitesDelivered > 0) operatingReasons.push(`${applicantInvitesDelivered} applicant workspace invite(s) delivered`);
+  if (hiredInviteFailures > 0) operatingReasons.push(`${hiredInviteFailures} hired-agent invite(s) need attention`);
+  if (eligibleIds.size === 0) operatingReasons.push("no eligible active hired agents");
+  if (verifiedIds.size === 0) operatingReasons.push("no verified Slack identity links");
+  if (uncoveredEligible.length > 0) operatingReasons.push(`${uncoveredEligible.length} eligible hire(s) have neither a verified link nor delivered invite`);
+  if (operatingErrors.length > 0) operatingReasons.push("operating-layer query failed");
+  const operatingOk = operatingReasons.length === 0;
+  const operating = {
+    status: operatingErrors.length > 0 ? "unknown" : operatingOk ? "ok" : "not_ready",
+    reasons: operatingReasons,
+    eligible_hired_agents: eligibleIds.size,
+    verified_identity_links: [...verifiedIds].filter((id) => eligibleIds.has(id)).length,
+    delivered_hired_invites: [...deliveredInviteIds].filter((id) => eligibleIds.has(id)).length,
+    uncovered_eligible_hires: uncoveredEligible.length,
+    hired_invite_failures: hiredInviteFailures,
+    applicant_invites_delivered: applicantInvitesDelivered,
+    active_slack_exclusions: excludedIds.size,
+    excluded_verified_links: excludedLinked.length,
+    candidate_channels_private: candidatePrivacyOk,
+    legacy_candidate_channels_locked: legacyCandidateChannelsLocked,
+    legacy_candidate_channels: legacyCandidateChannels,
+    latest_numbers_business_date: latestNumbersDate,
+    latest_numbers_slack_sent: latestNumbers.filter((row: any) => row.slack_status === "sent").length,
+    latest_numbers_no_link: latestNumbers.filter((row: any) => row.slack_status === "no_slack_link").length,
+  };
+
   const ok = connectivityOk
     && installation !== null
     && mappingsOk
     && routesOk
     && coverageStatus === "ok"
-    && (deliveryStatus === "ok" || deliveryStatus === "no_traffic");
+    && (deliveryStatus === "ok" || deliveryStatus === "no_traffic")
+    && operatingOk;
 
   if (ok && installation) {
     await admin
@@ -423,10 +554,12 @@ Deno.serve(async (request) => {
       receipts_claimed_stale: num(receipts.claimed_stale),
       coverage_status: coverageStatus,
       delivery_status: deliveryStatus,
+      operating_status: operating.status,
     },
     channels,
     routes: routeStatuses,
     route_coverage: routeCoverage,
     delivery,
+    operating,
   }, ok ? 200 : token ? 502 : 503, noStoreHeaders);
 });

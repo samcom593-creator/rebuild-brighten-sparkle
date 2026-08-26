@@ -3,7 +3,7 @@
 // Sam directive 2026-06-15:
 // Public, token-gated endpoint Sam's assistant uses via /assistant/interviews
 // to drop a new interview into Sam's manual_interview_entries and get back a
-// one-tap Google Calendar TEMPLATE URL. No OAuth, no Resend — MVP only.
+// one-tap Google Calendar TEMPLATE URL plus an evidence-backed confirmation.
 //
 // Methods:
 //   OPTIONS — CORS preflight (allow-all)
@@ -13,6 +13,7 @@
 // POST body shape:
 //   {
 //     token: string,
+//     request_id: string (UUID),       // required idempotency key
 //     candidate_name: string,        // required
 //     scheduled_at: string (ISO),    // required
 //     duration_minutes?: number,     // default 15
@@ -46,6 +47,18 @@ const ALLOWED_INTERVIEW_TYPES = new Set([
   "callback",
   "general",
 ]);
+const REQUEST_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeInstagram(value: string): string | null {
+  const handle = value
+    .trim()
+    .replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//i, "")
+    .replace(/^@+/, "")
+    .split(/[/?#]/, 1)[0]
+    .trim();
+  return /^[a-z0-9._]{1,30}$/i.test(handle) ? handle : null;
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -121,41 +134,60 @@ Deno.serve(async (req: Request) => {
   }
 
   const token = typeof body.token === "string" ? body.token.trim() : "";
+  const requestId = typeof body.request_id === "string" ? body.request_id.trim() : "";
   const candidateName =
     typeof body.candidate_name === "string" ? body.candidate_name.trim() : "";
   const scheduledAt =
     typeof body.scheduled_at === "string" ? body.scheduled_at.trim() : "";
   const durationRaw = body.duration_minutes;
-  const durationMinutes =
-    typeof durationRaw === "number" && durationRaw > 0 && durationRaw <= 240
+  const durationMinutes = durationRaw === undefined
+    ? 15
+    : typeof durationRaw === "number" && durationRaw >= 5 && durationRaw <= 240
       ? Math.floor(durationRaw)
-      : 15;
+      : null;
   const interviewTypeRaw =
     typeof body.interview_type === "string" ? body.interview_type.trim() : "";
   const interviewType = ALLOWED_INTERVIEW_TYPES.has(interviewTypeRaw)
     ? interviewTypeRaw
     : "general";
   const phone = typeof body.phone === "string" ? body.phone.trim() : "";
-  const email = typeof body.email === "string" ? body.email.trim() : "";
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const igRaw =
     typeof body.instagram_handle === "string"
       ? body.instagram_handle.trim()
       : "";
-  const instagramHandle = igRaw.replace(/^@/, "");
+  const instagramHandle = igRaw ? normalizeInstagram(igRaw) : null;
   const notes = typeof body.notes === "string" ? body.notes.trim() : "";
 
   if (!token) return json({ ok: false, error: "Missing token" }, 400);
+  if (!REQUEST_ID_RE.test(requestId)) return json({ ok: false, error: "Invalid request receipt" }, 400);
   if (!candidateName)
     return json({ ok: false, error: "Candidate name is required" }, 400);
+  if (candidateName.length > 160) return json({ ok: false, error: "Candidate name is too long" }, 400);
   if (!scheduledAt)
     return json(
       { ok: false, error: "Scheduled time is required" },
       400,
     );
+  if (durationMinutes === null) return json({ ok: false, error: "Duration must be 5–240 minutes" }, 400);
+  if (phone && (phone.length > 32 || phone.replace(/\D/g, "").length < 7)) {
+    return json({ ok: false, error: "Enter a valid phone number" }, 400);
+  }
+  if (email && (email.length > 254 || !EMAIL_RE.test(email))) {
+    return json({ ok: false, error: "Enter a valid email address" }, 400);
+  }
+  if (igRaw && !instagramHandle) return json({ ok: false, error: "Enter a valid Instagram handle" }, 400);
+  if (!phone && !email && !instagramHandle) {
+    return json({ ok: false, error: "Add a phone, email, or Instagram handle so the candidate can be identified" }, 400);
+  }
+  if (notes.length > 4000) return json({ ok: false, error: "Notes are too long" }, 400);
 
   const startDate = new Date(scheduledAt);
   if (isNaN(startDate.getTime())) {
     return json({ ok: false, error: "Invalid scheduled time" }, 400);
+  }
+  if (startDate.getTime() <= Date.now()) {
+    return json({ ok: false, error: "Scheduled time must be in the future" }, 400);
   }
 
   // Validate token
@@ -179,20 +211,50 @@ Deno.serve(async (req: Request) => {
     notes: notes || null,
     created_by: tokenRow.owner_user_id,
     assistant_token_id: tokenRow.id,
+    source_request_id: requestId,
   };
 
-  const { data: inserted, error: insErr } = await supabase
+  type SavedInterview = {
+    id: string; candidate_name: string; phone: string | null; email: string | null;
+    instagram_handle: string | null; scheduled_at: string; interview_type: string;
+    notes: string | null; confirmation_sent_at: string | null; created_at: string;
+  };
+  const { data: insertedData, error: insErr } = await supabase
     .from("manual_interview_entries")
     .insert(insertPayload)
-    .select("id, scheduled_at")
+    .select("id,candidate_name,phone,email,instagram_handle,scheduled_at,interview_type,notes,confirmation_sent_at,created_at")
     .single();
-  if (insErr || !inserted) {
+  let inserted = insertedData as SavedInterview | null;
+  let replayed = false;
+  if (insErr?.code === "23505") {
+    const { data: existing, error: existingError } = await supabase
+      .from("manual_interview_entries")
+      .select("id,candidate_name,phone,email,instagram_handle,scheduled_at,interview_type,notes,confirmation_sent_at,created_at")
+      .eq("assistant_token_id", tokenRow.id)
+      .eq("source_request_id", requestId)
+      .maybeSingle();
+    if (existingError || !existing) {
+      console.error("[assistant-add-interview] idempotency lookup failed", existingError);
+      return json({ ok: false, error: "Could not recover the saved interview. Try again." }, 500);
+    }
+    const samePayload = existing.candidate_name === insertPayload.candidate_name
+      && existing.phone === insertPayload.phone
+      && existing.email === insertPayload.email
+      && existing.instagram_handle === insertPayload.instagram_handle
+      && new Date(existing.scheduled_at).getTime() === startDate.getTime()
+      && existing.interview_type === insertPayload.interview_type
+      && existing.notes === insertPayload.notes;
+    if (!samePayload) return json({ ok: false, error: "This request receipt was already used for a different interview" }, 409);
+    inserted = existing as SavedInterview;
+    replayed = true;
+  } else if (insErr) {
     console.error("[assistant-add-interview] insert failed", insErr);
     return json(
       { ok: false, error: "Could not save the interview. Try again." },
       500,
     );
   }
+  if (!inserted) return json({ ok: false, error: "Interview receipt was not returned" }, 500);
 
   // The public intake used to stop at manual_interview_entries, while the live
   // Interviews page reads hh_applicants. Mirror by an immutable import key so a
@@ -215,7 +277,7 @@ Deno.serve(async (req: Request) => {
     recruiter_id: hhOwner?.id ?? null,
     created_by: hhOwner?.id ?? null,
     import_key: `assistant:${inserted.id}`,
-  }, { onConflict: "import_key" });
+  }, { onConflict: "import_key", ignoreDuplicates: true });
   if (pipelineError) {
     console.error("[assistant-add-interview] pipeline mirror failed", pipelineError.message);
     pipelineWarning = "Booked, but the hiring queue mirror needs staff review.";
@@ -223,9 +285,9 @@ Deno.serve(async (req: Request) => {
 
   // Confirmation is evidence-based: only a verified response from the existing
   // mail function is reported as sent. Booking remains durable if email fails.
-  let confirmationSent = false;
+  let confirmationSent = Boolean(inserted.confirmation_sent_at);
   let confirmationWarning: string | null = email ? null : "No email supplied; confirmation was not sent.";
-  if (email) {
+  if (email && !confirmationSent) {
     try {
       const confirmationResponse = await fetch(`${SUPABASE_URL}/functions/v1/send-candidate-confirmation`, {
         method: "POST",
@@ -251,7 +313,7 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // Bump last_used_at — fire-and-forget; failure here does not fail the request
+  // Bump last_used_at; this usage stamp is non-critical after the booking is durable.
   await supabase
     .from("assistant_share_tokens")
     .update({ last_used_at: new Date().toISOString() })
@@ -284,5 +346,10 @@ Deno.serve(async (req: Request) => {
     pipeline_added: !pipelineWarning,
     confirmation_sent: confirmationSent,
     warning: [pipelineWarning, confirmationWarning].filter(Boolean).join(" ") || null,
+    receipt: {
+      request_id: requestId,
+      persisted_at: inserted.created_at,
+      replayed,
+    },
   });
 });

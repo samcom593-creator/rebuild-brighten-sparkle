@@ -541,21 +541,33 @@ serve(async (req) => {
     };
   }
 
-  // Every hire gets the same durable Slack workspace invitation as an
-  // application. The payload stays PII-free; the dispatcher resolves the
-  // profile server-side. SMS is intentionally unavailable for this branch
-  // because a magic-hire record has no recorded SMS consent.
-  const { error: slackInviteError } = await admin.from("outbox_events").insert({
-    aggregate_type: "agent",
-    aggregate_id: agentId,
-    event_type: "recruiting.slack_invite_requested",
-    destination: "application_slack_invite",
-    payload: { agentId },
-    idempotency_key: `recruiting.slack_invite:agent:${agentId}`,
-  });
-  if (slackInviteError && slackInviteError.code !== "23505") {
-    console.error("slack_invite_enqueue_failed", slackInviteError);
-    return json({ ok: false, error: "slack_invite_enqueue_failed" }, 500);
+  // Slack access is hired-only and provider-exclusion aware. The dispatcher
+  // repeats this check immediately before sending, so a stale/manual outbox row
+  // cannot bypass the roster policy.
+  const { data: slackEligibility, error: slackEligibilityError } = await admin
+    .from("v_slack_invite_eligibility")
+    .select("is_eligible, eligibility_status")
+    .eq("agent_id", agentId)
+    .maybeSingle();
+  if (slackEligibilityError) {
+    console.error("slack_invite_eligibility_failed", slackEligibilityError);
+    return json({ ok: false, error: "slack_invite_eligibility_failed" }, 500);
+  }
+  if (slackEligibility?.is_eligible === true) {
+    const { error: slackInviteError } = await admin.from("outbox_events").insert({
+      aggregate_type: "agent",
+      aggregate_id: agentId,
+      event_type: "recruiting.slack_invite_requested",
+      destination: "application_slack_invite",
+      payload: { agentId },
+      idempotency_key: `recruiting.slack_invite:hired-v2:${agentId}`,
+    });
+    if (slackInviteError && slackInviteError.code !== "23505") {
+      console.error("slack_invite_enqueue_failed", slackInviteError);
+      return json({ ok: false, error: "slack_invite_enqueue_failed" }, 500);
+    }
+  } else {
+    console.info("slack_invite_skipped", { agentId, reason: slackEligibility?.eligibility_status ?? "not_found" });
   }
 
   // 6. Mark invite consumed. Idempotency safety: only mark if still unused.

@@ -41,6 +41,8 @@ PUBLIC_ALLOWLIST=(
   "manager-signup"
   "applicant-checkin"
   "submit-contracting-intake"
+  "numbers-reminder"
+  "slack-identity-admin"
 )
 
 is_public() {

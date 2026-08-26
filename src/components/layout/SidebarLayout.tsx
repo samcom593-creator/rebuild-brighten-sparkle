@@ -15,6 +15,7 @@ import { useBrand } from "@/hooks/useBrand";
 import { useAuth } from "@/hooks/useAuth";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
+import { MobileBottomNav } from "./MobileBottomNav";
 
 interface SidebarLayoutProps {
   children: ReactNode;
@@ -70,13 +71,13 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
             <span className="text-sm font-semibold text-foreground">{brand.legalName}</span>
           </Link>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="icon" aria-label="Open support desk">
+            <Button asChild variant="ghost" size="icon" aria-label="Open support desk" className="hidden min-[430px]:inline-flex">
               <Link to="/dashboard/help?tab=desk" aria-label="Open support desk"><HelpCircle className="h-5 w-5" /></Link>
             </Button>
             {(isAdmin || isManager) && (
               <AddAgentModal
                 trigger={(
-                  <Button variant="ghost" size="icon" aria-label="Add agent">
+                  <Button variant="ghost" size="icon" aria-label="Add agent" className="hidden min-[370px]:inline-flex">
                     <UserPlus className="h-5 w-5" />
                   </Button>
                 )}
@@ -87,6 +88,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
               variant="ghost"
               size="icon"
               aria-label="Open command palette (⌘K)"
+              className="hidden min-[500px]:inline-flex"
               onClick={() => useUIStore.getState().setCommandPaletteOpen(true)}
             >
               <Search className="h-5 w-5" />
@@ -160,7 +162,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
           // Mobile header = p-4 (16+16) + h-10 icon row (40) = 72px base (4.5rem),
           // plus env(safe-area-inset-top) on notched iPhones. Reserving the real
           // height keeps the first page heading from sliding under the fixed header.
-          "apex-main-canvas min-h-screen pt-[calc(3.75rem+env(safe-area-inset-top,0px))] lg:pt-0"
+          "apex-main-canvas min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-[calc(3.75rem+env(safe-area-inset-top,0px))] lg:pb-0 lg:pt-0"
         )}
         style={{
           marginLeft: isDesktop ? `${marginLeft}px` : 0,
@@ -174,6 +176,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
           </PageContent>
         </div>
       </main>
+      <MobileBottomNav />
     </div>
   );
 }

@@ -29,14 +29,38 @@ describe("Vantage external production reconciliation", () => {
     expect(migration).toContain("grants no access, routing, manager rights, alerts, or credentials");
   });
 
+  it("keeps agency snapshots in totals but out of individual leaderboards", () => {
+    const attribution = source("supabase/migrations/20260826144000_leaderboard_individual_attribution.sql");
+    const productionLog = source("supabase/functions/log-production/index.ts");
+
+    expect(attribution).toContain("create or replace function public.leaderboard_board");
+    expect(attribution).toContain("t.origin is distinct from 'external_daily_gap'");
+    expect(attribution).toContain("u.origin is distinct from 'external_daily_gap'");
+    expect(productionLog).toContain('.neq("origin", "external_daily_gap")');
+  });
+
   it("invalidates agency and today metrics from every live production source", () => {
     const imo = source("src/components/dashboard/ImoByAgency.tsx");
     const crm = source("src/pages/DashboardCRM.tsx");
-    for (const table of ["deals", "agentlink_book", "production_external_daily_snapshots"]) {
+    for (const table of ["deals", "agentlink_book", "production_external_daily_snapshots", "production_external_deals"]) {
       expect(imo).toContain(`table: "${table}"`);
       expect(crm).toContain(`table: "${table}"`);
     }
     expect(imo).toContain('queryKey: ["imo-by-agency"]');
     expect(imo).toContain('queryKey: ["crm-today-production"]');
+  });
+
+  it("keeps named Discord sales live and reconciles them one-for-one", () => {
+    const named = source("supabase/migrations/20260826162500_discord_named_production_truth.sql");
+    expect(named).toContain("production_external_deals");
+    expect(named).toContain("ingest_external_production_deal");
+    expect(named).toContain("'discord_external'::text");
+    expect(named).toContain("row_number() over");
+    expect(named).toContain("e.match_rank > coalesce(c.matched_rows, 0)");
+    expect(named).toContain("'Marquay Vaughns'");
+    expect(named).toContain("'Pranav Kodali'");
+    expect(named).toContain("2037");
+    expect(named).toContain("1094");
+    expect(named).toContain("4020");
   });
 });

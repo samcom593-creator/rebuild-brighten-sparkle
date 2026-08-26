@@ -303,6 +303,16 @@ async function deliverContact(
 }
 
 async function deliverApplicationSlackInvite(sb: any, event: any): Promise<DispatchResult> {
+  // Workspace access is a hired-agent benefit, never an applicant funnel step.
+  // The database trigger that used to enqueue application invitations is
+  // removed by 20260826150000; this guard makes old/manual rows fail closed.
+  if (event.aggregate_type !== "agent") {
+    return {
+      state: "manual_action_required",
+      manualReason: "Applicant Slack invitations are disabled; only verified active hired agents are eligible",
+    };
+  }
+
   const setting = await resolveOne<{ value: string }>(
     sb.from("system_settings").select("value").eq("key", "slack_community_invite_url"),
     { label: "system_settings.slack_community_invite_url" },
@@ -312,40 +322,22 @@ async function deliverApplicationSlackInvite(sb: any, event: any): Promise<Dispa
     return { state: "manual_action_required", manualReason: "Slack community invite URL is not configured" };
   }
 
-  let firstName = "there";
-  let email = "";
-  let phone = "";
-  let smsConsent = false;
-  let phoneBad = false;
-
-  if (event.aggregate_type === "application") {
-    const { data: application, error } = await sb
-      .from("applications")
-      .select("first_name, email, phone, sms_consent_given, phone_bad_at")
-      .eq("id", event.aggregate_id)
-      .single();
-    if (error || !application) throw new Error(error?.message ?? "Application no longer exists");
-    firstName = String(application.first_name ?? "").trim() || "there";
-    email = String(application.email ?? "").trim().toLowerCase();
-    phone = normalizePhone(application.phone);
-    smsConsent = application.sms_consent_given === true;
-    phoneBad = Boolean(application.phone_bad_at);
-  } else if (event.aggregate_type === "agent") {
-    const { data: agent, error } = await sb
-      .from("agents")
-      .select("display_name, profile:profiles!agents_profile_id_fkey(full_name, email, phone)")
-      .eq("id", event.aggregate_id)
-      .single();
-    if (error || !agent) throw new Error(error?.message ?? "Agent no longer exists");
-    const profile = Array.isArray(agent.profile) ? agent.profile[0] : agent.profile;
-    const fullName = String(profile?.full_name ?? agent.display_name ?? "").trim();
-    firstName = fullName.split(/\s+/)[0] || "there";
-    email = String(profile?.email ?? "").trim().toLowerCase();
-    phone = normalizePhone(profile?.phone);
-    // Magic-hire intake has no SMS consent field. Email only is intentional.
-  } else {
-    throw new Error(`Unsupported Slack invite aggregate: ${event.aggregate_type}`);
+  const { data: eligibility, error: eligibilityError } = await sb
+    .from("v_slack_invite_eligibility")
+    .select("agent_id, full_name, email, eligibility_status, is_eligible")
+    .eq("agent_id", event.aggregate_id)
+    .maybeSingle();
+  if (eligibilityError) throw eligibilityError;
+  if (!eligibility?.is_eligible) {
+    return {
+      state: "manual_action_required",
+      manualReason: `Slack invite suppressed: ${String(eligibility?.eligibility_status ?? "agent_not_found")}`,
+    };
   }
+
+  const fullName = String(eligibility.full_name ?? "").trim();
+  const firstName = fullName.split(/\s+/)[0] || "there";
+  const email = String(eligibility.email ?? "").trim().toLowerCase();
 
   let emailReceipt: string | null = null;
   if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -366,26 +358,16 @@ async function deliverApplicationSlackInvite(sb: any, event: any): Promise<Dispa
     }
   }
 
-  let smsAccepted = false;
-  if (event.aggregate_type === "application" && smsConsent && !phoneBad && phone.length === 10) {
-    const smsResult = await callFunction("send-sms-auto-detect", {
-      phone,
-      applicationId: event.aggregate_id,
-      message: `Welcome to APEX. Join the team Slack workspace: ${inviteUrl}`.slice(0, 160),
-    });
-    smsAccepted = smsResult?.outcome === "sent";
-  }
-
-  if (!emailReceipt && !smsAccepted) {
+  if (!emailReceipt) {
     return {
       state: "manual_action_required",
-      manualReason: "Slack invite could not be sent: no eligible email and no consented, carrier-resolved SMS channel",
+      manualReason: "Slack invite could not be sent to the verified hired-agent email",
     };
   }
 
   return {
     state: "delivered",
-    providerMessageId: emailReceipt ?? (smsAccepted ? `sms:${event.aggregate_id}` : undefined),
+    providerMessageId: emailReceipt,
     deliveryConfirmed: false,
   };
 }

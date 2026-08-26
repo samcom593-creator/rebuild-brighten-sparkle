@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PageHeader } from "@/components/ui/page-header";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -22,8 +21,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
+import { RecruitingCommandHero } from "@/components/recruiting/RecruitingCommandHero";
 import { PromoteApplicantButton } from "@/components/applicants/PromoteApplicantButton";
 import { phoneHref, smsHref } from "@/lib/phone";
+import { instagramProfileLink } from "@/lib/instagram";
 import { promoteApplicationToAgent } from "@/lib/hireToOnboarding";
 import { resolveBrand } from "@/config/brand";
 import {
@@ -36,6 +37,7 @@ const BRAND = resolveBrand();
 type InterviewAction =
   | "confirm" | "qualified" | "follow_up" | "hire" | "not_hired"
   | "unqualified" | "no_show" | "reschedule" | "cancel" | "reopen";
+type PendingAction = InterviewAction | "promote";
 type Applicant = {
   id: string; name: string | null; phone: string | null; email: string | null;
   instagram: string | null; company: string | null; appointment_at: string | null;
@@ -44,6 +46,7 @@ type Applicant = {
   recruiter_name: string | null; version: number; created_at: string | null; updated_at: string | null;
   application_id: string | null; onboarding_status: string;
   application_license_status: string | null; application_npn: string | null;
+  identity_conflict: boolean;
 };
 type PipelineResponse = {
   applicants: Applicant[]; counts: Record<string, number>; total: number;
@@ -90,6 +93,10 @@ const ACTION_LABEL: Record<InterviewAction, string> = {
   not_hired: "Not hired", unqualified: "Unqualify", no_show: "No-show", reschedule: "Reschedule",
   cancel: "Cancel", reopen: "Reopen",
 };
+const PENDING_ACTION_LABEL: Record<PendingAction, string> = {
+  ...ACTION_LABEL,
+  promote: "Start onboarding",
+};
 
 function initials(name: string | null) {
   if (!name) return "?";
@@ -97,8 +104,17 @@ function initials(name: string | null) {
 }
 
 function availableActions(row: Applicant, role: ActorRole | undefined) {
-  const actions = LEGAL_BY_STAGE[row.stage] ?? [];
+  // A terminal hire without an application cannot create the canonical agent
+  // account. Keep the interview actionable, but never offer a half-hire that
+  // strands onboarding. Staff can repair the identity/application link first.
+  const actions = (LEGAL_BY_STAGE[row.stage] ?? []).filter((action) => action !== "hire" || Boolean(row.application_id));
   return role === "va" ? actions.filter((action) => VA_ACTIONS.has(action)) : actions;
+}
+
+function externalLinkProps(href: string | null) {
+  return href?.startsWith("https://")
+    ? { target: "_blank" as const, rel: "noopener noreferrer" }
+    : {};
 }
 
 function actionPrompt(row: Applicant) {
@@ -143,13 +159,17 @@ async function invokeAction(row: Applicant, action: InterviewAction, appointment
   });
   if (error) {
     let message = error.message;
+    let conflict = false;
     const context = (error as { context?: Response }).context;
     if (context) {
+      conflict = context.status === 409;
       // empty-catch-allow:http-error-body — original functions error remains the fallback message.
       const payload = await context.clone().json().catch(() => null) as { error?: string } | null;
       message = payload?.error || message;
     }
-    throw new Error(message);
+    const failure = new Error(message) as Error & { conflict?: boolean };
+    failure.conflict = conflict;
+    throw failure;
   }
   if (data?.error) throw new Error(data.error);
   return data as { receipt: { persistedAt: string; warning: string | null } };
@@ -159,7 +179,7 @@ export default function Interviews() {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<Tab>(initialTab);
   const [sendingGap, setSendingGap] = useState<string | null>(null);
-  const [pending, setPending] = useState<{ row: Applicant; action: InterviewAction } | null>(null);
+  const [pending, setPending] = useState<{ row: Applicant; action: PendingAction } | null>(null);
   const [appointmentAt, setAppointmentAt] = useState("");
   const [reason, setReason] = useState("");
   const [hireNpn, setHireNpn] = useState("");
@@ -173,6 +193,7 @@ export default function Interviews() {
       return data as PipelineResponse;
     },
     staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 
   const shareToken = useQuery({
@@ -200,6 +221,7 @@ export default function Interviews() {
       return data as OnboardingResponse;
     },
     staleTime: 60_000,
+    refetchInterval: 60_000,
   });
   const onboardingUpcoming = onboarding.data?.calls.filter((call) => call.bucket === "upcoming").length ?? 0;
 
@@ -236,8 +258,24 @@ export default function Interviews() {
     { key: "other", title: "Needs a decision or time", sub: "interviewed, unscheduled, or closed", rows: filtered.filter((row) => !((row.appointment_at && isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage) && row.stage !== "interview_complete") || (row.appointment_at && !isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage)))) },
   ].filter((group) => group.rows.length > 0), [filtered]);
 
+  // Reloads and shared links keep the view: ?tab= is already honored on load,
+  // so switching writes it back without adding history entries.
+  const switchTab = (next: Tab) => {
+    setTab(next);
+    const url = new URL(window.location.href);
+    if (next === "open") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", next);
+    window.history.replaceState(null, "", url.toString());
+  };
+
   const chooseAction = (row: Applicant, action: InterviewAction) => {
     setPending({ row, action });
+    setAppointmentAt("");
+    setReason("");
+    setHireNpn(row.application_npn ?? "");
+  };
+  const choosePromotion = (row: Applicant) => {
+    setPending({ row, action: "promote" });
     setAppointmentAt("");
     setReason("");
     setHireNpn(row.application_npn ?? "");
@@ -247,10 +285,19 @@ export default function Interviews() {
     setSaving(true);
     try {
       const selected = pending;
+      if (selected.action === "promote") {
+        if (!selected.row.application_id) throw new Error(`Link the ${BRAND.shortName} application before starting onboarding.`);
+        const hire = await promoteApplicationToAgent(selected.row.application_id, { npn: hireNpn });
+        if (hire.partial) toast.warning(hire.message);
+        else toast.success("Agent account created · onboarding started");
+        setPending(null);
+        await pipeline.refetch();
+        return;
+      }
       const result = await invokeAction(selected.row, selected.action, appointmentAt, reason);
       const receiptTime = format(new Date(result.receipt.persistedAt), "h:mm a");
       if (result.receipt.warning) toast.warning(result.receipt.warning);
-      else toast.success(`${ACTION_LABEL[selected.action]} saved · ${receiptTime}`);
+      else toast.success(`${PENDING_ACTION_LABEL[selected.action]} saved · ${receiptTime}`);
 
       // "Hire" is the action, not the first half of a two-click workflow.
       // Immediately create the canonical account and let add-agent start the
@@ -259,15 +306,28 @@ export default function Interviews() {
         if (!selected.row.application_id) {
           toast.warning("Hire saved, but no matching APEX application exists. Add the person with Add Agent to start onboarding.");
         } else {
-          const hire = await promoteApplicationToAgent(selected.row.application_id, { npn: hireNpn });
-          if (hire.partial) toast.warning(hire.message);
-          else toast.success("Agent account created · onboarding started");
+          try {
+            const hire = await promoteApplicationToAgent(selected.row.application_id, { npn: hireNpn });
+            if (hire.partial) toast.warning(hire.message);
+            else toast.success("Agent account created · onboarding started");
+          } catch (promoteError) {
+            // The hire itself persisted; only account creation failed. Keeping
+            // the dialog open invites a second hire write against a version
+            // that no longer exists — close it and retry from the row.
+            toast.error(`Hire saved, but the agent account was not created: ${promoteError instanceof Error ? promoteError.message : "unknown error"}. Retry from the row's Start onboarding button.`);
+          }
         }
       }
       setPending(null);
       await pipeline.refetch();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Interview update failed");
+      if ((error as { conflict?: boolean } | null)?.conflict) {
+        // The row changed under this dialog; its saved version is gone, so a
+        // retry can only fail. Close and show the queue as it now is.
+        setPending(null);
+        await pipeline.refetch();
+      }
     } finally {
       setSaving(false);
     }
@@ -278,8 +338,8 @@ export default function Interviews() {
       // stable-key-allow:static-onboarding-skeleton — fixed three placeholders never reorder or hold state.
       return <div className="space-y-2">{Array.from({ length: 3 }).map((_, index) => <div key={index} className="h-24 animate-pulse rounded-lg border border-border bg-muted/20" />)}</div>;
     }
-    if (onboarding.isError || !onboarding.data) {
-      return <div className="rounded-lg border border-destructive/30 p-8 text-center text-sm text-destructive">Onboarding calls are unavailable; nothing here should be read as zero. <button className="underline" onClick={() => onboarding.refetch()}>Retry</button></div>;
+    if (!onboarding.data) {
+      return <div role="alert" className="rounded-lg border border-destructive/30 p-8 text-center text-sm text-destructive">Onboarding calls are unavailable; nothing here should be read as zero. <button className="underline" onClick={() => onboarding.refetch()}>Retry</button></div>;
     }
     const { calls, truth, gaps } = onboarding.data;
     const visible = term
@@ -297,6 +357,7 @@ export default function Interviews() {
     ];
     return (
       <div className="space-y-6">
+        {onboarding.isError && <div role="alert" className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm text-warning">Refresh failed. Showing the last successful onboarding snapshot from {format(new Date(onboarding.data.generatedAt), "h:mm a")}. <button className="underline" onClick={() => onboarding.refetch()}>Retry</button></div>}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {tiles.map((item) => <div key={item.label} className="rounded-lg border border-border bg-card p-4"><p className={`text-3xl font-bold tabular-nums ${item.tone}`}>{typeof item.value === "number" ? item.value.toLocaleString() : "—"}</p><p className="mt-1 text-sm font-semibold">{item.label}</p><p className="text-xs text-muted-foreground">{item.detail}</p></div>)}
         </div>
@@ -304,7 +365,7 @@ export default function Interviews() {
           <p className="text-xs text-muted-foreground">Booking calendar: <a className="underline" href={truth.scheduling_url} target="_blank" rel="noopener noreferrer">{truth.scheduling_url}</a> · every newly licensed hire gets one single-use link automatically; nothing is mass-sent.</p>
         )}
         {callGroups.length === 0 && (
-          <div className="rounded-lg border border-border p-10 text-center text-sm text-muted-foreground">No onboarding calls captured yet. A booking on the {BRAND.shortName} Onboarding Call calendar appears here within 15 minutes.</div>
+          <div role="status" className="rounded-lg border border-border p-10 text-center text-sm text-muted-foreground">{term ? `No onboarding calls match “${query.trim()}”.` : <>No onboarding calls captured yet. A booking on the {BRAND.shortName} Onboarding Call calendar appears here within 15 minutes.</>}</div>
         )}
         {callGroups.map((group) => (
           <section key={group.key} aria-labelledby={`onboarding-group-${group.key}`}>
@@ -318,6 +379,8 @@ export default function Interviews() {
                 const meta = onboardingBucketMeta(row.bucket);
                 const receipt = inviteReceipt(row.invites);
                 const name = row.invitee_name || row.agent_display_name || row.invitee_email || "No name on file";
+                const callHref = phoneHref(row.invitee_phone);
+                const textHref = smsHref(row.invitee_phone);
                 return (
                   <div key={row.id} className={`grid grid-cols-1 gap-3 p-4 md:grid-cols-[175px_minmax(0,1fr)_auto] md:items-center ${index ? "border-t border-border" : ""}`}>
                     <div className="text-xs">
@@ -335,8 +398,8 @@ export default function Interviews() {
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                      {phoneHref(row.invitee_phone) && <Button asChild size="icon" aria-label={`Call ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={phoneHref(row.invitee_phone)!}><Phone className="h-4 w-4" /></a></Button>}
-                      {smsHref(row.invitee_phone) && <Button asChild size="icon" variant="outline" aria-label={`Text ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={smsHref(row.invitee_phone)!}><MessageSquare className="h-4 w-4" /></a></Button>}
+                      {callHref && <Button asChild size="icon" aria-label={`Call ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={callHref} {...externalLinkProps(callHref)}><Phone className="h-4 w-4" /></a></Button>}
+                      {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={textHref} {...externalLinkProps(textHref)}><MessageSquare className="h-4 w-4" /></a></Button>}
                       {row.invitee_email && <Button asChild size="icon" variant="outline" aria-label={`Email ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`mailto:${row.invitee_email}`}><Mail className="h-4 w-4" /></a></Button>}
                       {row.bucket === "upcoming" && row.reschedule_url && <Button asChild size="sm" variant="outline" className="h-11 sm:h-9"><a href={row.reschedule_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Reschedule</a></Button>}
                     </div>
@@ -377,24 +440,75 @@ export default function Interviews() {
     );
   };
 
+  const activeGeneratedAt = tab === "onboarding" ? onboarding.data?.generatedAt : pipeline.data?.generatedAt;
+  const refreshing = tab === "onboarding" ? onboarding.isFetching : pipeline.isFetching;
+  const refreshActiveTab = () => {
+    if (tab === "onboarding") void onboarding.refetch();
+    else void pipeline.refetch();
+  };
+
   return (
     <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <RecruitingWorkspaceNav />
-      <PageHeader
-        eyebrow="Recruiting · Interviews"
-        eyebrowIcon={<CalendarClock className="h-3 w-3" />}
-        title="Interviews"
-        subtitle={<>One queue from appointment to decision{pipeline.data && <> · updated {format(new Date(pipeline.data.generatedAt), "h:mm a")}</>}</>}
-        actions={<Button size="sm" variant="outline" onClick={() => pipeline.refetch()} disabled={pipeline.isFetching}><RefreshCw className={`h-4 w-4 ${pipeline.isFetching ? "animate-spin" : ""}`} /> Refresh</Button>}
+      <RecruitingCommandHero
+        eyebrow="Recruiting · Interview command"
+        title="Turn every booked call into a decision."
+        subtitle="See what is next, recover what slipped, record the outcome, and launch a hire into onboarding without leaving this workspace."
+        statusLabel={pipeline.isError ? "Last good snapshot" : "Live interview queue"}
+        updatedLabel={activeGeneratedAt ? format(new Date(activeGeneratedAt), "h:mm a") : null}
+        actions={
+          <Button size="sm" variant="outline" className="h-10 border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:text-white" onClick={refreshActiveTab} disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh queue
+          </Button>
+        }
+        metrics={[
+          {
+            label: "Needs attention",
+            value: pipeline.data ? overdue.length + needsDecision : null,
+            detail: pipeline.data ? `${overdue.length} overdue · ${needsDecision} awaiting a decision` : "Waiting for interview truth",
+            icon: RotateCcw,
+            tone: "bad",
+            active: tab === "overdue",
+            onClick: () => switchTab("overdue"),
+          },
+          {
+            label: "Upcoming calls",
+            value: pipeline.data ? upcoming.length : null,
+            detail: "Confirmed and scheduled ahead",
+            icon: CalendarClock,
+            tone: "info",
+            active: tab === "upcoming",
+            onClick: () => switchTab("upcoming"),
+          },
+          {
+            label: "Decisions due",
+            value: pipeline.data ? needsDecision : null,
+            detail: "Interview completed; hire or close the loop",
+            icon: CheckCircle2,
+            tone: "warn",
+            active: tab === "open" && needsDecision > 0,
+            onClick: () => switchTab("open"),
+          },
+          {
+            label: "Hired",
+            value: pipeline.data ? pipeline.data.counts.hired ?? 0 : null,
+            detail: "Interview wins moved into onboarding",
+            icon: UserCheck,
+            tone: "good",
+            active: tab === "all",
+            onClick: () => switchTab("all"),
+          },
+          {
+            label: "Onboarding gaps",
+            value: onboarding.data?.truth?.licensed_active_without_onboarding_call ?? null,
+            detail: "Licensed hires still needing a booking",
+            icon: Send,
+            tone: "gold",
+            active: tab === "onboarding",
+            onClick: () => switchTab("onboarding"),
+          },
+        ]}
       />
-
-      {tab !== "onboarding" && <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {[
-          { label: "Needs attention", value: overdue.length + needsDecision, detail: `${overdue.length} overdue · ${needsDecision} decisions`, tone: "text-destructive" },
-          { label: "Upcoming", value: upcoming.length, detail: "scheduled ahead", tone: "text-primary" },
-          { label: "Hired", value: pipeline.data?.counts.hired ?? 0, detail: "onboarding handoff", tone: "text-success" },
-        ].map((item) => <div key={item.label} className="rounded-lg border border-border bg-card p-4"><p className={`text-3xl font-bold tabular-nums ${item.tone}`}>{item.value.toLocaleString()}</p><p className="mt-1 text-sm font-semibold">{item.label}</p><p className="text-xs text-muted-foreground">{item.detail}</p></div>)}
-      </div>}
 
       {shareUrl && (
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
@@ -405,7 +519,14 @@ export default function Interviews() {
               <p className="mt-2 truncate font-mono text-[11px] text-muted-foreground">{shareUrl}</p>
             </div>
             <div className="flex shrink-0 gap-2">
-              <Button variant="outline" onClick={async () => { await navigator.clipboard.writeText(shareUrl); toast.success("Candidate link copied"); }}><Copy className="h-4 w-4" /> Copy link</Button>
+              <Button variant="outline" onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(shareUrl);
+                  toast.success("Candidate link copied");
+                } catch {
+                  toast.error("Copy failed. Open the link and copy it from the address bar.");
+                }
+              }}><Copy className="h-4 w-4" /> Copy link</Button>
               <Button asChild><a href={shareUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Open</a></Button>
             </div>
           </div>
@@ -415,67 +536,89 @@ export default function Interviews() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:w-80">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, company, phone, or email" className="h-11 pl-8 sm:h-9" aria-label="Search interviews" />
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === "onboarding" ? "Search agent, phone, or email" : "Search name, company, Instagram, phone, or email"} className="h-11 pl-8 sm:h-9" aria-label="Search interviews" />
         </div>
-        <div className="flex max-w-full gap-1.5 overflow-x-auto pb-1">
+        <div className="flex max-w-full gap-1.5 overflow-x-auto rounded-xl border border-border bg-card/70 p-1.5 shadow-sm">
           {TABS.map(([key, label]) => (
-            <Button key={key} type="button" size="sm" variant={tab === key ? "default" : "outline"} onClick={() => setTab(key)} aria-pressed={tab === key} className="h-11 shrink-0 sm:h-9">
+            <Button key={key} type="button" size="sm" variant={tab === key ? "default" : "outline"} onClick={() => switchTab(key)} aria-pressed={tab === key} className="h-11 shrink-0 sm:h-9">
               {label}{key === "overdue" && overdue.length ? ` ${overdue.length}` : ""}{key === "onboarding" && onboardingUpcoming ? ` ${onboardingUpcoming}` : ""}
             </Button>
           ))}
         </div>
       </div>
 
+      {tab !== "onboarding" && pipeline.isError && pipeline.data && (
+        <div role="alert" className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm text-warning">Refresh failed. Showing the last successful interview snapshot from {format(new Date(pipeline.data.generatedAt), "h:mm a")}. <button className="underline" onClick={() => pipeline.refetch()}>Retry</button></div>
+      )}
+
       {tab === "onboarding" ? (
         renderOnboarding()
       ) : pipeline.isLoading ? (
         // stable-key-allow:static-interview-skeleton — fixed five placeholders never reorder or hold state.
         <div className="space-y-2">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-24 animate-pulse rounded-lg border border-border bg-muted/20" />)}</div>
-      ) : pipeline.isError ? (
-        <div className="rounded-lg border border-destructive/30 p-8 text-center text-sm text-destructive">The interview queue is unavailable; no count above should be treated as zero. <button className="underline" onClick={() => pipeline.refetch()}>Retry</button></div>
+      ) : pipeline.isError && !pipeline.data ? (
+        <div role="alert" className="rounded-lg border border-destructive/30 p-8 text-center text-sm text-destructive">The interview queue is unavailable; no count above should be treated as zero. <button className="underline" onClick={() => pipeline.refetch()}>Retry</button></div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-lg border border-border p-10 text-center text-sm text-muted-foreground">Nothing in this view. A booking appears here as soon as it enters the interview pipeline.</div>
+        <div role="status" className="rounded-lg border border-border p-10 text-center text-sm text-muted-foreground">{term ? `No interviews match “${query.trim()}”.` : "Nothing in this view. A booking appears here as soon as it enters the interview pipeline."}</div>
       ) : (
         <div className="space-y-6">
           {groups.map((group) => (
             <section key={group.key} aria-labelledby={`interview-group-${group.key}`}>
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <h2 id={`interview-group-${group.key}`} className={`text-sm font-bold ${group.danger ? "text-destructive" : "text-foreground"}`}>{group.title}</h2>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <h2 id={`interview-group-${group.key}`} className={`text-base font-black ${group.danger ? "text-destructive" : "text-foreground"}`}>{group.title}</h2>
+                <Badge variant="outline" className={group.danger ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-primary/25 bg-primary/5 text-primary"}>{group.rows.length} waiting</Badge>
                 <span className="text-xs text-muted-foreground">{group.sub}</span>
-                <Badge variant="outline">{group.rows.length} waiting</Badge>
               </div>
-              <div className="overflow-hidden rounded-lg border border-border bg-card">
-                {group.rows.map((row, index) => {
+              <div className="space-y-2.5">
+                {group.rows.map((row) => {
                   const status = statusOf(row, now);
                   const actions = availableActions(row, pipeline.data?.role);
+                  const instagram = instagramProfileLink(row.instagram);
+                  const personName = row.name || "Unnamed";
+                  const callHref = phoneHref(row.phone);
+                  const textHref = smsHref(row.phone);
+                  const applicationNeededForHire = pipeline.data?.role !== "va"
+                    && !row.application_id
+                    && (LEGAL_BY_STAGE[row.stage] ?? []).includes("hire");
                   return (
-                    <div key={row.id} className={`grid grid-cols-1 gap-3 p-4 md:grid-cols-[175px_minmax(0,1fr)_auto] md:items-center ${index ? "border-t border-border" : ""}`}>
-                      <div className="text-xs">
+                    <div key={row.id} className="group grid grid-cols-1 gap-3 rounded-xl border border-border bg-gradient-to-r from-card to-card/70 p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md sm:p-4 md:grid-cols-[185px_minmax(0,1fr)_auto] md:items-center">
+                      <div className="rounded-lg border border-border/70 bg-background/45 p-3 text-xs">
                         <p className={`inline-flex items-center gap-1.5 font-semibold ${status.tone}`}><span className={`h-2 w-2 rounded-full ${status.dot}`} />{status.label}</p>
-                        <p className="mt-1 text-muted-foreground">{status.timing}</p>
+                        <p className="mt-1.5 leading-relaxed text-muted-foreground">{status.timing}</p>
                       </div>
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">{initials(row.name)}</span>
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-sm font-black text-primary">{initials(row.name)}</span>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">{row.name || "Unnamed"}</p>
+                          <p className="truncate text-base font-bold">{personName}</p>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                             {row.company && <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{row.company}</span>}
-                            {row.instagram && <span className="inline-flex items-center gap-1"><Instagram className="h-3 w-3" />{row.instagram.replace(/^@?/, "@")}</span>}
+                            {instagram && (
+                              <a
+                                href={instagram.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`Open @${instagram.handle} on Instagram`}
+                                className="inline-flex items-center gap-1 transition-colors hover:text-foreground hover:underline"
+                              >
+                                <Instagram className="h-3 w-3" />@{instagram.handle}
+                              </a>
+                            )}
                             {row.va_name && <span>Owner · {row.va_name}</span>}
+                            {row.identity_conflict && <Badge variant="outline" className="border-destructive/30 text-[10px] text-destructive">Identity conflict · review</Badge>}
                             <Badge variant="outline" className="text-[10px]">{STAGE_META[row.stage]?.label ?? row.stage}</Badge>
                           </div>
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                        {phoneHref(row.phone) && <Button asChild size="icon" aria-label={`Call ${row.name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={phoneHref(row.phone)!} target={phoneHref(row.phone)!.startsWith("https://") ? "_blank" : undefined} rel={phoneHref(row.phone)!.startsWith("https://") ? "noopener noreferrer" : undefined}><Phone className="h-4 w-4" /></a></Button>}
-                        {smsHref(row.phone) && <Button asChild size="icon" variant="outline" aria-label={`Text ${row.name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={smsHref(row.phone)!} target={smsHref(row.phone)!.startsWith("https://") ? "_blank" : undefined} rel={smsHref(row.phone)!.startsWith("https://") ? "noopener noreferrer" : undefined}><MessageSquare className="h-4 w-4" /></a></Button>}
-                        {row.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${row.name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`mailto:${row.email}`}><Mail className="h-4 w-4" /></a></Button>}
+                        {callHref && <Button asChild size="icon" aria-label={`Call ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={callHref} {...externalLinkProps(callHref)}><Phone className="h-4 w-4" /></a></Button>}
+                        {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={textHref} {...externalLinkProps(textHref)}><MessageSquare className="h-4 w-4" /></a></Button>}
+                        {row.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`mailto:${row.email}`}><Mail className="h-4 w-4" /></a></Button>}
                         {row.stage === "hired" && row.application_id ? (
-                          <PromoteApplicantButton
-                            applicationId={row.application_id}
-                            applicantName={row.name ?? undefined}
-                            label={row.onboarding_status === "ready_to_promote" ? "Start onboarding" : "Open agent"}
-                          />
+                          row.onboarding_status === "ready_to_promote" ? (
+                            <Button size="sm" variant="outline" className="h-11 sm:h-9" onClick={() => choosePromotion(row)}><UserCheck className="h-4 w-4" /> Start onboarding</Button>
+                          ) : (
+                            <PromoteApplicantButton applicationId={row.application_id} applicantName={row.name ?? undefined} label="Open agent" />
+                          )
                         ) : actions.length ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button className="h-11 gap-1.5 sm:h-9">{actionPrompt(row)} <ChevronDown className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -484,6 +627,7 @@ export default function Interviews() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         ) : null}
+                        {applicationNeededForHire && <Badge variant="outline" className="border-warning/30 text-warning">Application link needed to hire</Badge>}
                         {row.stage === "hired" && !row.application_id && <Badge variant="outline" className="border-warning/30 text-warning">Application link needed</Badge>}
                       </div>
                     </div>
@@ -498,17 +642,17 @@ export default function Interviews() {
       <Dialog open={Boolean(pending)} onOpenChange={(open) => { if (!open && !saving) setPending(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{pending ? ACTION_LABEL[pending.action] : "Update interview"}</DialogTitle>
-            <DialogDescription>{pending?.row.name} · this writes the decision to the shared interview record and activity history.</DialogDescription>
+            <DialogTitle>{pending ? PENDING_ACTION_LABEL[pending.action] : "Update interview"}</DialogTitle>
+            <DialogDescription>{pending?.row.name || "Candidate"} · {pending?.action === "promote" ? "this creates or opens the canonical agent account and starts the correct onboarding path." : "this writes the decision to the shared interview record and activity history."}</DialogDescription>
           </DialogHeader>
-          {pending?.action === "reschedule" && <div className="space-y-2"><Label htmlFor="interview-reschedule-at">New appointment time</Label><Input id="interview-reschedule-at" type="datetime-local" value={appointmentAt} onChange={(event) => setAppointmentAt(event.target.value)} /></div>}
+          {pending?.action === "reschedule" && <div className="space-y-2"><Label htmlFor="interview-reschedule-at">New appointment time</Label><Input id="interview-reschedule-at" type="datetime-local" min={format(new Date(), "yyyy-MM-dd'T'HH:mm")} value={appointmentAt} onChange={(event) => setAppointmentAt(event.target.value)} /></div>}
           {pending?.action === "unqualified" && <div className="space-y-2"><Label htmlFor="interview-unqualified-reason">Reason</Label><Textarea id="interview-unqualified-reason" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Why this candidate is not qualified" /></div>}
-          {pending?.action === "hire" && <div className="space-y-3 rounded-lg border border-success/30 bg-success/5 p-3 text-sm"><div><p className="flex items-center gap-2 font-semibold text-success"><UserCheck className="h-4 w-4" /> Hire and start onboarding</p><p className="mt-1 text-muted-foreground">Saving creates the agent account and automatically starts the correct contracting or licensing path.</p></div>{pending.row.application_license_status === "licensed" && <div className="space-y-1.5"><Label htmlFor="interview-hire-npn">NPN *</Label><Input id="interview-hire-npn" inputMode="numeric" value={hireNpn} onChange={(event) => setHireNpn(event.target.value)} placeholder="5–10 digit NPN" /><p className="text-xs text-muted-foreground">Required to start contracting without a broken handoff.</p></div>}</div>}
+          {(pending?.action === "hire" || pending?.action === "promote") && <div className="space-y-3 rounded-lg border border-success/30 bg-success/5 p-3 text-sm"><div><p className="flex items-center gap-2 font-semibold text-success"><UserCheck className="h-4 w-4" /> {pending.action === "hire" ? "Hire and start onboarding" : "Start onboarding"}</p><p className="mt-1 text-muted-foreground">Saving creates the agent account and automatically starts the correct contracting or licensing path.</p></div>{pending.row.application_license_status === "licensed" && <div className="space-y-1.5"><Label htmlFor="interview-hire-npn">NPN *</Label><Input id="interview-hire-npn" inputMode="numeric" maxLength={10} value={hireNpn} onChange={(event) => setHireNpn(event.target.value.replace(/\D+/g, "").slice(0, 10))} placeholder="5–10 digit NPN" /><p className="text-xs text-muted-foreground">Format is checked here; registry verification remains a separate NIPR receipt.</p></div>}</div>}
           {pending?.action === "not_hired" && <p className="flex items-center gap-2 text-sm text-muted-foreground"><UserX className="h-4 w-4" /> The candidate remains in history and can be reopened.</p>}
           {pending?.action === "reopen" && <p className="flex items-center gap-2 text-sm text-muted-foreground"><RotateCcw className="h-4 w-4" /> This returns the interview to Confirmed with its outcome pending.</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPending(null)} disabled={saving}>Cancel</Button>
-            <Button onClick={() => void saveAction()} disabled={saving || (pending?.action === "reschedule" && !appointmentAt) || (pending?.action === "unqualified" && !reason.trim()) || (pending?.action === "hire" && pending.row.application_license_status === "licensed" && !/^\d{5,10}$/.test(hireNpn.replace(/\D+/g, "")))}>
+            <Button onClick={() => void saveAction()} disabled={saving || (pending?.action === "reschedule" && (!appointmentAt || new Date(appointmentAt).getTime() <= Date.now())) || (pending?.action === "unqualified" && !reason.trim()) || ((pending?.action === "hire" || pending?.action === "promote") && pending.row.application_license_status === "licensed" && !/^\d{5,10}$/.test(hireNpn))}>
               {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />} Save with receipt
             </Button>
           </DialogFooter>

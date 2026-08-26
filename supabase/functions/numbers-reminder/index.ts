@@ -23,7 +23,8 @@
 //             agents at 5am.
 // Returns: { reminded, email_sent, sms_sent, slack_sent, errors, plan? }
 //
-// Required env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY
+// Required env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APEX_BOT_TOKEN,
+//               RESEND_API_KEY
 // Optional env: SLACK_BOT_TOKEN (or the installation's bot_token_secret_ref)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
@@ -33,8 +34,15 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-request-id, idempotency-key",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
+}
 
 function chicagoParts(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -59,10 +67,23 @@ const SMS_TEXT = "Apex: log today's calls, presentations and deals before close 
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const botToken = (Deno.env.get("APEX_BOT_TOKEN") ?? "").trim();
+  if (!supabaseUrl || !serviceKey || !botToken) {
+    return json({ ok: false, error: "server_not_configured" }, 503);
+  }
+
+  const authorization = req.headers.get("authorization")?.trim() ?? "";
+  const bearer = authorization.replace(/^Bearer\s+/i, "").trim();
+  if (!bearer || (bearer !== botToken && bearer !== serviceKey)) {
+    return json({ ok: false, error: "unauthorized" }, 401);
+  }
+
   const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const startedAt = new Date();
 
   try {
     const requestPayload = await req.json().catch(() => ({})) as { force?: boolean; dry_run?: boolean };
@@ -111,6 +132,15 @@ Deno.serve(async (req) => {
 
     const { data: exclusions } = await sb.from("roster_exclusions").select("agent_id");
     const excludedIds = new Set((exclusions ?? []).map((row: { agent_id: string }) => row.agent_id));
+    const { data: slackExclusions, error: slackExclusionsError } = await sb
+      .from("messaging_audience_exclusions")
+      .select("agent_id")
+      .eq("provider", "slack")
+      .eq("is_active", true);
+    if (slackExclusionsError) throw slackExclusionsError;
+    for (const row of (slackExclusions ?? []) as Array<{ agent_id: string }>) {
+      excludedIds.add(row.agent_id);
+    }
 
     const { data: delivered } = await sb
       .from("numbers_reminder_delivery_log")
@@ -126,7 +156,7 @@ Deno.serve(async (req) => {
       .is("revoked_at", null);
     const slackByAgent = new Map<string, string>();
     for (const l of (links ?? []) as any[]) {
-      if (l.slack_user_id && l.verification_status !== "rejected") slackByAgent.set(l.agent_id, l.slack_user_id);
+      if (l.slack_user_id && l.verification_status === "verified") slackByAgent.set(l.agent_id, l.slack_user_id);
     }
 
     const recipients: Recipient[] = [];
@@ -145,14 +175,7 @@ Deno.serve(async (req) => {
     const slackToken = (Deno.env.get("SLACK_BOT_TOKEN") ?? "").trim();
 
     if (dryRun) {
-      const plan = recipients.map((r) => ({
-        agent_id: r.agent_id,
-        name: r.name,
-        email: r.email ? "would_send" : "no_email",
-        sms: r.phone ? "would_attempt" : "no_phone",
-        slack: r.slack_user_id ? (slackToken ? "would_send" : "no_token") : "no_slack_link",
-      }));
-      return new Response(JSON.stringify({
+      return json({
         ok: true,
         dry_run: true,
         business_date: today,
@@ -160,9 +183,14 @@ Deno.serve(async (req) => {
         already_logged: loggedIds.size,
         already_reminded: alreadyReminded.size,
         reminded: recipients.length,
+        excluded: excludedIds.size,
         slack_token_present: Boolean(slackToken),
-        plan,
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        channel_availability: {
+          email: recipients.filter((r) => Boolean(r.email)).length,
+          sms: recipients.filter((r) => Boolean(r.phone)).length,
+          slack: recipients.filter((r) => Boolean(r.slack_user_id && slackToken)).length,
+        },
+      });
     }
 
     // ── 3. Send exactly one reminder per agent/business day, on every leg ──
@@ -279,14 +307,32 @@ Deno.serve(async (req) => {
       updated_at: new Date().toISOString(),
     });
 
-    await sb.from("automation_run_log").insert({
+    const completedAt = new Date();
+    const runSummary = {
+      business_date: today,
+      due: recipients.length,
+      email_sent: emailsSent,
+      sms_sent: smsSent,
+      slack_sent: slackSent,
+      rows_written: rowsWritten,
+      errors,
+    };
+    const { error: heartbeatError } = await sb.from("automation_run_log").insert({
       job_name: "numbers-reminder",
       status: errors > 0 && rowsWritten === 0 && recipients.length > 0 ? "error" : "ok",
-      message: `6pm CT: ${recipients.length} due · email ${emailsSent} · sms ${smsSent} · slack ${slackSent} · ${errors} errors`,
+      triggered_at: startedAt.toISOString(),
+      completed_at: completedAt.toISOString(),
+      response_body: runSummary,
+      error: errors > 0 ? `${errors} channel or receipt error(s)` : null,
+      duration_ms: completedAt.getTime() - startedAt.getTime(),
     });
+    if (heartbeatError) {
+      console.error("numbers-reminder heartbeat write failed:", heartbeatError.message);
+      errors++;
+    }
 
-    return new Response(JSON.stringify({
-      ok: true,
+    return json({
+      ok: errors === 0,
       business_date: today,
       candidates: agents?.length ?? 0,
       already_logged: loggedIds.size,
@@ -296,12 +342,10 @@ Deno.serve(async (req) => {
       sms_sent: smsSent,
       slack_sent: slackSent,
       errors,
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      heartbeat_written: !heartbeatError,
+    });
   } catch (err: any) {
     console.error("numbers-reminder error:", err);
-    return new Response(JSON.stringify({ ok: false, error: String(err?.message ?? err) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ ok: false, error: String(err?.message ?? err) }, 500);
   }
 });

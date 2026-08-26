@@ -49,6 +49,7 @@ import { RecentActivationsPanel } from "@/components/dashboard/RecentActivations
 import { ManagerPostCounter } from "@/components/dashboard/ManagerPostCounter";
 import { MyReferralLinkCard } from "@/components/agent/MyReferralLinkCard";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
+import { FreeLeadsStatusCard } from "@/components/dashboard/FreeLeadsStatusCard";
 import { SlackJoinCard } from "@/components/recruiting/SlackJoinCard";
 // v26 audit fix: AgentLinkBookTruthCard + CarrierBreakdownCard + BookTrendCard
 // imports removed. They lived in the deleted whole-book footer. KPIs now
@@ -395,6 +396,12 @@ export default function AgentCommandDashboard() {
           />
         </GlassCard>
       ) : null}
+
+      {/* Free Leads qualification — the same card the AgentProfileDrawer shows
+          Sam, pointed at the agent's own row. Status only; the referral-link
+          and licensing controls already live on this page, so nothing else
+          from the drawer's stack comes with it. */}
+      {agentId && <FreeLeadsStatusCard agentId={agentId} />}
 
       {/* ── P3: MY REFERRAL LINK ─────────────────────────────────── */}
       <MyReferralLinkCard />

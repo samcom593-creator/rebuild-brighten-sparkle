@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
       const weekStart = String(body.weekStart ?? "");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) return json({ error: "invalid week start" }, 400);
       const [{ data: production, error: productionError }, { data: agents, error: agentsError }, { data: canonical, error: canonicalError }] = await Promise.all([
-        admin.from("v_production_unified").select("agent_id,annual_premium").gte("posted_date", weekStart).limit(10000),
+        admin.from("v_production_unified").select("agent_id,annual_premium").gte("posted_date", weekStart).neq("origin", "external_daily_gap").limit(10000),
         admin.from("agents").select("id,display_name").limit(3000),
         admin.from("v_agent_canonical_map").select("agent_id,canonical_agent_id").limit(3000),
       ]);

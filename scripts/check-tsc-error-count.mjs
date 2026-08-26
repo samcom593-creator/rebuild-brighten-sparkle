@@ -195,7 +195,9 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // InviteLinks, LicensingTracker, SamHQ, TelegramBot) that had been hidden
 // behind TS2589 deep-instantiation noise. All 15 fixed with the `as unknown as`
 // intermediate the error itself prescribes; one TS2589 dissolved outright.
-const BASELINE = 221; // 2026-08-25: account hardening removed another error; lock the lower floor.
+// 2026-08-26: the verified recruiting/interview release removed seven more
+// legacy page-typing errors; lock the measured lower floor.
+const BASELINE = 214;
 
 const startedAt = Date.now();
 

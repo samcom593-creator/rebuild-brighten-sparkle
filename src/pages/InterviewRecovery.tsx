@@ -51,6 +51,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
+import { RecruitingCommandHero } from "@/components/recruiting/RecruitingCommandHero";
 import { phoneHref } from "@/lib/phone";
 
 // ---------------------------------------------------------------------------
@@ -844,51 +845,82 @@ export default function InterviewRecovery() {
   return (
     <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <RecruitingWorkspaceNav />
-      <PageHeader
-        title="Interview Recovery"
-        subtitle={
-          backlog.length
-            ? `${backlog.length} interviews waiting to be logged · oldest ${relativeDays(oldest)}`
-            : "Every interview has an outcome logged."
-        }
+      <RecruitingCommandHero
+        eyebrow="Recruiting · Follow-up command"
+        title="Nothing falls through the cracks."
+        subtitle={backlog.length
+          ? `${backlog.length} interviews need an outcome. Work the highest-priority person, schedule the next touch, and clear the queue to zero.`
+          : "Every interview has an outcome. Stay ahead of today's calls and incoming prospects."}
+        statusLabel={pipeline.isError ? "Last good snapshot" : "Live recovery queue"}
+        updatedLabel={pipeline.dataUpdatedAt ? new Date(pipeline.dataUpdatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : null}
         actions={
-          <Button
-            className="h-10 w-full sm:h-9 sm:w-auto"
-            disabled={!backlog.length}
-            onClick={() => { setCatchIndex(0); setCatchUp(true); }}
-          >
-            <Rocket className="mr-2 h-4 w-4" />
-            Catch Up{backlog.length ? ` (${backlog.length})` : ""}
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10 border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:text-white"
+              onClick={() => void Promise.all([pipeline.refetch(), prospects.refetch()])}
+            >
+              <RefreshCw className={cn("h-4 w-4", (pipeline.isFetching || prospects.isFetching) && "animate-spin")} /> Refresh
+            </Button>
+            <Button
+              size="sm"
+              className="h-10 bg-[#C9A961] font-bold text-black hover:bg-[#8A7340]"
+              disabled={!backlog.length}
+              onClick={() => { setCatchIndex(0); setCatchUp(true); }}
+            >
+              <Rocket className="h-4 w-4" /> Work queue{backlog.length ? ` · ${backlog.length}` : ""}
+            </Button>
+          </>
         }
+        metrics={[
+          {
+            label: "Backlog",
+            value: pipeline.isError && !pipeline.data ? null : backlog.length,
+            detail: backlog.length ? `Oldest is ${relativeDays(oldest)}` : "No unlogged outcomes",
+            icon: AlertTriangle,
+            tone: "bad",
+            active: activeBucket === "backlog",
+            onClick: () => goBucket("backlog"),
+          },
+          {
+            label: "Today",
+            value: pipeline.isError && !pipeline.data ? null : (counts.today ?? 0) + (counts.overdue_today ?? 0),
+            detail: "Calls scheduled or overdue today",
+            icon: Clock,
+            tone: "good",
+            active: activeBucket === "today" || activeBucket === "overdue_today",
+            onClick: () => goBucket((counts.overdue_today ?? 0) > 0 ? "overdue_today" : "today"),
+          },
+          {
+            label: "Starting soon",
+            value: pipeline.isError && !pipeline.data ? null : counts.starting_soon ?? 0,
+            detail: "Interviews inside the next 15 minutes",
+            icon: Zap,
+            tone: "warn",
+            active: activeBucket === "starting_soon",
+            onClick: () => goBucket("starting_soon"),
+          },
+          {
+            label: "Prospects unlinked",
+            value: prospects.isError && !prospects.data ? null : prospectsOpen,
+            detail: "Bookings needing an application match",
+            icon: Link2Off,
+            tone: "gold",
+            active: activeBucket === "prospects",
+            onClick: () => goBucket("prospects"),
+          },
+          {
+            label: "Outcomes logged",
+            value: pipeline.isError && !pipeline.data ? null : `${dispositionRate.pct}%`,
+            detail: `${dispositionRate.done.toLocaleString()} of ${dispositionRate.total.toLocaleString()} interviews dispositioned`,
+            icon: CheckCircle2,
+            tone: "info",
+            active: activeBucket === "completed",
+            onClick: () => goBucket("completed"),
+          },
+        ]}
       />
-
-      {/* KPI strip */}
-      <GlassCard className="p-4">
-        <div className="mb-1 flex items-baseline justify-between gap-2">
-          <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
-            <CalendarClock className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="truncate">Where the queue stands</span>
-          </h3>
-          <span className="shrink-0 text-sm font-bold tabular-nums text-muted-foreground">
-            {rows.length.toLocaleString()}
-          </span>
-        </div>
-        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-          Backlog is every interview that happened with no outcome written down — that is the number this
-          page exists to drive to zero.
-        </p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <Kpi label="Backlog"        value={backlog.length}                     tone="bad"     icon={AlertTriangle} />
-          <Kpi label="Today"          value={(counts.today ?? 0) + (counts.overdue_today ?? 0)} tone="good" icon={Clock} />
-          <Kpi label="Starting soon"  value={counts.starting_soon ?? 0}          tone="warn"    icon={Zap} />
-          <Kpi label="Upcoming"       value={counts.upcoming ?? 0}               tone="neutral" icon={CalendarClock} />
-          <Kpi label="Completed"      value={counts.completed ?? 0}              tone="good"    icon={CheckCircle2} />
-          <Kpi label="Prospect Review" value={prospectsOpen} tone="warn" icon={Link2Off}
-               active={activeBucket === "prospects"}
-               onClick={() => goBucket("prospects")} />
-        </div>
-      </GlassCard>
 
       {/* search + bucket chips */}
       <GlassCard className="p-4">
@@ -1072,54 +1104,6 @@ export default function InterviewRecovery() {
         applicationId={detailAppId ?? ""}
       />
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Severity lives on the numeral, never on the tile surface — a filled tile
-// reads as an alert even when the count is zero.
-const KPI_TONES: Record<string, string> = {
-  bad: BAD,
-  good: GOOD,
-  warn: WARN,
-  neutral: NEUTRAL,
-};
-
-function Kpi({ label, value, tone, icon: Icon, onClick, active }: {
-  label: string; value: number; tone: string; icon: typeof Clock;
-  onClick?: () => void; active?: boolean;
-}) {
-  const body = (
-    <>
-      <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-          {label}
-        </span>
-      </div>
-      <p className={cn("mt-2 text-2xl font-bold leading-none tabular-nums", KPI_TONES[tone] ?? NEUTRAL)}>
-        {value.toLocaleString()}
-      </p>
-    </>
-  );
-  const base = "rounded-lg border border-border bg-card p-3 sm:p-4";
-
-  if (!onClick) return <div className={base}>{body}</div>;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        base,
-        "w-full text-left transition-colors hover:bg-muted/30",
-        "focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]",
-        active && "ring-2 ring-primary/60",
-      )}
-    >
-      {body}
-    </button>
   );
 }
 

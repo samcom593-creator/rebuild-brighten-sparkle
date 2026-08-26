@@ -1,10 +1,12 @@
 {
-  "name": "APEX Financial - Daily Numbers",
-  "short_name": "APEX Numbers",
-  "description": "Track your daily production, see your ranking, and compete on the leaderboard.",
-  "start_url": "/",
+  "id": "/",
+  "name": "APEX Financial OS",
+  "short_name": "APEX OS",
+  "description": "Run recruiting, contracting, training, production, and agency operations from your phone.",
+  "start_url": "/dashboard?source=pwa",
   "scope": "/",
-  "display": "browser",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#0a0f1a",
   "theme_color": "#0a0f1a",
@@ -39,19 +41,19 @@
       ]
     },
     {
-      "name": "Dialer",
-      "short_name": "Dialer",
-      "description": "Access the call dialer",
-      "url": "/dialer",
+      "name": "Team",
+      "short_name": "Team",
+      "description": "Call, coach, and manage your team",
+      "url": "/dashboard/team",
       "icons": [
         { "src": "/pwa-192x192.png", "sizes": "192x192" }
       ]
     },
     {
-      "name": "Apply Now",
-      "short_name": "Apply",
-      "description": "Apply to become an agent",
-      "url": "/apply",
+      "name": "Recruiting",
+      "short_name": "Recruiting",
+      "description": "Work applicants, interviews, and hires",
+      "url": "/dashboard/recruiting",
       "icons": [
         { "src": "/pwa-192x192.png", "sizes": "192x192" }
       ]

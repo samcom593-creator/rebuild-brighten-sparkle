@@ -26,6 +26,20 @@
 ### Execution vs Analysis (NEW — 2026-05-14)
 Claude is the **execution engine**. Codex owns deep analysis.
 
+### Explicit owner release authority — project-local override
+For this repository, Sam James is the final release authority. When Sam explicitly
+says **deploy**, **make live**, or otherwise clearly approves a production release,
+that approval replaces the default APEX convention requiring Claude final review.
+Do not request a second user confirmation and do not move an already verified
+release back to `needs_claude_review` solely because Claude is unavailable.
+
+For an owner-approved release of already verified work, Codex may review the
+scoped diff, run the required tests/build, commit only the intended files, push
+to `main`, and verify the production deployment. Normal security controls,
+branch protection, secret handling, and non-destructive-worktree rules still
+apply. This exception is repository-local and does not authorize unrelated
+external actions or bypass failed tests.
+
 **Claude does (in this repo):** coding, file edits, terminal work, UI implementation, component building, route fixes, form fixes, styling, dashboard implementation, bug fixes, git commits, tests, deployment prep.
 
 **Codex does (Sam runs separately):** architecture analysis, root-cause analysis, AgentLink integration audit, API/webhook audit, database/data model review, dashboard metric logic, permission logic, security review, scale-readiness review, hidden bug detection, QA audit plans.

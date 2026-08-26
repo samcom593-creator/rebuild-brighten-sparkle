@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-08-26T04:38:03.155Z
+Generated: 2026-08-26T17:16:06.450Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **248**
-- Configured in `config.toml`: **250**
+- Total Local Edge Functions: **249**
+- Configured in `config.toml`: **251**
 - Invoked Edge Functions in Source: **102**
-- Invoked RPC Calls in Source: **120**
-- SQL Functions in Migrations: **417**
+- Invoked RPC Calls in Source: **123**
+- SQL Functions in Migrations: **426**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -150,7 +150,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `notify-weekly-champion` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `notion-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `nudge-unworked-applications` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
-| `numbers-reminder` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `numbers-reminder` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `onboarding-call-invites` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `onboarding-nudge-sweep` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `outreach-sender` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -240,6 +240,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `simple-login` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `siri-command` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `site-shell-watch` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `slack-identity-admin` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `slack-integration-health` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `stripe-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `stripe-webhook-lead-purchase` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -273,6 +274,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **120**
-- Also declared in this commit's migrations: **110**
+- Invoked RPCs: **123**
+- Also declared in this commit's migrations: **113**
 - Declared only in the database: **10**

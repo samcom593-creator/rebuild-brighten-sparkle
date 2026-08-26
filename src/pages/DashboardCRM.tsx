@@ -498,6 +498,50 @@ const ROSTER_SEGMENTS: Array<{
 
 type RosterSortKey = "mtd_desc" | "l30_desc" | "lifetime_desc" | "streak_desc" | "name" | "stalest" | "newest";
 
+// Where a hire is in the onboarding journey, as a 5-step ladder Sam can read at
+// a glance from My Team → New hires: Applied → Pre-licensed → Onboarding →
+// Training → Live. Licensed producers are simply "Live". Reads the columns the
+// row already carries (onboarding_stage / license_status / training_stage) — no
+// new query.
+const ONBOARDING_LADDER = ["Applied", "Pre-licensed", "Onboarding", "Training", "Live"] as const;
+function onboardingStep(row: RosterRow): number {
+  if (row.license_status === "licensed") {
+    const s = (row.onboarding_stage ?? "").toLowerCase();
+    if (s.includes("training") || s.includes("in_field")) return 3;
+    return 4; // live / evaluated / producing
+  }
+  const s = (row.onboarding_stage ?? row.license_progress ?? "").toLowerCase();
+  if (s.includes("training")) return 3;
+  if (s.includes("onboard")) return 2;
+  if (s.includes("pre_licens") || s.includes("licens")) return 1;
+  return 0; // applied / brand-new
+}
+function OnboardingProgress({ row }: { row: RosterRow }) {
+  const step = onboardingStep(row);
+  const label = ONBOARDING_LADDER[step];
+  const done = row.license_status === "licensed" && step === 4;
+  return (
+    <div className="min-w-[120px]">
+      <div className="flex items-center gap-1.5">
+        <span className={cn("text-[11px] font-semibold", done ? "text-success" : "text-foreground")}>{label}</span>
+        <span className="text-[10px] tabular-nums text-muted-foreground">{step + 1}/5</span>
+      </div>
+      <div className="mt-1 flex gap-0.5" aria-label={`Onboarding step ${step + 1} of 5: ${label}`}>
+        {ONBOARDING_LADDER.map((name, i) => (
+          <span
+            key={name}
+            title={name}
+            className={cn(
+              "h-1.5 flex-1 rounded-full",
+              i < step ? "bg-primary/50" : i === step ? (done ? "bg-success" : "bg-primary") : "bg-muted",
+            )}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function RosterStatusBadge({ row }: { row: RosterRow }) {
   const s = row.status ?? "unknown";
   const tone =
@@ -696,13 +740,14 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
           />
         ) : (
           <div className="-mx-4 overflow-x-auto sm:mx-0">
-            <Table className="min-w-[1160px]">
+            <Table className="min-w-[1300px]">
               <TableHeader>
                 <TableRow className="border-b border-border hover:bg-transparent [&_th]:h-9 [&_th]:text-[10px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
                   <TableHead className="w-[270px] px-2">Agent &amp; contact</TableHead>
                   <TableHead className="w-[120px] px-2">Upline</TableHead>
                   <TableHead className="w-[100px] px-2">Status</TableHead>
                   <TableHead className="w-[100px] px-2">License</TableHead>
+                  <TableHead className="w-[140px] px-2">Onboarding</TableHead>
                   <TableHead className="w-[120px] px-2">Today</TableHead>
                   <TableHead className="w-[90px] px-2 text-center">Streak</TableHead>
                   <TableHead className="w-[110px] px-2 text-right">Month ALP</TableHead>
@@ -773,6 +818,7 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                           {r.license_status ?? "unknown"}
                         </Badge>
                       </TableCell>
+                      <TableCell className="px-2 py-2"><OnboardingProgress row={r} /></TableCell>
                       <TableCell className="px-2 py-2">
                         {(r.today_deals ?? 0) > 0 ? (
                           <div>

@@ -15,12 +15,7 @@ as $$
   with eligible_deals as (
     select
       (d.created_at at time zone 'America/Phoenix')::date as sold_on,
-      coalesce(
-        d.annualized_commissionable_premium,
-        d.annualized_paid_premium,
-        d.annual_premium,
-        0
-      )::numeric as alp
+      coalesce(d.annual_premium, 0)::numeric as annual_premium
     from public.deals d
     where d.duplicate_of_deal_id is null
       and d.status in ('submitted', 'needs_review', 'approved', 'issued', 'in_force', 'active')
@@ -31,7 +26,7 @@ as $$
       )
   ),
   today as (
-    select coalesce(sum(alp), 0)::numeric as alp, count(*)::integer as policies
+    select coalesce(sum(annual_premium), 0)::numeric as alp, count(*)::integer as policies
     from eligible_deals
     where sold_on = current_date
   ),

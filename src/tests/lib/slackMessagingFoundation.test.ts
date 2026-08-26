@@ -28,5 +28,15 @@ describe("Slack messaging foundation", () => {
     expect(result).toContain("Contracting Initiated — Fast Track Active");
     expect(result).toContain("Book instant onboarding");
     expect(`${page}\n${result}`.toLowerCase()).not.toContain("in a queue");
+    expect(`${page}\n${result}`.toLowerCase()).not.toContain("pending review");
+  });
+
+  it("provides an admin-only live Slack and destination health probe", () => {
+    const health = source("supabase/functions/slack-integration-health/index.ts");
+    expect(health).toContain('callSlack<SlackAuthResult>("auth.test"');
+    expect(health).toContain('callSlack<SlackConversationResult>("conversations.info"');
+    expect(health).toContain('from("messaging_destinations")');
+    expect(health).toContain('rpc("apex_is_admin")');
+    expect(health).not.toContain("SLACK_BOT_TOKEN:");
   });
 });

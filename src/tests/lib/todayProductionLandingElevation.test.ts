@@ -9,6 +9,7 @@ describe("today production and landing elevation", () => {
     const migration = source("supabase/migrations/20260826003000_crm_today_production.sql");
     expect(migration).toContain("d.created_at at time zone 'America/Phoenix'");
     expect(migration).toContain("sold_on = current_date");
+    expect(migration).toContain("coalesce(sum(annual_premium), 0)");
     expect(migration).toContain("d.duplicate_of_deal_id is null");
     expect(migration).toContain("crm_can_read_agent_scope(d.agent_id)");
   });
@@ -25,12 +26,15 @@ describe("today production and landing elevation", () => {
 
   it("positions the landing page for each APEX partner path", () => {
     const hero = source("src/components/landing/HeroSection.tsx");
-    expect(hero).toContain("The enterprise IMO &");
-    expect(hero).toContain("Agency Acceleration Platform");
+    expect(hero).toContain("The Operating System for");
+    expect(hero).toContain("Elite Insurance Agencies");
     expect(hero).toContain("Agency Builders");
     expect(hero).toContain("Licensed Producers");
-    expect(hero).toContain("Licensing Roadmap");
-    expect(hero).toContain("#0D0D0D");
+    expect(hero).toContain("Licensing Fast Track");
+    expect(hero).toContain("XCEL pre-licensing prep");
+    expect(hero).toContain("#0A0A0A");
+    expect(hero).toContain("#030712");
+    expect(hero).toContain("#C9A961");
     expect(hero).toContain("#D4AF37");
     expect(hero.toLowerCase()).not.toContain("guaranteed placement");
   });

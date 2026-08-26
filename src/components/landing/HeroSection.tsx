@@ -104,19 +104,19 @@ const stats = [
 const partnerPaths = [
   {
     title: "Agency Builders",
-    description: "Scale your team with automated contracting and hierarchy reporting.",
+    description: "Scale your downline with automated contracting ops, sub-agency hierarchy reporting, and top overrides.",
     icon: Building2,
     track: "agency-builder",
   },
   {
     title: "Licensed Producers",
-    description: "Fast-track onboarding, top comp pathways, and high-converting scripts.",
+    description: "Direct lines with 14+ top carriers, day-one script and portal access, and aggressive comp tiers up to 100%+.",
     icon: BadgeCheck,
     track: "licensed-producer",
   },
   {
-    title: "Licensing Roadmap",
-    description: "Pre-licensing course, exam support, and a clear placement pathway.",
+    title: "Licensing Fast Track",
+    description: "XCEL pre-licensing prep, exam coaching, and contracting launched on day one after passing.",
     icon: Route,
     track: "licensing-roadmap",
   },
@@ -154,7 +154,7 @@ export function HeroSection() {
   }, []);
 
   return (
-    <section className="dark relative min-h-[100dvh] flex items-center justify-center overflow-hidden bg-[#0D0D0D] text-white pt-24 sm:pt-28 md:pt-32 pb-16">
+    <section className="dark relative min-h-[100dvh] flex items-center justify-center overflow-hidden bg-[#0A0A0A] text-white pt-24 sm:pt-28 md:pt-32 pb-16">
       {/* Subtle additional decoration layers — aurora handles the heavy lifting */}
       <div
         aria-hidden
@@ -174,8 +174,8 @@ export function HeroSection() {
         <defs>
           <linearGradient id="meshGrad" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.60" />
-            <stop offset="50%" stopColor="#D4AF37" stopOpacity="0.30" />
-            <stop offset="100%" stopColor="#8F741F" stopOpacity="0.20" />
+            <stop offset="50%" stopColor="#C9A961" stopOpacity="0.30" />
+            <stop offset="100%" stopColor="#C9A961" stopOpacity="0.16" />
           </linearGradient>
         </defs>
         <path
@@ -224,14 +224,13 @@ export function HeroSection() {
             className="landing-scale-in landing-delay-100 font-display font-extrabold leading-[1.02] mb-5 tracking-tight"
             style={{ fontSize: "clamp(2.25rem, 5.5vw, 4rem)" }}
           >
-            <span className="block text-foreground">The enterprise IMO &</span>
-            <span className="block brand-gradient">Agency Acceleration Platform</span>
+            <span className="block text-foreground">The Operating System for</span>
+            <span className="block brand-gradient">Elite Insurance Agencies</span>
           </h1>
 
           {/* Subheadline */}
           <p className="landing-fade-up landing-delay-200 text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed">
-            One operating system for recruiting, licensing, contracting, training,
-            production, and hierarchy growth—from first application to first policy.
+            We partner with ambitious producers and agency builders to scale 6- and 7-figure operations on automated rails. Top carrier contracts, automated contracting, live production tracking, and a battle-tested training machine.
           </p>
 
           <div className="landing-fade-up landing-delay-300 mx-auto mb-10 grid max-w-5xl grid-cols-1 gap-3 text-left md:grid-cols-3">
@@ -245,7 +244,7 @@ export function HeroSection() {
                   key={path.title}
                   to={destination}
                   onClick={() => track("hero_partner_path_click", { partner_path: path.track })}
-                  className="group min-h-36 rounded-md border border-[#D4AF37]/35 bg-white/[0.035] p-5 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-[#D4AF37]/80 hover:bg-[#D4AF37]/10 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                  className="group min-h-36 rounded-md border border-[#C9A961]/35 bg-[#030712]/70 p-5 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-[#D4AF37]/80 hover:bg-[#D4AF37]/10 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
                 >
                   <Icon className="mb-4 h-7 w-7 text-[#D4AF37]" aria-hidden />
                   <h2 className="font-display text-lg font-bold text-white">{path.title}</h2>

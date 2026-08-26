@@ -69,10 +69,23 @@ const Index = () => {
     if (urlRefSlug) setRefSlug(urlRefSlug);
   }, [urlRefSlug]);
 
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = "APEX Financial · Operating System for Elite Insurance Agencies";
+    const description = "APEX helps ambitious producers and agency builders scale with contracting, training, carrier access, and live production operations.";
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    const previousDescription = meta?.content;
+    if (meta) meta.content = description;
+    return () => {
+      document.title = previousTitle;
+      if (meta && previousDescription !== undefined) meta.content = previousDescription;
+    };
+  }, []);
+
   // Logged-in users land on their personalized dashboard, not the public marketing page.
   if (!isLoading && user) return <Navigate to="/dashboard" replace />;
   return (
-    <div className="min-h-screen overflow-x-hidden w-full max-w-full relative">
+    <div className="min-h-screen overflow-x-hidden w-full max-w-full relative bg-[#0A0A0A]">
       {/* Skip link — pure markup, zero JS cost on the cold-landing path. */}
       <a
         href="#main-content"

@@ -1193,6 +1193,16 @@ export default function DashboardCRM() {
         const pay = paymentMap.get(agent.id) || { standard: false, premium: false };
         const emailKey = profile?.email?.toLowerCase().trim() || "";
         const licenseEntry = emailLicenseMap.get(emailKey);
+        const monthlyALP = monthlyProductionMap.get(agent.id) || 0;
+        const lifetimeDeals = lifetimeMap.get(agent.id)?.deals ?? 0;
+        // Production is conclusive evidence of a producer license. Normalize
+        // once here so every filter, badge, section, and next-best action uses
+        // the same truth even when a legacy agent row has stale license_status.
+        const effectiveLicenseStatus = agent.license_status === "licensed"
+          || lifetimeDeals > 0
+          || monthlyALP > 0
+          ? "licensed"
+          : (agent.license_status || "unlicensed");
 
         // Auto-detect 35-day dormancy → move to inactive
         let effectiveStage: OnboardingStage = agent.onboarding_stage || "onboarding";
@@ -1223,13 +1233,13 @@ export default function DashboardCRM() {
           weekly10kBadges: agent.weekly_10k_badges || 0, sortOrder: agent.sort_order ?? index,
           weeklyALP: ws.alp, weeklyPresentations: ws.presentations, weeklyDeals: ws.deals,
           weeklyClosingRate: Math.round(getCloseRate(ws.deals, ws.presentations)),
-          monthlyALP: monthlyProductionMap.get(agent.id) || 0, monthlyDeals: monthlyDealsMap.get(agent.id) || 0,
+          monthlyALP, monthlyDeals: monthlyDealsMap.get(agent.id) || 0,
           prevWeekALP: prevWeekALPMap.get(agent.id) || 0,
           lastContactedAt: lastContactMap.get(agent.id) || null, standardPaid: pay.standard, premiumPaid: pay.premium,
           licenseProgress: licenseEntry?.progress || null, testScheduledDate: licenseEntry?.testDate || null,
-          agentLicenseStatus: agent.license_status || "unlicensed",
+          agentLicenseStatus: effectiveLicenseStatus,
           aiScoreTier: licenseEntry?.aiScore || null,
-          lifetimeDeals: lifetimeMap.get(agent.id)?.deals ?? 0,
+          lifetimeDeals,
           lifetimeALP: lifetimeMap.get(agent.id)?.alp ?? 0,
           lastActivityAt: (() => {
             const candidates = [
@@ -1749,10 +1759,13 @@ export default function DashboardCRM() {
   const getTableCells = (_sectionKey: string, agent: AgentCRM) => {
     const attendanceState = meetingAttendance.get(agent.id) || "unmarked";
     const attendancePresent = attendanceState === "present";
-    const stageLabel = PROGRESS_LABELS[agent.licenseProgress || "unlicensed"]
-      || agent.onboardingStage.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    const isLicensed = agent.agentLicenseStatus === "licensed"
+      || agent.lifetimeDeals > 0
+      || agent.monthlyALP > 0;
+    const stageLabel = isLicensed
+      ? agent.onboardingStage.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      : (PROGRESS_LABELS[agent.licenseProgress || "unlicensed"] || "In Course");
     const isTrainee = agent.onboardingStage === "in_field_training";
-    const isLicensed = agent.agentLicenseStatus === "licensed";
     // Applicant rows (still in applications table, no auth user) share id with
     // applicationId. Actions that write to agents/agent_attendance by agent.id
     // silently FK-fail — gate those actions and surface a helpful toast.

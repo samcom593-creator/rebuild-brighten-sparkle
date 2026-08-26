@@ -39,4 +39,19 @@ describe("Slack messaging foundation", () => {
     expect(health).toContain('rpc("apex_is_admin")');
     expect(health).not.toContain("SLACK_BOT_TOKEN:");
   });
+
+  it("routes licensing milestones through the durable Slack receipt ledger", () => {
+    const migration = source("supabase/migrations/20260826005000_candidate_workflow_and_slack_milestones.sql");
+    const dispatcher = source("supabase/functions/apex-outbox-dispatcher/index.ts");
+    expect(migration).toContain("public.candidate_smart_goals");
+    expect(migration).toContain("public.candidate_notes");
+    expect(migration).toContain("public.licensing_milestone_events");
+    expect(migration).toContain("candidate.licensing_milestone");
+    expect(migration).toContain("on conflict (idempotency_key) do nothing");
+    expect(migration).not.toContain("create table if not exists public.policies");
+    expect(dispatcher).toContain('event.destination === "slack"');
+    expect(dispatcher).toContain('from("messaging_delivery_receipts")');
+    expect(dispatcher).toContain('https://slack.com/api/chat.postMessage');
+    expect(dispatcher).not.toContain("C01LICENSING");
+  });
 });

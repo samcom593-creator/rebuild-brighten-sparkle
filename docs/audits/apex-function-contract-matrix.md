@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-08-26T00:13:19.127Z
+Generated: 2026-08-26T00:55:39.615Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **245**
-- Configured in `config.toml`: **247**
+- Total Local Edge Functions: **246**
+- Configured in `config.toml`: **248**
 - Invoked Edge Functions in Source: **102**
-- Invoked RPC Calls in Source: **109**
-- SQL Functions in Migrations: **389**
+- Invoked RPC Calls in Source: **111**
+- SQL Functions in Migrations: **395**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -238,6 +238,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `simple-login` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `siri-command` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `site-shell-watch` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `slack-integration-health` | Yes | Yes | `true` | Authenticated JWT | PASS |
 | `stripe-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `stripe-webhook-lead-purchase` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `submit-application` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
@@ -270,6 +271,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **109**
-- Also declared in this commit's migrations: **98**
+- Invoked RPCs: **111**
+- Also declared in this commit's migrations: **100**
 - Declared only in the database: **11**

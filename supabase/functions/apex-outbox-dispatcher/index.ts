@@ -394,6 +394,179 @@ type DispatchResult = {
   deliveryConfirmed?: boolean;
 };
 
+type SlackRoute = {
+  id: string;
+  installation_id: string;
+  destination_id: string;
+  template_version: number;
+};
+
+type SlackInstallation = {
+  id: string;
+  status: string;
+  bot_token_secret_ref: string | null;
+};
+
+type SlackDestination = {
+  id: string;
+  channel_id: string;
+  purpose: string;
+  scope_type: string;
+  is_enabled: boolean;
+};
+
+function slackMilestoneText(event: any): string {
+  const payload = event.payload ?? {};
+  const milestone = String(payload.milestoneType ?? "licensing milestone")
+    .replaceAll("_", " ");
+  const candidate = String(payload.candidateName ?? "APEX candidate").trim().slice(0, 200);
+  const state = typeof payload.state === "string" && /^[A-Z]{2}$/.test(payload.state)
+    ? ` · ${payload.state}`
+    : "";
+  const examDate = typeof payload.examDate === "string" ? ` · ${payload.examDate}` : "";
+  const url = typeof payload.openUrl === "string" && payload.openUrl.startsWith("https://apex-financial.org/")
+    ? payload.openUrl
+    : "https://apex-financial.org/dashboard/recruiting/pipeline";
+  return `APEX licensing milestone: *${candidate}* — ${milestone}${state}${examDate}\n<${url}|Open recruiting pipeline>`;
+}
+
+async function deliverSlack(sb: any, event: any): Promise<DispatchResult> {
+  const { data: routeRows, error: routeError } = await sb
+    .from("messaging_route_rules")
+    .select("id, installation_id, destination_id, template_version")
+    .eq("event_type", event.event_type)
+    .eq("is_enabled", true)
+    .order("priority");
+  if (routeError) throw routeError;
+
+  const routes = (routeRows ?? []) as SlackRoute[];
+  if (routes.length === 0) {
+    return { state: "manual_action_required", manualReason: "No enabled Slack route is mapped for this event" };
+  }
+
+  let delivered = 0;
+  for (const route of routes) {
+    const [{ data: installation, error: installationError }, { data: destination, error: destinationError }] =
+      await Promise.all([
+        sb.from("messaging_workspace_installations")
+          .select("id, status, bot_token_secret_ref")
+          .eq("id", route.installation_id)
+          .maybeSingle(),
+        sb.from("messaging_destinations")
+          .select("id, channel_id, purpose, scope_type, is_enabled")
+          .eq("id", route.destination_id)
+          .maybeSingle(),
+      ]);
+    if (installationError) throw installationError;
+    if (destinationError) throw destinationError;
+
+    const workspace = installation as SlackInstallation | null;
+    const channel = destination as SlackDestination | null;
+    if (!workspace || workspace.status !== "active" || !channel?.is_enabled) continue;
+
+    // Milestone events currently contain organization-wide recruiting state.
+    // Refuse narrower destinations until the payload carries a verified scope
+    // key; guessing a hierarchy here could leak one agency's recruits to another.
+    if (channel.scope_type !== "organization") continue;
+
+    const secretRef = workspace.bot_token_secret_ref?.trim() ?? "";
+    const token = (secretRef ? Deno.env.get(secretRef)?.trim() : "")
+      || Deno.env.get("SLACK_BOT_TOKEN")?.trim()
+      || "";
+    if (!token) continue;
+
+    const receiptKey = `${event.id}:${channel.id}:v${route.template_version}`;
+    const { data: existing, error: existingError } = await sb
+      .from("messaging_delivery_receipts")
+      .select("id, status, attempt_count, message_ts")
+      .eq("outbox_event_id", event.id)
+      .eq("destination_id", channel.id)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    if (existing?.status === "delivered") {
+      delivered += 1;
+      continue;
+    }
+
+    let receipt = existing;
+    if (!receipt) {
+      const { data: created, error: createError } = await sb
+        .from("messaging_delivery_receipts")
+        .insert({
+          outbox_event_id: event.id,
+          installation_id: workspace.id,
+          destination_id: channel.id,
+          idempotency_key: receiptKey,
+          status: "pending",
+          template_version: route.template_version,
+          correlation_id: event.correlation_id,
+        })
+        .select("id, status, attempt_count, message_ts")
+        .single();
+      if (createError) throw createError;
+      receipt = created;
+    }
+
+    const attemptCount = Number(receipt.attempt_count ?? 0) + 1;
+    const { error: claimError } = await sb
+      .from("messaging_delivery_receipts")
+      .update({ status: "claimed", attempt_count: attemptCount, claimed_at: new Date().toISOString() })
+      .eq("id", receipt.id)
+      .neq("status", "delivered");
+    if (claimError) throw claimError;
+
+    const response = await fetch("https://slack.com/api/chat.postMessage", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify({
+        channel: channel.channel_id,
+        text: slackMilestoneText(event),
+        unfurl_links: false,
+        unfurl_media: false,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    const retryAfter = Number(response.headers.get("retry-after"));
+    const body = await response.json().catch(() => ({ ok: false, error: "invalid_provider_response" }));
+    if (!response.ok || body?.ok !== true || typeof body?.ts !== "string") {
+      const retrySeconds = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null;
+      await sb.from("messaging_delivery_receipts").update({
+        status: "retrying",
+        retry_after_seconds: retrySeconds,
+        next_attempt_at: new Date(Date.now() + (retrySeconds ?? 60) * 1000).toISOString(),
+        last_error_redacted: `Slack ${response.status}: ${String(body?.error ?? "delivery_failed").slice(0, 120)}`,
+      }).eq("id", receipt.id);
+      throw new Error(`Slack delivery failed (${response.status}): ${String(body?.error ?? "unknown")}`);
+    }
+
+    const deliveredAt = new Date().toISOString();
+    const { error: deliveredError } = await sb.from("messaging_delivery_receipts").update({
+      status: "delivered",
+      channel_id: channel.channel_id,
+      message_ts: body.ts,
+      provider_response_hash: null,
+      last_error_redacted: null,
+      retry_after_seconds: null,
+      next_attempt_at: null,
+      delivered_at: deliveredAt,
+      updated_at: deliveredAt,
+    }).eq("id", receipt.id);
+    if (deliveredError) throw deliveredError;
+    delivered += 1;
+  }
+
+  if (delivered === 0) {
+    return {
+      state: "manual_action_required",
+      manualReason: "Slack route exists, but no active organization destination with a configured token was available",
+    };
+  }
+  return { state: "delivered", deliveryConfirmed: true };
+}
+
 // ── Contracting intake destinations ──────────────────────────────────────────
 //
 // The decisions live in _shared/contracting-delivery.ts so the vitest suite can
@@ -487,6 +660,9 @@ async function dispatch(sb: any, event: any): Promise<DispatchResult> {
   if (event.destination === "discord" || event.destination === "discord_subagency") {
     const providerMessageId = await deliverDiscord(sb, event);
     return { state: "delivered", providerMessageId, deliveryConfirmed: true };
+  }
+  if (event.destination === "slack") {
+    return await deliverSlack(sb, event);
   }
   if (event.destination === "insuracloud") {
     // MP-312: the outbox returns HTTP 200 { ok: true } when its guard REFUSES a

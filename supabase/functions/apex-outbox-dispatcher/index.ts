@@ -415,8 +415,53 @@ type SlackDestination = {
   is_enabled: boolean;
 };
 
-function slackMilestoneText(event: any): string {
+function safeSlackUrl(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.startsWith("https://apex-financial.org/")
+    ? value
+    : fallback;
+}
+
+function slackEventText(event: any): string {
   const payload = event.payload ?? {};
+  if (event.event_type === "candidate.application_submitted") {
+    const candidate = String(payload.candidateName ?? "New candidate").trim().slice(0, 200);
+    const licenseTrack = payload.isLicensed === true ? "licensed" : "unlicensed";
+    const state = typeof payload.state === "string" && /^[A-Z]{2}$/.test(payload.state)
+      ? ` · ${payload.state}`
+      : "";
+    const url = safeSlackUrl(
+      payload.openUrl,
+      "https://apex-financial.org/dashboard/recruiting/pipeline",
+    );
+    return `New APEX application: *${candidate}* — ${licenseTrack}${state}\n<${url}|Open recruiting pipeline>`;
+  }
+
+  if (event.event_type === "contracting.intake_submitted") {
+    const agent = String(payload.agentName ?? "New agent").trim().slice(0, 200);
+    const npnSuffix = typeof payload.npnLast4 === "string" && /^\d{4}$/.test(payload.npnLast4)
+      ? ` · NPN ending ${payload.npnLast4}`
+      : "";
+    const url = safeSlackUrl(
+      payload.openUrl,
+      "https://apex-financial.org/dashboard/contracting/ops",
+    );
+    return `Contracting intake received: *${agent}*${npnSuffix}\n<${url}|Open contracting operations>`;
+  }
+
+  if (event.event_type === "deal.posted") {
+    const agent = String(payload.agentName ?? "APEX producer").trim().slice(0, 200);
+    const premium = Number(payload.annualPremium ?? 0);
+    const amount = Number.isFinite(premium)
+      ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
+        .format(Math.max(0, premium))
+      : "$0";
+    const product = typeof payload.productCategory === "string" && payload.productCategory.trim()
+      ? ` · ${payload.productCategory.trim().slice(0, 80)}`
+      : "";
+    const url = safeSlackUrl(payload.openUrl, "https://apex-financial.org/dashboard");
+    return `APEX sale posted: *${agent}* — ${amount}${product}\n<${url}|Open production dashboard>`;
+  }
+
   const milestone = String(payload.milestoneType ?? "licensing milestone")
     .replaceAll("_", " ");
   const candidate = String(payload.candidateName ?? "APEX candidate").trim().slice(0, 200);
@@ -424,9 +469,10 @@ function slackMilestoneText(event: any): string {
     ? ` · ${payload.state}`
     : "";
   const examDate = typeof payload.examDate === "string" ? ` · ${payload.examDate}` : "";
-  const url = typeof payload.openUrl === "string" && payload.openUrl.startsWith("https://apex-financial.org/")
-    ? payload.openUrl
-    : "https://apex-financial.org/dashboard/recruiting/pipeline";
+  const url = safeSlackUrl(
+    payload.openUrl,
+    "https://apex-financial.org/dashboard/recruiting/pipeline",
+  );
   return `APEX licensing milestone: *${candidate}* — ${milestone}${state}${examDate}\n<${url}|Open recruiting pipeline>`;
 }
 
@@ -523,7 +569,7 @@ async function deliverSlack(sb: any, event: any): Promise<DispatchResult> {
       },
       body: JSON.stringify({
         channel: channel.channel_id,
-        text: slackMilestoneText(event),
+        text: slackEventText(event),
         unfurl_links: false,
         unfurl_media: false,
       }),

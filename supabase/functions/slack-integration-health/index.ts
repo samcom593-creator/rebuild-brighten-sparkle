@@ -19,6 +19,13 @@ type DestinationRow = {
   verified_at: string | null;
 };
 
+type RouteRow = {
+  event_type: string;
+  destination_id: string;
+  is_enabled: boolean;
+  priority: number;
+};
+
 type SlackAuthResult = {
   ok: boolean;
   error?: string;
@@ -139,6 +146,17 @@ Deno.serve(async (request) => {
   }
 
   const destinations = (destinationData ?? []) as DestinationRow[];
+  const { data: routeData, error: routeError } = installation
+    ? await admin
+      .from("messaging_route_rules")
+      .select("event_type, destination_id, is_enabled, priority")
+      .eq("installation_id", installation.id)
+      .order("priority")
+    : { data: [], error: null };
+  if (routeError) {
+    return jsonResponse({ ok: false, error: "route_lookup_failed" }, 500, noStoreHeaders);
+  }
+  const routes = (routeData ?? []) as RouteRow[];
   const channels: Array<Record<string, unknown>> = [];
   for (const destination of destinations) {
     if (!destination.is_enabled) {
@@ -204,7 +222,20 @@ Deno.serve(async (request) => {
   );
   const connectivityOk = authResult?.body.ok === true;
   const mappingsOk = enabledChannels.length > 0 && reachableChannels.length === enabledChannels.length;
-  const ok = connectivityOk && installation !== null && mappingsOk;
+  const enabledRoutes = routes.filter((route) => route.is_enabled);
+  const routeStatuses = enabledRoutes.map((route) => {
+    const destination = destinations.find((row) => row.id === route.destination_id) ?? null;
+    return {
+      event_type: route.event_type,
+      priority: route.priority,
+      destination_purpose: destination?.purpose ?? null,
+      channel_id: destination?.channel_id ?? null,
+      status: destination?.is_enabled ? "ready" : "destination_unavailable",
+    };
+  });
+  const routesOk = enabledRoutes.length > 0
+    && routeStatuses.every((route) => route.status === "ready");
+  const ok = connectivityOk && installation !== null && mappingsOk && routesOk;
 
   if (ok && installation) {
     await admin
@@ -235,7 +266,10 @@ Deno.serve(async (request) => {
       enabled: enabledChannels.length,
       reachable: reachableChannels.length,
       unhealthy: enabledChannels.length - reachableChannels.length,
+      routes_enabled: enabledRoutes.length,
+      routes_unhealthy: routeStatuses.filter((route) => route.status !== "ready").length,
     },
     channels,
+    routes: routeStatuses,
   }, ok ? 200 : token ? 502 : 503, noStoreHeaders);
 });

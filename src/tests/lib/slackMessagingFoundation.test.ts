@@ -54,4 +54,30 @@ describe("Slack messaging foundation", () => {
     expect(dispatcher).toContain('https://slack.com/api/chat.postMessage');
     expect(dispatcher).not.toContain("C01LICENSING");
   });
+
+  it("binds the production workspace to verified semantic channels and core event routes", () => {
+    const routes = source("supabase/migrations/20260826013000_apex_slack_live_routes.sql");
+    const dispatcher = source("supabase/functions/apex-outbox-dispatcher/index.ts");
+
+    expect(routes).toContain("T0BSN03M2AJ");
+    expect(routes).toContain("C0BTJLBKC2C");
+    expect(routes).toContain("C0BSTVB98DA");
+    expect(routes).toContain("C0BSNBA5NES");
+    for (const eventType of [
+      "candidate.application_submitted",
+      "candidate.licensing_milestone",
+      "contracting.intake_submitted",
+      "deal.posted",
+    ]) {
+      expect(routes).toContain(eventType);
+    }
+    expect(dispatcher).toContain("candidate.application_submitted");
+    expect(dispatcher).toContain("contracting.intake_submitted");
+    expect(dispatcher).toContain("deal.posted");
+    expect(routes).toContain("SLACK_BOT_TOKEN");
+    expect(routes).not.toContain("xoxb-");
+    expect(routes).not.toContain("'email'");
+    expect(routes).not.toContain("'phone'");
+    expect(routes).not.toContain("clientName");
+  });
 });

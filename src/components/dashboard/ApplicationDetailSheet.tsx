@@ -23,6 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { LicensingDelegateSection } from "./LicensingDelegateSection";
 import { CallTranscriptsSection } from "./CallTranscriptsSection";
 import { LeadInsightsPanel } from "@/components/crm/LeadInsightsPanel";
+import { CandidateGoalsNotesPanel } from "@/components/dashboard/CandidateGoalsNotesPanel";
 
 interface ApplicationDetailSheetProps {
   open: boolean;
@@ -478,6 +479,11 @@ export function ApplicationDetailSheet({
               {/* ═══ LICENSING DELEGATES ═══ */}
               {!isEditing && (
                 <>
+                  <Separator />
+                  <CandidateGoalsNotesPanel
+                    applicationId={app.id}
+                    agentId={linkedAgentId}
+                  />
                   <Separator />
                   <LicensingDelegateSection applicationId={app.id} />
                 </>

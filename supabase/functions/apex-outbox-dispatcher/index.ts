@@ -301,6 +301,94 @@ async function deliverContact(
   return { providerMessageId, deliveryConfirmed: false };
 }
 
+async function deliverApplicationSlackInvite(sb: any, event: any): Promise<DispatchResult> {
+  const setting = await resolveOne<{ value: string }>(
+    sb.from("system_settings").select("value").eq("key", "slack_community_invite_url"),
+    { label: "system_settings.slack_community_invite_url" },
+  );
+  const inviteUrl = String(setting.row?.value ?? "").trim();
+  if (!inviteUrl.startsWith("https://join.slack.com/")) {
+    return { state: "manual_action_required", manualReason: "Slack community invite URL is not configured" };
+  }
+
+  let firstName = "there";
+  let email = "";
+  let phone = "";
+  let smsConsent = false;
+  let phoneBad = false;
+
+  if (event.aggregate_type === "application") {
+    const { data: application, error } = await sb
+      .from("applications")
+      .select("first_name, email, phone, sms_consent_given, phone_bad_at")
+      .eq("id", event.aggregate_id)
+      .single();
+    if (error || !application) throw new Error(error?.message ?? "Application no longer exists");
+    firstName = String(application.first_name ?? "").trim() || "there";
+    email = String(application.email ?? "").trim().toLowerCase();
+    phone = normalizePhone(application.phone);
+    smsConsent = application.sms_consent_given === true;
+    phoneBad = Boolean(application.phone_bad_at);
+  } else if (event.aggregate_type === "agent") {
+    const { data: agent, error } = await sb
+      .from("agents")
+      .select("display_name, profile:profiles!agents_profile_id_fkey(full_name, email, phone)")
+      .eq("id", event.aggregate_id)
+      .single();
+    if (error || !agent) throw new Error(error?.message ?? "Agent no longer exists");
+    const profile = Array.isArray(agent.profile) ? agent.profile[0] : agent.profile;
+    const fullName = String(profile?.full_name ?? agent.display_name ?? "").trim();
+    firstName = fullName.split(/\s+/)[0] || "there";
+    email = String(profile?.email ?? "").trim().toLowerCase();
+    phone = normalizePhone(profile?.phone);
+    // Magic-hire intake has no SMS consent field. Email only is intentional.
+  } else {
+    throw new Error(`Unsupported Slack invite aggregate: ${event.aggregate_type}`);
+  }
+
+  let emailReceipt: string | null = null;
+  if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const optedOut = await resolveOne<{ id: string }>(
+      sb.from("email_unsubscribes").select("id").ilike("email", emailPattern(email)),
+      { label: `email_unsubscribes.email=${email}` },
+    );
+    if (!optedOut.row) {
+      const safeName = escapeHtml(firstName);
+      const safeInvite = escapeHtml(inviteUrl);
+      emailReceipt = await resendEmail({
+        from: CONTACT_FROM,
+        to: [email],
+        subject: "Join your APEX Financial team in Slack",
+        html: `<div style="font-family:Arial,sans-serif;line-height:1.55;max-width:600px;margin:0 auto"><h2>Welcome to APEX, ${safeName}.</h2><p>Join the team workspace for daily huddles, contracting support, training, scripts, and sales wins.</p><p><a href="${safeInvite}" style="display:inline-block;background:#d4af37;color:#0a0a0a;font-weight:700;text-decoration:none;padding:12px 18px;border-radius:8px">Join APEX Financial Slack</a></p><p style="color:#6b7280;font-size:12px">If the button does not open, paste this into your browser: ${safeInvite}</p></div>`,
+        text: `Welcome to APEX, ${firstName}. Join the team Slack workspace: ${inviteUrl}`,
+      }, `apex-slack-invite-${event.aggregate_type}-${event.aggregate_id}`);
+    }
+  }
+
+  let smsAccepted = false;
+  if (event.aggregate_type === "application" && smsConsent && !phoneBad && phone.length === 10) {
+    const smsResult = await callFunction("send-sms-auto-detect", {
+      phone,
+      applicationId: event.aggregate_id,
+      message: `Welcome to APEX. Join the team Slack workspace: ${inviteUrl}`.slice(0, 160),
+    });
+    smsAccepted = smsResult?.outcome === "sent";
+  }
+
+  if (!emailReceipt && !smsAccepted) {
+    return {
+      state: "manual_action_required",
+      manualReason: "Slack invite could not be sent: no eligible email and no consented, carrier-resolved SMS channel",
+    };
+  }
+
+  return {
+    state: "delivered",
+    providerMessageId: emailReceipt ?? (smsAccepted ? `sms:${event.aggregate_id}` : undefined),
+    deliveryConfirmed: false,
+  };
+}
+
 async function deliverDiscord(sb: any, event: any): Promise<string | undefined> {
   const bookPayload = event.aggregate_type === "agentlink_book_deal"
     ? (event.payload ?? {}) as Record<string, unknown>
@@ -460,6 +548,14 @@ function slackEventText(event: any): string {
       : "";
     const url = safeSlackUrl(payload.openUrl, "https://apex-financial.org/dashboard");
     return `APEX sale posted: *${agent}* — ${amount}${product}\n<${url}|Open production dashboard>`;
+  }
+
+  if (event.event_type === "free_leads.weekly_summary") {
+    const eligible = Math.max(0, Number(payload.eligibleCount ?? 0) || 0);
+    const near = Math.max(0, Number(payload.nearCount ?? 0) || 0);
+    const threshold = Math.max(0, Number(payload.threshold ?? 20_000) || 20_000);
+    const url = safeSlackUrl(payload.openUrl, "https://apex-financial.org/dashboard/team");
+    return `APEX Free Leads weekly pulse: *${eligible} active* · *${near} within $5K* of the $${threshold.toLocaleString("en-US")} tier\n<${url}|Open team dashboard>`;
   }
 
   const milestone = String(payload.milestoneType ?? "licensing milestone")
@@ -709,6 +805,9 @@ async function dispatch(sb: any, event: any): Promise<DispatchResult> {
   }
   if (event.destination === "slack") {
     return await deliverSlack(sb, event);
+  }
+  if (event.destination === "application_slack_invite") {
+    return await deliverApplicationSlackInvite(sb, event);
   }
   if (event.destination === "insuracloud") {
     // MP-312: the outbox returns HTTP 200 { ok: true } when its guard REFUSES a

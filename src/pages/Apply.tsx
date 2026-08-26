@@ -1402,15 +1402,12 @@ export default function Apply() {
                         onClick={async () => {
                           const step4Valid = await validateStep(4);
                           if (!step4Valid) {
-                            // Check specifically for SMS consent
-                            const smsValue = getValues("smsConsent");
-                            if (!smsValue) {
-                              setSmsConsentError(true);
-                              smsConsentRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                              toast.error("Please scroll down and check the SMS consent box to continue.", { duration: 6000 });
-                            } else {
-                              toast.error("Please select your availability to continue.");
-                            }
+                            // SMS is optional. The old branch inspected an
+                            // unchecked SMS box whenever any Step 4 field was
+                            // invalid, then falsely told the applicant consent
+                            // was required even though the schema allowed false.
+                            setSmsConsentError(false);
+                            toast.error("Please complete your availability and motivation to continue.");
                             return;
                           }
                           setSmsConsentError(false);

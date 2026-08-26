@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 type LicenseProgress = "unlicensed" | "course_purchased" | "finished_course" | "test_scheduled" | "failed_test" | "passed_test" | "fingerprints_done" | "waiting_on_license" | "licensed";
 
 interface LicenseProgressSelectorProps {
-  applicationId: string;
+  applicationId?: string;
   agentId?: string;
   currentProgress: LicenseProgress | null | undefined;
   testScheduledDate?: string | null;
@@ -109,20 +109,25 @@ export function LicenseProgressSelector({
         updateData.test_scheduled_date = format(testDate, "yyyy-MM-dd");
       }
 
-      const { error } = await supabase
-        .from("applications")
-        .update(updateData)
-        .eq("id", applicationId);
-
-      if (error) throw error;
-
-      // Also sync the agents table license_status if agentId is provided
-      if (agentId && (newProgress === "licensed" || progress === "licensed")) {
-        const agentLicenseStatus = newProgress === "licensed" ? "licensed" : "pending";
-        await supabase
-          .from("agents")
-          .update({ license_status: agentLicenseStatus })
-          .eq("id", agentId);
+      if (agentId) {
+        const { data, error } = await (supabase as any).rpc("set_agent_license_progress", {
+          p_agent_id: agentId,
+          p_progress: newProgress,
+          p_test_date: testDate ? format(testDate, "yyyy-MM-dd") : null,
+        });
+        if (error) throw error;
+        if (data?.ok !== true) throw new Error("The licensing milestone was not saved");
+      } else if (applicationId) {
+        const { data, error } = await supabase
+          .from("applications")
+          .update(updateData as any)
+          .eq("id", applicationId)
+          .select("id")
+          .maybeSingle();
+        if (error) throw error;
+        if (!data?.id) throw new Error("Application not found");
+      } else {
+        throw new Error("No application or agent was supplied");
       }
 
       setProgress(newProgress);
@@ -131,7 +136,7 @@ export function LicenseProgressSelector({
       onProgressUpdated?.();
 
       // Send notification when test date is set
-      if (newProgress === "test_scheduled" && testDate) {
+      if (newProgress === "test_scheduled" && testDate && applicationId) {
         try {
           await supabase.functions.invoke("notify-test-scheduled", {
             body: { applicationId, testDate: format(testDate, "yyyy-MM-dd") },

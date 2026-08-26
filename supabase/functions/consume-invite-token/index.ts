@@ -139,11 +139,14 @@ serve(async (req) => {
   // at a missing/deactivated row. Silently falling back to the default manager
   // makes the recruit disappear from the link creator's account.
   let targetManager: { id: string; user_id: string | null } | null = null;
-  if (tokenRow.target_manager_id) {
+  // A personal Add Agent link defaults to the creator when no explicit upline
+  // was selected. Null must never mean “create an orphan recruit.”
+  const resolvedManagerId = tokenRow.target_manager_id ?? tokenRow.created_by ?? null;
+  if (resolvedManagerId) {
     const { data: managerRow, error: managerErr } = await admin
       .from("agents")
       .select("id, user_id, is_deactivated")
-      .eq("id", tokenRow.target_manager_id)
+      .eq("id", resolvedManagerId)
       .maybeSingle();
 
     if (managerErr) {
@@ -231,11 +234,17 @@ serve(async (req) => {
 
   // ─── kind='hire' branch (existing) ─────────────────────────────────────
   const targetRole: string = tokenRow.target_role ?? "hired_unlicensed";
-  // The recruit's explicit answer wins. target_role remains the compatibility
-  // fallback for old links that predated the required license question.
-  let licensed = typeof body.licensed === "boolean"
-    ? body.licensed
-    : targetRole === "hired_licensed";
+  const lockedLicenseStatus = tokenRow.prefill_json?.license_status_locked === true
+    && ["licensed", "unlicensed"].includes(String(tokenRow.prefill_json?.license_status ?? ""))
+    ? String(tokenRow.prefill_json.license_status)
+    : null;
+  // Add Agent path links are intentionally locked. Older generic links remain
+  // backward-compatible and still accept the recruit's explicit answer.
+  let licensed = lockedLicenseStatus
+    ? lockedLicenseStatus === "licensed"
+    : typeof body.licensed === "boolean"
+      ? body.licensed
+      : targetRole === "hired_licensed";
   if (licensed && (!nipr_number || !/^\d{5,10}$/.test(nipr_number))) {
     return json({ ok: false, error: "npn_required_for_licensed_hire" }, 422);
   }
@@ -486,7 +495,7 @@ serve(async (req) => {
 
   // A licensed hire is not "done" when the profile row exists. Queue the
   // canonical contracting intake in the same request so the Ethos spreadsheet
-  // and private contracting Discord start automatically. The intake dedupes by
+  // and private contracting support routing start automatically. The intake dedupes by
   // NPN, making browser retries safe; if this leg fails the invite remains
   // unused and the recruit can retry without creating a second agent.
   if (licensed) {
@@ -507,6 +516,23 @@ serve(async (req) => {
       console.error("licensed_contracting_enqueue_failed", contractingError ?? contractingResult);
       return json({ ok: false, error: "contracting_enqueue_failed" }, 500);
     }
+  }
+
+  // Every hire gets the same durable Slack workspace invitation as an
+  // application. The payload stays PII-free; the dispatcher resolves the
+  // profile server-side. SMS is intentionally unavailable for this branch
+  // because a magic-hire record has no recorded SMS consent.
+  const { error: slackInviteError } = await admin.from("outbox_events").insert({
+    aggregate_type: "agent",
+    aggregate_id: agentId,
+    event_type: "recruiting.slack_invite_requested",
+    destination: "application_slack_invite",
+    payload: { agentId },
+    idempotency_key: `recruiting.slack_invite:agent:${agentId}`,
+  });
+  if (slackInviteError && slackInviteError.code !== "23505") {
+    console.error("slack_invite_enqueue_failed", slackInviteError);
+    return json({ ok: false, error: "slack_invite_enqueue_failed" }, 500);
   }
 
   // 6. Mark invite consumed. Idempotency safety: only mark if still unused.

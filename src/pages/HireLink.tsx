@@ -28,6 +28,8 @@ interface Prefill {
   phone?: string | null;
   email?: string | null;
   state?: string | null;
+  license_status?: "licensed" | "unlicensed" | null;
+  license_status_locked?: boolean | null;
 }
 
 interface PrefillResponse {
@@ -60,6 +62,7 @@ export default function HireLink() {
   const [email, setEmail] = useState("");
   const [nipr, setNipr] = useState("");
   const [licensedHire, setLicensedHire] = useState<boolean | null>(null);
+  const [lockedLicenseStatus, setLockedLicenseStatus] = useState<"licensed" | "unlicensed" | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -90,7 +93,12 @@ export default function HireLink() {
         if (pf.full_name) setFullName(pf.full_name);
         if (pf.phone) setPhone(maskPhone(pf.phone));
         if (pf.email) setEmail(pf.email);
-        if (resp.target_role === "hired_licensed") setLicensedHire(true);
+        if (pf.license_status_locked && (pf.license_status === "licensed" || pf.license_status === "unlicensed")) {
+          setLockedLicenseStatus(pf.license_status);
+          setLicensedHire(pf.license_status === "licensed");
+        } else if (resp.target_role === "hired_licensed") {
+          setLicensedHire(true);
+        }
         if (resp.expires_at) setExpiresAt(resp.expires_at);
         setLoadingPrefill(false);
       } catch {
@@ -258,8 +266,20 @@ export default function HireLink() {
 
             <div className="space-y-2">
               <Label className="text-xs uppercase tracking-wide">
-                Are you licensed? <span className="text-rose-400">*</span>
+                License path <span className="text-rose-400">*</span>
               </Label>
+              {lockedLicenseStatus ? (
+                <div className="rounded-lg border border-primary/40 bg-primary/10 p-3" data-testid="hire-license-path-locked">
+                  <span className="block text-sm font-semibold">
+                    {lockedLicenseStatus === "licensed" ? "Licensed agent" : "Unlicensed recruit"}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                    {lockedLicenseStatus === "licensed"
+                      ? "Your manager selected the fast-track contracting path."
+                      : "Your manager selected the course → exam → fingerprints roadmap."}
+                  </span>
+                </div>
+              ) : (
               <div className="grid grid-cols-2 gap-2" role="group" aria-label="License status">
                 <button
                   type="button"
@@ -282,6 +302,7 @@ export default function HireLink() {
                   <span className="mt-0.5 block text-[11px] text-muted-foreground">Start licensing roadmap</span>
                 </button>
               </div>
+              )}
             </div>
 
             {licensedHire === true && (
@@ -298,7 +319,7 @@ export default function HireLink() {
                   className="mt-1 h-11 text-base"
                 />
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  Required. Submission starts the contracting spreadsheet and private support Discord automatically.
+                  Required. Submission starts the contracting spreadsheet and private support desk automatically.
                 </p>
               </div>
             )}

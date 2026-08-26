@@ -66,6 +66,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AgentAvatar } from "@/components/ui/AgentAvatar";
 import { AgentTrainingStageBar } from "@/components/dashboard/AgentTrainingStageBar";
+import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
+import { AgentReferralLinkCard } from "@/components/agent/AgentReferralLinkCard";
+import { CandidateGoalsNotesPanel } from "@/components/dashboard/CandidateGoalsNotesPanel";
+import { FreeLeadsStatusCard } from "@/components/dashboard/FreeLeadsStatusCard";
 import { AgentOnboardingEmailStatus } from "@/components/dashboard/AgentOnboardingEmailStatus";
 import { AgentOnboardingCommandCenter } from "@/components/dashboard/AgentOnboardingCommandCenter";
 import { ReassignManagerButton } from "@/components/agents/ReassignManagerButton";
@@ -88,6 +92,7 @@ interface AgentRow {
   agent_code: string | null;
   status: string | null;
   license_status: string | null;
+  license_progress: string | null;
   nipr_number: string | null;
   start_date: string | null;
   total_policies: number | null;
@@ -252,7 +257,7 @@ export function AgentProfileDrawer() {
       const { data, error } = await supabase
         .from("agents")
         .select(
-          `id, user_id, agent_code, status, license_status, nipr_number, start_date,
+          `id, user_id, agent_code, status, license_status, license_progress, nipr_number, start_date,
            total_policies, total_premium, total_earnings, manager_id,
            display_name, is_deactivated, is_inactive, onboarding_stage,
            first_deal_at, contracted_at, notes,
@@ -809,6 +814,30 @@ const qnum = (v: number | string | null | undefined): number | null => {
                 <p className="mt-1 text-[10px] text-muted-foreground">downline</p>
               </div>
             </div>
+
+            {!isLicensed ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
+                <div>
+                  <p className="text-sm font-semibold">Licensing progress</p>
+                  <p className="text-xs text-muted-foreground">Tap the current official milestone.</p>
+                </div>
+                <LicenseProgressSelector
+                  agentId={agent.id}
+                  currentProgress={(agent.license_progress || "unlicensed") as any}
+                  onProgressUpdated={() => {
+                    qc.invalidateQueries({ queryKey: ["agent-profile-drawer", agent.id] });
+                    qc.invalidateQueries({ queryKey: ["crm-agents"] });
+                  }}
+                />
+              </div>
+            ) : null}
+
+            {/* Production qualification + permanent recruiting link. */}
+            <FreeLeadsStatusCard agentId={agent.id} />
+
+            <AgentReferralLinkCard agentId={agent.id} />
+
+            <CandidateGoalsNotesPanel agentId={agent.id} />
 
             {/* Training stage tracker (NEW) */}
             <AgentTrainingStageBar agentId={agent.id} />

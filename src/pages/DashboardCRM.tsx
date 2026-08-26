@@ -320,7 +320,7 @@ function CompactExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onEditL
             </Badge>
             {agent.agentLicenseStatus !== "licensed" && (
               <LicenseProgressSelector
-                applicationId={agent.applicationId || agent.id}
+                applicationId={agent.applicationId}
                 agentId={agent.userId ? agent.id : undefined}
                 currentProgress={(agent.licenseProgress || "unlicensed") as any}
                 testScheduledDate={agent.testScheduledDate}
@@ -400,6 +400,9 @@ interface RosterRow {
   today_alp: number | string | null;
   today_deals: number | null;
   selling_streak_days: number | null;
+  free_leads_qualified: boolean;
+  free_leads_reason: string | null;
+  free_leads_needed_for_qual: number | string | null;
   l30_alp: number | string | null;
   l30_deals: number | null;
   lifetime_alp: number | string | null;
@@ -722,12 +725,24 @@ function RosterPanel({ rows, isLoading, isError, onRetry }: {
                         <div className="flex min-w-0 items-center gap-2">
                           <AgentAvatar avatarUrl={getAvatarUrl(r.avatar_url ?? undefined)} name={r.full_name ?? "—"} size="sm" className="shrink-0 shadow-sm ring-2 ring-background" />
                           <div className="min-w-0">
-                            <Link
-                              to={`/dashboard/profile?agentId=${r.agent_id}`}
-                              className="block truncate text-sm font-medium text-foreground underline-offset-2 decoration-dotted hover:text-primary hover:underline"
-                            >
-                              {r.full_name ?? "Name not on file"}
-                            </Link>
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <Link
+                                to={`/dashboard/profile?agentId=${r.agent_id}`}
+                                className="block min-w-0 truncate text-sm font-medium text-foreground underline-offset-2 decoration-dotted hover:text-primary hover:underline"
+                              >
+                                {r.full_name ?? "Name not on file"}
+                              </Link>
+                              {r.free_leads_qualified && (
+                                <Badge
+                                  variant="outline"
+                                  className="h-4 shrink-0 border-sky-500/50 bg-sky-500/10 px-1.5 text-[9px] font-bold uppercase tracking-wide text-sky-400 ring-1 ring-sky-500/20"
+                                  title={r.free_leads_reason ?? "Free Leads active"}
+                                >
+                                  <span className="mr-1 h-1.5 w-1.5 rounded-full bg-sky-400" />
+                                  Free Leads
+                                </Badge>
+                              )}
+                            </div>
                             {r.email ? (
                               <a href={`mailto:${r.email}`} className="block truncate text-[11px] text-muted-foreground hover:text-primary hover:underline">
                                 <Mail className="mr-1 inline h-3 w-3" />{r.email}
@@ -908,20 +923,30 @@ export default function DashboardCRM() {
     enabled: !authLoading && !!user,
     staleTime: 60_000,
     queryFn: async (): Promise<RosterRow[]> => {
-      const [rosterResult, pulseResult, contactResult] = await Promise.all([
+      const [rosterResult, pulseResult, contactResult, freeLeadsResult] = await Promise.all([
         supabase.rpc("crm_agent_roster" as never),
         supabase.rpc("crm_agent_sales_pulse" as never),
         supabase.rpc("crm_agent_contacts" as never),
+        supabase.rpc("crm_agent_free_leads_status" as never),
       ]);
       if (rosterResult.error) throw rosterResult.error;
       if (pulseResult.error) throw pulseResult.error;
       if (contactResult.error) throw contactResult.error;
+      if (freeLeadsResult.error) throw freeLeadsResult.error;
       const pulseByAgent = new Map(
         ((pulseResult.data as unknown as Array<Pick<RosterRow, "agent_id" | "today_alp" | "today_deals" | "selling_streak_days">>) ?? [])
           .map((row) => [row.agent_id, row] as const),
       );
       const contactByAgent = new Map(
         ((contactResult.data as unknown as RosterContact[]) ?? []).map((row) => [row.agent_id, row] as const),
+      );
+      const freeLeadsByAgent = new Map(
+        ((freeLeadsResult.data as unknown as Array<{
+          agent_id: string;
+          qualifies: boolean;
+          reason: string;
+          needed_for_qual: number | string;
+        }>) ?? []).map((row) => [row.agent_id, row] as const),
       );
       return ((rosterResult.data as unknown as RosterRow[]) ?? []).map((row) => ({
         ...row,
@@ -931,6 +956,9 @@ export default function DashboardCRM() {
         today_alp: pulseByAgent.get(row.agent_id)?.today_alp ?? 0,
         today_deals: pulseByAgent.get(row.agent_id)?.today_deals ?? 0,
         selling_streak_days: pulseByAgent.get(row.agent_id)?.selling_streak_days ?? 0,
+        free_leads_qualified: freeLeadsByAgent.get(row.agent_id)?.qualifies ?? false,
+        free_leads_reason: freeLeadsByAgent.get(row.agent_id)?.reason ?? null,
+        free_leads_needed_for_qual: freeLeadsByAgent.get(row.agent_id)?.needed_for_qual ?? null,
       }));
     },
   });

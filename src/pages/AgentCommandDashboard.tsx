@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { APEX_BRAND } from "@/config/brand";
 import { Link } from "react-router-dom";
 import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, Briefcase, Building2, Calendar, ChevronRight,
   CircleDollarSign, Clock, Crown, DollarSign, FileCheck, Filter, Flame, GraduationCap, Layers,
@@ -48,6 +48,8 @@ import { LapsesDrilldownModal } from "@/components/dashboard/LapsesDrilldownModa
 import { RecentActivationsPanel } from "@/components/dashboard/RecentActivationsPanel";
 import { ManagerPostCounter } from "@/components/dashboard/ManagerPostCounter";
 import { MyReferralLinkCard } from "@/components/agent/MyReferralLinkCard";
+import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
+import { SlackJoinCard } from "@/components/recruiting/SlackJoinCard";
 // v26 audit fix: AgentLinkBookTruthCard + CarrierBreakdownCard + BookTrendCard
 // imports removed. They lived in the deleted whole-book footer. KPIs now
 // truth-sourced from agentlink_deals_snapshot, so the redundant footer was
@@ -141,6 +143,7 @@ interface Deal {
 export default function AgentCommandDashboard() {
   usePageTitle("Command Center · APEX");
   const { user, isAdmin } = useAuth();
+  const queryClient = useQueryClient();
 
   // ── Resolve current agent id ────────────────────────────────────────────
   // NOTE: All hooks below must run unconditionally (including for admins)
@@ -150,13 +153,13 @@ export default function AgentCommandDashboard() {
     queryKey: ["me-agent-row", user?.id],
     enabled: !isAdmin && !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("agents")
-        .select("id")
+        .select("id, license_status, license_progress")
         .eq("user_id", user!.id)
         .maybeSingle();
       if (error) throw error;
-      return data as { id: string } | null;
+      return data as { id: string; license_status: string | null; license_progress: string | null } | null;
     },
   });
 
@@ -374,8 +377,32 @@ export default function AgentCommandDashboard() {
       {/* ── NEXT STEP CARD — what's the next concrete move ───── */}
       {agentId && <NextStepCard agent_id={agentId} />}
 
+      {agentId && meAgent?.license_status !== "licensed" ? (
+        <GlassCard className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold">Update your licensing roadmap</p>
+            <p className="text-xs text-muted-foreground">
+              Tap the milestone you reached: course, exam, fingerprints, or waiting on the license.
+            </p>
+          </div>
+          <LicenseProgressSelector
+            agentId={agentId}
+            currentProgress={(meAgent.license_progress || "unlicensed") as any}
+            onProgressUpdated={() => {
+              queryClient.invalidateQueries({ queryKey: ["me-agent-row", user.id] });
+              queryClient.invalidateQueries({ queryKey: ["cc-self", agentId] });
+            }}
+          />
+        </GlassCard>
+      ) : null}
+
       {/* ── P3: MY REFERRAL LINK ─────────────────────────────────── */}
       <MyReferralLinkCard />
+
+      <SlackJoinCard
+        compact
+        licenseStatus={meAgent?.license_status === "licensed" ? "licensed" : "unlicensed"}
+      />
 
       {/* ── 4 KPI TILES ───────────────────────────────────────── */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

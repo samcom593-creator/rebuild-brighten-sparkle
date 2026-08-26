@@ -53,9 +53,11 @@ describe("AgentCloud parity surfaces", () => {
 
   it("keeps one-link contracting inside the canonical Add Agent flow", () => {
     const addAgent = source("components/dashboard/AddAgentModal.tsx");
-    expect(addAgent).toContain("One-link contracting");
-    expect(addAgent).toContain("https://apex-financial.org/start-contracting");
-    expect(addAgent).toContain("contracting spreadsheet and private support Discord");
+    expect(addAgent).toContain("Send one link — they fill out their own profile");
+    expect(addAgent).toContain('p_kind: "hire"');
+    expect(addAgent).toContain("p_target_manager_id: managerId");
+    expect(addAgent).toContain("license_status_locked: true");
+    expect(addAgent).toContain("Assign to manager / upline");
   });
 
   it("makes every recruiting invite branch by license and auto-queues licensed contracting", () => {
@@ -63,7 +65,8 @@ describe("AgentCloud parity surfaces", () => {
     const hire = source("pages/HireLink.tsx");
     const consumer = source("../supabase/functions/consume-invite-token/index.ts");
     expect(inviteLinks).toContain("License status is always required");
-    expect(hire).toContain("Are you licensed?");
+    expect(hire).toContain("License path");
+    expect(hire).toContain("hire-license-path-locked");
     expect(hire).toContain("licensed: licensedHire === true");
     expect(consumer).toContain('"submit_contracting_intake"');
     expect(consumer).toContain("licensed_contracting_enqueue_failed");

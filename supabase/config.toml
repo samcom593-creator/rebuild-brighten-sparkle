@@ -758,3 +758,6 @@ verify_jwt = true
 
 [functions.slack-integration-health]
 verify_jwt = true
+
+[functions.free-leads-weekly-alerts]
+verify_jwt = false

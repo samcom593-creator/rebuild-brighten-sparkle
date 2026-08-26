@@ -42,8 +42,6 @@ type FunctionErrorContext = {
 };
 type FunctionError = Error & { context?: FunctionErrorContext };
 
-export const CONTRACTING_INTAKE_URL = "https://apex-financial.org/start-contracting";
-
 const BUILDER_TRACK_OPTIONS: Array<{
   value: BuilderTrack;
   label: string;
@@ -65,7 +63,8 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingManagers, setLoadingManagers] = useState(false);
-  const [contractingLinkCopied, setContractingLinkCopied] = useState(false);
+  const [pathLinkLoading, setPathLinkLoading] = useState(false);
+  const [pathLink, setPathLink] = useState<string | null>(null);
   const [managers, setManagers] = useState<Manager[]>([]);
 
   // Simplified form state - essentials only
@@ -156,13 +155,51 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     setPhone(formatted);
   };
 
-  const copyContractingLink = async () => {
+  const createPathLink = async () => {
+    if (!licenseStatus || pathLinkLoading) return;
+    if (!managerId) {
+      toast.error("Choose who this agent is assigned to before creating the link");
+      return;
+    }
+    setPathLinkLoading(true);
     try {
-      await navigator.clipboard.writeText(CONTRACTING_INTAKE_URL);
-      setContractingLinkCopied(true);
-      toast.success("One-link contracting intake copied");
+      const { data, error } = await (supabase as any).rpc("generate_invite_token", {
+        p_kind: "hire",
+        p_expires_hours: 168,
+        p_target_role: licenseStatus === "licensed" ? "hired_licensed" : "hired_unlicensed",
+        p_target_manager_id: managerId || null,
+        p_prefill: {
+          license_status: licenseStatus,
+          license_status_locked: true,
+          source: "add_agent",
+        },
+        p_notes: `Add Agent · ${licenseStatus}`,
+      });
+      if (error) throw error;
+      const url = typeof data?.url === "string" ? data.url : null;
+      if (!url) throw new Error("The invite service returned no link");
+      setPathLink(url);
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success(`${licenseStatus === "licensed" ? "Licensed" : "Unlicensed"} one-link invite copied`);
+      } catch {
+        toast.success("One-link invite created — copy it below");
+      }
+    } catch (error) {
+      console.error("[AddAgentModal] path link failed", error);
+      toast.error(error instanceof Error ? error.message : "Couldn't create the one-link invite");
+    } finally {
+      setPathLinkLoading(false);
+    }
+  };
+
+  const copyPathLink = async () => {
+    if (!pathLink) return;
+    try {
+      await navigator.clipboard.writeText(pathLink);
+      toast.success("One-link invite copied");
     } catch {
-      toast.error(`Copy failed — open ${CONTRACTING_INTAKE_URL}`);
+      toast.error("Clipboard blocked — use Open and copy the browser address");
     }
   };
 
@@ -228,7 +265,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           licenseExpiresAt: licenseExpiresAt || undefined,
           // Both paths enter training. Unlicensed hires receive XCEL; licensed
           // hires receive the licensed onboarding curriculum while contracting
-          // is queued in the same canonical server transaction.
+          // starts in the same canonical server transaction.
           hasTrainingCourse: true,
           compPercentage: licenseStatus === "licensed" ? normalizedComp : 60,
           samApprovalRequested: licenseStatus === "licensed" && normalizedComp > 100 && samApprovalRequested,
@@ -337,7 +374,8 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     setCarriers("");
     setWritingNumbers("");
     setPreviousUpline("");
-    setContractingLinkCopied(false);
+    setPathLinkLoading(false);
+    setPathLink(null);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -364,7 +402,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
             {!licenseStatus
               ? "First choose the correct journey. APEX will run the matching onboarding process inside this window."
               : licenseStatus === "licensed"
-                ? "Create portal access and queue the agent for the contracting spreadsheet and Discord."
+                ? "Send one link. Their completed intake starts contracting and the support desk immediately."
                 : "Create portal access, send the XCEL course, and add the recruit to the licensing tracker."}
           </DialogDescription>
         </DialogHeader>
@@ -406,21 +444,10 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                     <Link2 className="h-4 w-4" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold">One-link contracting</p>
+                    <p className="text-sm font-bold">One-link intake is built into both paths</p>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      Send one link to any licensed hire. Their intake queues the contracting spreadsheet and private support Discord.
+                      Choose Licensed or Unlicensed above. The next screen creates the correct locked link for you to copy and send.
                     </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button type="button" size="sm" onClick={() => void copyContractingLink()} className="gap-1.5">
-                        {contractingLinkCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                        {contractingLinkCopied ? "Copied" : "Copy link"}
-                      </Button>
-                      <Button asChild type="button" size="sm" variant="outline" className="gap-1.5">
-                        <a href={CONTRACTING_INTAKE_URL} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-3.5 w-3.5" /> Open
-                        </a>
-                      </Button>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -429,36 +456,86 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
         <form onSubmit={handleSubmit} className="mt-3 space-y-4">
           <button
             type="button"
-            onClick={() => setLicenseStatus(null)}
+            onClick={() => {
+              setLicenseStatus(null);
+              setPathLink(null);
+            }}
             className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Change licensed status
           </button>
 
-          {licenseStatus === "licensed" ? (
-            <div className="rounded-lg border border-primary/35 bg-primary/5 p-3">
+          <div className="space-y-1.5 rounded-lg border border-border bg-card p-3">
+            <Label htmlFor="path-manager">Assign to manager / upline *</Label>
+            <Select
+              value={managerId}
+              onValueChange={(value) => {
+                setManagerId(value);
+                // A generated token permanently stores its upline. Changing the
+                // picker must require a fresh link instead of leaving a stale,
+                // silently misassigned URL on screen.
+                setPathLink(null);
+              }}
+              required
+            >
+              <SelectTrigger id="path-manager" data-testid="add-agent-manager-select">
+                <SelectValue placeholder={loadingManagers ? "Loading managers…" : "Select a manager"} />
+              </SelectTrigger>
+              <SelectContent>
+                {loadingManagers ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : managers.length === 0 ? (
+                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">No managers available</div>
+                ) : managers.map((manager) => (
+                  <SelectItem key={manager.id} value={manager.id}>{manager.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              This assignment is locked into the link and becomes their team hierarchy when they finish signup.
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-primary/35 bg-primary/5 p-3" data-testid="one-link-path-panel">
               <div className="flex items-start gap-2.5">
                 <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">Prefer one link?</p>
+                  <p className="text-sm font-semibold">Send one link — they fill out their own profile</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Skip manual entry and send the contracting intake. It queues the spreadsheet and support Discord after submission.
+                    {licenseStatus === "licensed"
+                      ? "This locked licensed link requires their NPN, creates their account, and starts contracting immediately."
+                      : "This locked unlicensed link creates their account and opens the live course → exam → fingerprints roadmap."}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Button type="button" size="sm" onClick={() => void copyContractingLink()} className="h-9 gap-1.5">
-                      {contractingLinkCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                      {contractingLinkCopied ? "Copied" : "Copy contracting link"}
-                    </Button>
-                    <Button asChild type="button" size="sm" variant="outline" className="h-9 gap-1.5">
-                      <a href={CONTRACTING_INTAKE_URL} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-3.5 w-3.5" /> Open
-                      </a>
-                    </Button>
+                    {!pathLink ? (
+                      <Button type="button" size="sm" onClick={() => void createPathLink()} disabled={pathLinkLoading || loadingManagers || !managerId} className="h-9 gap-1.5">
+                        {pathLinkLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
+                        {pathLinkLoading ? "Creating…" : `Create & copy ${licenseStatus} link`}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button type="button" size="sm" onClick={() => void copyPathLink()} className="h-9 gap-1.5">
+                          <Check className="h-3.5 w-3.5" /> Copy link
+                        </Button>
+                        <Button asChild type="button" size="sm" variant="outline" className="h-9 gap-1.5">
+                          <a href={pathLink} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3.5 w-3.5" /> Open test
+                          </a>
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
-          ) : null}
+          </div>
+
+          <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            Or add manually
+            <span className="h-px flex-1 bg-border" />
+          </div>
 
           {/* Name Row */}
           <div className="grid grid-cols-2 gap-3">
@@ -508,33 +585,6 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
               placeholder="(555) 123-4567"
               required
             />
-          </div>
-
-          {/* Manager */}
-          <div className="space-y-1.5">
-            <Label htmlFor="manager">Assign to Manager *</Label>
-            <Select value={managerId} onValueChange={setManagerId} required>
-              <SelectTrigger>
-                <SelectValue placeholder={loadingManagers ? "Loading..." : "Select a manager"} />
-              </SelectTrigger>
-              <SelectContent>
-                {loadingManagers ? (
-                  <div className="flex items-center justify-center py-4">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                ) : managers.length === 0 ? (
-                  <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-                    No managers available
-                  </div>
-                ) : (
-                  managers.map((manager) => (
-                    <SelectItem key={manager.id} value={manager.id}>
-                      {manager.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
           </div>
 
           {/* License details. NPN is the only field that gates submit, and only

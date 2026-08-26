@@ -8,6 +8,7 @@ import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
 import { SCHEDULING_LINKS, getCalendlyHostName } from "@/lib/apexConfig";
 import { useApplicationStatus } from "@/hooks/useApplicationStatus";
 import { supabase } from "@/integrations/supabase/client";
+import { SlackJoinCard } from "@/components/recruiting/SlackJoinCard";
 
 /**
  * Stage 1 final success page.
@@ -120,6 +121,8 @@ export function ApplicationConfirmationV2({
               {firstName ? <>{firstName}, your application is <span className="gradient-text">in.</span></> : <>Application <span className="gradient-text">received.</span></>}
             </h1>
           </div>
+
+          <SlackJoinCard licenseStatus={license} />
 
           {/* Branched body */}
           {license === "licensed" ? <LicensedBody applicationId={applicationId} showCalendly={showCalendly} tgDeepLink={tgDeepLink} autoLoginUrl={autoLoginUrl} /> : null}
@@ -271,7 +274,7 @@ function LicensedBody({
       </GradientButton>
 
       <p className="text-xs text-center text-muted-foreground">
-        We also emailed the booking link + Discord invite. Check inbox + spam.
+        We also emailed your Slack workspace invite and next steps. Check inbox + spam.
       </p>
     </div>
   );

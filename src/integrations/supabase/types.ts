@@ -8383,6 +8383,7 @@ export type Database = {
         | "course_purchased"
         | "finished_course"
         | "test_scheduled"
+        | "failed_test"
         | "passed_test"
         | "fingerprints_done"
         | "waiting_on_license"
@@ -8584,6 +8585,7 @@ export const Constants = {
         "course_purchased",
         "finished_course",
         "test_scheduled",
+        "failed_test",
         "passed_test",
         "fingerprints_done",
         "waiting_on_license",

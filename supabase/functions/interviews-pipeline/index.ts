@@ -247,6 +247,33 @@ async function listApplicants(actor: Actor) {
   return json({ applicants: applicantsOut, counts, total: rows.length, role: actor.role, generatedAt: new Date().toISOString() });
 }
 
+// Lane 3 (2026-08-26): onboarding calls are Calendly bookings on the
+// "APEX Onboarding Call" event type, stored in interview_events with
+// call_track = 'onboarding' (views in migration 20260826052000). Every staff
+// role sees the calls; the backfill list (licensed hires with no call) is for
+// executives and recruiters — it is a count plus a per-person action, never a
+// mass send.
+async function listOnboardingCalls(actor: Actor) {
+  type Res = { data: unknown[] | null; error: { message: string } | null };
+  const [calls, truth, gaps] = await Promise.all([
+    admin.from("v_onboarding_calls").select("*").order("scheduled_at", { ascending: false }).limit(500) as unknown as Promise<Res>,
+    admin.from("v_onboarding_call_truth").select("*").limit(1) as unknown as Promise<Res>,
+    actor.role === "va"
+      ? Promise.resolve<Res>({ data: [], error: null })
+      : admin.from("v_onboarding_call_gaps").select("*").order("licensed_at", { ascending: false, nullsFirst: false }).limit(200) as unknown as Promise<Res>,
+  ]);
+  if (calls.error) throw new Error(`onboarding calls: ${calls.error.message}`);
+  if (truth.error) throw new Error(`onboarding truth: ${truth.error.message}`);
+  if (gaps.error) throw new Error(`onboarding gaps: ${gaps.error.message}`);
+  return json({
+    calls: calls.data ?? [],
+    truth: (truth.data ?? [])[0] ?? null,
+    gaps: gaps.data ?? [],
+    role: actor.role,
+    generatedAt: new Date().toISOString(),
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
@@ -256,6 +283,7 @@ serve(async (req) => {
       ? await req.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>
       : {};
     if (body.action) return await updateApplicant(req, actor, body);
+    if (body.list === "onboarding_calls") return await listOnboardingCalls(actor);
     return await listApplicants(actor);
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "error" }, 500);

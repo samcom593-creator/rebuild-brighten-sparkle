@@ -137,6 +137,23 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Licensing milestone (agents.license_progress, added 2026-08-26). A
+    // licensed add is at 'licensed'; an unlicensed add starts wherever the
+    // caller says they are on the course -> exam -> fingerprints roadmap,
+    // defaulting to the first rung. An NPN is NOT needed until licensed — that
+    // is the whole pre-license track — so nothing below gates on it for an
+    // unlicensed or pending recruit.
+    const LICENSE_PROGRESS_VALUES = new Set([
+      "unlicensed", "course_purchased", "finished_course", "test_scheduled", "failed_test",
+      "passed_test", "fingerprints_done", "waiting_on_license", "licensed",
+    ]);
+    const requestedProgress = String(licenseProgress ?? "").trim().toLowerCase();
+    const agentLicenseProgress = agentLicenseStatus === "licensed"
+      ? "licensed"
+      : (LICENSE_PROGRESS_VALUES.has(requestedProgress) && requestedProgress !== "licensed"
+        ? requestedProgress
+        : "unlicensed");
+
     const allowedBuilderTracks = new Set(["agent", "manager_track", "agency_owner_track"]);
     if (!allowedBuilderTracks.has(requestedBuilderTrack)) {
       return new Response(
@@ -390,6 +407,7 @@ const handler = async (req: Request): Promise<Response> => {
       source_application_id: sourceApplication?.id ?? null,
       status: "active",
       license_status: agentLicenseStatus,
+      license_progress: agentLicenseProgress,
       onboarding_stage: agentLicenseStatus === "licensed"
         ? (hasTrainingCourse ? "training_online" : "onboarding")
         : "pre_licensed",
@@ -553,7 +571,7 @@ const handler = async (req: Request): Promise<Response> => {
     // fake-success sync rows: side-effect failures buried, top-level lie.
     // Now: await both invocations, capture per-side-effect status, ship it in
     // the response so the modal can surface partial failure honestly.
-    type SideEffectStatus = { ok: boolean; skipped?: boolean; error?: string };
+    type SideEffectStatus = { ok: boolean; skipped?: boolean; error?: string; reason?: string };
     const invokeSideEffect = async (
       fnName: string,
       body: Record<string, unknown>,
@@ -622,7 +640,16 @@ const handler = async (req: Request): Promise<Response> => {
     // Licensed direct-adds already contain the exact five contracting fields.
     // Route them through the same idempotent intake used by the public page so
     // the real Ethos write and private Discord receipt stay one workflow.
-    let contractingPostStatus: SideEffectStatus = { ok: true, skipped: true };
+    //
+    // Unlicensed / pending adds are SKIPPED here with the reason spelled out
+    // (never a bare skipped:true): they have no NPN to contract under yet.
+    // They live on the pre-license track and contracting starts when the
+    // license lands, so this is the correct outcome, not a missing step.
+    let contractingPostStatus: SideEffectStatus = {
+      ok: true,
+      skipped: true,
+      reason: "pre_license_track: NPN not needed until licensed — contracting starts automatically when the license lands",
+    };
     if (agentLicenseStatus === "licensed") {
       const { data: intakeData, error: intakeError } = await supabaseAdmin.rpc("submit_contracting_intake", {
         p_first_name: firstName,
@@ -632,6 +659,7 @@ const handler = async (req: Request): Promise<Response> => {
         p_npn: normalizedNpn,
         p_source: "add_agent",
         p_submitted_by: requestingUserId,
+        p_license_status: "licensed",
       });
       const intake = intakeData as { ok?: boolean; error?: string; intake_id?: string } | null;
       contractingPostStatus = intakeError || !intake?.ok

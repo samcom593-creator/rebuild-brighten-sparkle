@@ -186,6 +186,12 @@ const PUBLIC_ALLOWLIST = new Set([
   // APEX login; controls are the field allowlist, fail-closed rate limiting,
   // a honeypot, and a service-role-only RPC behind it.
   "submit-contracting-intake",
+  // Cron workers use the rotating APEX bot token rather than a Supabase JWT.
+  // Both handlers compare that bearer themselves and fail closed; the
+  // onboarding worker additionally reserves diagnostics/send-one for the
+  // service-role bearer.
+  "free-leads-weekly-alerts",
+  "onboarding-call-invites",
 ]);
 
 // Rule 4: verify_jwt status. Ratcheted, not absolute. Flipping the ~236 legacy

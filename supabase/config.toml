@@ -761,3 +761,6 @@ verify_jwt = true
 
 [functions.free-leads-weekly-alerts]
 verify_jwt = false
+
+[functions.onboarding-call-invites]
+verify_jwt = false

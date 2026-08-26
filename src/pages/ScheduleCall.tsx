@@ -107,7 +107,7 @@ export default function ScheduleCall() {
                     Leadership strategy call <CheckCircle2 className="h-5 w-5" />
                   </Button>
                   <Button size="lg" variant="outline" className="w-full gap-2 btn-press" onClick={() => setLeaderQualified(false)}>
-                    Licensed agent onboarding call
+                    Licensed agent interview call
                   </Button>
                 </div>
               </GlassCard>
@@ -148,7 +148,7 @@ export default function ScheduleCall() {
                     <Calendar className="h-5 w-5 text-primary" />
                   <div>
                     <h2 className="font-bold text-sm">
-                      {leaderQualified ? "Samuel James strategy call" : "Licensed onboarding call"}
+                      {leaderQualified ? "Samuel James strategy call" : "Licensed agent interview"}
                     </h2>
                     <p className="text-xs text-muted-foreground">
                       Booking with: <span className="text-foreground font-medium">{resolved.hostName}</span>
@@ -156,7 +156,7 @@ export default function ScheduleCall() {
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {leaderQualified
                         ? "Reserved for 5+ agents or $50K+ monthly production"
-                        : "Pick a time with the onboarding strategist"}
+                        : "15-minute interview with Sam James. Your onboarding call is booked separately once you're hired."}
                     </p>
                   </div>
                 </div>

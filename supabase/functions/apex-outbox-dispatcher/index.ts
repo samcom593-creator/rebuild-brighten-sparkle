@@ -13,6 +13,7 @@ import {
 } from "../_shared/contracting-delivery.ts";
 import { emailPattern } from "../_shared/like-escape.ts";
 import { resolveOne } from "../_shared/resolve-one.ts";
+import { renderSlackEventText } from "./slack-event-templates.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -503,76 +504,57 @@ type SlackDestination = {
   is_enabled: boolean;
 };
 
-function safeSlackUrl(value: unknown, fallback: string): string {
-  return typeof value === "string" && value.startsWith("https://apex-financial.org/")
-    ? value
-    : fallback;
+type SlackReceiptLease = {
+  id: string;
+  status: string;
+  attempt_count: number | null;
+  channel_id: string | null;
+  message_ts: string | null;
+};
+
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function slackEventText(event: any): string {
-  const payload = event.payload ?? {};
-  if (event.event_type === "candidate.application_submitted") {
-    const candidate = String(payload.candidateName ?? "New candidate").trim().slice(0, 200);
-    const licenseTrack = payload.isLicensed === true ? "licensed" : "unlicensed";
-    const state = typeof payload.state === "string" && /^[A-Z]{2}$/.test(payload.state)
-      ? ` · ${payload.state}`
-      : "";
-    const url = safeSlackUrl(
-      payload.openUrl,
-      "https://apex-financial.org/dashboard/recruiting/pipeline",
-    );
-    return `New APEX application: *${candidate}* — ${licenseTrack}${state}\n<${url}|Open recruiting pipeline>`;
-  }
-
-  if (event.event_type === "contracting.intake_submitted") {
-    const agent = String(payload.agentName ?? "New agent").trim().slice(0, 200);
-    const npnSuffix = typeof payload.npnLast4 === "string" && /^\d{4}$/.test(payload.npnLast4)
-      ? ` · NPN ending ${payload.npnLast4}`
-      : "";
-    const url = safeSlackUrl(
-      payload.openUrl,
-      "https://apex-financial.org/dashboard/contracting/ops",
-    );
-    return `Contracting intake received: *${agent}*${npnSuffix}\n<${url}|Open contracting operations>`;
-  }
-
-  if (event.event_type === "deal.posted") {
-    const agent = String(payload.agentName ?? "APEX producer").trim().slice(0, 200);
-    const premium = Number(payload.annualPremium ?? 0);
-    const amount = Number.isFinite(premium)
-      ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
-        .format(Math.max(0, premium))
-      : "$0";
-    const product = typeof payload.productCategory === "string" && payload.productCategory.trim()
-      ? ` · ${payload.productCategory.trim().slice(0, 80)}`
-      : "";
-    const url = safeSlackUrl(payload.openUrl, "https://apex-financial.org/dashboard");
-    return `APEX sale posted: *${agent}* — ${amount}${product}\n<${url}|Open production dashboard>`;
-  }
-
-  if (event.event_type === "free_leads.weekly_summary") {
-    const eligible = Math.max(0, Number(payload.eligibleCount ?? 0) || 0);
-    const near = Math.max(0, Number(payload.nearCount ?? 0) || 0);
-    const threshold = Math.max(0, Number(payload.threshold ?? 20_000) || 20_000);
-    const url = safeSlackUrl(payload.openUrl, "https://apex-financial.org/dashboard/team");
-    return `APEX Free Leads weekly pulse: *${eligible} active* · *${near} within $5K* of the $${threshold.toLocaleString("en-US")} tier\n<${url}|Open team dashboard>`;
-  }
-
-  const milestone = String(payload.milestoneType ?? "licensing milestone")
-    .replaceAll("_", " ");
-  const candidate = String(payload.candidateName ?? "APEX candidate").trim().slice(0, 200);
-  const state = typeof payload.state === "string" && /^[A-Z]{2}$/.test(payload.state)
-    ? ` · ${payload.state}`
-    : "";
-  const examDate = typeof payload.examDate === "string" ? ` · ${payload.examDate}` : "";
-  const url = safeSlackUrl(
-    payload.openUrl,
-    "https://apex-financial.org/dashboard/recruiting/pipeline",
-  );
-  return `APEX licensing milestone: *${candidate}* — ${milestone}${state}${examDate}\n<${url}|Open recruiting pipeline>`;
+// A failed post leaves the receipt at 'retrying' (or 'dead_letter' once the
+// attempt budget is spent) and only ever overwrites a row this worker holds
+// the lease on: a row another worker has since delivered is never touched.
+// next_attempt_at is advisory -- the parent outbox event's available_at is
+// what actually schedules the retry -- but it is recorded so the receipt
+// ledger explains itself without a join.
+async function markSlackReceiptFailed(
+  sb: any,
+  receipt: SlackReceiptLease,
+  retryAfterSeconds: number | null,
+  message: string,
+): Promise<void> {
+  const attempts = Math.max(1, Number(receipt.attempt_count ?? 1));
+  const exhausted = attempts >= MAX_ATTEMPTS;
+  const backoffSeconds = retryAfterSeconds ?? Math.min(3600, 60 * 2 ** (attempts - 1));
+  const now = new Date();
+  const { error } = await sb.from("messaging_delivery_receipts").update({
+    status: exhausted ? "dead_letter" : "retrying",
+    retry_after_seconds: retryAfterSeconds,
+    next_attempt_at: exhausted ? null : new Date(now.getTime() + backoffSeconds * 1000).toISOString(),
+    last_error_redacted: redactError(message).slice(0, 300),
+    updated_at: now.toISOString(),
+  }).eq("id", receipt.id).eq("status", "claimed");
+  if (error) throw error;
 }
 
 async function deliverSlack(sb: any, event: any): Promise<DispatchResult> {
+  // Render first. An event type with no template is an operator problem, not
+  // something to guess at; it must never reach a channel as a wrong sentence.
+  const text = renderSlackEventText(String(event.event_type ?? ""), event.payload ?? {});
+  if (text === null) {
+    return {
+      state: "manual_action_required",
+      manualReason:
+        `No Slack template exists for event type ${event.event_type}; add one to apex-outbox-dispatcher/slack-event-templates.ts`,
+    };
+  }
+
   const { data: routeRows, error: routeError } = await sb
     .from("messaging_route_rules")
     .select("id, installation_id, destination_id, template_version")
@@ -586,7 +568,15 @@ async function deliverSlack(sb: any, event: any): Promise<DispatchResult> {
     return { state: "manual_action_required", manualReason: "No enabled Slack route is mapped for this event" };
   }
 
+  // Fan-out: every enabled route is attempted on every pass. A failure on one
+  // destination no longer aborts the others; it is collected, and the parent
+  // event is retried, where the per-destination lease skips the ones that
+  // already landed.
   let delivered = 0;
+  let leasedElsewhere = 0;
+  let firstProviderMessageId: string | undefined;
+  const failures: string[] = [];
+
   for (const route of routes) {
     const [{ data: installation, error: installationError }, { data: destination, error: destinationError }] =
       await Promise.all([
@@ -617,96 +607,118 @@ async function deliverSlack(sb: any, event: any): Promise<DispatchResult> {
       || "";
     if (!token) continue;
 
+    // Lease BEFORE the post. The RPC inserts-or-locks the (event, destination)
+    // receipt atomically: no row means another worker holds a fresh lease;
+    // status 'delivered' means the message already landed and must not be
+    // posted again. chat.postMessage has no idempotency key of its own, so
+    // this row is the only thing standing between a re-claim and a duplicate.
     const receiptKey = `${event.id}:${channel.id}:v${route.template_version}`;
-    const { data: existing, error: existingError } = await sb
-      .from("messaging_delivery_receipts")
-      .select("id, status, attempt_count, message_ts")
-      .eq("outbox_event_id", event.id)
-      .eq("destination_id", channel.id)
-      .maybeSingle();
-    if (existingError) throw existingError;
-    if (existing?.status === "delivered") {
+    const { data: leaseRows, error: leaseError } = await sb.rpc("claim_messaging_delivery_receipt", {
+      p_outbox_event_id: event.id,
+      p_installation_id: workspace.id,
+      p_destination_id: channel.id,
+      p_idempotency_key: receiptKey,
+      p_template_version: route.template_version,
+      p_correlation_id: event.correlation_id ?? null,
+    });
+    if (leaseError) throw leaseError;
+    const receipt = (Array.isArray(leaseRows) ? leaseRows[0] : leaseRows) as SlackReceiptLease | undefined;
+    if (!receipt) {
+      leasedElsewhere += 1;
+      continue;
+    }
+    if (receipt.status === "delivered") {
       delivered += 1;
+      firstProviderMessageId ??= receipt.message_ts ? `${receipt.channel_id}:${receipt.message_ts}` : undefined;
       continue;
     }
 
-    let receipt = existing;
-    if (!receipt) {
-      const { data: created, error: createError } = await sb
-        .from("messaging_delivery_receipts")
-        .insert({
-          outbox_event_id: event.id,
-          installation_id: workspace.id,
-          destination_id: channel.id,
-          idempotency_key: receiptKey,
-          status: "pending",
-          template_version: route.template_version,
-          correlation_id: event.correlation_id,
-        })
-        .select("id, status, attempt_count, message_ts")
-        .single();
-      if (createError) throw createError;
-      receipt = created;
+    let response: Response;
+    try {
+      response = await fetch("https://slack.com/api/chat.postMessage", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json; charset=utf-8",
+        },
+        body: JSON.stringify({
+          channel: channel.channel_id,
+          text,
+          unfurl_links: false,
+          unfurl_media: false,
+        }),
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (error) {
+      // No response at all. Slack MAY have accepted the message before the
+      // socket died; there is no way to ask, so this is recorded as a retry
+      // and the possibility of a duplicate is accepted over the certainty of
+      // a silent drop.
+      const note = `Slack unreachable (${channel.purpose}): ${redactError(error)}`;
+      await markSlackReceiptFailed(sb, receipt, null, note);
+      failures.push(note);
+      continue;
     }
 
-    const attemptCount = Number(receipt.attempt_count ?? 0) + 1;
-    const { error: claimError } = await sb
-      .from("messaging_delivery_receipts")
-      .update({ status: "claimed", attempt_count: attemptCount, claimed_at: new Date().toISOString() })
-      .eq("id", receipt.id)
-      .neq("status", "delivered");
-    if (claimError) throw claimError;
-
-    const response = await fetch("https://slack.com/api/chat.postMessage", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${token}`,
-        "content-type": "application/json; charset=utf-8",
-      },
-      body: JSON.stringify({
-        channel: channel.channel_id,
-        text: slackEventText(event),
-        unfurl_links: false,
-        unfurl_media: false,
-      }),
-      signal: AbortSignal.timeout(10_000),
-    });
     const retryAfter = Number(response.headers.get("retry-after"));
-    const body = await response.json().catch(() => ({ ok: false, error: "invalid_provider_response" }));
+    const rawBody = await response.text();
+    let body: any = null;
+    try {
+      body = rawBody ? JSON.parse(rawBody) : null;
+    } catch { // empty-catch-allow:provider-body-may-be-non-json
+      // A non-JSON body is graded below exactly like a Slack-level failure.
+    }
     if (!response.ok || body?.ok !== true || typeof body?.ts !== "string") {
       const retrySeconds = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null;
-      await sb.from("messaging_delivery_receipts").update({
-        status: "retrying",
-        retry_after_seconds: retrySeconds,
-        next_attempt_at: new Date(Date.now() + (retrySeconds ?? 60) * 1000).toISOString(),
-        last_error_redacted: `Slack ${response.status}: ${String(body?.error ?? "delivery_failed").slice(0, 120)}`,
-      }).eq("id", receipt.id);
-      throw new Error(`Slack delivery failed (${response.status}): ${String(body?.error ?? "unknown")}`);
+      const note = `Slack ${response.status} (${channel.purpose}): ${String(body?.error ?? "invalid_provider_response").slice(0, 120)}`;
+      await markSlackReceiptFailed(sb, receipt, retrySeconds, note);
+      failures.push(note);
+      continue;
     }
 
     const deliveredAt = new Date().toISOString();
-    const { error: deliveredError } = await sb.from("messaging_delivery_receipts").update({
+    const deliveredPatch = {
       status: "delivered",
-      channel_id: channel.channel_id,
+      channel_id: typeof body.channel === "string" && body.channel ? body.channel : channel.channel_id,
       message_ts: body.ts,
-      provider_response_hash: null,
+      provider_response_hash: await sha256Hex(rawBody),
       last_error_redacted: null,
       retry_after_seconds: null,
       next_attempt_at: null,
       delivered_at: deliveredAt,
       updated_at: deliveredAt,
-    }).eq("id", receipt.id);
-    if (deliveredError) throw deliveredError;
+    };
+    // The message is in the channel. From here every statement is recording,
+    // and a lost record re-posts once the lease goes stale, so the write is
+    // retried before it is allowed to fail.
+    let recordError: unknown = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const { error } = await sb.from("messaging_delivery_receipts").update(deliveredPatch).eq("id", receipt.id);
+      recordError = error;
+      if (!error) break;
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+    if (recordError) throw recordError;
     delivered += 1;
+    firstProviderMessageId ??= `${deliveredPatch.channel_id}:${body.ts}`;
   }
 
+  if (failures.length > 0) {
+    throw new Error(`Slack delivery failed for ${failures.length} of ${routes.length} route(s): ${failures.join("; ")}`);
+  }
+  if (leasedElsewhere > 0) {
+    // Another worker is mid-post for at least one destination. Marking the
+    // parent delivered now would be claiming their outcome; let the parent
+    // retry and read the settled receipt instead.
+    throw new Error(`Slack delivery lease held by another worker for ${leasedElsewhere} destination(s); will re-check`);
+  }
   if (delivered === 0) {
     return {
       state: "manual_action_required",
       manualReason: "Slack route exists, but no active organization destination with a configured token was available",
     };
   }
-  return { state: "delivered", deliveryConfirmed: true };
+  return { state: "delivered", providerMessageId: firstProviderMessageId, deliveryConfirmed: true };
 }
 
 // ── Contracting intake destinations ──────────────────────────────────────────

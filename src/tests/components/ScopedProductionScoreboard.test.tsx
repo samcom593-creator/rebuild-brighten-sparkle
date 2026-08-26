@@ -27,17 +27,20 @@ describe("scoped production scoreboard", () => {
   });
 
   it("separates direct and override earnings without trusting the legacy 120 placeholder", () => {
-    const migration = source("../supabase/migrations/20260825211500_scoreboard_earnings_breakdown.sql");
-    expect(migration).toContain("a.contract_percentage <> 120");
-    expect(migration).toContain("greatest(v_caller_comp - seller_comp, 0)");
+    const migration = source("../supabase/migrations/20260826051000_production_comp_layering_scoreboard_v3.sql");
+    expect(migration).toContain("public.agent_contract_levels");
+    expect(migration).toContain("greatest(v_viewer_pct - coalesce(fp.pct, v_fallback), 0)");
     expect(migration).toContain("'direct', (select direct from earnings)");
     expect(migration).toContain("'override', (select override from earnings)");
-    expect(migration).toContain("alter column contract_percentage set default 60");
+    expect(migration).toContain("'recursive_team', jsonb_build_object");
+    expect(migration).toContain("'external_gap_override'");
 
     const component = source("components/dashboard/ScopedProductionScoreboard.tsx");
-    expect(component).toContain("query.data.earnings.direct");
-    expect(component).toContain("query.data.earnings.override");
-    expect(component).toContain("query.data.earnings.team_estimated");
+    expect(component).toContain("data.earnings.direct");
+    expect(component).toContain("data.earnings.override");
+    expect(component).toContain("data.earnings.team_estimated");
+    expect(component).toContain("data.recursive_team.ap");
+    expect(component).toContain("data.imo.ap");
   });
 
   it("places the same scoreboard before agent and manager command views", () => {

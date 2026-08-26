@@ -288,6 +288,11 @@ serve(async (req) => {
     canonical_agent_id: string | null;
     nipr_number: string | null;
   };
+  // agents.license_progress is read and written below. MEASURED 2026-08-25:
+  // the 041000 migration shipped the RPC that writes it but never added the
+  // column, so every hire (licensed or not) died here with 42703 AFTER the
+  // auth user and profile were created — an orphan account and an unused
+  // invite. 20260826051000_unlicensed_no_npn_onboarding adds the column.
   const agentColumns = "id, user_id, profile_id, status, license_status, license_progress, onboarding_stage, canonical_agent_id, nipr_number";
   const candidates = new Map<string, ExistingAgent>();
 
@@ -498,6 +503,17 @@ serve(async (req) => {
   // and private contracting support routing start automatically. The intake dedupes by
   // NPN, making browser retries safe; if this leg fails the invite remains
   // unused and the recruit can retry without creating a second agent.
+  //
+  // An UNLICENSED hire has no NPN by definition, so contracting is skipped
+  // here on purpose and the response says so explicitly. It is not a silent
+  // omission: the recruit is on the pre-license track (agents.onboarding_stage
+  // 'pre_licensed', license_progress 'unlicensed') and contracting starts when
+  // their NPN lands — via set_agent_license_progress or the one-link intake.
+  let contracting: Record<string, unknown> = {
+    skipped: true,
+    reason: "pre_license_track",
+    detail: "NPN not needed until licensed; contracting starts automatically when the license lands.",
+  };
   if (licensed) {
     const nameParts = full_name.split(/\s+/).filter(Boolean);
     const { data: contractingResult, error: contractingError } = await admin.rpc(
@@ -510,12 +526,19 @@ serve(async (req) => {
         p_npn: nipr_number,
         p_source: "magic_hire_link",
         p_submitted_by: authUserId,
+        p_license_status: "licensed",
       },
     );
     if (contractingError || contractingResult?.ok !== true) {
       console.error("licensed_contracting_enqueue_failed", contractingError ?? contractingResult);
       return json({ ok: false, error: "contracting_enqueue_failed" }, 500);
     }
+    contracting = {
+      ok: true,
+      intake_id: contractingResult.intake_id ?? null,
+      status: contractingResult.status ?? null,
+      contracting: contractingResult.contracting ?? null,
+    };
   }
 
   // Every hire gets the same durable Slack workspace invitation as an
@@ -590,6 +613,8 @@ serve(async (req) => {
     ok: true,
     kind: "hire",
     agent_id: agentId,
+    license_path: licensed ? "licensed" : "pre_license",
+    contracting,
     redirect_url,
   });
 });

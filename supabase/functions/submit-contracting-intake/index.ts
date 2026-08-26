@@ -39,12 +39,32 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const DEFAULT_MANAGER_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
 
+/**
+ * Which onboarding track the submitter is on.
+ *
+ * 'licensed' (default) is the original strict path: NPN required, contracting
+ * queued. 'unlicensed' / 'pending' is the pre-license track Sam asked for on
+ * 2026-08-25: the same one link must onboard a recruit who has no NPN yet.
+ * They get an account, the XCEL course login and the licensing roadmap;
+ * contracting is parked until their NPN arrives and then released in place.
+ *
+ * Read from the raw body on purpose: the five-field guard discards every other
+ * key, and this is a routing flag, not a sixth piece of producer data.
+ */
+export type LicensePath = "licensed" | "unlicensed" | "pending";
+
+export function licensePathFromBody(body: Record<string, unknown>): LicensePath {
+  const raw = String(body.license_status ?? body.licensePath ?? "licensed").trim().toLowerCase();
+  return raw === "unlicensed" || raw === "pending" ? raw : "licensed";
+}
+
 async function provisionOnboarding(
   // supabase-js does not carry this project's generated database schema inside
   // edge functions, so an inferred generic collapses table writes to `never`.
   // Runtime validation remains in Postgres; keep this boundary SDK-agnostic.
   sb: any,
   payload: { first_name: string; last_name: string; email: string; phone: string; npn: string },
+  licensePath: LicensePath,
 ) {
   const email = payload.email.trim().toLowerCase();
   const fullName = `${payload.first_name.trim()} ${payload.last_name.trim()}`.trim();
@@ -76,7 +96,7 @@ async function provisionOnboarding(
 
   const { data: existing, error: existingError } = await sb
     .from("agents")
-    .select("id,manager_id,invited_by_manager_id")
+    .select("id,manager_id,invited_by_manager_id,license_status,onboarding_stage")
     .eq("user_id", userId)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -84,15 +104,32 @@ async function provisionOnboarding(
   if (existingError) throw new Error(existingError.message);
 
   let agentId = existing?.id ?? null;
+  const preLicense = licensePath !== "licensed";
+  // A pre-license submission must never regress a producer who is already
+  // licensed on the roster (an unlicensed re-submit from a licensed agent's
+  // email is a mistake, not a downgrade). Licensed submissions always advance.
+  const alreadyLicensed = existing?.license_status === "licensed";
+  const licenseFields = preLicense
+    ? (alreadyLicensed
+      ? {}
+      : {
+        license_status: licensePath,
+        license_progress: "unlicensed",
+        onboarding_stage: existing?.onboarding_stage ?? "pre_licensed",
+      })
+    : {
+      license_status: "licensed",
+      license_progress: "licensed",
+      onboarding_stage: "onboarding",
+      nipr_number: payload.npn,
+    };
   const agentPatch = {
     user_id: userId,
     profile_id: profile.id,
     display_name: fullName,
     status: "active",
-    license_status: "licensed",
-    onboarding_stage: "onboarding",
+    ...licenseFields,
     has_training_course: true,
-    nipr_number: payload.npn,
     manager_id: existing?.manager_id ?? DEFAULT_MANAGER_ID,
     invited_by_manager_id: existing?.invited_by_manager_id ?? DEFAULT_MANAGER_ID,
     start_date: new Date().toISOString().slice(0, 10),
@@ -174,15 +211,19 @@ Deno.serve(async (req) => {
   }
 
   const payload = pickAcceptedFields(body);
+  const licensePath = licensePathFromBody(body);
 
   const { data, error } = await sb.rpc("submit_contracting_intake", {
     p_first_name: payload.first_name,
     p_last_name: payload.last_name,
     p_email: payload.email,
     p_phone: payload.phone,
-    p_npn: payload.npn,
+    // Blank is a real value on the pre-license path; the RPC still rejects a
+    // blank NPN for a licensed submission with npn_invalid.
+    p_npn: payload.npn || null,
     p_source: "apex_contracting_page",
     p_submitted_by: null,
+    p_license_status: licensePath,
   });
 
   if (error) {
@@ -196,6 +237,10 @@ Deno.serve(async (req) => {
     status?: string;
     review_reason?: string | null;
     replay?: boolean;
+    upgraded?: boolean;
+    license_status?: string;
+    npn_on_file?: boolean;
+    contracting?: string;
     error?: string;
     field?: string;
   };
@@ -214,7 +259,7 @@ Deno.serve(async (req) => {
   let onboardingEmailSent = false;
   if (result.status !== "needs_review") {
     try {
-      onboarding = await provisionOnboarding(sb, payload);
+      onboarding = await provisionOnboarding(sb, payload, licensePath);
       // The public intake proves possession of an NPN, not possession of the
       // email account. Send the one-click course login to that inbox instead
       // of returning an authentication bearer token to an unauthenticated
@@ -244,21 +289,34 @@ Deno.serve(async (req) => {
   // Deliver this intake immediately. The cron is recovery, not the normal
   // recruit experience. The filtered claim prevents unrelated work from being
   // drained by a public submission.
+  //
+  // A pre-license intake has NO outbox events by construction (its deliveries
+  // are parked at awaiting_license until the NPN arrives), so there is nothing
+  // to dispatch. Say so rather than calling the dispatcher and reporting an
+  // empty claim as if something had been attempted.
   let delivery: Record<string, unknown> | null = null;
-  try {
-    const dispatch = await fetch(`${SUPABASE_URL}/functions/v1/apex-outbox-dispatcher`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${SERVICE_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ contractingIntakeId: result.intake_id }),
-    });
+  if (result.contracting === "awaiting_license") {
+    delivery = {
+      skipped: true,
+      reason: "pre_license_no_contracting_deliveries",
+      detail: "No NPN yet. Contracting deliveries are parked and release automatically when the NPN is submitted.",
+    };
+  } else {
     try {
-      delivery = await dispatch.json();
-    } catch (dispatchParseError) {
-      console.error("[submit-contracting-intake] dispatcher response was not JSON:", dispatchParseError);
+      const dispatch = await fetch(`${SUPABASE_URL}/functions/v1/apex-outbox-dispatcher`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${SERVICE_KEY}`, "content-type": "application/json" },
+        body: JSON.stringify({ contractingIntakeId: result.intake_id }),
+      });
+      try {
+        delivery = await dispatch.json();
+      } catch (dispatchParseError) {
+        console.error("[submit-contracting-intake] dispatcher response was not JSON:", dispatchParseError);
+      }
+      if (!dispatch.ok) console.error("[submit-contracting-intake] immediate dispatch failed", dispatch.status, delivery);
+    } catch (dispatchError) {
+      console.error("[submit-contracting-intake] immediate dispatch unavailable:", dispatchError);
     }
-    if (!dispatch.ok) console.error("[submit-contracting-intake] immediate dispatch failed", dispatch.status, delivery);
-  } catch (dispatchError) {
-    console.error("[submit-contracting-intake] immediate dispatch unavailable:", dispatchError);
   }
 
   return jsonResponse({
@@ -267,6 +325,10 @@ Deno.serve(async (req) => {
     status: result.status,
     review_reason: result.review_reason ?? null,
     replay: result.replay ?? false,
+    upgraded: result.upgraded ?? false,
+    license_status: result.license_status ?? licensePath,
+    npn_on_file: result.npn_on_file ?? Boolean(payload.npn),
+    contracting: result.contracting ?? null,
     agent_id: onboarding?.agentId ?? null,
     onboarding_ready: Boolean(onboarding?.agentId && onboardingEmailSent),
     onboarding_email_sent: onboardingEmailSent,

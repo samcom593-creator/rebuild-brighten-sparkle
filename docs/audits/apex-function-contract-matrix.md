@@ -1,15 +1,15 @@
 # APEX Function Contract Matrix
 
-Generated: 2026-08-26T00:55:39.615Z
+Generated: 2026-08-26T04:38:03.155Z
 Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 
 ## Inventory Summary
 
-- Total Local Edge Functions: **246**
-- Configured in `config.toml`: **248**
+- Total Local Edge Functions: **248**
+- Configured in `config.toml`: **250**
 - Invoked Edge Functions in Source: **102**
-- Invoked RPC Calls in Source: **111**
-- SQL Functions in Migrations: **395**
+- Invoked RPC Calls in Source: **120**
+- SQL Functions in Migrations: **417**
 
 ## Edge Function Auth & Verification Contracts
 
@@ -77,6 +77,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `detect-production-gaps` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `discord-leaderboards` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `discord-webhook-notify` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
+| `free-leads-weekly-alerts` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `gcal-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `generate-award-graphics` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `generate-magic-link` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -150,6 +151,7 @@ Repository: `/Users/samjames/projects/rebuild-brighten-sparkle`
 | `notion-sync` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `nudge-unworked-applications` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `numbers-reminder` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
+| `onboarding-call-invites` | Yes | Yes | `false` | Public / Webhook In-Code Verified | PASS |
 | `onboarding-nudge-sweep` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `outreach-sender` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
 | `overseer-bot` | Yes | Yes | `false` | Authenticated JWT | DEBT: public but not allowlisted |
@@ -271,6 +273,6 @@ applied by hand through bot-sql and never round-tripped into
 `supabase/migrations`, so this directory does not model the deployed database.
 `apex-doctor` queries `pg_proc` and is the authority on deployed state.
 
-- Invoked RPCs: **111**
-- Also declared in this commit's migrations: **100**
-- Declared only in the database: **11**
+- Invoked RPCs: **120**
+- Also declared in this commit's migrations: **110**
+- Declared only in the database: **10**

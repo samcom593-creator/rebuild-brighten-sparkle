@@ -28,8 +28,9 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 interface QueueRow {
   id: string;
   agent_id: string;
-  email_kind: "course" | "discord" | "hired_whatsapp";
+  email_kind: "course" | "discord" | "hired_whatsapp" | "onboarding_call";
   attempt_count: number;
+  meta: Record<string, unknown> | null;
 }
 
 interface Settings {
@@ -38,9 +39,17 @@ interface Settings {
   whatsapp_hired_invite_url: string | null;
   training_course_url: string;
   from_address: string;
+  // Lane 3 (2026-08-26): onboarding-call booking link.
+  onboarding_call_event_type_uri: string | null;
+  onboarding_call_scheduling_url: string | null;
+  calendly_api_token: string | null;
 }
 
-async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settings> {
+// This worker intentionally queries migrations newer than the checked-in
+// generated Database type. Keep the service-role client schema-loose here so
+// Deno validates the real runtime contract instead of inferring every row as
+// `never` until types are regenerated after deployment.
+async function loadSettings(sb: any): Promise<Settings> {
   const { data } = await sb
     .from("system_settings")
     .select("key,value")
@@ -50,6 +59,8 @@ async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settin
       "whatsapp_hired_invite_url",
       "training_course_url",
       "onboarding_email_from_address",
+      "onboarding_call_event_type_uri",
+      "onboarding_call_scheduling_url",
     ]);
 
   const map = new Map<string, string | null>();
@@ -73,13 +84,58 @@ async function loadSettings(sb: ReturnType<typeof createClient>): Promise<Settin
     ? fromRaw.trim()
     : "Sam James <sam@apex-financial.org>";
 
+  const eventTypeRaw = map.get("onboarding_call_event_type_uri");
+  const schedulingRaw = map.get("onboarding_call_scheduling_url");
+  const calendlyTok = (Deno.env.get("CALENDLY_API_TOKEN") ?? "").trim();
+
   return {
     resend_api_key: envResend && envResend.length > 8 ? envResend : (map.get("resend_api_key") ?? null),
     discord_invite_url: discordUrl,
     whatsapp_hired_invite_url: whatsappUrl,
     training_course_url: courseUrl,
     from_address: fromAddr,
+    onboarding_call_event_type_uri: eventTypeRaw && eventTypeRaw.trim().length > 0 ? eventTypeRaw.trim() : null,
+    onboarding_call_scheduling_url: schedulingRaw && schedulingRaw.trim().length > 0 ? schedulingRaw.trim() : null,
+    calendly_api_token: calendlyTok.length > 8 ? calendlyTok : null,
   };
+}
+
+/**
+ * Lane 3 (2026-08-26): the booking link for the onboarding-call email.
+ * Preferred: a single-use Calendly scheduling link minted server-side (one
+ * booking, dies after use, cannot be forwarded). Needs CALENDLY_API_TOKEN (the
+ * same secret calendly-backfill reconciles with) + the event type URI. Falls
+ * back to the event type's public scheduling URL and records WHY, so the queue
+ * row never claims a single-use link it did not get.
+ */
+async function resolveOnboardingBookingLink(
+  settings: Settings,
+): Promise<{ url: string; kind: "single_use" | "event_type"; error: string | null } | null> {
+  const fallback = (reason: string) => {
+    const url = settings.onboarding_call_scheduling_url;
+    return url ? { url, kind: "event_type" as const, error: reason } : null;
+  };
+  if (!settings.calendly_api_token) return fallback("CALENDLY_API_TOKEN not set");
+  if (!settings.onboarding_call_event_type_uri) return fallback("onboarding_call_event_type_uri not set");
+  try {
+    const r = await fetch("https://api.calendly.com/scheduling_links", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${settings.calendly_api_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        max_event_count: 1,
+        owner: settings.onboarding_call_event_type_uri,
+        owner_type: "EventType",
+      }),
+    });
+    const text = await r.text();
+    if (!r.ok) return fallback(`Calendly ${r.status}: ${text.slice(0, 160)}`);
+    const parsed = JSON.parse(text) as { resource?: { booking_url?: string } };
+    const url = parsed.resource?.booking_url;
+    if (url && url.startsWith("https://")) return { url, kind: "single_use", error: null };
+    return fallback(`single-use link response had no booking_url: ${text.slice(0, 160)}`);
+  } catch (err) {
+    return fallback(`single-use link fetch failed: ${String(err)}`);
+  }
 }
 
 function firstName(fullName: string | null | undefined): string {
@@ -212,6 +268,37 @@ function buildHiredWhatsappEmail(name: string, whatsappUrl: string | null): { su
   return { subject, html, text };
 }
 
+function buildOnboardingCallEmail(name: string, bookingUrl: string): { subject: string; html: string; text: string } {
+  const fn = escapeHtml(firstName(name));
+  const url = escapeHtml(bookingUrl);
+  const subject = "Book your APEX onboarding call";
+
+  const text = [
+    `Hey ${fn},`,
+    ``,
+    `You're licensed and you're in. Next step is your 30-minute onboarding call with Milver, your Onboarding Manager, and me.`,
+    ``,
+    `Pick a time here: ${bookingUrl}`,
+    ``,
+    `Come with your NPN and your contracting login. We set up your systems, walk your first-week plan, and get you into the 9:30 AM Central huddle.`,
+    ``,
+    `— Sam`,
+    `APEX Financial`,
+  ].join("\n");
+
+  const html = `
+<!doctype html>
+<html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
+  <p>Hey ${fn},</p>
+  <p>You're licensed and you're in. Next step is your <strong>30-minute onboarding call</strong> with Milver, your Onboarding Manager, and me.</p>
+  <p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#0a0a0a;color:#EDB81D;text-decoration:none;border-radius:6px;font-weight:600;">Book your onboarding call</a></p>
+  <p>Come with your NPN and your contracting login. We set up your systems, walk your first-week plan, and get you into the 9:30 AM Central huddle.</p>
+  <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
+</body></html>`.trim();
+
+  return { subject, html, text };
+}
+
 interface ResendResult {
   ok: boolean;
   id: string | null;
@@ -291,11 +378,12 @@ interface ProcessResult {
   failed: number;
   skipped_no_email: number;
   skipped_wrong_cohort: number;
+  skipped_booking_exists: number;
   errors: Array<{ queue_id: string; agent_id: string; kind: string; error: string }>;
 }
 
-async function drainQueue(sb: ReturnType<typeof createClient>, settings: Settings): Promise<ProcessResult> {
-  const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped_no_email: 0, skipped_wrong_cohort: 0, errors: [] };
+async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
+  const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped_no_email: 0, skipped_wrong_cohort: 0, skipped_booking_exists: 0, errors: [] };
 
   if (!settings.resend_api_key) {
     throw new Error("Missing RESEND_API_KEY (env or system_settings.resend_api_key).");
@@ -303,7 +391,7 @@ async function drainQueue(sb: ReturnType<typeof createClient>, settings: Setting
 
   const { data: queueData, error: queueErr } = await sb
     .from("agent_onboarding_queue")
-    .select("id, agent_id, email_kind, attempt_count")
+    .select("id, agent_id, email_kind, attempt_count, meta")
     .is("sent_at", null)
     .lt("attempt_count", 5)
     .lte("target_send_at", new Date().toISOString())
@@ -383,7 +471,8 @@ async function drainQueue(sb: ReturnType<typeof createClient>, settings: Setting
     if (
       (row.email_kind === "course" ||
         row.email_kind === "discord" ||
-        row.email_kind === "hired_whatsapp") &&
+        row.email_kind === "hired_whatsapp" ||
+        row.email_kind === "onboarding_call") &&
       !isLicensed
     ) {
       await sb
@@ -398,10 +487,45 @@ async function drainQueue(sb: ReturnType<typeof createClient>, settings: Setting
     }
 
     let built: { subject: string; html: string; text: string };
+    let meta: Record<string, unknown> | null = null;
     if (row.email_kind === "course") {
       built = buildCourseEmail(name ?? "", settings.training_course_url);
     } else if (row.email_kind === "hired_whatsapp") {
       built = buildHiredWhatsappEmail(name ?? "", settings.whatsapp_hired_invite_url);
+    } else if (row.email_kind === "onboarding_call") {
+      // Lane 3 (2026-08-26): ONE booking link per licensed hire. Re-check the
+      // calendar at send time — a hire who booked between enqueue and drain must
+      // not be asked to book again. A terminal skip is recorded as what it is.
+      const { data: existingBooking, error: bookingErr } = await sb.rpc("fn_agent_onboarding_call_booking", { p_agent_id: row.agent_id });
+      if (bookingErr) {
+        await sb
+          .from("agent_onboarding_queue")
+          .update({ attempt_count: row.attempt_count + 1, last_error: `booking lookup failed: ${bookingErr.message}` })
+          .eq("id", row.id);
+        result.failed += 1;
+        result.errors.push({ queue_id: row.id, agent_id: row.agent_id, kind: row.email_kind, error: `booking lookup failed: ${bookingErr.message}` });
+        continue;
+      }
+      if (existingBooking) {
+        await sb
+          .from("agent_onboarding_queue")
+          .update({ attempt_count: 5, last_error: `skipped_booking_exists: interview_events ${String(existingBooking)}` })
+          .eq("id", row.id);
+        result.skipped_booking_exists += 1;
+        continue;
+      }
+      const link = await resolveOnboardingBookingLink(settings);
+      if (!link) {
+        await sb
+          .from("agent_onboarding_queue")
+          .update({ attempt_count: row.attempt_count + 1, last_error: "no onboarding booking link: set system_settings.onboarding_call_scheduling_url" })
+          .eq("id", row.id);
+        result.failed += 1;
+        result.errors.push({ queue_id: row.id, agent_id: row.agent_id, kind: row.email_kind, error: "no onboarding booking link configured" });
+        continue;
+      }
+      built = buildOnboardingCallEmail(name ?? "", link.url);
+      meta = { booking_url: link.url, link_kind: link.kind, link_error: link.error };
     } else {
       built = buildDiscordEmail(name ?? "", settings.discord_invite_url);
     }
@@ -425,6 +549,7 @@ async function drainQueue(sb: ReturnType<typeof createClient>, settings: Setting
           sent_at: new Date().toISOString(),
           resend_message_id: sendResult.id,
           last_error: null,
+          ...(meta ? { meta: { ...(row.meta ?? {}), ...meta } } : {}),
         })
         .eq("id", row.id);
       result.sent += 1;

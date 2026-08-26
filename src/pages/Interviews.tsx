@@ -4,7 +4,7 @@ import { format, isPast, differenceInCalendarDays } from "date-fns";
 import {
   Building2, CalendarClock, CheckCircle2, ChevronDown, Instagram, Mail,
   MessageSquare, Phone, RefreshCw, RotateCcw, Search, UserCheck, UserX,
-  Copy, ExternalLink, Link2,
+  Copy, ExternalLink, Link2, Send,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,8 +25,14 @@ import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorksp
 import { PromoteApplicantButton } from "@/components/applicants/PromoteApplicantButton";
 import { phoneHref, smsHref } from "@/lib/phone";
 import { promoteApplicationToAgent } from "@/lib/hireToOnboarding";
+import { resolveBrand } from "@/config/brand";
+import {
+  formatPhoenix, gapEmailState, inviteReceipt, onboardingBucketMeta,
+  type OnboardingCall, type OnboardingGap,
+} from "@/lib/onboardingCalls";
 
 type ActorRole = "executive" | "recruiter" | "va";
+const BRAND = resolveBrand();
 type InterviewAction =
   | "confirm" | "qualified" | "follow_up" | "hire" | "not_hired"
   | "unqualified" | "no_show" | "reschedule" | "cancel" | "reopen";
@@ -43,6 +49,25 @@ type PipelineResponse = {
   applicants: Applicant[]; counts: Record<string, number>; total: number;
   role: ActorRole; generatedAt: string;
 };
+type OnboardingTruth = {
+  licensed_active_agents: number; licensed_active_without_onboarding_call: number;
+  onboarding_calls_future_open: number; onboarding_calls_past_undispositioned: number;
+  booking_emails_queued: number; booking_emails_sent: number; booking_emails_dead: number;
+  invites_queued: number; invites_sent: number; invites_failed: number;
+  invite_recipients: string | null; scheduling_url: string | null;
+};
+type OnboardingResponse = {
+  calls: OnboardingCall[]; truth: OnboardingTruth | null; gaps: OnboardingGap[];
+  role: ActorRole; generatedAt: string;
+};
+type Tab = "open" | "overdue" | "upcoming" | "all" | "onboarding";
+const TABS: ReadonlyArray<readonly [Tab, string]> = [
+  ["open", "Open"], ["overdue", "Overdue"], ["upcoming", "Upcoming"], ["all", "All"], ["onboarding", "Onboarding"],
+];
+function initialTab(): Tab {
+  const requested = new URLSearchParams(window.location.search).get("tab");
+  return TABS.some(([key]) => key === requested) ? (requested as Tab) : "open";
+}
 
 const STAGE_META: Record<string, { label: string }> = {
   appointment_set: { label: "Appointment set" }, confirmed: { label: "Confirmed" },
@@ -132,7 +157,8 @@ async function invokeAction(row: Applicant, action: InterviewAction, appointment
 
 export default function Interviews() {
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<"open" | "overdue" | "upcoming" | "all">("open");
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const [sendingGap, setSendingGap] = useState<string | null>(null);
   const [pending, setPending] = useState<{ row: Applicant; action: InterviewAction } | null>(null);
   const [appointmentAt, setAppointmentAt] = useState("");
   const [reason, setReason] = useState("");
@@ -162,6 +188,36 @@ export default function Interviews() {
   const shareUrl = shareToken.data?.token
     ? `${window.location.origin}/assistant/interviews?t=${shareToken.data.token}`
     : null;
+
+  // Onboarding calls: Calendly "APEX Onboarding Call" bookings + the invite
+  // receipt for the onboarding team + licensed hires with no call yet.
+  const onboarding = useQuery<OnboardingResponse>({
+    queryKey: ["interviews-pipeline", "onboarding-calls"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("interviews-pipeline", { body: { list: "onboarding_calls" } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as OnboardingResponse;
+    },
+    staleTime: 60_000,
+  });
+  const onboardingUpcoming = onboarding.data?.calls.filter((call) => call.bucket === "upcoming").length ?? 0;
+
+  const sendBookingLink = async (gap: OnboardingGap) => {
+    setSendingGap(gap.agent_id);
+    try {
+      const { data, error } = await supabase.rpc("admin_enqueue_onboarding_call" as never, { p_agent_id: gap.agent_id } as never);
+      if (error) throw error;
+      const receipt = data as unknown as { enqueued: boolean; reason: string };
+      if (receipt.enqueued) toast.success(`Booking link queued for ${gap.display_name ?? "agent"} · goes out at the 9:30 AM Central send`);
+      else toast.warning(`Not queued: ${receipt.reason.replace(/_/g, " ")}`);
+      await onboarding.refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not queue the booking link");
+    } finally {
+      setSendingGap(null);
+    }
+  };
 
   const now = new Date();
   const applicants = pipeline.data?.applicants ?? [];
@@ -217,6 +273,110 @@ export default function Interviews() {
     }
   };
 
+  const renderOnboarding = () => {
+    if (onboarding.isLoading) {
+      // stable-key-allow:static-onboarding-skeleton — fixed three placeholders never reorder or hold state.
+      return <div className="space-y-2">{Array.from({ length: 3 }).map((_, index) => <div key={index} className="h-24 animate-pulse rounded-lg border border-border bg-muted/20" />)}</div>;
+    }
+    if (onboarding.isError || !onboarding.data) {
+      return <div className="rounded-lg border border-destructive/30 p-8 text-center text-sm text-destructive">Onboarding calls are unavailable; nothing here should be read as zero. <button className="underline" onClick={() => onboarding.refetch()}>Retry</button></div>;
+    }
+    const { calls, truth, gaps } = onboarding.data;
+    const visible = term
+      ? calls.filter((call) => [call.invitee_name, call.agent_display_name, call.invitee_email, call.invitee_phone].some((value) => (value ?? "").toLowerCase().includes(term)))
+      : calls;
+    const callGroups = [
+      { key: "upcoming", title: "Upcoming", sub: "on the calendar · onboarding team invited", danger: false, rows: visible.filter((call) => call.bucket === "upcoming") },
+      { key: "overdue", title: "Overdue", sub: "call time passed, no outcome logged", danger: true, rows: visible.filter((call) => call.bucket === "overdue") },
+      { key: "history", title: "Completed or canceled", sub: "history", danger: false, rows: visible.filter((call) => call.bucket === "completed" || call.bucket === "canceled") },
+    ].filter((group) => group.rows.length > 0);
+    const tiles = [
+      { label: "Upcoming onboarding calls", value: truth?.onboarding_calls_future_open, detail: `booked on ${BRAND.shortName} Onboarding Call`, tone: "text-primary" },
+      { label: "Licensed hires without a call", value: truth?.licensed_active_without_onboarding_call, detail: `${truth?.booking_emails_queued ?? 0} booking links queued · ${truth?.booking_emails_sent ?? 0} sent`, tone: "text-warning" },
+      { label: "Onboarding-team invites sent", value: truth?.invites_sent, detail: `${truth?.invites_queued ?? 0} queued · ${truth?.invites_failed ?? 0} failed · ${truth?.invite_recipients ?? "no recipient set"}`, tone: "text-success" },
+    ];
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {tiles.map((item) => <div key={item.label} className="rounded-lg border border-border bg-card p-4"><p className={`text-3xl font-bold tabular-nums ${item.tone}`}>{typeof item.value === "number" ? item.value.toLocaleString() : "—"}</p><p className="mt-1 text-sm font-semibold">{item.label}</p><p className="text-xs text-muted-foreground">{item.detail}</p></div>)}
+        </div>
+        {truth?.scheduling_url && (
+          <p className="text-xs text-muted-foreground">Booking calendar: <a className="underline" href={truth.scheduling_url} target="_blank" rel="noopener noreferrer">{truth.scheduling_url}</a> · every newly licensed hire gets one single-use link automatically; nothing is mass-sent.</p>
+        )}
+        {callGroups.length === 0 && (
+          <div className="rounded-lg border border-border p-10 text-center text-sm text-muted-foreground">No onboarding calls captured yet. A booking on the {BRAND.shortName} Onboarding Call calendar appears here within 15 minutes.</div>
+        )}
+        {callGroups.map((group) => (
+          <section key={group.key} aria-labelledby={`onboarding-group-${group.key}`}>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <h2 id={`onboarding-group-${group.key}`} className={`text-sm font-bold ${group.danger ? "text-destructive" : "text-foreground"}`}>{group.title}</h2>
+              <span className="text-xs text-muted-foreground">{group.sub}</span>
+              <Badge variant="outline">{group.rows.length}</Badge>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
+              {group.rows.map((row, index) => {
+                const meta = onboardingBucketMeta(row.bucket);
+                const receipt = inviteReceipt(row.invites);
+                const name = row.invitee_name || row.agent_display_name || row.invitee_email || "No name on file";
+                return (
+                  <div key={row.id} className={`grid grid-cols-1 gap-3 p-4 md:grid-cols-[175px_minmax(0,1fr)_auto] md:items-center ${index ? "border-t border-border" : ""}`}>
+                    <div className="text-xs">
+                      <p className={`inline-flex items-center gap-1.5 font-semibold ${meta.tone}`}><span className={`h-2 w-2 rounded-full ${meta.dot}`} />{meta.label}</p>
+                      <p className="mt-1 text-muted-foreground">{formatPhoenix(row.scheduled_at)} Phoenix</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{name}</p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        <Badge variant="outline" className="text-[10px]">Onboarding call</Badge>
+                        {row.agent_id && row.agent_display_name && <span>Agent · {row.agent_display_name}</span>}
+                        {!row.agent_id && <span className="text-warning">No agent row matched</span>}
+                        <span className={receipt.tone} title={receipt.detail ?? undefined}>{receipt.label}</span>
+                        {row.canceled_at && row.cancel_reason && <span>{row.cancel_reason}</span>}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                      {phoneHref(row.invitee_phone) && <Button asChild size="icon" aria-label={`Call ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={phoneHref(row.invitee_phone)!}><Phone className="h-4 w-4" /></a></Button>}
+                      {smsHref(row.invitee_phone) && <Button asChild size="icon" variant="outline" aria-label={`Text ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={smsHref(row.invitee_phone)!}><MessageSquare className="h-4 w-4" /></a></Button>}
+                      {row.invitee_email && <Button asChild size="icon" variant="outline" aria-label={`Email ${name}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`mailto:${row.invitee_email}`}><Mail className="h-4 w-4" /></a></Button>}
+                      {row.bucket === "upcoming" && row.reschedule_url && <Button asChild size="sm" variant="outline" className="h-11 sm:h-9"><a href={row.reschedule_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Reschedule</a></Button>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+        {gaps.length > 0 && (
+          <section aria-labelledby="onboarding-gaps">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <h2 id="onboarding-gaps" className="text-sm font-bold text-warning">Licensed hires without an onboarding call</h2>
+              <span className="text-xs text-muted-foreground">counted, never mass-sent · send a booking link one person at a time</span>
+              <Badge variant="outline">{gaps.length}</Badge>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
+              {gaps.map((gap, index) => {
+                const state = gapEmailState(gap);
+                return (
+                  <div key={gap.agent_id} className={`flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between ${index ? "border-t border-border" : ""}`}>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{gap.display_name || "Unnamed agent"}</p>
+                      <p className={`text-xs ${state.tone}`}>{state.label}{gap.licensed_at ? ` · licensed ${formatPhoenix(gap.licensed_at)}` : ""}</p>
+                    </div>
+                    {state.canSend && (
+                      <Button size="sm" variant="outline" className="h-11 shrink-0 sm:h-9" disabled={sendingGap === gap.agent_id} onClick={() => void sendBookingLink(gap)}>
+                        {sendingGap === gap.agent_id ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send booking link
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <RecruitingWorkspaceNav />
@@ -228,13 +388,13 @@ export default function Interviews() {
         actions={<Button size="sm" variant="outline" onClick={() => pipeline.refetch()} disabled={pipeline.isFetching}><RefreshCw className={`h-4 w-4 ${pipeline.isFetching ? "animate-spin" : ""}`} /> Refresh</Button>}
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {tab !== "onboarding" && <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
           { label: "Needs attention", value: overdue.length + needsDecision, detail: `${overdue.length} overdue · ${needsDecision} decisions`, tone: "text-destructive" },
           { label: "Upcoming", value: upcoming.length, detail: "scheduled ahead", tone: "text-primary" },
           { label: "Hired", value: pipeline.data?.counts.hired ?? 0, detail: "onboarding handoff", tone: "text-success" },
         ].map((item) => <div key={item.label} className="rounded-lg border border-border bg-card p-4"><p className={`text-3xl font-bold tabular-nums ${item.tone}`}>{item.value.toLocaleString()}</p><p className="mt-1 text-sm font-semibold">{item.label}</p><p className="text-xs text-muted-foreground">{item.detail}</p></div>)}
-      </div>
+      </div>}
 
       {shareUrl && (
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
@@ -258,15 +418,17 @@ export default function Interviews() {
           <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, company, phone, or email" className="h-11 pl-8 sm:h-9" aria-label="Search interviews" />
         </div>
         <div className="flex max-w-full gap-1.5 overflow-x-auto pb-1">
-          {([['open', 'Open'], ['overdue', 'Overdue'], ['upcoming', 'Upcoming'], ['all', 'All']] as const).map(([key, label]) => (
+          {TABS.map(([key, label]) => (
             <Button key={key} type="button" size="sm" variant={tab === key ? "default" : "outline"} onClick={() => setTab(key)} aria-pressed={tab === key} className="h-11 shrink-0 sm:h-9">
-              {label}{key === "overdue" && overdue.length ? ` ${overdue.length}` : ""}
+              {label}{key === "overdue" && overdue.length ? ` ${overdue.length}` : ""}{key === "onboarding" && onboardingUpcoming ? ` ${onboardingUpcoming}` : ""}
             </Button>
           ))}
         </div>
       </div>
 
-      {pipeline.isLoading ? (
+      {tab === "onboarding" ? (
+        renderOnboarding()
+      ) : pipeline.isLoading ? (
         // stable-key-allow:static-interview-skeleton — fixed five placeholders never reorder or hold state.
         <div className="space-y-2">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-24 animate-pulse rounded-lg border border-border bg-muted/20" />)}</div>
       ) : pipeline.isError ? (

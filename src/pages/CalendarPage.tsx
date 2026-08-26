@@ -97,6 +97,7 @@ type KindMeta = {
 const KINDS: KindMeta[] = [
   { key: "appointment", label: "Appointment", dot: "bg-primary", chip: "bg-primary/10 text-primary border-primary/30", icon: CalendarDays, source: "calendar_events" },
   { key: "interview", label: "Interview", dot: "bg-sky-500", chip: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30", icon: Video, source: "interview_events" },
+  { key: "onboarding_call", label: "Onboarding call", dot: "bg-primary", chip: "bg-primary/10 text-primary border-primary/30", icon: Video, source: "interview_events" },
   { key: "birthday", label: "Birthday", dot: "bg-pink-500", chip: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/30", icon: Cake, source: "agentlink_clients.date_of_birth" },
   // NB: `emerald` and `teal` are remapped onto the APEX gold ramp in
   // tailwind.config.ts, so bg-emerald-500 renders GOLD and would be
@@ -930,7 +931,7 @@ export default function CalendarPage() {
                 const meta = KIND_BY_KEY[row.kind];
                 const Icon = meta?.icon ?? CalendarIcon;
                 const isAppointment = row.kind === "appointment";
-                const isInterview = row.kind === "interview";
+                const isInterview = row.kind === "interview" || row.kind === "onboarding_call";
                 const past = row.event_date < todayKey;
                 return (
                   <div key={row.event_id} className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-3">

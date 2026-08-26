@@ -208,11 +208,18 @@ describe("Slack delivery lease + interview no-show (20260826053000)", () => {
       "contracting.intake_submitted",
       "deal.posted",
       "free_leads.weekly_summary",
+      "production.personal_record",
+      "recruiting.bounty_qualified",
+      "recruiting.bounty_reversed",
     ]) {
       expect(SLACK_TEMPLATED_EVENT_TYPES).toContain(eventType);
       expect(renderSlackEventText(eventType, {})).not.toBeNull();
     }
     expect(SLACK_EDGE_EMITTERS["free_leads.weekly_summary"]).toBe("edge:free-leads-weekly-alerts");
+    expect(SLACK_EDGE_EMITTERS["production.personal_record"]).toBe("cron:apex-personal-records-15min");
+    expect(SLACK_EDGE_EMITTERS["recruiting.bounty_qualified"]).toBe("cron:apex-recruiter-bounties-15min");
+    expect(renderSlackEventText("production.personal_record", { agentName: "Jontay Taylor", recordType: "daily_alp", value: 2651.64, previousBest: 1200, clientName: "LEAK" })).not.toContain("LEAK");
+    expect(renderSlackEventText("recruiting.bounty_qualified", { recruiterName: "Wendell Funderburg", recruitName: "New Agent", amountCents: 50000, policies: 2 })).toContain("$500");
     expect(source("supabase/functions/free-leads-weekly-alerts/index.ts"))
       .toContain('event_type: "free_leads.weekly_summary"');
   });

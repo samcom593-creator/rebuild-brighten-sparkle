@@ -101,8 +101,6 @@ export function AgentQuickEditDialog({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [instagram, setInstagram] = useState("");
-  const [editAlp, setEditAlp] = useState(production);
-  const [editDeals, setEditDeals] = useState(deals);
   const [possibleMatches, setPossibleMatches] = useState<PossibleMatch[]>([]);
   const [selectedMergeId, setSelectedMergeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -140,8 +138,6 @@ export function AgentQuickEditDialog({
   useEffect(() => {
     if (open && agentId) {
       setDisplayName(currentName);
-      setEditAlp(production);
-      setEditDeals(deals);
       setSelectedMergeId(null);
       setLinkedProfile(null);
       setAgentData(null);
@@ -395,58 +391,10 @@ export function AgentQuickEditDialog({
         }
       }
 
-      // If admin changed ALP or deals, update production record
-      if (isAdmin && (editAlp !== production || editDeals !== deals)) {
-        let targetDate = new Date().toISOString().split('T')[0];
-        const isRangeEdit = period && period !== "day";
-        
-        if (isRangeEdit && dateRange?.to) {
-          targetDate = dateRange.to;
-        }
-        
-        const alpDelta = editAlp - production;
-        const dealsDelta = editDeals - deals;
-        
-        const { data: existingRecord } = await supabase
-          .from("daily_production")
-          .select("id, aop, deals_closed, presentations")
-          .eq("agent_id", agentId)
-          .eq("production_date", targetDate)
-          .maybeSingle();
-
-        if (existingRecord) {
-          if (isRangeEdit) {
-            await supabase
-              .from("daily_production")
-              .update({ 
-                aop: Math.max(0, Number(existingRecord.aop) + alpDelta),
-                deals_closed: Math.max(0, Number(existingRecord.deals_closed) + dealsDelta),
-              })
-              .eq("id", existingRecord.id);
-          } else {
-            await supabase
-              .from("daily_production")
-              .update({ 
-                aop: editAlp,
-                deals_closed: editDeals,
-              })
-              .eq("id", existingRecord.id);
-          }
-        } else {
-          const newAlp = isRangeEdit ? Math.max(0, alpDelta) : editAlp;
-          const newDeals = isRangeEdit ? Math.max(0, dealsDelta) : editDeals;
-          
-          await supabase
-            .from("daily_production")
-            .insert({
-              agent_id: agentId,
-              production_date: targetDate,
-              aop: newAlp,
-              deals_closed: newDeals,
-              presentations: newDeals > 0 ? newDeals : 0,
-            });
-        }
-      }
+      // Money never enters through this dialog. Production comes only from canonical
+      // deal ingestion (AgentLink sync + Post a Deal); corrections happen on the deal
+      // itself in Book of Business with an audit trail. The manual ALP/deal inputs that
+      // used to write daily_production here were removed 2026-08-26.
 
       let contractingWarning: string | null = null;
       const becameLicensed = licenseStatus === "licensed" && agentData?.license_status !== "licensed";
@@ -1028,44 +976,14 @@ export function AgentQuickEditDialog({
             </div>
           )}
 
-          {/* ═══ ADMIN: Edit Production ═══ */}
+          {/* ═══ ADMIN: Production is read-only here ═══ */}
           {isAdmin && (
-            <div className="space-y-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-              <Label className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                <Edit2 className="h-4 w-4" />
-                {period && period !== "day" ? "Edit Range Total (Admin)" : "Edit Today's Production (Admin)"}
-              </Label>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="editAlp" className="text-xs">ALP ($)</Label>
-                  <Input
-                    id="editAlp"
-                    type="number"
-                    value={editAlp}
-                    onChange={(e) => setEditAlp(Number(e.target.value) || 0)}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="editDeals" className="text-xs">Deals</Label>
-                  <Input
-                    id="editDeals"
-                    type="number"
-                    value={editDeals}
-                    onChange={(e) => setEditDeals(Number(e.target.value) || 0)}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-              {period && period !== "day" && dateRange?.from && dateRange?.to ? (
-                <p className="text-[10px] text-muted-foreground">
-                  Changes will adjust the total for {dateRange.from} to {dateRange.to}.
-                </p>
-              ) : (
-                <p className="text-[10px] text-muted-foreground">
-                  Changes will update today's production record for this agent.
-                </p>
-              )}
+            <div className="space-y-1 p-3 rounded-lg bg-muted/40 border border-border">
+              <Label className="text-xs text-muted-foreground">Production ({period && period !== "day" ? "range" : "today"})</Label>
+              <p className="text-sm font-semibold">${production.toLocaleString()} · {deals} {deals === 1 ? "deal" : "deals"}</p>
+              <p className="text-[10px] text-muted-foreground">
+                Counted from canonical deals only. To correct a number, fix the deal in Book of Business — manual production edits were retired so every dollar has a source.
+              </p>
             </div>
           )}
 

@@ -22,6 +22,9 @@ export const SLACK_TEMPLATED_EVENT_TYPES = [
   "contracting.intake_submitted",
   "deal.posted",
   "free_leads.weekly_summary",
+  "production.personal_record",
+  "recruiting.bounty_qualified",
+  "recruiting.bounty_reversed",
 ] as const;
 
 export type SlackTemplatedEventType = (typeof SLACK_TEMPLATED_EVENT_TYPES)[number];
@@ -31,6 +34,11 @@ export type SlackTemplatedEventType = (typeof SLACK_TEMPLATED_EVENT_TYPES)[numbe
 // these, so they are declared here to keep route coverage honest.
 export const SLACK_EDGE_EMITTERS: Readonly<Record<string, string>> = {
   "free_leads.weekly_summary": "edge:free-leads-weekly-alerts",
+  // pg_cron evaluators (migration 20260826070000), not triggers, so the
+  // trigger introspection cannot see them either.
+  "production.personal_record": "cron:apex-personal-records-15min",
+  "recruiting.bounty_qualified": "cron:apex-recruiter-bounties-15min",
+  "recruiting.bounty_reversed": "rpc:set_recruiter_bounty_status",
 };
 
 export const SLACK_DEFAULT_URLS = {
@@ -124,6 +132,41 @@ export function renderSlackEventText(
     const product = productText ? ` · ${productText}` : "";
     const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.productionDashboard);
     return `APEX sale posted: *${agent}* — ${usd(p.annualPremium)}${carrier}${product}\n<${url}|Open production dashboard>`;
+  }
+
+  if (eventType === "production.personal_record") {
+    // reads: agentName (the PRODUCER), recordType, value, previousBest, periodKey, openUrl.
+    const agent = text(p.agentName, "APEX producer");
+    const kind = String(p.recordType ?? "");
+    const value = Number(p.value ?? 0) || 0;
+    const prev = p.previousBest == null ? null : Number(p.previousBest) || 0;
+    const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.productionDashboard);
+    const label =
+      kind === "daily_alp" ? `best day: ${usd(value)} ALP` :
+      kind === "weekly_alp" ? `best week: ${usd(value)} ALP` :
+      kind === "daily_policies" ? `most policies in a day: ${value}` :
+      kind === "selling_streak" ? `longest selling streak: ${value} business days` :
+      `new record: ${value}`;
+    const was = prev == null ? "" : kind.endsWith("_alp") ? ` (was ${usd(prev)})` : ` (was ${prev})`;
+    return `Personal record — *${agent}* — ${label}${was}\n<${url}|Open production dashboard>`;
+  }
+
+  if (eventType === "recruiting.bounty_qualified") {
+    // reads: recruiterName, recruitName (both AGENTS), amountCents, policies, openUrl.
+    const recruiter = text(p.recruiterName, "APEX producer");
+    const recruit = text(p.recruitName, "a new agent");
+    const cents = Math.max(0, Number(p.amountCents ?? 50000) || 50000);
+    const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.teamDashboard);
+    return `Recruiter bounty qualified — *${recruiter}* earns ${usd(cents / 100)}: ${recruit} posted their first ${Math.max(2, Number(p.policies ?? 2) || 2)} policies\n<${url}|Review in Team>`;
+  }
+
+  if (eventType === "recruiting.bounty_reversed") {
+    // reads: recruiterName, recruitName (both AGENTS), reason, openUrl.
+    const recruiter = text(p.recruiterName, "APEX producer");
+    const recruit = text(p.recruitName, "a new agent");
+    const reason = slackText(p.reason, 160);
+    const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.teamDashboard);
+    return `Recruiter bounty REVERSED — *${recruiter}* (recruit: ${recruit})${reason ? ` — ${reason}` : ""}\n<${url}|Review in Team>`;
   }
 
   if (eventType === "free_leads.weekly_summary") {

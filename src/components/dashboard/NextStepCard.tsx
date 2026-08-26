@@ -36,6 +36,10 @@ export function NextStepCard({ application_id, agent_id, compact = false }: Prop
   }
 
   if (!row) return null;
+  // A closed / lost application row is not a next step for a signed-in agent
+  // (KJ's home rendered "STAGE 99 / 18 · CLOSED (LOST / DROPPED)" for his own
+  // stale application while he runs Vantage at 105%). Hide it.
+  if (/closed|lost|dropped/i.test(String(row.stage_key ?? ""))) return null;
 
   const sla = row.sla_due_at ? new Date(row.sla_due_at) : null;
   const isUrgent = row.is_stalled;

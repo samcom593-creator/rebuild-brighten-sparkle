@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
 import { ProducerPulse } from "@/components/dashboard/ProducerPulse";
+import { RecordsAndBounties } from "@/components/dashboard/RecordsAndBounties";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
 import { OperationsCommandCenter } from "@/components/dashboard/OperationsCommandCenter";
@@ -328,6 +329,7 @@ export function AgentCloudHome() {
       </div>
 
       <ProducerPulse />
+      <RecordsAndBounties />
 
       {/* PRODUCTION TREND */}
       <Card>

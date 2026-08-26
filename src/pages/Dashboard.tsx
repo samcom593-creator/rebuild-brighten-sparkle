@@ -386,7 +386,10 @@ async function loadDashboardSnapshot(
     // and surfaces is_partial / action_required. Was reading agentlink_sync_log
     // directly which only showed the cookie path and made dead cookies look
     // like dead data.
-    getOne(q.rpc("sync_health_summary").maybeSingle(), "sync-health-summary"),
+    // Admin-only operand: sync_health_summary() takes ~13s and 500s through the
+    // gateway for managers/agents (measured 2026-08-26 as KJ + La'Nyia), and the
+    // AgentLink banner it feeds is an admin surface anyway.
+    role === "admin" ? getOne(q.rpc("sync_health_summary").maybeSingle(), "sync-health-summary") : Promise.resolve(null),
     getRows(
       q.from("system_settings")
         .select("key, value, updated_at")

@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
-import { ArrowRight, Shield, TrendingUp, Users, Play } from "lucide-react";
-import { track, getVariant } from "@/lib/analytics";
+import { ArrowRight, BadgeCheck, Building2, Play, Route, Shield, TrendingUp, Users } from "lucide-react";
+import { track } from "@/lib/analytics";
 // S11 fix (2026-06-15): build the CTA href with ?ref= when the slug is
 // present so the landing -> /apply hop relays the referral via the URL
 // (the primary signal). The Index.tsx localStorage relay is the fallback.
@@ -101,6 +101,27 @@ const stats = [
   { icon: Shield, label: "Course included, no fee", value: "Licensed in 4 wks", color: "text-amber-400" },
 ];
 
+const partnerPaths = [
+  {
+    title: "Agency Builders",
+    description: "Scale your team with automated contracting and hierarchy reporting.",
+    icon: Building2,
+    track: "agency-builder",
+  },
+  {
+    title: "Licensed Producers",
+    description: "Fast-track onboarding, top comp pathways, and high-converting scripts.",
+    icon: BadgeCheck,
+    track: "licensed-producer",
+  },
+  {
+    title: "Licensing Roadmap",
+    description: "Pre-licensing course, exam support, and a clear placement pathway.",
+    icon: Route,
+    track: "licensing-roadmap",
+  },
+];
+
 export function HeroSection() {
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   // S11 fix: relay ?ref= through the hero CTA so the slug survives the
@@ -133,7 +154,7 @@ export function HeroSection() {
   }, []);
 
   return (
-    <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden bg-white dark:bg-[#030712] pt-24 sm:pt-28 md:pt-32 pb-16">
+    <section className="dark relative min-h-[100dvh] flex items-center justify-center overflow-hidden bg-[#0D0D0D] text-white pt-24 sm:pt-28 md:pt-32 pb-16">
       {/* Subtle additional decoration layers — aurora handles the heavy lifting */}
       <div
         aria-hidden
@@ -152,9 +173,9 @@ export function HeroSection() {
       >
         <defs>
           <linearGradient id="meshGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%"  stopColor="hsl(45 80% 55%)" stopOpacity="0.55" />
-            <stop offset="50%" stopColor="hsl(265 80% 65%)" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="hsl(38 90% 55%)"  stopOpacity="0.25" />
+            <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.60" />
+            <stop offset="50%" stopColor="#D4AF37" stopOpacity="0.30" />
+            <stop offset="100%" stopColor="#8F741F" stopOpacity="0.20" />
           </linearGradient>
         </defs>
         <path
@@ -203,65 +224,43 @@ export function HeroSection() {
             className="landing-scale-in landing-delay-100 font-display font-extrabold leading-[1.02] mb-5 tracking-tight"
             style={{ fontSize: "clamp(2.25rem, 5.5vw, 4rem)" }}
           >
-            {/* Variant-driven hero. PostHog flag `hero_variant` swaps copy
-                when set (control / number / story). Control keeps the
-                original brand-gradient empire line so we don't regress
-                on org-search and brand recall while testing. */}
-            {(() => {
-              const v = getVariant("hero_variant");
-              if (v === "number") {
-                return (
-                  <>
-                    <span className="block text-foreground">Earn 70%–145%</span>
-                    <span className="block brand-gradient">
-                      selling life insurance
-                    </span>
-                    <span className="block text-foreground text-[0.55em] mt-3">Warm leads · Paid weekly · $120K/mo agency</span>
-                  </>
-                );
-              }
-              if (v === "story") {
-                return (
-                  <>
-                    <span className="block text-foreground">I built a $120K/mo agency</span>
-                    <span className="block brand-gradient">
-                      from a college dorm.
-                    </span>
-                    <span className="block text-foreground text-[0.55em] mt-3">The exact system is yours when you join APEX.</span>
-                  </>
-                );
-              }
-              // control (default) — preserves shipped brand line
-              return (
-                <>
-                  <span className="block text-foreground">Build your</span>
-                  <span className="block brand-gradient">
-                    Financial Empire
-                  </span>
-                  <span className="block text-foreground">with APEX</span>
-                </>
-              );
-            })()}
+            <span className="block text-foreground">The enterprise IMO &</span>
+            <span className="block brand-gradient">Agency Acceleration Platform</span>
           </h1>
-
-          {/* Video — click-to-load poster (was an eager iframe that
-              dragged the YouTube SDK + ~5s into LCP. Now: poster image
-              is the LCP target, iframe only mounts on user click).
-              id="hero-video" so the secondary CTA can scroll to it. */}
-          <div id="hero-video" className="landing-fade-up landing-delay-200 w-full max-w-2xl mx-auto mb-8 scroll-mt-24">
-            <LazyYouTube videoId="E2VJ1v85IRE" title="20 Years Old, $12 Million in Revenue. Samuel James." />
-          </div>
 
           {/* Subheadline */}
           <p className="landing-fade-up landing-delay-200 text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed">
-            Warm leads on your phone. 22 carriers ready. Weekly pay. A team that
-            already did $120K/mo. Licensed or starting from zero, the path is the
-            same: apply, get trained, start writing.
+            One operating system for recruiting, licensing, contracting, training,
+            production, and hierarchy growth—from first application to first policy.
           </p>
+
+          <div className="landing-fade-up landing-delay-300 mx-auto mb-10 grid max-w-5xl grid-cols-1 gap-3 text-left md:grid-cols-3">
+            {partnerPaths.map((path) => {
+              const Icon = path.icon;
+              const destination = path.track === "licensing-roadmap"
+                ? "/get-licensed"
+                : `${applyHref}${applyHref.includes("?") ? "&" : "?"}track=${path.track}`;
+              return (
+                <Link
+                  key={path.title}
+                  to={destination}
+                  onClick={() => track("hero_partner_path_click", { partner_path: path.track })}
+                  className="group min-h-36 rounded-md border border-[#D4AF37]/35 bg-white/[0.035] p-5 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-[#D4AF37]/80 hover:bg-[#D4AF37]/10 focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                >
+                  <Icon className="mb-4 h-7 w-7 text-[#D4AF37]" aria-hidden />
+                  <h2 className="font-display text-lg font-bold text-white">{path.title}</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-white/65">{path.description}</p>
+                  <span className="mt-4 inline-flex min-h-12 items-center gap-1 text-sm font-semibold text-[#D4AF37]">
+                    Explore this path <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
 
           {/* CTAs — magnetic glow primary + trust-tail microcopy.
               Secondary "Watch the walkthrough" scrolls to the hero video
-              above (id=hero-video) — keeps high-intent visitors moving,
+              below (id=hero-video) — keeps high-intent visitors moving,
               gives skeptics a softer first action. */}
           <div className="landing-fade-up landing-delay-300 flex flex-col items-center justify-center gap-3 mb-14">
             <Link
@@ -300,6 +299,12 @@ export function HeroSection() {
             >
               Watch the 2-min walkthrough first →
             </a>
+          </div>
+
+          {/* Click-to-load operator story; kept below the decision paths so the
+              enterprise offer and three primary audiences own the first fold. */}
+          <div id="hero-video" className="landing-fade-up landing-delay-400 w-full max-w-2xl mx-auto mb-10 scroll-mt-24">
+            <LazyYouTube videoId="E2VJ1v85IRE" title="20 Years Old, $12 Million in Revenue. Samuel James." />
           </div>
 
           {/* Founder credit — Brand Bible: "the face IS the brand".

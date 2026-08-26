@@ -455,7 +455,7 @@ export default defineConfig(({ mode }) => ({
             {
               name: "vendor-icons-landing",
               priority: 75,
-              test: "[\\\\/]node_modules[\\\\/]lucide-react[\\\\/]dist[\\\\/]esm[\\\\/]icons[\\\\/](arrow-right|award|book-open|bot|building-2|calendar|check|check-circle-2|chevron-down|chevron-up|circle-check|clipboard-check|clock|cloud|compass|crown|dollar-sign|file-check|file-pen-line|file-signature|file-text|graduation-cap|headphones|heart|heart-handshake|home|house|instagram|mail|map-pin|menu|message-circle|mouse-pointer-click|phone|play|quote|refresh-cw|repeat-2|search|shield|smartphone|sparkles|target|trending-up|triangle-alert|trophy|user-plus|users|users-round|x|zap)\\.js$",
+              test: "[\\\\/]node_modules[\\\\/]lucide-react[\\\\/]dist[\\\\/]esm[\\\\/]icons[\\\\/](arrow-right|award|badge-check|book-open|bot|building-2|calendar|check|check-circle-2|chevron-down|chevron-up|circle-check|clipboard-check|clock|cloud|compass|crown|dollar-sign|file-check|file-pen-line|file-signature|file-text|graduation-cap|headphones|heart|heart-handshake|home|house|instagram|mail|map-pin|menu|message-circle|mouse-pointer-click|phone|play|quote|refresh-cw|repeat-2|route|search|shield|smartphone|sparkles|target|trending-up|triangle-alert|trophy|user-plus|users|users-round|x|zap)\\.js$",
             },
             {
               name: "vendor-icons",

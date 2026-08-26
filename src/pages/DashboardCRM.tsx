@@ -426,6 +426,13 @@ interface RosterSegments {
   no_contact_14d: number; book_last_posted: string | null;
 }
 
+interface TodayProduction {
+  today_alp: number | string;
+  today_policies: number;
+  selling_streak_days: number;
+  business_date: string;
+}
+
 const num = (v: number | string | null | undefined): number => Number(v ?? 0) || 0;
 
 /** Compact USD. Returns null (never "$0") when there is genuinely nothing on file. */
@@ -879,6 +886,20 @@ export default function DashboardCRM() {
       const value = data as unknown;
       const row = Array.isArray(value) ? value[0] : value;
       return (row as RosterSegments) ?? null;
+    },
+  });
+
+  const todayProductionQuery = useQuery({
+    queryKey: ["crm-today-production"],
+    enabled: !authLoading && !!user,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    queryFn: async (): Promise<TodayProduction | null> => {
+      const { data, error } = await supabase.rpc("crm_today_production" as never);
+      if (error) throw error;
+      const value = data as unknown;
+      const row = Array.isArray(value) ? value[0] : value;
+      return (row as TodayProduction) ?? null;
     },
   });
 
@@ -1357,6 +1378,7 @@ export default function DashboardCRM() {
     // pipeline that just reloaded and the two start telling different stories.
     queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
     queryClient.invalidateQueries({ queryKey: ["crm-roster-segments"] });
+    queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
   }, [queryClient]);
 
   // Phase 5: Live updates — invalidate when agents/applications change anywhere
@@ -1365,6 +1387,11 @@ export default function DashboardCRM() {
   });
   useRealtimeTable({ table: "applications", channelSuffix: "crm" }, () => {
     queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
+  });
+  useRealtimeTable({ table: "deals", channelSuffix: "crm-production" }, () => {
+    queryClient.invalidateQueries({ queryKey: ["crm-today-production"] });
+    queryClient.invalidateQueries({ queryKey: ["crm-agent-roster"] });
+    queryClient.invalidateQueries({ queryKey: ["crm-roster-segments"] });
   });
 
   const handleBulkSendPortalLogins = async () => {
@@ -1890,7 +1917,12 @@ export default function DashboardCRM() {
           }
         />
 
-        <ProductionMetricsCard snapshot={rosterSegmentsQuery.data ?? null} isLoading={rosterSegmentsQuery.isLoading} />
+        <ProductionMetricsCard
+          snapshot={rosterSegmentsQuery.data ?? null}
+          isLoading={rosterSegmentsQuery.isLoading}
+          todayProduction={todayProductionQuery.data ?? null}
+          isTodayLoading={todayProductionQuery.isLoading}
+        />
 
         {/* Two questions, two views, one set of headline numbers above.
             Roster answers "who is on this team" from the canonical roster.

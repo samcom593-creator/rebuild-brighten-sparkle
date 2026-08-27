@@ -905,9 +905,11 @@ const LeadCard = memo(function LeadCard({
 
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function RecruiterDashboard() {
-  const { user, isAdmin, isManager } = useAuth();
+  const { user, isAdmin, isManager, effectiveMode } = useAuth();
 
-  const allowed = isAdmin || isManager;
+  // MP-332: Pure Recruiters and Agency Owners work this cockpit too. Before,
+  // a recruiter (not a manager) was bounced to /dashboard from their own tool.
+  const allowed = isAdmin || isManager || effectiveMode === "recruiter" || effectiveMode === "agency_owner";
 
   if (!allowed) return <Navigate to="/dashboard" replace />;
   return <RecruiterDashboardInner />;

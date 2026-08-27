@@ -34,6 +34,9 @@ const AgentCommandDashboard = lazy(() => import("@/pages/AgentCommandDashboard")
 const DashboardToday = lazy(() => import("@/pages/DashboardToday"));
 const ManagerCommandView = lazy(() => import("@/pages/ManagerCommandView"));
 const VaOpsCommandCenter = lazy(() => import("@/pages/VaOpsCommandCenter"));
+// MP-332 role-tailored homes, keyed on the resolved account mode.
+const RecruiterHome = lazy(() => import("@/pages/RecruiterHome"));
+const AgencyOwnerHome = lazy(() => import("@/pages/AgencyOwnerHome"));
 const UnclaimedLeadsCommandCard = lazy(() =>
   import("@/components/dashboard/UnclaimedLeadsCommandCard").then((m) => ({ default: m.UnclaimedLeadsCommandCard })),
 );
@@ -983,7 +986,7 @@ export default function Dashboard() {
     if (effectiveRole === "admin") return undefined;
     const ids = new Set<string>();
     if (currentAgent.data?.id) ids.add(currentAgent.data.id);
-    if (effectiveRole === "manager") {
+    if (effectiveRole === "manager" || effectiveRole === "agency_owner") {
       for (const id of downline.data ?? []) ids.add(id);
     }
     return Array.from(ids);
@@ -992,7 +995,11 @@ export default function Dashboard() {
   const snapshotQuery = useQuery({
     queryKey: ["launch-dashboard-snapshot", user?.id, effectiveRole, scopedAgentIds ? [...scopedAgentIds].sort() : "agency"],
     queryFn: () => loadDashboardSnapshot(effectiveRole, user!.id, scopedAgentIds),
-    enabled: Boolean(user?.id) && !shouldRenderDefaultAdminCommand && !isVaOps && !currentAgent.isLoading && !downline.isLoading,
+    // MP-332: the legacy snapshot only backs the agent/manager/preview-admin
+    // homes. Recruiter, agency-owner and VA homes fetch their own scoped data.
+    enabled: Boolean(user?.id) && !shouldRenderDefaultAdminCommand && !isVaOps
+      && !["recruiter", "agency_owner", "va", "va_manager"].includes(effectiveRole)
+      && !currentAgent.isLoading && !downline.isLoading,
     staleTime: 60_000,
     refetchInterval: 300_000,
   });
@@ -1017,11 +1024,33 @@ export default function Dashboard() {
 
   if (!user) return null;
 
-  if (isVaOps) {
+  // VA ops staff by role, or Sam previewing the VA home.
+  if (isVaOps || effectiveRole === "va" || effectiveRole === "va_manager") {
     return (
       <Suspense fallback={<PageLoadingSkeleton />}>
+        {isPreviewing && (
+          <div className="px-4 pt-4 sm:px-6">
+            <Badge variant="outline">Previewing VA View from {actualRole}</Badge>
+          </div>
+        )}
         <VaOpsCommandCenter />
       </Suspense>
+    );
+  }
+
+  // MP-332: Pure Recruiter — recruits only, no production book, no sales team.
+  if (effectiveRole === "recruiter") {
+    return (
+      <div className="space-y-5">
+        {isPreviewing && (
+          <div className="px-4 pt-4 sm:px-6">
+            <Badge variant="outline">Previewing Recruiter View from {actualRole}</Badge>
+          </div>
+        )}
+        <Suspense fallback={<PageLoadingSkeleton />}>
+          <RecruiterHome />
+        </Suspense>
+      </div>
     );
   }
 
@@ -1055,6 +1084,27 @@ export default function Dashboard() {
         </div>
         <Suspense fallback={<PageLoadingSkeleton />}>
           <AgentCommandDashboard />
+        </Suspense>
+      </div>
+    );
+  }
+
+  // MP-332: Agency Owner — runs a sub-agency under Sam. Hierarchy-scoped
+  // production (the scoreboard already scopes to "You + downline") plus an
+  // owner cockpit for their roster, recruits and hires.
+  if (effectiveRole === "agency_owner") {
+    return (
+      <div className="space-y-5">
+        {isPreviewing && (
+          <div className="px-4 pt-4 sm:px-6">
+            <Badge variant="outline">Previewing Agency Owner View from {actualRole}</Badge>
+          </div>
+        )}
+        <div className="px-4 pt-4 sm:px-6">
+          <ScopedProductionScoreboard />
+        </div>
+        <Suspense fallback={<PageLoadingSkeleton />}>
+          <AgencyOwnerHome />
         </Suspense>
       </div>
     );

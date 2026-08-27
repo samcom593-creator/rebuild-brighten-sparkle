@@ -1,4 +1,4 @@
-import { Check, Eye, ShieldCheck, User, Users } from "lucide-react";
+import { Briefcase, Building2, Check, Eye, Headset, ShieldCheck, User, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -10,6 +10,9 @@ import { cn } from "@/lib/utils";
 const roleOptions: Array<{ role: RolePreview; label: string; icon: React.ElementType }> = [
   { role: "agent", label: "Agent View", icon: User },
   { role: "manager", label: "Manager View", icon: Users },
+  { role: "agency_owner", label: "Agency Owner View", icon: Building2 },
+  { role: "recruiter", label: "Recruiter View", icon: Briefcase },
+  { role: "va", label: "VA View", icon: Headset },
   { role: "admin", label: "Admin View", icon: ShieldCheck },
 ];
 

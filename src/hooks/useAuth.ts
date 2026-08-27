@@ -52,8 +52,17 @@ interface Profile {
   instagram_handle: string | null;
 }
 
+export type AppRole = "admin" | "manager" | "agent" | "va_manager" | "va" | "recruiter";
+
+/**
+ * The switchable operating mode an admin sets per person (agents.account_mode,
+ * MP-331). Drives which home screen and nav a person gets. VA staff have no
+ * agents row, so their mode is derived from user_roles instead.
+ */
+export type AccountMode = "admin" | "manager" | "agency_owner" | "recruiter" | "va" | "va_manager" | "agent";
+
 interface UserRole {
-  role: "admin" | "manager" | "agent" | "va_manager" | "va";
+  role: AppRole;
 }
 
 interface AuthContextValue {
@@ -67,7 +76,12 @@ interface AuthContextValue {
   isAgent: boolean;
   isVaManager: boolean;
   isVa: boolean;
-  hasRole: (role: "admin" | "manager" | "agent" | "va_manager" | "va") => boolean;
+  isRecruiter: boolean;
+  /** Raw agents.account_mode for this login (null when no agents row, e.g. VA staff). */
+  accountMode: string | null;
+  /** The mode that decides home screen + nav. Admin always wins; otherwise account_mode, falling back to roles. */
+  effectiveMode: AccountMode;
+  hasRole: (role: AppRole) => boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<any>;
   signIn: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<{ error: any }>;
@@ -81,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<UserRole[]>([]);
+  const [accountMode, setAccountMode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [rolesLoading, setRolesLoading] = useState(true);
 
@@ -128,6 +143,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRolesLoading(false);
   }, []);
 
+  // MP-332: the person's switchable mode. agents.account_mode is granted to
+  // authenticated; a login with no agents row (VA staff) reads null and falls
+  // back to roles in effectiveMode below. Never throws — a failed read is
+  // "unknown", which resolves to the role-derived mode, never to admin.
+  const fetchAccountMode = useCallback(async (userId: string) => {
+    const supabase = await getSupabase();
+    const { data } = await supabase
+      .from("agents")
+      .select("account_mode")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setAccountMode((data as { account_mode?: string } | null)?.account_mode ?? null);
+  }, []);
+
   // Consolidated handler: fetches profile+roles only if userId changed
   const handleSession = useCallback(async (
     newSession: Session | null,
@@ -157,17 +188,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await Promise.all([
         fetchProfile(newUserId, newSession!.user.email),
-        fetchRoles(newUserId)
+        fetchRoles(newUserId),
+        fetchAccountMode(newUserId),
       ]);
       if (isMounted()) setIsLoading(false);
     } else {
       lastFetchedUserId.current = null;
       setProfile(null);
       setRoles([]);
+      setAccountMode(null);
       setRolesLoading(false);
       setIsLoading(false);
     }
-  }, [fetchProfile, fetchRoles]);
+  }, [fetchProfile, fetchRoles, fetchAccountMode]);
 
   useEffect(() => {
     let isMounted = true;
@@ -213,6 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setSession(null);
               setProfile(null);
               setRoles([]);
+              setAccountMode(null);
               setRolesLoading(false);
               setIsLoading(false);
               // empty-catch-allow:recovery-signout — best-effort cleanup after broken-session detection; user is already logged out client-side, network failure is acceptable.
@@ -348,7 +382,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   }, []);
 
-  const hasRole = (role: "admin" | "manager" | "agent" | "va_manager" | "va") => {
+  const hasRole = (role: AppRole) => {
     return roles.some((r) => r.role === role);
   };
 
@@ -357,6 +391,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAgent = hasRole("agent");
   const isVaManager = hasRole("va_manager");
   const isVa = hasRole("va");
+  const isRecruiter = hasRole("recruiter");
+
+  // Mode resolution (MP-332). Admin always wins so a switched mode can never
+  // demote Sam. Otherwise the admin-set account_mode is the source of truth;
+  // the default 'agent' value is treated as "unset" so a role granted outside
+  // the switcher (manager / recruiter / VA) still routes correctly.
+  const effectiveMode: AccountMode = (() => {
+    if (isAdmin) return "admin";
+    const m = accountMode;
+    if (m === "agency_owner" || m === "recruiter" || m === "manager" || m === "va" || m === "va_manager") return m;
+    if (isVaManager) return "va_manager";
+    if (isVa) return "va";
+    if (isRecruiter) return "recruiter";
+    if (isManager) return "manager";
+    return "agent";
+  })();
   const isFullyLoaded = !isLoading && !rolesLoading;
 
   const value: AuthContextValue = useMemo(() => ({
@@ -370,13 +420,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAgent,
     isVaManager,
     isVa,
+    isRecruiter,
+    accountMode,
+    effectiveMode,
     hasRole,
     signUp,
     signIn,
     signOut,
     refreshProfile: () => user && fetchProfile(user.id),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [user, session, profile, roles, isFullyLoaded, isAdmin, isManager, isAgent, isVaManager, isVa, signUp, signIn, signOut]);
+  }), [user, session, profile, roles, isFullyLoaded, isAdmin, isManager, isAgent, isVaManager, isVa, isRecruiter, accountMode, effectiveMode, signUp, signIn, signOut]);
 
   return React.createElement(
     AuthContext.Provider,

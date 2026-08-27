@@ -14,6 +14,9 @@ const authState = {
   isManager: false,
   isVaManager: false,
   isVa: false,
+  isRecruiter: false,
+  accountMode: null,
+  effectiveMode: "agent" as const,
 };
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ ...authState }) }));
@@ -69,7 +72,21 @@ function setRoles(roles: Partial<typeof authState>) {
   authState.isManager = false;
   authState.isVaManager = false;
   authState.isVa = false;
+  authState.isRecruiter = false;
+  authState.accountMode = null;
   Object.assign(authState, roles);
+  // MP-332: the sidebar filters on the resolved account mode, so a role flag
+  // set here must resolve the same way useAuth resolves it (admin wins, then
+  // an explicit mode, then roles).
+  if (!("effectiveMode" in roles)) {
+    (authState as { effectiveMode: string }).effectiveMode =
+      authState.isAdmin ? "admin"
+      : authState.isVaManager ? "va_manager"
+      : authState.isVa ? "va"
+      : authState.isRecruiter ? "recruiter"
+      : authState.isManager ? "manager"
+      : "agent";
+  }
 }
 
 beforeEach(() => {
@@ -117,6 +134,44 @@ describe("GlobalSidebar · AgentCloud application navigation", () => {
     for (const label of ["Home", "Reports", "Finances", "Resources", "Nova", "Producer Profile"]) {
       expect(link(label)).toBeTruthy();
     }
+  });
+
+  // MP-332 — mode-tailored nav. A Pure Recruiter sees recruiting, never the
+  // selling surface; VA staff see the queues they work, never Clients; an
+  // Agency Owner sees Reports (a leader surface) that a plain agent does not.
+  it("gives a Pure Recruiter recruiting + invite, and hides the selling surface", () => {
+    setRoles({ isRecruiter: true, effectiveMode: "recruiter" as never });
+    renderSidebar();
+    expect(group("Recruiting")).toBeTruthy();
+    expect(link("Interviews")).toBeTruthy();
+    expect(link("Follow-ups")).toBeTruthy();
+    expect(link("Invite an agent")).toBeTruthy();
+    expect(group("Clients")).toBeNull();
+    expect(link("Book of Business")).toBeNull();
+    expect(link("Quoter")).toBeNull();
+    expect(link("Nova")).toBeNull();
+    expect(link("Producer Profile")).toBeNull();
+  });
+
+  it("hides the Clients selling surface from VA staff", () => {
+    setRoles({ isVa: true });
+    renderSidebar();
+    expect(group("Recruiting")).toBeTruthy();
+    expect(group("Clients")).toBeNull();
+    expect(link("Book of Business")).toBeNull();
+  });
+
+  it("shows Reports (a leader surface) to an Agency Owner", () => {
+    setRoles({ isManager: true, effectiveMode: "agency_owner" as never });
+    renderSidebar();
+    expect(link("Reports")).toBeTruthy();
+    expect(group("Clients")).toBeTruthy();
+  });
+
+  it("hides Reports from a plain agent", () => {
+    setRoles({});
+    renderSidebar();
+    expect(link("Reports")).toBeNull();
   });
 
   it("keeps the canonical Add Agent action pinned at the bottom for hiring roles", () => {

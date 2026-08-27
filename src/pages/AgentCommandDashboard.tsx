@@ -50,6 +50,7 @@ import { ManagerPostCounter } from "@/components/dashboard/ManagerPostCounter";
 import { MyReferralLinkCard } from "@/components/agent/MyReferralLinkCard";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { FreeLeadsStatusCard } from "@/components/dashboard/FreeLeadsStatusCard";
+import { RecruiterBountyCard } from "@/components/dashboard/RecruiterBountyCard";
 import { SlackJoinCard } from "@/components/recruiting/SlackJoinCard";
 // v26 audit fix: AgentLinkBookTruthCard + CarrierBreakdownCard + BookTrendCard
 // imports removed. They lived in the deleted whole-book footer. KPIs now
@@ -401,6 +402,7 @@ export default function AgentCommandDashboard() {
           Sam, pointed at the agent's own row. Status only; the referral-link
           and licensing controls already live on this page, so nothing else
           from the drawer's stack comes with it. */}
+      {agentId && <RecruiterBountyCard agentId={agentId} />}
       {agentId && <FreeLeadsStatusCard agentId={agentId} />}
 
       {/* ── P3: MY REFERRAL LINK ─────────────────────────────────── */}

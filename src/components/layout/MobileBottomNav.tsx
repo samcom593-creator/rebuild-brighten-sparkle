@@ -32,6 +32,15 @@ const managerNavItems = [
   { path: "/dashboard/resources",     icon: Library,    label: "Resources" },
 ];
 
+// MP-332: Pure Recruiter — recruiting verbs only, no production.
+const recruiterNavItems = [
+  { path: "/dashboard",                        icon: LayoutDashboard, label: "Home" },
+  { path: "/dashboard/recruiting",             icon: Briefcase,       label: "Recruiting" },
+  { path: "/dashboard/recruiting/interviews",  icon: CalendarClock,   label: "Interviews" },
+  { path: "/dashboard/recruiting/follow-ups",  icon: Users,           label: "Follow-ups" },
+  { path: "/dashboard/settings",               icon: User,            label: "Profile" },
+];
+
 const staffNavItems = [
   { path: "/dashboard",                        icon: LayoutDashboard, label: "Home" },
   { path: "/dashboard/recruiting",             icon: Briefcase,       label: "Recruiting" },
@@ -44,15 +53,15 @@ export function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { isAdmin, isManager, isVaManager, isVa } = useAuth();
+  const { effectiveMode } = useAuth();
 
-  const navItems = isAdmin
-    ? adminNavItems
-    : isManager
-      ? managerNavItems
-      : (isVaManager || isVa)
-        ? staffNavItems
-        : agentNavItems;
+  // One ladder keyed on the resolved account mode (admin > account_mode > roles).
+  const navItems =
+    effectiveMode === "admin" ? adminNavItems
+    : effectiveMode === "manager" || effectiveMode === "agency_owner" ? managerNavItems
+    : effectiveMode === "recruiter" ? recruiterNavItems
+    : effectiveMode === "va" || effectiveMode === "va_manager" ? staffNavItems
+    : agentNavItems;
 
   if (!isMobile) return null;
 

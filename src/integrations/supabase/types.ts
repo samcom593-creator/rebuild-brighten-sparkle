@@ -14578,6 +14578,7 @@ export type Database = {
           is_deactivated: boolean | null
           is_inactive: boolean | null
           is_manager: boolean
+          account_mode: string
           is_presenting: boolean
           last_license_alert_at: string | null
           leader_notes: string | null
@@ -14682,6 +14683,7 @@ export type Database = {
           is_deactivated?: boolean | null
           is_inactive?: boolean | null
           is_manager?: boolean
+          account_mode?: string
           is_presenting?: boolean
           last_license_alert_at?: string | null
           leader_notes?: string | null
@@ -14786,6 +14788,7 @@ export type Database = {
           is_deactivated?: boolean | null
           is_inactive?: boolean | null
           is_manager?: boolean
+          account_mode?: string
           is_presenting?: boolean
           last_license_alert_at?: string | null
           leader_notes?: string | null
@@ -109669,7 +109672,7 @@ export type Database = {
         | "field"
         | "active"
         | "unknown"
-      app_role: "admin" | "manager" | "agent" | "va_manager" | "va"
+      app_role: "admin" | "manager" | "agent" | "va_manager" | "va" | "recruiter"
       application_status:
         | "new"
         | "reviewing"
@@ -109985,7 +109988,7 @@ export const Constants = {
     Enums: {
       agent_status: ["active", "inactive", "pending", "terminated"],
       agent_training_stage: ["test", "classroom", "field", "active", "unknown"],
-      app_role: ["admin", "manager", "agent", "va_manager", "va"],
+      app_role: ["admin", "manager", "agent", "va_manager", "va", "recruiter"],
       application_status: [
         "new",
         "reviewing",

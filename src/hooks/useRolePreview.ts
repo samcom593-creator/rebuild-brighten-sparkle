@@ -1,9 +1,11 @@
 import { useSearchParams } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, type AccountMode } from "@/hooks/useAuth";
 
-export type RolePreview = "agent" | "manager" | "admin";
+// MP-332: preview covers every account mode, not just agent/manager/admin, so
+// Sam can open the Agency Owner / Pure Recruiter / VA homes as himself.
+export type RolePreview = AccountMode;
 
-const PREVIEW_ROLES: RolePreview[] = ["agent", "manager", "admin"];
+const PREVIEW_ROLES: RolePreview[] = ["agent", "manager", "agency_owner", "recruiter", "va", "va_manager", "admin"];
 
 export function isRolePreview(value: string | null): value is RolePreview {
   return Boolean(value && PREVIEW_ROLES.includes(value as RolePreview));
@@ -20,10 +22,13 @@ const SAM_EMAILS = new Set<string>([
 ]);
 
 export function useRolePreview() {
-  const { user, isAdmin, isManager } = useAuth();
+  const { user, effectiveMode } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedPreview = searchParams.get("previewRole");
-  const actualRole: RolePreview = isAdmin ? "admin" : isManager ? "manager" : "agent";
+  // The person's real mode comes from useAuth (admin wins, then the admin-set
+  // account_mode, then roles). Before MP-332 this was a 3-way ternary that
+  // silently routed recruiters and agency owners to the agent home.
+  const actualRole: RolePreview = effectiveMode;
 
   const isSam = !!(user?.email && SAM_EMAILS.has(user.email.toLowerCase()));
   const previewRole = isSam && isRolePreview(requestedPreview) ? requestedPreview : null;

@@ -42,7 +42,7 @@ export function ProtectedRoute({
   const hasResolved = useRef(false);
 
   const roleAllowed = (allowRoles ?? []).some((r) =>
-    hasRole(r as "admin" | "manager" | "agent" | "va_manager" | "va"),
+    hasRole(r as "admin" | "manager" | "agent" | "va_manager" | "va" | "recruiter"),
   );
 
   useEffect(() => {

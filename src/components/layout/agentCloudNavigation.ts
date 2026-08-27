@@ -29,11 +29,25 @@ import {
   Wrench,
 } from "lucide-react";
 
+import type { AccountMode } from "@/hooks/useAuth";
+
+/**
+ * MP-332 mode allowlists. `modes` names the account modes that see an entry;
+ * omit it for "everyone". Admin always sees everything. Producer modes
+ * (agent / manager / agency_owner) get the full selling surface; a Pure
+ * Recruiter sees recruiting only; VA staff see the queues they work.
+ */
+const PRODUCERS: AccountMode[] = ["agent", "manager", "agency_owner"];
+const LEADERS: AccountMode[] = ["manager", "agency_owner"];
+const RECRUITING: AccountMode[] = ["agent", "manager", "agency_owner", "recruiter", "va", "va_manager"];
+
 export interface AgentCloudNavItem {
   label: string;
   href: string;
   icon?: ElementType;
   adminOnly?: boolean;
+  /** Account modes that see this item. Omit = everyone. Admin always sees it. */
+  modes?: AccountMode[];
 }
 
 export interface AgentCloudNavGroup {
@@ -41,6 +55,8 @@ export interface AgentCloudNavGroup {
   icon: ElementType;
   items: AgentCloudNavItem[];
   kicker?: string;
+  /** Account modes that see this group. Omit = everyone. Admin always sees it. */
+  modes?: AccountMode[];
 }
 
 export type AgentCloudNavEntry = AgentCloudNavItem | AgentCloudNavGroup;
@@ -53,6 +69,7 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
   {
     label: "Clients",
     icon: ContactRound,
+    modes: PRODUCERS,
     items: [
       // Agent Cloud's Clients→Pipeline is the CLIENT pipeline. This pointed at
       // /dashboard/recruiting (agent applicants), so the client pipeline was
@@ -68,36 +85,40 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
   {
     label: "Recruiting",
     icon: UserPlus,
+    modes: RECRUITING,
     items: [
       { label: "Pipeline", href: "/dashboard/recruiting", icon: FolderKanban },
       { label: "Interviews", href: "/dashboard/recruiting/interviews", icon: CalendarDays },
+      { label: "Follow-ups", href: "/dashboard/recruiting/follow-ups", icon: Target, modes: ["recruiter", "va", "va_manager", "manager", "agency_owner"] },
       { label: trainingLabel, href: "/dashboard/recruiting/training", icon: BookOpenCheck },
-      { label: "Call Center", href: "/dashboard/call-center", icon: Target },
-      { label: "Awards", href: "/dashboard/awards", icon: Trophy },
+      { label: "Call Center", href: "/dashboard/call-center", icon: Target, modes: PRODUCERS },
+      { label: "Awards", href: "/dashboard/awards", icon: Trophy, modes: PRODUCERS },
     ],
   },
   {
     label: "Agency",
     icon: Building2,
+    modes: [...PRODUCERS, "recruiter"],
     items: [
       { label: "Team", href: "/dashboard/team", icon: Users },
       { label: "Announcements", href: "/dashboard/community", icon: Megaphone },
-      { label: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
+      { label: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy, modes: PRODUCERS },
     ],
   },
   {
     label: "Contracting",
     icon: FileText,
     kicker: "RUN CONTRACTING",
+    modes: [...PRODUCERS, "recruiter"],
     items: [
-      { label: "My Contracts", href: "/dashboard/contracting", icon: FileText },
+      { label: "My Contracts", href: "/dashboard/contracting", icon: FileText, modes: PRODUCERS },
       { label: "Invite an agent", href: "/admin/invite-links", icon: UserPlus },
-      { label: "Carrier Directory", href: "/dashboard/contracting/carriers", icon: Landmark },
+      { label: "Carrier Directory", href: "/dashboard/contracting/carriers", icon: Landmark, modes: PRODUCERS },
       { label: "Contracting Ops", href: "/dashboard/contracting/ops", icon: Target, adminOnly: true },
       { label: "Contract Requests", href: "/dashboard/contracting/requests", icon: FileSearch, adminOnly: true },
     ],
   },
-  { label: "Reports", href: "/dashboard/analytics", icon: BarChart3 },
+  { label: "Reports", href: "/dashboard/analytics", icon: BarChart3, modes: LEADERS },
   { label: "Finances", href: "/dashboard/finances", icon: WalletCards, adminOnly: true },
   {
     label: "Tools",
@@ -106,11 +127,12 @@ export const AGENT_CLOUD_PRIMARY_NAV: AgentCloudNavEntry[] = [
       { label: "Import", href: "/dashboard/import", icon: Import, adminOnly: true },
       { label: "Document review", href: "/dashboard/contracting/documents", icon: FileSearch, adminOnly: true },
       { label: "Resources", href: "/dashboard/resources", icon: BookOpen },
-      { label: "Quoter", href: "/dashboard/quoter", icon: Cloud },
-      { label: "Marketing", href: "/dashboard/client-marketing", icon: Megaphone },
+      { label: "Quoter", href: "/dashboard/quoter", icon: Cloud, modes: PRODUCERS },
+      { label: "Marketing", href: "/dashboard/client-marketing", icon: Megaphone, modes: PRODUCERS },
     ],
   },
-  { label: "Nova", href: "/dashboard/nova", icon: Sparkles },
+  { label: "VA Team", href: "/va-team", icon: Users, modes: ["va_manager"] },
+  { label: "Nova", href: "/dashboard/nova", icon: Sparkles, modes: PRODUCERS },
 ];
 
 export const AGENT_CLOUD_ACCOUNT_NAV: AgentCloudNavEntry[] = [
@@ -127,7 +149,7 @@ export const AGENT_CLOUD_ACCOUNT_NAV: AgentCloudNavEntry[] = [
       { label: `Install ${BRAND.shortName} app`, href: "/install", icon: Download },
     ],
   },
-  { label: "Producer Profile", href: "/dashboard/profile", icon: IdCard },
+  { label: "Producer Profile", href: "/dashboard/profile", icon: IdCard, modes: PRODUCERS },
 ];
 
 export function isAgentCloudGroup(entry: AgentCloudNavEntry): entry is AgentCloudNavGroup {

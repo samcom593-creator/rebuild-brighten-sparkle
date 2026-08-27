@@ -29,7 +29,7 @@ interface GlobalSidebarProps {
 export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarProps) {
   const brand = useBrand();
   const { pathname } = useLocation();
-  const { isAdmin, isManager } = useAuth();
+  const { isAdmin, isManager, effectiveMode } = useAuth();
   const isTouch = useIsTouchDevice();
   // Rendered from the same store the TopBar star writes to, so pinning a page
   // has a visible result instead of vanishing into localStorage.
@@ -37,10 +37,16 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
   const collapsed = !isOpen;
   const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>({});
 
+  // MP-332: an entry is visible when it has no `modes` allowlist, or the
+  // viewer's effective mode is in it. Admin always sees everything. Before this
+  // the only gate was `adminOnly`, so a Pure Recruiter or a VA got the full
+  // selling sidebar (Book of Business, Retention, Quoter...).
+  const modeAllows = (modes?: AgentCloudNavItem["modes"]) => isAdmin || !modes || modes.includes(effectiveMode);
   const filterEntries = (entries: AgentCloudNavEntry[]) => entries
     .filter((entry) => !("adminOnly" in entry && entry.adminOnly && !isAdmin))
+    .filter((entry) => modeAllows(entry.modes))
     .map((entry) => isAgentCloudGroup(entry)
-      ? { ...entry, items: entry.items.filter((item) => !item.adminOnly || isAdmin) }
+      ? { ...entry, items: entry.items.filter((item) => (!item.adminOnly || isAdmin) && modeAllows(item.modes)) }
       : entry)
     .filter((entry) => !isAgentCloudGroup(entry) || entry.items.length > 0);
 

@@ -9,6 +9,9 @@ const auth = {
   isManager: false,
   isVaManager: false,
   isVa: false,
+  isRecruiter: false,
+  accountMode: null,
+  effectiveMode: "agent" as const,
 };
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => auth }));
@@ -27,6 +30,9 @@ describe("TrainingWorkspaceNav", () => {
     isManager: false,
     isVaManager: false,
     isVa: false,
+    isRecruiter: false,
+    accountMode: null,
+    effectiveMode: "agent" as const,
   }));
 
   it("gives agents every learning section without staff controls", () => {

@@ -462,16 +462,16 @@ const App = () => (
                     <Route path="/dashboard" element={<Dashboard />} />
                     {/* Unified APEX OS destinations. Legacy URLs below remain
                         as redirects so bookmarks keep their filters/query. */}
-                    <Route path="/dashboard/recruiting" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardApplicants /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><Interviews /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/follow-ups" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><InterviewRecovery /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/hires" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><DashboardApplicants /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><DashboardApplicants /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/interviews" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><Interviews /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/follow-ups" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><InterviewRecovery /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/hires" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><DashboardApplicants /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/training" element={<ProtectedRoute><ApexTrainingEntry /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/training/library" element={<ProtectedRoute><TrainingHub /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/training/library/course/:courseId" element={<ProtectedRoute><TrainingHubCourse /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/training/sales-course" element={<ProtectedRoute><CourseCatalog /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/training/progress" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><CourseProgress /></ProtectedRoute>} />
-                    <Route path="/dashboard/recruiting/training/content" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va"]}><CourseContent /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/training/progress" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><CourseProgress /></ProtectedRoute>} />
+                    <Route path="/dashboard/recruiting/training/content" element={<ProtectedRoute requireAdmin allowManagers allowRoles={["va_manager", "va", "recruiter"]}><CourseContent /></ProtectedRoute>} />
                     <Route path="/dashboard/recruiting/training/annuities" element={<ProtectedRoute><AnnuityTraining /></ProtectedRoute>} />
                     {/* Every authenticated agent can open Team. Server RPCs scope
                         the roster to self + recursive downline; staff keep their

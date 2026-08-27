@@ -20,18 +20,15 @@ scoped as (
          coalesce(public.fn_agent_subagency(u.agent_id) = 'vantage', false) as is_vantage
   from public.v_production_unified u
 ),
-heads as (
-  select case when public.fn_agent_subagency(a.id) = 'vantage'
-              then 'Vantage Financial' else 'APEX Financial' end as agency,
-         max((public.fn_agent_contract_pct(a.id)).pct) as head_pct
-  from public.agents a
-  where not public.fn_agent_is_roster_excluded(a.id)
-  group by 1
-),
+-- The heads are the actual agency owners, not the max carrier level in the
+-- roster (a downline agent can hold a single carrier above the owner's contract).
+-- owner = Sam (IMO); Vantage head = KJ. Add a row here when a new sub-agency
+-- gets its own head (a sub_agencies table would generalise this later).
 owner as (
-  select max((public.fn_agent_contract_pct(a.id)).pct) as owner_pct
-  from public.agents a
-  where not public.fn_agent_is_roster_excluded(a.id)
+  select pct as owner_pct from public.fn_agent_contract_pct('7c3c5581-3544-437f-bfe2-91391afb217d'::uuid)
+),
+heads(agency, head_pct) as (
+  select 'Vantage Financial'::text, pct from public.fn_agent_contract_pct('431dff0d-7c82-4134-a85e-457e5226fc7f'::uuid)
 ),
 agg as (
   select case when scoped.is_vantage then 'Vantage Financial' else 'APEX Financial' end as agency,
@@ -69,17 +66,10 @@ returns table(agency text, is_primary boolean, policies integer, alp numeric,
               owner_override_pct numeric, est_owner_override_alp numeric)
 language sql stable security definer set search_path to 'public'
 as $function$
-  with heads as (
-    select case when public.fn_agent_subagency(a.id) = 'vantage'
-                then 'Vantage Financial' else 'APEX Financial' end as agency,
-           max((public.fn_agent_contract_pct(a.id)).pct) as head_pct
-    from public.agents a
-    where not public.fn_agent_is_roster_excluded(a.id)
-    group by 1
-  ), owner as (
-    select max((public.fn_agent_contract_pct(a.id)).pct) as owner_pct
-    from public.agents a
-    where not public.fn_agent_is_roster_excluded(a.id)
+  with owner as (
+    select pct as owner_pct from public.fn_agent_contract_pct('7c3c5581-3544-437f-bfe2-91391afb217d'::uuid)
+  ), heads(agency, head_pct) as (
+    select 'Vantage Financial'::text, pct from public.fn_agent_contract_pct('431dff0d-7c82-4134-a85e-457e5226fc7f'::uuid)
   ), agg as (
     select case when coalesce(public.fn_agent_subagency(u.agent_id) = 'vantage', false)
                 then 'Vantage Financial' else 'APEX Financial' end as agency,

@@ -16,6 +16,13 @@ type Row = {
   policies_mtd?: number;
   policies_30d?: number;
   alp_30d?: number;
+  // Your (IMO owner) estimated override on each sub-agency's production —
+  // owner comp minus that agency's head comp (Vantage: 120−105 = 15%). 0 on
+  // your own APEX book, whose direct+team earnings live in the scoreboard.
+  owner_override_pct?: number;
+  est_owner_override_alp?: number;
+  est_owner_override_mtd?: number;
+  est_owner_override_30d?: number;
 };
 
 function fmt(n: number | null | undefined): string {
@@ -44,7 +51,7 @@ export function ImoByAgency({
       }
       const { data, error } = await supabase
         .from("v_imo_by_agency")
-        .select("agency, is_primary, policies, alp, alp_mtd, policies_mtd, policies_30d, alp_30d")
+        .select("agency, is_primary, policies, alp, alp_mtd, policies_mtd, policies_30d, alp_30d, owner_override_pct, est_owner_override_alp, est_owner_override_mtd, est_owner_override_30d")
         .order("alp", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Row[];
@@ -72,12 +79,17 @@ export function ImoByAgency({
   const max = Math.max(1, ...imo.map((a) => a.alp));
   const periodTotal = imo.reduce((sum, agency) => sum + (exactWindow ? agency.alp : agency.alp_mtd ?? 0), 0);
   const periodLabel = exactWindow ? (windowLabel ?? "Selected period") : "Calendar MTD";
+  const ovrOf = (a: Row) => (exactWindow ? a.est_owner_override_alp : a.est_owner_override_mtd) ?? 0;
+  const overrideTotal = imo.reduce((sum, a) => sum + ovrOf(a), 0);
 
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between">
         <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">Total IMO by Agency</p>
-        <p className="text-xs text-muted-foreground">{periodLabel} · {fmt(periodTotal)} ALP</p>
+        <p className="text-xs text-muted-foreground">
+          {periodLabel} · {fmt(periodTotal)} ALP
+          {overrideTotal > 0 && <span className="ml-1 text-primary">· {fmt(overrideTotal)} your override</span>}
+        </p>
       </div>
       <Card>
         <CardContent className="space-y-3 p-4">
@@ -102,6 +114,11 @@ export function ImoByAgency({
                   <p>{(a.policies_30d ?? 0).toLocaleString()} policies · {fmt(a.alp_30d)} last 30 days</p>
                   <p>{(a.policies_mtd ?? 0).toLocaleString()} policies · {fmt(a.alp_mtd)} calendar MTD</p>
                 </div>
+              )}
+              {(a.owner_override_pct ?? 0) > 0 && (
+                <p className="mt-0.5 text-[11px] font-medium text-primary">
+                  Your override: {a.owner_override_pct}% · {fmt(ovrOf(a))} {exactWindow ? "this window" : "MTD"}
+                </p>
               )}
             </div>
           ))}

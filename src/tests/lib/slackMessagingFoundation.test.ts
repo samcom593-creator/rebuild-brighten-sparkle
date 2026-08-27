@@ -211,6 +211,7 @@ describe("Slack delivery lease + interview no-show (20260826053000)", () => {
       "production.personal_record",
       "recruiting.bounty_qualified",
       "recruiting.bounty_reversed",
+      "agent.hired",
     ]) {
       expect(SLACK_TEMPLATED_EVENT_TYPES).toContain(eventType);
       expect(renderSlackEventText(eventType, {})).not.toBeNull();
@@ -220,6 +221,8 @@ describe("Slack delivery lease + interview no-show (20260826053000)", () => {
     expect(SLACK_EDGE_EMITTERS["recruiting.bounty_qualified"]).toBe("cron:apex-recruiter-bounties-15min");
     expect(renderSlackEventText("production.personal_record", { agentName: "Jontay Taylor", recordType: "daily_alp", value: 2651.64, previousBest: 1200, clientName: "LEAK" })).not.toContain("LEAK");
     expect(renderSlackEventText("recruiting.bounty_qualified", { recruiterName: "Wendell Funderburg", recruitName: "New Agent", amountCents: 50000, policies: 2 })).toContain("$500");
+    expect(renderSlackEventText("agent.hired", { agentName: "Daniel Bridges", managerName: "Samuel James", licenseStatus: "licensed", clientName: "LEAK" })).not.toContain("LEAK");
+    expect(renderSlackEventText("agent.hired", { agentName: "Daniel Bridges" })).toContain("NEW HIRE");
     expect(source("supabase/functions/free-leads-weekly-alerts/index.ts"))
       .toContain('event_type: "free_leads.weekly_summary"');
   });

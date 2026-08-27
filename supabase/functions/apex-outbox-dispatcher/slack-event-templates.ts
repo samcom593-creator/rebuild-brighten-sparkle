@@ -25,6 +25,7 @@ export const SLACK_TEMPLATED_EVENT_TYPES = [
   "production.personal_record",
   "recruiting.bounty_qualified",
   "recruiting.bounty_reversed",
+  "agent.hired",
 ] as const;
 
 export type SlackTemplatedEventType = (typeof SLACK_TEMPLATED_EVENT_TYPES)[number];
@@ -167,6 +168,19 @@ export function renderSlackEventText(
     const reason = slackText(p.reason, 160);
     const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.teamDashboard);
     return `Recruiter bounty REVERSED — *${recruiter}* (recruit: ${recruit})${reason ? ` — ${reason}` : ""}\n<${url}|Review in Team>`;
+  }
+
+  if (eventType === "agent.hired") {
+    // reads: agentName (the PRODUCER), agentCode, managerName, licenseStatus,
+    // contractingUrl, openUrl. No client PII.
+    const agent = text(p.agentName, "A new producer");
+    const code = slackText(p.agentCode, 40);
+    const mgr = slackText(p.managerName, 80);
+    const lic = String(p.licenseStatus ?? "").toLowerCase() === "licensed" ? "licensed" : "unlicensed";
+    const url = safeSlackUrl(p.openUrl, SLACK_DEFAULT_URLS.recruitingPipeline);
+    const contracting = safeSlackUrl(p.contractingUrl, SLACK_DEFAULT_URLS.contractingOps);
+    const bits = [code ? `code ${code}` : "", mgr ? `manager ${mgr}` : "", lic].filter(Boolean).join(" · ");
+    return `:dart: NEW HIRE — *${agent}*${bits ? ` (${bits})` : ""}\nContracting: <${contracting}|start contracting> · <${url}|open profile>`;
   }
 
   if (eventType === "free_leads.weekly_summary") {

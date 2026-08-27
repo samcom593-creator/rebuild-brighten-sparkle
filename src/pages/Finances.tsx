@@ -25,6 +25,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { ImoByAgency } from "@/components/dashboard/ImoByAgency";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -780,8 +781,12 @@ export default function Finances() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
         </TabsList>
-        <TabsContent value="overview" className="mt-5">
+        <TabsContent value="overview" className="mt-5 space-y-5">
           <OverviewTab scope={scope} />
+          {/* Vantage + every sub-agency rolled under you, with your estimated
+              override per agency (Sam 2026-08-26). Same component the dashboard
+              uses, so the numbers cannot disagree between the two surfaces. */}
+          <ImoByAgency />
         </TabsContent>
         <TabsContent value="reconciliation" className="mt-5">
           <ReconciliationTab />

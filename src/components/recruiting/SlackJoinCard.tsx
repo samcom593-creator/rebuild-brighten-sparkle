@@ -5,15 +5,10 @@ import { cn } from "@/lib/utils";
 
 const BRAND = resolveBrand();
 
-const ROLE_CHANNELS = {
-  licensed: {
-    name: "#general-licensed",
-    url: "https://apex-financial-co.slack.com/archives/C0BS9F2M35M",
-  },
-  unlicensed: {
-    name: "#general-unlicensed",
-    url: "https://apex-financial-co.slack.com/archives/C0BSUGBR62G",
-  },
+const COMPANY_HUB = {
+  name: "#general",
+  label: "Company Hub",
+  url: "https://apex-financial-co.slack.com/archives/C0BSRRNVC2V",
 } as const;
 
 export function SlackJoinCard({
@@ -23,7 +18,7 @@ export function SlackJoinCard({
   licenseStatus: "licensed" | "unlicensed" | "pending";
   compact?: boolean;
 }) {
-  const channel = licenseStatus === "pending" ? null : ROLE_CHANNELS[licenseStatus];
+  const channel = licenseStatus === "pending" ? null : COMPANY_HUB;
 
   return (
     <div className={cn("rounded-xl border border-primary/40 bg-primary/5 text-foreground", compact ? "p-4" : "p-5")}>
@@ -35,13 +30,13 @@ export function SlackJoinCard({
           <p className="text-sm font-bold text-primary">Your {BRAND.shortName} Slack access</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Approved active hires receive a verified workspace invite by email. Applicants and excluded roster members cannot use a shared join link.
-            {channel ? <> After accepting, open <span className="font-semibold text-foreground">{channel.name}</span>.</> : null}
+            {channel ? <> After accepting, open the <span className="font-semibold text-foreground">{channel.label}</span> ({channel.name}).</> : null}
           </p>
           {channel ? (
             <div className="mt-3">
               <Button asChild size="sm" variant="outline">
                 <a href={channel.url} target="_blank" rel="noopener noreferrer">
-                  Open {channel.name}
+                  Open {channel.label}
                 </a>
               </Button>
             </div>

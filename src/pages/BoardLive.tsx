@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 // BoardLive — the screenshot/post-ready production board.
 // Deliberately its own page (not the /leaderboard control surface): this one is
@@ -34,6 +35,10 @@ function monthBounds(offset = 0) {
 }
 
 const money = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+
+function hasAgentProfile(agentId: string | null | undefined): agentId is string {
+  return Boolean(agentId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(agentId));
+}
 
 // Rank treatments: gold / silver / bronze glow for the podium, neutral below.
 // The three glows below are the podium/trophy treatment on a board built to be
@@ -193,9 +198,19 @@ export default function BoardLive() {
                         {rank}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-base font-bold leading-tight text-white sm:text-xl">
-                          {r.agent_name ?? "Unknown"}
-                        </div>
+                        {hasAgentProfile(r.agent_id) ? (
+                          <Link
+                            to={`/dashboard/profile?agentId=${encodeURIComponent(r.agent_id)}`}
+                            className="block truncate text-base font-bold leading-tight text-white underline-offset-4 hover:text-amber-300 hover:underline sm:text-xl"
+                            aria-label={`Open profile for ${r.agent_name ?? "agent"}`}
+                          >
+                            {r.agent_name ?? "Unknown"}
+                          </Link>
+                        ) : (
+                          <div className="truncate text-base font-bold leading-tight text-white sm:text-xl">
+                            {r.agent_name ?? "Unknown"}
+                          </div>
+                        )}
                         <div className="mt-1 flex items-center gap-2">
                           <span className="whitespace-nowrap rounded-md border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
                             {r.tenure_label ?? "New"}

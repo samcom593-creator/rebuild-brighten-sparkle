@@ -444,11 +444,15 @@ Deno.serve(async (request) => {
   ).length;
   const uncoveredEligible = [...eligibleIds].filter((id) => !verifiedIds.has(id) && !deliveredInviteIds.has(id));
   const excludedLinked = [...excludedIds].filter((id) => verifiedIds.has(id));
+  // Four-hub model: candidate intake lives in Recruiting/Hiring and licensing,
+  // training, and appointment help live together in Training/Contracting.
   const candidateChannels = channels.filter((channel) =>
-    channel.purpose === "recruiting_growth" || channel.purpose === "licensing_support"
+    channel.purpose === "recruiting_growth" || channel.purpose === "contracting_support"
   );
   const candidatePrivacyOk = candidateChannels.length === 2 && candidateChannels.every((channel) =>
-    channel.intended_privacy === "private" && channel.is_private === true && channel.status === "reachable"
+    (channel.intended_privacy === "private" || channel.intended_privacy === "restricted")
+      && channel.is_private === true
+      && channel.status === "reachable"
   );
   const latestNumbersDate = (numbersResult.data ?? [])[0]?.business_date ?? null;
   const latestNumbers = latestNumbersDate
@@ -479,7 +483,7 @@ Deno.serve(async (request) => {
   const operatingReasons: string[] = [];
   if (excludedIds.size !== 8) operatingReasons.push(`expected 8 active Slack exclusions; found ${excludedIds.size}`);
   if (excludedLinked.length > 0) operatingReasons.push(`${excludedLinked.length} excluded agent(s) have verified Slack links`);
-  if (!candidatePrivacyOk) operatingReasons.push("candidate routes are not both verified private staff channels");
+  if (!candidatePrivacyOk) operatingReasons.push("recruiting and contracting hubs are not both verified private staff channels");
   if (!legacyCandidateChannelsLocked) operatingReasons.push("legacy public candidate channels are not archived or private");
   if (applicantInvitesDelivered > 0) operatingReasons.push(`${applicantInvitesDelivered} applicant workspace invite(s) delivered`);
   if (hiredInviteFailures > 0) operatingReasons.push(`${hiredInviteFailures} hired-agent invite(s) need attention`);

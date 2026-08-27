@@ -17,6 +17,7 @@ import { format as fmtDate } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getMetricBounds, type MetricBounds } from "@/lib/metricTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { Link } from "react-router-dom";
 
 type Period = "daily" | "weekly" | "monthly" | "custom";
 type Board = "production" | "recruiting" | "referrals" | "activity";
@@ -69,6 +70,10 @@ function periodToWindow(period: Period) {
 
 function formatMoney(value: number): string {
   return `$${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+function hasAgentProfile(agentId: string | null | undefined): agentId is string {
+  return Boolean(agentId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(agentId));
 }
 
 function dateInputToDate(value: string): Date | undefined {
@@ -809,15 +814,14 @@ export default function Leaderboard() {
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            {tab === "production" && productionMode === "individuals" ? (
-                              <button
-                                type="button"
-                                onClick={() => setSelectedProductionRow(row)}
-                                className="max-w-full truncate text-left text-sm font-semibold text-foreground underline-offset-2 decoration-dotted transition-colors hover:text-primary hover:underline"
-                                aria-label={`View income estimate for ${row.agent_name ?? "producer"}`}
+                            {hasAgentProfile(row.agent_id) ? (
+                              <Link
+                                to={`/dashboard/profile?agentId=${encodeURIComponent(row.agent_id)}`}
+                                className="block max-w-full truncate text-sm font-semibold text-foreground underline-offset-2 decoration-dotted transition-colors hover:text-primary hover:underline"
+                                aria-label={`Open profile for ${row.agent_name ?? "agent"}`}
                               >
                                 {row.agent_name ?? "—"}
-                              </button>
+                              </Link>
                             ) : (
                               <div className="truncate text-sm font-medium text-foreground">{row.agent_name ?? "—"}</div>
                             )}
@@ -838,9 +842,14 @@ export default function Leaderboard() {
                             </div>
                             <div className="min-w-0 sm:text-right">
                               <div className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Est. income</div>
-                              <div className="truncate text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedProductionRow(row)}
+                                className="truncate text-sm font-bold tabular-nums text-emerald-600 underline-offset-2 hover:underline dark:text-emerald-400"
+                                aria-label={`View income estimate for ${row.agent_name ?? "producer"}`}
+                              >
                                 {formatMoney(row.est_earnings ?? 0)}
-                              </div>
+                              </button>
                             </div>
                             <div className="min-w-0 sm:text-right">
                               <div className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</div>
@@ -894,12 +903,12 @@ export default function Leaderboard() {
                   <p className="mt-1 text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                     {formatMoney(selectedProductionRow.est_earnings ?? 0)}
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Before lead spend</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Before deductions</p>
                 </div>
                 <div className="rounded-lg border border-border bg-card p-3">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Lead spend</p>
                   <p className="mt-1 text-xl font-bold tabular-nums text-foreground">{formatMoney(leadCostPerProducer)}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">$250/wk this window</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">No agent lead deduction</p>
                 </div>
                 <div className="rounded-lg border border-border bg-card p-3">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">After leads</p>
@@ -911,12 +920,12 @@ export default function Leaderboard() {
                   )}>
                     {formatMoney((selectedProductionRow.est_earnings ?? 0) - leadCostPerProducer)}
                   </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Est. income − lead spend</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Estimated net shown here</p>
                 </div>
               </div>
 
               <p className="rounded-lg bg-muted/40 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
-                Estimated income uses the producer&rsquo;s saved AgentLink carrier contract levels. It is not confirmed paid commission and does not include chargebacks, advances, or overrides.
+                Estimated income uses canonical posted annual premium and the producer&rsquo;s saved comp level. It is not confirmed paid commission and does not include chargebacks, advances, renewals, or overrides.
               </p>
             </div>
           )}

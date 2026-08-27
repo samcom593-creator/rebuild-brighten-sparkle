@@ -1100,7 +1100,10 @@ export default function DashboardCRM() {
       }
     } catch (error) { console.error("Error fetching managers:", error); }
     try {
-      const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).maybeSingle();
+      // agents.user_id is not unique — a duplicate-identity user would read null
+      // via a bare .maybeSingle() and be wrongly denied roster access. .limit(1)
+      // resolves to their primary row instead (MP-276 ambiguity-safe pattern).
+      const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).order("created_at", { ascending: true }).limit(1).maybeSingle();
       // VA staff are operators, not producers, so they legitimately have no
       // agents row. The route and roster RPC already authorize va_manager/va;
       // returning here made Milver's Team screen empty despite that access.

@@ -14,6 +14,14 @@ export const SHIPPED: ShippedItem[] = [
   {
     ts: "today",
     label:
+      "The Finances page and the dashboard disagreed about your income by $24,613.83. For the same person, the same month, the Finances page showed Sam $60,037.95 while the production scoreboard showed $35,424.12 — one of those is the number the business runs on, and they can't both be right. The cause: Finances credited the owner, on every downline policy, the full spread down to the SELLER at the bottom of the chain (~65%), so a policy four levels down paid a 55-point override — silently paying the owner the spread that every manager in between actually earns. An override is the spread to your DIRECT report only. Finances now uses the exact same layered basis as the scoreboard: your own production at your full contract, plus the positive spread to your first-hop reports, plus the Vantage agency gap at the head. Both surfaces now read $35,424.12 to the penny.",
+    detail:
+      "Proven before shipping, not after: the layered model was run against Finances' own scope and reconciled to the scoreboard component by component — direct 792.00 + override 32,520.42 + Vantage gap 2,111.70 = 35,424.12, identical on both sides. Caller comp now comes from the canonical fn_agent_contract_pct resolver (Sam 120, KJ 105), not the agents.contract_percentage placeholder that reads 120 for almost everyone. A regression caught in the same session: the first cut leaked the agency-level Vantage gap into the PERSONAL 'mine' scope (Sam's own $792 came back as $2,903.70 — his production plus a $2,111.70 gap that belongs to the agency, not to him); the gap is now agency-view only, and 'mine' is back to strictly own production. A CI ratchet pins the first-hop model in the migration and fails if the seller-comp override ever returns; a live cross-surface parity check runs in the weekly doctor. 'imo' (agency-total) and 'team gross' lenses are untouched.",
+    commit: "mp-328-finances-layered-parity",
+  },
+  {
+    ts: "today",
+    label:
       "Every logged-in account could read all 613 profiles — 613 email addresses and 168 phone numbers belonging to agents and recruits — because one permissive policy on the profiles table granted the whole table to anyone signed in, including self-signup accounts. Names are still shared for leaderboards through a display-only directory, but contact details are now limited to your own record, your manager, your team, and admins. While closing that, the new directory turned out to be writable: a plain agent could rename another person's record through it, bypassing the table's own protections. That was closed too, and the same flaw was found and fixed on 28 other reporting views that quietly allowed writes into deals, agents and applications.",
   },
   {

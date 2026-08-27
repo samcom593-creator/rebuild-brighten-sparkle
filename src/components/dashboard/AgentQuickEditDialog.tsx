@@ -650,7 +650,6 @@ export function AgentQuickEditDialog({
       await supabase.from("agent_metrics").delete().eq("agent_id", agentId);
       await supabase.from("agent_achievements").delete().eq("agent_id", agentId);
       await supabase.from("agent_lead_stats").delete().eq("agent_id", agentId);
-      await supabase.from("agent_onboarding").delete().eq("agent_id", agentId);
       await supabase.from("agent_attendance").delete().eq("agent_id", agentId);
       await supabase.from("agent_ratings").delete().eq("agent_id", agentId);
       await supabase.from("agent_removal_requests").delete().eq("agent_id", agentId);

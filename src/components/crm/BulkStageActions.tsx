@@ -128,7 +128,6 @@ export function BulkStageActions({
       }
 
       const now = new Date().toISOString();
-      const noteText = `Bulk ${direction === "forward" ? "advance" : "revert"} via CRM`;
 
       // Batch update agents in one round-trip
       const { error: updateError } = await supabase
@@ -144,11 +143,19 @@ export function BulkStageActions({
         );
       if (updateError) throw updateError;
 
-      // Batch insert transition log rows in one round-trip
-      const { error: logError } = await supabase.from("agent_onboarding").insert(
-        updates.map(u => ({ agent_id: u.id, stage: u.newStage, notes: noteText }))
-      );
-      if (logError) throw logError;
+      // NOTE (MP-330): stage transitions are deliberately NOT logged here.
+      // This previously inserted into `agent_onboarding`, a table that has been
+      // dropped from the database, so the write ALWAYS failed. Because the
+      // failure was thrown, a bulk stage change that had ALREADY COMMITTED was
+      // reported to the manager as "Failed to update some agents", the
+      // "evaluated" portal-login / live-field notifications below were skipped,
+      // and the grid never refreshed. Removing the dead write loses no logging,
+      // because none has happened since the table was dropped.
+      // Where a stage log SHOULD live is an open product question, not a
+      // mechanical repoint: `next_step_events` belongs to the Next Step Engine
+      // and uses a different stage vocabulary that drives live candidate
+      // messaging, and `audit_log` is not client-writable (partition RLS denies
+      // anon and authenticated inserts). Both were measured, not assumed.
 
       // Fire "evaluated" notifications in parallel (not serial)
       const evalIds = updates.filter(u => u.newStage === "evaluated").map(u => u.id);

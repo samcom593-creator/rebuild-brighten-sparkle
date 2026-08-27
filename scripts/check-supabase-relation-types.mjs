@@ -19,26 +19,34 @@
 //   at pre-commit instead of 15 minutes later in CI.
 //
 // WHAT THE BASELINE IS
-//   BASELINE=4, and unusually for a ratchet in this repo these four ARE real
-//   bugs rather than unclassified sites. With types.ts regenerated from the live
-//   catalog, "absent from types.ts" now means "absent from the database", so the
-//   remaining four are writes to a relation that does not exist:
+//   BASELINE=0. With types.ts regenerated from the live catalog, "absent from
+//   types.ts" means "absent from the database", so ANY hit is a query against a
+//   relation prod does not have. There is no tolerated backlog left to hide a
+//   new one in.
 //
-//     BulkStageActions.tsx:148        .insert() into agent_onboarding
-//     AgentQuickEditDialog.tsx:653    .delete() from agent_onboarding
-//     OnboardingTracker.tsx:104       .insert() into agent_onboarding
-//     TeamHierarchyManager.tsx:420    .delete() from agent_onboarding
+//   It was 4 when this check shipped (MP-329) -- all four writes to
+//   public.agent_onboarding, a table dropped from the database. MP-330 removed
+//   them, so the ratchet now starts clean:
 //
-//   public.agent_onboarding exists in NO schema (only agent_onboarding_queue,
-//   an unrelated email queue). BulkStageActions is the live one: it throws on
-//   logError AFTER the stage UPDATE has already committed, so a manager's bulk
-//   stage change reports failure having half-succeeded. The other three are
-//   unchecked deletes that fail silently.
+//     BulkStageActions.tsx      .insert()  -- was the LIVE one. It threw on the
+//         failed log write AFTER the stage UPDATE had already committed, so a
+//         manager's bulk stage change reported "Failed to update some agents"
+//         having succeeded, skipped the "evaluated" portal-login and
+//         live-field notifications, and left the grid unrefreshed.
+//     OnboardingTracker.tsx     .insert()  -- unchecked, so no visible effect.
+//     TeamHierarchyManager.tsx  .delete()  -- cascade against a table with no
+//     AgentQuickEditDialog.tsx  .delete()     rows to orphan. Dead, not broken.
 //
-//   They are NOT fixed here because there is no stage-transition log table in
-//   prod to repoint at, and inventing one is a product decision plus an RLS
-//   surface -- and a table created in a hurry is how the agents blanket-write
-//   policy happened. Measured and handed forward rather than guessed at.
+//   Removing them lost no logging: none had happened since the table was
+//   dropped. Where a stage log SHOULD live stays an open product question.
+//   Both plausible destinations were MEASURED and both were refused:
+//   `next_step_events` has a different stage vocabulary (note in_field_training
+//   vs infield_training) and feeds a live engine that messages candidates, so a
+//   careless repoint would fire real outbound; `audit_log` is not client-
+//   writable at all -- every leaf partition has RLS enabled with zero policies,
+//   so anon AND authenticated inserts are denied despite the parent's
+//   permissive `with_check true`. Repointing there would have swapped one
+//   always-failing write for another.
 //
 // WHAT THE BASELINE IS NOT
 //   It is not a general work queue and must not be resized by grep. Re-measure
@@ -55,7 +63,7 @@ import { join, relative } from "node:path";
 
 const repoRoot = process.cwd();
 const TYPES = "src/integrations/supabase/types.ts";
-const BASELINE = Number(process.env.RELATION_BASELINE ?? 4);
+const BASELINE = Number(process.env.RELATION_BASELINE ?? 0);
 
 // Non-supabase `.from(` receivers that must never be graded.
 const NOT_SUPABASE = new Set([

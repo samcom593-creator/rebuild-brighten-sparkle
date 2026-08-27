@@ -417,7 +417,6 @@ export function TeamHierarchyManager() {
           await supabase.from("agent_goals").delete().eq("agent_id", agentId);
           await supabase.from("agent_attendance").delete().eq("agent_id", agentId);
           await supabase.from("agent_ratings").delete().eq("agent_id", agentId);
-          await supabase.from("agent_onboarding").delete().eq("agent_id", agentId);
           await supabase.from("plaque_awards").delete().eq("agent_id", agentId);
           await supabase.from("magic_login_tokens").delete().eq("agent_id", agentId);
           

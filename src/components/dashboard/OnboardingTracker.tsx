@@ -100,15 +100,10 @@ export function OnboardingTracker({
         throw agentError;
       }
 
-      // Log the stage transition
-      await supabase
-        .from("agent_onboarding")
-        .insert({
-          agent_id: agentId,
-          stage: targetStage.key,
-          notes: isForward ? null : "Moved back to previous stage",
-          updated_by: user?.id,
-        });
+      // NOTE (MP-330): dead write removed -- `agent_onboarding` was dropped from
+      // the database, so this insert always failed. It was unchecked, so unlike
+      // the CRM bulk path it had no user-visible effect. See BulkStageActions
+      // for why a replacement log is a product question rather than a repoint.
 
       // Celebration effects for forward progression
       if (isForward) {

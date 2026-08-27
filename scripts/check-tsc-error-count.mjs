@@ -197,7 +197,8 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // intermediate the error itself prescribes; one TS2589 dissolved outright.
 // 2026-08-26: the verified recruiting/interview release removed seven more
 // legacy page-typing errors; lock the measured lower floor.
-const BASELINE = 91; // 2026-08-27 (MP-329): 338 -> 91. NOT a pay-down of 247
+const BASELINE = 86; // 2026-08-27 (MP-330): 91 -> 86, removing 4 dead
+                     // agent_onboarding writes. Prior (MP-329): 338 -> 91. NOT a pay-down of 247
 // individual defects -- src/integrations/supabase/types.ts had drifted to 161
 // tables / 5 views against a prod holding 369 / 279, so 148 .from() sites named
 // relations the artifact did not know. Each unknown relation collapses its whole

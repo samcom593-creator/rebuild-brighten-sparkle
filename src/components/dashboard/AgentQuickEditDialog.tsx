@@ -104,6 +104,8 @@ export function AgentQuickEditDialog({
   const [possibleMatches, setPossibleMatches] = useState<PossibleMatch[]>([]);
   const [selectedMergeId, setSelectedMergeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [accountMode, setAccountMode] = useState<string>("agent");
+  const [savingMode, setSavingMode] = useState(false);
   const [merging, setMerging] = useState(false);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -191,6 +193,15 @@ export function AgentQuickEditDialog({
         `)
         .eq("id", agentId)
         .maybeSingle();
+
+      // account_mode lives on base agents (not in v_agents_full's column list);
+      // it is a non-sensitive column granted to authenticated. Read separately.
+      const { data: modeRow } = await supabase
+        .from("agents")
+        .select("account_mode")
+        .eq("id", agentId)
+        .maybeSingle();
+      setAccountMode(((modeRow as { account_mode?: string } | null)?.account_mode) ?? "agent");
 
       if (agent) {
         setAgentData({
@@ -560,6 +571,42 @@ export function AgentQuickEditDialog({
     }
   };
 
+  const MODE_LABELS: Record<string, string> = {
+    agent: "Agent",
+    manager: "Manager",
+    recruiter: "Pure Recruiter",
+    va: "VA",
+    va_manager: "VA Manager",
+  };
+
+  const handleModeChange = async (mode: string) => {
+    const prev = accountMode;
+    if (mode === prev) return;
+    setAccountMode(mode); // optimistic
+    setSavingMode(true);
+    try {
+      const { data, error } = await supabase.rpc("set_account_mode" as never, {
+        p_agent_id: agentId,
+        p_mode: mode,
+      } as never);
+      const res = data as { ok?: boolean; error?: string } | null;
+      if (error || !res?.ok) throw new Error(res?.error || error?.message || "Mode switch failed");
+      toast({
+        title: "Account mode updated",
+        description: `${currentName} is now ${MODE_LABELS[mode] ?? mode}.`,
+      });
+    } catch (e) {
+      setAccountMode(prev); // revert on failure
+      toast({
+        title: "Mode switch failed",
+        description: e instanceof Error ? e.message : "Could not switch account mode.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingMode(false);
+    }
+  };
+
   const handleSendLoginToManager = async () => {
     setSendingLoginToManager(true);
     try {
@@ -776,6 +823,25 @@ export function AgentQuickEditDialog({
               placeholder="Enter agent name"
             />
           </div>
+
+          {isAdmin && (
+            <div className="space-y-3 rounded-lg border border-primary/25 bg-primary/5 p-3">
+              <Label className="text-primary">Account mode</Label>
+              <Select value={accountMode} onValueChange={handleModeChange} disabled={savingMode}>
+                <SelectTrigger><SelectValue placeholder="Account mode" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="agent">Agent</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="recruiter">Pure Recruiter</SelectItem>
+                  <SelectItem value="va">VA</SelectItem>
+                  <SelectItem value="va_manager">VA Manager</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Switches this person&rsquo;s role immediately and syncs their login role. Pure Recruiter = recruits only, no production book or sales team.
+              </p>
+            </div>
+          )}
 
           {isAdmin && (
             <div className="space-y-3 rounded-lg border border-amber-500/25 bg-amber-500/5 p-3">

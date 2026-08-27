@@ -120,13 +120,16 @@ export function buildEthosComment(config: EthosConfig, value: (EthosIntake & { i
   return parts.join(" · ");
 }
 
-export function buildEthosKlRow(intake: EthosIntake): string[] {
+export function buildEthosKlRow(intake: EthosIntake): boolean[] {
   const licensed = (intake.license_status ?? "").toLowerCase() === "licensed";
-  const expiry = intake.eo_expires_at ? new Date(`${intake.eo_expires_at}T00:00:00Z`).getTime() : 0;
+  const expiryValue = intake.eo_expires_at ?? "";
+  const expiry = expiryValue
+    ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(expiryValue) ? `${expiryValue}T00:00:00Z` : expiryValue).getTime()
+    : 0;
   const current = Boolean(intake.eo_certificate_url) && expiry >= Date.now();
   const covered = Number(intake.eo_per_claim_limit ?? 0) >= 1_000_000
     && Number(intake.eo_aggregate_limit ?? 0) >= 1_000_000;
-  return [licensed ? "Yes" : "No", current && covered ? "Yes" : "No"];
+  return [licensed, current && covered];
 }
 
 /**

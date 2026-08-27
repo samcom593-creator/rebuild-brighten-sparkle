@@ -17,5 +17,18 @@ describe("contracting one-link lifecycle", () => {
 
     const dispatcher = source("../supabase/functions/apex-outbox-dispatcher/index.ts");
     expect(dispatcher).toContain('sb.rpc("claim_contracting_intake_events"');
+    for (const field of [
+      "comp_percentage",
+      "license_status",
+      "license_states",
+      "eo_certificate_url",
+      "eo_expires_at",
+      "eo_per_claim_limit",
+      "eo_aggregate_limit",
+      "eft_ready",
+      "contracting_contact_name",
+    ]) {
+      expect(dispatcher).toContain(field);
+    }
   });
 });

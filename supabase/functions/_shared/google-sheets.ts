@@ -16,6 +16,7 @@ export type ServiceAccount = {
 };
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
+export type SheetValue = string | number | boolean;
 
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
@@ -96,8 +97,8 @@ export async function getAccessToken(
 
 export type SheetsClient = {
   getRange(range: string): Promise<string[][]>;
-  updateRange(range: string, values: string[][]): Promise<string>;
-  appendRow(range: string, values: string[]): Promise<string>;
+  updateRange(range: string, values: SheetValue[][]): Promise<string>;
+  appendRow(range: string, values: SheetValue[]): Promise<string>;
 };
 
 export function createSheetsClient(

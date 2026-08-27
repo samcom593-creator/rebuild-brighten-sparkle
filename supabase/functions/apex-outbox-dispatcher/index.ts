@@ -734,7 +734,12 @@ async function deliverContractingIntake(sb: any, event: any): Promise<DispatchRe
     loadIntake: async (id) => {
       const { data, error } = await sb
         .from("contracting_intakes")
-        .select("id, first_name, last_name, email, phone_e164, npn, status")
+        .select(
+          "id, first_name, last_name, email, phone_e164, npn, status, " +
+            "comp_percentage, license_status, license_states, eo_certificate_url, " +
+            "eo_expires_at, eo_per_claim_limit, eo_aggregate_limit, eft_ready, " +
+            "contracting_contact_name",
+        )
         .eq("id", id)
         .single();
       if (error || !data) throw new Error(error?.message ?? "Contracting intake no longer exists");

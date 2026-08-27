@@ -24,6 +24,33 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // This endpoint uses the service-role client below, so verify_jwt=false must
+    // never mean anonymous access. Only roles that can actually open Add Agent
+    // may enumerate the manager/upline picker.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized", managers: [] }), {
+        status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(authHeader.slice(7));
+    if (authError || !authData.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized", managers: [] }), {
+        status: 401, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+    const { data: callerRoles, error: callerRoleError } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", authData.user.id)
+      .in("role", ["admin", "manager"]);
+    if (callerRoleError) throw callerRoleError;
+    if (!callerRoles?.length) {
+      return new Response(JSON.stringify({ error: "Forbidden", managers: [] }), {
+        status: 403, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     console.log("Fetching active managers only...");
 
     // 1. Get all users with manager or admin role

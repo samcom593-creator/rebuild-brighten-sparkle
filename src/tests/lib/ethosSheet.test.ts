@@ -99,7 +99,11 @@ describe("ethos · row mapping", () => {
       eo_aggregate_limit: 1_000_000,
     };
     expect(buildEthosAiRow(enriched, CONFIG)[COL_COMP_LEVEL]).toBe("60");
-    expect(buildEthosKlRow(enriched)).toEqual(["Yes", "Yes"]);
+    expect(buildEthosKlRow(enriched)).toEqual([true, true]);
+    expect(buildEthosKlRow({
+      ...enriched,
+      eo_expires_at: "2030-01-01T00:00:00.000Z",
+    })).toEqual([true, true]);
   });
 
   it("builds a Comments cell carrying the intake id", () => {

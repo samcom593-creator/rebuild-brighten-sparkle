@@ -78,6 +78,20 @@ if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-agent-name-fallback\.mjs$)'; then
   node scripts/check-agent-name-fallback.mjs
 fi
 
+# ---------- check-supabase-relation-types (MP-329) ----------
+# Trigger: any src ts/tsx, the generated types artifact, or the script itself.
+# types.ts had drifted to 161 tables / 5 views against a prod holding 369 / 279,
+# so 148 .from() sites named relations the artifact did not know. Each one
+# compiles to SelectQueryError<...> and every property read off it becomes its
+# own TS2339 -- one stale relation produced 56 errors in DashboardCRM alone.
+# tsc does catch this, but it costs ~881s and its baseline was already red, and
+# a red gate is a gate people step over. This answers the same question in
+# under a second and NAMES the relation.
+if match '^(src/.*\.(tsx?|jsx?)$|src/integrations/supabase/types\.ts$|scripts/check-supabase-relation-types\.mjs$)'; then
+  echo "[pre-commit] Supabase relation reference staged — running check:supabase-relation-types…"
+  node scripts/check-supabase-relation-types.mjs
+fi
+
 # ---------- check-forbidden-language (wave-29) ----------
 # Trigger: any user-facing text file. Script walks whole repo, so any new copy
 # anywhere should be scanned. ~1s when fired.

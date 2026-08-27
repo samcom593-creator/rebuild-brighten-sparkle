@@ -197,7 +197,18 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // intermediate the error itself prescribes; one TS2589 dissolved outright.
 // 2026-08-26: the verified recruiting/interview release removed seven more
 // legacy page-typing errors; lock the measured lower floor.
-const BASELINE = 214;
+const BASELINE = 91; // 2026-08-27 (MP-329): 338 -> 91. NOT a pay-down of 247
+// individual defects -- src/integrations/supabase/types.ts had drifted to 161
+// tables / 5 views against a prod holding 369 / 279, so 148 .from() sites named
+// relations the artifact did not know. Each unknown relation collapses its whole
+// select to SelectQueryError<...> and every property read off it becomes its own
+// TS2339 (56 in DashboardCRM alone, 39 in AgentQuickEditDialog). Regenerating
+// the artifact from the live catalog resolved 145 of those sites at once.
+// Measured on a full `tsc -b --noEmit --force` both sides, same command.
+// SIDE EFFECT WORTH KNOWING: the run also dropped from ~881s to ~90s, because
+// most of that time was TypeScript instantiating deep conditional types on
+// overload resolutions that were FAILING. A correct artifact is not just fewer
+// errors, it is a 10x cheaper gate.
 
 const startedAt = Date.now();
 

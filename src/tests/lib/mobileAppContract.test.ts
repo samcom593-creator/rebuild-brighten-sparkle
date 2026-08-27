@@ -23,7 +23,11 @@ describe("APEX phone app contract", () => {
     const shell = source("src/components/layout/SidebarLayout.tsx");
     const nav = source("src/components/layout/MobileBottomNav.tsx");
     expect(shell).toContain("<MobileBottomNav />");
-    expect(nav).toContain("isVaManager || isVa");
+    // MP-332: the bottom nav keys on the resolved account mode (admin >
+    // account_mode > roles), so VA staff, recruiters and agency owners each get
+    // their own item set instead of falling through to the agent tabs.
+    expect(nav).toContain('effectiveMode === "va" || effectiveMode === "va_manager"');
+    expect(nav).toContain('effectiveMode === "recruiter" ? recruiterNavItems');
     expect(nav).toContain('aria-label="Primary mobile navigation"');
   });
 

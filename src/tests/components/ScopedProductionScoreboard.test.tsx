@@ -43,9 +43,11 @@ describe("scoped production scoreboard", () => {
     expect(component).toContain("data.imo.ap");
   });
 
-  it("places the same scoreboard before agent and manager command views", () => {
+  it("places the same scoreboard before agent, manager and agency-owner command views", () => {
     const dashboard = source("pages/Dashboard.tsx");
-    expect(dashboard.match(/<ScopedProductionScoreboard \/>/g)).toHaveLength(2);
+    // MP-332: agent, manager, AND agency_owner homes all open with the one
+    // hierarchy-scoped scoreboard — the single production source on /dashboard.
+    expect(dashboard.match(/<ScopedProductionScoreboard \/>/g)).toHaveLength(3);
     expect(source("components/dashboard/AgentCloudHome.tsx")).toContain("<ScopedProductionScoreboard />");
   });
 });

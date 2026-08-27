@@ -22,11 +22,14 @@ import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
 import { OperationsCommandCenter } from "@/components/dashboard/OperationsCommandCenter";
 import { cn } from "@/lib/utils";
-import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
+import { resolveBrand } from "@/config/brand";
 
-// The Agent Cloud home, mirrored 1:1 against
-// ~/business-ops/agentcloud-reference/pages/00-home-dashboard-fullpage.png,
-// carrying APEX's real data.
+const BRAND = resolveBrand();
+
+// APEX native operating dashboard. Historical references informed the visual
+// hierarchy only; live workflows never depend on AgentLink or InsuraCloud.
 //
 // EVERY number comes from ONE server-side RPC (apex_admin_home_dashboard). The page
 // this replaces fired ~20 client-side queries — measured on a live load as 33
@@ -142,21 +145,7 @@ export function AgentCloudHome() {
     },
   });
 
-  const invalidateProduction = () => {
-    queryClient.invalidateQueries({ queryKey: ["apex-home-dashboard"] });
-    queryClient.invalidateQueries({ queryKey: ["scoped-production-scoreboard"] });
-    queryClient.invalidateQueries({ queryKey: ["imo-by-agency"] });
-  };
-  useRealtimeTable({ table: "deals", channelSuffix: "agent-cloud-home" }, invalidateProduction);
-  useRealtimeTable({ table: "agentlink_book", channelSuffix: "agent-cloud-home" }, invalidateProduction);
-  useRealtimeTable(
-    { table: "production_external_daily_snapshots", channelSuffix: "agent-cloud-home" },
-    invalidateProduction,
-  );
-  useRealtimeTable(
-    { table: "production_external_deals", channelSuffix: "agent-cloud-home" },
-    invalidateProduction,
-  );
+  useProductionRealtime(() => invalidateOperationalTruth(queryClient), 350);
 
   const PeriodPicker = (
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -200,7 +189,7 @@ export function AgentCloudHome() {
         <Card>
           <CardContent className="p-8 text-center">
             <AlertTriangle className="mx-auto h-6 w-6 text-destructive" />
-            <p className="mt-3 font-semibold">The AgentCloud home could not load</p>
+            <p className="mt-3 font-semibold">The {BRAND.platformName} operating dashboard could not load</p>
             <p className="mt-1 text-sm text-muted-foreground">No dashboard totals are being guessed. Retry the secured source.</p>
             <Button variant="outline" className="mt-4 gap-2" onClick={() => void refetch()}>
               <RefreshCw className="h-4 w-4" /> Retry
@@ -378,7 +367,7 @@ export function AgentCloudHome() {
           {(policy_status?.status_not_reported ?? 0) > 0 && (
             <p className="mt-3 text-[11px] text-muted-foreground">
               <Badge variant="outline" className="mr-1.5 border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400">Upstream gap</Badge>
-              AgentLink does not report a policy status for {(policy_status.status_not_reported).toLocaleString()} of these policies, so lapse and chargeback tracking is blind on them.
+              The legacy book does not report a policy status for {(policy_status.status_not_reported).toLocaleString()} of these historical policies, so lapse and chargeback tracking is blind on them.
             </p>
           )}
         </CardContent>

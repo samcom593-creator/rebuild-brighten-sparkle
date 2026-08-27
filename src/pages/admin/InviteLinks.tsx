@@ -46,6 +46,9 @@ import {
   Link2, Copy, Check, Ban, Loader2, User, Users, Building2, ClipboardList, ExternalLink, ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveBrand } from "@/config/brand";
+
+const BRAND = resolveBrand();
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -150,9 +153,16 @@ export default function InviteLinksAdmin() {
     try {
       const { data, error } = await supabase.functions.invoke("get-active-managers");
       if (error) return;
-      const list = ((data as { managers?: Array<{ id: string; display_name?: string; name?: string }> })?.managers ?? [])
+      const payload = data as {
+        managers?: Array<{ id: string; display_name?: string; name?: string }>;
+        callerAgentId?: string | null;
+      };
+      const list = (payload?.managers ?? [])
         .map((m) => ({ id: m.id, name: m.display_name || m.name || "Unnamed" }));
       setManagers(list);
+      // "Me (default)" must be a real hierarchy assignment, not a null target.
+      // The previous label claimed placement while minting an unassigned token.
+      if (payload?.callerAgentId) setUplineId((current) => current || payload.callerAgentId!);
     // empty-catch-allow:optional-upline-list — dropdown visibly falls back to Me (default).
     } catch { /* upline dropdown just falls back to "Me (default)" */ }
   }, []);
@@ -328,7 +338,7 @@ export default function InviteLinksAdmin() {
               <div>
                 <p className="text-sm font-semibold">License status is always required</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  The recruit chooses Licensed or Unlicensed on the invite. Licensed routes immediately to the contracting spreadsheet and private support Discord; unlicensed routes to the licensing roadmap.
+                  The recruit chooses Licensed or Unlicensed on the invite. Licensed starts native {BRAND.platformName} contracting immediately; unlicensed starts the licensing roadmap. Hires are announced to Slack and Discord automatically.
                 </p>
               </div>
             </div>
@@ -344,7 +354,7 @@ export default function InviteLinksAdmin() {
                 onChange={(e) => setUplineId(e.target.value)}
                 className="h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm disabled:opacity-50"
               >
-                <option value="">Me (default)</option>
+                <option value="" disabled>Choose an upline</option>
                 {managers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
               <p className="text-xs text-muted-foreground">
@@ -372,9 +382,9 @@ export default function InviteLinksAdmin() {
             <p className="text-xs text-muted-foreground">
               {linkType === "agency"
                 ? `New ${chosen.label.toLowerCase()} — upline assigned after they join.`
-                : `New ${chosen.label.toLowerCase()} placed under ${uplineId ? (managers.find((m) => m.id === uplineId)?.name ?? "the chosen upline") : "you"}.`}
+                : `New ${chosen.label.toLowerCase()} placed under ${uplineId ? (managers.find((m) => m.id === uplineId)?.name ?? "the chosen upline") : "an upline you choose"}.`}
             </p>
-            <Button onClick={createLink} disabled={creating || !linkName.trim()} className="gap-2" data-testid="create-link">
+            <Button onClick={createLink} disabled={creating || !linkName.trim() || (linkType === "personal" && !uplineId)} className="gap-2" data-testid="create-link">
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
               Create Link
             </Button>

@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
 
 type PremiumMode = "annual" | "semiannual" | "quarterly" | "monthly" | "single_pay" | "other";
 type PaymentMethod = "" | "bank_draft" | "credit_card" | "debit_card" | "direct_express" | "check" | "social_security";
@@ -538,13 +539,9 @@ export function SubmitDealDialog({ trigger, initialClient }: { trigger?: ReactNo
     };
     setReceipt(nextReceipt);
     if (storageKey) localStorage.removeItem(storageKey);
-    // Production paints the deal list and the exact header count from two
-    // separate queries. Invalidating only "deals" left the count showing the
-    // pre-submit number until a hard reload — the new row appeared in the list
-    // above a total that disagreed with it.
-    queryClient.invalidateQueries({ queryKey: ["deals"] });
-    queryClient.invalidateQueries({ queryKey: ["deals-count"] });
-    queryClient.invalidateQueries({ queryKey: ["news-feed"] });
+    // One receipt refreshes every view of this same deal immediately. Realtime
+    // remains the cross-device safety net; this closes the same-tab delay.
+    invalidateOperationalTruth(queryClient);
     if (data.status === "already_recorded") {
       toast.info("That carrier, policy number, and writing NPN are already recorded. Nothing was posted twice.");
     } else {

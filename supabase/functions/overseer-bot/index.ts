@@ -8,11 +8,10 @@
  *   - Cron jobs all fired successfully in last 24h
  *   - Plaque_awards have images (flags missing for render)
  *   - Agents without photos (tracks % covered)
- *   - Deal sync queue backlog (alerts if >50)
+ *   - Durable messaging and native production health
  *
  * Auto-fixes what it can:
  *   - Re-schedules any cron that disappeared
- *   - Retries insuracloud-outbox sweep on pending rows
  *   - Fires notify-deal-submitted backlog
  *
  * Logs to system_health_logs with overall_status.
@@ -56,7 +55,7 @@ Deno.serve(async (req) => {
 
   // ─── 2. Edge function health (public probes — no body to avoid side effects) ──
   const fnBase = `${Deno.env.get("SUPABASE_URL")}/functions/v1`;
-  for (const fn of ["discord-webhook-notify", "insuracloud-outbox", "insuracloud-sync", "bot-sql", "notify-deal-submitted"]) {
+  for (const fn of ["discord-webhook-notify", "apex-outbox-dispatcher", "bot-sql", "notify-deal-submitted"]) {
     try {
       const r = await fetch(`${fnBase}/${fn}`, { method: "OPTIONS", signal: AbortSignal.timeout(5000) });
       checks.push({ name: `fn:${fn}`, status: r.ok ? "ok" : "warning", detail: `HTTP ${r.status}` });
@@ -77,8 +76,9 @@ Deno.serve(async (req) => {
     checks.push({ name: "notif_volume", status: "ok", detail: `${notif24h ?? 0} notifications in 24h` });
   }
 
-  // ─── 4. Deal sync queue backlog ──
-  // supabase-js QueryBuilder is a thenable but does NOT expose .catch — must await + try/catch
+  // ─── 4. Legacy queue visibility ──
+  // APEX is the system of record. Never auto-forward or retry legacy-cloud
+  // writes; an old queue row is now an operator cleanup signal, not work to do.
   let queueBacklog: number | null = null;
   try {
     const { count } = await sb.from("deal_sync_queue")
@@ -87,15 +87,9 @@ Deno.serve(async (req) => {
     queueBacklog = count ?? null;
   } catch (_qErr) { queueBacklog = null; }
   if ((queueBacklog ?? 0) > 50) {
-    checks.push({ name: "deal_sync_queue", status: "warning", detail: `${queueBacklog} pending — triggering sweep` });
-    try {
-      await fetch(`${fnBase}/insuracloud-outbox`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sweep: true }),
-      });
-      autoFixed.push("sweep-insuracloud-outbox");
-    } catch { /* ignore */ }
+    checks.push({ name: "legacy_deal_sync_queue", status: "warning", detail: `${queueBacklog} retired legacy rows need cleanup; no forwarding attempted` });
   } else {
-    checks.push({ name: "deal_sync_queue", status: "ok", detail: `${queueBacklog ?? 0} pending` });
+    checks.push({ name: "legacy_deal_sync_queue", status: "ok", detail: `${queueBacklog ?? 0} pending` });
   }
 
   // ─── 5. Plaques without images ──

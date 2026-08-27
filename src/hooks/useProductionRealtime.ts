@@ -5,7 +5,7 @@ import { useDebouncedRefetch } from "./useDebouncedRefetch";
 /**
  * Centralized realtime hook for truth-critical dashboard updates.
  * Uses a singleton pattern so dashboard surfaces refresh together when
- * deals, applications, daily_production, or AgentLink sync rows change.
+ * native deals, external production, applications, or agents change.
  */
 
 let sharedChannel: ReturnType<typeof supabase.channel> | null = null;
@@ -50,7 +50,21 @@ export function useProductionRealtime(onUpdate: () => void, delay = 800) {
         )
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "agentlink_sync_log" },
+          { event: "*", schema: "public", table: "production_external_deals" },
+          () => {
+            window.dispatchEvent(new CustomEvent(PRODUCTION_UPDATE_EVENT));
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "production_external_daily_snapshots" },
+          () => {
+            window.dispatchEvent(new CustomEvent(PRODUCTION_UPDATE_EVENT));
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "agents" },
           () => {
             window.dispatchEvent(new CustomEvent(PRODUCTION_UPDATE_EVENT));
           }

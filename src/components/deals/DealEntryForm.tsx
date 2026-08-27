@@ -1,7 +1,11 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
+import { resolveBrand } from "@/config/brand";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+
+const BRAND = resolveBrand();
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,7 +93,7 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
       const agentRow = agentRes.data as unknown as { id: string } | null;
       if (!agentRow?.id) throw new Error("No agent record found for your account");
 
-      const { data: deal, error } = await supabase.from("deals" as any).insert({
+      const { error } = await supabase.from("deals" as any).insert({
         agent_id: agentRow.id,
         carrier_id: form.carrier_id || null,
         client_first_name: form.client_first_name,
@@ -106,13 +110,13 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
         policy_term_months: form.policy_term_months ? parseInt(form.policy_term_months) : null,
         notes: form.notes || null,
         status,
-      }).select("id").single();
+      });
       if (error) throw error;
 
       toast.success(
         status === "draft"
           ? "Saved as draft"
-          : "Deal submitted — rolling into production & pushing to InsuraCloud",
+          : `Deal submitted — ${BRAND.platformName} production is updating now`,
       );
 
       // Celebrate closed deals: coin rain + gold flash + level-up banner
@@ -121,48 +125,9 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
       }
 
       setForm(blank);
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      invalidateOperationalTruth(queryClient);
       queryClient.invalidateQueries({ queryKey: ["agent-personal-stats"] });
       onSaved?.();
-
-      const dealId = (deal as any)?.id as string | undefined;
-      if (status !== "draft" && dealId) {
-        // InsuraCloud: hand off to the outbox edge function (it reads the
-        // agent's insuracloud_api_token from the DB and handles retries).
-        // Cross-origin CORS blocks a direct browser→agentlink POST, so we
-        // must go through Supabase. Surface failures so the agent knows the
-        // deal didn't reach AgentLink — the row's sync_status badge in
-        // My Deals will show the retry state.
-        supabase.functions
-          .invoke("insuracloud-outbox", { body: { deal_id: dealId } })
-          .then(({ data, error }) => {
-            if (error) {
-              console.error("insuracloud-outbox failed", error);
-              toast.warning("Deal saved, but AgentLink sync didn't run. Check My Deals for status.");
-              return;
-            }
-            // MP-312: the outbox answers HTTP 200 with { ok: true } when its
-            // guard REFUSES the deal, so `error` is null and this used to show
-            // the agent nothing at all. The deal sits in Apex looking posted and
-            // never reaches AgentLink. The single most likely refusal is exactly
-            // what this form produces — a deal whose policy number the agent
-            // does not have yet — so the silent branch is the DEFAULT one once
-            // Post-a-Deal is live. Say it out loud instead.
-            if (data?.outcome === "refused") {
-              const reason = String(data?.refused_reason ?? "unknown");
-              const detail = reason === "placeholder_literal" || reason === "no_digit"
-                ? "AgentLink needs the real policy number. Add it in My Deals and it will sync."
-                : reason === "test_literal"
-                  ? "This looks like a test policy number, so it was not sent to AgentLink."
-                  : `AgentLink declined it (${reason}).`;
-              toast.warning(`Deal saved, but it did NOT sync to AgentLink. ${detail}`);
-            }
-          })
-          .catch((err) => {
-            console.error("insuracloud-outbox threw", err);
-            toast.warning("Deal saved, but AgentLink sync threw. Check My Deals for status.");
-          });
-      }
     } catch (e: any) {
       toast.error(e.message || "Failed to save deal");
     } finally {

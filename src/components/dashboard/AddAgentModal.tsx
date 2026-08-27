@@ -24,6 +24,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
 
 interface Manager {
   id: string;
@@ -337,12 +338,9 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
         toast.success(displayMessage);
       }
 
-      // Invalidate dashboard queries so new agent appears immediately
-      queryClient.invalidateQueries({ queryKey: ["manager-team-view"] });
-      queryClient.invalidateQueries({ queryKey: ["recruiting-quick-view"] });
-      queryClient.invalidateQueries({ queryKey: ["onboarding-pipeline"] });
-      queryClient.invalidateQueries({ queryKey: ["team-overview"] });
-      queryClient.invalidateQueries({ queryKey: ["builder-operating-dashboard"] });
+      // The hire is one fact represented across home, Team, recruiting,
+      // onboarding, and invite-link receipts. Refresh them as one operation.
+      invalidateOperationalTruth(queryClient);
 
       setOpen(false);
       resetForm();

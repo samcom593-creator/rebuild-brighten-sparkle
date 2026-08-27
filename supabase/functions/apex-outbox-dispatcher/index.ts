@@ -373,6 +373,64 @@ async function deliverApplicationSlackInvite(sb: any, event: any): Promise<Dispa
 }
 
 async function deliverDiscord(sb: any, event: any): Promise<string | undefined> {
+  if (event.aggregate_type === "agent" && event.event_type === "agent.hired") {
+    const { data: hired, error } = await sb
+      .from("agents")
+      .select("id, display_name, manager_id, hire_date, profile:profiles(full_name, instagram_handle)")
+      .eq("id", event.aggregate_id)
+      .maybeSingle();
+    if (error || !hired) throw new Error(error?.message ?? "Hired agent no longer exists");
+    const profile = Array.isArray(hired.profile) ? hired.profile[0] : hired.profile;
+    const { data: manager } = hired.manager_id
+      ? await sb.from("agents").select("display_name").eq("id", hired.manager_id).maybeSingle()
+      : { data: null };
+    const response = await callFunction("discord-webhook-notify", {
+      event_type: "agent_activated",
+      details: {
+        agent_name: profile?.full_name ?? hired.display_name ?? "New APEX agent",
+        instagram: profile?.instagram_handle ?? null,
+        hired_by: manager?.display_name ?? "APEX Financial",
+        start_date: hired.hire_date ?? new Date().toISOString().slice(0, 10),
+      },
+    });
+    if (response?.suppressed === true) throw new Error("Discord hire delivery was suppressed");
+    if (response?.ok !== true) throw new Error("Discord did not confirm hire delivery");
+    return typeof response.provider_message_id === "string" ? response.provider_message_id : undefined;
+  }
+
+  if (event.aggregate_type === "external_production_deal") {
+    const { data: external, error } = await sb
+      .from("production_external_deals")
+      .select("id, agent_id, agent_name, carrier, product, annual_premium, face_amount")
+      .eq("id", event.aggregate_id)
+      .maybeSingle();
+    if (error || !external) throw new Error(error?.message ?? "External production deal no longer exists");
+    const { data: agent } = await sb
+      .from("agents")
+      .select("profile:profiles(instagram_handle, avatar_url)")
+      .eq("id", external.agent_id)
+      .maybeSingle();
+    const profile = Array.isArray(agent?.profile) ? agent.profile[0] : agent?.profile;
+    const response = await callFunction("discord-webhook-notify", {
+      event_type: "deal_closed",
+      delivery_scope: "primary",
+      details: {
+        deal_id: external.id,
+        agent_id: external.agent_id,
+        agent_name: external.agent_name,
+        instagram_handle: profile?.instagram_handle ?? null,
+        photo_url: profile?.avatar_url ?? null,
+        carrier: external.carrier,
+        product_type: external.product,
+        face_amount: external.face_amount,
+        aop: external.annual_premium,
+      },
+    });
+    if (response?.suppressed === true) throw new Error("Discord external-deal delivery was suppressed");
+    if (response?.ok !== true) throw new Error("Discord did not confirm external-deal delivery");
+    return typeof response.provider_message_id === "string" ? response.provider_message_id : undefined;
+  }
+
   const bookPayload = event.aggregate_type === "agentlink_book_deal"
     ? (event.payload ?? {}) as Record<string, unknown>
     : null;
@@ -809,30 +867,10 @@ async function dispatch(sb: any, event: any): Promise<DispatchResult> {
     return await deliverApplicationSlackInvite(sb, event);
   }
   if (event.destination === "insuracloud") {
-    // MP-312: the outbox returns HTTP 200 { ok: true } when its guard REFUSES a
-    // deal — a placeholder policy number, a test literal, a name with no digit.
-    // callFunction() therefore does not throw, and this used to fall straight
-    // through to `delivered`, writing a durable false receipt into
-    // outbox_events for a deal that never left the building. `delivered` is the
-    // one word this row must not say. A refusal is TERMINAL (retrying a
-    // PLACEHOLDER-<uuid> forever is how the 1,221-alert storm happened), so it
-    // lands in manual_action_required, which is terminal by construction and
-    // already carries an operator-facing status.
-    const response = await callFunction("insuracloud-outbox", { deal_id: event.aggregate_id });
-    const outcome = typeof response?.outcome === "string" ? response.outcome : null;
-    if (outcome === "refused") {
-      const reason = typeof response?.refused_reason === "string" ? response.refused_reason : "unknown";
-      return {
-        state: "manual_action_required",
-        manualReason:
-          `InsuraCloud refused this deal (${reason}); it was not sent. Fix the deal's policy number and re-post.`,
-      };
-    }
-    // "not_a_candidate" is an agent_link import or a policy the destination
-    // already holds — correctly never sent, and not an operator's problem.
-    // Anything else that got here without throwing did reach InsuraCloud or was
-    // already there.
-    return { state: "delivered" };
+    return {
+      state: "manual_action_required",
+      manualReason: "Legacy cloud forwarding is retired; APEX is the system of record.",
+    };
   }
   if (event.destination === "contact_email" || event.destination === "contact_sms") {
     const receipt = await deliverContact(sb, event);

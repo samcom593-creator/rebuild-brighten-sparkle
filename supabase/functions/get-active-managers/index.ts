@@ -50,6 +50,14 @@ const handler = async (req: Request): Promise<Response> => {
         status: 403, headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
+    const { data: callerAgent } = await supabaseAdmin
+      .from("agents")
+      .select("id")
+      .eq("user_id", authData.user.id)
+      .eq("status", "active")
+      .eq("is_deactivated", false)
+      .limit(1)
+      .maybeSingle();
 
     console.log("Fetching active managers only...");
 
@@ -147,7 +155,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Found ${result.length} managers`);
 
     return new Response(
-      JSON.stringify({ managers: result }),
+      JSON.stringify({ managers: result, callerAgentId: callerAgent?.id ?? null }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error) {

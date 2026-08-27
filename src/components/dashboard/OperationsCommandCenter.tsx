@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
-  AlertTriangle, ArrowRight, FileCheck2, Headphones, HelpCircle,
-  PhoneCall, RefreshCw, UserRoundSearch, UsersRound,
+  AlertTriangle, ArrowRight, CalendarCheck2, FileCheck2, HelpCircle,
+  PhoneCall, RefreshCw, UserCheck2, UserRoundSearch, UsersRound,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
@@ -33,8 +33,6 @@ interface OperationsData {
 }
 
 const money = (value: number) => `$${Math.round(Number(value || 0)).toLocaleString()}`;
-const readymodeHealthy = (status?: string) => status === "healthy";
-
 function MetricLink({
   to, icon: Icon, label, value, detail, danger = false,
 }: {
@@ -85,11 +83,6 @@ export function OperationsCommandCenter() {
   }
 
   const d = query.data;
-  const rmHealthy = readymodeHealthy(d.readymode.status);
-  const staleSince = d.readymode.last_ingest_at
-    ? new Date(d.readymode.last_ingest_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })
-    : "never";
-
   return (
     <section className="space-y-3" aria-labelledby="operations-command-title">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -107,12 +100,14 @@ export function OperationsCommandCenter() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-        <MetricLink to="/dashboard/recruiting" icon={UserRoundSearch} label="Recruiting" value={d.recruiting.new} detail={`${d.recruiting.uncontacted} need a call`} danger={d.recruiting.uncontacted_48h > 0} />
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
+        <MetricLink to="/dashboard/recruiting" icon={UserRoundSearch} label="New recruits" value={d.recruiting.new} detail={`${d.recruiting.uncontacted} need a call`} danger={d.recruiting.uncontacted_48h > 0} />
+        <MetricLink to="/dashboard/interviews" icon={CalendarCheck2} label="Interviews" value={d.recruiting.interview} detail="live hiring pipeline" />
+        <MetricLink to="/dashboard/team" icon={UserCheck2} label="Hired" value={d.recruiting.hired} detail={`${d.recruiting.contracting} at contracting`} />
         <MetricLink to="/dashboard/recruiting/training/progress" icon={UsersRound} label="Onboarding" value={d.onboarding.stalled} detail={`${d.onboarding.carrier_contracting} at contracting`} danger={d.onboarding.stalled > 0} />
         <MetricLink to="/dashboard/contracting" icon={FileCheck2} label="Contracting" value={d.contracting.active} detail={`${d.contracting.pending} pending · ${d.contracting.issues} issues`} danger={d.contracting.issues > 0} />
+        <MetricLink to="/dashboard/production" icon={PhoneCall} label="Sold today" value={d.sales.sold_today} detail={`${d.sales.expected_to_sell} expected producers`} />
         <MetricLink to="/dashboard/team" icon={PhoneCall} label="Not selling" value={d.sales.not_selling} detail={`${d.sales.sold_today}/${d.sales.expected_to_sell} sold today`} danger={d.sales.not_selling > 0} />
-        <MetricLink to="/dashboard/readymode" icon={Headphones} label="ReadyMode" value={rmHealthy ? "LIVE" : "DOWN"} detail={rmHealthy ? `${d.readymode.ingest_24h ?? 0} calls in 24h` : `last real ingest ${staleSince}`} danger={!rmHealthy} />
         <MetricLink to="/dashboard/help?tab=desk" icon={HelpCircle} label="Support" value={d.support.open} detail={d.support.urgent ? `${d.support.urgent} urgent` : "open requests"} danger={d.support.urgent > 0} />
       </div>
 
@@ -147,4 +142,3 @@ export function OperationsCommandCenter() {
     </section>
   );
 }
-

@@ -87,17 +87,22 @@ describe("useProductionRealtime — singleton channel", () => {
 // ── Table subscriptions ────────────────────────────────────────────────────
 
 describe("useProductionRealtime — table subscriptions", () => {
-  it("subscribes to daily_production, deals, applications, agentlink_sync_log", () => {
+  it("subscribes to native, external, and hiring truth tables", () => {
     const channelMock = buildChannelMock();
     vi.mocked(supabase.channel).mockReturnValue(channelMock as any);
 
     const { unmount } = renderHook(() => useProductionRealtime(vi.fn(), 0));
 
     const tables = channelMock._onCalls.map((c) => c.table);
-    expect(tables).toContain("daily_production");
-    expect(tables).toContain("deals");
-    expect(tables).toContain("applications");
-    expect(tables).toContain("agentlink_sync_log");
+    for (const table of [
+      "daily_production",
+      "deals",
+      "applications",
+      "agents",
+      "production_external_deals",
+      "production_external_daily_snapshots",
+    ]) expect(tables).toContain(table);
+    expect(tables).not.toContain("agentlink_sync_log");
     unmount();
   });
 

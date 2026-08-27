@@ -110,7 +110,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 // land in the same commit. NEVER raise one.
 const ROOTS = [
   { dir: "src", baseline: 0 },
-  { dir: "supabase/functions", baseline: 55 },
+  { dir: "supabase/functions", baseline: 54 },
 ];
 
 const roots = ROOTS.map((r) => ({ ...r, abs: path.join(repoRoot, r.dir) })).filter((r) => {

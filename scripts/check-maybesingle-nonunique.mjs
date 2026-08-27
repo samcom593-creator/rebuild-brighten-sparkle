@@ -103,7 +103,7 @@ import path from "node:path";
 const CATALOG = "scripts/data/unique-index-catalog.json";
 const ROOTS = ["src", "supabase/functions"];
 const MARKER = "single-row-allow:";
-const BASELINE = 73;
+const BASELINE = 72;
 
 // The guard itself and the reusable resolver both discuss .maybeSingle() in prose.
 // Narrative files describe history. None are call sites.

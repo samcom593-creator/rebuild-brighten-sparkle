@@ -376,7 +376,7 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
   if (event.aggregate_type === "agent" && event.event_type === "agent.hired") {
     const { data: hired, error } = await sb
       .from("agents")
-      .select("id, display_name, manager_id, hire_date, profile:profiles(full_name, instagram_handle)")
+      .select("id, display_name, manager_id, start_date, profile:profiles(full_name, instagram_handle)")
       .eq("id", event.aggregate_id)
       .maybeSingle();
     if (error || !hired) throw new Error(error?.message ?? "Hired agent no longer exists");
@@ -390,7 +390,7 @@ async function deliverDiscord(sb: any, event: any): Promise<string | undefined> 
         agent_name: profile?.full_name ?? hired.display_name ?? "New APEX agent",
         instagram: profile?.instagram_handle ?? null,
         hired_by: manager?.display_name ?? "APEX Financial",
-        start_date: hired.hire_date ?? new Date().toISOString().slice(0, 10),
+        start_date: hired.start_date ?? new Date().toISOString().slice(0, 10),
       },
     });
     if (response?.suppressed === true) throw new Error("Discord hire delivery was suppressed");

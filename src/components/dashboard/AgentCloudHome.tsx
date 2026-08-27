@@ -21,6 +21,7 @@ import { RecordsAndBounties } from "@/components/dashboard/RecordsAndBounties";
 import { SubmitDealDialog } from "@/components/deals/SubmitDealDialog";
 import { ScopedProductionScoreboard } from "@/components/dashboard/ScopedProductionScoreboard";
 import { OperationsCommandCenter } from "@/components/dashboard/OperationsCommandCenter";
+import { JustHiredPanel } from "@/components/dashboard/JustHiredPanel";
 import { cn } from "@/lib/utils";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { invalidateOperationalTruth } from "@/lib/invalidateOperationalTruth";
@@ -221,6 +222,9 @@ export function AgentCloudHome() {
     <div className="space-y-5">
       <ScopedProductionScoreboard />
       <OperationsCommandCenter />
+      {/* Recent hires — names + who they're routed to + when, so Sam can follow
+          up directly. Independent of AgentLink/InsuraCloud: reads agents/hires. */}
+      <JustHiredPanel />
 
       {/* WHAT NEEDS YOU TODAY */}
       <div>

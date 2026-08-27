@@ -198,7 +198,12 @@ function ScoreTile({
 }
 
 export function ScopedProductionScoreboard() {
-  const [period, setPeriod] = useState<ScoreboardPeriod>("day");
+  // Default to month-to-date, not "day". The board / leaderboard on the same
+  // page show MTD, so a "day" default made this card read ~$0 while KJ's team's
+  // monthly deals sat right below it on the board — the recurring "my dashboard
+  // shows none of the deals" report. Both headline surfaces now open on the same
+  // period. (Sam can still switch to Day/Week/Year.)
+  const [period, setPeriod] = useState<ScoreboardPeriod>("month");
   const [throughDate, setThroughDate] = useState(phoenixToday);
   const window = useMemo(() => scoreboardWindow(period, throughDate), [period, throughDate]);
 

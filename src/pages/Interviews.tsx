@@ -826,7 +826,7 @@ export default function Interviews() {
                           </div>
                           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                             {row.company && <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{row.company}</span>}
-                            {instagram && <a href={instagram.href} target="_blank" rel="noopener noreferrer" aria-label={`Open @${instagram.handle} on Instagram`} className="inline-flex items-center gap-1 rounded-full border border-pink-500/25 bg-pink-500/10 px-2 py-0.5 font-semibold text-pink-400 transition-colors hover:bg-pink-500/20"><Instagram className="h-3 w-3" />@{instagram.handle}</a>}
+                            {instagram && <a href={instagram.href} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} aria-label={`Open @${instagram.handle} on Instagram`} title={`Open @${instagram.handle} on Instagram`} className="inline-flex items-center gap-1 rounded-full border border-pink-500/30 bg-pink-500/10 px-2 py-0.5 font-semibold text-pink-400 transition-colors hover:bg-pink-500/20 hover:underline"><Instagram className="h-3 w-3 shrink-0" />@{instagram.handle}</a>}
                             {(row.recruiter_name || row.va_name) && <span>Owner · {row.recruiter_name || row.va_name}</span>}
                             {row.identity_conflict && <Badge variant="outline" className="border-destructive/30 text-[10px] text-destructive">Identity conflict</Badge>}
                           </div>

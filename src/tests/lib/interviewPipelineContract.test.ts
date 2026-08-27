@@ -36,6 +36,8 @@ describe("native recruiting interview contract", () => {
     // The raw column never reaches an href; only the validated handle does.
     expect(page).not.toContain("instagram.com/${row.instagram");
     expect(page).toContain("href={instagram.href}");
+    expect(page).toContain("onClick={(event) => event.stopPropagation()}");
+    expect(page).toContain("title={`Open @${instagram.handle} on Instagram`}");
     const lib = read("src/lib/instagram.ts");
     expect(lib).toContain("/^[a-z0-9._]{1,30}$/i");
     expect(lib).toContain("https://www.instagram.com/");

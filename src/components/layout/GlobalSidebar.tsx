@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ChevronDown, ChevronLeft, ChevronRight, Cloud, Star, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useRolePreview } from "@/hooks/useRolePreview";
 import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -30,6 +31,12 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
   const brand = useBrand();
   const { pathname } = useLocation();
   const { isAdmin, isManager, effectiveMode } = useAuth();
+  // MP-332: when Sam previews a role, the nav follows the preview too —
+  // otherwise "Recruiter View" showed the recruiter home under the full admin
+  // sidebar and told him nothing about what a recruiter actually sees.
+  const { isPreviewing, effectiveRole } = useRolePreview();
+  const viewMode = isPreviewing ? effectiveRole : effectiveMode;
+  const seesAll = isAdmin && !isPreviewing;
   const isTouch = useIsTouchDevice();
   // Rendered from the same store the TopBar star writes to, so pinning a page
   // has a visible result instead of vanishing into localStorage.
@@ -41,12 +48,12 @@ export function GlobalSidebar({ isOpen, onToggle, isFullscreen }: GlobalSidebarP
   // viewer's effective mode is in it. Admin always sees everything. Before this
   // the only gate was `adminOnly`, so a Pure Recruiter or a VA got the full
   // selling sidebar (Book of Business, Retention, Quoter...).
-  const modeAllows = (modes?: AgentCloudNavItem["modes"]) => isAdmin || !modes || modes.includes(effectiveMode);
+  const modeAllows = (modes?: AgentCloudNavItem["modes"]) => seesAll || !modes || modes.includes(viewMode);
   const filterEntries = (entries: AgentCloudNavEntry[]) => entries
-    .filter((entry) => !("adminOnly" in entry && entry.adminOnly && !isAdmin))
+    .filter((entry) => !("adminOnly" in entry && entry.adminOnly && !seesAll))
     .filter((entry) => modeAllows(entry.modes))
     .map((entry) => isAgentCloudGroup(entry)
-      ? { ...entry, items: entry.items.filter((item) => (!item.adminOnly || isAdmin) && modeAllows(item.modes)) }
+      ? { ...entry, items: entry.items.filter((item) => (!item.adminOnly || seesAll) && modeAllows(item.modes)) }
       : entry)
     .filter((entry) => !isAgentCloudGroup(entry) || entry.items.length > 0);
 

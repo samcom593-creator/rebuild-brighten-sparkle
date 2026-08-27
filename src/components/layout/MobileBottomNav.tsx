@@ -3,6 +3,7 @@ import { BarChart3, Briefcase, CalendarClock, Home, LayoutDashboard, Library, Se
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
+import { useRolePreview } from "@/hooks/useRolePreview";
 
 // Mobile bottom nav — 5 slots, role-aware. Per Sam (2026-05-15 10am
 // readiness): removed Awards (vanity) and Team Chat (deprecated surface)
@@ -53,7 +54,10 @@ export function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { effectiveMode } = useAuth();
+  const { effectiveMode: realMode } = useAuth();
+  const { isPreviewing, effectiveRole } = useRolePreview();
+  // Follows Sam's role preview so the phone nav matches the previewed home.
+  const effectiveMode = isPreviewing ? effectiveRole : realMode;
 
   // One ladder keyed on the resolved account mode (admin > account_mode > roles).
   const navItems =

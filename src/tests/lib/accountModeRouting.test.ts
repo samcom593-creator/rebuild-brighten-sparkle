@@ -55,7 +55,10 @@ describe("account mode → home screen routing", () => {
     expect(nav).toContain('const PRODUCERS: AccountMode[] = ["agent", "manager", "agency_owner"];');
     expect(nav).toMatch(/label: "Clients",[\s\S]{0,80}modes: PRODUCERS/);
     const sidebar = src("components/layout/GlobalSidebar.tsx");
-    expect(sidebar).toContain("modes.includes(effectiveMode)");
+    // viewMode = the previewed role when Sam is previewing, else the real mode
+    expect(sidebar).toContain("modes.includes(viewMode)");
+    expect(sidebar).toContain("const viewMode = isPreviewing ? effectiveRole : effectiveMode;");
+    expect(sidebar).toContain("const seesAll = isAdmin && !isPreviewing;");
   });
 
   it("recruiting routes admit the recruiter role", () => {

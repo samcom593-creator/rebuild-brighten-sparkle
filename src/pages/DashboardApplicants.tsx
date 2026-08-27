@@ -85,6 +85,8 @@ import { ReferralLinkCard } from "@/components/dashboard/ReferralLinkCard";
 import { APPLICATION_RECORD_TYPE } from "@/shared/api/applicationRecordType";
 import { RecruitingWorkspaceNav } from "@/components/recruiting/RecruitingWorkspaceNav";
 import { RecruitingCommandHero } from "@/components/recruiting/RecruitingCommandHero";
+import { NoHireLeftBehindPanel } from "@/components/recruiting/NoHireLeftBehindPanel";
+import { RecruitingIncomeEstimateCard } from "@/components/dashboard/RecruitingIncomeEstimateCard";
 
 interface Application {
   id: string;
@@ -1228,6 +1230,12 @@ export default function DashboardApplicants() {
 
       {(isAdmin || isManager) && agentId && (
         <ReferralLinkBanner agentId={agentId} />
+      )}
+
+      {(isAdmin || isManager || isVaStaff) && <NoHireLeftBehindPanel />}
+
+      {(isAdmin || isManager) && agentId && (
+        <RecruitingIncomeEstimateCard agentId={agentId} />
       )}
 
       {/* Producers (non-admin/manager) unlock their own recruiting link once they

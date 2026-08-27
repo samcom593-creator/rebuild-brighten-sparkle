@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { RecruiterBountyCard } from "@/components/dashboard/RecruiterBountyCard";
 import { FreeLeadsStatusCard } from "@/components/dashboard/FreeLeadsStatusCard";
+import { RecruitingIncomeEstimateCard } from "@/components/dashboard/RecruitingIncomeEstimateCard";
 
 /**
  * RecruiterHome — MP-332 (2026-08-27)
@@ -234,6 +235,7 @@ export default function RecruiterHome() {
 
       {/* Recruiting link + $500 Producer Bounty (live progress) */}
       <RecruiterBountyCard agentId={agentId} />
+      <RecruitingIncomeEstimateCard agentId={agentId} />
       {agentId ? <FreeLeadsStatusCard agentId={agentId} /> : null}
 
       {/* Funnel tiles */}

@@ -72,7 +72,7 @@ export default function BoardLive() {
         apNum: Number(r.ap ?? 0),
         dealsNum: Number(r.deals ?? 0),
         estNum: Number(r.est_earnings ?? 0),
-        leadNum: Number(r.lead_cost ?? 750),
+        leadNum: Number(r.lead_cost ?? 0),
       }));
     },
   });

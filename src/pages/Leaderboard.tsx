@@ -310,7 +310,7 @@ export default function Leaderboard() {
           agent_name: r.agent_name,
           avatar_url: r.avatar_url,
           est_earnings: Number(r.est_earnings ?? 0),
-          lead_cost: Number(r.lead_cost ?? 750),
+          lead_cost: Number(r.lead_cost ?? 0),
           tenure_label: r.tenure_label,
         }));
         setRows(built);
@@ -420,16 +420,9 @@ export default function Leaderboard() {
 
   const sourceHint = `${meta.label} leaderboard · ${meta.source} · America/Chicago business window`;
 
-  // Lead spend scales with the selected window at Sam's real rate of
-  // $250/producer/week. Previously it was a flat $750/producer regardless of
-  // window, which made "After leads" nonsensical on daily/weekly views and
-  // deeply negative at the very start of a month (before income posts) — the
-  // "minus makes no sense" bug. Now: daily ≈ $36, weekly = $250, monthly ≈ $1,075.
-  const leadCostPerProducer = useMemo(() => {
-    // relative-time-guard-allow: duration between two fixed window bounds, not a now-relative age
-    const windowDays = Math.max(1, Math.round((bounds.end.getTime() - bounds.start.getTime()) / 86_400_000));
-    return Math.round((250 * windowDays) / 7);
-  }, [bounds.start, bounds.end]);
+  // Leads are company-funded for this dashboard. Never subtract a fictional
+  // agent expense from estimated earnings.
+  const leadCostPerProducer = 0;
 
   const productionFinancials = useMemo(() => {
     if (board !== "production" || productionMode !== "individuals") return null;
@@ -694,7 +687,7 @@ export default function Leaderboard() {
               <p className="mt-1 truncate text-lg font-bold tabular-nums text-foreground sm:text-2xl">
                 {formatMoney(productionFinancials.leadSpend)}
               </p>
-              <p className="mt-1 hidden text-[11px] text-muted-foreground sm:block">{formatMoney(productionFinancials.leadCostPerProducer)}/producer · $250/wk</p>
+              <p className="mt-1 hidden text-[11px] text-muted-foreground sm:block">No agent lead deduction</p>
             </GlassCard>
             <GlassCard className="min-w-0 p-3 sm:p-4">
               <p className="truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">After leads</p>

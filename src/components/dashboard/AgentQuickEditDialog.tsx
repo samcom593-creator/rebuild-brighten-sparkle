@@ -574,6 +574,7 @@ export function AgentQuickEditDialog({
   const MODE_LABELS: Record<string, string> = {
     agent: "Agent",
     manager: "Manager",
+    agency_owner: "Agency Owner",
     recruiter: "Pure Recruiter",
     va: "VA",
     va_manager: "VA Manager",
@@ -832,6 +833,7 @@ export function AgentQuickEditDialog({
                 <SelectContent>
                   <SelectItem value="agent">Agent</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="agency_owner">Agency Owner</SelectItem>
                   <SelectItem value="recruiter">Pure Recruiter</SelectItem>
                   <SelectItem value="va">VA</SelectItem>
                   <SelectItem value="va_manager">VA Manager</SelectItem>

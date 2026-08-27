@@ -118,4 +118,14 @@ describe("native recruiting interview contract", () => {
     expect(page).toContain("value: pipeline.data ? activeHires.length : null");
     expect(page).not.toContain("value: pipeline.data ? pipeline.data.counts.hired");
   });
+
+  it("renders the interview control room instead of the legacy flat queue", () => {
+    const page = read("src/pages/Interviews.tsx");
+    expect(page).toContain('title="Interview Control Room"');
+    expect(page).toContain("Work next");
+    expect(page).toContain("INTERVIEW_RAIL.map");
+    expect(page).toContain("HIRE_RAIL.map");
+    expect(page).toContain("One-link candidate intake");
+    expect(page).toContain("New-hire launch board");
+  });
 });

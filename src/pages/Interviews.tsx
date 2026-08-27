@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, isPast, differenceInCalendarDays } from "date-fns";
 import {
-  Building2, CalendarClock, CheckCircle2, ChevronDown, Instagram, Mail,
+  ArrowRight, Building2, CalendarClock, CheckCircle2, ChevronDown, Instagram, Mail,
   MessageSquare, Phone, RefreshCw, RotateCcw, Search, UserCheck, UserX,
-  Copy, ExternalLink, Link2, Send,
+  Copy, ExternalLink, Link2, Send, Sparkles, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -107,6 +107,24 @@ const PENDING_ACTION_LABEL: Record<PendingAction, string> = {
 function initials(name: string | null) {
   if (!name) return "?";
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("");
+}
+
+const INTERVIEW_RAIL = ["Booked", "Confirmed", "Interviewed", "Hired"] as const;
+const HIRE_RAIL = ["Hired", "Licensed", "Onboarding", "Field ready"] as const;
+
+function interviewRailStep(row: Applicant) {
+  if (row.stage === "hired") return 3;
+  if (["interview_complete", "not_hired", "unqualified"].includes(row.stage)) return 2;
+  if (["confirmed", "rescheduled", "no_show"].includes(row.stage)) return 1;
+  return 0;
+}
+
+function hireRailStep(hire: ActiveHire) {
+  const stage = (hire.onboarding_stage ?? "").toLowerCase();
+  if (hire.first_deal_at || /(field|active|production|ready)/.test(stage)) return 3;
+  if (/(training|onboard|contract)/.test(stage)) return 2;
+  if (hire.license_status === "licensed") return 1;
+  return 0;
 }
 
 function availableActions(row: Applicant, role: ActorRole | undefined) {
@@ -264,6 +282,11 @@ export default function Interviews() {
     { key: "upcoming", title: "Upcoming", sub: "confirmed and scheduled", rows: filtered.filter((row) => row.appointment_at && !isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage)) },
     { key: "other", title: "Needs a decision or time", sub: "interviewed, unscheduled, or closed", rows: filtered.filter((row) => !((row.appointment_at && isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage) && row.stage !== "interview_complete") || (row.appointment_at && !isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage)))) },
   ].filter((group) => group.rows.length > 0), [filtered]);
+  const priorityCandidate = overdue[0]
+    ?? applicants.find((row) => row.stage === "interview_complete")
+    ?? upcoming[0]
+    ?? openAll[0]
+    ?? null;
 
   // Reloads and shared links keep the view: ?tab= is already honored on load,
   // so switching writes it back without adding history entries.
@@ -461,37 +484,58 @@ export default function Interviews() {
     if (!visibleHires.length) {
       return <div role="status" className="rounded-xl border border-border p-10 text-center text-sm text-muted-foreground">{term ? `No active hires match “${query.trim()}”.` : "No canonical active hires have been added this month."}</div>;
     }
+    const licensedCount = visibleHires.filter((hire) => hire.license_status === "licensed").length;
+    const onboardingCount = visibleHires.filter((hire) => hireRailStep(hire) >= 2).length;
     return (
-      <section aria-labelledby="active-hires-heading" className="space-y-3">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 id="active-hires-heading" className="text-base font-black">Active hires · this month</h2>
-            <p className="text-xs text-muted-foreground">Licensed and unlicensed hires from the canonical team roster, including Add Agent and one-link intake.</p>
+      <section aria-labelledby="active-hires-heading" className="space-y-5">
+        <div className="overflow-hidden rounded-2xl border border-[#C9A961]/25 bg-[#0A0A0A] text-white shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
+          <div className="relative grid gap-5 p-5 sm:p-6 lg:grid-cols-[1.3fr_1fr] lg:items-center">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(212,175,55,0.17),transparent_38%)]" />
+            <div className="relative">
+              <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#C9A961]"><Sparkles className="h-3.5 w-3.5" /> New-hire launch board</div>
+              <h2 id="active-hires-heading" className="text-2xl font-black tracking-tight sm:text-3xl">Every hire has a next move.</h2>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/55">Canonical licensed and unlicensed hires from Add Agent, interviews, and one-link intake—organized by readiness, not buried in a roster.</p>
+            </div>
+            <div className="relative grid grid-cols-3 gap-2">
+              {[
+                { label: "Hired MTD", value: visibleHires.length, tone: "text-[#C9A961]" },
+                { label: "Licensed", value: licensedCount, tone: "text-emerald-300" },
+                { label: "Onboarding+", value: onboardingCount, tone: "text-sky-300" },
+              ].map((item) => <div key={item.label} className="rounded-xl border border-white/10 bg-white/[0.045] p-3 text-center"><p className={`text-2xl font-black tabular-nums ${item.tone}`}>{item.value}</p><p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-white/45">{item.label}</p></div>)}
+            </div>
           </div>
-          <Badge variant="outline" className="border-success/30 bg-success/5 text-success">{visibleHires.length} people</Badge>
         </div>
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {visibleHires.map((hire) => {
             const callHref = phoneHref(hire.phone);
             const textHref = smsHref(hire.phone);
             const stage = (hire.onboarding_stage ?? "onboarding").replace(/_/g, " ");
+            const progress = hireRailStep(hire);
             return (
-              <article key={hire.agent_id} className="rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/30">
+              <article key={hire.agent_id} className="group overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#C9A961]/35 hover:shadow-xl">
+                <div className="h-1 bg-gradient-to-r from-[#C9A961] via-[#C9A961] to-transparent" />
+                <div className="p-4 sm:p-5">
                 <div className="flex items-start gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-success/20 bg-success/10 text-sm font-black text-success">{initials(hire.display_name)}</span>
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-success/20 bg-success/10 text-sm font-black text-success shadow-inner">{initials(hire.display_name)}</span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate font-bold">{hire.display_name}</p>
-                      <Badge variant="outline" className={hire.license_status === "licensed" ? "border-success/30 text-success" : "border-warning/30 text-warning"}>{hire.license_status}</Badge>
-                    </div>
-                    <p className="mt-1 text-xs capitalize text-muted-foreground">Next · {stage} · hired {format(new Date(hire.hired_at), "MMM d")}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {callHref && <Button asChild size="icon" aria-label={`Call ${hire.display_name}`} className="h-10 w-10"><a href={callHref}><Phone className="h-4 w-4" /></a></Button>}
-                      {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${hire.display_name}`} className="h-10 w-10"><a href={textHref}><MessageSquare className="h-4 w-4" /></a></Button>}
-                      {hire.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${hire.display_name}`} className="h-10 w-10"><a href={`mailto:${hire.email}`}><Mail className="h-4 w-4" /></a></Button>}
-                      <Button asChild size="sm" variant="outline" className="h-10"><a href={`/dashboard/profile?agentId=${hire.agent_id}`}><ExternalLink className="h-4 w-4" /> Open profile</a></Button>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0"><p className="truncate text-base font-black">{hire.display_name}</p><p className="mt-0.5 text-[11px] text-muted-foreground">Hired {format(new Date(hire.hired_at), "MMM d")} · {hire.email ?? "email missing"}</p></div>
+                      <Badge variant="outline" className={hire.license_status === "licensed" ? "shrink-0 border-success/30 bg-success/5 text-success" : "shrink-0 border-warning/30 bg-warning/5 text-warning"}>{hire.license_status}</Badge>
                     </div>
                   </div>
+                </div>
+                <div className="mt-5 grid grid-cols-4 gap-1" aria-label={`Onboarding progress: ${HIRE_RAIL[progress]}`}>
+                  {HIRE_RAIL.map((label, index) => <div key={label} className="min-w-0"><div className={`h-1.5 rounded-full ${index <= progress ? "bg-[#C9A961]" : "bg-muted"}`} /><p className={`mt-1.5 truncate text-[9px] font-bold uppercase tracking-wide ${index <= progress ? "text-foreground" : "text-muted-foreground/60"}`}>{label}</p></div>)}
+                </div>
+                <div className="mt-4 flex flex-col gap-3 rounded-xl border border-border/70 bg-muted/25 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Next action</p><p className="truncate text-sm font-bold capitalize">{progress === 3 ? "Keep producing and coach the next win" : stage}</p></div>
+                  <div className="flex shrink-0 gap-2">
+                    {callHref && <Button asChild size="icon" aria-label={`Call ${hire.display_name}`} className="h-10 w-10"><a href={callHref}><Phone className="h-4 w-4" /></a></Button>}
+                    {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${hire.display_name}`} className="h-10 w-10"><a href={textHref}><MessageSquare className="h-4 w-4" /></a></Button>}
+                    {hire.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${hire.display_name}`} className="h-10 w-10"><a href={`mailto:${hire.email}`}><Mail className="h-4 w-4" /></a></Button>}
+                    <Button asChild size="sm" variant="outline" className="h-10"><a href={`/dashboard/profile?agentId=${hire.agent_id}`}>Manage <ArrowRight className="h-4 w-4" /></a></Button>
+                  </div>
+                </div>
                 </div>
               </article>
             );
@@ -512,15 +556,18 @@ export default function Interviews() {
     <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
       <RecruitingWorkspaceNav />
       <RecruitingCommandHero
-        eyebrow="Recruiting · Interview command"
-        title="Turn every booked call into a decision."
-        subtitle="See what is next, recover what slipped, record the outcome, and launch a hire into onboarding without leaving this workspace."
+        eyebrow="Recruiting operations · live"
+        title="Interview Control Room"
+        subtitle="One operating screen to contact the next candidate, recover missed calls, make hiring decisions, and launch every new hire into the right onboarding path."
         statusLabel={pipeline.isError ? "Last good snapshot" : "Live interview queue"}
         updatedLabel={activeGeneratedAt ? format(new Date(activeGeneratedAt), "h:mm a") : null}
         actions={
-          <Button size="sm" variant="outline" className="h-10 border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:text-white" onClick={refreshActiveTab} disabled={refreshing}>
-            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh queue
-          </Button>
+          <>
+            {shareUrl && <Button size="sm" className="h-10 bg-[#C9A961] font-bold text-black hover:bg-[#C9A961]/90" onClick={async () => { try { await navigator.clipboard.writeText(shareUrl); toast.success("Candidate link copied"); } catch { toast.error("Copy failed"); } }}><Link2 className="h-4 w-4" /> Copy candidate link</Button>}
+            <Button size="sm" variant="outline" className="h-10 border-white/15 bg-white/[0.04] text-white hover:bg-white/10 hover:text-white" onClick={refreshActiveTab} disabled={refreshing}>
+              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh live data
+            </Button>
+          </>
         }
         metrics={[
           {
@@ -571,12 +618,35 @@ export default function Interviews() {
         ]}
       />
 
+      {priorityCandidate && tab !== "hired" && tab !== "onboarding" && (
+        <section aria-labelledby="priority-candidate" className="overflow-hidden rounded-2xl border border-[#C9A961]/35 bg-[#0A0A0A] text-white shadow-[0_20px_55px_rgba(0,0,0,0.2)]">
+          <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="flex min-w-0 gap-4">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#C9A961]/30 bg-[#C9A961]/10 text-lg font-black text-[#C9A961]">{initials(priorityCandidate.name)}</span>
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#C9A961]"><Zap className="h-3.5 w-3.5 fill-[#C9A961]" /> Work next</p>
+                <h2 id="priority-candidate" className="mt-1 truncate text-xl font-black sm:text-2xl">{priorityCandidate.name || "Unnamed candidate"}</h2>
+                <p className="mt-1 text-sm text-white/55">{statusOf(priorityCandidate, now).label} · {statusOf(priorityCandidate, now).timing}{priorityCandidate.phone ? ` · ${priorityCandidate.phone}` : ""}</p>
+                <div className="mt-4 grid grid-cols-4 gap-1.5" aria-label={`Interview progress: ${INTERVIEW_RAIL[interviewRailStep(priorityCandidate)]}`}>
+                  {INTERVIEW_RAIL.map((label, index) => <div key={label}><div className={`h-1.5 rounded-full ${index <= interviewRailStep(priorityCandidate) ? "bg-[#C9A961]" : "bg-white/10"}`} /><p className={`mt-1.5 truncate text-[9px] font-bold uppercase tracking-wide ${index <= interviewRailStep(priorityCandidate) ? "text-white/80" : "text-white/25"}`}>{label}</p></div>)}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              {phoneHref(priorityCandidate.phone) && <Button asChild className="h-11 bg-[#C9A961] font-bold text-black hover:bg-[#C9A961]/90"><a href={phoneHref(priorityCandidate.phone)!}><Phone className="h-4 w-4" /> Call now</a></Button>}
+              {smsHref(priorityCandidate.phone) && <Button asChild variant="outline" className="h-11 border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"><a href={smsHref(priorityCandidate.phone)!}><MessageSquare className="h-4 w-4" /> Text</a></Button>}
+              {availableActions(priorityCandidate, pipeline.data?.role).length > 0 && <Button className="h-11 bg-white text-black hover:bg-white/90" onClick={() => chooseAction(priorityCandidate, availableActions(priorityCandidate, pipeline.data?.role)[0])}>Update outcome <ArrowRight className="h-4 w-4" /></Button>}
+            </div>
+          </div>
+        </section>
+      )}
+
       {shareUrl && (
-        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+        <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="flex items-center gap-2 text-sm font-semibold"><Link2 className="h-4 w-4 text-primary" /> Candidate booking link</p>
-              <p className="mt-1 text-xs text-muted-foreground">Send one link. The candidate enters their details, lands in this queue, and receives an email confirmation when delivery succeeds.</p>
+              <p className="flex items-center gap-2 text-sm font-black"><Link2 className="h-4 w-4 text-primary" /> One-link candidate intake</p>
+              <p className="mt-1 text-xs text-muted-foreground">Send it once. Their details, interview booking, and follow-up record land in this control room automatically.</p>
               <p className="mt-2 truncate font-mono text-[11px] text-muted-foreground">{shareUrl}</p>
             </div>
             <div className="flex shrink-0 gap-2">
@@ -594,15 +664,18 @@ export default function Interviews() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:w-80">
+      <div className="sticky top-2 z-20 flex flex-col gap-3 rounded-2xl border border-border/80 bg-background/90 p-3 shadow-lg backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative w-full lg:w-96">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === "onboarding" || tab === "hired" ? "Search agent, phone, email, license, or stage" : "Search name, company, Instagram, phone, or email"} className="h-11 pl-8 sm:h-9" aria-label="Search interviews" />
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === "onboarding" || tab === "hired" ? "Search agent, phone, email, license, or stage" : "Search every candidate, phone, email, or Instagram"} className="h-11 rounded-xl border-border/80 bg-card pl-9" aria-label="Search interviews" />
         </div>
-        <div className="flex max-w-full gap-1.5 overflow-x-auto rounded-xl border border-border bg-card/70 p-1.5 shadow-sm">
+        <div className="flex max-w-full gap-1.5 overflow-x-auto">
           {TABS.map(([key, label]) => (
-            <Button key={key} type="button" size="sm" variant={tab === key ? "default" : "outline"} onClick={() => switchTab(key)} aria-pressed={tab === key} className="h-11 shrink-0 sm:h-9">
-              {label}{key === "overdue" && overdue.length ? ` ${overdue.length}` : ""}{key === "onboarding" && onboardingUpcoming ? ` ${onboardingUpcoming}` : ""}
+            <Button key={key} type="button" size="sm" variant={tab === key ? "default" : "ghost"} onClick={() => switchTab(key)} aria-pressed={tab === key} className={`h-11 shrink-0 rounded-xl px-3 ${tab === key ? "shadow-md" : "text-muted-foreground"}`}>
+              {label}
+              <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${tab === key ? "bg-black/15" : "bg-muted"}`}>
+                {key === "open" ? openAll.length : key === "overdue" ? overdue.length : key === "upcoming" ? upcoming.length : key === "hired" ? activeHires.length : key === "onboarding" ? onboardingUpcoming : applicants.length}
+              </span>
             </Button>
           ))}
         </div>
@@ -632,7 +705,7 @@ export default function Interviews() {
                 <Badge variant="outline" className={group.danger ? "border-destructive/30 bg-destructive/5 text-destructive" : "border-primary/25 bg-primary/5 text-primary"}>{group.rows.length} waiting</Badge>
                 <span className="text-xs text-muted-foreground">{group.sub}</span>
               </div>
-              <div className="space-y-2.5">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 {group.rows.map((row) => {
                   const status = statusOf(row, now);
                   const actions = availableActions(row, pipeline.data?.role);
@@ -643,39 +716,39 @@ export default function Interviews() {
                   const applicationNeededForHire = pipeline.data?.role !== "va"
                     && !row.application_id
                     && (LEGAL_BY_STAGE[row.stage] ?? []).includes("hire");
+                  const railStep = interviewRailStep(row);
                   return (
-                    <div key={row.id} className="group grid grid-cols-1 gap-3 rounded-xl border border-border bg-gradient-to-r from-card to-card/70 p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md sm:p-4 md:grid-cols-[185px_minmax(0,1fr)_auto] md:items-center">
-                      <div className="rounded-lg border border-border/70 bg-background/45 p-3 text-xs">
-                        <p className={`inline-flex items-center gap-1.5 font-semibold ${status.tone}`}><span className={`h-2 w-2 rounded-full ${status.dot}`} />{status.label}</p>
-                        <p className="mt-1.5 leading-relaxed text-muted-foreground">{status.timing}</p>
-                      </div>
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-sm font-black text-primary">{initials(row.name)}</span>
-                        <div className="min-w-0">
-                          <p className="truncate text-base font-bold">{personName}</p>
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                    <article key={row.id} className={`group overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-xl ${group.danger ? "border-destructive/25 hover:border-destructive/45" : "border-border/80 hover:border-[#C9A961]/35"}`}>
+                      <div className={`h-1 ${group.danger ? "bg-gradient-to-r from-destructive via-destructive/60 to-transparent" : "bg-gradient-to-r from-[#C9A961] via-[#C9A961]/70 to-transparent"}`} />
+                      <div className="p-4 sm:p-5">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-sm font-black ${group.danger ? "border-destructive/20 bg-destructive/10 text-destructive" : "border-primary/20 bg-primary/10 text-primary"}`}>{initials(row.name)}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0"><p className="truncate text-base font-black">{personName}</p><p className="mt-0.5 truncate text-[11px] text-muted-foreground">{row.email || row.phone || "Contact details missing"}</p></div>
+                            <Badge variant="outline" className={`shrink-0 ${group.danger ? "border-destructive/30 bg-destructive/5 text-destructive" : `${status.tone} border-border`}`}><span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${status.dot}`} />{status.label}</Badge>
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                             {row.company && <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{row.company}</span>}
-                            {instagram && (
-                              <a
-                                href={instagram.href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`Open @${instagram.handle} on Instagram`}
-                                className="inline-flex items-center gap-1 transition-colors hover:text-foreground hover:underline"
-                              >
-                                <Instagram className="h-3 w-3" />@{instagram.handle}
-                              </a>
-                            )}
+                            {instagram && <a href={instagram.href} target="_blank" rel="noopener noreferrer" aria-label={`Open @${instagram.handle} on Instagram`} className="inline-flex items-center gap-1 rounded-full border border-pink-500/25 bg-pink-500/10 px-2 py-0.5 font-semibold text-pink-400 transition-colors hover:bg-pink-500/20"><Instagram className="h-3 w-3" />@{instagram.handle}</a>}
                             {row.va_name && <span>Owner · {row.va_name}</span>}
-                            {row.identity_conflict && <Badge variant="outline" className="border-destructive/30 text-[10px] text-destructive">Identity conflict · review</Badge>}
-                            <Badge variant="outline" className="text-[10px]">{STAGE_META[row.stage]?.label ?? row.stage}</Badge>
+                            {row.identity_conflict && <Badge variant="outline" className="border-destructive/30 text-[10px] text-destructive">Identity conflict</Badge>}
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 md:justify-end">
+
+                      <div className="mt-4 rounded-xl border border-border/70 bg-muted/20 p-3">
+                        <div className="flex items-center justify-between gap-3"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Current mission</p><p className={`text-xs font-bold ${status.tone}`}>{status.timing}</p></div>
+                        <div className="mt-3 grid grid-cols-4 gap-1.5" aria-label={`Interview progress: ${INTERVIEW_RAIL[railStep]}`}>
+                          {INTERVIEW_RAIL.map((label, index) => <div key={label}><div className={`h-1.5 rounded-full ${index <= railStep ? group.danger ? "bg-destructive" : "bg-[#C9A961]" : "bg-muted"}`} /><p className={`mt-1.5 truncate text-[9px] font-bold uppercase tracking-wide ${index <= railStep ? "text-foreground" : "text-muted-foreground/55"}`}>{label}</p></div>)}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
                         {callHref && <Button asChild size="icon" aria-label={`Call ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={callHref} {...externalLinkProps(callHref)}><Phone className="h-4 w-4" /></a></Button>}
                         {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={textHref} {...externalLinkProps(textHref)}><MessageSquare className="h-4 w-4" /></a></Button>}
                         {row.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`mailto:${row.email}`}><Mail className="h-4 w-4" /></a></Button>}
+                        <div className="min-w-0 flex-1" />
                         {row.stage === "hired" && row.application_id ? (
                           row.onboarding_status === "ready_to_promote" ? (
                             <Button size="sm" variant="outline" className="h-11 sm:h-9" onClick={() => choosePromotion(row)}><UserCheck className="h-4 w-4" /> Start onboarding</Button>
@@ -684,7 +757,7 @@ export default function Interviews() {
                           )
                         ) : actions.length ? (
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button className="h-11 gap-1.5 sm:h-9">{actionPrompt(row)} <ChevronDown className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuTrigger asChild><Button className="h-11 min-w-[138px] gap-1.5 font-bold sm:h-9">{actionPrompt(row)} <ChevronDown className="h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               {actions.map((action) => <DropdownMenuItem key={action} onSelect={() => chooseAction(row, action)}>{ACTION_LABEL[action]}</DropdownMenuItem>)}
                             </DropdownMenuContent>
@@ -693,7 +766,8 @@ export default function Interviews() {
                         {applicationNeededForHire && <Badge variant="outline" className="border-warning/30 text-warning">Application link needed to hire</Badge>}
                         {row.stage === "hired" && !row.application_id && <Badge variant="outline" className="border-warning/30 text-warning">Application link needed</Badge>}
                       </div>
-                    </div>
+                      </div>
+                    </article>
                   );
                 })}
               </div>

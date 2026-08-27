@@ -127,5 +127,10 @@ describe("native recruiting interview contract", () => {
     expect(page).toContain("HIRE_RAIL.map");
     expect(page).toContain("One-link candidate intake");
     expect(page).toContain("New-hire launch board");
+    expect(page).toContain("Live recruiting pulse");
+    expect(page).toContain("J / K moves through priority candidates");
+    expect(page).toContain('type SortMode = "priority" | "appointment" | "newest"');
+    expect(page).toContain('type HireFilter = "all" | "licensed" | "unlicensed" | "needs_action"');
+    expect(page).toContain("refetchOnWindowFocus: true");
   });
 });

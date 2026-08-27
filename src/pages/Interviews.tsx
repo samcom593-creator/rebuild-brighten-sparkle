@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { format, isPast, differenceInCalendarDays } from "date-fns";
 import {
-  ArrowRight, Building2, CalendarClock, CheckCircle2, ChevronDown, Instagram, Mail,
+  ArrowLeft, ArrowRight, Building2, CalendarClock, CheckCircle2, ChevronDown, Instagram, Mail,
   MessageSquare, Phone, RefreshCw, RotateCcw, Search, UserCheck, UserX,
-  Copy, ExternalLink, Link2, Send, Sparkles, Zap,
+  Copy, ExternalLink, Link2, Send, SlidersHorizontal, Sparkles, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -70,6 +71,8 @@ type OnboardingResponse = {
   role: ActorRole; generatedAt: string;
 };
 type Tab = "open" | "overdue" | "upcoming" | "hired" | "all" | "onboarding";
+type SortMode = "priority" | "appointment" | "newest";
+type HireFilter = "all" | "licensed" | "unlicensed" | "needs_action";
 const TABS: ReadonlyArray<readonly [Tab, string]> = [
   ["open", "Open"], ["overdue", "Overdue"], ["upcoming", "Upcoming"], ["hired", "Active hires"], ["onboarding", "Onboarding"], ["all", "History"],
 ];
@@ -111,6 +114,7 @@ function initials(name: string | null) {
 
 const INTERVIEW_RAIL = ["Booked", "Confirmed", "Interviewed", "Hired"] as const;
 const HIRE_RAIL = ["Hired", "Licensed", "Onboarding", "Field ready"] as const;
+const SORT_LABEL: Record<SortMode, string> = { priority: "Priority", appointment: "Appointment time", newest: "Newest" };
 
 function interviewRailStep(row: Applicant) {
   if (row.stage === "hired") return 3;
@@ -202,12 +206,16 @@ async function invokeAction(row: Applicant, action: InterviewAction, appointment
 export default function Interviews() {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<Tab>(initialTab);
+  const [sortMode, setSortMode] = useState<SortMode>("priority");
+  const [hireFilter, setHireFilter] = useState<HireFilter>("all");
+  const [focusIndex, setFocusIndex] = useState(0);
   const [sendingGap, setSendingGap] = useState<string | null>(null);
   const [pending, setPending] = useState<{ row: Applicant; action: PendingAction } | null>(null);
   const [appointmentAt, setAppointmentAt] = useState("");
   const [reason, setReason] = useState("");
   const [hireNpn, setHireNpn] = useState("");
   const [saving, setSaving] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const pipeline = useQuery<PipelineResponse>({
     queryKey: ["interviews-pipeline"],
@@ -218,6 +226,8 @@ export default function Interviews() {
     },
     staleTime: 60_000,
     refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    placeholderData: (previous) => previous,
   });
 
   const shareToken = useQuery({
@@ -246,6 +256,8 @@ export default function Interviews() {
     },
     staleTime: 60_000,
     refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    placeholderData: (previous) => previous,
   });
   const onboardingUpcoming = onboarding.data?.calls.filter((call) => call.bucket === "upcoming").length ?? 0;
 
@@ -274,24 +286,37 @@ export default function Interviews() {
   const needsDecision = applicants.filter((row) => row.stage === "interview_complete").length;
   const source = tab === "overdue" ? overdue : tab === "upcoming" ? upcoming : tab === "all" ? applicants : tab === "hired" ? [] : openAll;
   const term = query.trim().toLowerCase();
-  const filtered = term
+  const matching = term
     ? source.filter((row) => [row.name, row.company, row.email, row.phone, row.instagram].some((value) => (value ?? "").toLowerCase().includes(term)))
     : source;
+  const filtered = [...matching].sort((left, right) => {
+    if (sortMode === "newest") return new Date(right.created_at ?? 0).getTime() - new Date(left.created_at ?? 0).getTime();
+    if (sortMode === "appointment") return new Date(left.appointment_at ?? "9999-12-31").getTime() - new Date(right.appointment_at ?? "9999-12-31").getTime();
+    const priority = (row: Applicant) => row.appointment_at && isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage)
+      ? 0 : row.stage === "interview_complete" ? 1 : row.stage === "no_show" ? 2 : row.appointment_at ? 3 : 4;
+    return priority(left) - priority(right)
+      || new Date(left.appointment_at ?? left.updated_at ?? 0).getTime() - new Date(right.appointment_at ?? right.updated_at ?? 0).getTime();
+  });
   const groups = useMemo(() => [
     { key: "overdue", title: "Overdue", sub: "appointment passed, still open", danger: true, rows: filtered.filter((row) => row.appointment_at && isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage) && row.stage !== "interview_complete") },
     { key: "upcoming", title: "Upcoming", sub: "confirmed and scheduled", rows: filtered.filter((row) => row.appointment_at && !isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage)) },
     { key: "other", title: "Needs a decision or time", sub: "interviewed, unscheduled, or closed", rows: filtered.filter((row) => !((row.appointment_at && isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage) && row.stage !== "interview_complete") || (row.appointment_at && !isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage)))) },
   ].filter((group) => group.rows.length > 0), [filtered]);
-  const priorityCandidate = overdue[0]
-    ?? applicants.find((row) => row.stage === "interview_complete")
-    ?? upcoming[0]
-    ?? openAll[0]
-    ?? null;
+  const priorityPool = [
+    ...overdue,
+    ...applicants.filter((row) => row.stage === "interview_complete"),
+    ...applicants.filter((row) => row.stage === "no_show"),
+    ...upcoming,
+    ...openAll,
+  ].filter((row, index, rows) => rows.findIndex((candidate) => candidate.id === row.id) === index);
+  const safeFocusIndex = Math.min(focusIndex, Math.max(0, priorityPool.length - 1));
+  const priorityCandidate = priorityPool.length ? priorityPool[safeFocusIndex] : null;
 
   // Reloads and shared links keep the view: ?tab= is already honored on load,
   // so switching writes it back without adding history entries.
   const switchTab = (next: Tab) => {
     setTab(next);
+    setFocusIndex(0);
     const url = new URL(window.location.href);
     if (next === "open") url.searchParams.delete("tab");
     else url.searchParams.set("tab", next);
@@ -478,10 +503,14 @@ export default function Interviews() {
     if (!pipeline.data) {
       return <div role="alert" className="rounded-xl border border-destructive/30 p-8 text-center text-sm text-destructive">The canonical hire roster is unavailable; no hire count should be read as zero. <button className="underline" onClick={() => pipeline.refetch()}>Retry</button></div>;
     }
-    const visibleHires = term
+    const matchingHires = term
       ? activeHires.filter((hire) => [hire.display_name, hire.email, hire.phone, hire.license_status, hire.onboarding_stage].some((value) => (value ?? "").toLowerCase().includes(term)))
       : activeHires;
-    if (!visibleHires.length) {
+    const visibleHires = matchingHires.filter((hire) => hireFilter === "all"
+      || (hireFilter === "licensed" && hire.license_status === "licensed")
+      || (hireFilter === "unlicensed" && hire.license_status !== "licensed")
+      || (hireFilter === "needs_action" && hireRailStep(hire) < 3));
+    if (!matchingHires.length) {
       return <div role="status" className="rounded-xl border border-border p-10 text-center text-sm text-muted-foreground">{term ? `No active hires match “${query.trim()}”.` : "No canonical active hires have been added this month."}</div>;
     }
     const licensedCount = visibleHires.filter((hire) => hire.license_status === "licensed").length;
@@ -505,6 +534,15 @@ export default function Interviews() {
             </div>
           </div>
         </div>
+        <div className="flex max-w-full gap-2 overflow-x-auto" aria-label="Filter active hires">
+          {([
+            ["all", "All hires", matchingHires.length],
+            ["licensed", "Licensed", matchingHires.filter((hire) => hire.license_status === "licensed").length],
+            ["unlicensed", "Licensing", matchingHires.filter((hire) => hire.license_status !== "licensed").length],
+            ["needs_action", "Needs action", matchingHires.filter((hire) => hireRailStep(hire) < 3).length],
+          ] as const).map(([key, label, count]) => <Button key={key} type="button" size="sm" variant={hireFilter === key ? "default" : "outline"} className="h-10 shrink-0 rounded-xl" onClick={() => setHireFilter(key)} aria-pressed={hireFilter === key}>{label}<span className="ml-1 rounded-full bg-black/10 px-1.5 text-[10px]">{count}</span></Button>)}
+        </div>
+        {visibleHires.length === 0 && <div role="status" className="rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">No hires are in this readiness filter. Choose another view to keep working.</div>}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {visibleHires.map((hire) => {
             const callHref = phoneHref(hire.phone);
@@ -533,7 +571,7 @@ export default function Interviews() {
                     {callHref && <Button asChild size="icon" aria-label={`Call ${hire.display_name}`} className="h-10 w-10"><a href={callHref}><Phone className="h-4 w-4" /></a></Button>}
                     {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${hire.display_name}`} className="h-10 w-10"><a href={textHref}><MessageSquare className="h-4 w-4" /></a></Button>}
                     {hire.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${hire.display_name}`} className="h-10 w-10"><a href={`mailto:${hire.email}`}><Mail className="h-4 w-4" /></a></Button>}
-                    <Button asChild size="sm" variant="outline" className="h-10"><a href={`/dashboard/profile?agentId=${hire.agent_id}`}>Manage <ArrowRight className="h-4 w-4" /></a></Button>
+                    <Button asChild size="sm" variant="outline" className="h-10"><Link to={`/dashboard/profile?agentId=${hire.agent_id}`}>Manage <ArrowRight className="h-4 w-4" /></Link></Button>
                   </div>
                 </div>
                 </div>
@@ -547,10 +585,37 @@ export default function Interviews() {
 
   const activeGeneratedAt = tab === "onboarding" ? onboarding.data?.generatedAt : pipeline.data?.generatedAt;
   const refreshing = tab === "onboarding" ? onboarding.isFetching : pipeline.isFetching;
+  const stageCounts = pipeline.data?.counts ?? {};
+  const operatingFunnel = [
+    { label: "Needs contact", value: (stageCounts.appointment_set ?? 0) + (stageCounts.no_show ?? 0), detail: "Booked or missed", target: "open" as Tab },
+    { label: "Confirmed", value: (stageCounts.confirmed ?? 0) + (stageCounts.rescheduled ?? 0), detail: "Ready for interview", target: "upcoming" as Tab },
+    { label: "Decision due", value: stageCounts.interview_complete ?? 0, detail: "Hire or close", target: "open" as Tab },
+    { label: "Active hires MTD", value: activeHires.length, detail: "Canonical roster", target: "hired" as Tab },
+  ];
+  const funnelPeak = Math.max(1, ...operatingFunnel.map((item) => item.value));
   const refreshActiveTab = () => {
     if (tab === "onboarding") void onboarding.refetch();
     else void pipeline.refetch();
   };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const typing = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
+      if (event.key === "/" && !typing) {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (!typing && priorityPool.length > 1 && (event.key === "j" || event.key === "k")) {
+        event.preventDefault();
+        setFocusIndex((current) => event.key === "j"
+          ? (current + 1) % priorityPool.length
+          : (current - 1 + priorityPool.length) % priorityPool.length);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [priorityPool.length]);
 
   return (
     <div className="page-enter mx-auto w-full max-w-6xl space-y-5 px-4 pb-24 sm:px-6">
@@ -618,28 +683,51 @@ export default function Interviews() {
         ]}
       />
 
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
+      <aside className="order-1 space-y-4 xl:order-2 xl:sticky xl:top-4">
       {priorityCandidate && tab !== "hired" && tab !== "onboarding" && (
         <section aria-labelledby="priority-candidate" className="overflow-hidden rounded-2xl border border-[#C9A961]/35 bg-[#0A0A0A] text-white shadow-[0_20px_55px_rgba(0,0,0,0.2)]">
-          <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <div className="flex min-w-0 gap-4">
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#C9A961]/30 bg-[#C9A961]/10 text-lg font-black text-[#C9A961]">{initials(priorityCandidate.name)}</span>
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#C9A961]"><Zap className="h-3.5 w-3.5 fill-[#C9A961]" /> Work next</p>
-                <h2 id="priority-candidate" className="mt-1 truncate text-xl font-black sm:text-2xl">{priorityCandidate.name || "Unnamed candidate"}</h2>
-                <p className="mt-1 text-sm text-white/55">{statusOf(priorityCandidate, now).label} · {statusOf(priorityCandidate, now).timing}{priorityCandidate.phone ? ` · ${priorityCandidate.phone}` : ""}</p>
-                <div className="mt-4 grid grid-cols-4 gap-1.5" aria-label={`Interview progress: ${INTERVIEW_RAIL[interviewRailStep(priorityCandidate)]}`}>
-                  {INTERVIEW_RAIL.map((label, index) => <div key={label}><div className={`h-1.5 rounded-full ${index <= interviewRailStep(priorityCandidate) ? "bg-[#C9A961]" : "bg-white/10"}`} /><p className={`mt-1.5 truncate text-[9px] font-bold uppercase tracking-wide ${index <= interviewRailStep(priorityCandidate) ? "text-white/80" : "text-white/25"}`}>{label}</p></div>)}
-                </div>
+          <div className="p-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#C9A961]"><Zap className="h-3.5 w-3.5 fill-[#C9A961]" /> Work next</p>
+              {priorityPool.length > 1 && <div className="flex items-center gap-1"><span className="mr-1 text-[10px] text-white/35">{safeFocusIndex + 1}/{priorityPool.length}</span><Button size="icon" variant="ghost" className="h-8 w-8 text-white hover:bg-white/10 hover:text-white" aria-label="Previous priority candidate" onClick={() => setFocusIndex((safeFocusIndex - 1 + priorityPool.length) % priorityPool.length)}><ArrowLeft className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8 text-white hover:bg-white/10 hover:text-white" aria-label="Next priority candidate" onClick={() => setFocusIndex((safeFocusIndex + 1) % priorityPool.length)}><ArrowRight className="h-4 w-4" /></Button></div>}
+            </div>
+            <div className="mt-4 flex min-w-0 items-center gap-3">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#C9A961]/30 bg-[#C9A961]/10 text-base font-black text-[#C9A961]">{initials(priorityCandidate.name)}</span>
+              <div className="min-w-0"><h2 id="priority-candidate" className="truncate text-lg font-black">{priorityCandidate.name || "Unnamed candidate"}</h2><p className="mt-0.5 truncate text-xs text-white/45">{priorityCandidate.phone || priorityCandidate.email || "Contact details missing"}</p></div>
+            </div>
+            <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+              <p className="text-xs font-bold">{statusOf(priorityCandidate, now).label}</p><p className="mt-0.5 text-[11px] text-white/45">{statusOf(priorityCandidate, now).timing}</p>
+              <div className="mt-3 grid grid-cols-4 gap-1" aria-label={`Interview progress: ${INTERVIEW_RAIL[interviewRailStep(priorityCandidate)]}`}>
+                {INTERVIEW_RAIL.map((label, index) => <div key={label}><div className={`h-1 rounded-full ${index <= interviewRailStep(priorityCandidate) ? "bg-[#C9A961]" : "bg-white/10"}`} /><p className={`mt-1 truncate text-[8px] font-bold uppercase ${index <= interviewRailStep(priorityCandidate) ? "text-white/65" : "text-white/20"}`}>{label}</p></div>)}
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 lg:justify-end">
-              {phoneHref(priorityCandidate.phone) && <Button asChild className="h-11 bg-[#C9A961] font-bold text-black hover:bg-[#C9A961]/90"><a href={phoneHref(priorityCandidate.phone)!}><Phone className="h-4 w-4" /> Call now</a></Button>}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {phoneHref(priorityCandidate.phone) && <Button asChild className="h-11 bg-[#C9A961] font-bold text-black hover:bg-[#C9A961]/90"><a href={phoneHref(priorityCandidate.phone)!}><Phone className="h-4 w-4" /> Call</a></Button>}
               {smsHref(priorityCandidate.phone) && <Button asChild variant="outline" className="h-11 border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"><a href={smsHref(priorityCandidate.phone)!}><MessageSquare className="h-4 w-4" /> Text</a></Button>}
-              {availableActions(priorityCandidate, pipeline.data?.role).length > 0 && <Button className="h-11 bg-white text-black hover:bg-white/90" onClick={() => chooseAction(priorityCandidate, availableActions(priorityCandidate, pipeline.data?.role)[0])}>Update outcome <ArrowRight className="h-4 w-4" /></Button>}
+              {availableActions(priorityCandidate, pipeline.data?.role).length > 0 && <Button className="col-span-2 h-11 bg-white font-bold text-black hover:bg-white/90" onClick={() => chooseAction(priorityCandidate, availableActions(priorityCandidate, pipeline.data?.role)[0])}>Update outcome <ArrowRight className="h-4 w-4" /></Button>}
             </div>
+            <p className="mt-3 text-center text-[9px] uppercase tracking-wide text-white/25">J / K moves through priority candidates</p>
           </div>
         </section>
       )}
+
+      <section aria-labelledby="live-funnel-heading" className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
+        <div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Live recruiting pulse</p>
+            <h2 id="live-funnel-heading" className="mt-1 text-lg font-black">Where the work is now</h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Tap a stage to open the exact people behind it.</p>
+          </div>
+          <div className="mt-4 grid min-w-0 grid-cols-2 gap-2">
+            {operatingFunnel.map((item, index) => <button key={item.label} type="button" className="group rounded-xl border border-border/70 bg-muted/20 p-3 text-left transition-colors hover:border-primary/35 hover:bg-primary/5" onClick={() => switchTab(item.target)}>
+              <div className="flex items-center justify-between gap-2"><span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{item.label}</span><span className="text-xl font-black tabular-nums">{pipeline.data ? item.value : "—"}</span></div>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${index === operatingFunnel.length - 1 ? "bg-success" : "bg-primary"}`} style={{ width: pipeline.data ? `${Math.max(item.value ? 8 : 0, Math.round((item.value / funnelPeak) * 100))}%` : "0%" }} /></div>
+              <p className="mt-1.5 text-[10px] text-muted-foreground">{item.detail}</p>
+            </button>)}
+          </div>
+        </div>
+      </section>
 
       {shareUrl && (
         <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
@@ -664,12 +752,20 @@ export default function Interviews() {
         </div>
       )}
 
+      </aside>
+      <main className="order-2 min-w-0 space-y-4 xl:order-1">
+
       <div className="sticky top-2 z-20 flex flex-col gap-3 rounded-2xl border border-border/80 bg-background/90 p-3 shadow-lg backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:w-96">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === "onboarding" || tab === "hired" ? "Search agent, phone, email, license, or stage" : "Search every candidate, phone, email, or Instagram"} className="h-11 rounded-xl border-border/80 bg-card pl-9" aria-label="Search interviews" />
+          <Input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === "onboarding" || tab === "hired" ? "Search agent, phone, email, license, or stage" : "Search every candidate, phone, email, or Instagram"} className="h-11 rounded-xl border-border/80 bg-card pl-9 pr-10" aria-label="Search interviews" />
+          <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded border border-border bg-muted px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">/</kbd>
         </div>
-        <div className="flex max-w-full gap-1.5 overflow-x-auto">
+        <div className="flex max-w-full items-center gap-1.5 overflow-x-auto">
+          {tab !== "hired" && tab !== "onboarding" && <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button type="button" size="sm" variant="outline" className="h-11 shrink-0 rounded-xl"><SlidersHorizontal className="h-4 w-4" /> {SORT_LABEL[sortMode]} <ChevronDown className="h-3.5 w-3.5" /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="start">{(Object.entries(SORT_LABEL) as Array<[SortMode, string]>).map(([key, label]) => <DropdownMenuItem key={key} onSelect={() => setSortMode(key)}>{label}{sortMode === key && <CheckCircle2 className="ml-auto h-4 w-4 text-primary" />}</DropdownMenuItem>)}</DropdownMenuContent>
+          </DropdownMenu>}
           {TABS.map(([key, label]) => (
             <Button key={key} type="button" size="sm" variant={tab === key ? "default" : "ghost"} onClick={() => switchTab(key)} aria-pressed={tab === key} className={`h-11 shrink-0 rounded-xl px-3 ${tab === key ? "shadow-md" : "text-muted-foreground"}`}>
               {label}
@@ -731,11 +827,13 @@ export default function Interviews() {
                           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                             {row.company && <span className="inline-flex items-center gap-1"><Building2 className="h-3 w-3" />{row.company}</span>}
                             {instagram && <a href={instagram.href} target="_blank" rel="noopener noreferrer" aria-label={`Open @${instagram.handle} on Instagram`} className="inline-flex items-center gap-1 rounded-full border border-pink-500/25 bg-pink-500/10 px-2 py-0.5 font-semibold text-pink-400 transition-colors hover:bg-pink-500/20"><Instagram className="h-3 w-3" />@{instagram.handle}</a>}
-                            {row.va_name && <span>Owner · {row.va_name}</span>}
+                            {(row.recruiter_name || row.va_name) && <span>Owner · {row.recruiter_name || row.va_name}</span>}
                             {row.identity_conflict && <Badge variant="outline" className="border-destructive/30 text-[10px] text-destructive">Identity conflict</Badge>}
                           </div>
                         </div>
                       </div>
+
+                      {row.notes && <div className="mt-3 rounded-lg border border-border/60 bg-background/35 px-3 py-2"><p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground"><span className="font-bold text-foreground">Latest context · </span>{row.notes}</p></div>}
 
                       <div className="mt-4 rounded-xl border border-border/70 bg-muted/20 p-3">
                         <div className="flex items-center justify-between gap-3"><p className="text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Current mission</p><p className={`text-xs font-bold ${status.tone}`}>{status.timing}</p></div>
@@ -775,6 +873,9 @@ export default function Interviews() {
           ))}
         </div>
       )}
+
+      </main>
+      </div>
 
       <Dialog open={Boolean(pending)} onOpenChange={(open) => { if (!open && !saving) setPending(null); }}>
         <DialogContent>

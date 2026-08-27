@@ -58383,31 +58383,49 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string | null
+          duration_seconds: number | null
           id: string
           is_active: boolean | null
+          learning_objectives: Json
+          media_has_audio: boolean
           order_index: number
           pass_threshold: number | null
+          phase_key: string | null
           title: string
+          transcript_kind: string
+          transcript_segments: Json
           video_url: string
         }
         Insert: {
           created_at?: string | null
           description?: string | null
+          duration_seconds?: number | null
           id?: string
           is_active?: boolean | null
+          learning_objectives?: Json
+          media_has_audio?: boolean
           order_index: number
           pass_threshold?: number | null
+          phase_key?: string | null
           title: string
+          transcript_kind?: string
+          transcript_segments?: Json
           video_url: string
         }
         Update: {
           created_at?: string | null
           description?: string | null
+          duration_seconds?: number | null
           id?: string
           is_active?: boolean | null
+          learning_objectives?: Json
+          media_has_audio?: boolean
           order_index?: number
           pass_threshold?: number | null
+          phase_key?: string | null
           title?: string
+          transcript_kind?: string
+          transcript_segments?: Json
           video_url?: string
         }
         Relationships: []

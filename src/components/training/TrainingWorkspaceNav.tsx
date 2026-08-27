@@ -19,7 +19,7 @@ const WORKSPACE_LABEL = `${resolveBrand().platformName} Training workspace`;
 const VIEWS = [
   { label: "Recruit progress", href: BASE, icon: BookOpenCheck, staffOnly: true, exact: true },
   { label: "Learning hub", href: `${BASE}/library`, icon: BookOpen },
-  { label: "Sales course", href: `${BASE}/sales-course`, icon: GraduationCap },
+  { label: "Field course", href: `${BASE}/sales-course`, icon: GraduationCap },
   { label: "Team progress", href: `${BASE}/progress`, icon: Users, staffOnly: true },
   { label: "Course content", href: `${BASE}/content`, icon: ListChecks, staffOnly: true },
   { label: "Annuities", href: `${BASE}/annuities`, icon: TrendingUp },

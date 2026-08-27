@@ -35,7 +35,7 @@ describe("TrainingWorkspaceNav", () => {
       "href",
       "/dashboard/recruiting/training/library",
     );
-    expect(screen.getByRole("link", { name: "Sales course" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Field course" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Annuities" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Team progress" })).not.toBeInTheDocument();
   });

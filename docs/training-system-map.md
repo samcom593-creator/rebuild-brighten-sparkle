@@ -44,7 +44,7 @@ Contracting means the APEX intake, Google contracting spreadsheet, and private c
 | Concern | Source of truth | Key behavior |
 |---|---|---|
 | Recruit lifecycle | `apex_agent_journeys`, `apex_agent_journey_steps` | Staff-confirmed operational milestones; written through `set_apex_journey_step` |
-| Core course | `onboarding_modules`, `onboarding_questions`, `onboarding_progress` | Agent-scoped lessons, watched percent, quiz attempts, score, pass state |
+| Core course | `onboarding_modules`, `onboarding_questions`, `onboarding_progress` | Agent-scoped lessons, duration, objectives, transcript/visual notes, source-audio truth, watched percent, knowledge-check attempts, score, pass state |
 | Resource-hub courses | `hub_course_progress` | Auth-user-scoped completion for content imported from the APEX resources API |
 | Licensing | `applications.license_progress` plus licensing timestamps and XCEL tracker views | Unlicensed course/exam/license progression |
 | Contracting | `contracting_intakes`, delivery jobs/receipts, `agent_carrier_comp`, `agent_contract_status_history` | Spreadsheet/Discord delivery plus per-carrier status and comp |
@@ -81,11 +81,17 @@ Do not convert a lesson pass into a lifecycle completion in client code. If an a
 1. Orientation: `https://youtu.be/Gm62pf3SywU`
 2. Script walkthrough: `https://drive.google.com/file/d/1FZIMIdqDRf7HAox9egfVWpAvhterF2Vy/view?ts=6a8d0638`
 3. Objection handling: `https://www.youtube.com/watch?v=jOtqBnnLsR0`
-4. Producer training and library: `/dashboard/recruiting/training/library`
-5. Official script: `https://docs.google.com/document/d/1OeDu_6TABfIJtVHrn1TrJUjWGzgehYttoMj7ttSebxI/edit?tab=t.0#heading=h.u8s4qkrx1od7`
-6. Human onboarding help: Aisha, `978-804-7212`
+4. Tracked field-release course: `/dashboard/recruiting/training/sales-course`
+   - Foundation: orientation, official script, objections, script mastery.
+   - Systems: ReadyMode setup, call review, pipeline/deal posting, quoting/field underwriting.
+   - Every lesson includes readable notes, device narration, and a persisted knowledge check.
+5. Producer training and library: `/dashboard/recruiting/training/library?tab=courses`
+6. Official script: `https://docs.google.com/document/d/1OeDu_6TABfIJtVHrn1TrJUjWGzgehYttoMj7ttSebxI/edit?tab=t.0#heading=h.u8s4qkrx1od7`
+7. Human onboarding help: Aisha, `978-804-7212`
 
-These already render through `RequiredOnboardingResources`. Content edits should update that component or the external resource library, not hard-code another list elsewhere.
+Reference links render through `RequiredOnboardingResources`; tracked field lessons live in `onboarding_modules`. Do not duplicate the four systems walkthrough URLs back into the reference-card list.
+
+Walkthroughs 2 and 3 were supplied with silent source audio. The course labels them as silent visual guides and uses timestamped visual notes plus device narration. Do not claim their original recordings contain voiceover unless replacement media is verified first.
 
 ## UI contract
 
@@ -96,6 +102,7 @@ These already render through `RequiredOnboardingResources`. Content edits should
 - A stalled list excludes terminated, inactive, departed, and test accounts through the canonical roster.
 - Completion controls persist and invalidate all dependent queries.
 - Mobile has one primary action per card, usable at 390px without horizontal page overflow. Wide pipeline tables may scroll inside their own container.
+- Source audio, transcript type, progress, and availability must be stated truthfully; a silent recording is never labeled as having source audio.
 
 ## Acceptance test for any training change
 
@@ -106,3 +113,4 @@ These already render through `RequiredOnboardingResources`. Content edits should
 5. Verify a failed external resource read shows “unavailable,” never zero.
 6. Verify terminated/inactive users do not appear in current-team nudges.
 7. Run focused tests, typecheck, build, and route smoke.
+8. Confirm every supplied systems walkthrough embeds and every lesson exposes readable notes plus the knowledge check.

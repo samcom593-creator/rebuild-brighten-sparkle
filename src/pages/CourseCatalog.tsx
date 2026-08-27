@@ -1,22 +1,53 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { PlayCircle, HelpCircle, Award, Lock, CheckCircle, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Award,
+  BookOpenCheck,
+  Captions,
+  CheckCircle2,
+  Clock3,
+  Headphones,
+  HelpCircle,
+  Loader2,
+  LockKeyhole,
+  PlayCircle,
+  Rocket,
+  Sparkles,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import { AgentOnboardingStepper } from "@/components/dashboard/AgentOnboardingStepper";
+import { CourseQuiz } from "@/components/course/CourseQuiz";
+import { CourseTranscript } from "@/components/course/CourseTranscript";
+import { CourseVideoPlayer } from "@/components/course/CourseVideoPlayer";
+import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnboardingCourse } from "@/hooks/useOnboardingCourse";
-import { CourseVideoPlayer } from "@/components/course/CourseVideoPlayer";
-import { CourseQuiz } from "@/components/course/CourseQuiz";
-import { supabase } from "@/integrations/supabase/client";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
-import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav";
+import { supabase } from "@/integrations/supabase/client";
+import { resolveBrand } from "@/config/brand";
+import { cn } from "@/lib/utils";
+
+type LessonTab = "video" | "transcript" | "quiz";
+
+function formatDuration(seconds: number | null): string {
+  if (!seconds) return "Self-paced";
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  return `${minutes} min`;
+}
 
 export default function CourseCatalog() {
+  const brand = resolveBrand();
   const navigate = useNavigate();
   const { user, isAdmin, isManager, isVaManager, isVa } = useAuth();
   const isStaff = isAdmin || isManager || isVaManager || isVa;
@@ -25,14 +56,17 @@ export default function CourseCatalog() {
   const [agentNotFound, setAgentNotFound] = useState(false);
   const [autoProvisionAttempted, setAutoProvisionAttempted] = useState(false);
   const [provisioningInProgress, setProvisioningInProgress] = useState(false);
-  const [activeView, setActiveView] = useState<"catalog" | "module">("catalog");
-  const [activeTab, setActiveTab] = useState<"video" | "quiz">("video");
+  const [activeTab, setActiveTab] = useState<LessonTab>("video");
   const [playbackRate, setPlaybackRate] = useState(1);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [checkingAvatar, setCheckingAvatar] = useState(true);
+  const [isLicensed, setIsLicensed] = useState(false);
+  const [licenseCheckLoading, setLicenseCheckLoading] = useState(true);
+  const resumeSelectedRef = useRef(false);
 
   useEffect(() => {
-    const fetchAgentId = async () => {
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const loadAgent = async () => {
       if (!user?.id) return;
       const { data } = await supabase
         .from("agents")
@@ -40,70 +74,65 @@ export default function CourseCatalog() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1);
-      if (data && data.length > 0) {
-        setAgentId(data[0].id);
-        if (!data[0].has_training_course) {
-          await supabase.from("agents").update({ has_training_course: true }).eq("id", data[0].id);
+      if (cancelled) return;
+
+      const agent = data?.[0];
+      if (agent) {
+        setAgentId(agent.id);
+        if (!agent.has_training_course) {
+          void supabase.from("agents").update({ has_training_course: true }).eq("id", agent.id);
         }
-      } else {
-        setTimeout(async () => {
-          const { data: retryData } = await supabase
-            .from("agents")
-            .select("id, has_training_course")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(1);
-          if (retryData && retryData.length > 0) {
-            setAgentId(retryData[0].id);
-          } else {
-            setAgentNotFound(true);
-          }
-        }, 2000);
+        return;
       }
+
+      retryTimer = setTimeout(async () => {
+        const { data: retryData } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (cancelled) return;
+        if (retryData?.[0]) setAgentId(retryData[0].id);
+        else setAgentNotFound(true);
+      }, 2_000);
     };
-    fetchAgentId();
+
+    void loadAgent();
+    return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [user?.id]);
 
-  useEffect(() => {
-    const checkAvatar = async () => {
-      if (!user?.id) return;
-      setCheckingAvatar(true);
-      const { data } = await supabase.from("profiles").select("avatar_url").eq("user_id", user.id).maybeSingle();
-      setAvatarUrl(data?.avatar_url || null);
-      setCheckingAvatar(false);
-    };
-    checkAvatar();
-  }, [user?.id]);
-
-  // PL-067 license gate. Treat the user as licensed if any matching agent /
-  // application row is licensed or further along.
-  const [isLicensed, setIsLicensed] = useState(false);
-  const [licenseCheckLoading, setLicenseCheckLoading] = useState(true);
   useEffect(() => {
     let cancelled = false;
-    const check = async () => {
+    const checkLicense = async () => {
       if (!user?.id) return;
       if (isStaff) {
         setIsLicensed(true);
         setLicenseCheckLoading(false);
         return;
       }
+
       setLicenseCheckLoading(true);
       try {
-        // Agents table may already have a license flag; otherwise fall back
-        // to applications.license_status / license_progress for this user.
         const [agentRes, appRes] = await Promise.all([
-          supabase.from("agents").select("license_status").eq("user_id", user.id).maybeSingle(),
+          supabase
+            .from("agents")
+            .select("license_status")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(1),
           supabase
             .from("applications")
             .select("license_status, license_progress")
             .ilike("email", user.email || "__nope__")
             .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
+            .limit(1),
         ]);
-        const agentLicensed = (agentRes.data as { license_status?: string } | null)?.license_status === "licensed";
-        const app = appRes.data as { license_status?: string; license_progress?: string } | null;
+        const agentLicensed = agentRes.data?.[0]?.license_status === "licensed";
+        const app = appRes.data?.[0] as { license_status?: string; license_progress?: string } | undefined;
         const appLicensed = app?.license_status === "licensed"
           || ["licensed", "fingerprints_done", "waiting_on_license"].includes(app?.license_progress || "");
         if (!cancelled) setIsLicensed(agentLicensed || appLicensed);
@@ -111,9 +140,14 @@ export default function CourseCatalog() {
         if (!cancelled) setLicenseCheckLoading(false);
       }
     };
-    check();
+
+    void checkLicense();
     return () => { cancelled = true; };
-  }, [isStaff, user?.id, user?.email]);
+  }, [isStaff, user?.email, user?.id]);
+
+  useEffect(() => {
+    if (!licenseCheckLoading && !isLicensed) navigate("/get-licensed", { replace: true });
+  }, [isLicensed, licenseCheckLoading, navigate]);
 
   useEffect(() => {
     const autoProvision = async () => {
@@ -126,279 +160,387 @@ export default function CourseCatalog() {
           setAgentId(data.agentId);
           setAgentNotFound(false);
         }
-      } catch (err) {
-        console.error("Self-enroll error:", err);
+      } catch (error) {
+        console.error("Self-enroll error:", error);
       } finally {
         setProvisioningInProgress(false);
       }
     };
-    autoProvision();
+    void autoProvision();
   }, [agentNotFound, autoProvisionAttempted, user?.id]);
 
-  // 2026-06-29 SECURITY GATE — Sam directive: unlicensed agents seeing the
-  // post-license sales course was wrong. They MUST be redirected to Xcel
-  // pre-licensing before any sales-training content loads.
-  // MP240 fix (2026-07-05): This useEffect MUST be declared before any
-  // conditional early returns below or React will throw "Rendered more
-  // hooks than during the previous render" and white-screen /course-catalog.
-  useEffect(() => {
-    if (!licenseCheckLoading && !isLicensed) {
-      navigate("/get-licensed", { replace: true });
-    }
-  }, [licenseCheckLoading, isLicensed, navigate]);
-
   const {
-    modules, questions, progress, currentModuleIndex, setCurrentModuleIndex,
-    loading, updateVideoProgress, submitQuiz, isModuleUnlocked, canTakeQuiz,
-    getOverallProgress, isCourseComplete, currentModule
+    modules,
+    questions,
+    progress,
+    currentModuleIndex,
+    setCurrentModuleIndex,
+    loading,
+    updateVideoProgress,
+    submitQuiz,
+    isModuleUnlocked,
+    canTakeQuiz,
+    getOverallProgress,
+    isCourseComplete,
+    currentModule,
   } = useOnboardingCourse(agentId);
 
+  useEffect(() => {
+    if (resumeSelectedRef.current || modules.length === 0) return;
+    const firstIncomplete = modules.findIndex((module) => progress[module.id]?.passed !== true);
+    setCurrentModuleIndex(firstIncomplete >= 0 ? firstIncomplete : modules.length - 1);
+    resumeSelectedRef.current = true;
+  }, [modules, progress, setCurrentModuleIndex]);
+
+  const completedCount = modules.filter((module) => progress[module.id]?.passed).length;
+  const totalMinutes = useMemo(
+    () => Math.round(modules.reduce((total, module) => total + (module.duration_seconds ?? 0), 0) / 60),
+    [modules],
+  );
   const currentQuestions = currentModule ? questions[currentModule.id] || [] : [];
   const currentProgress = currentModule ? progress[currentModule.id] : null;
+
+  const selectModule = (index: number) => {
+    if (!isModuleUnlocked(index)) return;
+    setCurrentModuleIndex(index);
+    setActiveTab("video");
+    playSound("click");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const handleQuizSubmit = async (answers: number[], score: number, passed: boolean) => {
     if (!currentModule) return false;
     try {
       const success = await submitQuiz(currentModule.id, answers, score, passed);
       if (success && passed) playSound("celebrate");
-      else if (success && !passed) playSound("error");
+      else if (success) playSound("error");
       return success;
-    } catch (err) {
-      console.error("Quiz submit failed:", err);
+    } catch (error) {
+      console.error("Quiz submit failed:", error);
       return false;
     }
   };
 
-  // === Early returns below this line ===
-  // All hooks above are guaranteed to run on every render (Rules of Hooks).
-
   if (licenseCheckLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-2">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-emerald-500" />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="space-y-2 text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Checking license status…</p>
         </div>
       </div>
     );
   }
+  if (!isLicensed) return null;
+  if (loading || provisioningInProgress) return <SkeletonLoader variant="page" />;
 
-  if (!isLicensed) {
-    // useEffect above will redirect; render nothing while it fires.
-    return null;
+  if (modules.length === 0) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6">
+        <TrainingWorkspaceNav />
+        <Card>
+          <CardContent className="p-10 text-center">
+            <BookOpenCheck className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <h1 className="text-2xl font-bold">Course lessons are unavailable</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your progress has not been reset. Refresh in a few minutes or contact onboarding support.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
-  if (loading || provisioningInProgress || checkingAvatar) return <SkeletonLoader variant="page" />;
-
-  // 2026-06-16 Sam directive: "any agent should be in dashboard, be able to
-  // access that course at any time. Just never lock it." ALL gates removed:
-  // - agentNotFound (no-agent-row block) → REMOVED
-  // - PL-067 license gate → REMOVED
-  // - Photo gate → REMOVED
-  // Catalog renders the modules for ANY authenticated user; progress
-  // tracking gracefully degrades to in-memory when no agent row exists.
-
-  const completedCount = modules.filter(m => progress[m.id]?.passed).length;
-  const modulesLeft = modules.length - completedCount;
+  const overallProgress = getOverallProgress();
+  const courseComplete = isCourseComplete();
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="page-enter mx-auto w-full max-w-7xl space-y-6 px-4 pb-28 sm:px-6">
       <TrainingWorkspaceNav />
-      {/* Hero Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: -12 }}
+
+      {agentId && <AgentOnboardingStepper agentId={agentId} />}
+
+      <motion.section
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-md glass-card p-6 md:p-8"
+        className="overflow-hidden rounded-2xl border border-primary/25 bg-card"
       >
-        <div className="absolute inset-0 bg-white dark:bg-card pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <Badge variant="outline" className="border-primary/40 text-primary text-xs" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
-              APEX TRAINING ACADEMY
+        <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <Badge className="mb-3 gap-1.5 border-primary/30 bg-primary/10 text-primary hover:bg-primary/10">
+              <Sparkles className="h-3.5 w-3.5" /> Field-release course
             </Badge>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-foreground" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
-              {isCourseComplete() ? "🎓 Course Complete!" : currentModule ? `Continue: ${currentModule.title}` : "Training Academy"}
+            <h1 className="max-w-3xl text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Learn the playbook. Master the systems. Launch with confidence.
             </h1>
-            <p className="text-sm text-muted-foreground">
-              {isCourseComplete()
-                ? "You've completed all modules. You're ready for the field!"
-                : `${completedCount} of ${modules.length} modules complete · ${modulesLeft} modules left`}
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+              One ordered path from {brand.shortName} fundamentals to ReadyMode, pipeline, deal posting, quoting, and field underwriting.
             </p>
           </div>
-          <div className="flex items-center gap-6">
-            <div className="text-right">
-              <p className="text-4xl font-extrabold text-primary" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>{getOverallProgress()}%</p>
-              <p className="text-xs text-muted-foreground">overall progress</p>
-            </div>
+          <div className="grid grid-cols-3 gap-2 lg:min-w-80">
+            <CourseStat value={`${overallProgress}%`} label="complete" />
+            <CourseStat value={`${completedCount}/${modules.length}`} label="lessons" />
+            <CourseStat value={totalMinutes > 0 ? `${totalMinutes}m` : "—"} label="total" />
           </div>
         </div>
-        <div className="mt-4 relative z-10">
-          <Progress value={getOverallProgress()} className="h-2" />
+        <div className="border-t border-border bg-muted/20 px-5 py-4 sm:px-7">
+          <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+            <span className="font-semibold">Your course progress</span>
+            <span className="tabular-nums text-muted-foreground">{completedCount} of {modules.length} passed</span>
+          </div>
+          <Progress value={overallProgress} className="h-2" />
         </div>
-      </motion.div>
+      </motion.section>
 
-      {/* Courses — Call Library tab removed (empty data source) 2026-07-01 */}
-      <div className="mt-6">
-          {activeView === "catalog" ? (
-            /* Netflix-style Grid */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {modules.map((mod, idx) => {
-                const modProgress = progress[mod.id];
-                const unlocked = isModuleUnlocked(idx);
-                const completed = modProgress?.passed;
-                const inProgress = unlocked && !completed && (modProgress?.video_watched_percent || 0) > 0;
+      {courseComplete && (
+        <div className="flex items-center gap-3 rounded-xl border border-success/30 bg-success/10 p-4 text-success">
+          <Award className="h-6 w-6 shrink-0" />
+          <div>
+            <p className="font-bold">Course complete — you cleared every knowledge check.</p>
+            <p className="text-sm opacity-80">Your launch roadmap will show the next receipt-backed milestone.</p>
+          </div>
+        </div>
+      )}
 
-                return (
-                  <motion.div
-                    key={mod.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className={`group relative rounded-md overflow-hidden border transition-all cursor-pointer ${
-                      completed ? "border-primary/40" :
-                      inProgress ? "border-primary/60 ring-1 ring-primary/30 animate-pulse-subtle" :
-                      unlocked ? "border-border hover:border-primary/40" :
-                      "border-border/50 opacity-60"
-                    }`}
-                    onClick={() => {
-                      if (unlocked) {
-                        setCurrentModuleIndex(idx);
-                        setActiveView("module");
-                        setActiveTab("video");
-                        playSound("click");
-                      }
-                    }}
+      <div className="grid items-start gap-5 lg:grid-cols-[19rem_minmax(0,1fr)]">
+        <aside className="order-2 space-y-3 lg:order-1 lg:sticky lg:top-4">
+          <div className="flex items-center justify-between px-1">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Course map</p>
+              <h2 className="font-bold">Your 2-phase path</h2>
+            </div>
+            <Rocket className="h-5 w-5 text-primary" />
+          </div>
+          <ol className="space-y-2">
+            {modules.map((module, index) => {
+              const moduleProgress = progress[module.id];
+              const complete = moduleProgress?.passed === true;
+              const unlocked = isModuleUnlocked(index);
+              const current = index === currentModuleIndex;
+              const phaseChanged = index === 0 || modules[index - 1]?.phase_key !== module.phase_key;
+              return (
+                <li key={module.id}>
+                  {phaseChanged && (
+                    <p className="mb-2 mt-4 px-1 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground first:mt-0">
+                      {module.phase_key === "systems" ? "Phase 2 · Systems" : "Phase 1 · Foundation"}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => selectModule(index)}
+                    disabled={!unlocked}
+                    aria-current={current ? "step" : undefined}
+                    className={cn(
+                      "flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors",
+                      current && "border-primary bg-primary/5",
+                      complete && !current && "border-success/30 bg-success/5",
+                      unlocked && !current && !complete && "border-border bg-card hover:border-primary/40",
+                      !unlocked && "cursor-not-allowed border-border/60 bg-muted/30 opacity-65",
+                    )}
                   >
-                    {/* Thumbnail area */}
-                    <div className="relative aspect-video bg-card flex items-center justify-center">
-                      <div className="text-6xl font-extrabold text-muted-foreground/20" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
-                        {idx + 1}
+                    <span className={cn(
+                      "grid h-8 w-8 shrink-0 place-items-center rounded-full border text-xs font-bold",
+                      complete && "border-success bg-success text-success-foreground",
+                      current && !complete && "border-primary bg-primary text-primary-foreground",
+                      !current && !complete && "border-border bg-muted text-muted-foreground",
+                    )}>
+                      {complete ? <CheckCircle2 className="h-4 w-4" /> : unlocked ? index + 1 : <LockKeyhole className="h-3.5 w-3.5" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2 text-sm font-bold leading-5">{module.title}</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                        <span>{formatDuration(module.duration_seconds)}</span>
+                        {complete && <span className="font-semibold text-success">Passed {moduleProgress.score ?? 100}%</span>}
+                        {!complete && (moduleProgress?.video_watched_percent ?? 0) > 0 && (
+                          <span>{moduleProgress.video_watched_percent}% watched</span>
+                        )}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </aside>
+
+        <main className="order-1 min-w-0 lg:order-2">
+          {currentModule && (
+            <motion.div
+              key={currentModule.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="overflow-hidden rounded-2xl border border-border bg-card"
+            >
+              <div className="border-b border-border p-4 sm:p-6">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <Badge variant="outline" className="border-primary/30 text-primary">
+                    {currentModule.phase_key === "systems" ? "Systems" : "Foundation"}
+                  </Badge>
+                  <span>Lesson {currentModuleIndex + 1} of {modules.length}</span>
+                  <span>·</span>
+                  <span className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" /> {formatDuration(currentModule.duration_seconds)}</span>
+                  <span>·</span>
+                  <span className="inline-flex items-center gap-1">
+                    {currentModule.media_has_audio ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+                    {currentModule.media_has_audio ? "Source audio" : "Silent visual guide"}
+                  </span>
+                </div>
+                <h2 className="mt-3 text-2xl font-extrabold sm:text-3xl">{currentModule.title}</h2>
+                {currentModule.description && (
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{currentModule.description}</p>
+                )}
+
+                {currentModule.learning_objectives.length > 0 && (
+                  <div className="mt-5 grid gap-2 sm:grid-cols-3">
+                    {currentModule.learning_objectives.map((objective, index) => (
+                      <div key={objective} className="flex gap-2 rounded-lg border border-border bg-muted/25 p-3 text-xs leading-5">
+                        <span className="font-bold text-primary">{index + 1}</span>
+                        <span>{objective}</span>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-                      {/* Overlays */}
-                      {!unlocked && (
-                        <div className="absolute inset-0 bg-background/80 flex items-center justify-center ">
-                          <Lock className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                      )}
-                      {completed && (
-                        <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
-                          <CheckCircle className="h-10 w-10 text-primary" />
-                        </div>
-                      )}
-                      {unlocked && !completed && (
-                        <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <PlayCircle className="h-12 w-12 text-primary" />
-                        </div>
-                      )}
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => {
+                  setActiveTab(value as LessonTab);
+                  playSound("click");
+                }}
+              >
+                <div className="border-b border-border px-3 pt-3 sm:px-6">
+                  <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/60 p-1">
+                    <TabsTrigger value="video" className="min-h-10 gap-1.5 px-2 text-xs sm:text-sm">
+                      <PlayCircle className="h-4 w-4" /> Watch
+                    </TabsTrigger>
+                    <TabsTrigger value="transcript" className="min-h-10 gap-1.5 px-2 text-xs sm:text-sm">
+                      <Captions className="h-4 w-4" /> <span className="hidden sm:inline">Read / </span>Listen
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="quiz"
+                      className="min-h-10 gap-1.5 px-2 text-xs sm:text-sm"
+                      disabled={!canTakeQuiz(currentModule.id) && !currentProgress?.passed}
+                    >
+                      <HelpCircle className="h-4 w-4" /> Check
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
 
-                      {/* Duration badge */}
-                      <Badge className="absolute bottom-2 right-2 bg-background/80 text-foreground text-xs">
-                        Module {idx + 1}
-                      </Badge>
+                <TabsContent value="video" className="m-0 p-3 sm:p-6">
+                  <CourseVideoPlayer
+                    videoUrl={currentModule.video_url}
+                    onProgressUpdate={(percent) => updateVideoProgress(currentModule.id, percent)}
+                    watchedPercent={currentProgress?.video_watched_percent || 0}
+                    onVideoComplete={() => undefined}
+                    playbackRate={playbackRate}
+                    onPlaybackRateChange={setPlaybackRate}
+                  />
+                  <div className="mt-4 flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-2">
+                      {canTakeQuiz(currentModule.id) || currentProgress?.passed ? (
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                      ) : (
+                        <Headphones className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      )}
+                      <div>
+                        <p className="text-sm font-semibold">
+                          {currentProgress?.passed
+                            ? `Passed with ${currentProgress.score ?? 100}%`
+                            : canTakeQuiz(currentModule.id)
+                              ? "Knowledge check unlocked"
+                              : "Watch the lesson before taking the check"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Read or listen to the transcript whenever you need a second pass.</p>
+                      </div>
                     </div>
+                    <Button variant="outline" size="sm" onClick={() => setActiveTab("transcript")} className="gap-1.5">
+                      <Captions className="h-4 w-4" /> Open transcript
+                    </Button>
+                  </div>
+                </TabsContent>
 
-                    {/* Info */}
-                    <div className="p-4 space-y-2">
-                      <h3 className="font-bold text-sm text-foreground line-clamp-1" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
-                        {mod.title}
-                      </h3>
-                      {mod.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">{mod.description}</p>
-                      )}
-                      {unlocked && !completed && (modProgress?.video_watched_percent || 0) > 0 && (
-                        <Progress value={modProgress?.video_watched_percent || 0} className="h-1" />
-                      )}
-                      {completed && (
-                        <p className="text-xs text-primary font-medium">✓ Passed · Score: {modProgress?.score}%</p>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          ) : (
-            /* Module Detail View */
-            <div className="space-y-4">
-              <Button variant="ghost" onClick={() => setActiveView("catalog")} className="gap-2 mb-2" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
-                ← Back to Catalog
-              </Button>
+                <TabsContent value="transcript" className="m-0 p-3 sm:p-6">
+                  <CourseTranscript module={currentModule} />
+                </TabsContent>
 
-              {currentModule && (
-                <motion.div key={currentModule.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                  <Card className="glass-card">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
-                        <span className="text-primary">Module {currentModuleIndex + 1}:</span>
-                        {currentModule.title}
-                      </CardTitle>
-                      {currentModule.description && <CardDescription>{currentModule.description}</CardDescription>}
-                    </CardHeader>
-                    <CardContent>
-                      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as "video" | "quiz"); playSound("click"); }}>
-                        <TabsList className="grid w-full grid-cols-2 mb-6">
-                          <TabsTrigger value="video" className="gap-2"><PlayCircle className="h-4 w-4" /> Video</TabsTrigger>
-                          <TabsTrigger value="quiz" className="gap-2" disabled={!canTakeQuiz(currentModule.id) && !currentProgress?.passed}>
-                            <HelpCircle className="h-4 w-4" /> Quiz
-                            {!canTakeQuiz(currentModule.id) && !currentProgress?.passed && <span className="text-xs opacity-60 ml-1">(80%)</span>}
-                          </TabsTrigger>
-                        </TabsList>
+                <TabsContent value="quiz" className="m-0 p-3 sm:p-6">
+                  {currentProgress?.passed ? (
+                    <Card className="border-success/30 bg-success/5">
+                      <CardContent className="p-8 text-center">
+                        <Award className="mx-auto mb-4 h-14 w-14 text-success" />
+                        <h3 className="text-xl font-bold">Lesson passed</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">Score: {currentProgress.score ?? 100}%</p>
+                        {currentModuleIndex < modules.length - 1 && isModuleUnlocked(currentModuleIndex + 1) && (
+                          <Button className="mt-5 gap-2" onClick={() => selectModule(currentModuleIndex + 1)}>
+                            Continue to next lesson <ArrowRight className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ) : currentQuestions.length > 0 ? (
+                    <CourseQuiz
+                      questions={currentQuestions}
+                      passThreshold={currentModule.pass_threshold}
+                      attempts={currentProgress?.attempts || 0}
+                      onSubmit={handleQuizSubmit}
+                      onRetry={() => undefined}
+                    />
+                  ) : (
+                    <Card>
+                      <CardContent className="p-8 text-center">
+                        <BookOpenCheck className="mx-auto mb-3 h-10 w-10 text-primary" />
+                        <h3 className="font-bold">Confirm lesson completion</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">This lesson has no questions. Finish the video to continue.</p>
+                        <Button
+                          className="mt-5"
+                          onClick={() => handleQuizSubmit([], 100, true)}
+                          disabled={!canTakeQuiz(currentModule.id)}
+                        >
+                          {canTakeQuiz(currentModule.id) ? "Complete lesson" : "Watch 80% to unlock"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+              </Tabs>
 
-                        <TabsContent value="video" className="mt-0">
-                          <CourseVideoPlayer
-                            videoUrl={currentModule.video_url}
-                            onProgressUpdate={(percent) => updateVideoProgress(currentModule.id, percent)}
-                            watchedPercent={currentProgress?.video_watched_percent || 0}
-                            onVideoComplete={() => {}}
-                            playbackRate={playbackRate}
-                            onPlaybackRateChange={setPlaybackRate}
-                          />
-                          {currentProgress?.passed && (
-                            <div className="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/30">
-                              <p className="text-primary font-medium">✓ Passed with {currentProgress.score}%</p>
-                            </div>
-                          )}
-                        </TabsContent>
-
-                        <TabsContent value="quiz" className="mt-0">
-                          {currentQuestions.length > 0 ? (
-                            currentProgress?.passed ? (
-                              <Card className="border-2 border-primary/30">
-                                <CardContent className="pt-8 pb-8 text-center">
-                                  <Award className="h-16 w-16 text-primary mx-auto mb-4" />
-                                  <h3 className="text-xl font-bold mb-2" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>Module Complete!</h3>
-                                  <p className="text-muted-foreground mb-4">Score: {currentProgress.score}%</p>
-                                  {currentModuleIndex < modules.length - 1 && (
-                                    <Button onClick={() => { setCurrentModuleIndex(currentModuleIndex + 1); setActiveTab("video"); }}>
-                                      Next Module →
-                                    </Button>
-                                  )}
-                                </CardContent>
-                              </Card>
-                            ) : (
-                              <CourseQuiz
-                                questions={currentQuestions}
-                                passThreshold={currentModule.pass_threshold}
-                                attempts={currentProgress?.attempts || 0}
-                                onSubmit={handleQuizSubmit}
-                                onRetry={() => {}}
-                              />
-                            )
-                          ) : (
-                            <Card><CardContent className="pt-8 pb-8 text-center">
-                              <HelpCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                              <p className="text-muted-foreground">No quiz on this module — finish the video and mark it complete.</p>
-                            </CardContent></Card>
-                          )}
-                        </TabsContent>
-                      </Tabs>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-            </div>
+              <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/20 p-3 sm:p-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => selectModule(currentModuleIndex - 1)}
+                  disabled={currentModuleIndex === 0}
+                >
+                  <ArrowLeft className="h-4 w-4" /> Previous
+                </Button>
+                <span className="hidden text-xs text-muted-foreground sm:block">
+                  Pass each check to unlock the next lesson.
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => selectModule(currentModuleIndex + 1)}
+                  disabled={currentModuleIndex >= modules.length - 1 || !isModuleUnlocked(currentModuleIndex + 1)}
+                >
+                  Next <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </motion.div>
           )}
-        </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function CourseStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-muted/30 px-3 py-3 text-center">
+      <p className="text-xl font-extrabold tabular-nums text-primary sm:text-2xl">{value}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
     </div>
   );
 }

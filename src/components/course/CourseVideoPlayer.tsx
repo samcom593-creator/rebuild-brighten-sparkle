@@ -68,6 +68,10 @@ export function CourseVideoPlayer({
   const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
   const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null;
   const driveId = videoUrl.match(/drive\.google\.com\/file\/d\/([^/?#]+)/)?.[1] ?? null;
+  const awesomeId = videoUrl.match(/awesomescreenshot\.com\/video\/(\d+)/)?.[1] ?? null;
+  const awesomeKey = awesomeId
+    ? new URLSearchParams(videoUrl.split("?")[1] ?? "").get("key")
+    : null;
   // Sam-feedback 2026-06-01: 11 modules pointed at the @SamuelJamesHQ channel
   // home as a placeholder, which couldn't be embedded. Detect channel/home
   // URLs and show a "Recording in progress" CTA instead of a broken player.
@@ -103,6 +107,19 @@ export function CourseVideoPlayer({
     );
   }
 
+  if (awesomeId && awesomeKey) {
+    return (
+      <AwesomeScreenshotPlayer
+        videoId={awesomeId}
+        shareKey={awesomeKey}
+        originalUrl={videoUrl}
+        watchedPercent={watchedPercent}
+        onProgressUpdate={onProgressUpdate}
+        onVideoComplete={onVideoComplete}
+      />
+    );
+  }
+
   return (
     <NativeVideoPlayer
       videoUrl={videoUrl}
@@ -110,6 +127,61 @@ export function CourseVideoPlayer({
       watchedPercent={watchedPercent}
       onVideoComplete={onVideoComplete}
     />
+  );
+}
+
+function AwesomeScreenshotPlayer({
+  videoId,
+  shareKey,
+  originalUrl,
+  watchedPercent,
+  onProgressUpdate,
+  onVideoComplete,
+}: {
+  videoId: string;
+  shareKey: string;
+  originalUrl: string;
+  watchedPercent: number;
+  onProgressUpdate: (percent: number) => void;
+  onVideoComplete: () => void;
+}) {
+  const complete = watchedPercent >= UNLOCK_THRESHOLD;
+  const markComplete = () => {
+    onProgressUpdate(100);
+    onVideoComplete();
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="aspect-video overflow-hidden rounded-xl border border-border bg-black">
+        <iframe
+          src={`https://www.awesomescreenshot.com/embed?id=${videoId}&shareKey=${shareKey}&info=false`}
+          title={`${resolveBrand().shortName} systems walkthrough`}
+          className="h-full w-full"
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+          sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
+          allowFullScreen
+        />
+      </div>
+      <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold">Finish the walkthrough, then confirm below.</p>
+          <p className="text-xs text-muted-foreground">
+            The secure embedded player cannot report watch time back to {resolveBrand().shortName}.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <a href={originalUrl} target="_blank" rel="noopener noreferrer">
+              Open recording <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+            </a>
+          </Button>
+          <Button size="sm" onClick={markComplete} disabled={complete} className="gap-1.5">
+            <CheckCircle className="h-4 w-4" /> {complete ? "Watched" : "Mark watched"}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 

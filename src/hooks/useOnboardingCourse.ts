@@ -13,6 +13,11 @@ import { useToast } from "@/hooks/use-toast";
  */
 export const MAX_QUIZ_ATTEMPTS = 4;
 
+export interface TranscriptSegment {
+  time: string;
+  text: string;
+}
+
 export interface OnboardingModule {
   id: string;
   order_index: number;
@@ -21,6 +26,12 @@ export interface OnboardingModule {
   video_url: string;
   pass_threshold: number;
   is_active: boolean;
+  phase_key: "foundation" | "systems" | null;
+  duration_seconds: number | null;
+  learning_objectives: string[];
+  transcript_segments: TranscriptSegment[];
+  transcript_kind: "verbatim" | "edited-transcript" | "visual-notes" | "lesson-notes";
+  media_has_audio: boolean;
 }
 
 export interface OnboardingQuestion {
@@ -66,7 +77,30 @@ export function useOnboardingCourse(agentId: string | null) {
       return;
     }
 
-    setModules(data || []);
+    setModules((data || []).map((module) => ({
+      ...module,
+      pass_threshold: module.pass_threshold ?? 80,
+      is_active: module.is_active ?? true,
+      phase_key: module.phase_key === "foundation" || module.phase_key === "systems"
+        ? module.phase_key
+        : null,
+      learning_objectives: Array.isArray(module.learning_objectives)
+        ? module.learning_objectives.filter((item): item is string => typeof item === "string")
+        : [],
+      transcript_segments: Array.isArray(module.transcript_segments)
+        ? module.transcript_segments.flatMap((item) => {
+          if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+          const segment = item as { time?: unknown; text?: unknown };
+          return typeof segment.text === "string"
+            ? [{ time: typeof segment.time === "string" ? segment.time : "", text: segment.text }]
+            : [];
+        })
+        : [],
+      transcript_kind: ["verbatim", "edited-transcript", "visual-notes", "lesson-notes"].includes(module.transcript_kind)
+        ? module.transcript_kind as OnboardingModule["transcript_kind"]
+        : "lesson-notes",
+      media_has_audio: module.media_has_audio ?? true,
+    })));
   }, []);
 
   const fetchQuestions = useCallback(async (moduleId: string) => {

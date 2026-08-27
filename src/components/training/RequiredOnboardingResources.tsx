@@ -25,9 +25,9 @@ function onboardingResources(brandName: string) {
     icon: Headphones,
   },
   {
-    title: "$50K/month producer training",
-    detail: `Open the ${brandName} training content library.`,
-    href: "/dashboard/recruiting/training/library",
+    title: "Field-release course",
+    detail: "Complete every tracked video, transcript, and knowledge check.",
+    href: "/dashboard/recruiting/training/sales-course",
     icon: PlayCircle,
     internal: true,
   },
@@ -36,30 +36,6 @@ function onboardingResources(brandName: string) {
     detail: "Keep this open while practicing.",
     href: "https://docs.google.com/document/d/1OeDu_6TABfIJtVHrn1TrJUjWGzgehYttoMj7ttSebxI/edit?tab=t.0#heading=h.u8s4qkrx1od7",
     icon: FileText,
-  },
-  {
-    title: "ReadyMode · Getting started & managing calls",
-    detail: "Walkthrough 1 of 4 · Learn the dialer before your first call block.",
-    href: "https://www.awesomescreenshot.com/video/55929817?key=4bfc6466537d3beb5c7b33e80a35f639",
-    icon: PlayCircle,
-  },
-  {
-    title: "ReadyMode · Review calls & improve",
-    detail: "Walkthrough 2 of 4 · Find recordings and coach your performance.",
-    href: "https://www.awesomescreenshot.com/video/55930238?key=0ba4f078af40155aba2874aa17179fa6",
-    icon: PlayCircle,
-  },
-  {
-    title: "Pipeline · Add clients & post deals",
-    detail: "Walkthrough 3 of 4 · Keep every prospect and sale in the live system.",
-    href: "https://www.awesomescreenshot.com/video/55934385?key=72a639912e732c5d61a870d4445f2a68",
-    icon: PlayCircle,
-  },
-  {
-    title: "Quoting · Health & field underwriting",
-    detail: "Walkthrough 4 of 4 · Quote accurately before submitting business.",
-    href: "https://www.awesomescreenshot.com/video/55934661?key=ff71c35c0c7f86265caee1c754b40529",
-    icon: PlayCircle,
   },
   ] as const;
 }
@@ -70,7 +46,7 @@ export function RequiredOnboardingResources() {
     <section aria-labelledby="required-onboarding-heading" className="space-y-3">
       <div>
         <h2 id="required-onboarding-heading" className="text-lg font-bold">Required onboarding resources</h2>
-        <p className="text-sm text-muted-foreground">Contracting first, then complete these in order before field training.</p>
+        <p className="text-sm text-muted-foreground">Keep these references close while you work through the tracked field-release course.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {resources.map((resource, index) => {

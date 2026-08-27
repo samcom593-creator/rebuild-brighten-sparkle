@@ -10,6 +10,7 @@ describe("agent onboarding roadmap", () => {
   const portal = source("src/pages/AgentPortal.tsx");
   const welcome = source("supabase/functions/welcome-new-agent/index.ts");
   const resources = source("src/components/training/RequiredOnboardingResources.tsx");
+  const trainingMigration = source("supabase/migrations/20260827214500_training_experience_redesign.sql");
 
   it("uses receipt-backed milestones instead of entitlement flags", () => {
     expect(migration).toContain("apex_agent_onboarding_roadmap");
@@ -39,7 +40,10 @@ describe("agent onboarding roadmap", () => {
 
   it("ships all four supplied system walkthroughs", () => {
     for (const videoId of ["55929817", "55930238", "55934385", "55934661"]) {
-      expect(resources).toContain(videoId);
+      expect(trainingMigration).toContain(videoId);
     }
+    expect(resources).toContain("/dashboard/recruiting/training/sales-course");
+    expect(trainingMigration).toContain("transcript_segments");
+    expect(trainingMigration).toContain("onboarding_questions");
   });
 });

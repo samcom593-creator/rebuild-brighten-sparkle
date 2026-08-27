@@ -27,6 +27,7 @@ import { TrainingWorkspaceNav } from "@/components/training/TrainingWorkspaceNav
 import { TrainingPathPanel } from "@/components/training/TrainingPathPanel";
 import { TrainingLeaderPanel } from "@/components/training/TrainingLeaderPanel";
 import { RequiredOnboardingResources } from "@/components/training/RequiredOnboardingResources";
+import { AgentOnboardingStepper } from "@/components/dashboard/AgentOnboardingStepper";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -204,6 +205,22 @@ export default function TrainingHub() {
     staleTime: 60 * 1000,
   });
 
+  const { data: ownAgent } = useQuery({
+    queryKey: ["training-hub-own-agent", user?.id],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      return rows?.[0] ?? null;
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const courses = useMemo(
     () => (data?.resources ?? []).filter((r) => r.type === "course" && r.course),
     [data],
@@ -308,8 +325,9 @@ export default function TrainingHub() {
 
         <TabsContent value="path">
           <div className="space-y-6">
-            <RequiredOnboardingResources />
+            {ownAgent && <AgentOnboardingStepper agentId={ownAgent.id} />}
             <TrainingPathPanel />
+            <RequiredOnboardingResources />
           </div>
         </TabsContent>
 

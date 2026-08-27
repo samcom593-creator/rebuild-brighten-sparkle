@@ -64,7 +64,8 @@ export default function PlaqueShare() {
         let instagram: string | null = null;
         if (agent?.profile_id) {
           const { data: profile } = await supabase
-            .from("profiles")
+            // MP-325: display-only directory (grant unchanged: authenticated, not anon).
+            .from("v_profile_directory")
             .select("full_name, instagram_handle")
             .eq("id", agent.profile_id)
             .single();

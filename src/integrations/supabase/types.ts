@@ -7780,6 +7780,16 @@ export type Database = {
       }
     }
     Views: {
+      v_profile_directory: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          id: string | null
+          instagram_handle: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       agent_lifetime_production: {
         Row: {
           agent_id: string | null

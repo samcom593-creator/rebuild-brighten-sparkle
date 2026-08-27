@@ -115,7 +115,8 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
 
       const userIds = agents?.map((a) => a.user_id).filter(Boolean) || [];
       const { data: profiles } = await supabase
-        .from("profiles")
+        // MP-325: display-only directory; profiles base table is now own/team scoped.
+        .from("v_profile_directory")
         .select("user_id, full_name")
         .in("user_id", userIds);
 

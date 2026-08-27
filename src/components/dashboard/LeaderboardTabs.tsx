@@ -213,7 +213,9 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
       // Also get profiles via user_id for agents who have accounts
       const userIds = agents.map((a) => a.user_id).filter(Boolean);
       const { data: profilesByUserId } = await supabase
-        .from("profiles")
+        // MP-325: profiles no longer readable agent-to-agent (email/phone PII).
+        // v_profile_directory exposes display columns only.
+        .from("v_profile_directory")
         .select("user_id, full_name, avatar_url")
         .in("user_id", userIds);
 

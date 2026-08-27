@@ -32,7 +32,7 @@ export default function CompTiersSettings() {
       // without this), and status='active' (enum truth). Legacy data had
       // combinations of all three that needed explicit gating.
       const { data } = await supabase
-        .from("agents")
+        .from("v_agents_full")
         .select("id, display_name, contract_percentage, override_rate, insuracloud_user_id, user_id, profile:profiles!agents_profile_id_fkey(full_name)")
         .eq("is_deactivated", false)
         .eq("is_inactive", false)

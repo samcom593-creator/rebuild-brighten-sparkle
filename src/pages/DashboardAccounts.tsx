@@ -131,7 +131,7 @@ export default function DashboardAccounts() {
       // identities that intentionally have no producer row.
       const [agentsResult, rolesResult] = await Promise.all([
         supabase
-          .from("agents")
+          .from("v_agents_full")
           .select("id, user_id, status, is_deactivated, created_at, license_status, onboarding_stage, contract_percentage, portal_password_set, has_discord_access, has_training_course")
           .order("created_at", { ascending: false }),
         supabase.from("user_roles").select("user_id, role"),

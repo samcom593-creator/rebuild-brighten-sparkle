@@ -167,7 +167,7 @@ export function AgentQuickEditDialog({
   const fetchAgentData = async () => {
     try {
       const { data: agent } = await supabase
-        .from("agents")
+        .from("v_agents_full")
         .select(`
           id, 
           user_id,

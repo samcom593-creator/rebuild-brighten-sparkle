@@ -255,7 +255,7 @@ export function AgentProfileDrawer() {
     queryFn: async () => {
       if (!agentId) return null;
       const { data, error } = await supabase
-        .from("agents")
+        .from("v_agents_full")
         .select(
           `id, user_id, agent_code, status, license_status, license_progress, nipr_number, start_date,
            total_policies, total_premium, total_earnings, manager_id,

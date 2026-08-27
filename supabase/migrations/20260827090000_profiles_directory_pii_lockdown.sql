@@ -48,7 +48,7 @@ grant select on public.v_profile_directory to authenticated;
 comment on view public.v_profile_directory is
   'MP-325: non-PII display directory (id, user_id, full_name, avatar_url, instagram_handle). '
   'Exists so agent-facing leaderboards can resolve names without base-table access to email/phone. '
-  'NEVER add email, phone, or any contact column here -- apex-doctor Check #29 fails if you do.';
+  'NEVER add email, phone, or any contact column here -- apex-doctor Check #31 fails if you do.';
 
 -- The actual close. Admins keep "Admins can view all profiles"; managers keep
 -- "Managers can view all profiles for leaderboards" and "...their team profiles";

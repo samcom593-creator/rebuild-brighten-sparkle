@@ -19,7 +19,7 @@
 --
 -- This does NOT claim the class is now closed forever: the default privilege that
 -- created it is still in place, so the NEXT view ships the same hole.
--- apex-doctor Check #29 owns the recurrence.
+-- apex-doctor Check #31 owns the recurrence.
 
 do $$
 declare v text;

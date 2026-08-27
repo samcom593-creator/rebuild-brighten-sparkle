@@ -846,6 +846,7 @@ export default function Interviews() {
                         {callHref && <Button asChild size="icon" aria-label={`Call ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={callHref} {...externalLinkProps(callHref)}><Phone className="h-4 w-4" /></a></Button>}
                         {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={textHref} {...externalLinkProps(textHref)}><MessageSquare className="h-4 w-4" /></a></Button>}
                         {row.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${personName}`} className="h-11 w-11 sm:h-9 sm:w-9"><a href={`mailto:${row.email}`}><Mail className="h-4 w-4" /></a></Button>}
+                        {instagram && <Button asChild size="icon" variant="outline" aria-label={`Open Instagram for ${personName}`} title={`Open @${instagram.handle} on Instagram`} className="h-11 w-11 border-pink-500/30 text-pink-400 hover:bg-pink-500/10 hover:text-pink-400 sm:h-9 sm:w-9"><a href={instagram.href} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()}><Instagram className="h-4 w-4" /></a></Button>}
                         <div className="min-w-0 flex-1" />
                         {row.stage === "hired" && row.application_id ? (
                           row.onboarding_status === "ready_to_promote" ? (

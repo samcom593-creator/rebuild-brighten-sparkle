@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Package, 
   Clock, 
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { LeadPaymentTracker } from "@/components/dashboard/LeadPaymentTracker";
+import { FreeLeadsStatusCard } from "@/components/dashboard/FreeLeadsStatusCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -112,6 +114,24 @@ export default function PurchaseLeads() {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
+
+  // FreeLeadsStatusCard keys on agents.id (get_agent_free_leads_status(p_agent_id)), NOT auth.uid().
+  const myAgent = useQuery({
+    queryKey: ["purchase-leads-my-agent", user?.id],
+    enabled: Boolean(user?.id),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", user!.id)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data?.id ?? null;
+    },
+  });
+  const myAgentId = myAgent.data ?? null;
 
   const handleStripeCheckout = async (tier: string) => {
     if (!user) {
@@ -354,6 +374,8 @@ export default function PurchaseLeads() {
             </div>
           </Card>
         </div>
+
+        {user && myAgentId && <FreeLeadsStatusCard agentId={myAgentId} />}
 
         {/* Package Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

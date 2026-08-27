@@ -3,16 +3,14 @@ import {
   CheckCircle2,
   ExternalLink,
   GraduationCap,
-  MessageCircle,
+  MessageSquare,
   ShieldAlert,
 } from "lucide-react";
 
-import { SCHEDULING_LINKS } from "@/lib/apexConfig";
+import { ONBOARDING_CONTACT, SCHEDULING_LINKS, TEAM_COMMUNITY_LINKS } from "@/lib/apexConfig";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { EO_COVERAGE_URL } from "@/components/contracting/ContractingReadinessCard";
-
-const TEAM_DISCORD_URL = "https://discord.gg/JpUWA73UZX";
 
 export interface ContractingAcceptance {
   intake_id: string;
@@ -63,14 +61,19 @@ export function ContractingSuccessModal({ accepted }: { accepted: ContractingAcc
           </div>
         ) : (
           <div className="mt-5 border-t border-border pt-5">
-            <p className="text-sm font-semibold">Next: book onboarding or start training now</p>
+            <p className="text-sm font-semibold">Next: book your fast-track call with {ONBOARDING_CONTACT.name}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Prepare your EFT bank letter or voided check and your active E&amp;O certificate. Enter banking details only in a secure carrier portal.
+              {ONBOARDING_CONTACT.role}. Bring your NPN, EFT bank letter or voided check, and active E&amp;O certificate. Enter banking details only in a secure carrier portal.
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <Button asChild size="sm" className="sm:col-span-2">
-                <a href={SCHEDULING_LINKS.licensed} target="_blank" rel="noopener noreferrer">
-                  <CalendarCheck2 className="mr-1.5 h-4 w-4" /> Book instant onboarding
+                <a href={SCHEDULING_LINKS.onboarding} target="_blank" rel="noopener noreferrer">
+                  <CalendarCheck2 className="mr-1.5 h-4 w-4" /> Book with {ONBOARDING_CONTACT.name}
+                </a>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <a href={TEAM_COMMUNITY_LINKS.slack} target="_blank" rel="noopener noreferrer">
+                  <MessageSquare className="mr-1.5 h-4 w-4" /> Join team Slack
                 </a>
               </Button>
               <Button asChild size="sm" variant="outline">
@@ -81,11 +84,6 @@ export function ContractingSuccessModal({ accepted }: { accepted: ContractingAcc
               <Button asChild size="sm" variant="outline">
                 <a href={EO_COVERAGE_URL} target="_blank" rel="noopener noreferrer">
                   E&amp;O coverage <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
-                </a>
-              </Button>
-              <Button asChild size="sm" variant="outline" className="sm:col-span-2">
-                <a href={TEAM_DISCORD_URL} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="mr-1.5 h-4 w-4" /> Join team Discord
                 </a>
               </Button>
             </div>

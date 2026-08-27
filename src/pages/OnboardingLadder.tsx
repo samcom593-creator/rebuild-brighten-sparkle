@@ -90,7 +90,7 @@ const RUNGS: Rung[] = [
   { n: 2, field: "r2_agentlink", label: "Contracting profile" },
   { n: 3, field: "r3_contracted", label: "Carrier contracting" },
   { n: 4, field: "r4_appointment", label: "Carrier appointment" },
-  { n: 5, field: "r5_discord", label: "Discord access" },
+  { n: 5, field: "r5_discord", label: "Slack joined" },
   { n: 6, field: "r6_training", label: "Training course" },
   { n: 7, field: "r7_launch_ready", label: "Launch ready" },
   { n: 8, field: "r8_first_sale", label: "First sale" },

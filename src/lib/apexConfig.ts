@@ -105,8 +105,20 @@ export const PROGRESS_COLUMNS = [
 export const SCHEDULING_LINKS = {
   unlicensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
   licensed: "https://calendly.com/apexfinancialempire/1on1-call-clone",
+  /** Canonical post-hire contracting/onboarding call. Milver receives every booking. */
+  onboarding: "https://calendly.com/apexfinancialempire/apex-onboarding-call",
   samLicensed: "https://calendly.com/apexfinancialempire/1on1-call-clone",
   samUnlicensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
+} as const;
+
+export const ONBOARDING_CONTACT = {
+  name: "Milver Taca",
+  role: "Contracting & Onboarding Manager",
+  email: "milver.taca@gmail.com",
+} as const;
+
+export const TEAM_COMMUNITY_LINKS = {
+  slack: "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ",
 } as const;
 
 const CALENDLY_HOST_NAMES: Record<string, string> = {

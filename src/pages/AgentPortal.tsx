@@ -39,7 +39,7 @@ import { AgentTaskManager } from "@/components/dashboard/AgentTaskManager";
 import { AgentReferralLinkCard } from "@/components/agent/AgentReferralLinkCard";
 import { EliteReferralUnlock } from "@/components/agent/EliteReferralUnlock";
 import { AddPhotoPrompt } from "@/components/agent/AddPhotoPrompt";
-import { NextStepCandidateCard } from "@/components/next-step/NextStepCandidateCard";
+import { AgentOnboardingStepper } from "@/components/dashboard/AgentOnboardingStepper";
 import { StreakFlameCard } from "@/components/agent/StreakFlameCard";
 import { HideableCard } from "@/components/dashboard/HideableCard";
 import { HiddenCardsManager } from "@/components/dashboard/HiddenCardsManager";
@@ -469,8 +469,8 @@ export default function AgentPortal() {
         {/* Top banner: prompt to add photo if missing */}
         <AddPhotoPrompt />
 
-        {/* Next Step Engine — auto-hides for non-recruits */}
-        {agentId && <NextStepCandidateCard agentId={agentId} />}
+        {/* Live roadmap: every milestone is backed by a real system receipt. */}
+        {agentId && <AgentOnboardingStepper agentId={agentId} />}
 
         {/* Hero Section with Quick Stats */}
         <section className="space-y-4">

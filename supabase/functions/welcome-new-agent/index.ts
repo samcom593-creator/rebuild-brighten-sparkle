@@ -22,11 +22,14 @@ interface WelcomeEmailRequest {
   managerId?: string;
   courseLink?: string;
   contractingLink?: string;
+  licenseStatus?: "licensed" | "unlicensed" | "pending";
 }
 
 const defaultCourseLink = "https://partners.xcelsolutions.com/afe";
 const PORTAL_LINK = "https://apex-financial.org/agent-portal";
-const DISCORD_LINK = "https://discord.gg/JpUWA73UZX";
+const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
+const ONBOARDING_CALL_LINK = "https://calendly.com/apexfinancialempire/apex-onboarding-call";
+const APEX_TRAINING_LINK = "https://apex-financial.org/dashboard/recruiting/training/library";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -34,7 +37,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { agentName, agentEmail, agentId, managerId, courseLink, contractingLink }: WelcomeEmailRequest = await req.json();
+    const { agentName, agentEmail, agentId, managerId, courseLink, contractingLink, licenseStatus }: WelcomeEmailRequest = await req.json();
 
     console.log(`Sending welcome email to ${agentName} at ${agentEmail}`);
 
@@ -42,12 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
       auth: { persistSession: false },
     });
 
-    // 2026-08-14 Sam: every added agent joins the team Discord — the
-    // licensed-only gate meant unlicensed adds got NO invite anywhere, which
-    // surfaced as "putting them in the Discord isn't working". Invite is now
-    // unconditional in the welcome email. (send-agent-onboarding-email keeps
-    // its own gate for its drip; this is the front door.)
-    const isLicensed = true;
+    const isLicensed = licenseStatus === "licensed";
 
     // Look up manager email for CC
     let managerEmail: string | null = null;
@@ -76,7 +74,7 @@ const handler = async (req: Request): Promise<Response> => {
       .filter(Boolean)
       .filter((v, i, a) => a.indexOf(v) === i) as string[];
 
-    const finalCourseLink = courseLink || defaultCourseLink;
+    const finalCourseLink = isLicensed ? APEX_TRAINING_LINK : (courseLink || defaultCourseLink);
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -93,7 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
     .step-number { display: inline-block; background: #14b8a6; color: white; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-weight: bold; margin-right: 10px; }
     .button { display: inline-block; background: #14b8a6; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 12px 0; }
     .highlight { background: linear-gradient(135deg, rgba(20, 184, 166, 0.2), rgba(14, 165, 233, 0.2)); padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid rgba(20, 184, 166, 0.3); }
-    .discord-step { background: rgba(88, 101, 242, 0.1); border: 1px solid rgba(88, 101, 242, 0.3); padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #5865F2; }
+    .slack-step { background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.35); padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #D4AF37; }
     .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
     h3 { color: #14b8a6; margin: 0 0 12px 0; }
     p { color: #d1d5db; margin: 0 0 12px 0; }
@@ -109,40 +107,46 @@ const handler = async (req: Request): Promise<Response> => {
     <div class="content">
       <p style="font-size:18px;">Hey ${agentName},</p>
       
-      <p>Welcome to the Apex Financial team! Follow these steps to get started:</p>
-      
-      <!-- Step 1: Start Contracting -->
-      ${contractingLink ? `
-      <div class="step" style="border-left-color: #f59e0b;">
-        <h3 style="color: #f59e0b;"><span class="step-number" style="background:#f59e0b;">1</span> Start Your Contracting</h3>
-        <p><strong style="color:#f59e0b;">⚡ FIRST PRIORITY:</strong> Click below to begin your contracting process. This is the most important step to get started.</p>
-        <a href="${contractingLink}" class="button" style="background:#f59e0b;">Start Contracting →</a>
-      </div>
-      ` : ''}
-      
-      <!-- Step ${contractingLink ? '2' : '1'}: Portal -->
-      <div class="step">
-        <h3><span class="step-number">${contractingLink ? '2' : '1'}</span> Access Your Agent Portal</h3>
-        <p>Your portal is where you'll log daily numbers, track performance, and see the leaderboard.</p>
-        <a href="${PORTAL_LINK}" class="button">Open My Portal →</a>
-      </div>
-      
-      <!-- Step ${contractingLink ? '3' : '2'}: Discord (LICENSED ONLY — gate matches send-agent-onboarding-email) -->
-      ${isLicensed ? `
-      <div class="discord-step">
-        <h3 style="color:#5865F2;"><span class="step-number" style="background:#5865F2;">${contractingLink ? '3' : '2'}</span> Join Our Team Discord</h3>
-        <p>Connect with the team for daily training, support, and announcements.</p>
-        <a href="${DISCORD_LINK}" class="button" style="background:#5865F2;">Join Discord →</a>
-      </div>
-      ` : ''}
+      <p>Welcome to the Apex Financial team. Your portal now shows a live roadmap, and these are your exact next steps:</p>
 
-      <!-- Step ${contractingLink ? '4' : '3'}: Coursework -->
-      <div class="step">
-        <h3><span class="step-number">${contractingLink ? '4' : '3'}</span> Complete Your Coursework</h3>
-        <p>Complete the onboarding course to learn our systems and processes.</p>
-        <p><strong style="color:#f59e0b;">Expectation: Complete this the same day you receive it.</strong></p>
-        <a href="${finalCourseLink}" class="button">Start Coursework →</a>
+      <div class="slack-step">
+        <h3 style="color:#D4AF37;"><span class="step-number" style="background:#D4AF37;color:#111;">1</span> Join the APEX Slack</h3>
+        <p>This is the primary team workspace for daily huddles, contracting support, training, scripts, and sales wins.</p>
+        <a href="${SLACK_LINK}" class="button" style="background:#D4AF37;color:#111 !important;">Join Team Slack →</a>
       </div>
+
+      ${isLicensed ? `
+      <div class="step" style="border-left-color:#D4AF37;">
+        <h3 style="color:#D4AF37;"><span class="step-number" style="background:#D4AF37;color:#111;">2</span> Book With Milver</h3>
+        <p>Milver Taca is your Contracting &amp; Onboarding Manager. Book the 30-minute call so your first-week plan and carrier setup are clear.</p>
+        <a href="${ONBOARDING_CALL_LINK}" class="button" style="background:#D4AF37;color:#111 !important;">Book My Milver Call →</a>
+      </div>
+      <div class="step">
+        <h3><span class="step-number">3</span> Complete Native APEX Contracting</h3>
+        <p>Submit your NPN and profile once. APEX dispatches the contracting desk and spreadsheet automatically.</p>
+        <a href="${contractingLink || "https://apex-financial.org/start-contracting"}" class="button">Complete Contracting →</a>
+      </div>
+      ` : `
+      <div class="step">
+        <h3><span class="step-number">2</span> Start Your Licensing Course</h3>
+        <p>Work the course in order, then update your portal at course, exam, fingerprints, and license milestones.</p>
+        <a href="${finalCourseLink}" class="button">Start Licensing →</a>
+      </div>
+      `}
+
+      <div class="step">
+        <h3><span class="step-number">${isLicensed ? '4' : '3'}</span> Open Your Live Roadmap</h3>
+        <p>Your portal always shows the one action to take now, your completed milestones, and anything still locked.</p>
+        <a href="${PORTAL_LINK}" class="button">Open My Roadmap →</a>
+      </div>
+
+      ${isLicensed ? `
+      <div class="step">
+        <h3><span class="step-number">5</span> Complete Online Training</h3>
+        <p>Finish the onboarding, script, objections, ReadyMode, pipeline, deal-posting, and underwriting walkthroughs before launch.</p>
+        <a href="${finalCourseLink}" class="button">Start Training →</a>
+      </div>
+      ` : ''}
       
       <!-- Expectations -->
       <div class="highlight">

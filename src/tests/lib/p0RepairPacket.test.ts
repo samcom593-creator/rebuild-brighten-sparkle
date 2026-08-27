@@ -10,7 +10,7 @@ describe("P0 repair packet", () => {
     const result = source("components/contracting/ContractingSuccessModal.tsx");
     expect(page).toContain("ContractingSuccessModal");
     expect(result).toContain("Contracting Initiated — Fast Track Active");
-    expect(result).toContain("SCHEDULING_LINKS.licensed");
+    expect(result).toContain("SCHEDULING_LINKS.onboarding");
     expect(`${page}\n${result}`.toLowerCase()).not.toContain("in a queue");
   });
 

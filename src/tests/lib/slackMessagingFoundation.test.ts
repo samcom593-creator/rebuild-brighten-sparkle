@@ -32,7 +32,8 @@ describe("Slack messaging foundation", () => {
     const result = source("src/components/contracting/ContractingSuccessModal.tsx");
     expect(page).toContain("<ContractingSuccessModal accepted={accepted}");
     expect(result).toContain("Contracting Initiated — Fast Track Active");
-    expect(result).toContain("Book instant onboarding");
+    expect(result).toContain("Book with {ONBOARDING_CONTACT.name}");
+    expect(result).toContain("Join team Slack");
     expect(`${page}\n${result}`.toLowerCase()).not.toContain("in a queue");
     expect(`${page}\n${result}`.toLowerCase()).not.toContain("pending review");
   });

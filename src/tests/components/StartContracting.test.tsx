@@ -88,9 +88,9 @@ describe("StartContracting · after a durable acceptance", () => {
 
     await waitFor(() => expect(screen.getByText(/profile is active/i)).toBeTruthy());
     expect(screen.getByRole("heading", { name: "Contracting Initiated — Fast Track Active" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /book instant onboarding/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /book with milver taca/i })).toHaveAttribute(
       "href",
-      "https://calendly.com/apexfinancialempire/1on1-call-clone",
+      "https://calendly.com/apexfinancialempire/apex-onboarding-call",
     );
     expect(screen.queryByText(/queued/i)).toBeNull();
     expect(screen.queryByText(/has been notified/i)).toBeNull();
@@ -110,9 +110,9 @@ describe("StartContracting · after a durable acceptance", () => {
     expect(links.map((link) => link.href)).not.toContain("https://example.com/obsolete");
     expect(screen.getByRole("link", { name: /sign in to onboarding/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /e&o coverage/i })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /join team discord/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /join team slack/i })).toHaveAttribute(
       "href",
-      "https://discord.gg/JpUWA73UZX",
+      "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ",
     );
   });
 

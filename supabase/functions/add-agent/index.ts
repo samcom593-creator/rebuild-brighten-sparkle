@@ -593,7 +593,9 @@ const handler = async (req: Request): Promise<Response> => {
     const welcomeEmailStatus = await invokeSideEffect("welcome-new-agent", {
       agentName: `${firstName} ${lastName}`,
       agentEmail: normalizedEmail,
+      agentId: newAgent.id,
       managerId,
+      licenseStatus: agentLicenseStatus,
       contractingLink,
     });
 

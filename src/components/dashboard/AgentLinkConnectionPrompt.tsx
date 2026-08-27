@@ -39,12 +39,15 @@ export function AgentLinkConnectionPrompt({ force, message, hideForNonAgents = t
       if (isAdmin && !force) { setStatus("connected"); return; }
       const { data: agent } = await supabase
         .from("agents")
-        .select("id, insuracloud_api_token, insuracloud_user_id")
+        .select("id, insuracloud_user_id")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
       if (!agent) { setStatus("not_an_agent"); return; }
-      const hasToken = !!agent.insuracloud_api_token;
+      // insuracloud_api_token is column-restricted (audit 2026-08-27); the owner
+      // reads their own via the RPC. Presence is all this prompt needs.
+      const { data: ownToken } = await supabase.rpc("get_my_insuracloud_token" as never);
+      const hasToken = !!ownToken;
       const hasUserId = !!agent.insuracloud_user_id;
       setStatus(hasToken || hasUserId ? "connected" : "not_connected");
     })();

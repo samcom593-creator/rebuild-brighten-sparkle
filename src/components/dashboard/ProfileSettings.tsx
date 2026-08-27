@@ -187,12 +187,10 @@ function InsuraCloudTokenSection() {
   useEffect(() => {
     if (!user?.id) return;
     const load = async () => {
-      const { data } = await supabase
-        .from("agents")
-        .select("insuracloud_api_token" as any)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (data) setToken((data as any).insuracloud_api_token || "");
+      // Own token via SECURITY DEFINER RPC — the column is admin/owner-only at
+      // the DB (audit 2026-08-27), no longer readable off the agents row.
+      const { data } = await supabase.rpc("get_my_insuracloud_token" as never);
+      setToken((data as unknown as string) || "");
       setLoaded(true);
     };
     load();
@@ -202,9 +200,7 @@ function InsuraCloudTokenSection() {
     if (!user?.id) return;
     setSaving(true);
     try {
-      const { error } = await (supabase.from("agents") as any)
-        .update({ insuracloud_api_token: token || null })
-        .eq("user_id", user.id);
+      const { error } = await supabase.rpc("set_my_insuracloud_token" as never, { p_token: token || "" } as never);
       if (error) throw error;
       toast({ title: "InsuraCloud token saved" });
     } catch (e: any) {

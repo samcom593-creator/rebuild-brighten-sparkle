@@ -78,12 +78,15 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
     }
     setSaving(true);
     try {
+      // The token is read server-side by the deal-submit path; this form only
+      // needs the agent id. (insuracloud_api_token is now column-restricted —
+      // owners read it via get_my_insuracloud_token(), audit 2026-08-27.)
       const agentRes = await supabase
         .from("agents")
-        .select("id, insuracloud_api_token" as any)
+        .select("id")
         .eq("user_id", user.id)
         .maybeSingle();
-      const agentRow = agentRes.data as unknown as { id: string; insuracloud_api_token: string | null } | null;
+      const agentRow = agentRes.data as unknown as { id: string } | null;
       if (!agentRow?.id) throw new Error("No agent record found for your account");
 
       const { data: deal, error } = await supabase.from("deals" as any).insert({

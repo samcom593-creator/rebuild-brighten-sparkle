@@ -9,6 +9,11 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  resolveAgentNames,
+  AGENT_NAME_FALLBACK,
+  type AgentNameSource,
+} from "@/shared/api/agentDisplayNames";
 import { useAuth } from "@/hooks/useAuth";
 import { Award, Loader2, Crown, Medal, Trophy, Copy } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -70,9 +75,15 @@ export default function MyPlaques() {
           if (r.agent_id) ids.add(r.agent_id);
         });
         const { data: agents } = await supabase.from("agents")
-          .select("id, profile:profiles(full_name, avatar_url)")
+          .select("id, user_id, display_name")
           .in("id", Array.from(ids));
-        const byId = new Map((agents ?? []).map((a: any) => [a.id, a.profile]));
+        const resolved = await resolveAgentNames((agents ?? []) as AgentNameSource[]);
+        const byId = new Map(
+          (agents ?? []).map((a: any) => [
+            a.id,
+            { full_name: resolved.get(a.id)?.name ?? null, avatar_url: resolved.get(a.id)?.avatarUrl ?? null },
+          ]),
+        );
 
         const rewardCards: Card[] = ((rewardsRes as any).data ?? []).map((r: any) => ({
           id: `reward-${r.id}`,

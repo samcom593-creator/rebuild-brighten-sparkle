@@ -21,6 +21,11 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  resolveAgentNames,
+  AGENT_NAME_FALLBACK,
+  type AgentNameSource,
+} from "@/shared/api/agentDisplayNames";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -146,16 +151,18 @@ export default function HallOfFame() {
           id, agent_id, milestone_type, milestone_date, amount,
           badge_label, color_hex, image_svg_url, image_png_url,
           custom_photo_url, awarded_at, share_slug,
-          agent:agents!inner(profile:profiles!agents_profile_id_fkey(full_name, avatar_url))
+          agent:agents!inner(id, user_id, display_name)
         `)
         .order("awarded_at", { ascending: false })
         .limit(240);
       if (error) throw error;
-      // Flatten the agent.profile join
+      const resolved = await resolveAgentNames(
+        (data ?? []).map((row: any) => row.agent).filter(Boolean) as AgentNameSource[],
+      );
       return (data ?? []).map((row: any) => ({
         ...row,
-        agent_name: row.agent?.profile?.full_name ?? "—",
-        agent_photo: row.agent?.profile?.avatar_url ?? null,
+        agent_name: resolved.get(row.agent?.id)?.name ?? AGENT_NAME_FALLBACK,
+        agent_photo: resolved.get(row.agent?.id)?.avatarUrl ?? null,
       })) as Plaque[];
     },
   });
@@ -202,10 +209,13 @@ export default function HallOfFame() {
         .from("plaque_awards")
         .select(`
           agent_id, amount,
-          agent:agents!inner(profile:profiles!agents_profile_id_fkey(full_name, avatar_url))
+          agent:agents!inner(id, user_id, display_name)
         `)
         .limit(1000);
       if (error) throw error;
+      const resolved = await resolveAgentNames(
+        (data ?? []).map((row: any) => row.agent).filter(Boolean) as AgentNameSource[],
+      );
       const byAgent = new Map<string, TopEarner>();
       for (const row of (data ?? []) as any[]) {
         const id = row.agent_id;
@@ -217,8 +227,8 @@ export default function HallOfFame() {
         } else {
           byAgent.set(id, {
             agent_id: id,
-            agent_name: row.agent?.profile?.full_name ?? "—",
-            avatar_url: row.agent?.profile?.avatar_url ?? null,
+            agent_name: resolved.get(row.agent?.id)?.name ?? AGENT_NAME_FALLBACK,
+            avatar_url: resolved.get(row.agent?.id)?.avatarUrl ?? null,
             plaque_count: 1,
             total_amount: amount,
           });

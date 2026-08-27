@@ -66,6 +66,18 @@ if match '^(supabase/functions/.*\.(ts|tsx)$|scripts/check-unsafe-supabase-catch
   node scripts/check-unsafe-supabase-catch.mjs
 fi
 
+# ---------- check-agent-name-fallback (MP-327) ----------
+# Trigger: any src ts/tsx or the script itself. MP-325 closed the profiles read
+# and every `profile:profiles(full_name)` embed silently began returning null
+# for everybody but the viewer — no error, no 403, just each surface rendering
+# its own fallback. Two rendered the literal "Agent", so 56 of 57 wrong rows on
+# the agent portal looked completely normal. The fallback is what made the
+# breakage invisible, so the fallback is what is gated.
+if match '^(src/.*\.(tsx?|jsx?)$|scripts/check-agent-name-fallback\.mjs$)'; then
+  echo "[pre-commit] Name-resolution-affecting file staged — running check:agent-name-fallback…"
+  node scripts/check-agent-name-fallback.mjs
+fi
+
 # ---------- check-forbidden-language (wave-29) ----------
 # Trigger: any user-facing text file. Script walks whole repo, so any new copy
 # anywhere should be scanned. ~1s when fired.

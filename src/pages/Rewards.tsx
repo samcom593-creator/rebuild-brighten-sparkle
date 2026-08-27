@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { Award, Crown, Medal, Sparkles, Loader2, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  resolveAgentNames,
+  AGENT_NAME_FALLBACK,
+  type AgentNameSource,
+} from "@/shared/api/agentDisplayNames";
 import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -44,9 +49,15 @@ export default function Rewards() {
         const ids = (data as any[]).map(r => r.agent_id);
         const { data: agents } = await supabase
           .from("agents")
-          .select("id, profile:profiles(full_name, avatar_url)")
+          .select("id, user_id, display_name")
           .in("id", ids);
-        const byId = new Map((agents ?? []).map((a: any) => [a.id, a.profile]));
+        const resolved = await resolveAgentNames((agents ?? []) as AgentNameSource[]);
+        const byId = new Map(
+          (agents ?? []).map((a: any) => [
+            a.id,
+            { full_name: resolved.get(a.id)?.name ?? null, avatar_url: resolved.get(a.id)?.avatarUrl ?? null },
+          ]),
+        );
 
         setRewards((data as any[]).map(r => ({
           ...r,

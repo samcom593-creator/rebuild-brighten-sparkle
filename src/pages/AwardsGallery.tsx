@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Trophy, Search, Filter, Mail, Loader2, Edit3, Upload, RefreshCw, Camera, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  resolveAgentNames,
+  AGENT_NAME_FALLBACK,
+  type AgentNameSource,
+} from "@/shared/api/agentDisplayNames";
 import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
@@ -269,17 +274,18 @@ export default function AwardsGallery() {
         const list = (pl ?? []) as PlaqueRow[];
         const agentIds = [...new Set(list.map(p => p.agent_id).filter(Boolean))];
         const { data: agents } = agentIds.length
-          ? await supabase.from("agents").select("id, profile:profiles(full_name, avatar_url, photo_url)").in("id", agentIds)
+          ? await supabase.from("agents").select("id, user_id, display_name").in("id", agentIds)
           : { data: [] } as any;
+        const resolved = await resolveAgentNames((agents ?? []) as AgentNameSource[]);
         const nameMap: Record<string, string> = {};
         const photoMap: Record<string, string | null> = {};
         for (const a of (agents ?? []) as any[]) {
-          nameMap[a.id] = a.profile?.full_name ?? "Agent";
-          photoMap[a.id] = a.profile?.avatar_url ?? a.profile?.photo_url ?? null;
+          nameMap[a.id] = resolved.get(a.id)?.name ?? AGENT_NAME_FALLBACK;
+          photoMap[a.id] = resolved.get(a.id)?.avatarUrl ?? null;
         }
         if (!cancelled) setRows(list.map(r => ({
           ...r,
-          agent_name: nameMap[r.agent_id] ?? "Agent",
+          agent_name: nameMap[r.agent_id] ?? AGENT_NAME_FALLBACK,
           agent_photo: r.custom_photo_url ?? photoMap[r.agent_id] ?? null,
         })));
       } finally {

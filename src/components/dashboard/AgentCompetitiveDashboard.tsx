@@ -4,6 +4,11 @@ import { format, startOfWeek, endOfWeek } from "date-fns";
 import { getBusinessWeekBounds } from "@/lib/dateUtils";
 import { Trophy, TrendingUp, Target, Crown, Medal, Users, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  resolveAgentNames,
+  AGENT_NAME_FALLBACK,
+  type AgentNameSource,
+} from "@/shared/api/agentDisplayNames";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -65,15 +70,12 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
       // ── Weekly production for all active agents ──
       const { data: agents } = await supabase
         .from("agents")
-        .select("id, profile:profiles(full_name)")
+        .select("id, user_id, display_name")
         .eq("is_deactivated", false)
         .eq("is_inactive", false);
 
       const agentIds = (agents ?? []).map(a => a.id);
-      const nameMap: Record<string, string> = {};
-      for (const a of (agents ?? []) as any[]) {
-        nameMap[a.id] = a.profile?.full_name ?? "Agent";
-      }
+      const nameByAgent = await resolveAgentNames((agents ?? []) as AgentNameSource[]);
 
       // Weekly ALP uses posted_at so the agent portal, dashboard, and
       // leaderboards all read the same truth layer.
@@ -91,7 +93,11 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
       }
 
       const lb = agentIds
-        .map(id => ({ agent_id: id, full_name: nameMap[id] ?? "Agent", weekly_aop: alpMap[id] ?? 0 }))
+        .map(id => ({
+          agent_id: id,
+          full_name: nameByAgent.get(id)?.name ?? AGENT_NAME_FALLBACK,
+          weekly_aop: alpMap[id] ?? 0,
+        }))
         .sort((a, b) => b.weekly_aop - a.weekly_aop);
 
       const myProdIdx = lb.findIndex(x => x.agent_id === agentId && x.weekly_aop > 0);

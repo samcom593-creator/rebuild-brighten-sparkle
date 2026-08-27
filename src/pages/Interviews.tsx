@@ -50,7 +50,13 @@ type Applicant = {
 };
 type PipelineResponse = {
   applicants: Applicant[]; counts: Record<string, number>; total: number;
+  activeHires: ActiveHire[];
   role: ActorRole; generatedAt: string;
+};
+type ActiveHire = {
+  agent_id: string; display_name: string; email: string | null; phone: string | null;
+  license_status: string; onboarding_stage: string | null; hired_at: string;
+  contracted_at: string | null; first_deal_at: string | null; source_application_id: string | null;
 };
 type OnboardingTruth = {
   licensed_active_agents: number; licensed_active_without_onboarding_call: number;
@@ -63,9 +69,9 @@ type OnboardingResponse = {
   calls: OnboardingCall[]; truth: OnboardingTruth | null; gaps: OnboardingGap[];
   role: ActorRole; generatedAt: string;
 };
-type Tab = "open" | "overdue" | "upcoming" | "all" | "onboarding";
+type Tab = "open" | "overdue" | "upcoming" | "hired" | "all" | "onboarding";
 const TABS: ReadonlyArray<readonly [Tab, string]> = [
-  ["open", "Open"], ["overdue", "Overdue"], ["upcoming", "Upcoming"], ["all", "All"], ["onboarding", "Onboarding"],
+  ["open", "Open"], ["overdue", "Overdue"], ["upcoming", "Upcoming"], ["hired", "Active hires"], ["onboarding", "Onboarding"], ["all", "History"],
 ];
 function initialTab(): Tab {
   const requested = new URLSearchParams(window.location.search).get("tab");
@@ -243,11 +249,12 @@ export default function Interviews() {
 
   const now = new Date();
   const applicants = pipeline.data?.applicants ?? [];
+  const activeHires = pipeline.data?.activeHires ?? [];
   const overdue = applicants.filter((row) => row.appointment_at && isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage) && row.stage !== "interview_complete");
   const upcoming = applicants.filter((row) => row.appointment_at && !isPast(new Date(row.appointment_at)) && OPEN.includes(row.stage));
   const openAll = applicants.filter((row) => OPEN.includes(row.stage));
   const needsDecision = applicants.filter((row) => row.stage === "interview_complete").length;
-  const source = tab === "overdue" ? overdue : tab === "upcoming" ? upcoming : tab === "all" ? applicants : openAll;
+  const source = tab === "overdue" ? overdue : tab === "upcoming" ? upcoming : tab === "all" ? applicants : tab === "hired" ? [] : openAll;
   const term = query.trim().toLowerCase();
   const filtered = term
     ? source.filter((row) => [row.name, row.company, row.email, row.phone, row.instagram].some((value) => (value ?? "").toLowerCase().includes(term)))
@@ -440,6 +447,60 @@ export default function Interviews() {
     );
   };
 
+  const renderActiveHires = () => {
+    if (pipeline.isLoading) {
+      // stable-key-allow:static-active-hire-skeleton — fixed placeholders never reorder or hold state.
+      return <div className="space-y-2">{Array.from({ length: 4 }).map((_, index) => <div key={index} className="h-24 animate-pulse rounded-xl border border-border bg-muted/20" />)}</div>;
+    }
+    if (!pipeline.data) {
+      return <div role="alert" className="rounded-xl border border-destructive/30 p-8 text-center text-sm text-destructive">The canonical hire roster is unavailable; no hire count should be read as zero. <button className="underline" onClick={() => pipeline.refetch()}>Retry</button></div>;
+    }
+    const visibleHires = term
+      ? activeHires.filter((hire) => [hire.display_name, hire.email, hire.phone, hire.license_status, hire.onboarding_stage].some((value) => (value ?? "").toLowerCase().includes(term)))
+      : activeHires;
+    if (!visibleHires.length) {
+      return <div role="status" className="rounded-xl border border-border p-10 text-center text-sm text-muted-foreground">{term ? `No active hires match “${query.trim()}”.` : "No canonical active hires have been added this month."}</div>;
+    }
+    return (
+      <section aria-labelledby="active-hires-heading" className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 id="active-hires-heading" className="text-base font-black">Active hires · this month</h2>
+            <p className="text-xs text-muted-foreground">Licensed and unlicensed hires from the canonical team roster, including Add Agent and one-link intake.</p>
+          </div>
+          <Badge variant="outline" className="border-success/30 bg-success/5 text-success">{visibleHires.length} people</Badge>
+        </div>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {visibleHires.map((hire) => {
+            const callHref = phoneHref(hire.phone);
+            const textHref = smsHref(hire.phone);
+            const stage = (hire.onboarding_stage ?? "onboarding").replace(/_/g, " ");
+            return (
+              <article key={hire.agent_id} className="rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/30">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-success/20 bg-success/10 text-sm font-black text-success">{initials(hire.display_name)}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-bold">{hire.display_name}</p>
+                      <Badge variant="outline" className={hire.license_status === "licensed" ? "border-success/30 text-success" : "border-warning/30 text-warning"}>{hire.license_status}</Badge>
+                    </div>
+                    <p className="mt-1 text-xs capitalize text-muted-foreground">Next · {stage} · hired {format(new Date(hire.hired_at), "MMM d")}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {callHref && <Button asChild size="icon" aria-label={`Call ${hire.display_name}`} className="h-10 w-10"><a href={callHref}><Phone className="h-4 w-4" /></a></Button>}
+                      {textHref && <Button asChild size="icon" variant="outline" aria-label={`Text ${hire.display_name}`} className="h-10 w-10"><a href={textHref}><MessageSquare className="h-4 w-4" /></a></Button>}
+                      {hire.email && <Button asChild size="icon" variant="outline" aria-label={`Email ${hire.display_name}`} className="h-10 w-10"><a href={`mailto:${hire.email}`}><Mail className="h-4 w-4" /></a></Button>}
+                      <Button asChild size="sm" variant="outline" className="h-10"><a href={`/dashboard/profile?agentId=${hire.agent_id}`}><ExternalLink className="h-4 w-4" /> Open profile</a></Button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    );
+  };
+
   const activeGeneratedAt = tab === "onboarding" ? onboarding.data?.generatedAt : pipeline.data?.generatedAt;
   const refreshing = tab === "onboarding" ? onboarding.isFetching : pipeline.isFetching;
   const refreshActiveTab = () => {
@@ -490,13 +551,13 @@ export default function Interviews() {
             onClick: () => switchTab("open"),
           },
           {
-            label: "Hired",
-            value: pipeline.data ? pipeline.data.counts.hired ?? 0 : null,
-            detail: "Interview wins moved into onboarding",
+            label: "Active hires",
+            value: pipeline.data ? activeHires.length : null,
+            detail: "Canonical licensed + unlicensed hires this month",
             icon: UserCheck,
             tone: "good",
-            active: tab === "all",
-            onClick: () => switchTab("all"),
+            active: tab === "hired",
+            onClick: () => switchTab("hired"),
           },
           {
             label: "Onboarding gaps",
@@ -536,7 +597,7 @@ export default function Interviews() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:w-80">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === "onboarding" ? "Search agent, phone, or email" : "Search name, company, Instagram, phone, or email"} className="h-11 pl-8 sm:h-9" aria-label="Search interviews" />
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={tab === "onboarding" || tab === "hired" ? "Search agent, phone, email, license, or stage" : "Search name, company, Instagram, phone, or email"} className="h-11 pl-8 sm:h-9" aria-label="Search interviews" />
         </div>
         <div className="flex max-w-full gap-1.5 overflow-x-auto rounded-xl border border-border bg-card/70 p-1.5 shadow-sm">
           {TABS.map(([key, label]) => (
@@ -553,6 +614,8 @@ export default function Interviews() {
 
       {tab === "onboarding" ? (
         renderOnboarding()
+      ) : tab === "hired" ? (
+        renderActiveHires()
       ) : pipeline.isLoading ? (
         // stable-key-allow:static-interview-skeleton — fixed five placeholders never reorder or hold state.
         <div className="space-y-2">{Array.from({ length: 5 }).map((_, index) => <div key={index} className="h-24 animate-pulse rounded-lg border border-border bg-muted/20" />)}</div>

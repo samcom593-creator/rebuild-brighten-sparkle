@@ -10,21 +10,26 @@ const WORKSPACE_VIEWS = [
   { label: "Applicants", detail: "Work new leads", href: "/dashboard/recruiting", icon: Users, exact: true },
   { label: "Interviews", detail: "Book and decide", href: "/dashboard/recruiting/interviews", icon: CalendarClock },
   { label: "Follow-ups", detail: "Clear overdue work", href: "/dashboard/recruiting/follow-ups", icon: RotateCcw },
-  { label: "Hires", detail: "Launch onboarding", href: "/dashboard/recruiting/hires?status=hired", icon: UserCheck },
+  { label: "Hires", detail: "Launch onboarding", href: "/dashboard/recruiting/interviews?tab=hired", icon: UserCheck },
   { label: trainingLabel, detail: "Ramp to field", href: "/dashboard/recruiting/training", icon: BookOpenCheck },
 ] as const;
 
 /** One URL-addressable recruiting journey; no second product or sidebar island. */
 export function RecruitingWorkspaceNav() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const activeTab = new URLSearchParams(search).get("tab");
 
   return (
     <nav aria-label="Recruiting workspace" className="overflow-x-auto rounded-xl border border-border/80 bg-card/70 p-1.5 shadow-sm backdrop-blur">
       <div className="flex min-w-max gap-1.5">
         {WORKSPACE_VIEWS.map((view) => {
-          const active = "exact" in view && view.exact
-            ? pathname === view.href
-            : pathname.startsWith(view.href.split("?")[0]);
+          const active = view.label === "Hires"
+            ? pathname === "/dashboard/recruiting/interviews" && activeTab === "hired"
+            : view.label === "Interviews"
+              ? pathname === "/dashboard/recruiting/interviews" && activeTab !== "hired"
+              : "exact" in view && view.exact
+                ? pathname === view.href
+                : pathname.startsWith(view.href.split("?")[0]);
           const Icon = view.icon;
           return (
             <Link

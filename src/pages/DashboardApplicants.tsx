@@ -123,6 +123,7 @@ interface Application {
   is_duplicate?: boolean;
   is_ghosted?: boolean;
   first_contact_attempt_at?: string | null;
+  next_action_due_at?: string | null;
   phone_bad_at?: string | null;
   phone_bad_reason?: string | null;
   couldnt_reach_email_sent_at?: string | null;
@@ -146,6 +147,29 @@ const CARD_PREDICATES = {
     return s === "rejected" || s === "disqualified";
   },
 } as const;
+
+function phoenixDayKey(value: string | Date) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Phoenix", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(date);
+  const part = (type: "year" | "month" | "day") => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+function isNewToday(app: Application, now = new Date()) {
+  return Boolean(app.created_at) && phoenixDayKey(app.created_at) === phoenixDayKey(now);
+}
+
+// One definition powers both the KPI and its click-filter. Explicit due dates
+// win; otherwise a still-open application becomes due after 48 untouched hours.
+function isFollowupDue(app: Application, now = new Date()) {
+  if (app.closed_at || app.contracted_at || app.terminated_at) return false;
+  const dueAt = app.next_action_due_at;
+  if (dueAt && new Date(dueAt).getTime() <= now.getTime()) return true;
+  if (app.last_contacted_at) return false;
+  return now.getTime() - new Date(app.created_at).getTime() > 48 * 60 * 60 * 1000;
+}
 
 const APPLICATION_SELECT =
   // 2026-07-27: `status` was missing from this list while the Application interface
@@ -254,6 +278,7 @@ export default function DashboardApplicants() {
   const [uplineFilter, setUplineFilter] = useState<string>("all");
   const [interviewFilter, setInterviewFilter] = useState<string>("all");
   const [needsFollowupOnly, setNeedsFollowupOnly] = useState(false);
+  const [newTodayOnly, setNewTodayOnly] = useState(false);
   const [notesApp, setNotesApp] = useState<Application | null>(null);
   const [recorderApp, setRecorderApp] = useState<Application | null>(null);
   const [terminateApp, setTerminateApp] = useState<Application | null>(null);
@@ -482,6 +507,19 @@ export default function DashboardApplicants() {
     queryFn: fetchApplicationsQuery,
     enabled: !!user,
     staleTime: 60000,
+  });
+
+  const activeHireTruth = useQuery<{ activeHires: Array<{ agent_id: string }>; generatedAt: string }>({
+    queryKey: ["interviews-pipeline", "active-hires-truth"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("interviews-pipeline");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data as { activeHires: Array<{ agent_id: string }>; generatedAt: string };
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 
   const applications = queryData?.apps || [];
@@ -820,12 +858,9 @@ export default function DashboardApplicants() {
 
     let matchesNeedsFollowup = true;
     if (needsFollowupOnly) {
-      const ageMs = Date.now() - new Date(app.created_at).getTime();
-      // last_contacted_at only — contacted_at is the fake bulk-stamped column
-      // (see needsFollowupCount). Keeps the filter in sync with the card count.
-      const hasContact = Boolean((app as any).last_contacted_at);
-      matchesNeedsFollowup = ageMs > 48 * 60 * 60 * 1000 && !hasContact;
+      matchesNeedsFollowup = isFollowupDue(app);
     }
+    const matchesNewToday = !newTodayOnly || isNewToday(app);
 
     const matchesContacted =
       contactedParam === "untouched"
@@ -860,10 +895,10 @@ export default function DashboardApplicants() {
 
     return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot &&
       matchesDuplicates && matchesDuplicatesOnly && matchesAgent && matchesUpline && matchesInterview &&
-      matchesNeedsFollowup && matchesStage && matchesContacted && matchesPipelineStage;
+      matchesNeedsFollowup && matchesNewToday && matchesStage && matchesContacted && matchesPipelineStage;
   }, [
     searchQuery, statusFilter, licenseFilter, myDirectsOnly, hotLeadsOnly, showDuplicates,
-    duplicatesOnly, agentFilter, uplineFilter, interviewFilter, needsFollowupOnly,
+    duplicatesOnly, agentFilter, uplineFilter, interviewFilter, needsFollowupOnly, newTodayOnly,
     contactedParam, stageFilter, agentId, recruiterDirectory, interviewByAppId, pipelineStage,
   ]);
 
@@ -951,18 +986,7 @@ export default function DashboardApplicants() {
   );
 
   const needsFollowupCount = useMemo(() => {
-    let n = 0;
-    for (const a of activeApplications) {
-      const ageMs = Date.now() - new Date(a.created_at).getTime();
-      // Trust ONLY last_contacted_at. contacted_at was bulk-stamped fake (batches
-      // of 10 at round times on 2026-07-28), so including it made this read ~1
-      // when 384 applicants are genuinely 48h+ with zero real contact — the exact
-      // "the data isn't real" problem. Mirror callPriority(), which already
-      // ignores contacted_at.
-      const hasContact = Boolean((a as any).last_contacted_at);
-      if (ageMs > 48 * 60 * 60 * 1000 && !hasContact) n++;
-    }
-    return n;
+    return activeApplications.filter((application) => isFollowupDue(application)).length;
   }, [activeApplications]);
 
   const activeDuplicateCount = useMemo(
@@ -1037,6 +1061,7 @@ export default function DashboardApplicants() {
     if (hotLeadsOnly) chips.push({ key: "hot", label: "Hot leads only", clear: () => setHotLeadsOnly(false) });
     if (duplicatesOnly) chips.push({ key: "dups", label: "Duplicates only", clear: () => setDuplicatesOnly(false) });
     if (needsFollowupOnly) chips.push({ key: "needs", label: "Needs follow-up", clear: () => setNeedsFollowupOnly(false) });
+    if (newTodayOnly) chips.push({ key: "today", label: "New today · Phoenix", clear: () => setNewTodayOnly(false) });
     if (agentFilter !== "all") chips.push({ key: "agent", label: `Agent: ${recruiterDirectory.get(agentFilter)?.name || agentFilter}`, clear: () => setAgentFilter("all") });
     if (uplineFilter !== "all") chips.push({ key: "upline", label: `Upline: ${uplineNames.get(uplineFilter) || uplineFilter}`, clear: () => setUplineFilter("all") });
     if (interviewFilter !== "all") chips.push({ key: "interview", label: `Interview: ${interviewFilter}`, clear: () => setInterviewFilter("all") });
@@ -1047,7 +1072,7 @@ export default function DashboardApplicants() {
     return chips;
   }, [
     searchQuery, statusFilter, licenseFilter, myDirectsOnly, hotLeadsOnly, duplicatesOnly,
-    needsFollowupOnly, agentFilter, uplineFilter, interviewFilter, recruiterDirectory, uplineNames,
+    needsFollowupOnly, newTodayOnly, agentFilter, uplineFilter, interviewFilter, recruiterDirectory, uplineNames,
     pipelineStage,
   ]);
 
@@ -1059,6 +1084,7 @@ export default function DashboardApplicants() {
     setHotLeadsOnly(false);
     setDuplicatesOnly(false);
     setNeedsFollowupOnly(false);
+    setNewTodayOnly(false);
     setAgentFilter("all");
     setUplineFilter("all");
     setInterviewFilter("all");
@@ -1070,32 +1096,26 @@ export default function DashboardApplicants() {
   const counterTotal = statusFilter === "terminated" ? terminatedApplications.length : activeApplications.length;
   const counterLabel = statusFilter === "terminated" ? "terminated applications" : "active applications";
 
-  const { totalLeads, inFunnel, todayCount, hiredThisMonth } = useMemo(() => {
-    const tzNow = new Date();
-    const todayDate = new Date(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate());
-    const todayIso = todayDate.toISOString().slice(0, 10);
-    const monthStartMs = new Date(tzNow.getFullYear(), tzNow.getMonth(), 1).getTime();
-    let inFunnel = 0, todayCount = 0, hiredThisMonth = 0;
+  const { totalLeads, inFunnel, todayCount } = useMemo(() => {
+    let inFunnel = 0, todayCount = 0;
     // wave-p1q: count off activeApplications ONLY — this is the population
     // the click-filter operates on (baseApplications = activeApplications
     // for every non-terminated filter). Counting off active+terminated
     // was the root cause of card N -> click -> fewer-than-N rows.
     for (const a of activeApplications) {
-      if (a.closed_at) {
-        const t = new Date(a.closed_at).getTime();
-        if (!Number.isNaN(t) && t >= monthStartMs) hiredThisMonth++;
-      }
       if (CARD_PREDICATES.in_funnel(a)) inFunnel++;
-      if (a.created_at && a.created_at.slice(0, 10) === todayIso) todayCount++;
+      if (isNewToday(a)) todayCount++;
     }
-    return { totalLeads: activeApplications.length, inFunnel, todayCount, hiredThisMonth };
+    return { totalLeads: activeApplications.length, inFunnel, todayCount };
   }, [activeApplications]);
+  const activeHiresThisMonth = activeHireTruth.data?.activeHires?.length ?? null;
 
   const selectMetric = (key: string) => {
     setMetricFilter(key);
     setStatusFilter("all");
     setHotLeadsOnly(false);
     setNeedsFollowupOnly(false);
+    setNewTodayOnly(false);
     setDuplicatesOnly(false);
     setInterviewFilter("all");
     if (key === "in_funnel") setStatusFilter("in_funnel");
@@ -1103,6 +1123,7 @@ export default function DashboardApplicants() {
     else if (key === "hired") setStatusFilter("hired");
     else if (key === "rejected") setStatusFilter("rejected");
     else if (key === "needs_followup") setNeedsFollowupOnly(true);
+    else if (key === "new_today") setNewTodayOnly(true);
     else if (key === "hot") setHotLeadsOnly(true);
     else if (key === "duplicates") setDuplicatesOnly(true);
   };
@@ -1154,28 +1175,28 @@ export default function DashboardApplicants() {
           {
             label: "New today",
             value: queryError && applications.length === 0 ? null : todayCount,
-            detail: "Fresh applicants waiting for speed-to-lead",
+            detail: "Phoenix today · tap to show the exact applicants",
             icon: Sparkles,
             tone: "gold",
-            active: metricFilter === "total" && sortOrder === "newest",
+            active: newTodayOnly,
             onClick: () => {
-              selectMetric("total");
+              selectMetric("new_today");
               setSortOrder("newest");
             },
           },
           {
             label: "Follow-ups due",
             value: queryError && applications.length === 0 ? null : needsFollowupCount,
-            detail: "Overdue or untouched long enough to go cold",
+            detail: "Due now or still untouched after 48 hours",
             icon: Bell,
             tone: "bad",
             active: needsFollowupOnly,
             onClick: () => selectMetric("needs_followup"),
           },
           {
-            label: "Interviews booked",
+            label: "Interviews ahead",
             value: queryError && applications.length === 0 ? null : interviewByAppId.size,
-            detail: "Candidates with an active scheduled interview",
+            detail: "Future, non-canceled interview bookings",
             icon: Calendar,
             tone: "info",
             active: interviewFilter === "scheduled",
@@ -1185,13 +1206,13 @@ export default function DashboardApplicants() {
             },
           },
           {
-            label: "Hired this month",
-            value: queryError && applications.length === 0 ? null : hiredThisMonth,
-            detail: "New people now entering onboarding",
+            label: "Active hires · MTD",
+            value: activeHireTruth.isError && !activeHireTruth.data ? null : activeHiresThisMonth,
+            detail: "Canonical licensed + unlicensed roster · Phoenix month",
             icon: UserCheck,
             tone: "good",
-            active: statusFilter === "hired",
-            onClick: () => selectMetric("hired"),
+            active: false,
+            onClick: () => navigate("/dashboard/recruiting/interviews?tab=hired"),
           },
           {
             label: "Active pipeline",
@@ -1229,9 +1250,9 @@ export default function DashboardApplicants() {
             {todayCount > 0 && (
               <Badge variant="outline" className="text-[10px] tabular-nums">{todayCount.toLocaleString()} today</Badge>
             )}
-            {hiredThisMonth > 0 && (
+            {(activeHiresThisMonth ?? 0) > 0 && (
               <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-[10px] tabular-nums text-emerald-600 dark:text-emerald-400">
-                {hiredThisMonth.toLocaleString()} hired this mo.
+                {activeHiresThisMonth?.toLocaleString()} active hires MTD
               </Badge>
             )}
             {terminatedApplications.length > 0 && (

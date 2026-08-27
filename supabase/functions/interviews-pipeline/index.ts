@@ -209,7 +209,20 @@ async function updateApplicant(req: Request, actor: Actor, body: Record<string, 
 type ApplicationRow = {
   id: string; email: string | null; phone: string | null; instagram_handle: string | null;
   status: string | null; closed_at: string | null; contracted_at: string | null;
-  license_status: string | null; nipr_number: string | null;
+  license_status: string | null; nipr_number: string | null; created_at: string;
+};
+
+type ActiveHire = {
+  agent_id: string;
+  display_name: string;
+  email: string | null;
+  phone: string | null;
+  license_status: string;
+  onboarding_stage: string | null;
+  hired_at: string;
+  contracted_at: string | null;
+  first_deal_at: string | null;
+  source_application_id: string | null;
 };
 
 function buildUniqueMap(rows: ApplicationRow[], key: "email" | "phone" | "instagram") {
@@ -274,7 +287,7 @@ async function fetchApplications(): Promise<ApplicationRow[]> {
   const rows: ApplicationRow[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await admin.from("applications")
-      .select("id,email,phone,instagram_handle,status,closed_at,contracted_at,license_status,nipr_number")
+      .select("id,email,phone,instagram_handle,status,closed_at,contracted_at,license_status,nipr_number,created_at")
       .eq("record_type", "application")
       .order("id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
@@ -284,8 +297,57 @@ async function fetchApplications(): Promise<ApplicationRow[]> {
   }
 }
 
+function phoenixMonthStartIso(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Phoenix", year: "numeric", month: "2-digit",
+  }).formatToParts(now);
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  // Phoenix is UTC-7 year-round. This is the exact UTC instant at local month start.
+  return new Date(Date.UTC(year, month - 1, 1, 7)).toISOString();
+}
+
+async function fetchActiveHires(): Promise<ActiveHire[]> {
+  const { data: agents, error } = await admin.from("agents")
+    .select("id,display_name,profile_id,license_status,onboarding_stage,created_at,contracted_at,first_deal_at,source_application_id")
+    .eq("status", "active")
+    .is("canonical_agent_id", null)
+    .or("is_deactivated.is.null,is_deactivated.eq.false")
+    .or("is_inactive.is.null,is_inactive.eq.false")
+    .gte("created_at", phoenixMonthStartIso())
+    .order("created_at", { ascending: false })
+    .limit(250);
+  if (error) throw error;
+
+  const profileIds = Array.from(new Set((agents ?? []).map((row) => row.profile_id).filter(Boolean) as string[]));
+  const profiles = new Map<string, { full_name: string | null; email: string | null; phone: string | null }>();
+  if (profileIds.length) {
+    const { data, error: profileError } = await admin.from("profiles")
+      .select("id,full_name,email,phone")
+      .in("id", profileIds);
+    if (profileError) throw profileError;
+    for (const profile of data ?? []) profiles.set(profile.id as string, profile as { full_name: string | null; email: string | null; phone: string | null });
+  }
+
+  return (agents ?? []).map((row) => {
+    const profile = row.profile_id ? profiles.get(row.profile_id as string) : null;
+    return {
+      agent_id: row.id as string,
+      display_name: (row.display_name || profile?.full_name || "Name not on file") as string,
+      email: profile?.email ?? null,
+      phone: profile?.phone ?? null,
+      license_status: String(row.license_status ?? "unlicensed"),
+      onboarding_stage: row.onboarding_stage ? String(row.onboarding_stage) : null,
+      hired_at: row.created_at as string,
+      contracted_at: row.contracted_at as string | null,
+      first_deal_at: row.first_deal_at as string | null,
+      source_application_id: row.source_application_id as string | null,
+    };
+  });
+}
+
 async function listApplicants(actor: Actor) {
-  const [rows, mainRows] = await Promise.all([fetchApplicants(actor), fetchApplications()]);
+  const [rows, mainRows, activeHires] = await Promise.all([fetchApplicants(actor), fetchApplications(), fetchActiveHires()]);
   const counts: Record<string, number> = {};
   for (const row of rows) counts[row.stage] = (counts[row.stage] ?? 0) + 1;
 
@@ -315,7 +377,14 @@ async function listApplicants(actor: Actor) {
       identity_conflict: identityConflict,
     };
   });
-  return json({ applicants: applicantsOut, counts, total: rows.length, role: actor.role, generatedAt: new Date().toISOString() });
+  return json({
+    applicants: applicantsOut,
+    activeHires,
+    counts,
+    total: rows.length,
+    role: actor.role,
+    generatedAt: new Date().toISOString(),
+  });
 }
 
 // Lane 3 (2026-08-26): onboarding calls are Calendly bookings on the

@@ -14,7 +14,7 @@ describe("RecruitingWorkspaceNav", () => {
     expect(screen.getByRole("link", { name: "Applicants" }).getAttribute("href")).toBe("/dashboard/recruiting");
     expect(screen.getByRole("link", { name: "Interviews" }).getAttribute("href")).toBe("/dashboard/recruiting/interviews");
     expect(screen.getByRole("link", { name: "Follow-ups" }).getAttribute("href")).toBe("/dashboard/recruiting/follow-ups");
-    expect(screen.getByRole("link", { name: "Hires" }).getAttribute("href")).toBe("/dashboard/recruiting/hires?status=hired");
+    expect(screen.getByRole("link", { name: "Hires" }).getAttribute("href")).toBe("/dashboard/recruiting/interviews?tab=hired");
     expect(screen.getByRole("link", { name: "APEX Training" }).getAttribute("href")).toBe("/dashboard/recruiting/training");
   });
 

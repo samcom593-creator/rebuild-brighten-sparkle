@@ -106,4 +106,16 @@ describe("native recruiting interview contract", () => {
     expect(page).toContain("Showing the last successful interview snapshot");
     expect(page).toContain("Showing the last successful onboarding snapshot");
   });
+
+  it("counts hires from the canonical active roster instead of interview-only stages", () => {
+    const page = read("src/pages/Interviews.tsx");
+    const edge = read("supabase/functions/interviews-pipeline/index.ts");
+    expect(edge).toContain("async function fetchActiveHires");
+    expect(edge).toContain('.eq("status", "active")');
+    expect(edge).toContain('.is("canonical_agent_id", null)');
+    expect(edge).toContain("activeHires,");
+    expect(page).toContain('label: "Active hires"');
+    expect(page).toContain("value: pipeline.data ? activeHires.length : null");
+    expect(page).not.toContain("value: pipeline.data ? pipeline.data.counts.hired");
+  });
 });

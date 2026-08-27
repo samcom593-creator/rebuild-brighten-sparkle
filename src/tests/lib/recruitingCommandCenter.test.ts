@@ -28,4 +28,14 @@ describe("recruiting command center", () => {
     expect(applicants).toContain('.is("canceled_at", null)');
     expect(applicants).toContain('.gte("scheduled_at", new Date().toISOString())');
   });
+
+  it("uses shared, Phoenix-aware predicates for new and due applicant KPIs", () => {
+    const applicants = read("src/pages/DashboardApplicants.tsx");
+    expect(applicants).toContain('timeZone: "America/Phoenix"');
+    expect(applicants).toContain("function isNewToday");
+    expect(applicants).toContain("function isFollowupDue");
+    expect(applicants).toContain("matchesNeedsFollowup = isFollowupDue(app)");
+    expect(applicants).toContain("const matchesNewToday = !newTodayOnly || isNewToday(app)");
+    expect(applicants).toContain('label: "Active hires · MTD"');
+  });
 });

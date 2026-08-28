@@ -1,7 +1,7 @@
 // send-agent-onboarding-email
 //
 // Drains agent_onboarding_queue: sends the prelicensing course access
-// email and the Discord invite email to every new agent at 9:30 AM US/Central.
+// email and the team-community invite email to every new agent at 9:30 AM US/Central.
 //
 // Triggered by pg_cron at:
 //   - 14:30 UTC daily (9:30 AM Central during CDT)
@@ -25,6 +25,15 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
+function tokenMatches(presented: string, expected: string): boolean {
+  if (!presented || !expected || presented.length !== expected.length) return false;
+  let difference = 0;
+  for (let index = 0; index < expected.length; index += 1) {
+    difference |= presented.charCodeAt(index) ^ expected.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
 interface QueueRow {
   id: string;
   agent_id: string;
@@ -35,7 +44,7 @@ interface QueueRow {
 
 interface Settings {
   resend_api_key: string | null;
-  discord_invite_url: string | null;
+  community_invite_url: string | null;
   whatsapp_hired_invite_url: string | null;
   training_course_url: string;
   from_address: string;
@@ -56,6 +65,7 @@ async function loadSettings(sb: any): Promise<Settings> {
     .in("key", [
       "resend_api_key",
       "discord_invite_url",
+      "slack_community_invite_url",
       "whatsapp_hired_invite_url",
       "training_course_url",
       "onboarding_email_from_address",
@@ -71,8 +81,12 @@ async function loadSettings(sb: any): Promise<Settings> {
   // Env can override system_settings (preferred for secrets).
   const envResend = Deno.env.get("RESEND_API_KEY");
 
+  // Slack is the primary team app. Keep the legacy Discord setting only as a
+  // fallback so an operator cannot strand a hire while settings are migrated.
+  const slackRaw = map.get("slack_community_invite_url");
   const discordRaw = map.get("discord_invite_url");
-  const discordUrl = discordRaw && discordRaw.trim().length > 0 ? discordRaw.trim() : null;
+  const communityRaw = slackRaw && slackRaw.trim().length > 0 ? slackRaw : discordRaw;
+  const communityUrl = communityRaw && communityRaw.trim().length > 0 ? communityRaw.trim() : null;
   const whatsappRaw = map.get("whatsapp_hired_invite_url");
   const whatsappUrl = whatsappRaw && whatsappRaw.trim().length > 0 ? whatsappRaw.trim() : null;
   const courseRaw = map.get("training_course_url");
@@ -90,7 +104,7 @@ async function loadSettings(sb: any): Promise<Settings> {
 
   return {
     resend_api_key: envResend && envResend.length > 8 ? envResend : (map.get("resend_api_key") ?? null),
-    discord_invite_url: discordUrl,
+    community_invite_url: communityUrl,
     whatsapp_hired_invite_url: whatsappUrl,
     training_course_url: courseUrl,
     from_address: fromAddr,
@@ -189,13 +203,13 @@ function buildCourseEmail(name: string, courseUrl: string): { subject: string; h
   return { subject, html, text };
 }
 
-function buildDiscordEmail(name: string, discordUrl: string | null): { subject: string; html: string; text: string } {
+function buildCommunityEmail(name: string, communityUrl: string | null): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
-  const url = discordUrl ? escapeHtml(discordUrl) : null;
-  const subject = "Join the APEX Discord — 9:30 AM Central daily";
+  const url = communityUrl ? escapeHtml(communityUrl) : null;
+  const subject = "Join the APEX Slack — your team hub";
 
   const linkLine = url
-    ? `Jump in here: ${discordUrl}`
+    ? `Join here: ${communityUrl}`
     : `Reply to this email and I'll send you the invite link directly.`;
 
   const text = [
@@ -203,8 +217,8 @@ function buildDiscordEmail(name: string, discordUrl: string | null): { subject: 
     ``,
     linkLine,
     ``,
-    `We meet at 9:30 AM Central every weekday — that's when the engine fires.`,
-    `Morning huddle, hot leads, scripts, role-plays, and live deal walks.`,
+    `Slack is your primary team hub for next steps, contracting support, training, and sales wins.`,
+    `Join now so your onboarding team can keep you moving.`,
     ``,
     `See you there.`,
     ``,
@@ -213,7 +227,7 @@ function buildDiscordEmail(name: string, discordUrl: string | null): { subject: 
   ].join("\n");
 
   const ctaHtml = url
-    ? `<p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#5865F2;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Join the Discord</a></p>`
+    ? `<p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#4A154B;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Join the APEX Slack</a></p>`
     : `<p>Reply to this email and I'll send you the invite link directly.</p>`;
 
   const html = `
@@ -221,7 +235,7 @@ function buildDiscordEmail(name: string, discordUrl: string | null): { subject: 
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
   <p>Hey ${fn},</p>
   ${ctaHtml}
-  <p>We meet at <strong>9:30 AM Central every weekday</strong> — that's when the engine fires. Morning huddle, hot leads, scripts, role-plays, and live deal walks.</p>
+  <p>Slack is your <strong>primary team hub</strong> for next steps, contracting support, training, and sales wins. Join now so your onboarding team can keep you moving.</p>
   <p>See you there.</p>
   <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
 </body></html>`.trim();
@@ -406,23 +420,28 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
   result.processed = rows.length;
 
   for (const row of rows) {
-    // Fetch agent + profile for each row (small N, simpler than batch join).
+    // Fetch agent + contact for each row (small N, simpler than batch join).
+    // Agent creation has three legitimate shapes in production:
+    //   1) profile_id points directly at profiles.id,
+    //   2) user_id resolves through profiles.user_id,
+    //   3) a pre-account hire only has source_application_id.
+    // Requiring user_id dropped valid new hires from onboarding.
     const { data: agentRow } = await sb
       .from("agents")
-      .select("id, user_id, agent_code, license_status, status, is_deactivated, is_inactive")
+      .select("id, user_id, profile_id, source_application_id, display_name, agent_code, license_status, status, is_deactivated, is_inactive")
       .eq("id", row.agent_id)
       .maybeSingle();
 
-    if (!agentRow?.user_id) {
+    if (!agentRow) {
       await sb
         .from("agent_onboarding_queue")
         .update({
           attempt_count: row.attempt_count + 1,
-          last_error: "agent or user_id missing",
+          last_error: "agent missing",
         })
         .eq("id", row.id);
       result.failed += 1;
-      result.errors.push({ queue_id: row.id, agent_id: row.agent_id, kind: row.email_kind, error: "agent missing user_id" });
+      result.errors.push({ queue_id: row.id, agent_id: row.agent_id, kind: row.email_kind, error: "agent missing" });
       continue;
     }
 
@@ -438,13 +457,33 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
       continue;
     }
 
-    const { data: profile } = await sb
-      .from("profiles")
-      .select("email, full_name")
-      .eq("user_id", agentRow.user_id)
-      .maybeSingle();
+    let profile: { email?: string | null; full_name?: string | null } | null = null;
+    if (agentRow.profile_id) {
+      const { data } = await sb.from("profiles").select("email, full_name").eq("id", agentRow.profile_id).maybeSingle();
+      profile = data;
+    }
+    if (!profile?.email && agentRow.user_id) {
+      const { data } = await sb.from("profiles").select("email, full_name").eq("user_id", agentRow.user_id).maybeSingle();
+      profile = data ?? profile;
+    }
 
-    const email = (profile?.email ?? "").trim();
+    let application: { email?: string | null; first_name?: string | null; last_name?: string | null } | null = null;
+    if (!profile?.email && agentRow.source_application_id) {
+      const { data } = await sb
+        .from("applications")
+        .select("email, first_name, last_name")
+        .eq("id", agentRow.source_application_id)
+        .maybeSingle();
+      application = data;
+    }
+
+    let authEmail: string | null = null;
+    if (!profile?.email && !application?.email && agentRow.user_id) {
+      const { data } = await sb.auth.admin.getUserById(agentRow.user_id);
+      authEmail = data?.user?.email ?? null;
+    }
+
+    const email = (profile?.email ?? application?.email ?? authEmail ?? "").trim();
     if (!email) {
       await sb
         .from("agent_onboarding_queue")
@@ -457,7 +496,8 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
       continue;
     }
 
-    const name = profile?.full_name ?? null;
+    const applicationName = [application?.first_name, application?.last_name].filter(Boolean).join(" ").trim();
+    const name = profile?.full_name || applicationName || agentRow.display_name || null;
 
     // Cohort guard: course / discord / hired_whatsapp are HIRED-cohort emails.
     // They must only fire for agents whose license_status = 'licensed'.
@@ -527,7 +567,7 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
       built = buildOnboardingCallEmail(name ?? "", link.url);
       meta = { booking_url: link.url, link_kind: link.kind, link_error: link.error };
     } else {
-      built = buildDiscordEmail(name ?? "", settings.discord_invite_url);
+      built = buildCommunityEmail(name ?? "", settings.community_invite_url);
     }
 
     // Discord email without an invite link is still useful (asks them to
@@ -579,6 +619,16 @@ serve(async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const presented = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const botToken = (Deno.env.get("APEX_BOT_TOKEN") ?? "").trim();
+  const authorized = tokenMatches(presented, SERVICE_ROLE) || tokenMatches(presented, botToken);
+  if (!authorized) {
+    return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
     const settings = await loadSettings(sb);
@@ -590,7 +640,7 @@ serve(async (req: Request): Promise<Response> => {
         timestamp: new Date().toISOString(),
         ...result,
         config: {
-          discord_invite_url_present: Boolean(settings.discord_invite_url),
+          community_invite_url_present: Boolean(settings.community_invite_url),
           whatsapp_hired_invite_url_present: Boolean(settings.whatsapp_hired_invite_url),
           training_course_url: settings.training_course_url,
           from_address: settings.from_address,

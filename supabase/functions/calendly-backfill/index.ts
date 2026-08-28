@@ -52,6 +52,35 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "content-type": "application/json" } });
 
+function tokenMatches(presented: string, expected: string): boolean {
+  if (!presented || !expected || presented.length !== expected.length) return false;
+  let difference = 0;
+  for (let index = 0; index < expected.length; index += 1) {
+    difference |= presented.charCodeAt(index) ^ expected.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
+async function recordRun(
+  startedAt: string,
+  status: "ok" | "failed",
+  seen: number,
+  upserted: number,
+  failed: number,
+  error: string | null,
+): Promise<string | null> {
+  const { error: logError } = await sb.from("calendly_reconciliation_runs").insert({
+    started_at: startedAt,
+    finished_at: new Date().toISOString(),
+    status,
+    records_seen: seen,
+    records_upserted: upserted,
+    records_failed: failed,
+    error_redacted: error?.slice(0, 300) ?? null,
+  });
+  return logError?.message ?? null;
+}
+
 async function cal(pathOrUrl: string): Promise<any> {
   const url = pathOrUrl.startsWith("http") ? pathOrUrl : `https://api.calendly.com${pathOrUrl}`;
   const r = await fetch(url, {
@@ -103,8 +132,17 @@ function classify(name: string | null, slug: string | null): string {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
+  const presented = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const botToken = (Deno.env.get("APEX_BOT_TOKEN") ?? "").trim();
+  if (!tokenMatches(presented, SUPABASE_KEY) && !tokenMatches(presented, botToken)) {
+    return json({ ok: false, error: "Unauthorized" }, 401);
+  }
+
+  const startedAt = new Date().toISOString();
+
   CALENDLY_TOKEN = await resolveCalendlyToken();
   if (!CALENDLY_TOKEN) {
+    await recordRun(startedAt, "failed", 0, 0, 0, "CALENDLY_API_TOKEN not set");
     // Fail loud. Never a 200 that reconciled nothing.
     return json({
       ok: false,
@@ -192,8 +230,14 @@ Deno.serve(async (req) => {
 
     // Any failure at all is reported as a non-2xx so the cron surfaces it.
     const ok = failed === 0;
+    const runLogError = await recordRun(startedAt, ok ? "ok" : "failed", seen, upserted, failed, errors.join("; ") || null);
+    if (runLogError) {
+      return json({ ok: false, seen, upserted, failed, errors, error: `reconciliation completed but health receipt failed: ${runLogError}` }, 500);
+    }
     return json({ ok, seen, upserted, failed, errors, since: since.toISOString() }, ok ? 200 : 500);
   } catch (e) {
-    return json({ ok: false, error: (e as Error).message }, 500);
+    const error = (e as Error).message;
+    await recordRun(startedAt, "failed", 0, 0, 1, error);
+    return json({ ok: false, error }, 500);
   }
 });

@@ -9,14 +9,14 @@ const corsHeaders = {
 };
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const whatsappLink = body?.whatsappLink || Deno.env.get("WHATSAPP_GROUP_LINK") || "";
+    await req.json().catch(() => ({}));
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -87,17 +87,15 @@ serve(async (req: Request) => {
                       </table>
                     </div>
 
-                    ${whatsappLink ? `
-                    <h2 style="color: #e2e8f0; font-size: 16px; margin: 16px 0 8px;">💬 Join Our WhatsApp Group</h2>
+                    <h2 style="color: #e2e8f0; font-size: 16px; margin: 16px 0 8px;">💬 Join the APEX Slack</h2>
                     <p style="color: #94a3b8; font-size: 14px; line-height: 1.6; margin: 0 0 12px;">
-                      Connect with other recruits, ask questions, and get real-time support from your managers.
+                      Slack is the primary team workspace for licensing questions, progress support, training, and updates.
                     </p>
                     <div style="text-align: center; margin: 16px 0;">
-                      <a href="${whatsappLink}" style="display: inline-block; background: #25D366; color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: bold; font-size: 14px;">
-                        Join WhatsApp Group →
+                      <a href="${SLACK_LINK}" style="display: inline-block; background: #4A154B; color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: bold; font-size: 14px;">
+                        Join Team Slack →
                       </a>
                     </div>
-                    ` : ''}
 
                     <div style="border-top: 1px solid rgba(148,163,184,0.2); padding-top: 20px; margin-top: 24px;">
                       <p style="color: #64748b; font-size: 12px; text-align: center; margin: 0;">APEX Financial Empire</p>

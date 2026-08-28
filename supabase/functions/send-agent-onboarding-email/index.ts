@@ -1,7 +1,7 @@
 // send-agent-onboarding-email
 //
-// Drains agent_onboarding_queue: sends the prelicensing course access
-// email and the team-community invite email to every new agent at 9:30 AM US/Central.
+// Drains agent_onboarding_queue: sends licensed online-training, primary
+// team-community, and onboarding-call emails at 9:30 AM US/Central.
 //
 // Triggered by pg_cron at:
 //   - 14:30 UTC daily (9:30 AM Central during CDT)
@@ -45,8 +45,7 @@ interface QueueRow {
 interface Settings {
   resend_api_key: string | null;
   community_invite_url: string | null;
-  whatsapp_hired_invite_url: string | null;
-  training_course_url: string;
+  discord_invite_url: string | null;
   from_address: string;
   // Lane 3 (2026-08-26): onboarding-call booking link.
   onboarding_call_event_type_uri: string | null;
@@ -66,8 +65,6 @@ async function loadSettings(sb: any): Promise<Settings> {
       "resend_api_key",
       "discord_invite_url",
       "slack_community_invite_url",
-      "whatsapp_hired_invite_url",
-      "training_course_url",
       "onboarding_email_from_address",
       "onboarding_call_event_type_uri",
       "onboarding_call_scheduling_url",
@@ -87,12 +84,6 @@ async function loadSettings(sb: any): Promise<Settings> {
   const discordRaw = map.get("discord_invite_url");
   const communityRaw = slackRaw && slackRaw.trim().length > 0 ? slackRaw : discordRaw;
   const communityUrl = communityRaw && communityRaw.trim().length > 0 ? communityRaw.trim() : null;
-  const whatsappRaw = map.get("whatsapp_hired_invite_url");
-  const whatsappUrl = whatsappRaw && whatsappRaw.trim().length > 0 ? whatsappRaw.trim() : null;
-  const courseRaw = map.get("training_course_url");
-  const courseUrl = courseRaw && courseRaw.trim().length > 0
-    ? courseRaw.trim()
-    : "https://apex-financial.org/onboarding-course";
   const fromRaw = map.get("onboarding_email_from_address");
   const fromAddr = fromRaw && fromRaw.trim().length > 0
     ? fromRaw.trim()
@@ -105,8 +96,7 @@ async function loadSettings(sb: any): Promise<Settings> {
   return {
     resend_api_key: envResend && envResend.length > 8 ? envResend : (map.get("resend_api_key") ?? null),
     community_invite_url: communityUrl,
-    whatsapp_hired_invite_url: whatsappUrl,
-    training_course_url: courseUrl,
+    discord_invite_url: discordRaw && discordRaw.trim().length > 0 ? discordRaw.trim() : null,
     from_address: fromAddr,
     onboarding_call_event_type_uri: eventTypeRaw && eventTypeRaw.trim().length > 0 ? eventTypeRaw.trim() : null,
     onboarding_call_scheduling_url: schedulingRaw && schedulingRaw.trim().length > 0 ? schedulingRaw.trim() : null,
@@ -168,18 +158,22 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function buildCourseEmail(name: string, courseUrl: string): { subject: string; html: string; text: string } {
+function buildCourseEmail(name: string): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
-  const url = escapeHtml(courseUrl);
-  const subject = "Your APEX prelicensing course access is ready";
+  const trainingUrl = "https://apex-financial.org/dashboard/recruiting/training/library";
+  const roadmapUrl = "https://apex-financial.org/agent-portal";
+  const url = escapeHtml(trainingUrl);
+  const roadmap = escapeHtml(roadmapUrl);
+  const subject = "Your APEX online training is ready";
   const text = [
     `Hey ${fn},`,
     ``,
-    `Your prelicensing course is ready. Log in here: ${courseUrl}`,
+    `You're licensed. Your APEX online training is ready: ${trainingUrl}`,
     ``,
-    `Step 1 — Create your account and confirm your name matches the one on your ID.`,
-    `Step 2 — Work the modules in order. Most agents finish in 4-6 focused sessions.`,
-    `Step 3 — Once you pass the course, reply to this email and we schedule your state exam.`,
+    `Step 1 — Sign in and confirm your APEX account and profile.`,
+    `Step 2 — Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting modules in order.`,
+    `Step 3 — Open your live roadmap for the next unlocked action: ${roadmapUrl}`,
+    `Step 4 — Use Slack for training questions and team support.`,
     ``,
     `If you hit a snag, reply here. We move fast.`,
     ``,
@@ -191,11 +185,12 @@ function buildCourseEmail(name: string, courseUrl: string): { subject: string; h
 <!doctype html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
   <p>Hey ${fn},</p>
-  <p>Your prelicensing course is ready. Log in here:</p>
-  <p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#0a0a0a;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Open the course</a></p>
-  <p style="margin-top:24px;"><strong>Step 1.</strong> Create your account and confirm your name matches the one on your ID.<br/>
-  <strong>Step 2.</strong> Work the modules in order. Most agents finish in 4-6 focused sessions.<br/>
-  <strong>Step 3.</strong> Once you pass the course, reply to this email and we schedule your state exam.</p>
+  <p>You're licensed. Your APEX online training is ready:</p>
+  <p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#0a0a0a;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Start online training</a></p>
+  <p style="margin-top:24px;"><strong>Step 1.</strong> Sign in and confirm your APEX account and profile.<br/>
+  <strong>Step 2.</strong> Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting modules in order.<br/>
+  <strong>Step 3.</strong> <a href="${roadmap}">Open your live roadmap</a> for the next unlocked action.<br/>
+  <strong>Step 4.</strong> Use Slack for training questions and team support.</p>
   <p>If you hit a snag, reply here. We move fast.</p>
   <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
 </body></html>`.trim();
@@ -203,10 +198,11 @@ function buildCourseEmail(name: string, courseUrl: string): { subject: string; h
   return { subject, html, text };
 }
 
-function buildCommunityEmail(name: string, communityUrl: string | null): { subject: string; html: string; text: string } {
+function buildCommunityEmail(name: string, communityUrl: string | null, discordUrl: string | null): { subject: string; html: string; text: string } {
   const fn = escapeHtml(firstName(name));
   const url = communityUrl ? escapeHtml(communityUrl) : null;
-  const subject = "Join the APEX Slack — your team hub";
+  const discord = discordUrl ? escapeHtml(discordUrl) : null;
+  const subject = "Join APEX Slack + Discord — your team access";
 
   const linkLine = url
     ? `Join here: ${communityUrl}`
@@ -216,9 +212,11 @@ function buildCommunityEmail(name: string, communityUrl: string | null): { subje
     `Hey ${fn},`,
     ``,
     linkLine,
+    discordUrl ? `Join Discord: ${discordUrl}` : `Reply to this email if you still need the Discord invite.`,
     ``,
     `Slack is your primary team hub for next steps, contracting support, training, and sales wins.`,
     `Join now so your onboarding team can keep you moving.`,
+    `Then open your APEX account roadmap: https://apex-financial.org/agent-portal`,
     ``,
     `See you there.`,
     ``,
@@ -229,53 +227,19 @@ function buildCommunityEmail(name: string, communityUrl: string | null): { subje
   const ctaHtml = url
     ? `<p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#4A154B;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Join the APEX Slack</a></p>`
     : `<p>Reply to this email and I'll send you the invite link directly.</p>`;
+  const discordHtml = discord
+    ? `<p><a href="${discord}" style="display:inline-block;padding:12px 20px;background:#5865F2;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Join the APEX Discord</a></p>`
+    : `<p>Reply to this email if you still need the Discord invite.</p>`;
 
   const html = `
 <!doctype html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
   <p>Hey ${fn},</p>
   ${ctaHtml}
+  ${discordHtml}
   <p>Slack is your <strong>primary team hub</strong> for next steps, contracting support, training, and sales wins. Join now so your onboarding team can keep you moving.</p>
+  <p><strong>Next:</strong> <a href="https://apex-financial.org/agent-portal">open your APEX account roadmap</a>, confirm your profile, and complete the action shown as current.</p>
   <p>See you there.</p>
-  <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
-</body></html>`.trim();
-
-  return { subject, html, text };
-}
-
-function buildHiredWhatsappEmail(name: string, whatsappUrl: string | null): { subject: string; html: string; text: string } {
-  const fn = escapeHtml(firstName(name));
-  const url = whatsappUrl ? escapeHtml(whatsappUrl) : null;
-  const subject = "Join the APEX hired-agent WhatsApp community";
-
-  const linkLine = url
-    ? `Jump in here: ${whatsappUrl}`
-    : `Reply to this email and I'll send you the WhatsApp invite directly.`;
-
-  const text = [
-    `Hey ${fn},`,
-    ``,
-    linkLine,
-    ``,
-    `This is where the APEX community lives day-to-day — wins, questions, live plays, and back-and-forth with the team.`,
-    ``,
-    `See you inside.`,
-    ``,
-    `— Sam`,
-    `APEX Financial`,
-  ].join("\n");
-
-  const ctaHtml = url
-    ? `<p><a href="${url}" style="display:inline-block;padding:12px 20px;background:#25D366;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">Join the WhatsApp community</a></p>`
-    : `<p>Reply to this email and I'll send you the WhatsApp invite directly.</p>`;
-
-  const html = `
-<!doctype html>
-<html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;line-height:1.55;">
-  <p>Hey ${fn},</p>
-  ${ctaHtml}
-  <p>This is where the APEX community lives day-to-day — wins, questions, live plays, and back-and-forth with the team.</p>
-  <p>See you inside.</p>
   <p style="margin-top:24px;">— Sam<br/>APEX Financial</p>
 </body></html>`.trim();
 
@@ -393,11 +357,12 @@ interface ProcessResult {
   skipped_no_email: number;
   skipped_wrong_cohort: number;
   skipped_booking_exists: number;
+  skipped_retired_channel: number;
   errors: Array<{ queue_id: string; agent_id: string; kind: string; error: string }>;
 }
 
 async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
-  const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped_no_email: 0, skipped_wrong_cohort: 0, skipped_booking_exists: 0, errors: [] };
+  const result: ProcessResult = { processed: 0, sent: 0, failed: 0, skipped_no_email: 0, skipped_wrong_cohort: 0, skipped_booking_exists: 0, skipped_retired_channel: 0, errors: [] };
 
   if (!settings.resend_api_key) {
     throw new Error("Missing RESEND_API_KEY (env or system_settings.resend_api_key).");
@@ -420,6 +385,17 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
   result.processed = rows.length;
 
   for (const row of rows) {
+    // Preserve old delivery receipts, but make the retired messaging-channel
+    // kind terminal and unsendable. sent_at remains null: nothing is claimed.
+    if (row.email_kind === "hired_whatsapp") {
+      await sb
+        .from("agent_onboarding_queue")
+        .update({ attempt_count: 5, last_error: "retired_channel: use Slack onboarding" })
+        .eq("id", row.id);
+      result.skipped_retired_channel += 1;
+      continue;
+    }
+
     // Fetch agent + contact for each row (small N, simpler than batch join).
     // Agent creation has three legitimate shapes in production:
     //   1) profile_id points directly at profiles.id,
@@ -499,19 +475,17 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
     const applicationName = [application?.first_name, application?.last_name].filter(Boolean).join(" ").trim();
     const name = profile?.full_name || applicationName || agentRow.display_name || null;
 
-    // Cohort guard: course / discord / hired_whatsapp are HIRED-cohort emails.
+    // Cohort guard: course / community / onboarding-call are HIRED-cohort emails.
     // They must only fire for agents whose license_status = 'licensed'.
     // Anything else (NULL / 'unlicensed' / etc.) means the agent shouldn't
     // be in the hired chain yet — skip and record. Prospect cohort is
-    // handled by the outreach_queue path (source_run = 'prospect_whatsapp'
-    // and 'calendly-invite'), not this queue.
+    // handled by the applicant onboarding path, not this queue.
     const licenseStatus = (agentRow?.license_status ?? "").toString().toLowerCase();
     const isLicensed = licenseStatus === "licensed";
 
     if (
       (row.email_kind === "course" ||
         row.email_kind === "discord" ||
-        row.email_kind === "hired_whatsapp" ||
         row.email_kind === "onboarding_call") &&
       !isLicensed
     ) {
@@ -529,9 +503,7 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
     let built: { subject: string; html: string; text: string };
     let meta: Record<string, unknown> | null = null;
     if (row.email_kind === "course") {
-      built = buildCourseEmail(name ?? "", settings.training_course_url);
-    } else if (row.email_kind === "hired_whatsapp") {
-      built = buildHiredWhatsappEmail(name ?? "", settings.whatsapp_hired_invite_url);
+      built = buildCourseEmail(name ?? "");
     } else if (row.email_kind === "onboarding_call") {
       // Lane 3 (2026-08-26): ONE booking link per licensed hire. Re-check the
       // calendar at send time — a hire who booked between enqueue and drain must
@@ -567,10 +539,11 @@ async function drainQueue(sb: any, settings: Settings): Promise<ProcessResult> {
       built = buildOnboardingCallEmail(name ?? "", link.url);
       meta = { booking_url: link.url, link_kind: link.kind, link_error: link.error };
     } else {
-      built = buildCommunityEmail(name ?? "", settings.community_invite_url);
+      built = buildCommunityEmail(name ?? "", settings.community_invite_url, settings.discord_invite_url);
     }
 
-    // Discord email without an invite link is still useful (asks them to
+    // The legacy `discord` queue kind now delivers the primary Slack invite.
+    // An email without an invite link is still useful (asks them to
     // reply for the link), so we still send. If we ever want to gate it,
     // flip this comment to an early skip.
     const sendResult = await sendViaResend(
@@ -641,8 +614,7 @@ serve(async (req: Request): Promise<Response> => {
         ...result,
         config: {
           community_invite_url_present: Boolean(settings.community_invite_url),
-          whatsapp_hired_invite_url_present: Boolean(settings.whatsapp_hired_invite_url),
-          training_course_url: settings.training_course_url,
+          discord_invite_url_present: Boolean(settings.discord_invite_url),
           from_address: settings.from_address,
         },
       }),

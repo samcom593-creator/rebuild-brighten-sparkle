@@ -21,6 +21,7 @@ interface WelcomeEmailRequest {
   agentId?: string;
   managerId?: string;
   courseLink?: string;
+  portalLink?: string;
   contractingLink?: string;
   licenseStatus?: "licensed" | "unlicensed" | "pending";
 }
@@ -28,6 +29,7 @@ interface WelcomeEmailRequest {
 const defaultCourseLink = "https://partners.xcelsolutions.com/afe";
 const PORTAL_LINK = "https://apex-financial.org/agent-portal";
 const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
+const DISCORD_LINK = "https://discord.gg/JpUWA73UZX";
 const ONBOARDING_CALL_LINK = "https://calendly.com/apexfinancialempire/apex-onboarding-call";
 const APEX_TRAINING_LINK = "https://apex-financial.org/dashboard/recruiting/training/library";
 
@@ -37,7 +39,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { agentName, agentEmail, agentId, managerId, courseLink, contractingLink, licenseStatus }: WelcomeEmailRequest = await req.json();
+    const { agentName, agentEmail, agentId, managerId, courseLink, portalLink, contractingLink, licenseStatus }: WelcomeEmailRequest = await req.json();
 
     console.log(`Sending welcome email to ${agentName} at ${agentEmail}`);
 
@@ -115,38 +117,46 @@ const handler = async (req: Request): Promise<Response> => {
         <a href="${SLACK_LINK}" class="button" style="background:#D4AF37;color:#111 !important;">Join Team Slack →</a>
       </div>
 
+      <div class="step" style="border-left-color:#5865F2;">
+        <h3 style="color:#8b9cff;"><span class="step-number" style="background:#5865F2;">2</span> Join the APEX Discord</h3>
+        <p>Use Discord for community access and direct licensing or contracting support.</p>
+        <a href="${DISCORD_LINK}" class="button" style="background:#5865F2;">Join Team Discord →</a>
+      </div>
+
       ${isLicensed ? `
       <div class="step" style="border-left-color:#D4AF37;">
-        <h3 style="color:#D4AF37;"><span class="step-number" style="background:#D4AF37;color:#111;">2</span> Book With Milver</h3>
+        <h3 style="color:#D4AF37;"><span class="step-number" style="background:#D4AF37;color:#111;">3</span> Book With Milver</h3>
         <p>Milver Taca is your Contracting &amp; Onboarding Manager. Book the 30-minute call so your first-week plan and carrier setup are clear.</p>
         <a href="${ONBOARDING_CALL_LINK}" class="button" style="background:#D4AF37;color:#111 !important;">Book My Milver Call →</a>
       </div>
       <div class="step">
-        <h3><span class="step-number">3</span> Complete Native APEX Contracting</h3>
+        <h3><span class="step-number">4</span> Set Up Your APEX Account</h3>
+        <p>Sign in with your email, confirm your profile, and use the live roadmap as your source of truth.</p>
+        <a href="${portalLink || PORTAL_LINK}" class="button">Open My Account &amp; Roadmap →</a>
+      </div>
+      <div class="step">
+        <h3><span class="step-number">5</span> Complete Native APEX Contracting</h3>
         <p>Submit your NPN and profile once. APEX dispatches the contracting desk and spreadsheet automatically.</p>
         <a href="${contractingLink || "https://apex-financial.org/start-contracting"}" class="button">Complete Contracting →</a>
       </div>
       ` : `
       <div class="step">
-        <h3><span class="step-number">2</span> Start Your Licensing Course</h3>
-        <p>Work the course in order, then update your portal at course, exam, fingerprints, and license milestones.</p>
+        <h3><span class="step-number">3</span> Set Up Your APEX Account</h3>
+        <p>Sign in with your email, confirm your profile, and open the live licensing roadmap.</p>
+        <a href="${portalLink || PORTAL_LINK}" class="button">Open My Account &amp; Roadmap →</a>
+      </div>
+      <div class="step">
+        <h3><span class="step-number">4</span> Create Your XCEL Course Account</h3>
+        <p>Use the same legal name shown on your ID, then work the pre-licensing training in order.</p>
         <a href="${finalCourseLink}" class="button">Start Licensing →</a>
       </div>
       `}
 
       <div class="step">
-        <h3><span class="step-number">${isLicensed ? '4' : '3'}</span> Open Your Live Roadmap</h3>
-        <p>Your portal always shows the one action to take now, your completed milestones, and anything still locked.</p>
-        <a href="${PORTAL_LINK}" class="button">Open My Roadmap →</a>
+        <h3><span class="step-number">${isLicensed ? '6' : '5'}</span> ${isLicensed ? 'Complete Online Training' : 'Complete the Licensing Roadmap'}</h3>
+        <p>${isLicensed ? 'Finish the onboarding, script, objections, ReadyMode, pipeline, deal-posting, and underwriting walkthroughs before launch.' : 'Update course, exam, fingerprints, and license milestones as they happen. After your license posts, add your NPN and book onboarding.'}</p>
+        <a href="${isLicensed ? finalCourseLink : PORTAL_LINK}" class="button">${isLicensed ? 'Start Training' : 'Open My Roadmap'} →</a>
       </div>
-
-      ${isLicensed ? `
-      <div class="step">
-        <h3><span class="step-number">5</span> Complete Online Training</h3>
-        <p>Finish the onboarding, script, objections, ReadyMode, pipeline, deal-posting, and underwriting walkthroughs before launch.</p>
-        <a href="${finalCourseLink}" class="button">Start Training →</a>
-      </div>
-      ` : ''}
       
       <!-- Expectations -->
       <div class="highlight">

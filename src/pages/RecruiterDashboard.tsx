@@ -1179,7 +1179,7 @@ function RecruiterDashboardInner() {
               onClick={() => {
                 const url = `${window.location.origin}/daily-checkin`;
                 navigator.clipboard.writeText(url);
-                toast.success("Check-In link copied! Paste it in WhatsApp 📋");
+                toast.success("Check-In link copied! Paste it in a text or DM 📋");
               }}
             >
               <Link2 className="h-3.5 w-3.5 mr-1.5" />

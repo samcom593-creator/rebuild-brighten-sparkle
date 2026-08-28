@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UserPlus, Crown } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 
 type HireRow = {
   id: string;
@@ -21,7 +23,7 @@ type HireRow = {
  * Read v_recent_hires-style query via direct table join. Real data only.
  */
 export function JustHiredPanel() {
-  const { data: hires, isLoading } = useQuery({
+  const { data: hires, isLoading, refetch } = useQuery({
     queryKey: ["just_hired_30d"],
     queryFn: async () => {
       const { data, error } = await (supabase as any).rpc("get_just_hired_30d");
@@ -59,7 +61,12 @@ export function JustHiredPanel() {
       }
       return data as HireRow[];
     },
-    refetchInterval: 300_000,
+    // Keep the list fresh even if Realtime reconnects slowly on a phone.
+    refetchInterval: 30_000,
+  });
+
+  useRealtimeTable({ table: "agents", channelSuffix: "just-hired" }, () => {
+    void refetch();
   });
 
   const directToSamCount = (hires ?? []).filter(h => h.routed_to === "(direct to Sam)" || h.routed_to === "Samuel James").length;
@@ -92,17 +99,23 @@ export function JustHiredPanel() {
               const isDirect = h.routed_to === "(direct to Sam)" || h.routed_to === "Samuel James";
               return (
                 <li key={h.id} className={cn(
-                  "border rounded-md p-2.5 text-sm transition-colors",
+                  "border rounded-md text-sm transition-colors",
                   isDirect ? "border-amber-500/30 bg-amber-500/[0.04]" : "border-white/5 bg-white/[0.02]"
                 )}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium truncate">{h.display_name ?? "(unnamed agent)"}</span>
-                    {isDirect && <Crown className="h-3 w-3 text-amber-300 flex-shrink-0" />}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center justify-between">
-                    <span>→ {h.routed_to}</span>
-                    <span>{formatDistanceToNow(new Date(h.created_at), { addSuffix: true })}</span>
-                  </div>
+                  <Link
+                    to={`/dashboard/profile?agentId=${h.id}`}
+                    className="block rounded-md p-2.5 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:shadow-[var(--apex-focus-ring)]"
+                    aria-label={`Open ${h.display_name ?? "new hire"} profile`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium truncate">{h.display_name ?? "(unnamed agent)"}</span>
+                      {isDirect && <Crown className="h-3 w-3 text-amber-300 flex-shrink-0" />}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center justify-between">
+                      <span>→ {h.routed_to}</span>
+                      <span>{formatDistanceToNow(new Date(h.created_at), { addSuffix: true })}</span>
+                    </div>
+                  </Link>
                 </li>
               );
             })}

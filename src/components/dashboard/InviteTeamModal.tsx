@@ -230,8 +230,9 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
           agentEmail: email.trim(),
           agentId: newAgent.id,
           managerId: currentAgent.id,
-          courseLink: magicLink,
+          portalLink: magicLink,
           contractingLink,
+          licenseStatus,
         },
       });
 

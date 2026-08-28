@@ -39,8 +39,7 @@ const STAGE_META: Record<Stage, { label: string; color: string; order: number }>
 const CHECKLIST_STEPS = [
   { key: "watched_welcome_video", label: "Watched welcome video", stage: "signed_up" },
   { key: "completed_profile", label: "Completed profile", stage: "signed_up" },
-  { key: "joined_discord", label: "Joined Discord", stage: "onboarding" },
-  { key: "joined_whatsapp", label: "Joined WhatsApp group", stage: "onboarding" },
+  { key: "joined_discord", label: "Joined team Slack", stage: "onboarding" },
   { key: "added_phone_number", label: "Added phone number", stage: "onboarding" },
   { key: "uploaded_id", label: "Uploaded ID", stage: "onboarding" },
   { key: "signed_ica", label: "Signed contract", stage: "onboarding" },

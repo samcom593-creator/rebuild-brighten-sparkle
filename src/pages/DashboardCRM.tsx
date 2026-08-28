@@ -2043,7 +2043,7 @@ export default function DashboardCRM() {
                 </Button>
               )}
               <AddAgentModal onAgentAdded={fetchAgents} />
-              <Button variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9" onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into WhatsApp"); }}>
+              <Button variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9" onClick={() => { navigator.clipboard.writeText("https://apex-financial.org/agent-login"); toast.success("Check-in link copied! Paste into a text or DM"); }}>
                 <Link2 className="h-4 w-4 shrink-0" /> Check-In Link
               </Button>
               <Button onClick={fetchAgents} variant="outline" size="sm" className="h-10 gap-1.5 sm:h-9">

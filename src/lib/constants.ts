@@ -99,9 +99,6 @@ export const RESOURCE_TYPES = [
   { value: "faq", label: "FAQ", icon: "HelpCircle" },
 ];
 
-// WhatsApp group invite link (fetched from env or hardcoded fallback)
-export const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/LMx1ORbczN19ijJVRatd1m";
-
 // Telegram group invite link. Authoritative value lives in
 // system_settings.telegram_invite_url (returned by get_application_status RPC);
 // this is the build-time fallback so the CTA renders even if the RPC fails.

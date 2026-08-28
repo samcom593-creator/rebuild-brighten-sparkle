@@ -7,6 +7,12 @@ import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const ADMIN_EMAIL = "sam@apex-financial.org";
+const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
+const DISCORD_LINK = "https://discord.gg/JpUWA73UZX";
+const PORTAL_LINK = "https://apex-financial.org/agent-portal";
+const CONTRACTING_LINK = "https://apex-financial.org/start-contracting";
+const TRAINING_LINK = "https://apex-financial.org/dashboard/recruiting/training/library";
+const PRELICENSING_LINK = "https://partners.xcelsolutions.com/afe";
 
 interface LicensingEmailRequest {
   email: string;
@@ -72,7 +78,6 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { email, firstName, licenseStatus, managerEmail, phone, agentId }: LicensingEmailRequest = await req.json();
-    const whatsappLink = Deno.env.get("WHATSAPP_GROUP_LINK") || "";
 
     console.log(`[send-licensing-instructions] Sending to ${email}, status: ${licenseStatus}, agentId: ${agentId}`);
 
@@ -144,63 +149,14 @@ const handler = async (req: Request): Promise<Response> => {
                 Hey ${firstName}! 👋
               </p>
               <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 25px;">
-                Since you're already licensed, you're ready to hit the ground running! Here's your next step:
+                Since you're already licensed, follow this roadmap in order. Slack is the primary team hub and Discord gives you direct community and contracting support.
               </p>
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td align="center" style="padding: 20px 0;">
-                    <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
-                      <tr>
-                        <td align="center" bgcolor="#667eea" style="background-color: #667eea; border-radius: 8px;">
-                          <a href="${SCHEDULING_LINKS.licensed}" 
-                             style="display: inline-block; width: 100%; color: #ffffff; text-decoration: none; padding: 16px 32px; font-size: 18px; font-weight: 600; text-align: center; box-sizing: border-box;" target="_blank">
-                            📅 Schedule Your Onboarding Call
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-              <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 25px 0;">
-                On your call, we'll get you set up with:
-              </p>
-              <ul style="color: #e0e0e0; font-size: 16px; line-height: 1.8; margin: 0 0 25px; padding-left: 20px;">
-                <li>✅ Agent portal access &amp; training</li>
-                <li>✅ Unlimited warm leads to start calling</li>
-                <li>✅ Your personalized compensation structure</li>
-                <li>✅ Everything you need to close your first deal</li>
-              </ul>
-              ${whatsappLink ? `
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.3); border-radius: 12px; margin: 20px 0;">
-                <tr>
-                  <td style="padding: 20px; text-align: center;">
-                    <p style="color: #25D366; font-weight: bold; font-size: 14px; margin: 0 0 8px;">💬 Join Our WhatsApp Group</p>
-                    <p style="color: #e0e0e0; font-size: 13px; margin: 0 0 12px;">Connect with the team and get real-time support.</p>
-                    <a href="${whatsappLink}" style="display: inline-block; background: #25D366; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 14px;">Join WhatsApp →</a>
-                  </td>
-                </tr>
-              </table>
-              ` : ''}
-
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 12px;">
-                <tr>
-                  <td style="padding: 20px;">
-                    <p style="color: #667eea; font-size: 14px; font-weight: 600; margin: 0 0 10px;">
-                      🎬 While you wait, watch this:
-                    </p>
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                      <tr>
-                        <td align="center" bgcolor="#667eea" style="background-color: #667eea; border-radius: 8px;">
-                          <a href="https://www.youtube.com/watch?v=fKKaodfYPnk" style="display: inline-block; width: 100%; color: #ffffff; text-decoration: none; padding: 12px 24px; font-size: 16px; font-weight: 600; text-align: center; box-sizing: border-box;" target="_blank">
-                            🎬 Watch Agent Success Testimonials
-                          </a>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
+              ${buildStepCard("1", "Join the APEX Slack", "Join the primary team workspace for daily huddles, support, training, scripts, and sales wins.", SLACK_LINK, "Join Team Slack →", "#D4AF37", "212, 175, 55")}
+              ${buildStepCard("2", "Join the APEX Discord", "Join the community and contracting-support workspace so you never lose the next handoff.", DISCORD_LINK, "Join Team Discord →", "#5865F2", "88, 101, 242")}
+              ${buildStepCard("3", "Book Your Onboarding Call", "Meet with Milver, your Contracting &amp; Onboarding Manager, to lock in your first-week plan.", SCHEDULING_LINKS.licensed, "Book My Call →", "#667eea", "102, 126, 234")}
+              ${buildStepCard("4", "Set Up Your APEX Account", "Open the portal, sign in with your email, confirm your profile, and use the live roadmap as your source of truth.", PORTAL_LINK, "Open My Account &amp; Roadmap →", "#14b8a6", "20, 184, 166")}
+              ${buildStepCard("5", "Complete APEX Contracting", "Submit your NPN and profile once. APEX routes the intake to the private contracting desk automatically.", CONTRACTING_LINK, "Complete Contracting →", "#f59e0b", "245, 158, 11")}
+              ${buildStepCard("6", "Finish Online Training", "Complete onboarding, scripts, objections, ReadyMode, pipeline, deal-posting, and underwriting training before launch.", TRAINING_LINK, "Start Training →", "#4CAF50", "76, 175, 80")}
             </td>
           </tr>
           <tr>
@@ -243,37 +199,67 @@ const handler = async (req: Request): Promise<Response> => {
                 Hey ${firstName}! 👋
               </p>
               <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 25px;">
-                Here are the resources you need to get your life insurance license and start earning with Apex Financial:
+                Follow this roadmap in order. Your licensing course is the training priority, your APEX account tracks progress, and Slack is where the team supports you.
               </p>
 
               ${buildStepCard(
                 "1",
-                "Watch This Video First",
-                "Learn exactly how the licensing process works (10 min):",
-                "https://youtu.be/i1e5p-GEfAU",
-                "🎬 Watch Licensing Overview",
-                "#f093fb",
-                "240, 147, 251",
+                "Join the APEX Slack",
+                "Join the primary team workspace for licensing support, questions, updates, and training.",
+                SLACK_LINK,
+                "Join Team Slack →",
+                "#D4AF37",
+                "212, 175, 55",
               )}
 
               ${buildStepCard(
                 "2",
-                "Read the Step-by-Step Guide",
-                "Complete instructions for your state:",
-                "https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg",
-                "📄 Open Licensing Guide",
+                "Join the APEX Discord",
+                "Join the community and licensing-support workspace so you always know who to ask and what comes next.",
+                DISCORD_LINK,
+                "Join Team Discord →",
+                "#5865F2",
+                "88, 101, 242",
+              )}
+
+              ${buildStepCard(
+                "3",
+                "Set Up Your Course Account",
+                "Create your XCEL account with the same legal name shown on your ID, then begin the pre-licensing course.",
+                PRELICENSING_LINK,
+                "📚 Create Account &amp; Start Course",
                 "#667eea",
                 "102, 126, 234",
               )}
 
               ${buildStepCard(
-                "3",
-                "Start the Pre-Licensing Course",
-                "Get started on your course today:",
-                "https://partners.xcelsolutions.com/afe",
-                "📚 Start Course Now",
+                "4",
+                "Learn the Licensing Process",
+                "Watch the overview, then work the course modules in order until you are ready for the state exam.",
+                "https://youtu.be/i1e5p-GEfAU",
+                "🎬 Watch Licensing Overview",
                 "#4CAF50",
                 "76, 175, 80",
+              )}
+
+              ${buildStepCard(
+                "5",
+                "Open Your APEX Roadmap",
+                "Sign in to your APEX account and update course, exam, fingerprints, and license milestones as they happen.",
+                "https://apex-financial.org/get-licensed",
+                "Open My Licensing Roadmap →",
+                "#14b8a6",
+                "20, 184, 166",
+              )}
+
+              ${buildStepCard(
+                "6",
+                "Pass, Add Your NPN, Then Onboard",
+                "After your license posts, add your NPN in APEX and book the onboarding call. Contracting and sales training unlock next.",
+                SCHEDULING_LINKS.licensed,
+                "Book Licensed Onboarding →",
+                "#f093fb",
+                "240, 147, 251",
               )}
 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: rgba(255,255,255,0.05); border-radius: 12px; margin: 25px 0;">
@@ -291,18 +277,6 @@ const handler = async (req: Request): Promise<Response> => {
                   </td>
                 </tr>
               </table>
-
-              ${whatsappLink ? `
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.3); border-radius: 12px; margin-bottom: 15px;">
-                <tr>
-                  <td style="padding: 20px; text-align: center;">
-                    <p style="color: #25D366; font-weight: bold; font-size: 14px; margin: 0 0 8px;">💬 Join Our WhatsApp Group</p>
-                    <p style="color: #e0e0e0; font-size: 13px; margin: 0 0 12px;">Connect with other recruits and get real-time support.</p>
-                    <a href="${whatsappLink}" style="display: inline-block; background: #25D366; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 14px;">Join WhatsApp →</a>
-                  </td>
-                </tr>
-              </table>
-              ` : ''}
 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
@@ -373,8 +347,8 @@ const handler = async (req: Request): Promise<Response> => {
     if (phone) {
       try {
         const smsMsg = licenseStatus === "licensed"
-          ? `Hey ${firstName}, welcome to Apex! Check your email for onboarding steps or schedule here: ${SCHEDULING_LINKS.licensed}${whatsappLink ? `\n\nJoin our WhatsApp group: ${whatsappLink}` : ''}`
-          : `Hey ${firstName}, your licensing resources are in your email! Start here: https://partners.xcelsolutions.com/afe${whatsappLink ? `\n\nJoin our WhatsApp group: ${whatsappLink}` : ''}`;
+          ? `Hey ${firstName}, welcome to APEX. Your 5-step roadmap is in your email. Start by joining Slack: ${SLACK_LINK}`
+          : `Hey ${firstName}, your licensing roadmap is in your email. Create your XCEL course account here: ${PRELICENSING_LINK}`;
 
         const smsRes = await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
           method: "POST",
@@ -391,7 +365,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     try {
       const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      await writeAudit(sb, {
+      await writeAudit(sb as any, {
         action: "licensing.instructions_sent",
         entityType: "agent",
         entityId: agentId ?? email,
@@ -407,7 +381,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.error("[send-licensing-instructions] Error:", error);
     try {
       const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      await logFunctionError(sb, "send-licensing-instructions", error);
+      await logFunctionError(sb as any, "send-licensing-instructions", error);
     } catch (_) { /* swallow */ }
     return new Response(
       JSON.stringify({ success: false, error: error.message }),

@@ -7,7 +7,7 @@
  *
  *   - Default (unlicensed) → creates public.applications with
  *     license_status='unlicensed'. DB triggers enqueue calendly-invite +
- *     prospect_whatsapp (MP-232 outreach_queue).
+ *     one applicant onboarding email (outreach_queue).
  *   - Licensed toggle ON → creates public.applications with
  *     license_status='licensed'. DB triggers fire trg_bot_alert_licensed_app
  *     which pushes the critical Sam/manager alert.

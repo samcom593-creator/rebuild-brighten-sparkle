@@ -990,7 +990,7 @@ const qnum = (v: number | string | null | undefined): number | null => {
             {/* MP-234 — Generate Prospect Join Link (admin/manager only).
                 Same one-tap generate + copy + toast pattern as hire link, but
                 mints kind='join' so the consumer creates an application row
-                (not an agent) and triggers the calendly + prospect_whatsapp
+                (not an agent) and triggers the applicant onboarding email
                 fanout via existing DB triggers. */}
             {isAdmin && (
               <Button
@@ -1465,27 +1465,24 @@ const qnum = (v: number | string | null | undefined): number | null => {
               onClick={async () => {
                 if (!agent?.id) return;
                 try {
-                  // 2026-07-01 PL-MP231 — also re-fire WhatsApp hired invite
-                  // (hired_whatsapp email_kind) so the full onboarding trio
-                  // (Course + Discord + WhatsApp) ships from one tap.
+                  // Re-fire the licensed training + primary community emails.
                   await (supabase as any)
                     .from("agent_onboarding_queue")
                     .upsert(
                       [
                         { agent_id: agent.id, email_kind: "course",          target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
                         { agent_id: agent.id, email_kind: "discord",         target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
-                        { agent_id: agent.id, email_kind: "hired_whatsapp",  target_send_at: new Date().toISOString(), sent_at: null, attempt_count: 0, last_error: null },
                       ],
                       { onConflict: "agent_id,email_kind" },
                     );
                   const { data } = await supabase.functions.invoke("send-agent-onboarding-email", { body: {} });
                   const sent = (data as any)?.sent ?? 0;
-                  toast.success(`Course + Discord + WhatsApp re-sent (${sent} delivered)`);
+                  toast.success(`Training + Slack re-sent (${sent} delivered)`);
                 } catch (e: any) {
                   toast.error(`Send failed: ${e?.message?.slice(0, 80) ?? "unknown"}`);
                 }
               }}
-              title="Re-fire course + Discord + WhatsApp onboarding emails (idempotent)"
+              title="Re-fire licensed training + Slack onboarding emails (idempotent)"
             >
               <Mail className="h-3.5 w-3.5" /> Onboard
             </Button>

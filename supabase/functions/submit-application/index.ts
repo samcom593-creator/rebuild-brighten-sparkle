@@ -12,6 +12,7 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
+const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
 
 if (!supabaseUrl || !serviceRoleKey) {
   throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
@@ -968,14 +969,13 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
               You'll hear from a manager within 48 hours.
             </p>
 
-            <div style="background: #dcfce7; border: 1px solid #86efac; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
-              <h3 style="color: #166534; margin-top: 0; margin-bottom: 10px; font-size: 16px;">📱 Join Our WhatsApp Group</h3>
-              <p style="color: #15803d; font-size: 13px; margin-bottom: 15px;">Connect with other recruits, get support, and share your progress!</p>
-              <a href="${Deno.env.get('WHATSAPP_GROUP_LINK') || '#'}" 
-                 style="display: inline-block; background: #25D366; color: white; 
-                        padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;
-                        box-shadow: 0 4px 14px rgba(37, 211, 102, 0.4);">
-                Join WhatsApp Group
+            <div style="background: #f3e8ff; border: 1px solid #d8b4fe; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
+              <h3 style="color: #4A154B; margin-top: 0; margin-bottom: 10px; font-size: 16px;">📱 Join the APEX Slack</h3>
+              <p style="color: #6b216f; font-size: 13px; margin-bottom: 15px;">Use the primary team workspace for licensing support, training questions, and progress updates.</p>
+              <a href="${SLACK_LINK}"
+                 style="display: inline-block; background: #4A154B; color: white;
+                        padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
+                Join Team Slack
               </a>
             </div>
 

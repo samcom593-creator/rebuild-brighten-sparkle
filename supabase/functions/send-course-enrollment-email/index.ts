@@ -13,6 +13,8 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const BASE_URL = APP_BASE_URL;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ADMIN_EMAIL = "sam@apex-financial.org";
+const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
+const ROADMAP_LINK = `${BASE_URL}/agent-portal`;
 
 async function generateMagicToken(
   supabaseClient: any,
@@ -53,11 +55,10 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get agent details incl. license_status.
-    // license_status gates the Discord CTA in this email (LICENSED ONLY).
+    // Get the agent and manager relationship used for delivery + CC routing.
     const { data: agent, error: agentError } = await supabaseClient
       .from("agents")
-      .select("user_id, invited_by_manager_id, license_status")
+      .select("user_id, invited_by_manager_id")
       .eq("id", agentId)
       .single();
 
@@ -106,14 +107,6 @@ const handler = async (req: Request): Promise<Response> => {
       .filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     const firstName = profile.full_name?.split(" ")[0] || "Agent";
-
-    // Discord invite gate: license_status MUST equal 'licensed' before we can
-    // include the Discord CTA in ANY outbound email. Matches the guard in
-    // send-agent-onboarding-email (email_kind='discord' → licensed only).
-    const licenseStatus = (agent?.license_status ?? "").toString().toLowerCase();
-    const isLicensed = licenseStatus === "licensed";
-
-    const whatsappLink = Deno.env.get("WHATSAPP_GROUP_LINK") || "";
 
     // Generate magic link with "course" destination
     const courseMagicLink = await generateMagicToken(supabaseClient, agentId, profile.email, "course");
@@ -167,8 +160,18 @@ const handler = async (req: Request): Promise<Response> => {
                 </h2>
                 
                 <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin: 0 0 24px 0;">
-                  You've been enrolled in the APEX onboarding course. Tap the button below to jump right in — no password needed!
+                  You've been enrolled in the APEX onboarding course. This one-tap link sets up your account session and opens the training — no password needed.
                 </p>
+
+                <div style="background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.3); border-radius: 12px; padding: 20px; margin: 24px 0;">
+                  <h3 style="color: #D4AF37; font-size: 17px; margin: 0 0 12px 0;">Your next-step roadmap</h3>
+                  <ol style="color: #e2e8f0; font-size: 14px; line-height: 2; margin: 0; padding-left: 20px;">
+                    <li>Open the one-tap link and confirm your APEX account.</li>
+                    <li>Complete every training module and quiz in order.</li>
+                    <li>Check your live roadmap for the next unlocked action.</li>
+                    <li>Use Slack for team support, training questions, and updates.</li>
+                  </ol>
+                </div>
                 
                 <div style="background: rgba(20, 184, 166, 0.1); border-radius: 12px; padding: 24px; margin: 24px 0;">
                   <h3 style="color: #14b8a6; font-size: 18px; margin: 0 0 16px 0;">What to Expect</h3>
@@ -196,33 +199,21 @@ const handler = async (req: Request): Promise<Response> => {
                   One-tap access • No password needed
                 </p>
 
-                ${whatsappLink ? `
-                <div style="background: rgba(37,211,102,0.1); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
-                  <p style="color: #25D366; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
-                    💬 Join Our WhatsApp Group
+                <div style="background: rgba(74, 21, 75, 0.18); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
+                  <p style="color: #D4AF37; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
+                    💬 Join the APEX Slack
                   </p>
                   <p style="color: #94a3b8; font-size: 13px; margin: 0 0 12px 0;">
-                    Connect with other recruits and get real-time support:
+                    Slack is the team hub for daily huddles, training support, scripts, and updates.
                   </p>
-                  <a href="${whatsappLink}" style="display: inline-block; background: #25D366; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px;">
-                    Join WhatsApp →
+                  <a href="${SLACK_LINK}" style="display: inline-block; background: #4A154B; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px;">
+                    Join Team Slack →
                   </a>
                 </div>
-                ` : ''}
 
-                ${isLicensed ? `
-                <div style="background: rgba(88, 101, 242, 0.1); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
-                  <p style="color: #5865F2; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
-                    💬 Need Help? Join Our Discord
-                  </p>
-                  <p style="color: #94a3b8; font-size: 13px; margin: 0 0 12px 0;">
-                    Get support and connect with the team:
-                  </p>
-                  <a href="https://discord.gg/JpUWA73UZX" style="display: inline-block; background: #5865F2; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px;">
-                    Join Discord →
-                  </a>
-                </div>
-                ` : ''}
+                <p style="text-align:center;margin:20px 0;">
+                  <a href="${ROADMAP_LINK}" style="color:#14b8a6;font-weight:700;">Open my live onboarding roadmap →</a>
+                </p>
 
                 <div style="background: rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 16px; margin: 24px 0;">
                   <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">

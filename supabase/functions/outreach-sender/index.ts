@@ -156,6 +156,20 @@ async function sendOne(
   postmarkApiKey: string | null,
   row: QueueRow,
 ): Promise<{ outcome: "sent" | "failed" | "skipped_suppressed" | "skipped_idempotent"; error?: string; providerId?: string }> {
+  if (
+    row.source_run === "prospect_whatsapp" ||
+    row.source_run === "prospect-combined" ||
+    row.template_key === "prospect-whatsapp-v1" ||
+    row.template_key === "prospect-combined-v1"
+  ) {
+    await updateQueueRow(supabase, row.id, {
+      status: QUEUE_STATUS_SKIPPED,
+      last_error: "retired_channel: use Slack onboarding",
+      attempt_count: Math.max(row.attempt_count + 1, 3),
+    });
+    return { outcome: "skipped_suppressed" };
+  }
+
   // Idempotency: have we already sent something with this key?
   if (row.idempotency_key) {
     const { data: dup, error: dupErr } = await supabase
@@ -196,7 +210,7 @@ async function sendOne(
   // applicant is still unlicensed. If they became licensed between enqueue
   // and drain, they belong in the HIRED chain (agent_onboarding_queue), not here.
   if (
-    (row.source_run === "prospect_whatsapp" || row.source_run === "calendly-invite") &&
+    (row.source_run === "applicant-onboarding" || row.source_run === "calendly-invite") &&
     row.application_id
   ) {
     const { data: appRow } = await supabase

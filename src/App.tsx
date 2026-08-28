@@ -406,8 +406,8 @@ const App = () => (
                   <Route path="/hire/:token" element={<HireLink />} />
                   {/* MP-234 magic join/prospect link — public, token-gated,
                       share-only (never in nav). Creates an application row and
-                      fans out via existing DB triggers (calendly + prospect
-                      whatsapp for unlicensed; licensed-app alert for licensed). */}
+                      fans out via existing DB triggers (applicant onboarding
+                      email for unlicensed; licensed-app alert for licensed). */}
                   <Route path="/join/:token" element={<JoinLink />} />
                   {/* /agent-signup is the canonical recruiting URL referenced from
                       Install.tsx and recruiting CTAs. /join remains the separate

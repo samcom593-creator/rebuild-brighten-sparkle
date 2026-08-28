@@ -12,8 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { SCHEDULING_LINKS } from "@/lib/apexConfig";
-import { WHATSAPP_GROUP_URL } from "@/lib/constants";
+import { SCHEDULING_LINKS, TEAM_COMMUNITY_LINKS } from "@/lib/apexConfig";
 
 type CheckinFormState = {
   licenseProgress: string;
@@ -239,9 +238,9 @@ export default function ApplicantCheckin() {
                     <p className="text-sm text-muted-foreground">Keep moving with the full step-by-step guide.</p>
                   </GlassCard>
                 </Link>
-                <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer" className="block">
+                <a href={TEAM_COMMUNITY_LINKS.slack} target="_blank" rel="noopener noreferrer" className="block">
                   <GlassCard className="p-4 h-full text-center">
-                    <h3 className="font-semibold mb-1">Join the Hiring Chat</h3>
+                    <h3 className="font-semibold mb-1">Join Team Slack</h3>
                     <p className="text-sm text-muted-foreground">Stay close to the team and ask questions fast.</p>
                   </GlassCard>
                 </a>
@@ -349,9 +348,9 @@ export default function ApplicantCheckin() {
 
               <div className="grid gap-3 md:grid-cols-3">
                 <GradientButton asChild variant="outline" className="w-full">
-                  <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer" className="block">
+                  <a href={TEAM_COMMUNITY_LINKS.slack} target="_blank" rel="noopener noreferrer" className="block">
                     <MessageCircle className="h-4 w-4 mr-2" />
-                    Hiring Chat
+                    Team Slack
                   </a>
                 </GradientButton>
                 <GradientButton asChild variant="outline" className="w-full">

@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const ADMIN_EMAIL = "sam@apex-financial.org";
+const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -36,7 +37,6 @@ serve(async (req) => {
 
     if (error) throw error;
 
-    const whatsappLink = Deno.env.get("WHATSAPP_GROUP_LINK") || "";
     console.log(`[Bulk Outreach] Found ${applicants?.length || 0} unlicensed applicants`);
 
     let sentCount = 0;
@@ -122,17 +122,15 @@ We provide <strong>free CRM, free dialer, 50+ carrier contracts</strong>, and 72
 </table>
 </td></tr>
 
-${whatsappLink ? `
 <tr><td style="padding:0 30px 20px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);border-radius:8px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(74,21,75,0.1);border:1px solid rgba(212,175,55,0.3);border-radius:8px;">
 <tr><td style="padding:16px;text-align:center;">
-<p style="color:#25D366;font-weight:bold;font-size:14px;margin:0 0 8px;">💬 Join Our WhatsApp Group</p>
-<p style="color:#666;font-size:13px;margin:0 0 12px;">Connect with the team, get real-time support &amp; daily motivation</p>
-<a href="${whatsappLink}" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;padding:10px 24px;border-radius:6px;font-weight:bold;font-size:14px;">Join WhatsApp →</a>
+<p style="color:#D4AF37;font-weight:bold;font-size:14px;margin:0 0 8px;">💬 Join the APEX Slack</p>
+<p style="color:#666;font-size:13px;margin:0 0 12px;">Use the primary team workspace for licensing support, training questions, and progress updates.</p>
+<a href="${SLACK_LINK}" style="display:inline-block;background:#4A154B;color:#fff;text-decoration:none;padding:10px 24px;border-radius:6px;font-weight:bold;font-size:14px;">Join Team Slack →</a>
 </td></tr>
 </table>
 </td></tr>
-` : ''}
 
 <!-- Need help banner -->
 <tr><td style="padding:0 30px 20px;">

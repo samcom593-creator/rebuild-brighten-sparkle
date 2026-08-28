@@ -13,6 +13,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+const SLACK_LINK = "https://join.slack.com/t/apex-financial-co/shared_invite/zt-47rdeq1fr-ETmj8yGBgRcoYVkwfc3DBQ";
 
 const CARRIER_GATEWAYS: Record<string, string> = {
   att: "txt.att.net",
@@ -41,7 +42,6 @@ serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const whatsappLink = Deno.env.get("WHATSAPP_GROUP_LINK") || "";
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey, {
@@ -70,7 +70,7 @@ serve(async (req: Request) => {
       const batch = applicants.slice(i, i + BATCH_SIZE);
       await Promise.allSettled(batch.map(async (app) => {
         const checkinUrl = `${buildAppUrl("/checkin")}?id=${app.id}`;
-        const smsText = `Daily check-in time! Update your licensing progress: ${checkinUrl}${whatsappLink ? ` | Join WhatsApp: ${whatsappLink}` : ""}`
+        const smsText = `Daily check-in time! Update your licensing progress: ${checkinUrl} | Team support is in Slack.`
           .substring(0, 160);
 
         // 1. EMAIL
@@ -104,12 +104,11 @@ serve(async (req: Request) => {
       </tr>
     </table>
   </div>
-  ${whatsappLink ? `
-  <div style="background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);border-radius:8px;padding:16px;margin:20px 0;text-align:center;">
-    <p style="color:#25D366;font-weight:bold;font-size:14px;margin:0 0 8px;">💬 Join Our WhatsApp Group</p>
-    <p style="color:#94a3b8;font-size:13px;margin:0 0 12px;">Connect with other recruits and get real-time support.</p>
-    <a href="${whatsappLink}" style="display:inline-block;background:#25D366;color:white;text-decoration:none;padding:10px 24px;border-radius:6px;font-weight:bold;font-size:14px;">Join WhatsApp →</a>
-  </div>` : ""}
+  <div style="background:rgba(74,21,75,0.18);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:16px;margin:20px 0;text-align:center;">
+    <p style="color:#D4AF37;font-weight:bold;font-size:14px;margin:0 0 8px;">💬 Need help with this step?</p>
+    <p style="color:#94a3b8;font-size:13px;margin:0 0 12px;">Use the APEX Slack for licensing support, training questions, and updates.</p>
+    <a href="${SLACK_LINK}" style="display:inline-block;background:#4A154B;color:white;text-decoration:none;padding:10px 24px;border-radius:6px;font-weight:bold;font-size:14px;">Open Team Slack →</a>
+  </div>
   <div style="border-top:1px solid rgba(148,163,184,0.2);padding-top:20px;margin-top:20px;">
     <p style="color:#64748b;font-size:12px;text-align:center;margin:0;">Powered by Apex Financial</p>
   </div>

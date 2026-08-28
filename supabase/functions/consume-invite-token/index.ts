@@ -8,7 +8,7 @@
 //   - kind='join' — creates an APPLICATION (no auth user, no agent).
 //                   Existing triggers on public.applications then fire:
 //                     * license_status='unlicensed' → trg_calendly_for_unlicensed_ins
-//                       enqueues calendly-invite + prospect_whatsapp (MP-232).
+//                       enqueues the applicant onboarding email.
 //                     * license_status='licensed'   → trg_bot_alert_licensed_app
 //                       fires the manager/Sam critical alert.
 //                   Optional `licensed: true` on the body flips the row licensed;
@@ -161,7 +161,7 @@ serve(async (req) => {
 
   // ─── kind='join' branch ────────────────────────────────────────────────
   // Prospect capture: creates a public.applications row and lets the
-  // existing DB triggers fan out (calendly + prospect_whatsapp for
+  // existing DB triggers fan out (applicant onboarding email for
   // unlicensed; licensed_app_arrived alert for licensed).
   if (tokenRow.kind === "join") {
     const nameParts = full_name.split(/\s+/).filter(Boolean);

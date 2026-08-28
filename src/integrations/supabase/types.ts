@@ -108352,7 +108352,7 @@ export type Database = {
       dm_overnight_digest: { Args: never; Returns: Json }
       dm_send_retry: { Args: never; Returns: Json }
       drain_sms_fallback_queue: { Args: never; Returns: Json }
-      ensure_next_month_partitions: { Args: never; Returns: undefined }
+      ensure_next_month_partitions: { Args: never; Returns: Json }
       execute_sql: { Args: { q: string }; Returns: Json }
       finance_snapshot: {
         Args: never
